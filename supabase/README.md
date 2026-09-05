@@ -132,7 +132,9 @@ Lightweight funnel counters synced from `js/gpt-app.js` (`user_journey_stats.dee
 
 RLS: users read/write **own row only** (`auth.uid() = user_id`).
 
-Product snapshots and Beranda return-loop timing (`seenProducts`, `lastBerandaAt`) stay **client-only** for now — not in this table.
+Product snapshots stay **client-only** for now — not in this table.
+
+The live return loop (2026-09-05): session-one Deep Dive, end-of-dive `#ddr-alert`, scrape-cycle digest (`scrape-digest`), and Beranda `user_weekly_steps` / `#home-langkah`. See **[docs/journey-funnel.md](../docs/journey-funnel.md)** and **[docs/RETENTION.sql](../docs/RETENTION.sql)**.
 
 ## LARISgpt chat (`migrations/20260716140000_gpt_chats.sql`)
 

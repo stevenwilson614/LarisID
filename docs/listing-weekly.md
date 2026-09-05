@@ -82,11 +82,15 @@ listings push
   → backfill_listing_weekly_estimates(10)
   → refresh mv_listing_momentum + mv_listing_week_positions
   → refresh_breakout_matviews()
+  → next morning: scrape-digest cron (03:00 UTC / 10:00 WIB) emails Deep Dive users
+    if listing_deltas has a new measured scrape day
 ```
 
 SSH/psql only (`refresh_listing_weekly.sh`). If any of those steps is skipped
 the site goes stale — seen 2026-08-13, when Aug 10–13 listings had 0% omset
-because the matview refresh did not run.
+because the matview refresh did not run. The `scrape-digest` job (see
+`larisid-infra/cron/recreate_cron_jobs.sql`) no-ops until the measured
+watermark advances; it does not invent daily deltas.
 
 | Event | Current week | Next week | Past measured weeks |
 |---|---|---|---|

@@ -3756,8 +3756,9 @@ body.home-finder-done .finder-atau,
 body.home-finder-done .home-sub { display: none !important; }
 /* Landing: 4 questions + submit only. Composer stays on Ask Laris. */
 body.view-home:not(.home-finder-done) .home-composer,
-body.view-home:not(.home-finder-done) .finder-atau,
-body.view-home:not(.home-finder-done) .home-prompts { display: none !important; }
+  body.view-home:not(.home-finder-done) .finder-atau,
+  body.view-home:not(.home-finder-done) .home-prompts,
+  body.view-home:not(.home-finder-done) .home-retention { display: none !important; }
 body.home-finder-done .home-hero {
   justify-content: center;
   min-height: min(62vh, 560px);
@@ -5176,6 +5177,103 @@ body.home-finder-done .home-hero {
   transition: border-color .12s, background .12s, transform .12s;
 }
 .ddr-aksi-btn:hover { border-color: rgba(181,32,42,.35); background: #fffaf9; }
+.home-retention {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0 4px;
+  width: min(560px, 100%);
+}
+.home-retention[hidden] { display: none !important; }
+.home-ret-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px 18px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, .04);
+}
+.home-ret-card[hidden] { display: none !important; }
+.home-ret-kicker {
+  margin: 0 0 8px;
+  font-size: .68rem;
+  font-weight: 750;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.home-ret-card h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 750;
+  letter-spacing: -.02em;
+  color: var(--ink);
+}
+.home-ret-sub, .home-ret-loading, .home-ret-meta p {
+  margin: 4px 0 0;
+  font-size: .82rem;
+  color: var(--ink-soft);
+}
+.home-ret-row { display: flex; gap: 12px; align-items: center; }
+.home-ret-img {
+  width: 56px; height: 56px; border-radius: 12px; object-fit: cover;
+  background: var(--bg-user); flex-shrink: 0;
+}
+.home-ret-cta, .home-ret-link {
+  margin-top: 12px;
+  font: inherit;
+  cursor: pointer;
+}
+.home-ret-cta {
+  display: inline-flex; align-items: center;
+  padding: 10px 16px; border-radius: 12px; border: 0;
+  background: var(--accent); color: #fff; font-weight: 700; font-size: .88rem;
+}
+.home-ret-link {
+  display: inline-block;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-weight: 650;
+  font-size: .84rem;
+}
+.home-langkah-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.home-langkah-list label {
+  display: flex; gap: 10px; align-items: flex-start;
+  font-size: .9rem; line-height: 1.4; color: var(--ink); cursor: pointer;
+}
+.home-langkah-list input { margin-top: 3px; accent-color: var(--accent); }
+.ddr-alert {
+  margin: 0 0 16px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(181,32,42,.22);
+  background: #fffaf9;
+}
+.ddr-alert-copy h3 {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+  font-weight: 750;
+  letter-spacing: -.02em;
+}
+.ddr-alert-copy em { font-style: normal; color: var(--accent); }
+.ddr-alert-copy p { margin: 0; font-size: .82rem; color: var(--ink-soft); line-height: 1.5; }
+.ddr-alert-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+.ddr-alert-btn {
+  font: inherit; font-size: .82rem; font-weight: 700;
+  padding: 8px 14px; border-radius: 12px;
+  border: 1px solid var(--line); background: #fff; cursor: pointer;
+}
+.ddr-alert-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.ddr-alert-wa { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.ddr-alert-wa input {
+  font: inherit; font-size: .82rem;
+  padding: 8px 10px; border-radius: 12px;
+  border: 1px solid var(--line); min-width: 140px;
+}
+.ddr-alert-skip {
+  font: inherit; font-size: .78rem; color: var(--muted);
+  border: 0; background: none; cursor: pointer; padding: 8px 4px;
+}
 .ddr-aksi-btn.primary {
   background: var(--accent, #B5202A); border-color: var(--accent, #B5202A); color: #fff;
 }
@@ -7792,67 +7890,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 
 <!-- Deep Dive → Pantauan promo retired 2026-09-05: end-of-dive #ddr-alert
      card replaced the mid-dive modal. -->
-<!-- First Deep Dive: founder video. Once per browser, 2s after openDeepDive.
-  <svg class="ddtp-arrow" id="ddtp-arrow" aria-hidden="true" focusable="false"></svg>
-  <div class="modal ddtp-modal" role="dialog" aria-modal="true" aria-labelledby="ddtp-title">
-    <button type="button" class="modal-close" id="ddtp-close" aria-label="Tutup">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
-    </button>
-    <div class="ddtp-grid">
-      <div class="ddtp-left">
-        <img class="ddtp-logo" src="/images/brand/logo-horizontal-red.webp" alt="LARIS" height="30">
-        <h2 id="ddtp-title">Jangan Lewatkan Perubahan yang <span class="ddtp-hl">Bisa Bikin Kamu Ketinggalan!</span><span class="ddtp-flame" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c4.4 0 7-2.8 7-6.5 0-2.5-1.4-4.6-3-6.5-.6 1.2-1.4 2-2.5 2.5C13.9 9 13 5.5 9.5 2c.3 3-.5 4.6-2 6.5C6 10.4 5 12.3 5 15.5 5 19.2 7.6 22 12 22z"/></svg></span></h2>
-        <p class="ddtp-sub">Pantau pergerakan pasar produk ini tiap hari, dan selalu jadi selangkah di depan kompetitor.</p>
-        <ul class="ddtp-feats">
-          <li>
-            <span class="ddtp-feat-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></span>
-            <span><strong>Update Pasar Harian</strong>Lihat perubahan unit terjual, harga, dan omset tiap hari.</span>
-          </li>
-          <li>
-            <span class="ddtp-feat-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.2"/></svg></span>
-            <span><strong>Deteksi Peluang</strong>Tangkap pergeseran pasar lebih cepat sebelum kompetitor.</span>
-          </li>
-          <li>
-            <span class="ddtp-feat-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.2l3.3 2"/></svg></span>
-            <span><strong>Riwayat Perubahan</strong>Lihat grafik lengkap pergerakannya dari waktu ke waktu.</span>
-          </li>
-          <li>
-            <span class="ddtp-feat-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8.5a6 6 0 1 0-12 0c0 5-2 6.5-2 6.5h16s-2-1.5-2-6.5z"/><path d="M13.7 19a2 2 0 0 1-3.4 0"/></svg></span>
-            <span><strong>Hemat Waktu</strong>Kami cek tiap hari dan kabari kamu, tanpa perlu buka manual.</span>
-          </li>
-        </ul>
-      </div>
-      <div class="ddtp-right">
-        <div class="ddtp-card" id="ddtp-card"></div>
-        <!-- Static illustration of the three things tracker-change-notify
-             actually alerts on: units ±20%, average price ±5%, seller count.
-             Labelled "Contoh" so it is never read as this product's data. -->
-        <div class="ddtp-changes">
-          <div class="ddtp-changes-lbl">Contoh notifikasi</div>
-          <div class="ddtp-chg">
-            <span class="ddtp-chg-ico ddtp-chg-ico--up"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg></span>
-            <span class="ddtp-chg-body"><strong>Unit terjual naik</strong>Dari 1.240 jadi 1.580 unit</span>
-            <span class="ddtp-chg-when">Hari ini<em>08:45</em></span>
-          </div>
-          <div class="ddtp-chg">
-            <span class="ddtp-chg-ico ddtp-chg-ico--down"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg></span>
-            <span class="ddtp-chg-body"><strong>Harga rata-rata turun</strong>Dari Rp259rb jadi Rp249rb</span>
-            <span class="ddtp-chg-when">Kemarin<em>14:20</em></span>
-          </div>
-          <div class="ddtp-chg">
-            <span class="ddtp-chg-ico ddtp-chg-ico--info"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14.5c2.6.3 4 2.2 4 4.5"/></svg></span>
-            <span class="ddtp-chg-body"><strong>Toko penjual bertambah</strong>Dari 38 jadi 44 toko</span>
-            <span class="ddtp-chg-when">2 hari lalu<em>09:15</em></span>
-          </div>
-        </div>
-        <button type="button" class="btn-primary ddtp-cta" id="ddtp-cta">
-          Mulai Pantau Sekarang
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- First Deep Dive: founder video. Once per browser, 2s after openDeepDive.
      Countdown + Lanjut live in the markup; js/gpt-app.js (sddv*) drives play. -->
@@ -8045,6 +8082,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
      larisLoadScript() when the admin view actually renders. -->
 <script src="/js/peta-peluang.js?v=20260905a" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
-<script src="/js/gpt-app.js?v=20260905e" defer></script>
+<script src="/js/gpt-app.js?v=20260905f" defer></script>
 </body>
 </html>

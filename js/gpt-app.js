@@ -1662,6 +1662,8 @@ const state = {
   pendingTracker: null, // in-progress tracker wizard draft behind the login gate; resumed after sign-in
   pendingTrackKeyword: null, // one-tap "Kabari Kalau Berubah" caught by the signup gate; added after sign-in
   everOpenedDeepdive: false,
+  lastDeepDiveKeyword: '',
+  lastDeepDiveCategory: '',
   comparePick: null, // { source, selected[], chatId? } — directory pick mode, max 3 listings
   compareReturnChatId: null, // compare riwayat to reopen after a Deep Dive from it
   // Survives recommendation wipes so chat product cards can reopen Deep Dive.
@@ -1697,6 +1699,8 @@ function loadLocalState() {
     if (raw.pendingTracker) state.pendingTracker = raw.pendingTracker;
     if (raw.pendingTrackKeyword) state.pendingTrackKeyword = raw.pendingTrackKeyword;
     if (raw.everOpenedDeepdive != null) state.everOpenedDeepdive = !!raw.everOpenedDeepdive;
+    if (raw.lastDeepDiveKeyword) state.lastDeepDiveKeyword = String(raw.lastDeepDiveKeyword);
+    if (raw.lastDeepDiveCategory) state.lastDeepDiveCategory = String(raw.lastDeepDiveCategory);
     if (raw.affinity && typeof raw.affinity === 'object') state.affinity = raw.affinity;
     if (!Array.isArray(state.onboarding.learnedCategories)) state.onboarding.learnedCategories = [];
     if (!Array.isArray(state.onboarding.dismissedLearned)) state.onboarding.dismissedLearned = [];
@@ -1714,6 +1718,8 @@ function saveLocalState() {
       pendingTracker: state.pendingTracker || null,
       pendingTrackKeyword: state.pendingTrackKeyword || null,
       everOpenedDeepdive: state.everOpenedDeepdive || false,
+      lastDeepDiveKeyword: state.lastDeepDiveKeyword || '',
+      lastDeepDiveCategory: state.lastDeepDiveCategory || '',
       affinity: state.affinity || {},
       ts: Date.now(),
     }));
@@ -2059,6 +2065,18 @@ async function gptSeedUsageFlags() {
 // under-counted B to zero. Mirror arm A's journeySyncRemote() shape here.
 let _gptJourney = { deepdiveCount: 0, firstDeepDiveAt: null, loaded: false };
 let _gptDiveSeen = 0; // dives this session, for first_dive / second_dive steps
+let _profileWa = undefined; // undefined = not loaded; '' = none
+
+function resetGptJourney() {
+  _gptJourney = { deepdiveCount: 0, firstDeepDiveAt: null, loaded: false };
+  _gptDiveSeen = 0;
+  _profileWa = undefined;
+}
+
+function userNeverDeepDived() {
+  if (currentUser && _gptJourney.loaded) return (_gptJourney.deepdiveCount || 0) === 0;
+  return !state.everOpenedDeepdive;
+}
 
 async function gptJourneyLoad() {
   if (_gptJourney.loaded || !_supabase || !currentUser) return;
@@ -2070,6 +2088,32 @@ async function gptJourneyLoad() {
       _gptJourney.deepdiveCount = data.deepdive_count || 0;
       _gptJourney.firstDeepDiveAt = data.first_deepdive_at || null;
     }
+  } catch (_) {}
+}
+
+async function loadProfileWaNumber() {
+  if (_profileWa !== undefined) return _profileWa;
+  _profileWa = '';
+  if (!_supabase || !currentUser) return '';
+  try {
+    const { data } = await _supabase.from('user_profiles')
+      .select('wa_number, public_whatsapp')
+      .eq('user_id', currentUser.id).maybeSingle();
+    _profileWa = String(data?.wa_number || data?.public_whatsapp || '').trim();
+  } catch (_) {}
+  return _profileWa;
+}
+
+async function saveProfileWaNumber(wa) {
+  const num = String(wa || '').trim();
+  if (!num || !_supabase || !currentUser) return;
+  _profileWa = num;
+  try {
+    await _supabase.from('user_profiles').upsert({
+      user_id: currentUser.id,
+      wa_number: num,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' });
   } catch (_) {}
 }
 
@@ -2511,7 +2555,6 @@ function setView(name, opts = {}) {
   if (leaving === 'deepdive' && name !== 'deepdive') {
     dwellStop();
     destroyAllCharts();
-    ddtpCancel();
     sddvCancel();
     // A product is only "in context" while its deep dive (or its chat) is
     // open — a stale deepdiveProduct must not hijack later searches into
@@ -3475,6 +3518,8 @@ async function _authOnSignIn(session, opts) {
   // Return rate is the pre-committed A/B decision metric, so the two arms have
   // to observe it identically.
   funnelNoteActiveDay();
+  resetGptJourney();
+  void gptJourneyLoad();
   await loadCurrentAccess();
   void _winbackMaybeClaim();
   void refreshGptUsage();
@@ -3603,6 +3648,7 @@ async function signOut() {
   try { window.LarisMerdeka && window.LarisMerdeka.resetPromo(); } catch (_) {}
   _authClear();
   currentUser = null;
+  resetGptJourney();
   updateAccountUI();
   showToast('Kamu sudah keluar.');
 }
@@ -4235,6 +4281,224 @@ function updateHomeFinderVisibility() {
   // init/refresh here so the rig can measure a visible host.
   if (MASCOT_ALIVE && window.LarisMascot) {
     try { window.LarisMascot.init(); window.LarisMascot.refresh(); } catch (_) {}
+  }
+  void syncHomeRetentionCards();
+}
+
+async function syncHomeRetentionCards() {
+  const host = $('home-retention');
+  if (host) host.hidden = shouldShowLandingFinder();
+  await syncHomeFirstDdCard();
+  await syncHomeLangkahCard();
+}
+
+async function syncHomeFirstDdCard() {
+  const card = $('home-first-dd');
+  if (!card) return;
+  if (!currentUser || shouldShowLandingFinder() || state.onboarding?.step !== 'done') {
+    card.hidden = true;
+    card.innerHTML = '';
+    return;
+  }
+  await gptJourneyLoad();
+  if ((_gptJourney.deepdiveCount || 0) > 0) {
+    card.hidden = true;
+    card.innerHTML = '';
+    return;
+  }
+  const city = state.onboarding.city || _finder.city || '';
+  const cats = state.onboarding.categories || _finder.categories || [];
+  if (!cats.length) {
+    card.hidden = true;
+    card.innerHTML = '';
+    return;
+  }
+  card.hidden = false;
+  card.innerHTML = `<p class="home-ret-kicker">Analisis pertama</p>
+    <p class="home-ret-loading">Mencari pasar yang cocok…</p>`;
+  try {
+    const packed = await fetchCategoryPasarTypes(cats, city, { limit: 8, budgetId: _finder.budget || state.onboarding.budget });
+    const best = sortTypeRows((packed.types || []).slice(), 'terlaris')[0];
+    if (!best) {
+      card.innerHTML = `<p class="home-ret-kicker">Analisis pertama</p>
+        <p class="home-ret-sub">Belum ketemu pasar untuk ${esc(cats.join(', '))}. Coba tanya Ask Laris.</p>`;
+      return;
+    }
+    registerTypes([best]);
+    const title = typeTitle(best.keyword);
+    const img = best.rep_image_url ? imgThumb(best.rep_image_url) : '';
+    card.innerHTML = `
+      <p class="home-ret-kicker">Analisis pertama</p>
+      <div class="home-ret-row">
+        ${img ? `<img class="home-ret-img" src="${esc(img)}" alt="" width="56" height="56">` : ''}
+        <div class="home-ret-meta">
+          <h2>${esc(title)}</h2>
+          <p>${esc([city, cats[0]].filter(Boolean).join(' · '))}</p>
+        </div>
+      </div>
+      <button type="button" class="home-ret-cta" data-first-dd>Lihat analisis lengkap</button>`;
+    card.querySelector('[data-first-dd]')?.addEventListener('click', () => {
+      void logUserEvent('home_first_dd_click', { ui: 'gpt', keyword: best.keyword });
+      void openDeepDive(typeRepProduct(best));
+    });
+  } catch (_) {
+    card.hidden = true;
+    card.innerHTML = '';
+  }
+}
+
+function langkahFallbackSteps(keyword, category) {
+  const label = keyword || category || 'produk ini';
+  return [
+    `Cek HPP dan margin untuk ${label}`,
+    'Siapkan 5 foto produk yang jelas',
+    `Bandingkan harga 5 toko ${label}`,
+    'Tanya satu supplier soal MOQ',
+  ].slice(0, 4);
+}
+
+function parseLangkahSteps(text) {
+  const raw = String(text || '');
+  const match = raw.match(/\[[\s\S]*\]/);
+  if (!match) return [];
+  try {
+    const arr = JSON.parse(match[0]);
+    return (Array.isArray(arr) ? arr : [])
+      .map(s => String(s || '').replace(/\s+/g, ' ').trim())
+      .filter(s => s.length >= 4 && s.length <= 80)
+      .slice(0, 4);
+  } catch (_) {
+    return [];
+  }
+}
+
+function langkahMingguPrompt({ keyword, category, city, experience, lastSteps, lastDone }) {
+  const prev = (lastSteps || []).map((s, i) => {
+    const mark = lastDone && lastDone[i] ? 'selesai' : 'belum';
+    return `- [${mark}] ${s}`;
+  }).join('\n');
+  return `Kamu menulis langkah mingguan untuk penjual Shopee Indonesia di LarisID.
+Pengguna: penjual ${experience === 'existing' ? 'berpengalaman' : 'baru'}${city ? `, kota ${city}` : ''}.
+Fokus: ${keyword || category || 'kategori yang mereka pilih'}.
+${prev ? `Minggu lalu:\n${prev}\nBangun dari yang belum selesai. Jangan ulangi langkah yang sudah ditandai selesai, kecuali masih relevan.` : 'Ini minggu pertama mereka.'}
+
+Tulis TEPAT 3 atau 4 langkah. Jawaban HANYA JSON array of strings, tanpa teks lain.
+Aturan:
+- Setiap langkah diawali kata kerja, maksimal 9 kata.
+- Minimal SATU langkah yang bukan data (HPP, foto, buka toko, tanya supplier, kemasan).
+- Jangan janji omset, "dijamin laku", atau angka yang kamu tidak ukur.
+- Jangan suruh potong harga tanpa cek modal.
+- Bahasa Indonesia, sapaan "kamu", konkret.`;
+}
+
+async function generateLangkahSteps({ keyword, category, city, lastSteps, lastDone }) {
+  const fallback = langkahFallbackSteps(keyword, category);
+  if (!(await _useAi('langkah_minggu'))) return fallback;
+  try {
+    const reply = await _mlsAIPost(
+      langkahMingguPrompt({
+        keyword, category, city,
+        experience: state.onboarding?.experience || 'first_time',
+        lastSteps, lastDone,
+      }),
+      [{ role: 'user', content: `Buat langkah minggu ini untuk ${keyword || category || 'produk saya'}.` }],
+      { maxTokens: 400 },
+    );
+    const parsed = parseLangkahSteps(reply?.text || '');
+    return parsed.length >= 3 ? parsed : fallback;
+  } catch (_) {
+    return fallback;
+  }
+}
+
+async function openDeepDiveForKeyword(keyword) {
+  const kw = String(keyword || '').trim();
+  if (!kw) return;
+  let t = _ptypeByKeyword.get(kw);
+  if (!t) {
+    try {
+      const types = await typesForListings([{ keyword: kw }], state.onboarding?.city || '', 1);
+      t = types[0];
+    } catch (_) {}
+  }
+  if (!t) { showToast('Belum ada data untuk pasar itu.'); return; }
+  void openDeepDive(typeRepProduct(t));
+}
+
+async function syncHomeLangkahCard() {
+  const card = $('home-langkah');
+  if (!card) return;
+  const firstTime = (state.onboarding?.experience || 'first_time') === 'first_time';
+  if (!currentUser || shouldShowLandingFinder() || state.onboarding?.step !== 'done' || !firstTime) {
+    card.hidden = true;
+    card.innerHTML = '';
+    return;
+  }
+  card.hidden = false;
+  card.innerHTML = `<p class="home-ret-kicker">Langkah minggu ini</p>
+    <p class="home-ret-loading">Menyusun langkah…</p>`;
+  try {
+    const weekStart = mondayOfWeek();
+    const weekStr = weekStart.toISOString().slice(0, 10);
+    let row = null;
+    try {
+      const { data } = await _supabase.rpc('get_weekly_steps', { p_week_start: weekStr });
+      if (data && data.ok !== false) row = data;
+    } catch (_) {}
+    const keyword = row?.keyword || state.lastDeepDiveKeyword || '';
+    const category = row?.category || (state.onboarding.categories || [])[0] || state.lastDeepDiveCategory || '';
+    const city = state.onboarding.city || '';
+    let steps = Array.isArray(row?.steps) ? row.steps.map(String) : [];
+    let done = Array.isArray(row?.done) ? row.done.map(Boolean) : [];
+    if (steps.length < 3) {
+      let lastSteps = [];
+      let lastDone = [];
+      try {
+        const prev = new Date(weekStart);
+        prev.setUTCDate(prev.getUTCDate() - 7);
+        const { data: prevRow } = await _supabase.rpc('get_weekly_steps', { p_week_start: prev.toISOString().slice(0, 10) });
+        if (prevRow?.steps) { lastSteps = prevRow.steps; lastDone = prevRow.done || []; }
+      } catch (_) {}
+      steps = await generateLangkahSteps({ keyword, category, city, lastSteps, lastDone });
+      done = steps.map(() => false);
+      try {
+        await _supabase.rpc('save_weekly_steps', {
+          p_week_start: weekStr,
+          p_keyword: keyword || null,
+          p_category: category || null,
+          p_steps: steps,
+          p_done: done,
+        });
+      } catch (_) {}
+    }
+    while (done.length < steps.length) done.push(false);
+    const catBit = [category, city].filter(Boolean).join(' · ');
+    card.innerHTML = `
+      <p class="home-ret-kicker">Langkah minggu ini${catBit ? ` · ${esc(catBit)}` : ''}</p>
+      <ul class="home-langkah-list">
+        ${steps.map((s, i) => `<li>
+          <label>
+            <input type="checkbox" data-langkah-i="${i}" ${done[i] ? 'checked' : ''}>
+            <span>${esc(s)}</span>
+          </label>
+        </li>`).join('')}
+      </ul>
+      ${keyword ? `<button type="button" class="home-ret-link" data-langkah-dd>Buka analisis ${esc(typeTitle(keyword))}</button>` : ''}`;
+    void logUserEvent('langkah_view', { ui: 'gpt', keyword: keyword || '', category: category || '' });
+    card.querySelectorAll('[data-langkah-i]').forEach(input => {
+      input.addEventListener('change', () => {
+        const idx = Number(input.getAttribute('data-langkah-i'));
+        void _supabase.rpc('toggle_weekly_step', { p_week_start: weekStr, p_idx: idx, p_done: !!input.checked });
+        void logUserEvent('langkah_check', { ui: 'gpt', idx, done: !!input.checked });
+      });
+    });
+    card.querySelector('[data-langkah-dd]')?.addEventListener('click', () => {
+      void logUserEvent('langkah_open_dd', { ui: 'gpt', keyword });
+      void openDeepDiveForKeyword(keyword);
+    });
+  } catch (_) {
+    card.hidden = true;
+    card.innerHTML = '';
   }
 }
 
@@ -5208,26 +5472,33 @@ async function runFinderSearch() {
     clarityEvt('gpt_finder_search', { categories: catLabel });
     funnelStep('first_search', { source: 'finder' });
 
-    // Payoff moment, mirroring A's onboarding auto-deep-dive: don't just list
-    // results, show the single best one immediately. Gated to the first
-    // finder run this page load (state._finderAutoOpenedOnce) AND, for
-    // anonymous users, to the case where they have never viewed ANY deep dive
-    // yet (no ANON_DD_KEY set). openDeepDive() itself pops an unrequested
-    // signup modal when an anon user who already spent their one free view
-    // opens a DIFFERENT product — auto-firing that from here would be a
-    // surprise interruption, not a payoff, so this only proceeds when we are
-    // certain we're about to hit openDeepDive's "first free view" branch.
-    if (types.length && !state._finderAutoOpenedOnce) {
+    // Payoff: open the single best Deep Dive for users who have never dived.
+    // Signed-in: retry on every finder run until user_journey_stats says they
+    // have. Anon: one free view (ANON_DD_KEY) — never surprise-interrupt an
+    // anon who already spent it (that would pop the signup modal).
+    const skipAuto = (reason) => {
+      void logUserEvent('finder_auto_deepdive_skipped', { ui: 'gpt', reason });
+    };
+    if (!types.length) {
+      skipAuto('no_types');
+    } else {
       let anonSeen = '';
       try { anonSeen = String(localStorage.getItem(ANON_DD_KEY) || '').trim(); } catch (_) {}
-      if (currentUser || !anonSeen) {
-        state._finderAutoOpenedOnce = true;
-        const best = sortTypeRows(types.slice(), 'terlaris')[0];
-        setTimeout(() => {
-          if (state.view !== 'chat') return; // user already navigated away
-          void logUserEvent('finder_auto_deepdive', { ui: 'gpt', keyword: best.keyword });
-          void openDeepDive(typeRepProduct(best));
-        }, 1400);
+      if (!currentUser && anonSeen) {
+        skipAuto('anon_seen');
+      } else {
+        if (currentUser) await gptJourneyLoad();
+        const neverDived = !currentUser ? !anonSeen : (_gptJourney.deepdiveCount || 0) === 0;
+        if (!neverDived) {
+          skipAuto('already_once');
+        } else {
+          const best = sortTypeRows(types.slice(), 'terlaris')[0];
+          setTimeout(() => {
+            if (state.view !== 'chat') { skipAuto('view_changed'); return; }
+            void logUserEvent('finder_auto_deepdive', { ui: 'gpt', keyword: best.keyword });
+            void openDeepDive(typeRepProduct(best));
+          }, 1400);
+        }
       }
     }
   } finally {
@@ -9682,31 +9953,11 @@ function consumePantauNudgeSeed() {
   return seed;
 }
 
-/** Deep Dive → Pantauan promo interstitial.
- *
- *  The nav pulse above is a whisper: it fires once ever and most people never
- *  notice it. This is the loud version — 5s into a Deep Dive, a modal that
- *  says what Pantauan actually does, carrying a card for the product the user
- *  is looking at right now so it never reads as a generic house ad.
- *
- *  It shows once per Deep Dive and RETIRES PERMANENTLY the moment the user
- *  tracks anything (see ddtpRetire callers). That self-limit is the whole
- *  reason it is allowed to repeat at all: someone who has converted never sees
- *  it again, so it cannot become the treadmill MISSION.md §3 forbids.
- */
-const DDTP_KEY = 'lid_ddtrack_promo_v1';
-const DDTP_DELAY = 5000;
-let _ddtpTimer = null;
-let _ddtpProduct = null;   // product the open popup is describing
-let _ddtpHasTracked = null; // per-page-load cache; only ever caches a `true`
-
-function ddtpIsRetired() {
-  try {
-    const raw = JSON.parse(localStorage.getItem(DDTP_KEY) || 'null');
-    // Keyed on uid: a shared device must not stay silenced for the next person.
-    return !!(raw && raw.done && currentUser && raw.uid === currentUser.id);
-  } catch { return false; }
-}
+/** Has this user tracked anything yet? get_my_tracking() is the authority.
+ *  A `true` is cached for the page load; a `false` is re-asked so a keyword
+ *  added in another tab hides the end-of-dive alert on the next dive. */
+const DDTP_KEY = 'lid_ddtrack_promo_v1'; // leftover retire flag; no longer shown
+let _ddtpHasTracked = null;
 
 function ddtpRetire() {
   if (!currentUser) return;
@@ -9714,10 +9965,6 @@ function ddtpRetire() {
   try { localStorage.setItem(DDTP_KEY, JSON.stringify({ uid: currentUser.id, done: true })); } catch (_) {}
 }
 
-/** Does this user track anything yet? get_my_tracking() is the authority.
- *  Only a `true` is cached — while the answer is still false we re-ask, so a
- *  keyword added in another tab stops the popup on the next dive. A converted
- *  user costs exactly one RPC per page load and then none. */
 async function ddtpUserHasTracked() {
   if (_ddtpHasTracked === true) return true;
   if (!_supabase || !currentUser) return false;
@@ -9729,173 +9976,7 @@ async function ddtpUserHasTracked() {
     _ddtpHasTracked = false;
     return false;
   } catch (_) {
-    // Fail open: a popup is cheaper than a swallowed error, and the retire
-    // flag below still stops it for anyone who has actually converted.
     return false;
-  }
-}
-
-function scheduleDdTrackPromo(product) {
-  if (_ddtpTimer) { clearTimeout(_ddtpTimer); _ddtpTimer = null; }
-  if (!currentUser) return;                        // signed-in only
-  if (ddtpIsRetired()) return;
-  if (!String(product?.keyword || '').trim()) return; // nothing to seed the wizard with
-  _ddtpTimer = setTimeout(() => { _ddtpTimer = null; void ddtpFire(product); }, DDTP_DELAY);
-}
-
-async function ddtpFire(product) {
-  // 5s is long enough to have moved on — re-check everything at fire time.
-  if (!currentUser) return;
-  if (state.view !== 'deepdive') return;
-  if (String(state.deepdiveProduct?.item_id ?? '') !== String(product?.item_id ?? '')) return;
-  // Never stack on the auth modal, the profile nudge, or anything else open.
-  if (document.querySelector('.modal-overlay.open')) return;
-  if (ddtpIsRetired()) return;
-  if (await ddtpUserHasTracked()) { ddtpRetire(); return; }
-  // The awaits above can outlast the view — check once more before painting.
-  if (state.view !== 'deepdive' || document.querySelector('.modal-overlay.open')) return;
-
-  const overlay = $('ddtrack-promo');
-  if (!overlay) return;
-  _ddtpProduct = product;
-  ddtpRender(product);
-  overlay.classList.add('open');
-  document.body.classList.add('ddtp-open');
-  ddtpDrawArrow();
-  window.addEventListener('resize', ddtpDrawArrow);
-  void logUserEvent('ddtrack_promo', { ui: 'gpt', action: 'shown', keyword: product.keyword || null });
-  clarityEvt('ddtrack_promo', { action: 'shown' });
-}
-
-/** Everything product-specific comes from memory — `_dd` is already populated
- *  by the Deep Dive render, so this fetches nothing. */
-function ddtpRender(product) {
-  const host = $('ddtp-card');
-  if (!host) return;
-  const kw = product.keyword || '';
-  const name = product._ptype ? typeTitle(kw) : (product.product_name || kw || 'Produk');
-  let badge = null;
-  try {
-    if (_dd && _dd.stats) badge = ddScore(_dd.product || product, _dd.stats, _dd.niche);
-  } catch (_) {}
-  const price = Number(product.price) || 0;
-  const sold = Number(product.total_sold) || 0;
-  // Short "25 Agu" for the chart pill. NOT formatIdDate(): that wants a bare
-  // YYYY-MM-DD (it appends 'T00:00:00'), and it renders the month in full,
-  // which overflows a pill this size.
-  let today = '';
-  try { today = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short' }).format(new Date()); } catch (_) {}
-  const img = product.image_url ? imgThumb(product.image_url) : '';
-
-  host.innerHTML = `
-    <div class="ddtp-card-top">
-      ${img ? `<img class="ddtp-card-img" src="${esc(img)}" alt="" loading="eager" decoding="async">` : '<div class="ddtp-card-img ddtp-card-img--empty"></div>'}
-      <div class="ddtp-card-meta">
-        <div class="ddtp-card-name">${esc(name)}</div>
-        ${badge ? `<span class="badge ${badge.cls}">${esc(badge.label)}</span>` : ''}
-      </div>
-    </div>
-    <div class="ddtp-card-figs">
-      ${price > 0 ? `<span class="ddtp-fig ddtp-fig--price">${esc(fmtRpShort(price))}</span>` : ''}
-      ${sold > 0 ? `<span class="ddtp-fig"><span class="ddtp-fig-lbl">terjual</span> <strong>${esc(fmtSold(sold))}</strong></span>` : ''}
-    </div>
-    <div class="ddtp-spark">
-      ${DDTP_SPARK_SVG}
-      <span class="ddtp-spark-pill">${esc(today)}</span>
-    </div>`;
-
-  // A dead image_url would otherwise paint the browser's broken-image glyph in
-  // the middle of the card. Fall back to the empty tile, which keeps the box.
-  const imgEl = host.querySelector('.ddtp-card-img');
-  if (imgEl) imgEl.addEventListener('error', () => {
-    imgEl.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-    imgEl.classList.add('ddtp-card-img--empty');
-  }, { once: true });
-}
-
-/* Decorative only: solid history + dashed forecast, the shape of the real Tren
-   chart. Static by design — the popup illustrates the feature, it does not
-   report this product's numbers (the "Contoh" label in the markup says so). */
-const DDTP_SPARK_SVG = `<svg class="ddtp-spark-svg" viewBox="0 0 320 92" preserveAspectRatio="none" aria-hidden="true">
-  <g stroke="#EADFCF" stroke-width="1"><line x1="0" y1="22" x2="320" y2="22"/><line x1="0" y1="46" x2="320" y2="46"/><line x1="0" y1="70" x2="320" y2="70"/></g>
-  <line x1="222" y1="4" x2="222" y2="88" stroke="#D9C7AE" stroke-width="1" stroke-dasharray="3 3"/>
-  <polyline fill="none" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points="12,58 47,54 82,60 117,68 152,40 187,26 222,44"/>
-  <polyline fill="none" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="5 5" points="222,44 257,38 292,30"/>
-  <polyline fill="none" stroke="#B5202A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points="12,74 47,70 82,72 117,78 152,66 187,60 222,56"/>
-  <polyline fill="none" stroke="#16A34A" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="5 5" points="222,56 257,54 292,54"/>
-  <g fill="#2563EB"><circle cx="12" cy="58" r="3"/><circle cx="47" cy="54" r="3"/><circle cx="82" cy="60" r="3"/><circle cx="117" cy="68" r="3"/><circle cx="152" cy="40" r="3"/><circle cx="187" cy="26" r="3"/><circle cx="292" cy="30" r="3"/></g>
-  <g fill="#B5202A"><circle cx="12" cy="74" r="3"/><circle cx="47" cy="70" r="3"/><circle cx="82" cy="72" r="3"/><circle cx="117" cy="78" r="3"/><circle cx="152" cy="66" r="3"/><circle cx="187" cy="60" r="3"/></g>
-  <g fill="#16A34A"><circle cx="257" cy="54" r="3"/><circle cx="292" cy="54" r="3"/></g>
-</svg>`;
-
-/** The hand-drawn arrow from the Pantauan nav item to the modal.
- *
- *  Measured rather than hard-coded because the sidebar and the modal both move
- *  with viewport width. Below 860px the sidebar is translateX(-105%) off-screen
- *  (see the media query in index.html), so there is nothing to point at and the
- *  arrow hides itself instead of drawing into empty space. */
-function ddtpDrawArrow() {
-  const svg = $('ddtp-arrow');
-  if (!svg) return;
-  const overlay = $('ddtrack-promo');
-  if (!overlay || !overlay.classList.contains('open')) return;
-  const nav = $('btn-tracker');
-  const modal = overlay.querySelector('.ddtp-modal');
-  const hide = () => { svg.innerHTML = ''; svg.style.display = 'none'; };
-  // Same signal the stylesheet uses to hide .ddtp-arrow. window.innerWidth can
-  // disagree with the media query (it did in the preview pane), and a disagreement
-  // here means drawing an arrow to a sidebar that CSS has moved off-screen.
-  if (!nav || !modal) return hide();
-  try { if (window.matchMedia('(max-width: 860px)').matches) return hide(); } catch (_) {}
-
-  const n = nav.getBoundingClientRect();
-  const m = modal.getBoundingClientRect();
-  if (!n.width || n.right <= 0) return hide();          // drawer closed / off-screen
-  const x1 = n.right + 8;
-  const y1 = n.top + n.height / 2;
-  const x2 = m.left - 14;
-  const y2 = m.top + Math.min(140, m.height * 0.28);
-  if (x2 - x1 < 40) return hide();                       // no room for a curve
-
-  // Control points pulled down-and-right give the mockup's low sweep.
-  const dx = x2 - x1;
-  const c1x = x1 + dx * 0.45, c1y = y1 + 8;
-  const c2x = x1 + dx * 0.55, c2y = y2 + 66;
-
-  svg.style.display = '';
-  svg.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
-  svg.innerHTML = `
-    <defs>
-      <marker id="ddtp-arrowhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-        <path d="M0 0 10 5 0 10 2.6 5Z" fill="var(--accent)"></path>
-      </marker>
-    </defs>
-    <path class="ddtp-arrow-path" d="M${x1} ${y1} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${x2} ${y2}"
-          fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"
-          marker-end="url(#ddtp-arrowhead)"></path>`;
-}
-
-function ddtpClose(reason) {
-  const overlay = $('ddtrack-promo');
-  if (!overlay || !overlay.classList.contains('open')) return;
-  overlay.classList.remove('open');
-  document.body.classList.remove('ddtp-open');
-  window.removeEventListener('resize', ddtpDrawArrow);
-  _ddtpProduct = null;
-  void logUserEvent('ddtrack_promo', { ui: 'gpt', action: reason || 'dismiss' });
-  clarityEvt('ddtrack_promo', { action: reason || 'dismiss' });
-}
-
-/** Cancel a pending fire and close an open popup. Called when the Deep Dive
- *  is left, which also covers the CTA (it navigates to the tracker view). */
-function ddtpCancel() {
-  if (_ddtpTimer) { clearTimeout(_ddtpTimer); _ddtpTimer = null; }
-  const overlay = $('ddtrack-promo');
-  if (overlay?.classList.contains('open')) {
-    overlay.classList.remove('open');
-    document.body.classList.remove('ddtp-open');
-    window.removeEventListener('resize', ddtpDrawArrow);
-    _ddtpProduct = null;
   }
 }
 
@@ -10052,15 +10133,13 @@ function sddvCancel() {
  *  add_tracked_keyword is exactly what the wizard's commit() calls, so nothing
  *  is skipped except the screens. Deliberately does NOT load laris-tracker.js.
  */
-async function quickTrackKeyword(product) {
+async function trackKeywordWithNotify(product, opts = {}) {
   const kw = String(product?.keyword || '').trim();
-  if (!kw) { showToast('Produk ini belum punya keyword untuk dipantau'); return; }
+  if (!kw) { showToast('Produk ini belum punya keyword untuk dipantau'); return false; }
   if (!currentUser) {
-    // Same stash-and-resume contract the wizard uses, so the keyword survives
-    // the Google round-trip that 19 of 21 signups take.
     try { state.pendingTrackKeyword = { keyword: kw, category: product?.category || product?.category_canonical || '' }; saveLocalState(); } catch (_) {}
     openAuthModal('signup', 'gpt_gate_track');
-    return;
+    return false;
   }
   try {
     const res = await _supabase.rpc('add_tracked_keyword', {
@@ -10069,8 +10148,6 @@ async function quickTrackKeyword(product) {
     });
     if (res?.error) throw res.error;
     const data = res?.data;
-    // The RPC reports its own refusals (limit reached, duplicate) rather than
-    // throwing, so a false ok must not be reported to the user as success.
     if (data && data.ok === false) {
       const msg = {
         limit_reached:     'Daftar pantauan sudah penuh. Buka Pantauan untuk mengatur.',
@@ -10079,47 +10156,55 @@ async function quickTrackKeyword(product) {
       }[data.error] || 'Tidak bisa menambah pantauan sekarang.';
       showToast(msg);
       void logUserEvent('quick_track_refused', { ui: 'gpt', keyword: kw, reason: data.error || 'unknown' });
-      return;
+      return false;
     }
-    void logUserEvent('quick_track_added', { ui: 'gpt', keyword: kw, via: 'aksi_cepat' });
+    void logUserEvent('quick_track_added', { ui: 'gpt', keyword: kw, via: opts.via || 'aksi_cepat' });
 
-    // The button says "Kabari Kalau Berubah", and user_tracker_state.notify_channels
-    // defaults to '{}' — so without this the promise on the button would simply
-    // be false and the daily tracker-change-notify job would have nobody to
-    // write to. Turned on ONLY when the user has never set a preference; an
-    // explicit earlier choice (including deliberately choosing none) is never
-    // overridden. The toast says plainly what was switched on.
-    let emailOn = false;
-    let wa = '';
+    let notifyOn = false;
+    let wa = String(opts.wa || '').trim();
+    let channel = opts.channel || '';
     try {
       const cur = await _supabase.rpc('get_my_tracking');
       const ch = cur?.data?.notify_channels;
-      if (Array.isArray(ch) && ch.length === 0) {
-        wa = (currentUser?.user_metadata?.public_whatsapp
-          || currentUser?.user_metadata?.whatsapp
-          || '').toString().trim();
-        const channels = wa ? ['whatsapp'] : ['email'];
+      const neverSet = Array.isArray(ch) && ch.length === 0;
+      if (neverSet || channel) {
+        if (!wa) wa = await loadProfileWaNumber();
+        if (!channel) channel = (WA_ALERTS_READY && wa) ? 'whatsapp' : 'email';
+        if (channel === 'whatsapp' && !WA_ALERTS_READY) channel = 'email';
+        if (channel === 'whatsapp' && !wa) {
+          showToast('Isi nomor WhatsApp dulu.');
+          return false;
+        }
+        if (channel === 'whatsapp') await saveProfileWaNumber(wa);
         const set = await _supabase.rpc('set_tracker_notify_prefs', {
-          p_channels: channels,
+          p_channels: [channel],
           p_wa_number: wa || null,
         });
-        emailOn = !set?.error && set?.data?.ok !== false;
-        if (emailOn) void logUserEvent('quick_track_notify_on', { ui: 'gpt', channel: channels[0] });
+        notifyOn = !set?.error && set?.data?.ok !== false;
+        if (set?.data?.ok === false && set.data.error === 'wa_number_required') {
+          showToast('Isi nomor WhatsApp dulu.');
+          return false;
+        }
+        if (notifyOn) void logUserEvent('quick_track_notify_on', { ui: 'gpt', channel });
       }
     } catch (_) {}
 
-    // One-tap track already did the job — no need to keep pulsing Pantauan,
-    // and the Deep Dive promo has nothing left to sell them.
     pantauNudgeClear();
     ddtpRetire();
-    showToast(emailOn
-      ? (wa
-        ? `Siap — kami kabari di WhatsApp kalau "${kw}" berubah`
-        : `Siap — kami email kamu kalau "${kw}" berubah`)
-      : `Siap — "${kw}" masuk pantauan harian kamu`);
+    showToast(notifyOn
+      ? (channel === 'whatsapp'
+        ? `Siap — kami kabari di WhatsApp saat data scrape baru masuk (biasanya tiap ~2 minggu)`
+        : `Siap — kami email kamu saat data scrape baru masuk (biasanya tiap ~2 minggu)`)
+      : `Siap — "${kw}" masuk pantauan kamu`);
+    return true;
   } catch (_) {
     showToast('Gagal menyimpan pantauan. Coba lagi.');
+    return false;
   }
+}
+
+async function quickTrackKeyword(product) {
+  return trackKeywordWithNotify(product, { via: 'aksi_cepat' });
 }
 
 // laris-tracker.js is no longer in the eager <script> list — it is the single
@@ -11599,7 +11684,7 @@ function ddAksiCepatHtml(product) {
         <span class="ddr-aksi-ico">${ico('rocket', 18)}</span>
         <span class="ddr-aksi-txt">Buat Rencana Launch</span>
       </button>
-      <button type="button" class="ddr-aksi-btn" data-ddr-aksi="track">
+      <button type="button" class="ddr-aksi-btn primary" data-ddr-aksi="track">
         <span class="ddr-aksi-ico">${ico('eye', 18)}</span>
         <span class="ddr-aksi-txt">Kabari Kalau Berubah</span>
       </button>
@@ -11609,6 +11694,79 @@ function ddAksiCepatHtml(product) {
       </button>
     </div>
   </div>`;
+}
+
+// Fonnte token is live but the device is disconnected (checked 2026-09-05).
+// Do not offer WhatsApp until a /device call returns connected — otherwise we
+// store a number and every alert silently drops.
+const WA_ALERTS_READY = false;
+
+function ddAlertCardHtml(product) {
+  if (!currentUser) return '';
+  const kw = String(product?.keyword || '').trim();
+  if (!kw) return '';
+  const email = String(currentUser.email || '');
+  const waSignup = /@wa\.larisid\.com$/i.test(email);
+  const emailOk = !!(email && !waSignup);
+  const waBlock = WA_ALERTS_READY
+    ? `<div class="ddr-alert-wa">
+        <input type="tel" id="ddr-alert-wa" inputmode="tel" autocomplete="tel" placeholder="0812xxxxxxxx" aria-label="Nomor WhatsApp">
+        <button type="button" class="ddr-alert-btn primary" data-dd-alert="whatsapp">WhatsApp</button>
+      </div>`
+    : '';
+  return `<div class="ddr-alert" id="ddr-alert" data-dd-sec="alert_optin" hidden>
+    <div class="ddr-alert-copy">
+      <h3>Kabari saya kalau <em>${esc(typeTitle(kw))}</em> berubah</h3>
+      <p>Kami kabari saat data scrape baru masuk (biasanya tiap ~2 minggu). Bukan setiap hari.</p>
+    </div>
+    <div class="ddr-alert-actions">
+      ${emailOk ? `<button type="button" class="ddr-alert-btn primary" data-dd-alert="email">Email ke ${esc(email)}</button>` : ''}
+      ${waBlock}
+      <button type="button" class="ddr-alert-skip" data-dd-alert="dismiss">Nanti saja</button>
+    </div>
+  </div>`;
+}
+
+async function wireDdAlertCard(root, product) {
+  const card = root?.querySelector?.('#ddr-alert');
+  if (!card) return;
+  if (!currentUser) { card.remove(); return; }
+  if (await ddtpUserHasTracked()) { card.remove(); return; }
+  card.hidden = false;
+  void logUserEvent('dd_alert_card', { ui: 'gpt', action: 'shown', keyword: product?.keyword || '' });
+  const wa = await loadProfileWaNumber();
+  const input = card.querySelector('#ddr-alert-wa');
+  if (input && wa) input.value = wa;
+  card.querySelectorAll('[data-dd-alert]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const action = btn.getAttribute('data-dd-alert');
+      if (action === 'dismiss') {
+        card.remove();
+        void logUserEvent('dd_alert_card', { ui: 'gpt', action: 'dismiss', keyword: product?.keyword || '' });
+        return;
+      }
+      void submitDdAlert(product, action, card);
+    });
+  });
+}
+
+async function submitDdAlert(product, channel, card) {
+  const kw = String(product?.keyword || '').trim();
+  if (!kw) return;
+  let wa = '';
+  if (channel === 'whatsapp') {
+    wa = String(card.querySelector('#ddr-alert-wa')?.value || '').trim();
+    if (!wa) { showToast('Isi nomor WhatsApp dulu.'); return; }
+  }
+  const ok = await trackKeywordWithNotify(product, {
+    channel,
+    wa,
+    via: 'dd_alert_card',
+  });
+  if (ok) {
+    card.remove();
+    void logUserEvent('dd_alert_card', { ui: 'gpt', action: channel, keyword: kw });
+  }
 }
 
 function ddInsightBullets(product, stats, share, series, scoreInfo, age, peers) {
@@ -12161,14 +12319,14 @@ async function openDeepDive(product, ddOpts = {}) {
   void logDeepDiveOpen(product);
   if (state.pendingDeepdive) { state.pendingDeepdive = null; saveLocalState(); }
   const isFirstDeepDive = !state.everOpenedDeepdive;
-  if (!state.everOpenedDeepdive) { state.everOpenedDeepdive = true; saveLocalState(); }
-  if (isFirstDeepDive) schedulePantauNavPulse(product);
-  // Founder video is once-per-browser and stacks above the Pantauan promo.
-  // Skip DDTP on the dive that plays the video so the two never overlap.
-  if (!scheduleStevenDdVideo()) {
-    // Fires 5s in, every dive, until they track something (then retires for good).
-    scheduleDdTrackPromo(product);
+  if (!state.everOpenedDeepdive) { state.everOpenedDeepdive = true; }
+  if (product?.keyword) state.lastDeepDiveKeyword = String(product.keyword);
+  if (product?.category || product?.category_canonical) {
+    state.lastDeepDiveCategory = String(product.category || product.category_canonical);
   }
+  saveLocalState();
+  if (isFirstDeepDive) schedulePantauNavPulse(product);
+  scheduleStevenDdVideo();
   rememberProducts([product]);
   state.deepdiveProduct = product;
   if (!ddOpts.fromCompare) state.compareReturnChatId = null;
@@ -12469,6 +12627,7 @@ async function openDeepDive(product, ddOpts = {}) {
     ${ddHeroRowHtml(product, stats, peers, hasTrend)}
     ${isDesktopDeepDive ? kompCardHtml : ''}
     ${ddAksiCepatHtml(product)}
+    ${ddAlertCardHtml(product)}
     <div class="ddr-hscroll ddr-hscroll--graphs2">
       <div class="ddr-card" data-dd-sec="pangsa">
         <h3>Distribusi Pangsa Pasar</h3>
@@ -12552,6 +12711,7 @@ async function openDeepDive(product, ddOpts = {}) {
   bindDdrCarousel(root);
   wireDdrToolPills(root, product, peers);
   wireDdrAksiCepat(root, product, peers);
+  void wireDdAlertCard(root, product);
   $('ddr-komp-more')?.addEventListener('click', () => {
     void logUserEvent('deepdive_section', { ui: 'gpt', section: 'kompetitor', via: 'click', keyword: kw || '' });
   });
@@ -16522,6 +16682,9 @@ function bindTypeCards(root) {
       if (!t) return;
       const p = typeRepProduct(t);
       rememberProducts([p]);
+      if (userNeverDeepDived()) {
+        void logUserEvent('dir_first_click_deepdive', { ui: 'gpt', keyword: t.keyword });
+      }
       void logUserEvent('ptype_open', { ui: 'gpt', keyword: t.keyword, city: (state.dirCities && state.dirCities[0]) || 'ALL' });
       void openDeepDive(p);
     });
@@ -17117,6 +17280,9 @@ function pasarCompareOpts(title, subtitle, surface) {
     onOpen: (t) => {
       const p = typeRepProduct(t);
       rememberProducts([p]);
+      if (userNeverDeepDived()) {
+        void logUserEvent('dir_first_click_deepdive', { ui: 'gpt', keyword: t.keyword, surface });
+      }
       void logUserEvent('ptype_open', { ui: 'gpt', keyword: t.keyword, city: 'ALL', surface });
       void openDeepDive(p);
     },
@@ -18677,28 +18843,11 @@ function wireUi() {
     if (e.target === e.currentTarget) closeProfileNudge();
   });
 
-  // Deep Dive → Pantauan promo.
-  $('ddtp-cta')?.addEventListener('click', () => {
-    const product = _ddtpProduct;
-    ddtpClose('accept');
-    ddtpRetire();
-    // Same seed shape openTrackerView already expects, so Pantauan opens with
-    // the setup wizard pre-filled from the product they were just reading.
-    const seed = product ? pantauNudgeSeedFromProduct(product) : null;
-    pantauNudgeClear();
-    void openTrackerView(seed || undefined);
-  });
-  $('ddtp-close')?.addEventListener('click', () => ddtpClose('dismiss'));
-  $('ddtrack-promo')?.addEventListener('click', (e) => {
-    if (e.target === e.currentTarget) ddtpClose('backdrop');
-  });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     if ($('steven-dd-video')?.classList.contains('open')) {
       if (_sddvEnded) sddvClose('esc');
-      return;
     }
-    if ($('ddtrack-promo')?.classList.contains('open')) ddtpClose('esc');
   });
 
   $('sddv-close')?.addEventListener('click', () => sddvClose('close'));

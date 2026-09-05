@@ -6,23 +6,28 @@ Read **[MISSION.md](../MISSION.md)** first. Do not reintroduce a blocking onboar
 
 **QA checklist:** [journey-funnel-test.md](./journey-funnel-test.md)
 
+**Retention re-read:** [RETENTION.sql](./RETENTION.sql)
+
 ---
 
 ## Live flow
 
-**Login → Beranda (`#home-finder`) → Cari Produk / Ask Laris → Deep Dive → Pantauan nudge**
+**Login → Beranda (`#home-finder`) → Cari Produk / Ask Laris → Deep Dive → end-of-dive alert card → Pantauan pulse / scrape digest / Langkah minggu ini**
 
 Onboarding is in-page on Beranda (`state.onboarding`: city → category → experience → notes), plus `#prefs-drawer` and a profile nudge. It is **not** a modal overlay.
 
 | Area | Where | Notes |
 |------|--------|--------|
 | Onboarding | `state.onboarding` in `js/gpt-app.js` | steps `idle` → city/category/experience → `done`; persisted with chat state |
-| Beranda finder | `#home-finder` | first-run 3-step, not a popup |
+| Beranda finder | `#home-finder` | first-run 4-step, not a popup |
 | Prefs | `#prefs-drawer` | city / category / experience after first run |
-| Deep Dive count | `user_journey_stats.deepdive_count` | written from gpt-app (was arm-A only) |
-| Pantauan return loop | `lid_pantau_nudge_v1`, `schedulePantauNavPulse` | first Deep Dive pulse; WA preferred if profile has a number |
-| Deep Dive promo | `lid_ddtrack_promo_v1` | one-shot; retires when the user tracks anything |
+| Deep Dive count | `user_journey_stats.deepdive_count` | written from gpt-app |
+| Session-one Deep Dive | `runFinderSearch` auto-open while `deepdive_count === 0`; Cari Produk first click (`dir_first_click_deepdive`); `#home-first-dd` card | skip reasons logged as `finder_auto_deepdive_skipped` |
+| End-of-dive alert | `#ddr-alert` | email / WhatsApp one-tap → track + `set_tracker_notify_prefs`. Mid-dive `ddtp*` promo is retired. |
+| Pantauan nav pulse | `lid_pantau_nudge_v1`, `schedulePantauNavPulse` | first Deep Dive pulse |
+| Scrape-cycle digest | `scrape-digest` edge function | every Deep Dive user, one email per measured scrape landing; WA only if opted in |
+| Langkah minggu ini | `#home-langkah` + `user_weekly_steps` | first_time sellers on Beranda after onboarding |
 
 Arm-A names (`nuOnb*`, `dsc*`, `userJourneyTier` 0–3, `larisid_journey_v1`, `#dd-beginner-panel`) do **not** exist in `gpt-app.js`. Do not “fix” them.
 
-Leaders and platform admins bypass journey gating. Do not fabricate “what changed” numbers.
+Leaders and platform admins bypass journey gating. Do not fabricate “what changed” numbers. Alert / digest copy says data lands about every two weeks, not harian.
