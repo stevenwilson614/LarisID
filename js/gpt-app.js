@@ -2971,27 +2971,33 @@ function openAuthModal(mode, source) {
     void logUserEvent('cta_signup_click', { ui: 'gpt', source: _gateSource || '(none)' });
   }
   _authEmailOpen = false;
+  _waResetSteps();
   renderAuthModal();
   $('auth-overlay')?.classList.add('open');
 }
 function closeAuthModal() {
   $('auth-overlay')?.classList.remove('open');
 }
-// Signup collapses the email path behind a link so Google reads as THE way in;
-// login and reset keep it open, because the handful of email accounts must not
-// be stranded behind an extra click on the way back to their own data.
+// Signup collapses email behind a link so Google + WhatsApp read as the way in.
+// Login keeps email open so existing email accounts are not stranded. Reset is
+// email-only (password recovery), so the WhatsApp panel hides.
 let _authEmailOpen = false;
 function _applyAuthEmailCollapse(signup) {
+  const reset = _authMode === 'reset';
   const block = $('auth-email-block');
   const toggle = $('auth-email-toggle');
   const sep = $('auth-sep');
+  const sepWa = $('auth-sep-wa');
+  const waPanel = $('auth-wa-panel');
   const collapsible = signup && !_authEmailOpen;
   if (block) block.style.display = collapsible ? 'none' : '';
   if (toggle) {
     toggle.style.display = signup && !_authEmailOpen ? '' : 'none';
     toggle.textContent = 'Pakai email saja';
   }
-  if (sep) sep.style.display = signup && !_authEmailOpen ? '' : 'none';
+  if (waPanel) waPanel.style.display = reset ? 'none' : '';
+  if (sepWa) sepWa.style.display = reset ? 'none' : '';
+  if (sep) sep.style.display = reset ? 'none' : '';
 }
 
 function renderAuthModal() {
@@ -3158,6 +3164,143 @@ async function signInWithProvider(provider) {
   if (error) {
     const errEl = $('auth-error');
     if (errEl) { errEl.textContent = 'Login dengan Google gagal. Coba lagi.'; errEl.style.display = ''; }
+  }
+}
+
+// ── WhatsApp OTP (same send/verify functions as laris-app.js) ────────────
+let _waPhone = '';
+let _waResendTimer = null;
+
+function _waClearResendTimer() {
+  if (_waResendTimer) {
+    clearInterval(_waResendTimer);
+    _waResendTimer = null;
+  }
+}
+
+function _waResetSteps() {
+  _waClearResendTimer();
+  const phoneStep = $('wa-step-phone');
+  const otpStep = $('wa-step-otp');
+  if (phoneStep) phoneStep.style.display = '';
+  if (otpStep) otpStep.style.display = 'none';
+  const we = $('wa-error');
+  if (we) { we.textContent = ''; we.style.display = 'none'; }
+  const oe = $('wa-otp-error');
+  if (oe) { oe.textContent = ''; oe.style.display = 'none'; }
+  const otp = $('wa-otp-input');
+  if (otp) otp.value = '';
+  const link = $('wa-resend-link');
+  if (link) {
+    link.classList.remove('is-wait');
+    link.textContent = 'Kirim ulang kode';
+  }
+}
+
+function _waErrText(res, data, fallback) {
+  if (res && res.status === 429) {
+    return (data && (data.error || data.message)) || 'Terlalu banyak permintaan. Coba lagi sebentar.';
+  }
+  return (data && (data.error || data.message)) || fallback;
+}
+
+async function sendWhatsappOtp(isResend) {
+  const phoneEl = $('wa-phone-input');
+  const errEl = $('wa-error');
+  const otpErr = $('wa-otp-error');
+  const btn = $('wa-send-btn');
+  const rawPhone = (phoneEl?.value || '').trim() || _waPhone;
+  const showErr = (el, msg) => { if (!el) return; el.textContent = msg; el.style.display = ''; };
+  if (!rawPhone) {
+    showErr(errEl, 'Masukkan nomor WhatsApp kamu.');
+    return;
+  }
+  if (errEl) errEl.style.display = 'none';
+  if (otpErr) otpErr.style.display = 'none';
+  if (btn) { btn.textContent = '...'; btn.disabled = true; }
+  try {
+    const res = await fetch(`${SUPA_URL}/functions/v1/send-whatsapp-otp`, {
+      method: 'POST',
+      headers: { apikey: SUPA_ANON, Authorization: 'Bearer ' + SUPA_ANON, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: rawPhone }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      showErr(isResend && otpErr ? otpErr : errEl, _waErrText(res, data, 'Gagal mengirim OTP. Coba lagi.'));
+      return;
+    }
+    _waPhone = data.phone || rawPhone;
+    const phoneStep = $('wa-step-phone');
+    const otpStep = $('wa-step-otp');
+    if (phoneStep) phoneStep.style.display = 'none';
+    if (otpStep) otpStep.style.display = '';
+    const hint = $('wa-otp-hint');
+    if (hint) hint.textContent = 'Kode OTP sudah dikirim ke WhatsApp ' + _waPhone + '. Masukkan 6 digit di bawah.';
+    if (otpErr) { otpErr.textContent = ''; otpErr.style.display = 'none'; }
+    setTimeout(() => $('wa-otp-input')?.focus(), 80);
+    _waStartResendCooldown();
+    void logUserEvent('auth_wa_otp_sent', { ui: 'gpt', resend: !!isResend, source: _gateSource || '(none)' });
+  } catch (_) {
+    showErr(isResend && otpErr ? otpErr : errEl, 'Gagal terhubung ke server. Coba lagi.');
+  } finally {
+    if (btn) { btn.textContent = 'Kirim kode WhatsApp'; btn.disabled = false; }
+  }
+}
+
+function _waStartResendCooldown() {
+  const link = $('wa-resend-link');
+  if (!link) return;
+  _waClearResendTimer();
+  let secs = 60;
+  link.classList.add('is-wait');
+  link.textContent = 'Kirim ulang (' + secs + 's)';
+  _waResendTimer = setInterval(() => {
+    secs -= 1;
+    if (secs <= 0) {
+      _waClearResendTimer();
+      link.classList.remove('is-wait');
+      link.textContent = 'Kirim ulang kode';
+    } else {
+      link.textContent = 'Kirim ulang (' + secs + 's)';
+    }
+  }, 1000);
+}
+
+async function verifyWhatsappOtp() {
+  const otpEl = $('wa-otp-input');
+  const errEl = $('wa-otp-error');
+  const btn = $('wa-verify-btn');
+  const otp = (otpEl?.value || '').replace(/\s/g, '');
+  if (!otp || !/^\d{6}$/.test(otp)) {
+    if (errEl) { errEl.textContent = 'Masukkan 6 digit kode OTP.'; errEl.style.display = ''; }
+    return;
+  }
+  if (errEl) errEl.style.display = 'none';
+  if (btn) { btn.textContent = '...'; btn.disabled = true; }
+  try {
+    const res = await fetch(`${SUPA_URL}/functions/v1/verify-whatsapp-otp`, {
+      method: 'POST',
+      headers: { apikey: SUPA_ANON, Authorization: 'Bearer ' + SUPA_ANON, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: _waPhone, otp }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      if (errEl) { errEl.textContent = _waErrText(res, data, 'Verifikasi gagal. Periksa kode OTP kamu.'); errEl.style.display = ''; }
+      return;
+    }
+    const session = data.session;
+    if (!session || !session.access_token) {
+      if (errEl) { errEl.textContent = 'Gagal membuat sesi. Coba lagi.'; errEl.style.display = ''; }
+      return;
+    }
+    if (data.is_new_user) _lidFireSignupSuccess();
+    _authSave(session);
+    closeAuthModal();
+    await _authOnSignIn(session);
+  } catch (_) {
+    if (errEl) { errEl.textContent = 'Gagal terhubung ke server. Coba lagi.'; errEl.style.display = ''; }
+  } finally {
+    if (btn) { btn.textContent = 'Verifikasi'; btn.disabled = false; }
   }
 }
 
@@ -18691,6 +18834,19 @@ function wireUi() {
   $('auth-submit-btn')?.addEventListener('click', () => void submitAuth());
   $('recovery-submit-btn')?.addEventListener('click', () => void submitRecoveryPassword());
   $('auth-google-btn')?.addEventListener('click', () => void signInWithProvider('google'));
+  $('wa-send-btn')?.addEventListener('click', () => void sendWhatsappOtp());
+  $('wa-verify-btn')?.addEventListener('click', () => void verifyWhatsappOtp());
+  $('wa-resend-link')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (e.currentTarget.classList.contains('is-wait')) return;
+    void sendWhatsappOtp(true);
+  });
+  $('wa-phone-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); void sendWhatsappOtp(); }
+  });
+  $('wa-otp-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); void verifyWhatsappOtp(); }
+  });
   $('auth-toggle-link')?.addEventListener('click', () => {
     _authMode = _authMode === 'signup' ? 'login' : 'signup';
     renderAuthModal();

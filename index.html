@@ -3452,6 +3452,11 @@ body.ddtp-open #btn-tracker svg .ic-f { fill: var(--accent); stroke: none; }
   cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
 }
 .auth-email-toggle:hover { color: var(--ink); }
+.auth-wa-hint { font-size: .78rem; color: var(--muted); margin: 0 0 10px; line-height: 1.4; }
+.auth-wa-resend { text-align: center; margin: 10px 0 0; font-size: .78rem; }
+.auth-wa-resend a { color: var(--accent); font-weight: 600; cursor: pointer; }
+.auth-wa-resend a:hover { text-decoration: underline; }
+.auth-wa-resend a.is-wait { color: var(--muted); pointer-events: none; text-decoration: none; cursor: default; }
 .auth-submit { width: 100%; justify-content: center; margin-top: 4px; }
 .auth-forgot { text-align: right; margin: -4px 0 12px; font-size: .78rem; }
 .auth-forgot a { color: var(--muted); font-weight: 550; cursor: pointer; text-decoration: none; }
@@ -7695,6 +7700,27 @@ body:has(.modal-overlay.open) .msg-steven-fab {
       Lanjutkan dengan Google
     </button>
     <div class="auth-err" id="auth-error"></div>
+    <div class="auth-sep" id="auth-sep-wa">atau</div>
+    <div id="auth-wa-panel">
+      <div id="wa-step-phone">
+        <div class="field">
+          <label for="wa-phone-input">WhatsApp</label>
+          <input id="wa-phone-input" type="tel" inputmode="tel" autocomplete="tel" placeholder="0812 3456 7890" maxlength="20">
+        </div>
+        <div class="auth-err" id="wa-error"></div>
+        <button type="button" class="btn-primary auth-submit" id="wa-send-btn">Kirim kode WhatsApp</button>
+      </div>
+      <div id="wa-step-otp" style="display:none">
+        <p class="auth-wa-hint" id="wa-otp-hint"></p>
+        <div class="field">
+          <label for="wa-otp-input">Kode OTP</label>
+          <input id="wa-otp-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="6 digit">
+        </div>
+        <div class="auth-err" id="wa-otp-error"></div>
+        <button type="button" class="btn-primary auth-submit" id="wa-verify-btn">Verifikasi</button>
+        <p class="auth-wa-resend"><a id="wa-resend-link">Kirim ulang kode</a></p>
+      </div>
+    </div>
     <div class="auth-sep" id="auth-sep">atau</div>
     <button type="button" class="auth-email-toggle" id="auth-email-toggle">Pakai email saja</button>
     <div id="auth-email-block">
@@ -8012,6 +8038,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
      Both are admin-only; gpt-app.js now pulls them on demand via
      larisLoadScript() when the admin view actually renders. -->
 <script src="/js/peta-peluang.js?v=20260905a" defer></script>
-<script src="/js/gpt-app.js?v=20260905a" defer></script>
+<script src="/js/gpt-app.js?v=20260905b" defer></script>
 </body>
 </html>

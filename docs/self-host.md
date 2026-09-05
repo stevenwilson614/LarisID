@@ -64,6 +64,32 @@ bash scripts/deploy-function-selfhost.sh <slug>
 
 Then commit + push **both** `LarisID-astro` and `larisid-infra`.
 
+## Kong IP burst limits
+
+Public write endpoints are capped **per client IP** in
+`larisid-infra/docker/volumes/api/kong.yml` (abuse guard, not a user quota —
+Ask Laris copy stays “AI unlimited”):
+
+| Path | POST / min |
+|---|---|
+| `/functions/v1/claude-proxy` | 30 |
+| `/functions/v1/email-signup` | 10 |
+| `/functions/v1/send-whatsapp-otp` | 5 |
+| `/functions/v1/verify-whatsapp-otp` | 15 |
+| `/rest/v1/rpc/rise_submit_application` | 5 |
+| `/rest/v1/rpc/log_client_events` | 60 |
+
+`rate-limiting` must stay in `KONG_PLUGINS` in `docker-compose.larisid.yml`,
+and Kong must trust Caddy’s `X-Forwarded-For` (`KONG_TRUSTED_IPS` +
+`KONG_REAL_IP_HEADER`). After editing those files on the box:
+
+```bash
+cd /root/larisid-infra/docker
+docker compose up -d --force-recreate kong
+```
+
+Do not frame these numbers as a product quota in UI copy.
+
 On the box the container is `supabase-edge-functions`. Cron jobs call
 `http://kong:8000/functions/v1/<slug>` with the **self-host** service role
 (see `larisid-infra/cron/recreate_cron_jobs.sql`). Do not paste cloud JWTs
