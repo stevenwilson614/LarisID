@@ -148,3 +148,16 @@ On the self-host box, keep these in `ADDITIONAL_REDIRECT_URLS` / GoTrue env
 - `https://larisid.com/` (canonical — where the app actually lives)
 - `https://larisid.com/gpt/` (legacy path, still served; keep this or OAuth breaks for anyone with a stale `/gpt/` bookmark or in-flight session)
 - `http://localhost:8000/gpt/` and `http://localhost:8000/` (local testing)
+
+## Listing pool RPC (`migrations/20260905180000_listings_for_keywords.sql`)
+
+`listings_for_keywords(p_keywords text[], p_per_kw int default 20, p_max int default 300)`
+returns `setof listings_deduped`: top-N sold listings per keyword
+(`row_number() over (partition by keyword order by total_sold desc)`),
+`is_offtopic = false` and `total_sold > 0`. `security invoker`; granted to
+`anon` and `authenticated`. Uses `listings_deduped_kw_sold_ontopic_idx`.
+
+The SPA (`js/gpt-app.js` `fetchListingsForKeywords`) calls this for category /
+home / multi-keyword pools. On `42883` / missing RPC it falls back to at most
+6 parallel per-keyword `.in()` queries. Single-keyword search still uses
+`listings_deduped` `ilike keyword` directly.

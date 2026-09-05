@@ -37,11 +37,12 @@
   }
 
   var SORT_OPTIONS = [
-    ['sesuai', 'Paling Sesuai'],
-    ['terlaris_minggu', 'Terlaris Minggu Ini'],
-    ['meledak', 'Lonjakan Mingguan'],
-    ['termahal', 'Harga Tertinggi'],
-    ['termurah', 'Harga Terendah'],
+    ['omset', 'Omset / bulan'],
+    ['terlaris', 'Unit jual'],
+    ['termahal', 'Harga tertinggi'],
+    ['termurah', 'Harga terendah'],
+    ['review', 'Review terbanyak'],
+    ['terbaru', 'Paling baru'],
   ];
 
   function esc(s) {
@@ -65,7 +66,7 @@
   function renderControls(container, opts) {
     if (!container || !container.appendChild) return;
     var onSortChange = (opts && typeof opts.onSortChange === 'function') ? opts.onSortChange : null;
-    var current = (opts && opts.value) || 'sesuai';
+    var current = (opts && opts.value) || 'omset';
 
     if (container.dataset.mounted === 'true') {
       if (container._dirApi) container._dirApi.setValue(current);

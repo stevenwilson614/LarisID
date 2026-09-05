@@ -48,7 +48,7 @@ perkiraan).
 
 | Surface | Formula | Label |
 |---|---|---|
-| Card omset/bulan | `price * v_hat(now) * 30` = `nowcast_omset_monthly`, fallback `est_omset_monthly` | terukur if `nowcast_method` is `latest`/`blend` with fresh obs; otherwise perkiraan |
+| Card / listing-row omset/bulan | `price * v_hat(now) * 30` = `nowcast_omset_monthly`, fallback `est_omset_monthly` via `estOmsetBulan` + `omsetChipHtml` | terukur if `nowcast_method` is `latest`/`blend` with fresh obs; otherwise perkiraan |
 | This week | `units_wk` = sum of 7 daily `velocity_at` evaluations (measured weeks: `v_latest * 7`) | `source=measured` → terukur; else perkiraan |
 | Next week | same sum, one WIB week further | always perkiraan |
 
@@ -118,9 +118,12 @@ closed-form decay (`W(t') = W(t)·exp(−Δ/τ)`) revises this week and next wee
   `#tren-main-chart` / `#ap-demand-chart` / `#dd-chart-trend`) plot weekly
   scrape-interval rates. They take the last 6 **non-empty** weeks (skipping
   `prior` peer-fill and empty Mondays) so a long scrape gap does not draw as a
-  flat copied line. `listing_weekly` / `keyword_weekly` is **next week only**
-  — overlaying it onto this week mixed two estimators and caused a spike.
-  Partial this week is scaled `7/days`. Card omset stays monthly (`×30`).
+  flat copied line. The keyword series is labelled **Tren pasar**; a dashed
+  **Produk ini** line comes from `product_daily_series` (same weekly grain)
+  when that RPC returns ≥2 points. `listing_weekly` / `keyword_weekly` is
+  **next week only** — overlaying it onto this week mixed two estimators and
+  caused a spike. Partial this week is scaled `7/days`. Card / row omset stays
+  monthly (`×30`).
 - Tracker **detail** chart is 8+1 weekly grain on a fixed 60-day window.
   Tracker **headlines** (card, table, summary) are this WIB week vs last week
   from the same `weeklyBuckets()` as the chart — not a 7/30/60/90 window

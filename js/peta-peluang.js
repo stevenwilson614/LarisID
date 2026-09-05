@@ -908,6 +908,12 @@
     });
   };
 
+  PetaController.prototype.hoverKey = function (k) {
+    var hit = k ? this.pointByKey(k) : null;
+    this.hover = hit;
+    this.draw();
+  };
+
   PetaController.prototype.selectKey = function (k, open) {
     var hit = this.pointByKey(k);
     this.selected = hit;
@@ -1435,6 +1441,8 @@
     return {
       update: function (list) { ctl.update(list); },
       setMode: function (m) { ctl.setMode(m); },
+      hoverKey: function (k) { ctl.hoverKey(k); },
+      selectKey: function (k, open) { ctl.selectKey(k, open); },
       destroy: function () { ctl.destroy(); containerEl._petaCtl = null; }
     };
   }

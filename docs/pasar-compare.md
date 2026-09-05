@@ -1,38 +1,27 @@
-# Bandingkan Pasar — ranked board in Cari Produk
+# Bandingkan Pasar — retired from Cari Produk (chat-only)
 
-One row per **pasar** (a `product_types_v` keyword, ~120 listings). Rows are
-ordered by **Skor Mudah Masuk** so a new seller can see in a couple of seconds
-which pasar is the easiest place to start, then read four signal cells to see
-why. A `Peta` tab shows the same set as a demand-vs-moat quadrant.
+**Status (2026-09-05):** retired from Cari Produk. Directory home / category /
+search now show **listing rows** + Peta Peluang (`list:false`). Do not remount
+this board on `#dir-peta` or revive `#dir-home-compare`.
 
-This replaced the listing scatter (Peta Peluang) inside the **directory**. Peta
-Peluang still runs in chat (`replyWithPasarTypes`) and compare-pick
-(`renderDirectoryListings`) because those are listing-level surfaces — see
-[peta-peluang.md](./peta-peluang.md).
+The module stays in the repo for the chat **Bandingkan A vs B** intent
+(`handleBandingkanIntent` in `js/gpt-app.js`), which now paints two labelled
+listing tables rather than pasar cards. Skor Mudah Masuk weights below still
+apply if that board is reused in chat; never add a hard filter on the score.
+
+Cari Produk list + map: [peta-peluang.md](./peta-peluang.md).
 
 ## Where it lives
 
 - Module: [`js/pasar-compare.js`](../js/pasar-compare.js) (`window.PasarCompare`)
 - CSS: [`styles/pasar-compare.css`](../styles/pasar-compare.css)
-- Wiring: `pasarCompareOpts` / `mountPasarCompare` / `clearPasarCompare` in
-  [`js/gpt-app.js`](../js/gpt-app.js), called from `syncDirHome()` and the tail
-  of `renderDirectory()`.
+- **Not** wired from `renderDirectory()` / `syncDirHome()` anymore.
 
 | Host | When | Set compared |
 |---|---|---|
-| `#dir-home-compare` (under Trending Sekarang) | directory home (`isDirHomeBrowse()`) | first 20 of `loadDirHomePool()` — the same trending pool the rail draws its 10 from |
-| `#dir-peta` | category or subgroup selected | `types.slice(0, 20)` after `sortTypeRows` + `markTerlarisMinggu` (top 20 by the active sort) |
-| `#dir-peta` | search (`state.dirSearch`) | first 20 search hits (incl. nearby fallback, labelled as such) |
+| Chat `handleBandingkanIntent` | user asks “bandingkan X vs Y” | two listing tables from `searchListings` |
 
-Hidden when fewer than 2 pasars. Home board is cleared the moment a search /
-category is active; the `#dir-peta` board is cleared on home. Two overlapping
-`renderDirectory()` calls can race (home fetch of 1000 rows still in flight when
-a search lands) — the tail compares `q` / `cats` / `sub` with live `state` and a
-stale render does not touch the board.
-
-Row click = `openDeepDive(typeRepProduct(t))`, the same as a type card. Events:
-`ptype_open` (with `surface`), `pasar_compare_view`, `pasar_compare_expand`,
-`pasar_compare_open`.
+Row click on those tables = `openDeepDive` on that listing (PRODUK frame).
 
 ## Data
 

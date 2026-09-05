@@ -6,8 +6,8 @@ Use this before changing Beranda, onboarding, Cari Produk, Deep Dive, or Pantaua
 
 1. First login: 4-step finder on Beranda (`#home-finder`). No blocking popup.
 2. After complete: prefs drawer / profile nudge can edit city, category, experience.
-3. Finder "Temukan Produk" for a signed-in user with `deepdive_count = 0` auto-opens a Deep Dive. If it does not, `finder_auto_deepdive_skipped` has a reason (`no_types` / `view_changed` / `anon_seen` / `already_once`).
-4. Cari Produk: first card click for a dd=0 user opens Deep Dive and logs `dir_first_click_deepdive`.
+3. Finder "Temukan Produk" for a signed-in user with `deepdive_count = 0` auto-opens a Deep Dive on the first listing row. If it does not, `finder_auto_deepdive_skipped` has a reason (`no_listings` / `view_changed` / `anon_seen` / `already_once`).
+4. Cari Produk: first **row** click for a dd=0 user opens Deep Dive and logs `dir_first_click_deepdive`.
 5. After onboarding, before any Deep Dive: Beranda shows `#home-first-dd` ("Lihat analisis lengkap"). Hidden once they have dived.
 6. End of Deep Dive: `#ddr-alert` ("Kabari saya kalau … berubah") with Email and WhatsApp. Copy says ~2 minggu, not harian. Mid-dive Pantauan modal (`#ddtrack-promo`) must not appear.
 7. Email / WhatsApp on that card tracks the keyword, sets notify prefs, and writes `user_profiles.wa_number` when a number is entered.

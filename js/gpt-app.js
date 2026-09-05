@@ -358,7 +358,7 @@ function ddMarketScope(product, peers) {
     }, 0);
     if (fromPeers > 0) soldBln = Math.round(fromPeers);
   }
-  return { nSellers, nListings, soldBln, isPasar: !!t };
+  return { nSellers, nListings, soldBln, isPasar: false };
 }
 
 function ddMarketNoteHtml(product, peers) {
@@ -1675,10 +1675,14 @@ const state = {
   dirSearch: '',   // sticky Produk search query (filters the directory grid)
   dirNearby: false, // current dirTypes came from listing-title nearby lift
   dirSub: null,    // selected sub-group within a single selected category
-  dirSort: 'sesuai',
+  dirSort: 'omset',
   dirRangeFilters: null,
   dirRows: [],
-  dirTypes: [],  // product-type rows currently shown in the directory
+  dirTypes: [],  // keyword chips for the current listing pool
+  dirChipKw: '', // '' = Semua
+  dirZoneKeys: null,
+  dirPoolListings: [],
+  dirUnsold: 0,
   cityFilter: '',
   searchOpen: false,
 };
@@ -3925,10 +3929,10 @@ function scrollToContentStart(el) {
 function contentLooksLikeResults(htmlOrEl) {
   if (!htmlOrEl) return false;
   if (typeof htmlOrEl === 'string') {
-    return /card-grid|prod-card|ans-panel|trending-card|ans-table|deepdive-card|gpt-kalc|agent-run/.test(htmlOrEl);
+    return /card-grid|prod-card|lrow|ans-panel|trending-card|ans-table|deepdive-card|gpt-kalc|agent-run/.test(htmlOrEl);
   }
   return !!htmlOrEl.querySelector?.(
-    '.card-grid, .prod-card, .ans-panel, .trending-card, .ans-table-wrap, .gpt-kalc, .agent-run'
+    '.card-grid, .prod-card, .lrow, .lrow-wrap, .ans-panel, .trending-card, .ans-table-wrap, .gpt-kalc, .agent-run'
   );
 }
 
@@ -4124,6 +4128,7 @@ function renderChatThread() {
     // Re-bind cards. bindTypeCards is needed for market cards stored in older
     // threads — without it a restored pasar grid renders but does not click.
     bindProductCards(thread);
+    bindListingRows(thread);
     bindTypeCards(thread);
     bindDeepDiveCards(thread);
     bindTrackerCards(thread);
@@ -4137,7 +4142,7 @@ function renderChatThread() {
       const card = thread.querySelector(`[data-dd-card="${prodKey(product)}"]`);
       if (card) scrollToContentStart(card);
       else scrollPanelToTop();
-    } else if (thread.querySelector('.card-grid, .prod-card, .ans-panel')) {
+    } else if (thread.querySelector('.card-grid, .prod-card, .lrow, .lrow-wrap, .ans-panel')) {
       scrollPanelToTop();
     } else {
       scrollChatToBottom();
@@ -5333,27 +5338,23 @@ async function fetchCategoryPasarTypes(rawCats, city, { limit = FINDER_PASAR_LIM
   return packed;
 }
 
-function finderPasarHtml({ types, local, national, catLabel, city, bud }) {
+async function finderPasarBlock({ types, catLabel, city, bud }) {
   if (!types.length) {
-    return `<p>Belum ketemu pasar yang cocok. Coba ganti kategori atau kota, atau ketik pencarian di bawah.</p>`;
+    return { html: `<p>Belum ketemu produk yang cocok. Coba ganti kategori atau kota, atau ketik pencarian di bawah.</p>`, pool: null };
   }
   const budBit = bud?.label ? ` (modal ${esc(bud.label)})` : '';
-  let lead;
-  if (local.length && national.length) {
-    lead = `<p>${types.length} pasar untuk <strong>${esc(catLabel)}</strong> — yang di <strong>${esc(city)}</strong> dulu, lalu pasar nasional di kategori yang sama${budBit}. Klik kartu untuk Deep Dive.</p>`;
-  } else if (local.length) {
-    lead = `<p>${types.length} pasar untuk <strong>${esc(catLabel)}</strong> di sekitar <strong>${esc(city)}</strong>${budBit}. Klik kartu untuk Deep Dive pasar.</p>`;
-  } else {
-    lead = `<p>${types.length} pasar nasional untuk <strong>${esc(catLabel)}</strong>${budBit}${city ? `. Dipilih untuk minat di <strong>${esc(city)}</strong>, ranking-nya nasional` : ''}. Klik kartu untuk Deep Dive pasar.</p>`;
-  }
-  if (local.length && national.length) {
-    return lead
-      + `<p class="dd-sub" style="margin-top:12px;">Di ${esc(city)}</p>`
-      + `<div class="card-grid">${marketCardsHtml(local)}</div>`
-      + `<p class="dd-sub" style="margin-top:18px;">Pasar nasional di kategori ini</p>`
-      + `<div class="card-grid">${marketCardsHtml(national)}</div>`;
-  }
-  return `${lead}<div class="card-grid">${marketCardsHtml(types)}</div>`;
+  const listings = await fetchListingsForKeywords(types.map(t => t.keyword).filter(Boolean), 20, 300);
+  const pool = {
+    keywords: markTerlarisMinggu(types.slice()),
+    listings: dedupeListings(listings),
+    primaryKw: '',
+    nearby: false,
+    unsold: 0,
+  };
+  const lead = `<p>${pool.listings.length || types.length} produk untuk <strong>${esc(catLabel)}</strong>${city ? ` — minat di <strong>${esc(city)}</strong>` : ''}${budBit}. Klik baris untuk Deep Dive.</p>`;
+  const petaId = 'peta-finder-' + Date.now();
+  const html = `${lead}<div data-lrow-block>${listingBlockHtml(pool, { petaId, query: catLabel, chipKw: '', compact: true })}</div>`;
+  return { html, pool };
 }
 
 async function collectFinderProducts({ city, categories, budgetId, limit = 60 }) {
@@ -5450,16 +5451,23 @@ async function runFinderSearch() {
     registerTypes(types);
     state.recommendations = [];
 
-    const html = finderPasarHtml({
+    const packedHtml = await finderPasarBlock({
       types,
-      local: packed.local,
-      national: packed.national,
       catLabel,
       city: _finder.city,
       bud,
     });
+    const html = packedHtml.html;
     await revealAssistant(loading, html, { instant: true });
-    bindTypeCards($('chat-thread'));
+    const block = $('chat-thread')?.querySelector('[data-lrow-block]');
+    if (packedHtml.pool && block) {
+      bindListingBlock(block, packedHtml.pool, { query: catLabel, compact: true });
+      const peta = block.querySelector('.peta-host');
+      if (peta && window.PetaPeluang) {
+        PetaPeluang.skeleton(peta, catLabel);
+        mountPeta(peta, catLabel, packedHtml.pool.listings.slice(0, 200), listingPetaExtra(block));
+      }
+    }
     scrollPanelToTop();
     void logUserEvent('gpt_finder_search', {
       ui: 'gpt',
@@ -5479,8 +5487,11 @@ async function runFinderSearch() {
     const skipAuto = (reason) => {
       void logUserEvent('finder_auto_deepdive_skipped', { ui: 'gpt', reason });
     };
-    if (!types.length) {
-      skipAuto('no_types');
+    const firstListing = packedHtml.pool?.listings?.length
+      ? sortDirRows(packedHtml.pool.listings.slice(), 'omset')[0]
+      : null;
+    if (!firstListing) {
+      skipAuto('no_listings');
     } else {
       let anonSeen = '';
       try { anonSeen = String(localStorage.getItem(ANON_DD_KEY) || '').trim(); } catch (_) {}
@@ -5492,11 +5503,10 @@ async function runFinderSearch() {
         if (!neverDived) {
           skipAuto('already_once');
         } else {
-          const best = sortTypeRows(types.slice(), 'terlaris')[0];
           setTimeout(() => {
             if (state.view !== 'chat') { skipAuto('view_changed'); return; }
-            void logUserEvent('finder_auto_deepdive', { ui: 'gpt', keyword: best.keyword });
-            void openDeepDive(typeRepProduct(best));
+            void logUserEvent('finder_auto_deepdive', { ui: 'gpt', keyword: firstListing.keyword || '' });
+            void openDeepDive(firstListing);
           }, 1400);
         }
       }
@@ -6067,7 +6077,7 @@ async function fetchSidePeers(product) {
       .ilike('keyword', kw)
       .eq('is_offtopic', false)
       .order('total_sold', { ascending: false })
-      .limit(60);
+      .limit(120);
     return data || [];
   } catch (_) {
     return [];
@@ -6132,11 +6142,10 @@ async function fillKompContent(opts = {}) {
     if (token !== _kompFetchToken || _sideMode !== 'kompetitor') return;
   }
 
-  const share = ddShareData(peers || []);
   const kw = product.keyword || '—';
   body.innerHTML = `
-    <p class="side-komp-lead">Toko kompetitor di keyword “${esc(kw)}” — urut estimasi omset.</p>
-    ${ddKompetitorTableHtml(share, { moreId: 'side-komp-more' })}
+    <p class="side-komp-lead">Listing di keyword “${esc(kw)}” — klik untuk Deep Dive produk.</p>
+    ${ddKompetitorTableHtml(peers || [], { moreId: 'side-komp-more', highlightKey: prodKey(product) })}
   `;
   wireKompPanelBody(body, peers || [], product);
 }
@@ -6234,10 +6243,10 @@ async function fillSerupaContent(opts = {}) {
     return;
   }
   body.innerHTML = `
-    <p class="side-komp-lead">${items.length} produk serupa di keyword “${esc(kw)}” — urut terjual. Klik untuk jadikan acuan di pasar ini.</p>
-    <div class="card-grid side-serupa-grid">${productCardsHtml(items)}</div>
+    <p class="side-komp-lead">${items.length} produk serupa di keyword “${esc(kw)}” — urut terjual. Klik untuk Deep Dive produk.</p>
+    ${listingRowsHtml(items, { compact: true, keepChat: true, highlightKey: prodKey(product) })}
   `;
-  bindProductCards(body);
+  bindListingRows(body);
 }
 
 /* ── Tanya AI side panel ───────────────────────────────────────────────────
@@ -6979,6 +6988,183 @@ function listingIsAdMissing(error) {
   return true;
 }
 
+function dedupeListings(rows) {
+  const seen = new Set();
+  const out = [];
+  for (const r of rows || []) {
+    if (r == null || r.item_id == null || r.shop_id == null) continue;
+    const k = `${r.item_id}|${r.shop_id}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(asListingProduct(r));
+  }
+  return out;
+}
+
+function listingAgeDays(p) {
+  if (p?.age_days != null && Number.isFinite(Number(p.age_days)) && Number(p.age_days) >= 0) {
+    return Number(p.age_days);
+  }
+  if (!p?.listing_date) return null;
+  const d = new Date(p.listing_date).getTime();
+  if (!Number.isFinite(d)) return null;
+  return Math.max(0, Math.round((Date.now() - d) / 86400000));
+}
+
+function listingUsiaLabel(p) {
+  const days = listingAgeDays(p);
+  const title = 'Umur listing, bukan umur toko. Tanggal listing pertama yang kami lihat — batas bawah.';
+  if (days == null) return { text: '—', title };
+  if (days < 30) return { text: `${days} hr`, title };
+  const mo = Math.round(days / 30);
+  if (mo < 12) return { text: `${mo} bln`, title };
+  const yr = mo / 12;
+  const text = yr < 2 ? `${String(yr.toFixed(1)).replace('.', ',')} th` : `${Math.round(yr)} th`;
+  return { text, title };
+}
+
+async function fetchListingsForKeyword(kw, limit = 120) {
+  if (!_supabase || !kw) return [];
+  const build = () => _supabase.from('listings_deduped')
+    .select(listingCoreSelect())
+    .gt('total_sold', 0)
+    .eq('is_offtopic', false)
+    .ilike('keyword', kw)
+    .order('nowcast_omset_monthly', { ascending: false, nullsFirst: false })
+    .limit(limit);
+  try {
+    let { data, error } = await build();
+    if (listingIsAdMissing(error)) ({ data, error } = await build());
+    if (error) throw error;
+    return dedupeListings(data || []);
+  } catch (_) {
+    return [];
+  }
+}
+
+let _listingsForKwRpc = true;
+function listingsForKwRpcMissing(error) {
+  if (!_listingsForKwRpc || !error) return false;
+  const s = `${error.code || ''} ${error.message || ''} ${error.details || ''}`;
+  if (!/42883|PGRST202|404|listings_for_keywords/.test(s)) return false;
+  console.warn('[listings] listings_for_keywords missing — per-keyword fallback');
+  _listingsForKwRpc = false;
+  return true;
+}
+
+async function fetchListingsForKeywords(kws, perKw = 20, max = 300) {
+  const keywords = [...new Set((kws || []).map(k => String(k || '').trim()).filter(Boolean))];
+  if (!_supabase || !keywords.length) return [];
+  if (keywords.length === 1) return (await fetchListingsForKeyword(keywords[0], Math.min(120, max))).slice(0, max);
+  if (_listingsForKwRpc) {
+    try {
+      const { data, error } = await _supabase.rpc('listings_for_keywords', {
+        p_keywords: keywords,
+        p_per_kw: perKw,
+        p_max: max,
+      });
+      if (listingsForKwRpcMissing(error)) { /* fall through */ }
+      else if (error) throw error;
+      else return dedupeListings(data || []).slice(0, max);
+    } catch (e) {
+      if (!listingsForKwRpcMissing(e)) console.warn('[listings_for_keywords]', e?.message || e);
+    }
+  }
+  const take = keywords.slice(0, 6);
+  const chunks = await Promise.all(take.map(kw => fetchListingsForKeyword(kw, perKw)));
+  return dedupeListings(chunks.flat()).slice(0, max);
+}
+
+async function countKeywordUnsold(kw) {
+  if (!_supabase || !kw) return 0;
+  try {
+    const { count } = await _supabase.from('listings_deduped')
+      .select('item_id', { count: 'exact', head: true })
+      .ilike('keyword', kw)
+      .eq('is_offtopic', false)
+      .eq('total_sold', 0);
+    return count || 0;
+  } catch (_) {
+    return 0;
+  }
+}
+
+async function resolveListingPool({ q, cats, sub, home } = {}) {
+  const query = (q || '').trim();
+  const out = { keywords: [], listings: [], primaryKw: '', nearby: false, unsold: 0 };
+  if (query) {
+    let types = await searchProductTypes(query, [], 24);
+    if (!types.length) {
+      types = await searchNearbyProductTypes(query, [], 24);
+      out.nearby = !!types.length;
+    }
+    out.keywords = types.some(t => t._nearby) ? types : markTerlarisMinggu(types.slice());
+    if (types.length) {
+      out.primaryKw = types[0].keyword || '';
+      const kws = types.map(t => t.keyword).filter(Boolean).slice(0, 15);
+      if (kws.length === 1) {
+        out.listings = await fetchListingsForKeyword(kws[0], 120);
+      } else {
+        const rest = kws.filter(k => k !== out.primaryKw);
+        const [primary, extra] = await Promise.all([
+          fetchListingsForKeyword(out.primaryKw, 120),
+          fetchListingsForKeywords(rest, 20, 240),
+        ]);
+        out.listings = dedupeListings(primary.concat(extra));
+      }
+      out.unsold = await countKeywordUnsold(out.primaryKw);
+    }
+    if (!out.listings.length) {
+      out.listings = (await searchListings(query, [], 80)).map(asListingProduct);
+    }
+  } else {
+    let types = [];
+    if (home) types = await loadDirHomePool();
+    else {
+      types = await fetchProductTypes([], cats || [], 1000, sub);
+      if (!types.length && !sub) {
+        types = await typesForListings(mergePool([], await fetchNaikDaunGlobal(200)), '', 60);
+      }
+    }
+    types = sortTypeRows(types, 'sesuai', false);
+    types = markTerlarisMinggu(types);
+    out.keywords = types;
+    out.primaryKw = '';
+    out.listings = await fetchListingsForKeywords(
+      types.slice(0, 15).map(t => t.keyword).filter(Boolean), 20, 300);
+  }
+  out.listings = dedupeListings(out.listings);
+  rememberProducts(out.listings);
+  registerTypes(out.keywords);
+  return out;
+}
+
+function filterListingPool(listings, chipKw, zoneKeys) {
+  let rows = listings || [];
+  if (chipKw) rows = rows.filter(r => (r.keyword || '') === chipKw);
+  if (zoneKeys && zoneKeys.size) rows = rows.filter(r => zoneKeys.has(prodKey(r)));
+  return rows;
+}
+
+function keywordChipsHtml(types, activeKw, opts = {}) {
+  const list = types || [];
+  if (!list.length) return '';
+  const showSemua = opts.showSemua !== false;
+  const chips = [];
+  if (showSemua) {
+    chips.push(`<button type="button" class="lrow-chip${activeKw === '' ? ' is-on' : ''}" data-lrow-kw="">Semua</button>`);
+  }
+  list.slice(0, 16).forEach(t => {
+    const kw = t.keyword || '';
+    const on = activeKw === kw;
+    const badge = t._terlaris
+      ? `<span class="lrow-chip-badge" title="${esc(terlarisTooltip(t._terlaris))}">Terlaris</span>`
+      : '';
+    chips.push(`<button type="button" class="lrow-chip${on ? ' is-on' : ''}" data-lrow-kw="${esc(kw)}">${esc(kw)}${badge}</button>`);
+  });
+  return `<div class="lrow-chips" role="tablist">${chips.join('')}</div>`;
+}
+
 function petaScoreFor(listing, listings) {
   if (!window.PetaPeluang || typeof PetaPeluang.calcListingScore !== 'function') return null;
   const peers = (listings || []).filter(x => x.keyword && x.keyword === listing.keyword);
@@ -7442,9 +7628,18 @@ async function handleTrendingIntent(chat) {
     const nd = mergePool([], await fetchNaikDaunGlobal(60));
     ndTypes = await typesForListings(nd, '', 6);
     state.recommendations = [];
-    html = ndTypes.length
-      ? `<p>Data tren mingguan belum tersedia — ini pasar yang lagi naik daun dari data LarisID:</p><div class="card-grid">${marketCardsHtml(ndTypes)}</div>`
-      : `<p>Data tren belum tersedia. Coba lagi nanti.</p>`;
+    if (ndTypes.length) {
+      const pool = await typesToListingPool(ndTypes);
+      await revealListingPool(loading, chat,
+        `<p>Data tren mingguan belum tersedia — ini produk dari pasar yang lagi naik daun:</p>`,
+        pool, { text: 'Produk trending', kind: 'trending', types: ndTypes.map(t => t.keyword), query: 'naik daun' });
+      bindTrendingCards();
+      updateThreadWide();
+      setComposerChips(TRENDING_CHIPS, 'trending');
+      void logUserEvent('discover_view', { ui: 'gpt', kind: 'trending' });
+      return;
+    }
+    html = `<p>Data tren belum tersedia. Coba lagi nanti.</p>`;
   } else {
     const view = computeTrendingView(rows, '7d');
     html = `<p>Berikut produk yang sedang trending di Shopee berdasarkan peningkatan penjualan — dari data scrape LarisID, bukan tebakan AI.</p>${trendingCardHtml(view)}`;
@@ -7517,19 +7712,30 @@ async function handleTerlarisMingguIntent(chat, text) {
       ? ` — dihitung dari perubahan terjual dalam ${w.spanDays} hari terakhir (sampai ${esc(fmtAnchorDate(w.anchor))}), disetarakan ke 7 hari`
       : '';
     registerTypes(types);
-    html = `<p>${types.length} pasar dengan penjualan tertinggi minggu ini${inCat}${window}:</p>`
-      + `<div class="card-grid">${marketCardsHtml(types)}</div>`;
+    const pool = await typesToListingPool(markTerlarisMinggu(types.slice()));
+    await revealListingPool(loading, chat,
+      `<p>Produk dari pasar dengan penjualan tertinggi minggu ini${inCat}${window}:</p>`,
+      pool, { text: 'Terlaris minggu ini', kind: 'terlaris_minggu', cat, types: types.map(t => t.keyword), query: cat || 'terlaris minggu ini' });
+    setComposerChips(TRENDING_CHIPS, 'trending');
+    void logUserEvent('discover_view', { ui: 'gpt', kind: 'terlaris_minggu', cat: cat || '', count: types.length });
+    return;
   } else {
-    // No padding with unqualified markets — offer the slower signal instead.
     const nd = mergePool([], await fetchNaikDaunGlobal(60));
     ndTypes = await typesForListings(nd, '', 6);
     registerTypes(ndTypes);
     const why = cat
       ? `Belum ada pasar${inCat} yang penjualannya cukup terukur minggu ini — scrape terakhir untuk kategori ini belum punya dua titik data yang cukup rapat.`
       : 'Belum ada pasar dengan penjualan mingguan yang cukup terukur saat ini.';
-    html = ndTypes.length
-      ? `<p>${why} Ini pasar yang lagi naik daun dalam rentang lebih panjang:</p><div class="card-grid">${marketCardsHtml(ndTypes)}</div>`
-      : `<p>${why}</p>`;
+    if (ndTypes.length) {
+      const pool = await typesToListingPool(ndTypes);
+      await revealListingPool(loading, chat,
+        `<p>${why} Ini produk dari pasar yang lagi naik daun dalam rentang lebih panjang:</p>`,
+        pool, { text: 'Terlaris minggu ini', kind: 'terlaris_minggu', cat, types: ndTypes.map(t => t.keyword), query: cat || 'naik daun' });
+      setComposerChips(TRENDING_CHIPS, 'trending');
+      void logUserEvent('discover_view', { ui: 'gpt', kind: 'terlaris_minggu', cat: cat || '', count: 0 });
+      return;
+    }
+    html = `<p>${why}</p>`;
   }
   await revealAssistant(loading, html);
   pushMessage(chat, 'assistant', {
@@ -7538,8 +7744,6 @@ async function handleTerlarisMingguIntent(chat, text) {
     cat,
     types: (types.length ? types : ndTypes).map(t => t.keyword),
   }, html);
-  bindTypeCards();
-  void hydrateProdCardsIn();
   setComposerChips(TRENDING_CHIPS, 'trending');
   void logUserEvent('discover_view', { ui: 'gpt', kind: 'terlaris_minggu', cat: cat || '', count: types.length });
 }
@@ -7568,14 +7772,19 @@ async function handleModalIntent(chat, text) {
   const gate = await ensureIntentChat(chat, `Modal ${fmtRp(budget)}`, { kind: 'modal', budget });
   if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
   const top = mergePool([], rows);
-  const types = await typesForListings(top, '', 6);
+  rememberProducts(top);
   state.recommendations = [];
-  const html = types.length
-    ? `<p>Pasar dengan harga di bawah <strong>${fmtRp(budget)}</strong> — dari data Shopee LarisID:</p><div class="card-grid">${marketCardsHtml(types)}</div>`
-    : `<p>Belum ketemu pasar laris di bawah ${fmtRp(budget)}. Coba angka lain.</p>`;
+  if (top.length) {
+    const types = await typesForListings(top, '', 8);
+    const pool = { keywords: markTerlarisMinggu(types), listings: top, primaryKw: '', nearby: false, unsold: 0 };
+    await revealListingPool(loading, chat,
+      `<p>Produk dengan harga di bawah <strong>${fmtRp(budget)}</strong> — dari data Shopee LarisID:</p>`,
+      pool, { text: 'Hasil modal', budget, level: 'listing', types: types.map(t => t.keyword), query: `modal ${budget}` });
+    return;
+  }
+  const html = `<p>Belum ketemu produk laris di bawah ${fmtRp(budget)}. Coba angka lain.</p>`;
   await revealAssistant(loading, html);
-  pushMessage(chat, 'assistant', { text: 'Hasil modal', budget, level: 'pasar', types: types.map(t => t.keyword) }, html);
-  bindTypeCards();
+  pushMessage(chat, 'assistant', { text: 'Hasil modal', budget, level: 'listing', types: [] }, html);
 }
 
 async function handleLowcompIntent(chat) {
@@ -7912,30 +8121,27 @@ async function handleBandingkanIntent(chat, text) {
   state.recommendations = [];
   // Each side of a compare is a market too — the numbers above the cards are
   // already keyword-level, so listing cards under them were mixing altitudes.
-  const [ta, tb] = await Promise.all([
-    typesForListings(sa?.top || [], '', 3),
-    typesForListings(sb?.top || [], '', 3),
-  ]);
-  const side = (label, s, types) => s
+  const side = (label, s, rows) => s
     ? `<div class="ans-panel" style="margin-top:12px"><h4>${esc(label)}</h4>
        <p class="dd-sub" style="margin:0 0 10px">${s.n} listing terpantau · median harga ${fmtRp(s.median)} · total ${fmtSold(s.sold)} terjual</p>
-       ${types.length ? `<div class="card-grid">${marketCardsHtml(types)}</div>` : '<p class="dd-sub">Belum ada pasar terpetakan untuk keyword ini.</p>'}</div>`
+       ${rows.length ? listingRowsHtml(rows.slice(0, 12), { compact: true }) : '<p class="dd-sub">Belum ada listing untuk keyword ini.</p>'}</div>`
     : `<div class="ans-panel" style="margin-top:12px"><h4>${esc(label)}</h4><p class="dd-sub">Tidak ketemu di data.</p></div>`;
   let verdict = '';
   if (sa && sb) {
     const win = sa.sold >= sb.sold ? parts[0] : parts[1];
-    verdict = `<p style="margin-top:12px">Dari total penjualan yang terpantau, <strong>${esc(win)}</strong> lebih laris. Klik pasar untuk analisis lengkap.</p>`;
+    verdict = `<p style="margin-top:12px">Dari total penjualan yang terpantau, <strong>${esc(win)}</strong> lebih laris. Klik baris untuk analisis produk.</p>`;
   }
-  const html = `<p>Perbandingan “<strong>${esc(parts[0])}</strong>” vs “<strong>${esc(parts[1])}</strong>” dari data Shopee LarisID:</p>${side(parts[0], sa, ta)}${side(parts[1], sb, tb)}${verdict}`;
+  rememberProducts([...(a || []), ...(b || [])]);
+  const html = `<p>Perbandingan “<strong>${esc(parts[0])}</strong>” vs “<strong>${esc(parts[1])}</strong>” dari data Shopee LarisID:</p>${side(parts[0], sa, a)}${side(parts[1], sb, b)}${verdict}`;
   await revealAssistant(loading, html);
   pushMessage(chat, 'assistant', {
     text: 'Bandingkan',
     a: parts[0],
     b: parts[1],
-    level: 'pasar',
-    types: [...ta, ...tb].map(t => t.keyword),
+    level: 'listing',
+    types: [],
   }, html);
-  bindTypeCards();
+  bindListingRows($('chat-thread'));
 }
 
 async function handleRencanaIntent(chat) {
@@ -8737,12 +8943,12 @@ async function replyWithPasarTypes(chat, text, types, opts = {}) {
   let lead;
   if (opts.nearby) {
     lead = en
-      ? `No market for \u201c${qLabel}\u201d${placeLabel ? ` around <strong>${esc(placeLabel)}</strong>` : ''}. These nearby markets have similar products:`
-      : `Belum ketemu pasar untuk \u201c${qLabel}\u201d${placeLabel ? ` di sekitar <strong>${esc(placeLabel)}</strong>` : ''}. Ini pasar terdekat yang punya produk mirip:`;
+      ? `No product for \u201c${qLabel}\u201d${placeLabel ? ` around <strong>${esc(placeLabel)}</strong>` : ''}. These nearby listings are similar:`
+      : `Belum ketemu produk untuk \u201c${qLabel}\u201d${placeLabel ? ` di sekitar <strong>${esc(placeLabel)}</strong>` : ''}. Ini produk dari pasar terdekat:`;
   } else {
     lead = en
-      ? `${types.length} market${types.length > 1 ? 's' : ''} matching \u201c${qLabel}\u201d${placeLabel ? ` around <strong>${esc(placeLabel)}</strong>` : ''} \u2014 each card is a whole market, not one listing:`
-      : `${types.length} pasar yang cocok dengan \u201c${qLabel}\u201d${placeLabel ? ` di sekitar <strong>${esc(placeLabel)}</strong>` : ''} \u2014 tiap kartu itu satu pasar, bukan satu listing:`;
+      ? `Products matching \u201c${qLabel}\u201d${placeLabel ? ` around <strong>${esc(placeLabel)}</strong>` : ''} \u2014 each row is one listing:`
+      : `Produk yang cocok dengan \u201c${qLabel}\u201d${placeLabel ? ` di sekitar <strong>${esc(placeLabel)}</strong>` : ''} \u2014 tiap baris itu satu listing:`;
   }
   // When the query named a brand (DeepSeek-corrected) but none of the markets
   // we're about to show actually carry it, say so explicitly instead of
@@ -8759,22 +8965,27 @@ async function replyWithPasarTypes(chat, text, types, opts = {}) {
     }
   }
   const petaId = 'peta-' + Date.now();
-  const html = `${brandNote}<p>${lead}</p><div class="peta-host" id="${petaId}"></div><p class="peta-pasar-label">Pasar terkait</p><div class="card-grid">${marketCardsHtml(types)}</div>`;
+  const pool = await resolveListingPool({ q: opts.label || text });
+  if (types.length && !pool.keywords.length) pool.keywords = types;
+  const html = `${brandNote}<p>${lead}</p><div data-lrow-block>${listingBlockHtml(pool, {
+    petaId, query: opts.label || text, chipKw: pool.primaryKw || '', compact: true,
+  })}</div>`;
   if (loading) await revealAssistant(loading, html);
   else await appendAssistantStream(html);
   pushMessage(chat, 'assistant', {
-    text: 'Hasil pasar', q: text, level: 'pasar', types: types.map(t => t.keyword),
+    text: 'Hasil produk', q: text, level: 'listing', types: types.map(t => t.keyword),
   }, html);
-  bindTypeCards();
-  void hydrateProdCardsIn();
+  const block = document.querySelector(`[data-lrow-block] .peta-host#${CSS.escape(petaId)}`)?.closest('[data-lrow-block]')
+    || $('chat-thread')?.querySelector('[data-lrow-block]:last-of-type');
+  if (block) bindListingBlock(block, pool, { query: opts.label || text, compact: true });
   void (async () => {
     const host = document.getElementById(petaId);
     if (!host) return;
     if (window.PetaPeluang && typeof PetaPeluang.skeleton === 'function') {
       PetaPeluang.skeleton(host, opts.label || text);
     }
-    const listings = await fetchPetaListings(text, types);
-    mountPeta(host, opts.label || text, listings);
+    const listings = pool.listings.length ? pool.listings : await fetchPetaListings(text, types);
+    mountPeta(host, opts.label || text, listings.slice(0, 200), listingPetaExtra(block || host.parentElement));
   })();
   void logUserEvent('discover_view', {
     ui: 'gpt', q: text, count: types.length, level: 'pasar', nearby: opts.nearby ? 1 : 0,
@@ -9176,6 +9387,83 @@ function productCardsHtml(products) {
   return list.map((p, i) => productCardHtml(p, i, range, petaScoreFor(p, list))).join('');
 }
 
+function listingRowHtml(p, opts = {}) {
+  rememberProducts([p]);
+  const key = prodKey(p);
+  const name = p.product_name || p.keyword || 'Produk';
+  const toko = p.store_name || '—';
+  const img = p.image_url || '';
+  const omset = estOmsetBulan(p);
+  const usia = listingUsiaLabel(p);
+  const reviews = Number(p.reviews) || 0;
+  const sold = Number(p.total_sold) || 0;
+  const price = Number(p.price) || 0;
+  const snap = productSnapshot(p);
+  const encoded = snap ? encodeURIComponent(JSON.stringify(snap)) : '';
+  const picking = !!opts.pick;
+  const picked = picking && (state.comparePick?.selected || []).some(x => prodKey(x) === key);
+  const hl = opts.highlightKey && opts.highlightKey === key;
+  const cls = [
+    'lrow',
+    picking ? 'is-pickable' : '',
+    picked ? 'is-picked' : '',
+    hl ? 'is-sel' : '',
+  ].filter(Boolean).join(' ');
+  const check = picking
+    ? `<td class="lrow-pick"><span class="lrow-check" aria-hidden="true">${ico('check', 12)}</span></td>`
+    : '';
+  const ph = '<div class="lrow-img lrow-img--ph" hidden></div>';
+  const thumb = img
+    ? `<img class="lrow-img" src="${esc(imgThumb(img))}" alt="" loading="lazy" decoding="async" width="56" height="56" onerror="this.onerror=null;this.hidden=true;var n=this.nextElementSibling;if(n)n.hidden=false">${ph}`
+    : '<div class="lrow-img lrow-img--ph"></div>';
+  return `<tr class="${cls}" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} tabindex="0" role="button" aria-pressed="${picked ? 'true' : 'false'}">
+    ${check}
+    <td class="lrow-prod">${thumb}
+      <div class="lrow-prod-txt">
+        <div class="lrow-name">${esc(name)}</div>
+        <div class="lrow-toko">${esc(toko)}</div>
+        <div class="lrow-meta">${reviews ? fmtSold(reviews) + ' ulasan' : '0 ulasan'} · ${esc(usia.text)}</div>
+      </div>
+    </td>
+    <td class="lrow-num">${price ? fmtRp(price) : '—'}</td>
+    <td class="lrow-num">${omset ? fmtOmset(omset) : '—'}${omsetChipHtml(p)}</td>
+    <td class="lrow-num">${sold ? fmtSold(sold) : '0'}</td>
+    <td class="lrow-num lrow-wide">${reviews ? fmtSold(reviews) : '0'}</td>
+    <td class="lrow-num lrow-wide" title="${esc(usia.title)}">${esc(usia.text)}</td>
+  </tr>`;
+}
+
+function listingRowsHtml(list, opts = {}) {
+  const rows = list || [];
+  if (!rows.length) return '';
+  const pick = !!opts.pick;
+  const sort = opts.sort || '';
+  const th = (key, label) => {
+    const on = sort === key || (key === 'termurah' && (sort === 'termurah' || sort === 'termahal'));
+    return `<th scope="col" data-lrow-sort="${key}" class="${on ? 'is-on' : ''}">${label}</th>`;
+  };
+  return `<div class="lrow-wrap${opts.compact ? ' lrow-wrap--compact' : ''}${pick ? ' lrow-wrap--pick' : ''}"${opts.keepChat ? ' data-lrow-keepchat="1"' : ''}>
+    <table class="ddr-table lrow-table">
+      <thead><tr>
+        ${pick ? '<th class="lrow-pick"></th>' : ''}
+        <th>Produk</th>
+        ${th('termurah', 'Harga')}
+        ${th('omset', 'Omset')}
+        ${th('terlaris', 'Unit jual')}
+        ${th('review', 'Review')}
+        ${th('terbaru', 'Usia')}
+      </tr></thead>
+      <tbody>${rows.map(p => listingRowHtml(p, opts)).join('')}</tbody>
+    </table>
+  </div>`;
+}
+
+function listingUnsoldNote(n) {
+  const c = Number(n) || 0;
+  if (c <= 0) return '';
+  return `<p class="dd-sub">${c.toLocaleString('id-ID')} listing belum terjual tidak ditampilkan.</p>`;
+}
+
 function prodKey(p) {
   return `${p?.item_id}|${p?.shop_id}`;
 }
@@ -9197,18 +9485,21 @@ function bindProductCards(root) {
           toggleComparePickProduct(p);
           return;
         }
-        void openDeepDive(p);
+        if (userNeverDeepDived()) {
+          const surface = state.view === 'directory' ? 'dir' : 'chat';
+          void logUserEvent('dir_first_click_deepdive', { ui: 'gpt', keyword: p.keyword || '', surface });
+        }
+        const keepChat = !!(btn.closest && btn.closest('[data-lrow-keepchat]'));
+        void openDeepDive(p, keepChat ? { keepChat: true } : {});
       })();
     };
     btn.addEventListener('click', onPick);
-    if (btn.classList.contains('prod-card--pick')) {
-      btn.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onPick();
-        }
-      });
-    }
+    btn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        onPick();
+      }
+    });
   });
   (root || document).querySelectorAll('#btn-more-products').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -9224,6 +9515,136 @@ function bindProductCards(root) {
   });
   bindSearchSuggests(root);
   void hydrateProdCardsIn(root);
+}
+
+function bindListingRows(root, extra = {}) {
+  bindProductCards(root);
+  (root || document).querySelectorAll('.lrow-wrap').forEach(w => {
+    if (w.dataset.boundLrowSort) return;
+    w.dataset.boundLrowSort = '1';
+    w.addEventListener('click', (e) => {
+      const th = e.target.closest?.('[data-lrow-sort]');
+      if (!th || !w.contains(th) || !extra.onSort) return;
+      e.preventDefault();
+      e.stopPropagation();
+      let mode = th.getAttribute('data-lrow-sort');
+      if (mode === 'termurah' && (state.dirSort === 'termurah')) mode = 'termahal';
+      extra.onSort(mode);
+    });
+    if (extra.onHover) {
+      w.addEventListener('pointerover', (e) => {
+        const tr = e.target.closest?.('[data-prod]');
+        extra.onHover(tr ? tr.getAttribute('data-prod') : null);
+      });
+      w.addEventListener('pointerleave', () => extra.onHover(null));
+    }
+  });
+}
+
+function listingPetaExtra(tableRoot) {
+  return {
+    list: false,
+    onHighlight: (listing) => {
+      if (!tableRoot) return;
+      const key = listing ? prodKey(listing) : '';
+      tableRoot.querySelectorAll('.lrow').forEach(tr => {
+        const on = !!(key && tr.getAttribute('data-prod') === key);
+        tr.classList.toggle('is-hl', on);
+        if (on) tr.scrollIntoView({ block: 'nearest' });
+      });
+    },
+    onZoneFilter: (_id, list) => {
+      if (!tableRoot) return;
+      const keys = list ? new Set(list.map(prodKey)) : null;
+      tableRoot.querySelectorAll('.lrow').forEach(tr => {
+        const k = tr.getAttribute('data-prod');
+        tr.hidden = !!(keys && k && !keys.has(k));
+      });
+    },
+  };
+}
+
+function bindListingBlock(root, pool, opts = {}) {
+  const block = root?.querySelector?.('[data-lrow-block]') || root;
+  if (!block || !pool) return;
+  const paint = (chipKw) => {
+    const host = block.querySelector('.lrow-host');
+    const rows = sortDirRows(filterListingPool(pool.listings, chipKw, null), opts.sort || 'omset');
+    if (host) {
+      host.innerHTML = listingRowsHtml(rows, { compact: opts.compact !== false, sort: opts.sort || 'omset' })
+        + listingUnsoldNote(chipKw ? 0 : pool.unsold);
+    }
+    block.querySelectorAll('.lrow-chip').forEach(b => {
+      b.classList.toggle('is-on', (b.getAttribute('data-lrow-kw') || '') === chipKw);
+    });
+    bindListingRows(block, {
+      onHover: (key) => {
+        const peta = block.querySelector('.peta-host');
+        peta?._petaCtl?.hoverKey?.(key);
+      },
+    });
+    const peta = block.querySelector('.peta-host');
+    if (peta) {
+      let pts = pool.listings || [];
+      if (chipKw) pts = pts.filter(r => (r.keyword || '') === chipKw);
+      mountPeta(peta, opts.query || '', pts.slice(0, 200), listingPetaExtra(block));
+    }
+  };
+  block.querySelectorAll('[data-lrow-kw]').forEach(btn => {
+    if (btn.dataset.boundChip) return;
+    btn.dataset.boundChip = '1';
+    btn.addEventListener('click', () => paint(btn.getAttribute('data-lrow-kw') || ''));
+  });
+  bindListingRows(block, {
+    onHover: (key) => {
+      const peta = block.querySelector('.peta-host');
+      peta?._petaCtl?.hoverKey?.(key);
+    },
+  });
+}
+
+async function typesToListingPool(types) {
+  const list = types || [];
+  const listings = await fetchListingsForKeywords(list.map(t => t.keyword).filter(Boolean), 20, 300);
+  return {
+    keywords: list.some(t => t._terlaris) ? list : markTerlarisMinggu(list.slice()),
+    listings: dedupeListings(listings),
+    primaryKw: '',
+    nearby: false,
+    unsold: 0,
+  };
+}
+
+async function revealListingPool(loading, chat, leadHtml, pool, meta) {
+  const petaId = 'peta-' + Date.now();
+  const html = `${leadHtml}<div data-lrow-block>${listingBlockHtml(pool, {
+    petaId, chipKw: pool.primaryKw || '', compact: true, query: meta.query || '',
+  })}</div>`;
+  await revealAssistant(loading, html);
+  pushMessage(chat, 'assistant', meta, html);
+  const block = document.getElementById(petaId)?.closest('[data-lrow-block]');
+  if (block) {
+    bindListingBlock(block, pool, { compact: true, query: meta.query || '' });
+    const host = document.getElementById(petaId);
+    if (host && window.PetaPeluang) {
+      PetaPeluang.skeleton(host, meta.query || '');
+      mountPeta(host, meta.query || '', (pool.listings || []).slice(0, 200), listingPetaExtra(block));
+    }
+  }
+  return pool;
+}
+
+function listingBlockHtml(pool, opts = {}) {
+  const chip = opts.chipKw != null ? opts.chipKw : (pool.primaryKw || '');
+  let rows = filterListingPool(pool.listings, chip, null);
+  rows = sortDirRows(rows, opts.sort || 'omset');
+  const petaId = opts.petaId || '';
+  const nearbyLead = pool.nearby && opts.query
+    ? `<p class="dd-sub dir-nearby-lead">Belum ketemu produk untuk “<strong>${esc(opts.query)}</strong>”. Ini produk dari pasar terdekat:</p>`
+    : '';
+  return `${nearbyLead}${keywordChipsHtml(pool.keywords, chip, { showSemua: true })}
+    ${petaId ? `<div class="peta-host" id="${esc(petaId)}"></div>` : ''}
+    <div class="lrow-host">${listingRowsHtml(rows, { compact: opts.compact !== false, sort: opts.sort || 'omset' })}${listingUnsoldNote(pool.unsold)}</div>`;
 }
 
 /** Compact Deep Dive summary kept in the chat thread so scrolling history still reaches it. */
@@ -10536,27 +10957,32 @@ async function startRecommendationChat(fromOnboarding) {
   appendBubble('assistant', `<p>${fromOnboarding ? 'Siap. ' : ''}${frame}</p><p style="opacity:.7;animation:pulseSoft 1.2s infinite">Memuat rekomendasi…</p>`);
 
   const recLimit = fromOnboarding ? 9 : 3;
-  // Recommendations are ranked on listings but presented as markets — the user
-  // is choosing what to sell, which is a market decision, not a listing one.
+  // Recommendations are ranked on listings and shown as listing rows.
   const recs = await pickRecommendations(recLimit * 3);
   const recTypes = await typesForListings(recs, state.onboarding.city || '', recLimit);
   state.recommendations = [];
-
-  const cards = recTypes.length
-    ? `<div class="card-grid">${marketCardsHtml(recTypes)}</div>
+  rememberProducts(recs);
+  const pool = recTypes.length
+    ? { keywords: markTerlarisMinggu(recTypes.slice()), listings: recs, primaryKw: '', nearby: false, unsold: 0 }
+    : null;
+  const cards = pool
+    ? `<div data-lrow-block>${listingBlockHtml(pool, { chipKw: '', compact: true })}</div>
        <button type="button" class="btn-ghost" id="btn-more-products">Cari yang lain?</button>`
-    : `<p>Belum ketemu pasar yang cocok. Coba Chat Baru atau buka <strong>Cari Produk</strong> di sidebar.</p>`;
+    : `<p>Belum ketemu produk yang cocok. Coba Chat Baru atau buka <strong>Cari Produk</strong> di sidebar.</p>`;
 
-  const html = `<p>${frame}</p><p>Ini <strong>${recTypes.length || recLimit} pasar</strong> dari data LarisID buat kamu cek:</p>${cards}`;
+  const html = `<p>${frame}</p><p>Ini <strong>${(pool?.listings || []).length || recs.length}</strong> produk dari data LarisID buat kamu cek:</p>${cards}`;
   const thread2 = $('chat-thread');
   if (thread2) thread2.innerHTML = '';
   const msg = await appendAssistantStream(html);
   pushMessage(chat, 'assistant', {
-    text: `Rekomendasi ${recTypes.length} pasar`,
-    level: 'pasar',
+    text: `Rekomendasi ${(pool?.listings || recs).length} produk`,
+    level: 'listing',
     types: recTypes.map(t => t.keyword),
   }, html);
-  bindTypeCards();
+  if (pool) {
+    const block = $('chat-thread')?.querySelector('[data-lrow-block]');
+    if (block) bindListingBlock(block, pool, { compact: true });
+  }
   scrollPanelToTop();
 
   void logUserEvent('discover_view', { ui: 'gpt', count: recTypes.length, level: 'pasar' });
@@ -10609,21 +11035,23 @@ async function openChat(id) {
       state.recommendations = [];
       const bud = finderBudgetCfg(chat.context.budget || '1jt_10jt');
       const catLabel = (chat.context.categories || []).join(', ') || chat.context.category || '';
-      const html = packed.types.length
-        ? finderPasarHtml({
+      const packedHtml = packed.types.length
+        ? await finderPasarBlock({
             types,
-            local: packed.local,
-            national: packed.national,
             catLabel,
             city: chat.context.city,
             bud,
           })
-        : `<p>Riwayat ini tidak punya hasil tersimpan. Coba jalankan ulang pencarian dari pertanyaan awal.</p>`;
+        : { html: `<p>Riwayat ini tidak punya hasil tersimpan. Coba jalankan ulang pencarian dari pertanyaan awal.</p>`, pool: null };
+      const html = packedHtml.html;
       setView('chat');
       const thread = $('chat-thread');
       if (thread) thread.innerHTML = '';
       appendBubble('assistant', html, { skipScroll: true });
-      bindTypeCards($('chat-thread'));
+      if (packedHtml.pool) {
+        const block = $('chat-thread')?.querySelector('[data-lrow-block]');
+        if (block) bindListingBlock(block, packedHtml.pool, { query: catLabel, compact: true });
+      }
       updateProductPin();
       scrollPanelToTop();
       return;
@@ -10973,7 +11401,7 @@ async function ddServerWeeklySeries(product, days = 119, opts = {}) {
   let rows;
   try {
     let r;
-    if ((opts.forceKeyword || product._ptype) && product.keyword) {
+    if (opts.forceKeyword && product.keyword) {
       r = await _supabase.rpc('keyword_daily_series', {
         p_keyword: String(product.keyword).trim().toLowerCase(),
         p_from: iso(from),
@@ -11473,12 +11901,8 @@ function ddFeeCategory(product) {
     || 'Umum';
 }
 function ddFeeVolume(product) {
-  const t = product?._ptype || null;
-  const price = t ? (Number(t.price_median) || 0) : (Number(product?.price) || 0);
-  const spd = Number(product?.sold_per_day);
-  const sales = Number.isFinite(spd) && spd > 0
-    ? Math.round(spd * 30)
-    : (Number(t?.avg_sold) || Number(product?.total_sold) || 0);
+  const price = Number(product?.price) || 0;
+  const sales = Math.round((soldPerDayEst(product) || 0) * 30);
   return { price, sales, omset: sales * price };
 }
 function platformFeePerProduct(plat, cat, price){
@@ -11615,26 +12039,29 @@ function revealDdrFees(product) {
    market average price. All three are keyword-level, matching the chart beside
    them and the Kompetitor / Pangsa cards below. */
 
-function ddHeroNumsHtml(stats, peers) {
+function ddHeroNumsHtml(product, peers) {
   const list = peers || [];
   const n = list.length;
   const shopN = new Set(list.map(p => String(p.shop_id))).size;
-  const omsetMo = list.reduce((sum, p) => sum + (Number(estOmsetBulan(p)) || 0), 0);
-  const unitsMo = Math.round(list.reduce((sum, p) => sum + (Number(soldPerDayEst(p)) || 0), 0) * 30);
-  const avgPrice = Number(stats?.mean) || 0;
-  const band = (Number(stats?.p25) > 0 && Number(stats?.p75) > 0)
-    ? `${fmtRpShort(stats.p25)} – ${fmtRpShort(stats.p75)}`
-    : 'Belum cukup data harga';
+  const omsetMo = estOmsetBulan(product);
+  const units = Number(product?.total_sold) || 0;
+  const harga = Number(product?.price) || 0;
+  const reviews = Number(product?.reviews) || 0;
+  const usia = listingUsiaLabel(product);
+  const kw = product?.keyword || '';
+  const honesty = omsetHonesty(product);
   const num = (lbl, val, sub) => `<div class="ddr-hero-num">
       <div class="lbl">${esc(lbl)}</div>
       <div class="val">${val}</div>
       <div class="sub">${esc(sub)}</div>
     </div>`;
   return `<div class="ddr-hero-nums">
-    ${num('Omset / Bulan', omsetMo > 0 ? fmtOmsetHeroAmt(omsetMo) : '—', 'Total pasar')}
-    ${num('Unit Terjual / Bulan', unitsMo > 0 ? fmtSold(unitsMo) : '—', 'Total pasar')}
-    ${num('Harga Rata-rata', avgPrice > 0 ? fmtRp(avgPrice) : '—', band)}
-    <p class="ddr-hero-foot">${n ? `Dari ${n} listing di ${shopN} toko pada keyword ini.` : 'Belum cukup data pasar untuk keyword ini.'}</p>
+    ${num('Harga', harga > 0 ? fmtRp(harga) : '—', 'Harga listing')}
+    ${num('Omset / Bulan', omsetMo > 0 ? fmtOmsetHeroAmt(omsetMo) : '—', honesty.label)}
+    ${num('Unit jual', units > 0 ? fmtSold(units) : '—', 'Total terjual (seumur hidup)')}
+    ${num('Review', reviews > 0 ? fmtSold(reviews) : '0', 'Ulasan listing')}
+    ${num('Usia', usia.text, 'Umur listing, bukan toko')}
+    <p class="ddr-hero-foot">${n ? `Di keyword ${esc(kw)}: ${n} listing / ${shopN} toko` : kw ? `Di keyword ${esc(kw)}.` : ''}</p>
   </div>`;
 }
 
@@ -11662,7 +12089,7 @@ function ddHeroChartHtml(hasTrend) {
 
 function ddHeroRowHtml(product, stats, peers, hasTrend) {
   return `<div class="ddr-hero-row" data-dd-sec="quick_stats">
-    ${ddHeroNumsHtml(stats, peers)}
+    ${ddHeroNumsHtml(product, peers)}
     ${ddHeroChartHtml(hasTrend)}
   </div>`;
 }
@@ -11897,35 +12324,17 @@ function shopeeStoreUrl(shopId) {
   return `https://shopee.co.id/shop/${encodeURIComponent(String(shopId))}`;
 }
 
-function ddKompetitorTableHtml(share, opts = {}) {
-  if (!share.shops.length) return '<p class="dd-sub">Kompetitor belum tersedia untuk keyword ini.</p>';
+function ddKompetitorTableHtml(peers, opts = {}) {
+  const list = (peers || []).map(asListingProduct);
+  if (!list.length) return '<p class="dd-sub">Kompetitor belum tersedia untuk keyword ini.</p>';
+  const highlightKey = opts.highlightKey || (_dd?.product ? prodKey(_dd.product) : '');
+  const initial = opts.initial == null ? 15 : opts.initial;
+  const shown = opts.expanded ? list : list.slice(0, initial);
   const moreId = opts.moreId || 'ddr-komp-more';
-  const rows = share.shops.slice(0, 15).map((s, i) => {
-    const sample = s.sample || {};
-    const sid = sample.shop_id;
-    if (sid == null) return '';
-    const omsetMo = Math.round(s.sold / 6) * Math.round(s.omset / Math.max(1, s.sold)); // ≈ sold/6 × avg price
-    const reviews = Number(sample.reviews) || 0;
-    const sold = Number(s.sold) || 0;
-    const avgPrice = sold > 0 ? Math.round(s.omset / sold) : (Number(sample.price) || 0);
-    // Rows are inert now — the only affordance is the outbound store link, so
-    // nothing here carries a product snapshot or a role="link".
-    return `<tr${i >= 5 ? ' data-komp-extra hidden' : ''}>
-      <td class="tr-rank">${i + 1}</td>
-      <td><div class="tr-prod"><span class="comp-av">${s.img ? `<img src="${esc(imgThumb(s.img))}" alt="" loading="lazy" decoding="async">` : esc((s.name || 'T').charAt(0).toUpperCase())}</span><div class="tr-prod-name">${esc((s.name || 'Toko').slice(0, 28))}</div></div></td>
-      <td>${omsetMo ? fmtRpShort(omsetMo) : '—'}</td>
-      <td>${reviews ? fmtSold(reviews) : '0'}</td>
-      <td>${sold ? fmtSold(sold) : '0'}</td>
-      <td>${avgPrice ? fmtRp(avgPrice) : '—'}</td>
-      <td><canvas class="spark spark-komp" data-shop-spark="${esc(String(sid))}" aria-label="Tren omset 4 minggu terakhir"></canvas></td>
-      <td>${s.share}%</td>
-      <td><a class="komp-store-link" href="${esc(shopeeStoreUrl(sid))}" target="_blank" rel="noopener noreferrer">Buka Toko ${KOMP_LINK_ICO}</a></td>
-    </tr>`;
-  }).join('');
-  return `<div class="ddr-table-wrap"><table class="ddr-table ddr-komp-table">
-    <thead><tr><th>#</th><th>Toko</th><th>Omset / Bln (est.)</th><th>Review</th><th>Unit Jual</th><th>Harga</th><th>Tren 4 Minggu</th><th>Market Share</th><th></th></tr></thead>
-    <tbody>${rows}</tbody></table></div>
-    ${share.shops.length > 5 ? `<button type="button" class="ans-cta" id="${esc(moreId)}">Lihat Semua ${Math.min(15, share.shops.length)} Kompetitor</button>` : ''}`;
+  return listingRowsHtml(shown, { highlightKey, compact: !!opts.compact, keepChat: true })
+    + (list.length > initial && !opts.expanded
+      ? `<button type="button" class="ans-cta" id="${esc(moreId)}">Lihat semua ${list.length} listing</button>`
+      : '');
 }
 
 /** 4-week omset sparkline per competitor row, cut from the keyword history.
@@ -11947,12 +12356,18 @@ function wireKompClicks(root, peers, opts = {}) {
   const more = root.querySelector('#ddr-komp-more, #side-komp-more');
   more?.addEventListener('click', (e) => {
     e.stopPropagation();
-    root.querySelectorAll('[data-komp-extra]').forEach(tr => { tr.hidden = false; });
+    const card = more.closest('.ddr-card, #side-body-komp') || root;
     more.remove();
-    // The rows that were hidden have zero-size canvases until they are shown.
-    drawKompSparks(root, opts.history);
+    const wrap = card.querySelector('.lrow-wrap');
+    if (wrap) {
+      wrap.outerHTML = listingRowsHtml((peers || []).map(asListingProduct), {
+        highlightKey: _dd?.product ? prodKey(_dd.product) : '',
+        keepChat: true,
+      });
+    }
+    bindListingRows(card);
   });
-  drawKompSparks(root, opts.history);
+  bindListingRows(root);
 }
 
 function ddKeywordTableHtml(kwRows, sampleN) {
@@ -12347,25 +12762,8 @@ async function openDeepDive(product, ddOpts = {}) {
   root.innerHTML = garudaLoadingHtml('Memuat data Deep Dive…');
   scrollPanelToTop();
 
-  // There is no listing-level report any more. A click on one product opens the
-  // MARKET that product sells in — with the product itself still on the page:
-  // its photo leads the gallery, its price drives the fee strip, its item/shop
-  // ids stay the thread's identity. One listing's numbers were the most
-  // confident thing on the old page and the least reliable; the market is what
-  // LarisID actually measures.
-  //
-  // Placed here rather than at each call site because every entry point —
-  // product cards, tracker rows, compare, the agent's listing rows, a restored
-  // history entry — funnels through openDeepDive.
-  if (!product._ptype) {
-    const t = await pasarTypeForProduct(product);
-    if (t) {
-      // _fromListing: this market was entered from one specific listing, which
-      // is what keeps photo analysis (a per-listing tool) mounted below.
-      product = { ...product, _ptype: t, _fromListing: true, _niche: product._niche || typeNiche(t) };
-      state.deepdiveProduct = product;
-    }
-  }
+  product = { ...product, _fromListing: true };
+  state.deepdiveProduct = product;
 
   const kw = product.keyword || '';
   const cacheKey = ddCacheKey(product);
@@ -12389,7 +12787,7 @@ async function openDeepDive(product, ddOpts = {}) {
           .ilike('keyword', kw)
           .eq('is_offtopic', false)
           .order('total_sold', { ascending: false })
-          .limit(60);
+          .limit(120);
         peers = data || [];
       }
     } catch (_) {}
@@ -12466,13 +12864,20 @@ async function openDeepDive(product, ddOpts = {}) {
     chat = null;
     state.activeChatId = null;
   }
-  const title = (product._ptype ? typeTitle(kw) : (product.product_name || product.keyword || 'Produk')).slice(0, 60);
+  const title = (kw || product.product_name || 'Produk').slice(0, 60);
   const baseCtx = {
     kind: 'product',
     keyword: kw,
     item_id: product.item_id,
     shop_id: product.shop_id,
     product,
+    focus: {
+      item_id: product.item_id,
+      shop_id: product.shop_id,
+      product_name: product.product_name,
+      price: product.price,
+      total_sold: product.total_sold,
+    },
   };
   if (!chat) {
     if (currentUser && _supabase) {
@@ -12517,9 +12922,8 @@ async function openDeepDive(product, ddOpts = {}) {
         item_id: r.item_id,
         shop_id: r.shop_id,
       })),
+      focus: baseCtx.focus,
     };
-    // Drilling into one of a market's sellers must not rename the thread —
-    // the conversation is still about the market, not that one listing.
     if (!ddOpts.keepChat) chat.title = title;
     saveLocalState();
     renderChatList();
@@ -12534,6 +12938,9 @@ async function openDeepDive(product, ddOpts = {}) {
   // Server series first; the client path stays as the fallback while this rolls out.
   const weeklyAll = (await ddServerWeeklySeries(product, 119, { forceKeyword: true }))
     || ddWeeklySeries(history);
+  const productWeekly = await ddServerWeeklySeries(product, 119);
+  const productSeries = (productWeekly && productWeekly.filter(w => w.units || w.omset).length >= 2)
+    ? ddLast6Weeks(productWeekly) : [];
   // Nothing on this chart comes from listing_weekly/keyword_weekly — that table
   // is a different estimator (nowcast/peer) over a different population, and it
   // drew a one-week spike wherever it was spliced in. It was pulled off the
@@ -12575,7 +12982,7 @@ async function openDeepDive(product, ddOpts = {}) {
   // Trend-chart state: pasar dual-axis series plus top-10 store lines.
   // Toggling re-reads this — nothing is refetched.
   const topShops = hasTrend ? await ddTopShopWeeklySeries(share, history) : [];
-  _dd.trend = { series, fcWeek, topShops, view: 'pasar' };
+  _dd.trend = { series, fcWeek, topShops, view: 'pasar', productSeries };
   const bandLo = stats.p25, bandHi = stats.p75;
   const segLeft = stats.max > stats.min ? Math.round((bandLo - stats.min) / (stats.max - stats.min) * 100) : 0;
   const segWidth = stats.max > stats.min ? Math.max(4, Math.round((bandHi - bandLo) / (stats.max - stats.min) * 100)) : 100;
@@ -12586,7 +12993,7 @@ async function openDeepDive(product, ddOpts = {}) {
         <h3>Top Kompetitor</h3>
         <button type="button" class="ddr-panel-link" id="ddr-komp-panel">Lihat di panel</button>
       </div>
-      ${ddKompetitorTableHtml(share)}
+      ${ddKompetitorTableHtml(peers, { highlightKey: prodKey(product) })}
     </div>`;
 
   // Record this view (anon included) BEFORE reading the count back, so the
@@ -12607,8 +13014,8 @@ async function openDeepDive(product, ddOpts = {}) {
       </div>
       <div class="ddr-head-main">
         <div class="ddr-title-row">
-          <span class="ddr-level ${product._ptype ? 'ddr-level-pasar' : 'ddr-level-produk'}" title="${product._ptype ? 'Angka di halaman ini menggambarkan seluruh pasar' : 'Angka di halaman ini hanya untuk satu listing penjual'}">${product._ptype ? 'PASAR' : 'PRODUK'}</span>
-          <h1>${esc(product._ptype ? typeTitle(kw) : (product.product_name || kw || 'Produk'))}</h1>
+          <span class="ddr-level ddr-level-produk" title="Angka di hero ini untuk satu listing penjual">PRODUK</span>
+          <h1>${esc(product.product_name || kw || 'Produk')}</h1>
           <span class="badge ${scoreInfo.cls}">${scoreInfo.label}</span>
         </div>
         <p class="ddr-cat">${esc(ddKotaLabel(product, peers))}</p>
@@ -12628,6 +13035,7 @@ async function openDeepDive(product, ddOpts = {}) {
     ${isDesktopDeepDive ? kompCardHtml : ''}
     ${ddAksiCepatHtml(product)}
     ${ddAlertCardHtml(product)}
+    <h2 class="ddr-konteks-head">Konteks pasar: ${esc(kw || 'keyword ini')}</h2>
     <div class="ddr-hscroll ddr-hscroll--graphs2">
       <div class="ddr-card" data-dd-sec="pangsa">
         <h3>Distribusi Pangsa Pasar</h3>
@@ -12971,9 +13379,11 @@ function ddTrendLegendHtml() {
       </button>`).join('')}</div>
       <span class="dd-sub ddr-legend-note">Perkiraan mengisi minggu tanpa scrape.${broken ? ' Skala terputus — toko outlier di pita atas.' : ''}</span>`;
   }
+  const hasProd = (t.productSeries || []).filter(w => w.units || w.omset).length >= 2;
   return `<span class="row"><span class="swatch" style="background:#B5202A"></span>Omset / minggu (Rp)</span>
     <span class="row"><span class="swatch" style="background:#2563EB"></span>Unit / minggu</span>
-    <span class="row"><span class="swatch" style="background:#16A34A"></span>Perkiraan</span>`;
+    <span class="row"><span class="swatch" style="background:#16A34A"></span>Perkiraan</span>
+    ${hasProd ? '<span class="row"><span class="swatch" style="background:#0F172A"></span>Produk ini</span>' : ''}`;
 }
 
 function ddTrendChartEmptyNote(show, text) {
@@ -13189,6 +13599,22 @@ function ddRenderTrendChart() {
           borderDash: [5, 5], borderWidth: 2, tension: .35, pointRadius: 3,
           spanGaps: true, yAxisID: 'y2',
         },
+        ...((() => {
+          const prodByTs = new Map((t.productSeries || []).map(w => [w.ts, w]));
+          const prodOmset = series.map(w => prodByTs.has(w.ts) ? (prodByTs.get(w.ts).omset || 0) : null);
+          if (prodOmset.filter(v => v != null).length < 2) return [];
+          return [{
+            label: 'Produk ini (omset / minggu)',
+            data: prodOmset,
+            borderColor: '#0F172A',
+            borderDash: [4, 4],
+            borderWidth: 2,
+            tension: .35,
+            pointRadius: 3,
+            spanGaps: true,
+            yAxisID: 'y',
+          }];
+        })()),
       ],
     },
     options: {
@@ -14717,7 +15143,12 @@ async function paintAgentMarketReply(chat, loading, replyObj, fallbackTypes) {
 
   let tail = '';
   if (offer) tail += pendingOfferChipsHtml(offer);
-  if (fresh.length) tail += `<div class="card-grid">${marketCardsHtml(fresh)}</div>`;
+  if (fresh.length) {
+    const listings = await fetchListingsForKeywords(fresh.map(t => t.keyword), 12, 80);
+    tail += listings.length
+      ? listingRowsHtml(listings, { compact: true })
+      : `<div class="card-grid">${marketCardsHtml(fresh)}</div>`;
+  }
 
   const bubble = loading?.querySelector?.('.msg-bubble') || loading;
   // The run panel is live DOM built node by node — writing bubble.innerHTML here
@@ -14727,6 +15158,7 @@ async function paintAgentMarketReply(chat, loading, replyObj, fallbackTypes) {
   if (answerEl) answerEl.innerHTML = answerHtml + tail;
   else if (bubble) bubble.innerHTML = answerHtml + tail;
   bindTypeCards(loading);
+  bindListingRows(loading);
   bindSearchSuggests(loading);
   void hydrateProdCardsIn();
   // Persisted copy: the settled run (no spinners, no reasoning trace) plus the
@@ -15540,6 +15972,7 @@ function createAgentRun(bubble, opts = {}) {
     // the existing binders make the shown work clickable for free.
     bindTypeCards(out);
     bindProductCards(out);
+    bindListingRows(out);
     scroll();
   }
 
@@ -15697,15 +16130,16 @@ function _agentListingRowHtml(r) {
 }
 
 function _agentListingViewHtml(view) {
-  const rows = (view.rows || []).slice(0, 8);
+  const rows = (view.rows || []).slice(0, 8).map(asListingProduct);
   if (!rows.length) return `<span class="agent-tool-empty">${esc(view.hint || 'Tidak ada listing yang cocok.')}</span>`;
+  rememberProducts(rows);
   const r = view.ringkasan || null;
   const sum = r
     ? `<div class="agent-tool-sum">Median ${esc(fmtRpShort(r.harga_median))} · ${esc(fmtSold(r.terjual_total))} terjual total`
       + `${r.lokasi_teratas && r.lokasi_teratas[0] ? ` · terbanyak dari ${esc(r.lokasi_teratas[0].lokasi)}` : ''}</div>`
     : '';
   const cap = view.n && view.n > rows.length ? `<div class="agent-tool-more">${esc(fmtIdCompact(view.n))} listing cocok, ${rows.length} teratas ditampilkan.</div>` : '';
-  return `${sum}<div class="agent-listings">${rows.map(_agentListingRowHtml).join('')}</div>${cap}`;
+  return `${sum}${listingRowsHtml(rows, { compact: true })}${cap}`;
 }
 
 function _agentStatHtml(label, value) {
@@ -16712,10 +17146,17 @@ function sortTypeRows(rows, mode, hasQuery) {
 
 function sortDirRows(rows, mode) {
   const out = (rows || []).slice();
+  const age = p => {
+    const d = listingAgeDays(p);
+    return d == null ? 1e12 : d;
+  };
   if (mode === 'termurah') out.sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
   else if (mode === 'termahal') out.sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0));
   else if (mode === 'naik_daun') out.sort((a, b) => (Number(b.sold_per_day) || 0) - (Number(a.sold_per_day) || 0));
-  else out.sort((a, b) => (Number(b.total_sold) || 0) - (Number(a.total_sold) || 0)); // terlaris
+  else if (mode === 'review') out.sort((a, b) => (Number(b.reviews) || 0) - (Number(a.reviews) || 0));
+  else if (mode === 'terbaru') out.sort((a, b) => age(a) - age(b));
+  else if (mode === 'terlaris') out.sort((a, b) => (Number(b.total_sold) || 0) - (Number(a.total_sold) || 0));
+  else out.sort((a, b) => (Number(estOmsetBulan(b)) || 0) - (Number(estOmsetBulan(a)) || 0)); // omset default
   return out;
 }
 
@@ -16819,7 +17260,7 @@ function updateDirCompareBar() {
 
 function refreshComparePickCards() {
   const keys = new Set((state.comparePick?.selected || []).map(prodKey));
-  document.querySelectorAll('.prod-card--pick').forEach(el => {
+  document.querySelectorAll('[data-prod].is-pickable, .prod-card--pick').forEach(el => {
     const on = keys.has(el.getAttribute('data-prod'));
     el.classList.toggle('is-picked', on);
     el.setAttribute('aria-pressed', on ? 'true' : 'false');
@@ -16898,7 +17339,7 @@ async function fetchPeersForCompare(product) {
       .ilike('keyword', kw)
       .eq('is_offtopic', false)
       .order('total_sold', { ascending: false })
-      .limit(60);
+      .limit(120);
     peers = data || [];
   } catch (_) {}
   try {
@@ -17145,24 +17586,27 @@ function updateDirCount(total, shown, nearby) {
   const el = $('dir-count');
   if (!el) return;
   if (!total) { el.textContent = ''; return; }
-  el.textContent = nearby
-    ? `Menampilkan ${shown} dari ${total} pasar terdekat`
+  const unsold = Number(state.dirUnsold) || 0;
+  const base = nearby
+    ? `Menampilkan ${shown} dari ${total} produk terdekat`
     : `Menampilkan ${shown} dari ${total} produk`;
+  el.textContent = unsold > 0
+    ? `${base} · ${unsold.toLocaleString('id-ID')} listing belum terjual tidak ditampilkan`
+    : base;
 }
 
 function updateDirHeading() {
   const h = $('dir-heading');
   if (!h) return;
   const q = (state.dirSearch || '').trim();
+  const n = (state.dirRows || []).length;
   if (q) {
-    h.textContent = `Hasil: ${q}`;
+    h.textContent = `Hasil: ${q}${n ? ` · ${n} produk` : ''}`;
     return;
   }
-  // Default home (hero + kategori + curated rows) demotes this to the label
-  // above the 30-card grid. Onboarding's auto-category still counts as home.
   if (isDirHomeBrowse()) {
     const userCity = state.onboarding?.city || '';
-    h.textContent = userCity ? `Yang Laku di ${userCity}` : 'Semua Pasar';
+    h.textContent = userCity ? `Yang Laku di ${userCity}` : 'Semua produk';
     return;
   }
   const cat = primaryDirCat();
@@ -17175,7 +17619,7 @@ function updateDirHeading() {
     return;
   }
   const userCity = state.onboarding?.city || '';
-  h.textContent = userCity ? `Yang Laku di ${userCity}` : 'Tipe Produk';
+  h.textContent = userCity ? `Yang Laku di ${userCity}` : 'Produk';
 }
 
 /* Default Cari Produk browse: no search, no explicit category/subgroup, not
@@ -17195,13 +17639,15 @@ function resetDirectoryToHome() {
   state.dirSub = null;
   state.dirSearch = '';
   state.dirPage = 1;
-  state.dirSort = 'sesuai';
+  state.dirSort = 'omset';
+  state.dirChipKw = '';
+  state.dirZoneKeys = null;
   state.dirCatsFromOnboarding = false;
   state.dirNearby = false;
   const searchInp = $('results-bar-input');
   if (searchInp) searchInp.value = '';
   const host = $('dir-filters-range');
-  try { host?._dirApi?.setValue?.('sesuai'); } catch (_) {}
+  try { host?._dirApi?.setValue?.('omset'); } catch (_) {}
   try { host?._dirApi?.setCategories?.([]); } catch (_) {}
 }
 
@@ -17267,99 +17713,54 @@ function applyDirHomeSort(mode) {
   });
 }
 
-/* Bandingkan Pasar (js/pasar-compare.js) — ranked board over a set of
- * product_types_v rows. Shared by the directory home (trending pool), a
- * category / subgroup page and a search result. Row click = the same Deep Dive
- * a type card opens. Spec: docs/pasar-compare.md. */
-function pasarCompareOpts(title, subtitle, surface) {
-  return {
-    title,
-    subtitle,
-    supabase: _supabase,
-    limit: 20,
-    onOpen: (t) => {
-      const p = typeRepProduct(t);
-      rememberProducts([p]);
-      if (userNeverDeepDived()) {
-        void logUserEvent('dir_first_click_deepdive', { ui: 'gpt', keyword: t.keyword, surface });
-      }
-      void logUserEvent('ptype_open', { ui: 'gpt', keyword: t.keyword, city: 'ALL', surface });
-      void openDeepDive(p);
-    },
-    onEvent: (name, meta) => { void logUserEvent(name, { ui: 'gpt', surface, ...(meta || {}) }); },
-  };
-}
-
-function mountPasarCompare(host, types, title, subtitle, surface) {
-  if (!host) return;
-  if (!window.PasarCompare || typeof PasarCompare.mount !== 'function') {
-    host.innerHTML = '';
-    host.hidden = true;
-    return;
-  }
-  void PasarCompare.mount(host, types, pasarCompareOpts(title, subtitle, surface));
-}
-
-function clearPasarCompare(host) {
-  if (!host) return;
-  if (window.PasarCompare && typeof PasarCompare.clear === 'function') PasarCompare.clear(host);
-  else { host.innerHTML = ''; host.hidden = true; }
-}
-
 async function syncDirHome() {
   const trend = $('dir-home-trending');
   const feat = $('dir-home-feature');
-  const compare = $('dir-home-compare');
+  if (feat) feat.hidden = true;
+  if (!trend) return;
   const show = isDirHomeBrowse();
   const hasLib = !!(window.LarisGptDirHome && window.LarisGptDirHome.render);
-  if (!trend || !feat) return;
   if (!show || !hasLib) {
     trend.hidden = true;
-    feat.hidden = true;
-    clearPasarCompare(compare);
+    if (feat) feat.hidden = true;
     return;
   }
   trend.hidden = false;
-  feat.hidden = false;
   const homeApi = {
     trendingHost: trend,
-    featureHost: feat,
-    bindCards: bindTypeCards,
-    onMeledak: () => applyDirHomeSort('meledak'),
-    onPencarian: () => applyDirHomeSort('terlaris_minggu'),
+    featureHost: document.createElement('div'),
+    bindCards: null,
+    onMeledak: () => {},
+    onPencarian: () => {},
     onEvent: (name, meta) => { void logUserEvent(name, { ui: 'gpt', ...(meta || {}) }); },
   };
   window.LarisGptDirHome.render({ ...homeApi, trendHtml: '', meledakHtml: '', ready: false });
-  if (compare && window.PasarCompare && !compare.querySelector('[data-pc-board]')) {
-    PasarCompare.skeleton(compare, 'Mana yang paling mudah dimulai?');
-  }
   const pool = await loadDirHomePool();
   if (!isDirHomeBrowse()) {
     trend.hidden = true;
-    feat.hidden = true;
-    clearPasarCompare(compare);
     return;
   }
-  const { trending, meledak } = pickDirHomeRows(pool);
-  registerTypes(trending.concat(meledak));
+  const { trending } = pickDirHomeRows(pool);
+  registerTypes(trending);
   window.LarisGptDirHome.render({
     ...homeApi,
-    trendHtml: homeCardsHtml(trending, 'trend'),
-    meledakHtml: homeCardsHtml(meledak, 'meledak'),
+    trendHtml: (trending || []).map(t =>
+      `<button type="button" class="lrow-chip${state.dirChipKw === t.keyword ? ' is-on' : ''}" data-home-kw="${esc(t.keyword)}">${esc(t.keyword)}</button>`
+    ).join(''),
+    meledakHtml: '',
     ready: true,
   });
-  // All trending pasars (the pool the rail draws from), capped at 20, ranked
-  // by Skor Mudah Masuk — the rail says what is selling, this says where a new
-  // seller can realistically start.
-  const comparePool = (pool || []).slice(0, 20);
-  registerTypes(comparePool);
-  mountPasarCompare(
-    compare,
-    comparePool,
-    'Mana yang paling mudah dimulai?',
-    `Pasar trending minggu ini diurutkan dari yang paling mudah dimasuki penjual baru. Bukan yang paling ramai — yang paling masuk akal untuk memulai.`,
-    'dir_home',
-  );
+  if (feat) feat.hidden = true;
+  trend.querySelectorAll('[data-home-kw]').forEach(btn => {
+    if (btn.dataset.boundHomeKw) return;
+    btn.dataset.boundHomeKw = '1';
+    btn.addEventListener('click', () => {
+      state.dirChipKw = btn.getAttribute('data-home-kw') || '';
+      state.dirPage = 1;
+      state.dirZoneKeys = null;
+      paintDirectoryTable({ remountPeta: true });
+    });
+  });
 }
 
 /* Header carousel — default browse state only. Hidden the moment a search,
@@ -17399,12 +17800,12 @@ async function openDirectory() {
   const filtersHost = $('dir-filters-range');
   if (filtersHost && window.LarisGptDirFilters) {
     window.LarisGptDirFilters.renderControls(filtersHost, {
-      value: state.dirSort || 'sesuai',
+      value: state.dirSort || 'omset',
       onSortChange: (v) => {
         state.dirSort = v;
         state.dirPage = 1;
         void logUserEvent('dir_filter', { ui: 'gpt', kind: 'sort', value: v });
-        void renderDirectory();
+        paintDirectoryTable({ remountPeta: false });
       },
     });
   }
@@ -17427,139 +17828,160 @@ async function openDirectory() {
   await renderDirectory();
 }
 
+let _dirRenderSeq = 0;
+
+function dirPetaExtra() {
+  return {
+    list: false,
+    onHighlight: (listing) => {
+      const grid = $('dir-grid');
+      if (!grid) return;
+      const key = listing ? prodKey(listing) : '';
+      grid.querySelectorAll('.lrow').forEach(tr => {
+        const on = !!(key && tr.getAttribute('data-prod') === key);
+        tr.classList.toggle('is-hl', on);
+        if (on) tr.scrollIntoView({ block: 'nearest' });
+      });
+    },
+    onZoneFilter: (_id, list) => {
+      state.dirZoneKeys = list ? new Set(list.map(prodKey)) : null;
+      paintDirectoryTable();
+    },
+  };
+}
+
+function mountDirPeta() {
+  const host = $('dir-peta');
+  if (!host || !window.PetaPeluang) return;
+  const q = (state.dirSearch || '').trim() || primaryDirCat() || 'Peta Peluang';
+  const chip = state.dirChipKw || '';
+  let pts = state.dirPoolListings || [];
+  if (chip) pts = pts.filter(r => (r.keyword || '') === chip);
+  pts = pts.slice(0, 200);
+  if (pts.length < 2) {
+    if (host._petaCtl) { host._petaCtl.destroy(); host._petaCtl = null; }
+    host.innerHTML = '';
+    host.hidden = true;
+    return;
+  }
+  host.hidden = false;
+  mountPeta(host, q, pts, dirPetaExtra());
+}
+
+function paintDirectoryTable(opts = {}) {
+  const grid = $('dir-grid');
+  const pager = $('dir-pager');
+  const chips = $('dir-chips');
+  if (!grid) return;
+  const picking = !!state.comparePick;
+  const filtered = sortDirRows(
+    filterListingPool(state.dirPoolListings, state.dirChipKw || '', state.dirZoneKeys),
+    state.dirSort || 'omset',
+  );
+  state.dirRows = filtered;
+  if (state.dirPage > 1 && !currentUser) {
+    openAuthModal('signup', 'gpt_gate_directory');
+    state.dirPage = 1;
+  }
+  const start = (state.dirPage - 1) * PAGE_SIZE;
+  const slice = filtered.slice(start, start + PAGE_SIZE);
+  const q = (state.dirSearch || '').trim();
+  const emptyMsg = q
+    ? `<p class="dd-sub">Belum ketemu produk untuk “<strong>${esc(q)}</strong>”. Coba kata kunci lain.</p>`
+    : '<p class="dd-sub">Belum ketemu produk untuk filter ini.</p>';
+  const nearbyLead = state.dirNearby
+    ? `<p class="dd-sub dir-nearby-lead">Belum ketemu produk untuk “<strong>${esc(q)}</strong>”. Ini produk dari pasar terdekat:</p>`
+    : '';
+  if (chips) {
+    const html = keywordChipsHtml(state.dirTypes, state.dirChipKw || '', { showSemua: true });
+    chips.innerHTML = html;
+    chips.hidden = !html;
+    chips.querySelectorAll('[data-lrow-kw]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.dirChipKw = btn.getAttribute('data-lrow-kw') || '';
+        state.dirPage = 1;
+        state.dirZoneKeys = null;
+        paintDirectoryTable({ remountPeta: true });
+      });
+    });
+  }
+  grid.innerHTML = slice.length
+    ? nearbyLead + listingRowsHtml(slice, {
+        pick: picking,
+        highlightKey: picking ? '' : '',
+        sort: state.dirSort || 'omset',
+      }) + listingUnsoldNote(state.dirUnsold)
+    : (nearbyLead + emptyMsg);
+  bindListingRows(grid, {
+    onSort: (mode) => {
+      state.dirSort = mode;
+      state.dirPage = 1;
+      try { $('dir-filters-range')?._dirApi?.setValue?.(mode); } catch (_) {}
+      paintDirectoryTable();
+    },
+    onHover: (key) => {
+      const ctl = $('dir-peta')?._petaCtl;
+      ctl?.hoverKey?.(key);
+    },
+  });
+  if (picking) refreshComparePickCards();
+  renderDirPager(pager, filtered.length);
+  updateDirCount(filtered.length, slice.length, state.dirNearby);
+  updateDirHeading();
+  if (opts.remountPeta !== false) mountDirPeta();
+}
+
 async function renderDirectory() {
   syncDirHero();
   void syncDirHome();
-  // Compare-pick needs a specific LISTING (not a type) — keep the old grid there.
-  if (state.comparePick) {
-    renderDirCatRail();
-    return renderDirectoryListings();
-  }
   const grid = $('dir-grid');
   const pager = $('dir-pager');
   if (!grid) return;
   renderDirCatRail();
 
   const cats = state.dirCats || [];
-  const cities = state.dirCities || [];
   const q = (state.dirSearch || '').trim();
-  if (state._petaQuery !== q) {
-    state._petaQuery = q;
-  }
-  // Subgroup is filtered server-side against keyword_subgroup now, not by a
-  // client-side keyword substring test. Only applied when exactly one category
-  // is selected.
   const sub = primaryDirCat() ? (state.dirSub || null) : null;
-  // Plain default view (no search/category/subgroup) is the one that used to
-  // open on a bare "Memuat…" — show the pre-warmed assortment instead while
-  // the real, filtered fetch below resolves and replaces it. Any filtered
-  // request keeps the old loading text since it has nothing instant to show.
-  if (!q && !cats.length && !sub && _dirInstantPool.length) {
-    grid.innerHTML = marketCardsHtml(_dirInstantPool);
-    bindTypeCards(grid);
-  } else {
-    grid.innerHTML = garudaLoadingHtml('Memuat…');
-    const petaHost = $('dir-peta');
-    if (petaHost && window.PasarCompare && typeof PasarCompare.skeleton === 'function') {
-      if (petaHost._petaCtl) { petaHost._petaCtl.destroy(); petaHost._petaCtl = null; }
-      PasarCompare.skeleton(petaHost, 'Mana yang paling mudah dimulai?');
-    }
-  }
-  let types;
-  let nearby = false;
-  // A sub-group chip (Sepeda, Camping, …) is a browse filter on product_types_v.
-  // If a stale results-bar query is still set, it used to win and could blank the
-  // grid even though the subgroup has plenty of rows in the DB.
-  if (q && !sub) {
-    types = await searchProductTypes(q, cities, 60);
-    // Text search must ignore category/subgroup chips. Soccer shoes live in
-    // "Sepatu, Tas & Aksesoris", so "sepatu bola" + Olahraga/Fashion selected
-    // used to hard-filter to 0 and show "Belum ketemu pasar". Same rule as
-    // dscFetchPage (Discover listings).
-    if (!types.length) {
-      types = await searchNearbyProductTypes(q, cities, 60);
-      nearby = !!types.length;
-    }
-  } else {
-    types = await fetchProductTypes(cities, cats, 1000, sub);
-    // mv missing/empty (e.g. refresh failed): lift the listing pool back up to
-    // markets rather than degrading to a listing grid. The directory is a
-    // top-level surface, and single listings only belong under a market.
-    if (!types.length && !sub) {
-      const primaryCity = cities.length === 1 ? cities[0] : '';
-      const pool = primaryCity
-        ? await fetchListingsCityCat(expandCityLocations(primaryCity), cats, 200)
-        : mergePool([], await fetchNaikDaunGlobal(200));
-      types = await typesForListings(pool, primaryCity, 60);
-    }
-  }
-  types = sortTypeRows(types, state.dirSort || 'sesuai', !!q);
-  // Pin the category's weekly winner to index 0 before pagination — otherwise
-  // omset sort leaves the gold card in slot 2 (or off page 1 entirely).
-  // Nearby cards are "pasar terdekat", not this query's weekly winner.
-  if (!nearby) types = markTerlarisMinggu(types);
-  state.dirTypes = types;
-  state.dirNearby = nearby;
-  registerTypes(types);
+  const home = isDirHomeBrowse();
+  const seq = ++_dirRenderSeq;
 
-  if (state.dirPage > 1 && !currentUser) {
-    openAuthModal('signup', 'gpt_gate_directory');
+  grid.innerHTML = garudaLoadingHtml('Memuat…');
+  const petaHost = $('dir-peta');
+  if (petaHost && window.PetaPeluang && typeof PetaPeluang.skeleton === 'function') {
+    petaHost.hidden = false;
+    PetaPeluang.skeleton(petaHost, q || primaryDirCat() || 'Peta Peluang');
+  }
+
+  const pool = await resolveListingPool({ q, cats, sub, home });
+  if (seq !== _dirRenderSeq) return;
+  const stale = (state.dirSearch || '').trim() !== q
+    || (state.dirCats || []).join('|') !== cats.join('|')
+    || (primaryDirCat() ? (state.dirSub || null) : null) !== sub;
+  if (stale) return;
+
+  const scopeChanged = (state._dirPoolQ || '') !== q
+    || (state._dirPoolCats || '') !== cats.join('|')
+    || (state._dirPoolSub || null) !== sub;
+  state._dirPoolQ = q;
+  state._dirPoolCats = cats.join('|');
+  state._dirPoolSub = sub;
+  if (scopeChanged) {
+    state.dirChipKw = q ? (pool.primaryKw || '') : '';
+    state.dirZoneKeys = null;
     state.dirPage = 1;
   }
-  const start = (state.dirPage - 1) * PAGE_SIZE;
-  const slice = types.slice(start, start + PAGE_SIZE);
-  const emptyMsg = q
-    ? `<p class="dd-sub">Belum ketemu pasar untuk "<strong>${esc(q)}</strong>". Coba kata kunci lain.</p>`
-    : '<p class="dd-sub">Tidak ada tipe produk untuk filter ini.</p>';
-  const nearbyLead = nearby
-    ? `<p class="dd-sub dir-nearby-lead">Belum ketemu pasar untuk "<strong>${esc(q)}</strong>". Ini pasar terdekat yang punya produk mirip:</p>`
-    : '';
-  const siblings = slice.map(t => t.keyword);
-  const usedImgs = new Set();
-  const cards = slice.map((t, i) => typeCardHtml(t, start + i, i, siblings, usedImgs)).join('');
-  grid.innerHTML = cards ? (nearbyLead + cards) : emptyMsg;
-  bindTypeCards(grid);
+
+  state.dirTypes = pool.keywords;
+  state.dirNearby = pool.nearby;
+  state.dirPoolListings = pool.listings;
+  state.dirUnsold = pool.unsold || 0;
+  rememberProducts(pool.listings);
+
   if (state._dirSkipScroll) state._dirSkipScroll = false;
   else scrollPanelToTop();
-  renderDirPager(pager, types.length);
-  updateDirCount(types.length, slice.length, nearby);
-  if (q && !types.length) {
+  paintDirectoryTable({ remountPeta: true });
+  if (q && !pool.listings.length) {
     void logUncoveredSearch(q, { category: detectSearchDomain(q.toLowerCase())?.id || null });
-  }
-  // Bandingkan Pasar replaces the listing scatter (Peta Peluang) here. It
-  // compares the top 20 pasars of whatever the grid shows — a category, a
-  // subgroup or a search — so the reader sees where to start before the cards.
-  // Home has its own board under Trending Sekarang (syncDirHome).
-  {
-    const host = $('dir-peta');
-    const pasarHead = $('dir-pasar-head');
-    // Two renders can overlap (home fetch still in flight when a search lands).
-    // Only the render that still matches the live state may touch the board.
-    const stale = (state.dirSearch || '').trim() !== q
-      || (state.dirCats || []).join('|') !== cats.join('|')
-      || (primaryDirCat() ? (state.dirSub || null) : null) !== sub;
-    if (host && !stale) {
-      if (host._petaCtl) { host._petaCtl.destroy(); host._petaCtl = null; }
-      const scoped = !!(q || cats.length || sub);
-      if (!scoped) {
-        clearPasarCompare(host);
-        if (pasarHead) pasarHead.hidden = true;
-      } else {
-        if (pasarHead) pasarHead.hidden = !q;
-        const primaryCat = primaryDirCat();
-        const scopeLabel = q
-          ? `“${q}”`
-          : (sub ? `${sub}` : (primaryCat || (cats.length ? cats.join(', ') : 'pasar ini')));
-        const title = q
-          ? `Mana yang paling mudah dimulai untuk ${scopeLabel}?`
-          : `Mana yang paling mudah dimulai di ${scopeLabel}?`;
-        const subtitle = nearby
-          ? `Pasar terdekat yang punya produk mirip, diurutkan dari yang paling mudah dimasuki penjual baru.`
-          : `Sampai 20 pasar teratas diurutkan dari yang paling mudah dimasuki penjual baru — bukan yang paling ramai.`;
-        mountPasarCompare(host, types.slice(0, 20), title, subtitle, q ? 'dir_search' : 'dir_category');
-      }
-    }
-    state._petaListings = [];
   }
 }
 
@@ -17572,86 +17994,19 @@ function renderDirPager(pager, total) {
     <span class="dd-sub">Halaman ${state.dirPage} / ${totalPages}</span>
     <button type="button" class="btn-ghost" id="dir-next" ${state.dirPage >= totalPages ? 'disabled' : ''}>Berikutnya</button>
   `;
-  $('dir-prev')?.addEventListener('click', () => { state.dirPage--; void renderDirectory(); });
+  $('dir-prev')?.addEventListener('click', () => { state.dirPage--; paintDirectoryTable({ remountPeta: false }); });
   $('dir-next')?.addEventListener('click', () => {
     if (!currentUser && state.dirPage >= 1) {
       openAuthModal('signup', 'gpt_gate_directory');
       return;
     }
     state.dirPage++;
-    void renderDirectory();
+    paintDirectoryTable({ remountPeta: false });
   });
 }
 
 async function renderDirectoryListings() {
-  const grid = $('dir-grid');
-  const pager = $('dir-pager');
-  if (!grid) return;
-  grid.innerHTML = garudaLoadingHtml('Memuat…');
-
-  const cats = state.dirCats || [];
-  const cities = state.dirCities || [];
-  const oneCat = primaryDirCat();
-  const sub = oneCat ? (state.dirSub || null) : null;
-  const q = (state.dirSearch || '').trim();
-  const poolLimit = sub ? 400 : 200;  // widen pool so narrow sub-groups still fill a page
-  let rows = [];
-  if (q && !sub) {
-    rows = await searchListings(q, cities, 80);
-    if (cats.length) {
-      const filtered = rows.filter(r => listingMatchesDirCats(r.category, cats));
-      if (filtered.length) rows = filtered;
-    }
-  } else if (cities.length) {
-    const pools = await Promise.all(cities.map(c =>
-      fetchListingsCityCat(expandCityLocations(c), cats, poolLimit)
-    ));
-    const seen = new Set();
-    pools.flat().forEach(r => {
-      const k = `${r.item_id}_${r.shop_id}`;
-      if (seen.has(k)) return;
-      seen.add(k);
-      rows.push(r);
-    });
-  } else {
-    rows = mergePool([], await fetchNaikDaunGlobal(poolLimit));
-    if (cats.length) rows = rows.filter(r => listingMatchesDirCats(r.category, cats));
-  }
-  if (sub && oneCat) {
-    // Legacy fallback grid: dirSub is a subgroup NAME now, so resolve the
-    // keywords in it rather than substring-testing the old match[] array.
-    const kws = await subgroupKeywords(oneCat, sub);
-    if (kws.size) rows = rows.filter(r => kws.has(String(r.keyword || '').trim()));
-  }
-  rows = sortDirRows(rows, state.dirSort || 'terlaris');
-  state.dirRows = rows;
-  rememberProducts(rows);
-
-  if (state.dirPage > 1 && !currentUser) {
-    openAuthModal('signup', 'gpt_gate_directory');
-    state.dirPage = 1;
-  }
-  const start = (state.dirPage - 1) * PAGE_SIZE;
-  const slice = rows.slice(start, start + PAGE_SIZE);
-  const emptyMsg = (q && !sub)
-    ? `<p class="dd-sub">Belum ketemu produk untuk "<strong>${esc(q)}</strong>". Coba kata kunci lain.</p>`
-    : '<p class="dd-sub">Tidak ada produk untuk filter ini.</p>';
-  grid.innerHTML = productCardsHtml(slice) || emptyMsg;
-  bindProductCards(grid);
-  scrollPanelToTop();
-  renderDirPager(pager, rows.length);
-  updateDirCount(rows.length, slice.length, false);
-  void (async () => {
-    const host = $('dir-peta');
-    const pasarHead = $('dir-pasar-head');
-    if (!host || !(q && !sub)) return;
-    if (pasarHead) pasarHead.hidden = true;
-    // Compare-pick is a listing grid, so the listing scatter still applies
-    // here; drop any Bandingkan Pasar chrome left from the type view first.
-    clearPasarCompare(host);
-    host.hidden = false;
-    mountPeta(host, q, rows.slice(0, 120), { list: false });
-  })();
+  return renderDirectory();
 }
 
 // The "Tampilan klasik" opt-out lived here until 2026-08-10. Site A is gone,

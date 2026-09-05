@@ -22,7 +22,7 @@ Onboarding is in-page on Beranda (`state.onboarding`: city → category → expe
 | Beranda finder | `#home-finder` | first-run 4-step, not a popup |
 | Prefs | `#prefs-drawer` | city / category / experience after first run |
 | Deep Dive count | `user_journey_stats.deepdive_count` | written from gpt-app |
-| Session-one Deep Dive | `runFinderSearch` auto-open while `deepdive_count === 0`; Cari Produk first click (`dir_first_click_deepdive`); `#home-first-dd` card | skip reasons logged as `finder_auto_deepdive_skipped` |
+| Session-one Deep Dive | `runFinderSearch` auto-open of the first listing row while `deepdive_count === 0`; Cari Produk first row click (`dir_first_click_deepdive`); `#home-first-dd` card | skip reasons logged as `finder_auto_deepdive_skipped` |
 | End-of-dive alert | `#ddr-alert` | email / WhatsApp one-tap → track + `set_tracker_notify_prefs`. Mid-dive `ddtp*` promo is retired. |
 | Pantauan nav pulse | `lid_pantau_nudge_v1`, `schedulePantauNavPulse` | first Deep Dive pulse |
 | Scrape-cycle digest | `scrape-digest` edge function | every Deep Dive user, one email per measured scrape landing; WA only if opted in |

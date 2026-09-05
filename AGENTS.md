@@ -16,7 +16,7 @@ The logged-in product UI lives in **`index.html` + `js/gpt-app.js`** (not Astro 
 
 **Do not** reintroduce a blocking popup for onboarding. **Do not** fabricate price/sales deltas in return strips. Leaders and platform admins bypass journey gating.
 
-Cari Produk shows **Bandingkan Pasar** (`js/pasar-compare.js`) under Trending Sekarang and above the cards for a category / search. Before changing Skor Mudah Masuk weights, verdict copy, or which set is compared, read **[docs/pasar-compare.md](./docs/pasar-compare.md)**. Never add a hard filter on that score.
+Cari Produk shows **listing rows** (photo, harga, omset, unit, review, usia) with **Peta Peluang** above (`list:false` — the table is the list). Keyword chips filter both. Deep Dive is **PRODUK-only**; keyword-grain entries (tracker, `#home-first-dd`, Langkah, terlaris minggu) open that keyword's top listing. **Bandingkan Pasar** is retired from Cari Produk and lives only in the chat `handleBandingkanIntent` path — see **[docs/pasar-compare.md](./docs/pasar-compare.md)**. Before changing Skor Mudah Masuk weights (still used by that chat board), read that doc. Never add a hard filter on that score. Also **[docs/peta-peluang.md](./docs/peta-peluang.md)** and **[docs/pasar-compare.md](./docs/pasar-compare.md)**.
 
 ## "Terlaris Minggu Ini" badge
 

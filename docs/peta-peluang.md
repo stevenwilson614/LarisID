@@ -11,12 +11,15 @@ is the **same set**. Spec: `.cursor/plans/peta_peluang_map+list_layout_4bb51931.
 - SQL: [`supabase/migrations/20260904120000_peta_peluang.sql`](../supabase/migrations/20260904120000_peta_peluang.sql)
 - Weekly backfill: `~/shopee_scraper/listing_weekly.sql` (`backfill_listing_weekly_estimates`)
 - Hosts:
-  - Chat search (`.peta-host`) — **primary**. Map + listing list, stacked in the 720px bubble.
-  - Compare-pick in the directory (`#dir-peta`, `renderDirectoryListings`) — `list: false`.
-  - SPA Discover (`#disc-peta`) — `list: false` (that grid is already listings).
-  - **Not** the directory type view any more: since 2026-09-05 `#dir-peta` shows
-    Bandingkan Pasar (a pasar-level ranked board) for category / subgroup /
-    search — see [pasar-compare.md](./pasar-compare.md).
+  - Cari Produk (`#dir-peta`) — `list: false`. The listing table under the map
+    (`listingRowsHtml` in `js/gpt-app.js`) is the list. `onHighlight` /
+    `onZoneFilter` keep map and rows in sync; row hover calls `hoverKey`.
+  - Chat search / finder / recs (`.peta-host`) — `list: false` for the same
+    reason (a second list would duplicate the table).
+  - Compare-pick in the directory (`#dir-peta`) — same table with `pick:true`.
+  - SPA Discover (`#disc-peta`) — `list: false` if that grid is already listings.
+  - Bandingkan Pasar is **not** mounted here anymore. That module is chat-only
+    (`handleBandingkanIntent`) — see [pasar-compare.md](./pasar-compare.md).
 
 `PetaPeluang.skeleton(el, query)` paints chrome before `peta_batch` / listing fetch returns.
 
