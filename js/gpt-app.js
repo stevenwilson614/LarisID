@@ -3210,7 +3210,7 @@ async function sendWhatsappOtp(isResend) {
   const otpErr = $('wa-otp-error');
   const btn = $('wa-send-btn');
   const rawPhone = (phoneEl?.value || '').trim() || _waPhone;
-  const showErr = (el, msg) => { if (!el) return; el.textContent = msg; el.style.display = ''; };
+  const showErr = (el, msg) => { if (!el) return; el.textContent = msg; el.style.display = 'block'; };
   if (!rawPhone) {
     showErr(errEl, 'Masukkan nomor WhatsApp kamu.');
     return;
