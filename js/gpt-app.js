@@ -2172,6 +2172,7 @@ function closeWaCapture() {
 
 function _waCaptureContinue() {
   if (_waCaptureThenOnboarding) offerOnboardingAfterSignin();
+  else scheduleProductRowsNotice({ fromRestore: false, isNewSignup: false });
 }
 
 async function maybeOfferWaCapture(opts) {
@@ -5834,7 +5835,10 @@ function offerOnboardingAfterSignin() {
   clarityEvt('gpt_profile_nudge', { action: 'shown' });
 }
 
-function closeProfileNudge() { $('profile-nudge')?.classList.remove('open'); }
+function closeProfileNudge() {
+  $('profile-nudge')?.classList.remove('open');
+  scheduleProductRowsNotice({ fromRestore: false, isNewSignup: false });
+}
 
 // Persist a single in-memory message to gpt_messages. Idempotent via the
 // client-only `_saved` flag; only chat_id/role/content are sent to the DB.
@@ -9555,9 +9559,10 @@ function listingRowHtml(p, opts = {}) {
   const check = picking
     ? `<td class="lrow-pick"><span class="lrow-check" aria-hidden="true">${ico('check', 12)}</span></td>`
     : '';
-  const ph = '<div class="lrow-img lrow-img--ph" hidden></div>';
+  // One thumb only — onerror swaps the <img> for a placeholder (do not leave a
+  // hidden sibling: `.lrow-img { display:block }` overrides UA `[hidden]`).
   const thumb = img
-    ? `<img class="lrow-img" src="${esc(imgThumb(img))}" alt="" loading="lazy" decoding="async" width="84" height="84" onerror="this.onerror=null;this.hidden=true;var n=this.nextElementSibling;if(n)n.hidden=false">${ph}`
+    ? `<img class="lrow-img" src="${esc(imgThumb(img))}" alt="" loading="lazy" decoding="async" width="84" height="84" onerror="this.onerror=null;this.replaceWith(Object.assign(document.createElement('div'),{className:'lrow-img lrow-img--ph'}))">`
     : '<div class="lrow-img lrow-img--ph"></div>';
   return `<tr class="${cls}" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} tabindex="0" role="button" aria-pressed="${picked ? 'true' : 'false'}">
     ${check}

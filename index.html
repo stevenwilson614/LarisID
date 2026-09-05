@@ -5511,6 +5511,8 @@ body.home-finder-done .home-hero {
   background: var(--bg-user); flex-shrink: 0; display: block;
 }
 .lrow-img--ph { width: 56px; height: 56px; border-radius: 10px; background: var(--bg-user); flex-shrink: 0; }
+.lrow-img[hidden],
+.lrow-img--ph[hidden] { display: none !important; }
 .lrow-table .tr-prod { gap: 10px; align-items: center; }
 .lrow-name {
   font-weight: 800; letter-spacing: -.02em; line-height: 1.25;
@@ -5530,11 +5532,28 @@ body.home-finder-done .home-hero {
 .ddr-konteks-head {
   font-size: .82rem; font-weight: 800; margin: 8px 0 10px; color: var(--ink-soft);
 }
+/* Top Kompetitor (+ side panel): ~25% larger photo / row */
+.ddr-card[data-dd-sec="kompetitor"] .lrow-img,
+.ddr-card[data-dd-sec="kompetitor"] .lrow-img--ph,
+#side-body-komp .lrow-img,
+#side-body-komp .lrow-img--ph {
+  width: 70px; height: 70px; border-radius: 12px;
+}
+.ddr-card[data-dd-sec="kompetitor"] .lrow-prod,
+#side-body-komp .lrow-prod { gap: 12px; min-width: 240px; }
+.ddr-card[data-dd-sec="kompetitor"] .lrow-table td,
+#side-body-komp .lrow-table td { padding: 12px 10px; }
 @media (max-width: 559px) {
   .lrow-table { min-width: 0; }
   .lrow-wide { display: none; }
   .lrow-meta { display: block; }
   .lrow-img, .lrow-img--ph { width: 44px; height: 44px; }
+  .ddr-card[data-dd-sec="kompetitor"] .lrow-img,
+  .ddr-card[data-dd-sec="kompetitor"] .lrow-img--ph,
+  #side-body-komp .lrow-img,
+  #side-body-komp .lrow-img--ph {
+    width: 55px; height: 55px;
+  }
 }
 .lrow-wrap--compact .lrow-table { min-width: 0; }
 .lrow-wrap--compact .lrow-wide { display: none; }
@@ -8224,6 +8243,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
      larisLoadScript() when the admin view actually renders. -->
 <script src="/js/peta-peluang.js?v=20260905d" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
-<script src="/js/gpt-app.js?v=20260905l" defer></script>
+<script src="/js/gpt-app.js?v=20260905n" defer></script>
 </body>
 </html>
