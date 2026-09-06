@@ -17,6 +17,10 @@
   var TYPEAHEAD_MS = 280;
   var SCRAPE_HOUR_WIB = 7;
   var WIB_OFFSET_MIN = 7 * 60;
+  var CHART_WEEKS = 13;
+  var OMSET_SPIKE_PCT = 25;
+  var MONS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul',
+                    'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
   var host = null;
   var adapter = null;
@@ -24,7 +28,7 @@
   var mounted = false;
   var bound = false;
   var inflight = null;
-  var timers = { abort: 0, typeahead: 0 };
+  var timers = { abort: 0, typeahead: 0, resize: 0 };
 
   var S = {
     screen: 'list',
@@ -40,10 +44,7 @@
     notifyAsked: false,
     notifyCadence: 'on_update',
     weeklyByKey: {},
-    detail: null,
-    detailSeries: [],
-    detailWeekly: [],
-    detailMetric: 'omset',
+    snapsByKey: {},
     addQ: '',
     addRows: [],
     addBusy: false,
@@ -139,12 +140,68 @@
     return S.weeklyByKey[prodKey(p)] || [];
   }
 
-  function weekPair(weeks) {
-    var sorted = (weeks || []).slice().sort(function (a, b) {
+  function wibTodayISO() {
+    var w = wibNow();
+    var m = String(w.getMonth() + 1);
+    var d = String(w.getDate());
+    if (m.length < 2) m = '0' + m;
+    if (d.length < 2) d = '0' + d;
+    return w.getFullYear() + '-' + m + '-' + d;
+  }
+
+  function wibMondayISO() {
+    var w = wibNow();
+    var dow = w.getDay();
+    var off = dow === 0 ? 6 : dow - 1;
+    var m = new Date(w.getFullYear(), w.getMonth(), w.getDate() - off);
+    var mo = String(m.getMonth() + 1);
+    var d = String(m.getDate());
+    if (mo.length < 2) mo = '0' + mo;
+    if (d.length < 2) d = '0' + d;
+    return m.getFullYear() + '-' + mo + '-' + d;
+  }
+
+  function weekLabel(iso) {
+    var parts = String(iso || '').slice(0, 10).split('-');
+    if (parts.length < 3) return '';
+    var day = Number(parts[2]);
+    var mon = Number(parts[1]) - 1;
+    if (!day || mon < 0 || mon > 11) return '';
+    return day + ' ' + MONS_SHORT[mon];
+  }
+
+  function normTitle(s) {
+    return String(s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+
+  function sortedWeeks(weeks) {
+    return (weeks || []).filter(function (w) {
+      var d = String(w.week_start || '').slice(0, 10);
+      if (!d) return false;
+      if (w.source === 'forecast') return false;
+      return true;
+    }).sort(function (a, b) {
       return String(a.week_start || '').localeCompare(String(b.week_start || ''));
     });
+  }
+
+  function weekPair(weeks) {
+    var sorted = sortedWeeks(weeks);
     if (sorted.length < MIN_WEEKS_FOR_PCT) return null;
     return { prev: sorted[sorted.length - 2], cur: sorted[sorted.length - 1] };
+  }
+
+  function chartSeries(weeks) {
+    var today = wibTodayISO();
+    return sortedWeeks(weeks).filter(function (w) {
+      var d = String(w.week_start || '').slice(0, 10);
+      if (d > today) return false;
+      if (w.source === 'prior') return false;
+      var om = Number(w.omset_wk) || 0;
+      var un = Number(w.units_wk) || 0;
+      if (!om && !un && w.source !== 'measured') return false;
+      return true;
+    }).slice(-CHART_WEEKS);
   }
 
   function productTrend(p) {
@@ -179,95 +236,132 @@
     return '<div class="' + cls + ' ltk-row-ico--letter" aria-hidden="true">P</div>';
   }
 
-  function seriesPoints(series, metricKey) {
-    var pts = (series || []).map(function (p) {
-      return {
-        t: Date.parse(p.d || p.week_start),
-        v: Number(p[metricKey] != null ? p[metricKey] : p.omset != null ? p.omset : p.omset_wk) || 0,
-        d: p.d || p.week_start,
-        forecast: p.source === 'forecast',
-        estimated: p.source === 'estimated',
-      };
-    }).filter(function (p) { return !isNaN(p.t); });
-    pts.sort(function (a, b) { return a.t - b.t; });
-    return pts.length >= 2 ? pts : null;
-  }
-
-  function projectXY(pts, w, h, pad) {
-    var n = Number(pad) || 3;
-    var minT = pts[0].t, maxT = pts[0].t, min = pts[0].v, max = pts[0].v;
-    pts.forEach(function (p) {
-      if (p.t < minT) minT = p.t; if (p.t > maxT) maxT = p.t;
-      if (p.v < min) min = p.v; if (p.v > max) max = p.v;
-    });
-    var spanT = (maxT - minT) || 1;
+  function yScaleFn(vals, top, height) {
+    var min = Math.min.apply(null, vals);
+    var max = Math.max.apply(null, vals);
+    if (!isFinite(min) || !isFinite(max)) { min = 0; max = 1; }
+    if (min === max) {
+      var pad = Math.abs(min) * 0.1 || 1;
+      min -= pad;
+      max += pad;
+    }
     var span = (max - min) || 1;
-    var plotW = Math.max(1, w - n * 2);
-    var plotH = Math.max(1, h - n * 2);
-    return pts.map(function (p) {
-      return [n + ((p.t - minT) / spanT) * plotW, n + plotH - ((p.v - min) / span) * plotH];
-    });
+    return function (v) { return top + height - ((Number(v) || 0) - min) / span * height; };
   }
 
-  function drawSpark(cv, series, up, metricKey) {
+  function drawDualChart(cv, weeks) {
     if (!cv || !cv.getContext) return;
-    var pts = seriesPoints(series, metricKey || 'omset_wk');
-    if (!pts) return;
+    var rows = chartSeries(weeks);
     var dpr = global.devicePixelRatio || 1;
-    var w = cv.clientWidth || 68, h = cv.clientHeight || 24;
-    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    var w = cv.clientWidth || 320;
+    var h = cv.clientHeight || 160;
+    cv.width = Math.round(w * dpr);
+    cv.height = Math.round(h * dpr);
     var ctx = cv.getContext('2d');
-    ctx.scale(dpr, dpr);
-    var xy = projectXY(pts, w, h, 3);
-    ctx.beginPath();
-    ctx.moveTo(xy[0][0], xy[0][1]);
-    for (var i = 1; i < xy.length; i++) ctx.lineTo(xy[i][0], xy[i][1]);
-    ctx.strokeStyle = up ? '#16A34A' : '#DC2626';
-    ctx.lineWidth = 1.6;
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
-    ctx.stroke();
-  }
-
-  function drawTrend(cv, series, metricKey) {
-    if (!cv || !cv.getContext) return;
-    var pts = seriesPoints(series, metricKey);
-    var dpr = global.devicePixelRatio || 1;
-    var w = cv.clientWidth || 320, h = cv.clientHeight || 180;
-    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
-    var ctx = cv.getContext('2d');
-    ctx.scale(dpr, dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
-    if (!pts) return;
-    var xy = projectXY(pts, w, h, 16);
-    var up = pts[pts.length - 1].v >= pts[0].v;
-    ctx.beginPath();
-    ctx.moveTo(xy[0][0], xy[0][1]);
-    for (var i = 1; i < xy.length; i++) ctx.lineTo(xy[i][0], xy[i][1]);
-    ctx.strokeStyle = up ? '#16A34A' : '#DC2626';
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    if (rows.length < 2) return;
+
+    var padL = 6, padR = 6, padT = 8, padB = 22;
+    var plotW = Math.max(1, w - padL - padR);
+    var plotH = Math.max(1, h - padT - padB);
+    var times = rows.map(function (r) { return Date.parse(String(r.week_start).slice(0, 10)); });
+    var minT = times[0], maxT = times[times.length - 1];
+    var spanT = (maxT - minT) || 1;
+    function xAt(t) { return padL + ((t - minT) / spanT) * plotW; }
+    var yOm = yScaleFn(rows.map(function (r) { return Number(r.omset_wk) || 0; }), padT, plotH);
+    var yUn = yScaleFn(rows.map(function (r) { return Number(r.units_wk) || 0; }), padT, plotH);
+
+    function strokeSeries(key, yFn, color) {
+      ctx.lineWidth = 2;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = color;
+      for (var i = 1; i < rows.length; i++) {
+        var a = rows[i - 1], b = rows[i];
+        var measured = a.source === 'measured' && b.source === 'measured';
+        ctx.setLineDash(measured ? [] : [5, 4]);
+        ctx.beginPath();
+        ctx.moveTo(xAt(times[i - 1]), yFn(Number(a[key]) || 0));
+        ctx.lineTo(xAt(times[i]), yFn(Number(b[key]) || 0));
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+    }
+    strokeSeries('omset_wk', yOm, '#B5202A');
+    strokeSeries('units_wk', yUn, '#2563EB');
+
+    ctx.fillStyle = '#9CA3AF';
+    ctx.font = '10px system-ui, -apple-system, sans-serif';
+    ctx.textBaseline = 'top';
+    var n = rows.length;
+    var step = n <= 6 ? 1 : Math.ceil((n - 1) / 5);
+    var shown = {};
+    function tick(i, align) {
+      if (shown[i]) return;
+      shown[i] = 1;
+      var label = weekLabel(rows[i].week_start);
+      if (!label) return;
+      ctx.textAlign = align || 'center';
+      ctx.fillText(label, xAt(times[i]), h - padB + 6);
+    }
+    for (var i = 0; i < n; i += step) tick(i, i === 0 ? 'left' : 'center');
+    tick(n - 1, 'right');
   }
 
-  function paintSparks() {
+  function paintCharts() {
     if (!host) return;
-    host.querySelectorAll('[data-ltk-spark]').forEach(function (cv) {
-      var key = cv.getAttribute('data-ltk-spark');
-      var weeks = S.weeklyByKey[key] || [];
-      var series = weeks.map(function (w) {
-        return { week_start: w.week_start, omset_wk: w.omset_wk, source: w.source };
-      });
-      var pts = seriesPoints(series, 'omset_wk');
-      var up = pts ? pts[pts.length - 1].v >= pts[0].v : true;
-      drawSpark(cv, series, up, 'omset_wk');
+    host.querySelectorAll('[data-ltk-chart]').forEach(function (cv) {
+      var key = cv.getAttribute('data-ltk-chart');
+      drawDualChart(cv, S.weeklyByKey[key] || []);
     });
   }
 
-  function paintDetailChart() {
-    var cv = $('[data-ltk-detail-chart]');
-    if (!cv) return;
-    var key = S.detailMetric === 'units' ? 'units' : S.detailMetric === 'price' ? 'price' : 'omset';
-    drawTrend(cv, S.detailSeries, key);
+  function onResize() {
+    if (timers.resize) clearTimeout(timers.resize);
+    timers.resize = setTimeout(paintCharts, 120);
+  }
+
+  function productUpdates(p) {
+    var lines = [];
+    var monday = wibMondayISO();
+    var snaps = (S.snapsByKey[prodKey(p)] || []).slice().sort(function (a, b) {
+      return String(b.scraped_at || b.d || '').localeCompare(String(a.scraped_at || a.d || ''));
+    });
+    var latestThis = null, latestBefore = null;
+    snaps.forEach(function (s) {
+      if (s.d >= monday) {
+        if (!latestThis) latestThis = s;
+      } else if (!latestBefore) {
+        latestBefore = s;
+      }
+    });
+    if (latestThis && latestBefore && latestThis.product_name && latestBefore.product_name &&
+        normTitle(latestThis.product_name) !== normTitle(latestBefore.product_name)) {
+      lines.push('Judul berubah: "' + latestBefore.product_name + '" jadi "' + latestThis.product_name + '"');
+    }
+    var pair = weekPair(weeklyFor(p));
+    if (pair) {
+      var p0 = Number(pair.prev.price) || 0;
+      var p1 = Number(pair.cur.price) || 0;
+      if (p0 > 0 && p1 > 0 && Math.abs(p1 - p0) >= Math.max(100, p0 * 0.005)) {
+        var dir = p1 > p0 ? 'naik' : 'turun';
+        lines.push('Harga ' + dir + ' ' + fmtRp(p0) + ' jadi ' + fmtRp(p1));
+      }
+      var omPct = pctChange(pair.cur.omset_wk, pair.prev.omset_wk);
+      if (omPct != null && isFinite(omPct) && omPct >= OMSET_SPIKE_PCT) {
+        lines.push('Omset naik ' + Math.round(omPct) + '% minggu ini');
+      }
+    }
+    return lines;
+  }
+
+  function updatesHtml(p) {
+    var lines = productUpdates(p);
+    if (!lines.length) return '';
+    return '<div class="ltk-fav-updates">' +
+      lines.map(function (t) { return '<p class="ltk-fav-update">' + esc(t) + '</p>'; }).join('') +
+      '</div>';
   }
 
   /* ── shell ──────────────────────────────────────────────────────────── */
@@ -288,7 +382,6 @@
       '</header>' +
       '<div class="ltk-scopetabs" role="tablist" aria-label="Jenis favorit" data-ltk-scopetabs></div>' +
       '<section class="ltk-screen" data-ltk-screen="list"></section>' +
-      '<section class="ltk-screen" data-ltk-screen="detail"></section>' +
       '<section class="ltk-screen" data-ltk-screen="error"></section>';
   }
 
@@ -306,29 +399,23 @@
     var sub = $('[data-ltk-sub]');
     var act = $('[data-ltk-headact]');
     if (sub) {
-      if (S.screen === 'detail' && S.detail) {
-        sub.textContent = S.detail.product_name || 'Detail favorit';
-      } else if (!S.products.length) {
+      if (!S.products.length) {
         sub.textContent = 'Simpan listing yang kamu incar. Kami scrape-nya tiap hari.';
       } else {
         sub.textContent = S.products.length + ' / ' + S.productLimit + ' produk · data harian';
       }
     }
     if (act) {
-      if (S.screen === 'detail') {
-        act.innerHTML = '<button type="button" class="ltk-btn ltk-btn--ghost" data-ltk-back>Kembali</button>';
-      } else {
-        act.innerHTML = S.products.length < S.productLimit
-          ? '<button type="button" class="ltk-btn ltk-btn--primary" data-ltk-focus-add>Tambah</button>'
-          : '<span class="ltk-hint">Batas ' + S.productLimit + ' tercapai — hapus satu dulu biar data tetap segar.</span>';
-      }
+      act.innerHTML = S.products.length < S.productLimit
+        ? '<button type="button" class="ltk-btn ltk-btn--primary" data-ltk-focus-add>Tambah</button>'
+        : '<span class="ltk-hint">Batas ' + S.productLimit + ' tercapai — hapus satu dulu biar data tetap segar.</span>';
     }
   }
 
   function renderScopeTabs() {
     var bar = $('[data-ltk-scopetabs]');
     if (!bar) return;
-    if (S.screen === 'detail') { bar.innerHTML = ''; return; }
+    if (S.screen !== 'list') { bar.innerHTML = ''; return; }
     var tabs = [
       { id: 'product', label: 'Produk', n: S.products.length },
       { id: 'store', label: 'Toko', n: S.stores.length },
@@ -375,12 +462,12 @@
     var pair = weekPair(weeks);
     var omset = pair ? pair.cur.omset_wk : 0;
     var honesty = pair ? honestyLabel(trend.source) : '';
-    var hasSpark = weeks.length >= 2;
+    var hasChart = chartSeries(weeks).length >= 2;
     var fresh = p.scraped_at && (Date.now() - Date.parse(p.scraped_at) < 2 * 86400000);
     var waitNote = (!weeks.length && !fresh)
       ? '<p class="ltk-hint">Data harian mulai ' + esc(nextUpdateLabel()) + '.</p>'
       : '';
-    return '<article class="ltk-card ltk-fav-card" data-ltk-open-detail="' + attr(key) + '">' +
+    return '<article class="ltk-card ltk-fav-card">' +
       '<div class="ltk-card-row">' +
         '<div class="ltk-card-ident">' +
           '<div class="ltk-card-top">' +
@@ -391,25 +478,37 @@
                 (p.price ? ' · ' + fmtRp(p.price) : '') + '</div>' +
             '</div>' +
           '</div>' +
-        '</div>' +
-        '<div class="ltk-card-stats">' +
-          '<div class="ltk-mstat"><span class="ltk-mstat-lbl">Omset / minggu</span>' +
-            '<span class="ltk-mstat-val">' + (omset ? fmtRpShort(omset) : '—') + '</span>' +
-            (honesty ? '<span class="ltk-honesty">' + honesty + '</span>' : '') +
-            deltaHtml(trend.pct, trend.enough) +
+          '<div class="ltk-card-stats">' +
+            '<div class="ltk-mstat"><span class="ltk-mstat-lbl">Omset / minggu</span>' +
+              '<span class="ltk-mstat-val">' + (omset ? fmtRpShort(omset) : '—') + '</span>' +
+              (honesty ? '<span class="ltk-honesty">' + honesty + '</span>' : '') +
+              deltaHtml(trend.pct, trend.enough) +
+            '</div>' +
           '</div>' +
-          (hasSpark
-            ? '<canvas class="ltk-fav-spark" data-ltk-spark="' + attr(key) + '" width="88" height="28"></canvas>'
-            : '') +
         '</div>' +
+        (hasChart
+          ? '<div class="ltk-card-chart">' +
+              '<div class="ltk-cchart-head">' +
+                '<span class="ltk-cchart-legend">' +
+                  '<span class="ltk-cchart-om"><i class="ltk-lg-om" aria-hidden="true"></i>Omset</span>' +
+                  '<span class="ltk-cchart-un"><i class="ltk-lg-un" aria-hidden="true"></i>Unit</span>' +
+                '</span>' +
+              '</div>' +
+              '<canvas class="ltk-card-chart-canvas" data-ltk-chart="' + attr(key) + '" width="640" height="200"></canvas>' +
+            '</div>'
+          : '') +
       '</div>' +
+      updatesHtml(p) +
       waitNote +
       '<div class="ltk-fav-actions">' +
         '<label class="ltk-switch">' +
           '<input type="checkbox" data-ltk-toko="' + attr(key) + '"' + (p.store_tracked ? ' checked' : '') + '>' +
           '<span>Pantau toko ini</span>' +
         '</label>' +
-        '<button type="button" class="ltk-link" data-ltk-remove="' + attr(key) + '">Hapus</button>' +
+        '<span class="ltk-fav-links">' +
+          '<button type="button" class="ltk-link" data-ltk-dd="' + attr(key) + '">Deep Dive</button>' +
+          '<button type="button" class="ltk-link" data-ltk-remove="' + attr(key) + '">Hapus</button>' +
+        '</span>' +
       '</div>' +
     '</article>';
   }
@@ -485,45 +584,8 @@
       addBoxHtml() +
       (S.products.length ? S.products.map(favCardHtml).join('') : emptyHtml()) +
       (S.products.length ? notifyHtml() : '');
-    paintSparks();
-  }
-
-  function renderDetail() {
-    var pane = $('[data-ltk-screen="detail"]');
-    if (!pane || !S.detail) return;
-    var p = S.detail;
-    var real = (S.detailSeries || []).filter(function (d) {
-      return d.source === 'measured' || d.source === 'estimated';
-    });
-    var enough = real.length >= 2;
-    var metrics = [
-      { id: 'omset', label: 'Omset' },
-      { id: 'units', label: 'Unit' },
-      { id: 'price', label: 'Harga' },
-    ];
-    var toggles = metrics.map(function (m) {
-      return '<button type="button" class="ltk-btn ' + (S.detailMetric === m.id ? 'ltk-btn--primary' : 'ltk-btn--ghost') +
-        '" data-ltk-metric="' + m.id + '">' + m.label + '</button>';
-    }).join('');
-    pane.innerHTML =
-      '<article class="ltk-card">' +
-        '<div class="ltk-card-top">' + imgOr(p.image_url, 'ltk-row-ico') +
-          '<div class="ltk-card-head">' +
-            '<div class="ltk-card-name">' + esc(p.product_name || 'Produk') + '</div>' +
-            '<div class="ltk-card-meta">' + esc(p.store_name || '') +
-              (p.price ? ' · ' + fmtRp(p.price) : '') + '</div>' +
-          '</div>' +
-        '</div>' +
-        (enough
-          ? '<div class="ltk-detail-toggles">' + toggles + '</div>' +
-            '<canvas class="ltk-card-chart-canvas" data-ltk-detail-chart width="640" height="200"></canvas>' +
-            '<p class="ltk-hint">Titik terukur = hasil scrape search. Selain itu perkiraan (PDP sold adalah bucket, mis. 10RB+).</p>'
-          : '<p class="ltk-hint">Data harian mulai ' + esc(nextUpdateLabel()) + '. Grafik muncul setelah ada minimal 2 hari.</p>') +
-        '<div class="ltk-fav-actions">' +
-          '<button type="button" class="ltk-btn ltk-btn--primary" data-ltk-dd="' + attr(prodKey(p)) + '">Buka Deep Dive</button>' +
-        '</div>' +
-      '</article>';
-    paintDetailChart();
+    if (global.requestAnimationFrame) global.requestAnimationFrame(paintCharts);
+    else paintCharts();
   }
 
   function renderError(msg) {
@@ -562,14 +624,32 @@
   }
 
   function loadWeekly() {
-    if (!S.products.length) { S.weeklyByKey = {}; return Promise.resolve(); }
-    return callP('getListingsWeeklyBatch', S.products).then(function (rows) {
+    if (!S.products.length) {
+      S.weeklyByKey = {};
+      S.snapsByKey = {};
+      return Promise.resolve();
+    }
+    return Promise.all([
+      callP('getListingsWeeklyBatch', S.products),
+      callP('getFavoriteListingSnaps', S.products),
+    ]).then(function (pair) {
       var map = {};
-      (rows || []).forEach(function (w) {
+      (pair[0] || []).forEach(function (w) {
         var k = w.item_id + '|' + w.shop_id;
         (map[k] = map[k] || []).push(w);
       });
       S.weeklyByKey = map;
+      var snaps = {};
+      (pair[1] || []).forEach(function (r) {
+        var k = r.item_id + '|' + r.shop_id;
+        (snaps[k] = snaps[k] || []).push({
+          d: String(r.scraped_at || '').slice(0, 10),
+          product_name: r.product_name,
+          price: r.price,
+          scraped_at: r.scraped_at,
+        });
+      });
+      S.snapsByKey = snaps;
     });
   }
 
@@ -588,14 +668,8 @@
     }).then(function () {
       if (gen !== refresh._gen) return S;
       if (timers.abort) { clearTimeout(timers.abort); timers.abort = 0; }
-      if (S.screen === 'detail' && S.detail) {
-        var still = findProduct(prodKey(S.detail));
-        if (still) { S.detail = still; renderDetail(); showScreen('detail'); }
-        else { S.detail = null; renderList(); showScreen('list'); }
-      } else {
-        renderList();
-        showScreen('list');
-      }
+      renderList();
+      showScreen('list');
       return getState();
     }).catch(function (e) {
       if (gen !== refresh._gen) return S;
@@ -689,23 +763,6 @@
     });
   }
 
-  function openDetail(p) {
-    S.detail = p;
-    S.detailSeries = [];
-    S.detailWeekly = [];
-    renderDetail();
-    showScreen('detail');
-    Promise.all([
-      callP('getProductSeries', p, 60),
-      callP('getListingWeekly', p.item_id, p.shop_id),
-    ]).then(function (pair) {
-      S.detailSeries = (pair[0] || []).filter(function (d) { return d.source !== 'prior'; });
-      S.detailWeekly = pair[1] || [];
-      renderDetail();
-      showScreen('detail');
-    });
-  }
-
   function saveNotify() {
     var channels = (S.notifyChannels || []).slice();
     var wa = ($('#ltk-wa') && $('#ltk-wa').value) || S.notifyWa || '';
@@ -731,8 +788,6 @@
   function onClick(e) {
     if (!host || !host.contains(e.target)) return;
     var t = e.target;
-    var back = t.closest && t.closest('[data-ltk-back]');
-    if (back) { S.detail = null; renderList(); showScreen('list'); return; }
     var retry = t.closest && t.closest('[data-ltk-retry]');
     if (retry) { refresh({ touch: true }); return; }
     var dir = t.closest && t.closest('[data-ltk-open-dir]');
@@ -785,21 +840,8 @@
     }
     var dd = t.closest && t.closest('[data-ltk-dd]');
     if (dd) {
-      var dp = findProduct(dd.getAttribute('data-ltk-dd')) || S.detail;
+      var dp = findProduct(dd.getAttribute('data-ltk-dd'));
       if (dp) call('openProduct', dp);
-      return;
-    }
-    var met = t.closest && t.closest('[data-ltk-metric]');
-    if (met) {
-      S.detailMetric = met.getAttribute('data-ltk-metric');
-      renderDetail();
-      showScreen('detail');
-      return;
-    }
-    var open = t.closest && t.closest('[data-ltk-open-detail]');
-    if (open && !t.closest('[data-ltk-toko], [data-ltk-remove], .ltk-switch, .ltk-fav-actions')) {
-      var op = findProduct(open.getAttribute('data-ltk-open-detail'));
-      if (op) openDetail(op);
     }
   }
 
@@ -827,6 +869,7 @@
     global.document.addEventListener('click', onClick, true);
     global.document.addEventListener('change', onChange, true);
     global.document.addEventListener('input', onInput, true);
+    global.addEventListener('resize', onResize);
     bound = true;
   }
 
@@ -913,10 +956,12 @@
   function destroy() {
     if (timers.abort) clearTimeout(timers.abort);
     if (timers.typeahead) clearTimeout(timers.typeahead);
+    if (timers.resize) clearTimeout(timers.resize);
     if (bound) {
       global.document.removeEventListener('click', onClick, true);
       global.document.removeEventListener('change', onChange, true);
       global.document.removeEventListener('input', onInput, true);
+      global.removeEventListener('resize', onResize);
       bound = false;
     }
     if (host) host.innerHTML = '';
@@ -967,6 +1012,6 @@
     summaryCardHtml: summaryCardHtml,
     bindSummary: bindSummary,
     destroy: destroy,
-    version: '3.0.0',
+    version: '3.1.0',
   };
 })(typeof window !== 'undefined' ? window : this);

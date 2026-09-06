@@ -687,10 +687,10 @@
 }
 .ltk-menu--card { top: 30px; right: 0; }
 
-/* ── Card row: identity (image+name+numbers) | chart | button ─────────────
-   Numbers sit under the image and name in one omset/harga/unit row. Wide
-   cards put that column beside a flexing chart with Lihat Detail pinned
-   right; narrow cards stack the same pieces. */
+/* ── Card row: identity (image+name+numbers) | chart ─────────────────────
+   Numbers sit under the image and name. Wide cards put that column beside
+   a flexing chart; narrow cards stack the same pieces. Cards do not open
+   a detail screen. */
 .ltk-card-row {
   display: flex; flex-direction: column; gap: 14px;
 }
@@ -698,8 +698,7 @@
   display: flex; flex-direction: column; gap: 12px; min-width: 0;
 }
 .ltk-card-top {
-  display: flex; align-items: center; gap: 12px; min-width: 0; cursor: pointer;
-  padding-right: 30px;   /* clears the absolute kebab in stacked layout */
+  display: flex; align-items: center; gap: 12px; min-width: 0;
 }
 .ltk-card-top .ltk-row-ico {
   width: 56px; height: 72px; border-radius: 12px; flex-shrink: 0;
@@ -758,7 +757,15 @@
 .ltk-cchart-om { color: #B5202A; }
 .ltk-cchart-un { color: #2563EB; }
 .ltk-card-chart-canvas {
-  width: 100%; height: 170px; display: block; cursor: crosshair; touch-action: none;
+  width: 100%; height: 170px; display: block; cursor: default;
+}
+.ltk-cchart-legend {
+  display: inline-flex; align-items: center; gap: 14px;
+  font-size: .68rem; font-weight: 600; color: #6B7280;
+}
+.ltk-cchart-legend i {
+  display: inline-block; width: 14px; height: 0; margin-right: 6px;
+  vertical-align: middle;
 }
 .ltk-lg-om { border-top: 2px solid #B5202A; }
 .ltk-lg-un { border-top: 2px solid #2563EB; }
@@ -789,8 +796,7 @@
 /* Fallback for browsers without container queries: same stacked layout at
    every width, which is exactly what the rules above already produce. */
 @supports (container-type: inline-size) {
-  /* Identity stays fixed with omset/harga/unit in one row; chart flexes to
-     fill the gap; Lihat Detail stays pinned to the right edge. */
+  /* Identity stays fixed; chart flexes to fill the remaining card width. */
   @container (min-width: 560px) {
     .ltk-card-row { flex-direction: row; align-items: center; gap: 14px; }
     .ltk-card-ident { flex: 0 0 248px; }
@@ -799,24 +805,16 @@
     .ltk-card-stats {
       display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px;
     }
+    .ltk-fav-card .ltk-card-stats { display: flex; flex-direction: column; }
     .ltk-card-stats .ltk-mstat-val {
       font-size: clamp(.82rem, 1.4vw, 1.05rem);
     }
-    .ltk-card-stats-foot { display: none; }   /* the meta line already IDs the row; no room to repeat it */
+    .ltk-card-stats-foot { display: none; }
     .ltk-card-chart {
       flex: 1 1 0; min-width: 0; padding: 10px 12px 8px;
     }
     .ltk-card-chart-canvas { height: 140px; }
-    .ltk-card-foot {
-      flex: 0 0 168px; align-self: center; margin-left: auto;
-      flex-direction: column; align-items: stretch; gap: 8px;
-    }
-    .ltk-card-pulse { gap: 3px; }
-    .ltk-card-pulse-row { font-size: .62rem; }
-    .ltk-card-detail-btn {
-      align-self: stretch; justify-content: center;
-      white-space: nowrap; padding: 8px 14px;
-    }
+    .ltk-fav-card .ltk-card-chart-canvas { height: 160px; }
   }
 }
 
@@ -1236,9 +1234,24 @@
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   margin-top: 10px;
 }
+.ltk-fav-links { display: inline-flex; align-items: center; gap: 14px; }
+.ltk-fav-updates {
+  margin-top: 12px; padding-top: 10px; border-top: 1px solid #E5E7EB;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.ltk-fav-update {
+  margin: 0; font-size: .74rem; color: #374151; line-height: 1.4;
+}
+.ltk-fav-card .ltk-card-stats {
+  display: flex; flex-direction: column; gap: 2px;
+}
+.ltk-fav-card .ltk-card-stats .ltk-mstat-lbl {
+  min-height: 0; white-space: nowrap; display: block;
+  -webkit-line-clamp: unset;
+}
+.ltk-fav-card .ltk-card-chart-canvas { height: 160px; }
 .ltk-switch { display: inline-flex; align-items: center; gap: 8px; font-size: .74rem; font-weight: 600; color: #374151; cursor: pointer; }
 .ltk-honesty { font-size: .62rem; font-weight: 700; color: #6B7280; text-transform: uppercase; letter-spacing: .03em; }
-.ltk-fav-spark { width: 88px; height: 28px; display: block; }
 .ltk-cadence { display: flex; flex-direction: column; gap: 6px; }
 .ltk-cadence-opt { font-size: .78rem; font-weight: 600; color: #374151; display: flex; align-items: center; gap: 8px; }
 .ltk-detail-toggles { display: flex; gap: 8px; margin: 12px 0; }

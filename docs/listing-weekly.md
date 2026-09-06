@@ -130,13 +130,14 @@ closed-form decay (`W(t') = W(t)·exp(−Δ/τ)`) revises this week and next wee
   **next week only** — overlaying it onto this week mixed two estimators and
   caused a spike. Partial this week is scaled `7/days`. Card / row omset stays
   monthly (`×30`).
-- Tracker **detail** chart is 8+1 weekly grain on a fixed 60-day window.
-  Tracker **headlines** (card, table, summary) are this WIB week vs last week
-  from the same `weeklyBuckets()` as the chart — not a 7/30/60/90 window
-  total. `product_daily_series` / `keyword_daily_series` / `store_daily_series`
-  clamp `p_to` at `current_date + 7` so this week can keep its forecast
-  remainder and the store tab can fill next week when there is no
-  `store_weekly` table.
+- Favorit Aku **list** chart is the last 13 non-empty WIB Mondays (~3 months)
+  of `listing_weekly` omset + units (dual Y-axis, week-start labels). Skip
+  `prior`, `forecast`, and empty Mondays. No next-week forecast tail.
+  Headlines (omset / %) are this WIB week vs last week from the same weekly
+  rows — not a 7/30/60/90 window total. `product_daily_series` /
+  `keyword_daily_series` / `store_daily_series` clamp `p_to` at
+  `current_date + 7` so this week can keep its forecast remainder and the
+  store tab can fill next week when there is no `store_weekly` table.
 
 ## What not to do
 

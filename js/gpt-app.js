@@ -10521,22 +10521,41 @@ function gptTrackerAdapter() {
         return mergePool([], data || []);
       } catch (_) { return []; }
     },
-    // Batch listing_weekly for the tracker Kompetitor-style table (this week +
-    // prior weeks so the picker can show WoW %). item_id IN is enough; the
-    // client matches (item_id, shop_id) pairs.
+    // Batch listing_weekly for Favorit Aku cards (3-month dual chart + WoW %).
+    // item_id IN is enough; the client matches (item_id, shop_id) pairs.
     async getListingsWeeklyBatch(listings) {
       if (!_supabase || !listings || !listings.length) return [];
       const ids = [...new Set(listings.map(l => l.item_id).filter(id => id != null))];
       if (!ids.length) return [];
       try {
         const since = new Date();
-        since.setUTCDate(since.getUTCDate() - 28);
+        since.setUTCDate(since.getUTCDate() - 98);
         const sinceISO = since.toISOString().slice(0, 10);
         const { data, error } = await _supabase.from('listing_weekly')
           .select('item_id,shop_id,week_start,units_wk,omset_wk,price,source')
           .in('item_id', ids)
           .gte('week_start', sinceISO)
           .order('week_start', { ascending: false });
+        if (error) throw error;
+        return data || [];
+      } catch (_) { return []; }
+    },
+    /** Recent listing snapshots for Favorit Aku "updates this week" lines. */
+    async getFavoriteListingSnaps(listings) {
+      if (!_supabase || !listings || !listings.length) return [];
+      const ids = [...new Set(listings.map(l => l.item_id).filter(id => id != null))];
+      const shops = [...new Set(listings.map(l => l.shop_id).filter(id => id != null))];
+      if (!ids.length) return [];
+      try {
+        const since = new Date(Date.now() - 14 * 864e5).toISOString();
+        let q = _supabase.from('listings')
+          .select('item_id,shop_id,product_name,price,scraped_at')
+          .in('item_id', ids)
+          .gte('scraped_at', since)
+          .order('scraped_at', { ascending: false })
+          .limit(2500);
+        if (shops.length) q = q.in('shop_id', shops);
+        const { data, error } = await q;
         if (error) throw error;
         return data || [];
       } catch (_) { return []; }

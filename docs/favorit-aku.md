@@ -15,7 +15,17 @@ One favorite = one Shopee listing (`item_id` + `shop_id`) in `user_tracked_produ
 
 Writes to `user_tracked_products` → view `v_tracked_products` → `tracked_pass.py` in `daily_scrape.sh` (scraper repo). No scraper change needed to start.
 
-PDP sold is a **bucket floor** (`10RB+`). Day-to-day units are review-based estimates. UI labels `terukur` only when the point came from a search-result row; otherwise `perkiraan`. No % until ≥ 2 real weeks on the list (or ≥ 2 daily points on detail). New favorites show “Data harian mulai besok”.
+PDP sold is a **bucket floor** (`10RB+`). Day-to-day units are review-based estimates. UI labels `terukur` only when the point came from a search-result row; otherwise `perkiraan`. No % until ≥ 2 real weeks on the list. New favorites show “Data harian mulai besok”.
+
+## List card
+
+Each favorite stays on the list (no click-to-detail). Photo / toko / harga / omset / one % sit beside a **3-month dated dual chart**: last 13 WIB Mondays of `listing_weekly` omset + units (independent Y-axes). Solid = terukur, dashed = perkiraan. No next-week forecast. Under that row, plain-text **updates this week** (omit the block if none):
+
+- Title change (`listings.product_name` this WIB week vs last name before Monday) — listing title, not scrape-slot keyword
+- Harga change (this week vs last `listing_weekly.price`; ignore under Rp 100 or 0.5%)
+- Omset up a lot (WoW `omset_wk` ≥ 25%)
+
+Actions: Pantau toko, Deep Dive (opens analysis, does not expand the card), Hapus.
 
 ## Notify
 
@@ -51,5 +61,5 @@ Keep the paused-user filter in both places so a scraper re-apply does not
 drop it.
 
 Next-day smoke (after `tracked_pass`): favorited listing gets a
-`search_rank = -100` row; Favorit Aku detail shows that point as perkiraan
-unless it also landed from a search-result scrape.
+`search_rank = -100` row; the Favorit Aku card chart labels that point
+perkiraan unless it also landed from a search-result scrape.
