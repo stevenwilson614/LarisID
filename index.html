@@ -5916,63 +5916,76 @@ body.home-finder-done .home-hero {
   100% { background-position: -100% 0; }
 }
 @media (max-width: 719px) {
-  /* Mobile: trophy+mascot | title→cat→harga→omset→%+bolt | photo */
+  /* Mobile: trophy+mascot | title→cat→harga→omset→%+bolt | full-height photo */
   .trend-now-row {
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr) 84px;
     grid-template-areas: "rank main img";
-    column-gap: 6px; row-gap: 0; padding: 12px 10px 12px 8px;
-    align-items: center;
+    column-gap: 8px; row-gap: 0; padding: 0 0 0 6px;
+    align-items: stretch; overflow: hidden;
   }
-  .trend-now-row--1 { grid-template-columns: auto minmax(0, 1fr) auto; }
-  .trend-now-rank { grid-area: rank; align-self: center; }
-  .trend-now-place { width: 44px; height: 44px; }
-  .trend-now-mascot { width: 58px; height: 58px; margin-left: -14px; }
-  .trend-now-img, .trend-now-img--ph {
-    grid-area: img; width: 78px; height: 78px; border-radius: 12px;
-    justify-self: end; align-self: center;
+  .trend-now-row--1 { grid-template-columns: auto minmax(0, 1fr) 96px; }
+  .trend-now-rank {
+    grid-area: rank; align-self: center;
+    /* Medal sits on top of mascot; tighter nest = bigger pair in less width */
+    position: relative;
+    padding: 10px 0;
+  }
+  .trend-now-place {
+    width: 52px; height: 52px;
+    position: relative; z-index: 1;
+  }
+  .trend-now-mascot {
+    width: 66px; height: 66px;
+    margin-left: -30px; /* overlap under the medal */
+    position: relative; z-index: 0;
+  }
+  .trend-now-media {
+    grid-area: img;
+    width: 100%; height: auto;
+    min-height: 100%;
+    border-radius: 0; /* card clips the right edge */
+    justify-self: stretch; align-self: stretch;
   }
   .trend-now-main {
     grid-area: main;
     display: flex; flex-direction: column; align-items: flex-start;
-    gap: 2px; min-width: 0;
+    gap: 2px; min-width: 0; max-width: 100%; overflow: hidden;
+    align-self: center; padding: 10px 0;
   }
+  .trend-now-main > * { max-width: 100%; min-width: 0; }
   .trend-now-name,
   .trend-now-cat,
   .trend-now-harga,
   .trend-now-omset,
   .trend-now-pct { grid-area: auto; }
-  .trend-now-name { font-size: .92rem; }
-  .trend-now-cat { margin-top: 1px; font-size: .62rem; padding: 1px 7px 1px 5px; }
-  .trend-now-harga { margin-top: 1px; font-size: 1.05rem; }
-  .trend-now-omset { text-align: left; font-size: .84rem; }
+  .trend-now-name {
+    font-size: .76rem; line-height: 1.2;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .trend-now-cat { margin-top: 1px; font-size: .6rem; padding: 1px 7px 1px 5px; }
+  .trend-now-harga { margin-top: 1px; font-size: 1rem; }
+  .trend-now-omset { text-align: left; font-size: .8rem; }
   .trend-now-pct {
-    justify-content: flex-start; gap: 4px; font-size: .95rem; margin-top: 1px;
+    justify-content: flex-start; gap: 4px; font-size: .88rem; margin-top: 1px;
+    max-width: 100%; overflow: hidden;
   }
-  .trend-now-bolt-wrap { width: 46px; height: 32px; }
-  .trend-now-bolt { width: 42px; height: 24px; }
-  .trend-now-go {
-    grid-area: img;
-    justify-self: end; align-self: center;
-    width: 26px; height: 26px; margin-right: -8px;
-    border-radius: 50%; background: #fff;
-    box-shadow: 0 1px 4px rgba(15, 23, 42, .14);
-    color: #94A3B8; z-index: 1;
-  }
-  .trend-now-go svg { width: 14px; height: 14px; }
-  .trend-now-row--1 .trend-now-place { width: 52px; height: 52px; }
-  .trend-now-row--1 .trend-now-mascot { width: 72px; height: 72px; margin-left: -16px; }
-  .trend-now-row--1 .trend-now-img,
-  .trend-now-row--1 .trend-now-img--ph { width: 96px; height: 96px; border-radius: 14px; }
-  .trend-now-row--1 .trend-now-name { font-size: 1.02rem; }
-  .trend-now-row--1 .trend-now-harga { font-size: 1.22rem; }
-  .trend-now-row--1 .trend-now-omset { font-size: .92rem; }
-  .trend-now-row--1 .trend-now-pct { font-size: 1.02rem; }
-  .trend-now-row--1 .trend-now-bolt-wrap { width: 54px; height: 38px; }
-  .trend-now-row--1 .trend-now-bolt { width: 50px; height: 28px; }
-  .trend-now-row--1 .trend-now-go { width: 28px; height: 28px; }
-  .trend-now-shimmer { height: 140px; }
-  .trend-now-shimmer.trend-now-row--1 { height: 168px; }
+  .trend-now-bolt-wrap { width: 42px; height: 28px; flex-shrink: 0; }
+  .trend-now-bolt { width: 38px; height: 22px; }
+  /* Photo owns the far-right column — hide overlay chevron on mobile */
+  .trend-now-go { display: none; }
+  .trend-now-row--1 .trend-now-place { width: 60px; height: 60px; }
+  .trend-now-row--1 .trend-now-mascot { width: 78px; height: 78px; margin-left: -34px; }
+  .trend-now-row--1 .trend-now-media { border-radius: 0; }
+  .trend-now-row--1 .trend-now-name { font-size: .82rem; }
+  .trend-now-row--1 .trend-now-harga { font-size: 1.12rem; }
+  .trend-now-row--1 .trend-now-omset { font-size: .86rem; }
+  .trend-now-row--1 .trend-now-pct { font-size: .94rem; }
+  .trend-now-row--1 .trend-now-bolt-wrap { width: 48px; height: 34px; }
+  .trend-now-row--1 .trend-now-bolt { width: 44px; height: 26px; }
+  .trend-now-shimmer { height: 148px; }
+  .trend-now-shimmer.trend-now-row--1 { height: 176px; }
 }
+
 #dir-grid .lrow-table { font-size: .95rem; min-width: 860px; }
 #dir-grid .lrow-table thead th {
   font-size: .72rem; font-weight: 800; padding: 10px 12px;
