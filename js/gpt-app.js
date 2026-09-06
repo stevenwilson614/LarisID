@@ -3215,26 +3215,28 @@ function openAuthModal(mode, source) {
 function closeAuthModal() {
   $('auth-overlay')?.classList.remove('open');
 }
-// Signup puts WhatsApp first and collapses email behind a link. Google stays
-// visible as a secondary path. Login keeps email open so existing email
-// accounts are not stranded. Reset is email-only, so the WhatsApp panel hides.
+// WhatsApp is always forward. Google + Email sit as collapsed alt rows.
+// Email expands in-place; Google still fires OAuth on click. Reset is email-only.
 let _authEmailOpen = false;
-function _applyAuthEmailCollapse(signup) {
+function _applyAuthEmailCollapse() {
   const reset = _authMode === 'reset';
   const block = $('auth-email-block');
   const toggle = $('auth-email-toggle');
-  const sep = $('auth-sep');
   const sepWa = $('auth-sep-wa');
   const waPanel = $('auth-wa-panel');
-  const collapsible = signup && !_authEmailOpen;
-  if (block) block.style.display = collapsible ? 'none' : '';
+  const altStack = $('auth-alt-stack');
+  const googleBtn = $('auth-google-btn');
+  const open = reset || _authEmailOpen;
+  if (block) block.style.display = open ? '' : 'none';
   if (toggle) {
-    toggle.style.display = signup && !_authEmailOpen ? '' : 'none';
-    toggle.textContent = 'Pakai email saja';
+    toggle.style.display = reset ? 'none' : '';
+    toggle.classList.toggle('is-open', open && !reset);
+    toggle.setAttribute('aria-expanded', open && !reset ? 'true' : 'false');
   }
   if (waPanel) waPanel.style.display = reset ? 'none' : '';
   if (sepWa) sepWa.style.display = reset ? 'none' : '';
-  if (sep) sep.style.display = reset ? 'none' : '';
+  if (googleBtn) googleBtn.style.display = reset ? 'none' : '';
+  if (altStack) altStack.style.display = '';
 }
 
 function renderAuthModal() {
@@ -3245,18 +3247,25 @@ function renderAuthModal() {
   const nameWrap = $('auth-name-wrap');
   const passWrap = $('auth-pass-wrap');
   const forgotWrap = $('auth-forgot-wrap');
-  const googleBtn = $('auth-google-btn');
   const btn = $('auth-submit-btn');
   const toggle = $('auth-toggle-text');
-  $('auth-overlay')?.classList.toggle('auth-is-signup', signup);
-  $('auth-overlay')?.classList.toggle('auth-is-login', !signup && !reset);
+  const overlay = $('auth-overlay');
+  overlay?.classList.toggle('auth-is-signup', signup);
+  overlay?.classList.toggle('auth-is-login', !signup && !reset);
+  overlay?.classList.toggle('auth-is-reset', reset);
   if (title) title.textContent = reset ? 'Reset Password' : signup ? 'Buat Akun Gratis' : 'Masuk ke LarisID';
   const mascot = $('auth-mascot');
   if (mascot) {
+    // Keep the celebratory mascot on signup only; login matches the clean WA mock.
     mascot.style.display = signup ? 'block' : 'none';
-    // Costs nothing until someone actually opens the signup modal.
     if (signup && !mascot.src && mascot.dataset.src) mascot.src = mascot.dataset.src;
   }
+  const waHeroTitle = $('auth-wa-hero-title');
+  if (waHeroTitle) waHeroTitle.textContent = signup ? 'Daftar dengan WhatsApp' : 'Masuk dengan WhatsApp';
+  const googleLabel = $('auth-google-label');
+  if (googleLabel) googleLabel.textContent = signup ? 'Daftar dengan Google' : 'Masuk dengan Google';
+  const emailLabel = $('auth-email-toggle-label');
+  if (emailLabel) emailLabel.textContent = signup ? 'Daftar dengan Email' : 'Masuk dengan Email';
   if (sub) {
     const map = {
       gpt_gate_deepdive: 'Kamu sudah lihat 1 analisa gratis. Daftar gratis untuk buka analisa produk lain sepuasnya.',
@@ -3267,13 +3276,12 @@ function renderAuthModal() {
     };
     sub.textContent = reset
       ? 'Masukkan email kamu. Kami kirim link untuk mengatur password baru.'
-      : map[_gateSource] || (signup ? 'Gratis. Selamanya. Paling gampang daftar pakai WhatsApp.' : 'Login untuk lanjut riset produk.');
+      : map[_gateSource] || (signup ? 'Gratis. Selamanya. Paling gampang daftar pakai WhatsApp.' : 'Masuk untuk lanjut riset produk');
   }
   if (nameWrap) nameWrap.style.display = signup ? '' : 'none';
   // Reset only needs the email field — no password, no Google button.
   if (passWrap) passWrap.style.display = reset ? 'none' : '';
-  if (googleBtn) googleBtn.style.display = reset ? 'none' : '';
-  if (forgotWrap) forgotWrap.style.display = _authMode === 'login' ? '' : 'none';
+  if (forgotWrap) forgotWrap.style.display = _authMode === 'login' && _authEmailOpen ? '' : 'none';
   if (btn) btn.textContent = reset ? 'Kirim Link Reset' : signup ? 'Daftar dengan Email' : 'Masuk';
   if (toggle) toggle.innerHTML = reset
     ? 'Ingat passwordmu? <a id="auth-toggle-link">Masuk</a>'
@@ -3282,19 +3290,30 @@ function renderAuthModal() {
       : 'Belum punya akun? <a id="auth-toggle-link">Daftar</a>';
   $('auth-toggle-link')?.addEventListener('click', () => {
     _authMode = signup ? 'login' : 'signup';
+    _authEmailOpen = false;
     renderAuthModal();
   });
   $('auth-forgot-link')?.addEventListener('click', () => {
     _authMode = 'reset';
+    _authEmailOpen = true;
     renderAuthModal();
   });
-  _applyAuthEmailCollapse(signup);
-  $('auth-email-toggle')?.addEventListener('click', () => {
-    _authEmailOpen = true;
-    void logUserEvent('auth_email_expand', { ui: 'gpt', source: _gateSource || '(none)' });
-    _applyAuthEmailCollapse(signup);
-    $('auth-email')?.focus();
-  }, { once: true });
+  if (reset) _authEmailOpen = true;
+  _applyAuthEmailCollapse();
+  const emailToggle = $('auth-email-toggle');
+  if (emailToggle && !emailToggle.dataset.bound) {
+    emailToggle.dataset.bound = '1';
+    emailToggle.addEventListener('click', () => {
+      _authEmailOpen = !_authEmailOpen;
+      if (_authEmailOpen) {
+        void logUserEvent('auth_email_expand', { ui: 'gpt', source: _gateSource || '(none)' });
+      }
+      _applyAuthEmailCollapse();
+      const forgot = $('auth-forgot-wrap');
+      if (forgot) forgot.style.display = _authMode === 'login' && _authEmailOpen ? '' : 'none';
+      if (_authEmailOpen) $('auth-email')?.focus();
+    });
+  }
   const err = $('auth-error');
   if (err) { err.style.display = 'none'; err.textContent = ''; }
 }

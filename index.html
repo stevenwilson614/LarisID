@@ -3397,7 +3397,7 @@ body.ddtp-open #btn-tracker svg .ic-f { fill: var(--accent); stroke: none; }
 /* Auth modal */
 .modal-overlay {
   display: none; position: fixed; inset: 0; z-index: 100;
-  background: rgba(0,0,0,.4);
+  background: rgba(0,0,0,.45);
   align-items: center; justify-content: center; padding: 20px;
 }
 .modal-overlay.open { display: flex; }
@@ -3423,40 +3423,129 @@ body.ddtp-open #btn-tracker svg .ic-f { fill: var(--accent); stroke: none; }
 }
 .field input:focus { outline: none; border-color: var(--ink-soft); }
 .auth-err { display: none; font-size: .82rem; color: #555; margin-bottom: 10px; }
-/* Signup only — renderAuthModal() unhides it. Login and reset stay plain, so
-   the celebratory thumbs-up never greets someone who is just signing back in. */
+
+/* WA-forward login/signup (mock: WhatsApp expanded, Google/Email collapsed) */
+#auth-overlay .modal.auth-modal {
+  max-width: 380px;
+  padding: 32px 28px 28px;
+  border-radius: 24px;
+}
+#auth-overlay {
+  --auth-wa: #108548;
+  --auth-wa-soft: #E7F6EE;
+}
+.auth-brand {
+  text-align: center;
+  font-size: 1.55rem;
+  font-weight: 750;
+  letter-spacing: -.03em;
+  color: var(--ink);
+  line-height: 1.1;
+  margin: 4px 0 8px;
+}
+.auth-brand-id { color: var(--auth-wa); }
+#auth-overlay .auth-modal > h2#auth-title {
+  display: none;
+  text-align: center;
+  margin: 4px 0 8px;
+}
+#auth-overlay.auth-is-reset .auth-brand { display: none; }
+#auth-overlay.auth-is-reset .auth-modal > h2#auth-title { display: block; }
+#auth-overlay .auth-modal > p.sub {
+  text-align: center;
+  margin: 0 0 22px;
+  font-size: .84rem;
+  color: #9a9a9a;
+}
 .auth-mascot {
-  display: none; width: 104px; height: auto;
+  display: none; width: 88px; height: auto;
   margin: -4px auto 2px; user-select: none; pointer-events: none;
 }
-.auth-google {
-  width: 100%; padding: 12px; border-radius: 999px;
-  border: 1px solid var(--line); font-weight: 600; margin-bottom: 14px;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  background: #fff;
+.auth-wa-hero {
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center; margin: 0 0 16px;
 }
-.auth-google:hover { background: var(--bg-user); }
-/* WhatsApp is the main signup path. Google stays visible but secondary. */
-.auth-is-signup .auth-google {
-  border-width: 1px; border-color: var(--line); box-shadow: none;
-  font-weight: 550; padding: 10px; margin-bottom: 8px;
+.auth-wa-hero-ico {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: var(--auth-wa-soft);
+  display: grid; place-items: center; margin-bottom: 12px;
 }
-.auth-is-login .auth-google {
-  border-width: 1px; border-color: var(--line);
+.auth-wa-hero-title {
+  margin: 0 0 4px; font-size: 1.05rem; font-weight: 700;
+  color: var(--ink); letter-spacing: -.02em;
+}
+.auth-wa-hero-sub {
+  margin: 0; font-size: .8rem; color: #9a9a9a; font-weight: 450;
+}
+.auth-wa-phone {
+  display: flex; align-items: center;
+  border: 1px solid #e0e0e0; border-radius: 12px;
+  background: #fff; overflow: hidden;
+  transition: border-color .12s;
+}
+.auth-wa-phone:focus-within { border-color: var(--auth-wa); }
+.auth-wa-cc {
+  display: inline-flex; align-items: center; gap: 6px;
+  flex-shrink: 0; padding: 12px 10px 12px 12px;
+  border: 0; background: transparent; color: var(--ink);
+  font: inherit; font-size: .9rem; font-weight: 600; user-select: none;
+}
+.auth-wa-cc-chevron { color: #b0b0b0; flex-shrink: 0; }
+.auth-wa-phone-sep {
+  width: 1px; height: 22px; background: #e5e5e5; flex-shrink: 0;
+}
+.auth-wa-phone input {
+  flex: 1; min-width: 0; border: 0; background: transparent;
+  padding: 12px 14px; border-radius: 0; font-size: .95rem;
+  letter-spacing: .01em;
+}
+.auth-wa-phone input:focus { outline: none; border: 0; }
+.auth-wa-phone input::placeholder { color: #c4c4c4; }
+#auth-overlay #wa-send-btn,
+#auth-overlay #wa-verify-btn {
+  width: 100%; margin-top: 12px; padding: 14px 20px;
+  border-radius: 999px; background: var(--auth-wa); color: #fff;
+  font-size: .95rem; font-weight: 700; justify-content: center; gap: 8px;
+}
+#auth-overlay #wa-send-btn:hover,
+#auth-overlay #wa-verify-btn:hover { opacity: .92; }
+#auth-overlay #wa-send-btn::after {
+  content: "→";
+  font-weight: 600; line-height: 1;
+}
+#auth-overlay #auth-error {
+  margin-top: 10px; text-align: center;
 }
 .auth-sep {
-  display: flex; align-items: center; gap: 10px;
-  margin: 2px 0 12px; font-size: .74rem; color: var(--muted); font-weight: 600;
+  display: flex; align-items: center; gap: 12px;
+  margin: 18px 0 14px; font-size: .74rem; color: #b0b0b0; font-weight: 500;
 }
 .auth-sep::before, .auth-sep::after {
-  content: ""; flex: 1; height: 1px; background: var(--line);
+  content: ""; flex: 1; height: 1px; background: #e8e8e8;
 }
-.auth-email-toggle {
-  width: 100%; background: none; border: 0; padding: 4px 0 2px;
-  font: inherit; font-size: .84rem; font-weight: 600; color: var(--muted);
-  cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
+.auth-alt-stack {
+  display: flex; flex-direction: column; gap: 10px;
 }
-.auth-email-toggle:hover { color: var(--ink); }
+.auth-alt-row {
+  width: 100%; padding: 13px 14px;
+  border-radius: 12px; border: 1px solid #e8e8e8;
+  background: #f5f5f5; color: var(--ink);
+  display: flex; align-items: center; gap: 12px;
+  font: inherit; font-size: .9rem; font-weight: 600;
+  cursor: pointer; text-align: left;
+  transition: background .12s, border-color .12s;
+}
+.auth-alt-row:hover { background: #efefef; }
+.auth-alt-row > span { flex: 1; }
+.auth-alt-ico { flex-shrink: 0; display: block; }
+.auth-alt-chevron {
+  flex-shrink: 0; color: #b0b0b0;
+  transition: transform .18s var(--ease);
+}
+.auth-alt-row.is-open .auth-alt-chevron { transform: rotate(180deg); }
+.auth-email-block {
+  padding: 4px 2px 2px;
+}
 .auth-wa-logo { flex-shrink: 0; display: block; }
 .field label.auth-wa-label {
   display: flex; align-items: center; gap: 6px;
@@ -3467,39 +3556,28 @@ body.ddtp-open #btn-tracker svg .ic-f { fill: var(--accent); stroke: none; }
   pointer-events: none;
 }
 .auth-wa-input input { padding-left: 40px; }
-.auth-is-signup #auth-wa-panel { margin-bottom: 4px; }
-.auth-is-signup .field label.auth-wa-label {
-  font-size: .85rem; font-weight: 650; color: var(--ink); margin-bottom: 8px;
-}
-.auth-is-signup .auth-wa-input input {
-  padding: 16px 16px 16px 48px; font-size: 1.05rem; border-radius: 14px;
-}
-.auth-is-signup .auth-wa-input .auth-wa-logo { width: 22px; height: 22px; left: 14px; }
-.auth-is-signup #wa-send-btn {
-  margin-top: 10px; padding: 16px 20px; font-size: 1.05rem; font-weight: 700;
-}
-.auth-is-signup #wa-send-btn::before { width: 22px; height: 22px; }
-#wa-send-btn::before {
-  content: "";
-  width: 18px; height: 18px; flex-shrink: 0;
-  background: #fff;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z'/%3E%3C/svg%3E") center / contain no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z'/%3E%3C/svg%3E") center / contain no-repeat;
-}
 #wa-capture .nudge-title .auth-wa-label { display: flex; align-items: center; gap: 8px; }
 #wa-capture .field { margin: 4px 0 8px; }
 #wa-capture .nudge-actions { margin-top: 4px; }
 .auth-wa-hint { font-size: .78rem; color: var(--muted); margin: 0 0 10px; line-height: 1.4; }
 .auth-wa-resend { text-align: center; margin: 10px 0 0; font-size: .78rem; }
-.auth-wa-resend a { color: var(--accent); font-weight: 600; cursor: pointer; }
+.auth-wa-resend a { color: var(--auth-wa, var(--accent)); font-weight: 600; cursor: pointer; }
 .auth-wa-resend a:hover { text-decoration: underline; }
 .auth-wa-resend a.is-wait { color: var(--muted); pointer-events: none; text-decoration: none; cursor: default; }
 .auth-submit { width: 100%; justify-content: center; margin-top: 4px; }
+#auth-overlay #auth-submit-btn {
+  background: var(--auth-wa); margin-top: 8px; padding: 13px 18px;
+  font-weight: 700;
+}
 .auth-forgot { text-align: right; margin: -4px 0 12px; font-size: .78rem; }
 .auth-forgot a { color: var(--muted); font-weight: 550; cursor: pointer; text-decoration: none; }
 .auth-forgot a:hover { color: var(--ink); text-decoration: underline; }
-.auth-toggle { text-align: center; margin-top: 16px; font-size: .84rem; color: var(--muted); }
-.auth-toggle a { font-weight: 600; cursor: pointer; text-decoration: none; }
+.auth-toggle { text-align: center; margin-top: 18px; font-size: .84rem; color: #9a9a9a; }
+.auth-toggle a {
+  font-weight: 700; cursor: pointer; text-decoration: none;
+  color: var(--auth-wa);
+}
+.auth-toggle a:hover { text-decoration: underline; }
 
 /* Toast */
 .toast {
@@ -7927,7 +8005,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 </div>
 
 <div class="modal-overlay" id="auth-overlay">
-  <div class="modal" role="dialog" aria-labelledby="auth-title">
+  <div class="modal auth-modal" role="dialog" aria-labelledby="auth-brand">
     <button type="button" class="modal-close" id="auth-close" aria-label="Tutup">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
@@ -7935,18 +8013,27 @@ body:has(.modal-overlay.open) .msg-steven-fab {
      does not work here: the img lives inside a display:none overlay, so the
      browser defers it forever and the slot renders empty. -->
     <img class="auth-mascot" id="auth-mascot" data-src="/images/brand/mascot-daftar.webp" width="320" height="217" alt="" decoding="async">
-    <h2 id="auth-title">Masuk ke LarisID</h2>
-    <p class="sub" id="auth-subtitle">Login untuk membuka Deep Dive &amp; tanya AI.</p>
+    <div class="auth-brand" id="auth-brand">Laris<span class="auth-brand-id">ID</span></div>
+    <h2 id="auth-title">Reset Password</h2>
+    <p class="sub" id="auth-subtitle">Masuk untuk lanjut riset produk</p>
     <div id="auth-wa-panel">
       <div id="wa-step-phone">
+        <div class="auth-wa-hero">
+          <div class="auth-wa-hero-ico" aria-hidden="true">
+            <svg width="30" height="30" viewBox="0 0 24 24"><path fill="#108548" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          </div>
+          <h3 class="auth-wa-hero-title" id="auth-wa-hero-title">Masuk dengan WhatsApp</h3>
+          <p class="auth-wa-hero-sub">Cepat, aman, dan praktis</p>
+        </div>
         <div class="field">
-          <label class="auth-wa-label" for="wa-phone-input">
-            <svg class="auth-wa-logo" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="#25D366" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-            WhatsApp
-          </label>
-          <div class="auth-wa-input">
-            <svg class="auth-wa-logo" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#25D366" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-            <input id="wa-phone-input" type="tel" inputmode="tel" autocomplete="tel" placeholder="0812 3456 7890" maxlength="20">
+          <div class="auth-wa-phone">
+            <span class="auth-wa-cc" aria-hidden="true">
+              <svg class="auth-wa-logo" width="18" height="18" viewBox="0 0 24 24"><path fill="#25D366" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+              <span>+62</span>
+              <svg class="auth-wa-cc-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg>
+            </span>
+            <span class="auth-wa-phone-sep" aria-hidden="true"></span>
+            <input id="wa-phone-input" type="tel" inputmode="tel" autocomplete="tel" placeholder="812 3456 7890" maxlength="20" aria-label="Nomor WhatsApp">
           </div>
         </div>
         <div class="auth-err" id="wa-error"></div>
@@ -7964,29 +8051,35 @@ body:has(.modal-overlay.open) .msg-steven-fab {
       </div>
     </div>
     <div class="auth-sep" id="auth-sep-wa">atau</div>
-    <button type="button" class="auth-google" id="auth-google-btn">
-      <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 12 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.66l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-      Lanjutkan dengan Google
-    </button>
+    <div class="auth-alt-stack" id="auth-alt-stack">
+      <button type="button" class="auth-alt-row" id="auth-google-btn">
+        <svg class="auth-alt-ico" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 12 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.66l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        <span id="auth-google-label">Masuk dengan Google</span>
+        <svg class="auth-alt-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <button type="button" class="auth-alt-row" id="auth-email-toggle" aria-expanded="false" aria-controls="auth-email-block">
+        <svg class="auth-alt-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6b6b6b" stroke-width="1.8" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 7 9-7"/></svg>
+        <span id="auth-email-toggle-label">Masuk dengan Email</span>
+        <svg class="auth-alt-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div id="auth-email-block" class="auth-email-block" style="display:none">
+        <div class="field" id="auth-name-wrap" style="display:none">
+          <label for="auth-name">Nama</label>
+          <input id="auth-name" type="text" autocomplete="name">
+        </div>
+        <div class="field">
+          <label for="auth-email">Email</label>
+          <input id="auth-email" type="email" autocomplete="email">
+        </div>
+        <div class="field" id="auth-pass-wrap">
+          <label for="auth-pass">Password</label>
+          <input id="auth-pass" type="password" autocomplete="current-password">
+        </div>
+        <div class="auth-forgot" id="auth-forgot-wrap" style="display:none"><a id="auth-forgot-link">Lupa password?</a></div>
+        <button type="button" class="btn-primary auth-submit" id="auth-submit-btn">Masuk</button>
+      </div>
+    </div>
     <div class="auth-err" id="auth-error"></div>
-    <div class="auth-sep" id="auth-sep">atau</div>
-    <button type="button" class="auth-email-toggle" id="auth-email-toggle">Pakai email saja</button>
-    <div id="auth-email-block">
-    <div class="field" id="auth-name-wrap" style="display:none">
-      <label for="auth-name">Nama</label>
-      <input id="auth-name" type="text" autocomplete="name">
-    </div>
-    <div class="field">
-      <label for="auth-email">Email</label>
-      <input id="auth-email" type="email" autocomplete="email">
-    </div>
-    <div class="field" id="auth-pass-wrap">
-      <label for="auth-pass">Password</label>
-      <input id="auth-pass" type="password" autocomplete="current-password">
-    </div>
-    <div class="auth-forgot" id="auth-forgot-wrap" style="display:none"><a id="auth-forgot-link">Lupa password?</a></div>
-    <button type="button" class="btn-primary auth-submit" id="auth-submit-btn">Masuk</button>
-    </div>
     <div class="auth-toggle" id="auth-toggle-text">Belum punya akun? <a id="auth-toggle-link">Daftar</a></div>
   </div>
 </div>
@@ -8258,6 +8351,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
      larisLoadScript() when the admin view actually renders. -->
 <script src="/js/peta-peluang.js?v=20260905d" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
-<script src="/js/gpt-app.js?v=20260906c" defer></script>
+<script src="/js/gpt-app.js?v=20260906d" defer></script>
 </body>
 </html>
