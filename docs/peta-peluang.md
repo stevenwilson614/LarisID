@@ -66,7 +66,7 @@ Do not fall back to peer / nowcast / forecast when a listing has no S2.
 ## Cari Produk layout
 
 1. Cat rail + heading / count
-2. Trending Sekarang (place icon + rank mascot + photo + title/harga stack + omset + one % with tren bolt + Deep Dive). Rank 1 is larger. Shared grid columns align across the top 3. Bolt slope caps at 60° with a light green fill under the stroke. No “perkiraan” label on this strip.
+2. Trending Sekarang (place icon + rank mascot nestled together + photo + title/harga stack + omset + one % with tren spark + Deep Dive). Rank 1 is larger. Shared grid columns align across the top 3. Spark rise caps at 60° from the %; ranks 1/2/3 use unique stroke shapes; green fill meets a flat baseline so it reads as a graph. No “perkiraan” label on this strip.
 3. Urutkan (`#dir-filters-range` — includes Paling Trending; default remains omset)
 4. Keyword chips + listing table + pager + compare bar
 

@@ -5700,20 +5700,25 @@ body.home-finder-done .home-hero {
   margin: 4px 0 0; font-size: .78rem; color: var(--ink-soft); line-height: 1.4;
 }
 .trend-now-row {
-  /* Shared tracks so place / mascot / foto / title / omset / tren line up across ranks. */
+  /* Shared tracks so rank / foto / title / omset / tren line up across ranks. */
   display: grid;
-  grid-template-columns: 52px 84px 84px minmax(0, 1.2fr) 8rem 10.5rem 28px;
+  grid-template-columns: 118px 84px minmax(0, 1.2fr) 8rem 10.5rem 28px;
   align-items: center;
   column-gap: 12px;
   padding: 10px 12px; border: 1px solid var(--line); border-radius: 16px;
   background: #fff; cursor: pointer;
 }
 .trend-now-row:hover { border-color: #F5D0A9; background: #FFF7ED; }
+.trend-now-rank {
+  display: flex; align-items: center; justify-content: flex-start;
+  gap: 0; min-width: 0;
+}
 .trend-now-place {
-  width: 44px; height: 44px; object-fit: contain; justify-self: center;
+  width: 44px; height: 44px; object-fit: contain; flex-shrink: 0;
 }
 .trend-now-mascot {
-  width: 64px; height: 64px; object-fit: contain; justify-self: center;
+  width: 64px; height: 64px; object-fit: contain; flex-shrink: 0;
+  margin-left: -14px; /* nestle against trophy / medal */
 }
 .trend-now-img, .trend-now-img--ph {
   width: 64px; height: 64px; border-radius: 12px; object-fit: cover;
@@ -5744,14 +5749,15 @@ body.home-finder-done .home-hero {
   width: 44px; height: 32px; display: grid; place-items: center; flex-shrink: 0;
 }
 .trend-now-bolt {
-  width: 40px; height: 24px; overflow: visible; transform-origin: center;
+  width: 40px; height: 24px; overflow: visible;
 }
 .trend-now-go { color: var(--ink-soft); display: grid; place-items: center; }
 .trend-now-row--1 {
   padding: 14px 16px; border-radius: 20px;
+  grid-template-columns: 132px 84px minmax(0, 1.2fr) 8rem 10.5rem 28px;
 }
 .trend-now-row--1 .trend-now-place { width: 52px; height: 52px; }
-.trend-now-row--1 .trend-now-mascot { width: 88px; height: 88px; }
+.trend-now-row--1 .trend-now-mascot { width: 88px; height: 88px; margin-left: -18px; }
 .trend-now-row--1 .trend-now-img,
 .trend-now-row--1 .trend-now-img--ph { width: 84px; height: 84px; border-radius: 16px; }
 .trend-now-row--1 .trend-now-name { font-size: 1.15rem; }
@@ -5773,22 +5779,24 @@ body.home-finder-done .home-hero {
 }
 @media (max-width: 719px) {
   .trend-now-row {
-    grid-template-columns: 40px 56px 56px minmax(0, 1fr);
+    grid-template-columns: auto 56px minmax(0, 1fr);
     grid-template-areas:
-      "place mascot img main"
-      "place mascot img omset"
-      "pct pct pct go";
+      "rank img main"
+      "rank img omset"
+      "pct pct go";
     row-gap: 6px; column-gap: 10px; padding: 10px;
   }
-  .trend-now-place { grid-area: place; width: 36px; height: 36px; }
-  .trend-now-mascot { grid-area: mascot; width: 48px; height: 48px; }
+  .trend-now-row--1 { grid-template-columns: auto 64px minmax(0, 1fr); }
+  .trend-now-rank { grid-area: rank; }
+  .trend-now-place { width: 36px; height: 36px; }
+  .trend-now-mascot { width: 48px; height: 48px; margin-left: -10px; }
   .trend-now-img, .trend-now-img--ph { grid-area: img; width: 48px; height: 48px; }
   .trend-now-main { grid-area: main; }
   .trend-now-omset { grid-area: omset; text-align: left; }
   .trend-now-pct { grid-area: pct; justify-content: flex-start; }
   .trend-now-go { grid-area: go; justify-self: end; }
   .trend-now-row--1 .trend-now-place { width: 44px; height: 44px; }
-  .trend-now-row--1 .trend-now-mascot { width: 64px; height: 64px; }
+  .trend-now-row--1 .trend-now-mascot { width: 64px; height: 64px; margin-left: -14px; }
   .trend-now-row--1 .trend-now-img,
   .trend-now-row--1 .trend-now-img--ph { width: 64px; height: 64px; }
   .trend-now-row--1 .trend-now-bolt-wrap { width: 44px; height: 32px; }
@@ -8499,6 +8507,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
      larisLoadScript() when the admin view actually renders. -->
 <script src="/js/peta-peluang.js?v=20260906a" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
-<script src="/js/gpt-app.js?v=20260906j" defer></script>
+<script src="/js/gpt-app.js?v=20260906k" defer></script>
 </body>
 </html>

@@ -10091,15 +10091,34 @@ function trendingNowSkeletonHtml() {
   </div>`;
 }
 
-/** Soft lightning bolt after the weekly %. Slope: 300% → 60°, 150% → 30°, 75% → 15°. */
-function trendBoltHtml(wkPct, gid = 'tb') {
+/** Area spark after the weekly %. Slope: 300% → 60°, 150% → 30°, 75% → 15°.
+ *  Rank 1/2/3 get unique stroke silhouettes; green fill meets the flat baseline. */
+function trendBoltHtml(wkPct, gid = 'tb', rank = 1) {
   if (wkPct == null || !Number.isFinite(Number(wkPct))) return '';
   const pct = Number(wkPct);
-  const deg = pct * (60 / 300);
+  const deg = Math.max(-60, Math.min(60, pct * (60 / 300)));
   const cls = pct > 0 ? 'is-up' : pct < 0 ? 'is-down' : 'is-flat';
   const stop = pct < 0 ? '#DC2626' : '#16A34A';
   const id = esc(String(gid));
-  return `<span class="trend-now-bolt-wrap" aria-hidden="true"><svg class="trend-now-bolt ${cls}" viewBox="0 0 48 28" width="40" height="24" style="transform:rotate(${-deg}deg)"><defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${stop}" stop-opacity="0.32"/><stop offset="100%" stop-color="${stop}" stop-opacity="0"/></linearGradient></defs><path d="M2 14 C10 13 14 10 18 13 C16.5 15.5 18 17 21 15 C28 13 36 14 46 14 L46 26 L2 26 Z" fill="url(#${id})"/><path d="M2 14 C10 13 14 10 18 13 C16.5 15.5 18 17 21 15 C28 13 36 14 46 14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
+  const yBase = 26;
+  const yStart = 20;
+  const lift = (Math.abs(deg) / 60) * 14;
+  const yEnd = pct >= 0 ? (yStart - lift) : Math.min(yBase - 2, yStart + Math.min(lift, 5));
+  const mid = (yStart + yEnd) / 2;
+  const r = Math.min(3, Math.max(1, Number(rank) || 1));
+  let stroke;
+  if (r === 1) {
+    // Sharp champion zig: climb → notch → surge
+    stroke = `M2 ${yStart.toFixed(1)} L9 ${(yStart - lift * 0.15).toFixed(1)} L13 ${(yEnd + lift * 0.35).toFixed(1)} L19 ${(yStart - lift * 0.45).toFixed(1)} L26 ${mid.toFixed(1)} L34 ${(yEnd + lift * 0.2).toFixed(1)} L46 ${yEnd.toFixed(1)}`;
+  } else if (r === 2) {
+    // Smooth S-curve rise
+    stroke = `M2 ${yStart.toFixed(1)} C12 ${yStart.toFixed(1)} 16 ${(yStart - lift * 0.2).toFixed(1)} 24 ${mid.toFixed(1)} S38 ${yEnd.toFixed(1)} 46 ${yEnd.toFixed(1)}`;
+  } else {
+    // Rolling double bump, then finish high
+    stroke = `M2 ${yStart.toFixed(1)} C7 ${(yStart - lift * 0.35).toFixed(1)} 11 ${(yStart + 2).toFixed(1)} 17 ${(yStart - lift * 0.25).toFixed(1)} C23 ${(yStart - lift * 0.55).toFixed(1)} 29 ${(mid + 2).toFixed(1)} 36 ${(yEnd + lift * 0.15).toFixed(1)} L46 ${yEnd.toFixed(1)}`;
+  }
+  const fill = `${stroke} L46 ${yBase} L2 ${yBase} Z`;
+  return `<span class="trend-now-bolt-wrap" aria-hidden="true"><svg class="trend-now-bolt ${cls}" viewBox="0 0 48 28" width="40" height="24"><defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${stop}" stop-opacity="0.4"/><stop offset="100%" stop-color="${stop}" stop-opacity="0.16"/></linearGradient></defs><path d="${fill}" fill="url(#${id})"/><line x1="2" y1="${yBase}" x2="46" y2="${yBase}" stroke="${stop}" stroke-opacity="0.4" stroke-width="1.2" stroke-linecap="round"/><path d="${stroke}" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
 }
 
 function trendingNowRowHtml(p, i) {
@@ -10117,14 +10136,16 @@ function trendingNowRowHtml(p, i) {
   const encoded = snap ? encodeURIComponent(JSON.stringify(snap)) : '';
   const t = p && p._petaTrend;
   const bolt = (t && !t.pending && !t.belum && t.wkPct != null)
-    ? trendBoltHtml(t.wkPct, `tn-bolt-${rank}-${String(key).replace(/\|/g, '-')}`)
+    ? trendBoltHtml(t.wkPct, `tn-bolt-${rank}-${String(key).replace(/\|/g, '-')}`, rank)
     : '';
   const thumb = img
     ? `<img class="trend-now-img" src="${esc(imgThumb(img))}" alt="" loading="lazy" decoding="async" width="${thumbPx}" height="${thumbPx}" onerror="this.onerror=null;this.replaceWith(Object.assign(document.createElement('div'),{className:'trend-now-img trend-now-img--ph'}))">`
     : '<div class="trend-now-img trend-now-img--ph"></div>';
   return `<div class="trend-now-row${first ? ' trend-now-row--1' : ''}" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} tabindex="0" role="button" aria-label="Peringkat ${rank}, ${esc(name)}">
-    <img class="trend-now-place" src="/images/brand/trend-place-${rank}.webp" alt="" width="${placePx}" height="${placePx}" decoding="async">
-    <img class="trend-now-mascot" src="/images/brand/mascot-trend-${rank}.webp" alt="" width="${mascotPx}" height="${mascotPx}" decoding="async">
+    <span class="trend-now-rank">
+      <img class="trend-now-place" src="/images/brand/trend-place-${rank}.webp" alt="" width="${placePx}" height="${placePx}" decoding="async">
+      <img class="trend-now-mascot" src="/images/brand/mascot-trend-${rank}.webp" alt="" width="${mascotPx}" height="${mascotPx}" decoding="async">
+    </span>
     ${thumb}
     <div class="trend-now-main">
       <div class="trend-now-name" title="${esc(name)}">${esc(name)}</div>
