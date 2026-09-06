@@ -5812,10 +5812,10 @@ body.home-finder-done .home-hero {
   margin: 4px 0 0; font-size: .78rem; color: var(--ink-soft); line-height: 1.4;
 }
 .trend-now-row {
-  /* Shared tracks so rank / photo / title / omset / tren line up across ranks.
-   * Sizes are ~1.3× the prior row height (thumb / mascot / pad / shimmer). */
+  /* Desktop: trophy | photo | text stack | chevron.
+   * Text stack keeps omset/% in side columns via an inner grid. */
   display: grid;
-  grid-template-columns: 153px 109px minmax(0, 1.2fr) 8rem 10.5rem 28px;
+  grid-template-columns: 153px 109px minmax(0, 1fr) 28px;
   align-items: center;
   column-gap: 12px;
   padding: 13px 12px; border: 1px solid var(--line); border-radius: 16px;
@@ -5837,20 +5837,45 @@ body.home-finder-done .home-hero {
   width: 83px; height: 83px; border-radius: 14px; object-fit: cover;
   background: var(--bg-user); justify-self: center;
 }
-.trend-now-main { min-width: 0; }
+.trend-now-main {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) 8rem 10.5rem;
+  grid-template-areas:
+    "name omset pct"
+    "cat omset pct"
+    "harga omset pct";
+  column-gap: 12px;
+  align-items: center;
+}
 .trend-now-name {
+  grid-area: name;
   font-weight: 800; letter-spacing: -.02em; line-height: 1.25;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.trend-now-cat {
+  grid-area: cat;
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-top: 3px; max-width: 100%;
+  padding: 2px 8px 2px 6px; border-radius: 999px;
+  background: #F1F5F9; color: #64748B;
+  font-size: .68rem; font-weight: 650; line-height: 1.2;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  justify-self: start;
+}
+.trend-now-cat-ico { flex-shrink: 0; }
 .trend-now-harga {
+  grid-area: harga;
   margin-top: 2px; font-size: 1.05rem; font-weight: 800; letter-spacing: -.02em;
   white-space: nowrap;
 }
 .trend-now-omset {
+  grid-area: omset;
   font-size: .9rem; font-weight: 700; color: var(--ink-soft);
   white-space: nowrap; text-align: right;
 }
 .trend-now-pct {
+  grid-area: pct;
   font-weight: 800;
   display: flex; align-items: center; justify-content: flex-end; gap: 6px;
   white-space: nowrap;
@@ -5867,7 +5892,7 @@ body.home-finder-done .home-hero {
 .trend-now-go { color: var(--ink-soft); display: grid; place-items: center; }
 .trend-now-row--1 {
   padding: 18px 16px; border-radius: 20px;
-  grid-template-columns: 172px 109px minmax(0, 1.2fr) 8rem 10.5rem 28px;
+  grid-template-columns: 172px 109px minmax(0, 1fr) 28px;
 }
 .trend-now-row--1 .trend-now-place { width: 68px; height: 68px; }
 .trend-now-row--1 .trend-now-mascot { width: 114px; height: 114px; margin-left: -23px; }
@@ -5891,30 +5916,62 @@ body.home-finder-done .home-hero {
   100% { background-position: -100% 0; }
 }
 @media (max-width: 719px) {
+  /* Mobile: trophy+mascot | title→cat→harga→omset→%+bolt | photo */
   .trend-now-row {
-    grid-template-columns: auto 73px minmax(0, 1fr);
-    grid-template-areas:
-      "rank img main"
-      "rank img omset"
-      "pct pct go";
-    row-gap: 6px; column-gap: 10px; padding: 13px;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "rank main img";
+    column-gap: 6px; row-gap: 0; padding: 12px 10px 12px 8px;
+    align-items: center;
   }
-  .trend-now-row--1 { grid-template-columns: auto 83px minmax(0, 1fr); }
-  .trend-now-rank { grid-area: rank; }
-  .trend-now-place { width: 47px; height: 47px; }
-  .trend-now-mascot { width: 62px; height: 62px; margin-left: -13px; }
-  .trend-now-img, .trend-now-img--ph { grid-area: img; width: 62px; height: 62px; }
-  .trend-now-main { grid-area: main; }
-  .trend-now-omset { grid-area: omset; text-align: left; }
-  .trend-now-pct { grid-area: pct; justify-content: flex-start; }
-  .trend-now-go { grid-area: go; justify-self: end; }
-  .trend-now-row--1 .trend-now-place { width: 57px; height: 57px; }
-  .trend-now-row--1 .trend-now-mascot { width: 83px; height: 83px; margin-left: -18px; }
+  .trend-now-row--1 { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .trend-now-rank { grid-area: rank; align-self: center; }
+  .trend-now-place { width: 44px; height: 44px; }
+  .trend-now-mascot { width: 58px; height: 58px; margin-left: -14px; }
+  .trend-now-img, .trend-now-img--ph {
+    grid-area: img; width: 78px; height: 78px; border-radius: 12px;
+    justify-self: end; align-self: center;
+  }
+  .trend-now-main {
+    grid-area: main;
+    display: flex; flex-direction: column; align-items: flex-start;
+    gap: 2px; min-width: 0;
+  }
+  .trend-now-name,
+  .trend-now-cat,
+  .trend-now-harga,
+  .trend-now-omset,
+  .trend-now-pct { grid-area: unset; }
+  .trend-now-name { font-size: .92rem; }
+  .trend-now-cat { margin-top: 1px; font-size: .62rem; padding: 1px 7px 1px 5px; }
+  .trend-now-harga { margin-top: 1px; font-size: 1.05rem; }
+  .trend-now-omset { text-align: left; font-size: .84rem; }
+  .trend-now-pct {
+    justify-content: flex-start; gap: 4px; font-size: .95rem; margin-top: 1px;
+  }
+  .trend-now-bolt-wrap { width: 46px; height: 32px; }
+  .trend-now-bolt { width: 42px; height: 24px; }
+  .trend-now-go {
+    grid-area: img;
+    justify-self: end; align-self: center;
+    width: 26px; height: 26px; margin-right: -8px;
+    border-radius: 50%; background: #fff;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, .14);
+    color: #94A3B8; z-index: 1;
+  }
+  .trend-now-go svg { width: 14px; height: 14px; }
+  .trend-now-row--1 .trend-now-place { width: 52px; height: 52px; }
+  .trend-now-row--1 .trend-now-mascot { width: 72px; height: 72px; margin-left: -16px; }
   .trend-now-row--1 .trend-now-img,
-  .trend-now-row--1 .trend-now-img--ph { width: 83px; height: 83px; }
-  .trend-now-row--1 .trend-now-bolt-wrap { width: 57px; height: 42px; }
-  .trend-now-row--1 .trend-now-bolt { width: 52px; height: 31px; }
-  .trend-now-shimmer.trend-now-row--1 { height: 172px; }
+  .trend-now-row--1 .trend-now-img--ph { width: 96px; height: 96px; border-radius: 14px; }
+  .trend-now-row--1 .trend-now-name { font-size: 1.02rem; }
+  .trend-now-row--1 .trend-now-harga { font-size: 1.22rem; }
+  .trend-now-row--1 .trend-now-omset { font-size: .92rem; }
+  .trend-now-row--1 .trend-now-pct { font-size: 1.02rem; }
+  .trend-now-row--1 .trend-now-bolt-wrap { width: 54px; height: 38px; }
+  .trend-now-row--1 .trend-now-bolt { width: 50px; height: 28px; }
+  .trend-now-row--1 .trend-now-go { width: 28px; height: 28px; }
+  .trend-now-shimmer { height: 140px; }
+  .trend-now-shimmer.trend-now-row--1 { height: 168px; }
 }
 #dir-grid .lrow-table { font-size: .95rem; min-width: 860px; }
 #dir-grid .lrow-table thead th {
@@ -8657,6 +8714,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
      larisLoadScript() when the admin view actually renders. -->
 <script src="/js/peta-peluang.js?v=20260906b" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
-<script src="/js/gpt-app.js?v=20260906o" defer></script>
+<script src="/js/gpt-app.js?v=20260906p" defer></script>
 </body>
 </html>

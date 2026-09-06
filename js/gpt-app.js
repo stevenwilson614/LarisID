@@ -10163,6 +10163,17 @@ function trendBoltHtml(wkPct, gid = 'tb', rank = 1) {
   return `<span class="trend-now-bolt-wrap" aria-hidden="true"><svg class="trend-now-bolt ${cls}" viewBox="0 0 48 28" width="40" height="24"><defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${stop}" stop-opacity="0.4"/><stop offset="100%" stop-color="${stop}" stop-opacity="0.16"/></linearGradient></defs><path d="${fill}" fill="url(#${id})"/><line x1="2" y1="${yBase}" x2="46" y2="${yBase}" stroke="${stop}" stroke-opacity="0.4" stroke-width="1.2" stroke-linecap="round"/><path d="${stroke}" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
 }
 
+function trendNowCatHtml(p) {
+  const raw = String(p?.category || '').trim();
+  if (!raw) return '';
+  const canon = toCanonicalCat(raw) || raw;
+  const paths = CANON_CAT_ICONS[canon] || CAT_CHIP_ICONS[canon] || '';
+  const icon = paths
+    ? `<svg class="trend-now-cat-ico" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`
+    : '';
+  return `<div class="trend-now-cat">${icon}<span>${esc(raw)}</span></div>`;
+}
+
 function trendingNowRowHtml(p, i) {
   const key = prodKey(p);
   const name = p.product_name || p.keyword || 'Produk';
@@ -10183,6 +10194,8 @@ function trendingNowRowHtml(p, i) {
   const thumb = img
     ? `<img class="trend-now-img" src="${esc(imgThumb(img))}" alt="" loading="lazy" decoding="async" width="${thumbPx}" height="${thumbPx}" onerror="this.onerror=null;this.replaceWith(Object.assign(document.createElement('div'),{className:'trend-now-img trend-now-img--ph'}))">`
     : '<div class="trend-now-img trend-now-img--ph"></div>';
+  // DOM order: trophy+mascot → photo → text stack → chevron.
+  // Mobile CSS reflows to trophy | title→cat→harga→omset→%+bolt | photo.
   return `<div class="trend-now-row${first ? ' trend-now-row--1' : ''}" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} tabindex="0" role="button" aria-label="Peringkat ${rank}, ${esc(name)}">
     <span class="trend-now-rank">
       <img class="trend-now-place" src="/images/brand/trend-place-${rank}.webp" alt="" width="${placePx}" height="${placePx}" decoding="async">
@@ -10191,10 +10204,11 @@ function trendingNowRowHtml(p, i) {
     ${thumb}
     <div class="trend-now-main">
       <div class="trend-now-name" title="${esc(name)}">${esc(name)}</div>
+      ${trendNowCatHtml(p)}
       <div class="trend-now-harga">${price ? fmtRp(price) : '—'}</div>
+      <div class="trend-now-omset">${omset ? fmtOmset(omset) : '—'}</div>
+      <div class="trend-now-pct" title="${esc(listingTrendTitle(p._petaTrend))}">${listingTrendInnerHtml(p, { hidePerkiraan: true })}${bolt}</div>
     </div>
-    <div class="trend-now-omset">${omset ? fmtOmset(omset) : '—'}</div>
-    <div class="trend-now-pct" title="${esc(listingTrendTitle(p._petaTrend))}">${listingTrendInnerHtml(p, { hidePerkiraan: true })}${bolt}</div>
     <span class="trend-now-go" aria-hidden="true">${ico('chevronRight', first ? 22 : 18)}</span>
   </div>`;
 }
