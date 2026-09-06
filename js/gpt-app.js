@@ -4938,6 +4938,11 @@ function wireResultsBar() {
 
   const hideSuggestions = () => {
     if (!box) return;
+    // Cancel in-flight / debounced fetches so they cannot re-open the
+    // dropdown after Enter/submit/blur already dismissed it.
+    clearTimeout(suggDebounce);
+    suggDebounce = null;
+    suggGen++;
     box.classList.remove('show');
     box.hidden = true;
     box.innerHTML = '';
@@ -5198,6 +5203,20 @@ function wireResultsBar() {
   });
   input?.addEventListener('blur', () => setTimeout(hideSuggestions, 150));
   input?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      // Always dismiss on Enter (highlighted pick or raw query submit).
+      // Form submit also hides; this covers the race before submit fires.
+      if (suggIdx >= 0 && box && !box.hidden) {
+        const items = [...box.querySelectorAll('[data-sugg]')];
+        if (items[suggIdx]) {
+          e.preventDefault();
+          items[suggIdx].dispatchEvent(new MouseEvent('mousedown'));
+          return;
+        }
+      }
+      hideSuggestions();
+      return;
+    }
     if (!box || box.hidden) {
       if (e.key === 'Escape') {
         hideSuggestions();
@@ -5213,10 +5232,6 @@ function wireResultsBar() {
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       suggIdx = Math.max(-1, suggIdx - 1);
-    } else if (e.key === 'Enter' && suggIdx >= 0) {
-      e.preventDefault();
-      items[suggIdx].dispatchEvent(new MouseEvent('mousedown'));
-      return;
     } else if (e.key === 'Escape') {
       hideSuggestions();
       return;
@@ -18762,12 +18777,6 @@ async function openDirectory() {
 
   applyDirCatUi();
   updateDirHeading();
-
-  const note = $('dir-note');
-  if (note) {
-    const tailored = !!(state.onboarding?.city || state.onboarding?.categories?.length);
-    note.hidden = !tailored || !!state.comparePick;
-  }
 
   // Keep the sticky search bar in sync with directory search state.
   const searchInp = $('results-bar-input');
