@@ -2162,16 +2162,25 @@ body.view-directory.dir-compare-picking .panel { padding-bottom: 110px; }
 .dir-sort-label {
   font-size: .78rem; font-weight: 600; color: var(--ink-soft);
 }
+.dir-sort-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #fff; border: 1px solid var(--line);
+  border-radius: 999px; padding: 0 8px 0 12px;
+}
+.dir-sort-wrap.is-trending .dir-sort-pill { border-color: #F59E0B; background: #FFFBEB; }
+.dir-sort-flame { display: grid; place-items: center; color: #EA580C; }
+.dir-sort-flame[hidden] { display: none; }
 .dir-sort-select {
   appearance: none; -webkit-appearance: none;
-  background: #fff; border: 1px solid var(--line);
-  border-radius: 999px; padding: 8px 32px 8px 14px;
+  background: transparent; border: 0;
+  border-radius: 999px; padding: 8px 28px 8px 4px;
   font: inherit; font-size: .78rem; font-weight: 650; color: var(--ink);
   cursor: pointer;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238e8e8e' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat; background-position: right 12px center;
+  background-repeat: no-repeat; background-position: right 8px center;
 }
-.dir-sort-select:focus { outline: none; border-color: var(--accent, #B5202A); box-shadow: 0 0 0 3px rgba(181,32,42,.1); }
+.dir-sort-select:focus { outline: none; }
+.dir-sort-pill:focus-within { border-color: var(--accent, #B5202A); box-shadow: 0 0 0 3px rgba(181,32,42,.1); }
 .dir-note { font-size: .72rem; color: var(--muted); margin: 0 0 12px; }
 .dir-nearby-lead { margin: 0 0 8px; }
 .dir-grid { display: block; }
@@ -5604,13 +5613,38 @@ body.home-finder-done .home-hero {
 .lrow-meta { display: none; font-size: .68rem; color: var(--muted); margin-top: 2px; }
 .lrow-num { white-space: nowrap; }
 .lrow-num .omset-chip { margin-left: 6px; }
-.lrow-pick { width: 28px; }
+.lrow-pick { width: 36px; }
+.lrow-check-btn {
+  display: grid; place-items: center;
+  width: 28px; height: 28px; padding: 0;
+  border: 0; background: none; cursor: pointer; color: inherit;
+}
 .lrow-check {
   display: none; width: 16px; height: 16px; border-radius: 4px;
   border: 1.5px solid var(--line); background: #fff;
 }
 .lrow.is-picked .lrow-check { display: grid; place-items: center; background: var(--green, #16A34A); border-color: var(--green, #16A34A); color: #fff; }
-.lrow-wrap--pick .lrow-check { display: grid; place-items: center; }
+.lrow-wrap--pick .lrow-check,
+.lrow-wrap--actions .lrow-check { display: grid; place-items: center; }
+.lrow-open {
+  display: flex; gap: 10px; align-items: center; width: 100%;
+  padding: 0; border: 0; background: none; text-align: left;
+  font: inherit; color: inherit; cursor: pointer;
+}
+.lrow-act { width: 76px; white-space: nowrap; }
+.lrow-fav, .lrow-go {
+  display: inline-grid; place-items: center;
+  width: 32px; height: 32px; padding: 0; margin: 0 1px;
+  border: 0; border-radius: 999px; background: none;
+  color: var(--ink-soft); cursor: pointer;
+}
+.lrow-fav:hover, .lrow-go:hover { background: var(--bg-user); color: var(--ink); }
+.lrow-fav.is-on { color: var(--accent, #B5202A); }
+.lrow-fav.is-on svg { fill: currentColor; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
 .ddr-konteks-head {
   font-size: .82rem; font-weight: 800; margin: 8px 0 10px; color: var(--ink-soft);
 }
@@ -5640,13 +5674,74 @@ body.home-finder-done .home-hero {
 .lrow-wrap--compact .lrow-table { min-width: 0; }
 .lrow-wrap--compact .lrow-wide { display: none; }
 .lrow-wrap--compact .lrow-meta { display: block; }
-.lrow-wrap--compact .lrow-trend { display: none; }
+.lrow-wrap--compact:not(.lrow-wrap--actions) .lrow-trend { display: none; }
 .lrow-trend { white-space: nowrap; line-height: 1.25; font-weight: 800; }
-.lrow-trend-wk, .lrow-trend-mo { display: block; }
+.lrow-trend-pct {
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.lrow-trend-pct svg { flex-shrink: 0; }
 .lrow-trend .is-up { color: #16A34A; }
 .lrow-trend .is-down { color: #DC2626; }
 .lrow-trend .is-flat, .lrow-trend-pending { color: var(--ink-soft); }
 .lrow-trend small { font-weight: 700; font-size: .68em; color: var(--muted); }
+.trend-host { margin: 0 0 16px; }
+.trend-now {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.trend-now-hd { margin-bottom: 2px; }
+.trend-now-title {
+  margin: 0; font-size: 1.05rem; font-weight: 800; letter-spacing: -.02em;
+}
+.trend-now-sub {
+  margin: 4px 0 0; font-size: .78rem; color: var(--ink-soft); line-height: 1.4;
+}
+.trend-now-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; border: 1px solid var(--line); border-radius: 16px;
+  background: #fff; cursor: pointer;
+}
+.trend-now-row:hover { border-color: #F5D0A9; background: #FFF7ED; }
+.trend-now-rank {
+  flex-shrink: 0; width: 28px; height: 28px; border-radius: 999px;
+  display: grid; place-items: center;
+  font-size: .78rem; font-weight: 800; color: #fff;
+  background: #94A3B8;
+}
+.trend-now-rank--1 { background: linear-gradient(180deg, #EAB308, #CA8A04); }
+.trend-now-rank--2 { background: linear-gradient(180deg, #94A3B8, #64748B); }
+.trend-now-rank--3 { background: linear-gradient(180deg, #D97706, #B45309); }
+.trend-now-mascot {
+  width: 48px; height: 48px; object-fit: contain; flex-shrink: 0;
+}
+.trend-now-img, .trend-now-img--ph {
+  width: 56px; height: 56px; border-radius: 12px; object-fit: cover;
+  background: var(--bg-user); flex-shrink: 0;
+}
+.trend-now-txt { min-width: 0; flex: 1; }
+.trend-now-name {
+  font-weight: 800; letter-spacing: -.02em; line-height: 1.25;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.trend-now-meta { font-size: .75rem; font-weight: 650; color: var(--ink-soft); margin-top: 2px; }
+.trend-now-pct { flex-shrink: 0; font-weight: 800; }
+.trend-now-pct .is-up { color: #16A34A; }
+.trend-now-pct .is-down { color: #DC2626; }
+.trend-now-go { color: var(--ink-soft); flex-shrink: 0; display: grid; place-items: center; }
+.trend-now-shimmer {
+  height: 76px; border-radius: 16px; border: 1px solid var(--line);
+  background: linear-gradient(90deg, #f3f4f6 0%, #fff 50%, #f3f4f6 100%);
+  background-size: 200% 100%;
+  animation: trendShimmer 1.2s ease-in-out infinite;
+}
+@keyframes trendShimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+@media (max-width: 559px) {
+  .trend-now-mascot { width: 36px; height: 36px; }
+  .trend-now-img, .trend-now-img--ph { width: 44px; height: 44px; }
+  .trend-now-row { gap: 8px; padding: 8px 10px; }
+}
 #dir-grid .lrow-table { font-size: .95rem; min-width: 860px; }
 #dir-grid .lrow-table thead th {
   font-size: .72rem; font-weight: 800; padding: 10px 12px;
@@ -7155,10 +7250,10 @@ body:has(.modal-overlay.open) .msg-steven-fab {
             <p class="dir-count" id="dir-count"></p>
           </div>
           <div class="dir-compare-banner" id="dir-compare-banner" hidden></div>
+          <div id="dir-trending-now" class="trend-host"></div>
           <div id="dir-filters-range"></div>
           <p class="dir-note" id="dir-note" hidden>Disesuaikan dari profil kamu</p>
           <div id="dir-chips" class="lrow-chips" hidden></div>
-          <div id="dir-peta"></div>
           <div class="dir-grid" id="dir-grid"></div>
           <div class="dir-pager" id="dir-pager"></div>
           <div class="dir-compare-bar" id="dir-compare-bar" hidden>
@@ -8115,7 +8210,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <div class="modal-overlay" id="product-rows-notice" hidden>
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="product-rows-notice-title">
     <h3 id="product-rows-notice-title" class="nudge-title">Cari Produk sekarang per produk</h3>
-    <p class="nudge-sub">Dulu hasilnya kartu <strong>pasar</strong>. Sekarang langsung daftar <strong>produk</strong> — foto, harga, omset, unit, ulasan, usia toko — dengan Peta Peluang di atas. Klik satu baris untuk Deep Dive produk itu. Bandingkan pasar tetap ada di chat kalau kamu tanya.</p>
+    <p class="nudge-sub">Dulu hasilnya kartu <strong>pasar</strong>. Sekarang langsung daftar <strong>produk</strong> — foto, harga, omset, unit, ulasan, usia toko — dengan Trending Sekarang di atas. Centang untuk bandingkan, bookmark untuk pantau keyword-nya, panah untuk Deep Dive. Bandingkan pasar tetap ada di chat kalau kamu tanya.</p>
     <div class="nudge-actions">
       <button type="button" class="btn-primary" id="product-rows-notice-go">Lihat Cari Produk</button>
       <button type="button" class="btn-ghost" id="product-rows-notice-close">Mengerti</button>
@@ -8332,7 +8427,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 
 <script src="/js/laris-merdeka.js?v=20260816b" defer></script>
 <script src="/js/changelog.js?v=20260906a" defer></script>
-<script defer src="/js/gpt-dir-filters.js?v=20260905b"></script>
+<script defer src="/js/gpt-dir-filters.js?v=20260906a"></script>
 <script defer src="/js/gpt-dir-hero.js?v=20260824a"></script>
 <script defer src="/js/gpt-dir-home.js?v=20260824d"></script>
 <script defer src="/js/gpt-photo-analyze.js?v=20260824a"></script>
@@ -8349,8 +8444,8 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <!-- admin-map.js and winback-admin.js used to load here for every visitor.
      Both are admin-only; gpt-app.js now pulls them on demand via
      larisLoadScript() when the admin view actually renders. -->
-<script src="/js/peta-peluang.js?v=20260905d" defer></script>
+<script src="/js/peta-peluang.js?v=20260906a" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
-<script src="/js/gpt-app.js?v=20260906d" defer></script>
+<script src="/js/gpt-app.js?v=20260906e" defer></script>
 </body>
 </html>

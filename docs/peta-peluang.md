@@ -1,31 +1,34 @@
-# Peta Peluang — trending photo map + listing table
+# Peta Peluang — trend math + Trending Sekarang
 
-Scatter of **listings** for the current product search. One marker =
-`(item_id, shop_id)`. Default Peluang plots the **top 20** by weekly
-omset % change, with circular product photos. The listing table under
-the map is the **full filtered set**, not the same 20 dots.
+Live Cari Produk / chat listing hosts no longer mount the photo scatter.
+`peta_batch` still attaches `_petaTrend` so we can rank **Trending Sekarang**
+(top 3) and fill the table’s Trending column. The scatter (`PetaPeluang.mount`)
+stays in the module for Jejak / Langit but is not painted on those pages.
+
+One listing = `(item_id, shop_id)`.
 
 ## Where it lives
 
 - Module: [`js/peta-peluang.js`](../js/peta-peluang.js) (`window.PetaPeluang`)
-- CSS: [`styles/peta-peluang.css`](../styles/peta-peluang.css)
+- CSS (scatter, unused on Cari Produk): [`styles/peta-peluang.css`](../styles/peta-peluang.css)
 - SQL: [`supabase/migrations/20260904120000_peta_peluang.sql`](../supabase/migrations/20260904120000_peta_peluang.sql)
 - Weekly backfill: `~/shopee_scraper/listing_weekly.sql` (`backfill_listing_weekly_estimates`)
 - Hosts:
-  - Cari Produk (`#dir-peta`) — `list: false`. The listing table under the map
-    (`listingRowsHtml` in `js/gpt-app.js`) is the list. `onHighlight` /
-    `onZoneFilter` keep map and rows in sync; row hover calls `hoverKey`.
-    `onTrend` repaints the Trending column after `peta_batch`.
-  - Chat search / finder / recs (`.peta-host`) — `list: false` for the same
-    reason (a second list would duplicate the table).
-  - Compare-pick in the directory (`#dir-peta`) — same table with `pick:true`.
-  - SPA Discover (`#disc-peta`) — `list: false` if that grid is already listings.
-  - Bandingkan Pasar is **not** mounted here anymore. That module is chat-only
+  - Cari Produk (`#dir-trending-now`) — top 3 rank rows, then Urutkan, then
+    `listingRowsHtml` (`actions: true`). Keyword chips filter both.
+  - Chat search / finder / recs (`.trend-host`) — same strip + table chrome.
+  - Bandingkan Pasar is **not** mounted here. Chat-only
     (`handleBandingkanIntent`) — see [pasar-compare.md](./pasar-compare.md).
 
-`PetaPeluang.skeleton(el, query)` paints chrome before `peta_batch` / listing fetch returns.
+`PetaPeluang.hydrateTrends(listings, { supabase, onTrend })` is the live path.
+It marks `_petaTrend.pending`, calls `peta_batch` (max 200 keys, 8 weeks), then
+attaches `{ wkPct, moPct, terukur, belum, pending }`. It does not draw SVG.
 
-## Ranking (top 20)
+The Cari Produk listing pool uses `listings_for_keywords` (LATERAL per-keyword
+lookup — do not `btrim()` the `listings_deduped.keyword` column). Home
+keywords/listings are prefetched at boot.
+
+## Ranking
 
 `peta_batch` still receives up to 200 keys. After frames arrive, each listing
 gets `_petaTrend` from the same 8-week `omset_wk` positions:
@@ -38,94 +41,51 @@ gets `_petaTrend` from the same 8-week `omset_wk` positions:
 - Drop `belum`: fewer than 4 weeks in the recent window, previous weekly
   omset below Rp 50rb, or no `measured` / `estimated` / `nowcast` week.
 - Clamp `−100` … `+300` (same as unit momentum).
-- Plot the **top 20** by weekly % desc. Fewer than 20 qualifying → show only
-  those. Below 8 → thin-data message; the table can still be read.
-- While `peta_batch` is in flight, a provisional top 20 by monthly omset is
-  drawn (volume fallback, no invented %). If the RPC is missing, stay on that
-  fallback.
+- **Trending Sekarang** shows the top **3** by weekly % desc. Skip `belum` /
+  missing. If none qualify after hydrate, hide the strip.
+- While `peta_batch` is in flight, show a 3-row skeleton (not a grey square).
+  Do not invent a %. If the RPC is missing, the strip stays hidden and the
+  table Trending column shows `—`.
 
-Never present a raw two-snapshot delta as “minggu ini”. Scrapes land 12–17
-days apart; weeks are already span-normalised in `listing_weekly`.
+Never present a raw two-snapshot delta as “minggu ini” or “30 hari terakhir”.
+Scrapes land 12–17 days apart; weeks are already span-normalised in
+`listing_weekly`.
 
-## Layout
+## Cari Produk layout
 
-Desktop (root ≥ 760px): map left (~52%), scrollable listing list right when
-`list:true`. Map sticky.
-Phone / chat: map full width on top.
+1. Cat rail + heading / count
+2. Trending Sekarang (mascot + photo + one % with arrow + Deep Dive)
+3. Urutkan (`#dir-filters-range` — includes Paling Trending; default remains omset)
+4. Keyword chips + listing table + pager + compare bar
 
-Default view is **Peluang only**. Jejak Waktu and Langit Laris sit behind
-**Lainnya**. Those modes keep their unit / constellation encodings but only
-animate the same top-20 set. A “← Peluang” chip returns.
+Table chrome (`actions: true`): bandingkan checkbox, one weekly % with arrow,
+Favorit bookmark (`trackKeywordWithNotify` — keyword Pantauan, not
+`user_tracked_products`), chevron / product cell → Deep Dive.
 
-## Axes (Peluang)
-
-| | |
-|---|---|
-| X | Kenaikan omset/minggu (linear). Tick labels: −20% · 0 · +50% · +100%. Volume fallback (no batch) still uses log laku/minggu. |
-| Y | Masih baru / sudah lama. **Drawn** by percentile rank of `yNew` in the rendered set (ties: more reviews / older age sit lower). **Zone assignment** uses `reviews < 100` or `age < 180` plus `omsetPct >= median` of the plotted 20. |
-| Size | `nowcast_omset_monthly` — photo radius ~16–28px |
-| Marker | Circular product photo (`image_url`, Shopee `_tn.webp` when possible). MERAH circle if the image is missing. Pekat ring = terukur (`nowcast_method` latest/blend). Pudar wash + thin outline = perkiraan. |
-| Color (Jejak / Langit) | Momentum class from `mv_listing_momentum`. |
-
-Iklan and momentum words live on the **list row**, not as extra rings/arrows on the default scatter.
-
-Viability score is **not** a color. It is the Sidik Jari glyph on rows, cards, and the tooltip.
-
-## Zones (relative to the plotted 20)
-
-Boundary X = median weekly omset % of the rendered set (median weekly units
-on the volume fallback). Assignment uses `isBaru` + `x >= median`, not pixel
-position. Horizontal zone line is drawn only when both baru and lama exist.
-
-The 2×2 legend sits **under** the canvas. Tap a zone to filter the table to
-mapped keys in that zone and fade other markers.
-
-| Id | Label | Meaning |
-|---|---|---|
-| `baru_laku` | Baru tapi Laku | New and rising |
-| `pemain_lama` | Pemain Lama | Old and rising |
-| `baru_belum` | Baru, Belum Jalan | New, not rising yet |
-| `mulai_sepi` | Mulai Sepi | Old and slow |
-
-## List rows (sibling list, when `list:true`)
-
-Each row: image, name, toko, laku/minggu, omset/bulan, zone name, momentum word, `terukur`|`perkiraan`, `iklan` when `is_ad`, Sidik Jari.
-
-The Cari Produk / chat table (`listingRowsHtml`) is separate: full result
-set, with a **Trending** column (`+12% /mgg` · `+8% /bln`) from `_petaTrend`.
-
-- Hover / focus a marker → gold ring + name pill, matching row highlights and scrolls into view.
-- Hover a row → same ring + pill.
-- Tap a marker → sheet on the canvas.
-- Tap a row → same select + open Deep Dive (`opts.onDotOpen`).
-
-## Momentum (units, Jejak / list tags)
-
-`units_cur` = avg `units_wk` over W0 and W0−7. `units_prev` = avg over W0−14 and W0−21.
-
-- `belum` if fewer than 4 weeks, `units_prev < 15`, or no measured/estimated/nowcast week — list shows `…` while `peta_batch` is in flight, then `—`
-- `naik` if pct ≥ 20, `turun` if pct ≤ −20, else `stabil`
-- Arrow labelled terukur only when both windows are `source=measured`
-
-Omset % on the default map and the table Trending column is the parallel
-calculation on `omset_wk`, not `units_wk`.
-
-## Modes
-
-- **Peluang** — top-20 photo scatter on weekly omset %
-- **Jejak Waktu** — 8 WIB week frames from `mv_listing_week_positions` (units). Missing scrape weeks are `source=estimated` (perkiraan). Zone lines frozen from the latest frame.
-- **Langit Laris** — units axes, dark canvas, token constellations (no embeddings)
+Row click is Deep Dive. Checkboxes do not steal the row.
 
 ## Honesty
 
-See [listing-weekly.md](./listing-weekly.md). Never present a raw two-snapshot delta as minggu ini. Hollow/pudar markers and row tag `perkiraan` for estimated values. Do not revive `weekly_snapshots`.
+See [listing-weekly.md](./listing-weekly.md). Tooltip on %: 2-week omset average
+vs previous 2 weeks, span-normalised — not vs calendar last week. Label
+`perkiraan` unless both windows are `source=measured` (`terukur`). Do not
+revive `weekly_snapshots`.
 
-## States
+## Momentum (units, unused on live hosts)
 
-- Loading: `PetaPeluang.skeleton` — shimmer canvas + 6 row placeholders. Not a grey square.
-- Thin data (< 8 usable points): table still renders; map pane says the peta needs 8 and the list can still be read.
-- Empty: “Belum ada produk yang bisa dipetakan…”
-- `peta_batch` missing (`sessionStorage.larisid_peta_batch_missing`): Jejak stays disabled; volume-fallback photos still draw.
+`units_cur` = avg `units_wk` over W0 and W0−7. `units_prev` = avg over W0−14 and W0−21.
+
+- `belum` if fewer than 4 weeks, `units_prev < 15`, or no measured/estimated/nowcast week
+- `naik` if pct ≥ 20, `turun` if pct ≤ −20, else `stabil`
+
+Omset % on Trending Sekarang and the table column is the parallel calculation
+on `omset_wk`, not `units_wk`.
+
+## Scatter module (not mounted)
+
+`PetaPeluang.mount` still implements Peluang / Jejak / Langit (top 20 photo
+scatter, zones, sibling list). Do not remount it on `#dir-trending-now` or
+`.trend-host`. Zone-filter / map hover sync are retired with the canvas.
 
 ## Refresh
 
@@ -137,19 +97,17 @@ REFRESH MATERIALIZED VIEW CONCURRENTLY mv_listing_momentum;
 REFRESH MATERIALIZED VIEW CONCURRENTLY mv_listing_week_positions;
 ```
 
-`bash ~/shopee_scraper/refresh_listing_weekly.sh` runs those steps. First backfill can take several minutes.
+`bash ~/shopee_scraper/refresh_listing_weekly.sh` runs those steps. First
+backfill can take several minutes.
 
 Client RPC: `peta_batch(p_keys jsonb, p_weeks int default 8)` — max 200 keys.
 
 ## Host contract
 
 ```
-PetaPeluang.mount(el, listings, {
-  query, supabase, calcScore, onDotOpen,
-  list: false,          // omit the sibling list (Discover / compare-pick)
-  onHighlight,          // optional, for external cards when list:false
-  onZoneFilter,         // optional, same
-  onTrend,              // optional; listings now have _petaTrend (do not remount the map)
+PetaPeluang.hydrateTrends(listings, {
+  supabase,
+  onTrend,   // listings now have _petaTrend (pending, then final)
 })
 ```
 
@@ -157,4 +115,5 @@ PetaPeluang.mount(el, listings, {
 
 ## Copy
 
-Zone names and cara-masuk lines are everyday Bahasa. Confirm aloud with Afryian & Hendra before treating copy as final (`mentor-copy` in the plan).
+Trending subtitle and % tooltips are everyday Bahasa. Confirm aloud with
+Afryian & Hendra before treating new lines as final (`mentor-copy`).

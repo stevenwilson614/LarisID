@@ -635,6 +635,7 @@ const ICONS = {
   arrowLeft: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>',
   rocket: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5c3.2 2.4 4.8 5.8 4.8 9.4L12 16.2 7.2 11.9c0-3.6 1.6-7 4.8-9.4z"/><circle cx="12" cy="9.3" r="1.7"/><path d="M7.2 11.9 4.7 14a1 1 0 0 0-.33.95l.5 2.6 2.6-1.35M16.8 11.9l2.5 2.1a1 1 0 0 1 .33.95l-.5 2.6-2.6-1.35"/><path d="M10 18.4c0 1.5.75 2.7 2 3.6 1.25-.9 2-2.1 2-3.6"/></svg>',
   chevron: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
+  chevronRight: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>',
   check: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
   spark: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z"/></svg>',
   users: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14.5c2.6.3 4 2.2 4 4.5"/></svg>',
@@ -5686,11 +5687,6 @@ async function runFinderSearch() {
     const block = $('chat-thread')?.querySelector('[data-lrow-block]');
     if (packedHtml.pool && block) {
       bindListingBlock(block, packedHtml.pool, { query: catLabel, compact: true });
-      const peta = block.querySelector('.peta-host');
-      if (peta && window.PetaPeluang) {
-        PetaPeluang.skeleton(peta, catLabel);
-        mountPeta(peta, catLabel, packedHtml.pool.listings.slice(0, 200), listingPetaExtra(block, packedHtml.pool.listings));
-      }
     }
     scrollPanelToTop();
     void logUserEvent('gpt_finder_search', {
@@ -9327,29 +9323,24 @@ async function replyWithPasarTypes(chat, text, types, opts = {}) {
         : `<p>Brand <strong>${esc(opts.brand)}</strong> belum ada di data kami \u2014 menampilkan tipe produk yang paling mirip:</p>`;
     }
   }
-  const petaId = 'peta-' + Date.now();
+  const trendId = 'trend-' + Date.now();
   const pool = await resolveListingPool({ q: opts.label || text });
   if (types.length && !pool.keywords.length) pool.keywords = types;
+  if (!pool.listings.length) {
+    const extra = await fetchPetaListings(text, types);
+    if (extra.length) pool.listings = dedupeListings(extra);
+  }
   const html = `${brandNote}<p>${lead}</p><div data-lrow-block>${listingBlockHtml(pool, {
-    petaId, query: opts.label || text, chipKw: pool.primaryKw || '', compact: true,
+    petaId: trendId, query: opts.label || text, chipKw: pool.primaryKw || '', compact: true,
   })}</div>`;
   if (loading) await revealAssistant(loading, html);
   else await appendAssistantStream(html);
   pushMessage(chat, 'assistant', {
     text: 'Hasil produk', q: text, level: 'listing', types: types.map(t => t.keyword),
   }, html);
-  const block = document.querySelector(`[data-lrow-block] .peta-host#${CSS.escape(petaId)}`)?.closest('[data-lrow-block]')
+  const block = document.getElementById(trendId)?.closest('[data-lrow-block]')
     || $('chat-thread')?.querySelector('[data-lrow-block]:last-of-type');
   if (block) bindListingBlock(block, pool, { query: opts.label || text, compact: true });
-  void (async () => {
-    const host = document.getElementById(petaId);
-    if (!host) return;
-    if (window.PetaPeluang && typeof PetaPeluang.skeleton === 'function') {
-      PetaPeluang.skeleton(host, opts.label || text);
-    }
-    const listings = pool.listings.length ? pool.listings : await fetchPetaListings(text, types);
-    mountPeta(host, opts.label || text, listings.slice(0, 200), listingPetaExtra(block || host.parentElement, listings));
-  })();
   void logUserEvent('discover_view', {
     ui: 'gpt', q: text, count: types.length, level: 'pasar', nearby: opts.nearby ? 1 : 0,
   });
@@ -9761,23 +9752,46 @@ function listingTrendTitle(t) {
     return 'Belum cukup data mingguan (butuh 4 minggu, omset sebelumnya tidak terlalu kecil).';
   }
   return 'Kenaikan omset dari rata-rata 2 minggu terakhir vs 2 minggu sebelumnya, disetarakan ke 7 hari — bukan vs kalender minggu lalu. '
-    + (t.terukur ? 'terukur' : 'perkiraan')
-    + '. /bln = 4 minggu vs 4 minggu sebelumnya.';
+    + (t.terukur ? 'terukur' : 'perkiraan') + '.';
 }
 
 function listingTrendInnerHtml(p) {
   const t = p && p._petaTrend;
   if (!t || t.pending) return '<span class="lrow-trend-pending">…</span>';
   if (t.belum || t.wkPct == null) return '—';
-  const wkCls = t.wkPct > 0 ? 'is-up' : t.wkPct < 0 ? 'is-down' : 'is-flat';
-  const mo = t.moPct == null ? '—' : fmtTrendPct(t.moPct);
-  const moCls = t.moPct == null ? '' : (t.moPct > 0 ? 'is-up' : t.moPct < 0 ? 'is-down' : 'is-flat');
-  return `<span class="lrow-trend-wk ${wkCls}">${fmtTrendPct(t.wkPct)} <small>/mgg</small></span>`
-    + `<span class="lrow-trend-mo ${moCls}">${mo} <small>/bln</small></span>`;
+  const cls = t.wkPct > 0 ? 'is-up' : t.wkPct < 0 ? 'is-down' : 'is-flat';
+  const arrow = t.wkPct > 0 ? ico('arrowUp', 13) : t.wkPct < 0 ? ico('arrowDown', 13) : '';
+  const perk = t.terukur ? '' : '<small>perkiraan</small>';
+  return `<span class="lrow-trend-pct ${cls}">${arrow}<span>${fmtTrendPct(t.wkPct)}</span>${perk}</span>`;
 }
 
 function listingTrendCellHtml(p) {
   return `<td class="lrow-trend" title="${esc(listingTrendTitle(p && p._petaTrend))}">${listingTrendInnerHtml(p)}</td>`;
+}
+
+let _trackedKwSet = new Set();
+let _trackedKwLoaded = false;
+
+function isKwTracked(kw) {
+  const k = String(kw || '').trim().toLowerCase();
+  return !!(k && _trackedKwSet.has(k));
+}
+
+async function refreshTrackedKwSet() {
+  if (!_supabase || !currentUser) {
+    _trackedKwSet = new Set();
+    _trackedKwLoaded = true;
+    return;
+  }
+  try {
+    const { data } = await _supabase.rpc('get_my_tracking');
+    _trackedKwSet = new Set(
+      (data?.keywords || []).map(k => String(k.keyword || k || '').trim().toLowerCase()).filter(Boolean),
+    );
+    _trackedKwLoaded = true;
+  } catch (_) {
+    _trackedKwLoaded = true;
+  }
 }
 
 function listingRowHtml(p, opts = {}) {
@@ -9793,38 +9807,55 @@ function listingRowHtml(p, opts = {}) {
   const price = Number(p.price) || 0;
   const snap = productSnapshot(p);
   const encoded = snap ? encodeURIComponent(JSON.stringify(snap)) : '';
-  const picking = !!opts.pick;
+  const actions = !!opts.actions;
+  const picking = actions || !!opts.pick;
   const picked = picking && (state.comparePick?.selected || []).some(x => prodKey(x) === key);
   const hl = opts.highlightKey && opts.highlightKey === key;
+  const favOn = actions && isKwTracked(p.keyword);
   const cls = [
     'lrow',
     picking ? 'is-pickable' : '',
     picked ? 'is-picked' : '',
     hl ? 'is-sel' : '',
   ].filter(Boolean).join(' ');
-  const check = picking
-    ? `<td class="lrow-pick"><span class="lrow-check" aria-hidden="true">${ico('check', 12)}</span></td>`
-    : '';
+  const check = actions
+    ? `<td class="lrow-pick"><button type="button" class="lrow-check-btn" data-lrow-cmp="${esc(key)}" aria-pressed="${picked ? 'true' : 'false'}" aria-label="Pilih untuk bandingkan"><span class="lrow-check" aria-hidden="true">${ico('check', 12)}</span></button></td>`
+    : (opts.pick
+      ? `<td class="lrow-pick"><span class="lrow-check" aria-hidden="true">${ico('check', 12)}</span></td>`
+      : '');
   // One thumb only — onerror swaps the <img> for a placeholder (do not leave a
   // hidden sibling: `.lrow-img { display:block }` overrides UA `[hidden]`).
   const thumb = img
     ? `<img class="lrow-img" src="${esc(imgThumb(img))}" alt="" loading="lazy" decoding="async" width="84" height="84" onerror="this.onerror=null;this.replaceWith(Object.assign(document.createElement('div'),{className:'lrow-img lrow-img--ph'}))">`
     : '<div class="lrow-img lrow-img--ph"></div>';
-  return `<tr class="${cls}" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} tabindex="0" role="button" aria-pressed="${picked ? 'true' : 'false'}">
-    ${check}
-    <td class="lrow-prod">${thumb}
+  const prodInner = `${thumb}
       <div class="lrow-prod-txt">
         <div class="lrow-name">${esc(name)}</div>
         <div class="lrow-toko">${esc(toko)}</div>
         <div class="lrow-meta">${reviews ? fmtSold(reviews) + ' ulasan' : '0 ulasan'} · ${esc(usia.text)}</div>
-      </div>
-    </td>
+      </div>`;
+  const prodCell = actions
+    ? `<td class="lrow-prod"><button type="button" class="lrow-open" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''}>${prodInner}</button></td>`
+    : `<td class="lrow-prod">${prodInner}</td>`;
+  const actCell = actions
+    ? `<td class="lrow-act">
+        <button type="button" class="lrow-fav${favOn ? ' is-on' : ''}" data-lrow-fav="${esc(key)}" aria-pressed="${favOn ? 'true' : 'false'}" title="${favOn ? 'Sudah di pantauan' : 'Tambah ke pantauan'}" aria-label="${favOn ? 'Sudah di pantauan' : 'Favorit — tambah ke pantauan'}">${ico('bookmark', 16)}</button>
+        <button type="button" class="lrow-go" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} aria-label="Lihat Deep Dive">${ico('chevronRight', 18)}</button>
+      </td>`
+    : '';
+  const rowAttrs = actions
+    ? `data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''}`
+    : `data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} tabindex="0" role="button" aria-pressed="${picked ? 'true' : 'false'}"`;
+  return `<tr class="${cls}" ${rowAttrs}>
+    ${check}
+    ${prodCell}
     <td class="lrow-num">${price ? fmtRp(price) : '—'}</td>
     <td class="lrow-num">${omset ? fmtOmset(omset) : '—'}${omsetChipHtml(p)}</td>
     ${listingTrendCellHtml(p)}
     <td class="lrow-num">${sold ? fmtSold(sold) : '0'}</td>
     <td class="lrow-num lrow-wide">${reviews ? fmtSold(reviews) : '0'}</td>
     <td class="lrow-num lrow-wide" title="${esc(usia.title)}">${esc(usia.text)}</td>
+    ${actCell}
   </tr>`;
 }
 
@@ -9832,15 +9863,16 @@ function listingRowsHtml(list, opts = {}) {
   const rows = list || [];
   if (!rows.length) return '';
   const pick = !!opts.pick;
+  const actions = !!opts.actions;
   const sort = opts.sort || '';
   const th = (key, label) => {
     const on = sort === key || (key === 'termurah' && (sort === 'termurah' || sort === 'termahal'));
     return `<th scope="col" data-lrow-sort="${key}" class="${on ? 'is-on' : ''}">${label}</th>`;
   };
-  return `<div class="lrow-wrap${opts.compact ? ' lrow-wrap--compact' : ''}${pick ? ' lrow-wrap--pick' : ''}"${opts.keepChat ? ' data-lrow-keepchat="1"' : ''}>
+  return `<div class="lrow-wrap${opts.compact ? ' lrow-wrap--compact' : ''}${pick ? ' lrow-wrap--pick' : ''}${actions ? ' lrow-wrap--actions' : ''}"${opts.keepChat ? ' data-lrow-keepchat="1"' : ''}>
     <table class="ddr-table lrow-table">
       <thead><tr>
-        ${pick ? '<th class="lrow-pick"></th>' : ''}
+        ${actions || pick ? '<th class="lrow-pick"></th>' : ''}
         <th>Produk</th>
         ${th('termurah', 'Harga')}
         ${th('omset', 'Omset')}
@@ -9848,6 +9880,7 @@ function listingRowsHtml(list, opts = {}) {
         ${th('terlaris', 'Unit jual')}
         ${th('review', 'Review')}
         ${th('terbaru', 'Usia')}
+        ${actions ? '<th class="lrow-act"><span class="sr-only">Aksi</span></th>' : ''}
       </tr></thead>
       <tbody>${rows.map(p => listingRowHtml(p, opts)).join('')}</tbody>
     </table>
@@ -9867,18 +9900,16 @@ function prodKey(p) {
 function bindProductCards(root) {
   (root || document).querySelectorAll('[data-prod]').forEach(btn => {
     if (btn.dataset.boundProd) return;
+    if (btn.matches('tr.lrow') && btn.querySelector('[data-prod]')) return;
     btn.dataset.boundProd = '1';
-    const onPick = () => {
+    const onPick = (e) => {
+      if (e && e.target && e.target.closest && e.target.closest('[data-lrow-cmp],[data-lrow-fav]')) return;
       const key = btn.getAttribute('data-prod');
       const [item_id, shop_id] = key.split('|');
       void (async () => {
         const p = await resolveProduct(item_id, shop_id, btn);
         if (!p) {
           showToast('Produk tidak ditemukan — coba cari lagi');
-          return;
-        }
-        if (state.comparePick && state.view === 'directory') {
-          toggleComparePickProduct(p);
           return;
         }
         if (userNeverDeepDived()) {
@@ -9893,7 +9924,7 @@ function bindProductCards(root) {
     btn.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        onPick();
+        onPick(e);
       }
     });
   });
@@ -9915,6 +9946,42 @@ function bindProductCards(root) {
 
 function bindListingRows(root, extra = {}) {
   bindProductCards(root);
+  (root || document).querySelectorAll('[data-lrow-cmp]').forEach(btn => {
+    if (btn.dataset.boundCmp) return;
+    btn.dataset.boundCmp = '1';
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const key = btn.getAttribute('data-lrow-cmp');
+      const [item_id, shop_id] = (key || '').split('|');
+      void (async () => {
+        const p = await resolveProduct(item_id, shop_id, btn.closest('[data-prod]') || btn);
+        if (p) toggleComparePickProduct(p);
+      })();
+    });
+  });
+  (root || document).querySelectorAll('[data-lrow-fav]').forEach(btn => {
+    if (btn.dataset.boundFav) return;
+    btn.dataset.boundFav = '1';
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const key = btn.getAttribute('data-lrow-fav');
+      const [item_id, shop_id] = (key || '').split('|');
+      void (async () => {
+        const p = await resolveProduct(item_id, shop_id, btn.closest('[data-prod]') || btn);
+        if (!p) {
+          showToast('Produk tidak ditemukan — coba cari lagi');
+          return;
+        }
+        const ok = await trackKeywordWithNotify(p, { via: 'dir_favorit' });
+        if (ok) {
+          await refreshTrackedKwSet();
+          syncFavButtons();
+        }
+      })();
+    });
+  });
   (root || document).querySelectorAll('.lrow-wrap').forEach(w => {
     if (w.dataset.boundLrowSort) return;
     w.dataset.boundLrowSort = '1';
@@ -9929,11 +9996,23 @@ function bindListingRows(root, extra = {}) {
     });
     if (extra.onHover) {
       w.addEventListener('pointerover', (e) => {
-        const tr = e.target.closest?.('[data-prod]');
+        const tr = e.target.closest?.('tr[data-prod]');
         extra.onHover(tr ? tr.getAttribute('data-prod') : null);
       });
       w.addEventListener('pointerleave', () => extra.onHover(null));
     }
+  });
+}
+
+function syncFavButtons(root) {
+  (root || document).querySelectorAll('[data-lrow-fav]').forEach(el => {
+    const key = el.getAttribute('data-lrow-fav');
+    const p = key ? state.productByKey[key] : null;
+    const on = isKwTracked(p?.keyword);
+    el.classList.toggle('is-on', on);
+    el.setAttribute('aria-pressed', on ? 'true' : 'false');
+    el.title = on ? 'Sudah di pantauan' : 'Tambah ke pantauan';
+    el.setAttribute('aria-label', on ? 'Sudah di pantauan' : 'Favorit — tambah ke pantauan');
   });
 }
 
@@ -9948,28 +10027,87 @@ function refreshLrowTrendCells(root, listings) {
   });
 }
 
-function listingPetaExtra(tableRoot, listings) {
-  return {
-    list: false,
-    onTrend: () => { refreshLrowTrendCells(tableRoot, listings); },
-    onHighlight: (listing) => {
-      if (!tableRoot) return;
-      const key = listing ? prodKey(listing) : '';
-      tableRoot.querySelectorAll('.lrow').forEach(tr => {
-        const on = !!(key && tr.getAttribute('data-prod') === key);
-        tr.classList.toggle('is-hl', on);
-        if (on) tr.scrollIntoView({ block: 'nearest' });
-      });
-    },
-    onZoneFilter: (_id, list) => {
-      if (!tableRoot) return;
-      const keys = list ? new Set(list.map(prodKey)) : null;
-      tableRoot.querySelectorAll('.lrow').forEach(tr => {
-        const k = tr.getAttribute('data-prod');
-        tr.hidden = !!(keys && k && !keys.has(k));
-      });
-    },
-  };
+function topTrendingListings(listings, n = 3) {
+  return (listings || [])
+    .filter(p => {
+      const t = p && p._petaTrend;
+      return t && !t.belum && !t.pending && t.wkPct != null;
+    })
+    .slice()
+    .sort((a, b) => (Number(b._petaTrend.wkPct) || 0) - (Number(a._petaTrend.wkPct) || 0))
+    .slice(0, n);
+}
+
+function trendingNowSkeletonHtml() {
+  return `<div class="trend-now is-skel">
+    <div class="trend-now-hd">
+      <h3 class="trend-now-title">Trending Sekarang</h3>
+      <p class="trend-now-sub">Menghitung kenaikan omset…</p>
+    </div>
+    <div class="trend-now-row trend-now-shimmer"></div>
+    <div class="trend-now-row trend-now-shimmer"></div>
+    <div class="trend-now-row trend-now-shimmer"></div>
+  </div>`;
+}
+
+function trendingNowRowHtml(p, i) {
+  const key = prodKey(p);
+  const name = p.product_name || p.keyword || 'Produk';
+  const img = p.image_url || '';
+  const sold = Number(p.total_sold) || 0;
+  const price = Number(p.price) || 0;
+  const snap = productSnapshot(p);
+  const encoded = snap ? encodeURIComponent(JSON.stringify(snap)) : '';
+  const thumb = img
+    ? `<img class="trend-now-img" src="${esc(imgThumb(img))}" alt="" loading="lazy" decoding="async" width="64" height="64" onerror="this.onerror=null;this.replaceWith(Object.assign(document.createElement('div'),{className:'trend-now-img trend-now-img--ph'}))">`
+    : '<div class="trend-now-img trend-now-img--ph"></div>';
+  return `<div class="trend-now-row" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} tabindex="0" role="button">
+    <span class="trend-now-rank trend-now-rank--${i + 1}" aria-hidden="true">${i + 1}</span>
+    <img class="trend-now-mascot" src="/images/brand/mascot-card-search.webp" alt="" width="56" height="56" decoding="async">
+    ${thumb}
+    <div class="trend-now-txt">
+      <div class="trend-now-name">${esc(name)}</div>
+      <div class="trend-now-meta">${price ? fmtRp(price) : '—'} · ${sold ? fmtSold(sold) + ' terjual' : '0 terjual'}</div>
+    </div>
+    <div class="trend-now-pct" title="${esc(listingTrendTitle(p._petaTrend))}">${listingTrendInnerHtml(p)}</div>
+    <span class="trend-now-go" aria-hidden="true">${ico('chevronRight', 18)}</span>
+  </div>`;
+}
+
+function trendingNowHtml(listings, opts = {}) {
+  const list = listings || [];
+  const pending = list.some(p => p._petaTrend && p._petaTrend.pending);
+  const top = topTrendingListings(list, 3);
+  if (pending && !top.length) return trendingNowSkeletonHtml();
+  if (!top.length) return '';
+  return `<div class="trend-now">
+    <div class="trend-now-hd">
+      <h3 class="trend-now-title">Trending Sekarang</h3>
+      <p class="trend-now-sub">Kenaikan omset 2 minggu vs 2 minggu sebelumnya — disetarakan ke 7 hari, bukan vs kalender minggu lalu.</p>
+    </div>
+    ${top.map((p, i) => trendingNowRowHtml(p, i)).join('')}
+  </div>`;
+}
+
+function paintTrendingNow(host, listings, opts = {}) {
+  if (!host) return;
+  const html = opts.pending ? trendingNowSkeletonHtml() : trendingNowHtml(listings, opts);
+  host.innerHTML = html;
+  host.hidden = !html;
+  if (html) bindProductCards(host);
+}
+
+function hydrateListingTrends(listings, onTrend) {
+  const list = (listings || []).slice(0, 200);
+  if (!list.length || !window.PetaPeluang || typeof PetaPeluang.hydrateTrends !== 'function') {
+    (listings || []).forEach(p => {
+      if (!p._petaTrend) p._petaTrend = { wkPct: null, moPct: null, terukur: false, belum: true, pending: false };
+    });
+    if (typeof onTrend === 'function') onTrend(list);
+    return Promise.resolve(list);
+  }
+  rememberProducts(list);
+  return PetaPeluang.hydrateTrends(list, { supabase: _supabase, onTrend });
 }
 
 function bindListingBlock(root, pool, opts = {}) {
@@ -9979,23 +10117,18 @@ function bindListingBlock(root, pool, opts = {}) {
     const host = block.querySelector('.lrow-host');
     const rows = sortDirRows(filterListingPool(pool.listings, chipKw, null), opts.sort || 'omset');
     if (host) {
-      host.innerHTML = listingRowsHtml(rows, { compact: opts.compact !== false, sort: opts.sort || 'omset' })
+      host.innerHTML = listingRowsHtml(rows, { compact: opts.compact !== false, sort: opts.sort || 'omset', actions: true })
         + listingUnsoldNote(chipKw ? 0 : pool.unsold);
     }
     block.querySelectorAll('.lrow-chip').forEach(b => {
       b.classList.toggle('is-on', (b.getAttribute('data-lrow-kw') || '') === chipKw);
     });
-    bindListingRows(block, {
-      onHover: (key) => {
-        const peta = block.querySelector('.peta-host');
-        peta?._petaCtl?.hoverKey?.(key);
-      },
-    });
-    const peta = block.querySelector('.peta-host');
-    if (peta) {
+    bindListingRows(block);
+    const trend = block.querySelector('.trend-host');
+    if (trend) {
       let pts = pool.listings || [];
       if (chipKw) pts = pts.filter(r => (r.keyword || '') === chipKw);
-      mountPeta(peta, opts.query || '', pts.slice(0, 200), listingPetaExtra(block, pool.listings));
+      paintTrendingNow(trend, pts, { query: opts.query || '' });
     }
   };
   block.querySelectorAll('[data-lrow-kw]').forEach(btn => {
@@ -10003,12 +10136,21 @@ function bindListingBlock(root, pool, opts = {}) {
     btn.dataset.boundChip = '1';
     btn.addEventListener('click', () => paint(btn.getAttribute('data-lrow-kw') || ''));
   });
-  bindListingRows(block, {
-    onHover: (key) => {
-      const peta = block.querySelector('.peta-host');
-      peta?._petaCtl?.hoverKey?.(key);
-    },
-  });
+  bindListingRows(block);
+  const trend = block.querySelector('.trend-host');
+  if (trend) {
+    const chip = block.querySelector('.lrow-chip.is-on')?.getAttribute('data-lrow-kw') || '';
+    let pts = pool.listings || [];
+    if (chip) pts = pts.filter(r => (r.keyword || '') === chip);
+    paintTrendingNow(trend, pts, { pending: true, query: opts.query || '' });
+    hydrateListingTrends((pool.listings || []).slice(0, 200), () => {
+      refreshLrowTrendCells(block, pool.listings);
+      const on = block.querySelector('.lrow-chip.is-on')?.getAttribute('data-lrow-kw') || '';
+      let next = pool.listings || [];
+      if (on) next = next.filter(r => (r.keyword || '') === on);
+      paintTrendingNow(trend, next, { query: opts.query || '' });
+    });
+  }
 }
 
 async function typesToListingPool(types) {
@@ -10024,21 +10166,14 @@ async function typesToListingPool(types) {
 }
 
 async function revealListingPool(loading, chat, leadHtml, pool, meta) {
-  const petaId = 'peta-' + Date.now();
+  const trendId = 'trend-' + Date.now();
   const html = `${leadHtml}<div data-lrow-block>${listingBlockHtml(pool, {
-    petaId, chipKw: pool.primaryKw || '', compact: true, query: meta.query || '',
+    petaId: trendId, chipKw: pool.primaryKw || '', compact: true, query: meta.query || '',
   })}</div>`;
   await revealAssistant(loading, html);
   pushMessage(chat, 'assistant', meta, html);
-  const block = document.getElementById(petaId)?.closest('[data-lrow-block]');
-  if (block) {
-    bindListingBlock(block, pool, { compact: true, query: meta.query || '' });
-    const host = document.getElementById(petaId);
-    if (host && window.PetaPeluang) {
-      PetaPeluang.skeleton(host, meta.query || '');
-      mountPeta(host, meta.query || '', (pool.listings || []).slice(0, 200), listingPetaExtra(block, pool.listings));
-    }
-  }
+  const block = document.getElementById(trendId)?.closest('[data-lrow-block]');
+  if (block) bindListingBlock(block, pool, { compact: true, query: meta.query || '' });
   return pool;
 }
 
@@ -10046,13 +10181,13 @@ function listingBlockHtml(pool, opts = {}) {
   const chip = opts.chipKw != null ? opts.chipKw : (pool.primaryKw || '');
   let rows = filterListingPool(pool.listings, chip, null);
   rows = sortDirRows(rows, opts.sort || 'omset');
-  const petaId = opts.petaId || '';
+  const trendId = opts.petaId || opts.trendId || '';
   const nearbyLead = pool.nearby && opts.query
     ? `<p class="dd-sub dir-nearby-lead">Belum ketemu produk untuk “<strong>${esc(opts.query)}</strong>”. Ini produk dari pasar terdekat:</p>`
     : '';
   return `${nearbyLead}${keywordChipsHtml(pool.keywords, chip, { showSemua: true })}
-    ${petaId ? `<div class="peta-host" id="${esc(petaId)}"></div>` : ''}
-    <div class="lrow-host">${listingRowsHtml(rows, { compact: opts.compact !== false, sort: opts.sort || 'omset' })}${listingUnsoldNote(pool.unsold)}</div>`;
+    ${trendId ? `<div class="trend-host" id="${esc(trendId)}"></div>` : ''}
+    <div class="lrow-host">${listingRowsHtml(rows, { compact: opts.compact !== false, sort: opts.sort || 'omset', actions: true })}${listingUnsoldNote(pool.unsold)}</div>`;
 }
 
 /** Compact Deep Dive summary kept in the chat thread so scrolling history still reaches it. */
@@ -11374,7 +11509,7 @@ async function startRecommendationChat(fromOnboarding) {
     ? { keywords: markTerlarisMinggu(recTypes.slice()), listings: recs, primaryKw: '', nearby: false, unsold: 0 }
     : null;
   const cards = pool
-    ? `<div data-lrow-block>${listingBlockHtml(pool, { chipKw: '', compact: true })}</div>
+    ? `<div data-lrow-block>${listingBlockHtml(pool, { petaId: 'trend-rec-' + Date.now(), chipKw: '', compact: true })}</div>
        <button type="button" class="btn-ghost" id="btn-more-products">Cari yang lain?</button>`
     : `<p>Belum ketemu produk yang cocok. Coba Chat Baru atau buka <strong>Cari Produk</strong> di sidebar.</p>`;
 
@@ -17758,7 +17893,7 @@ function updateDirCompareBanner() {
   const banner = $('dir-compare-banner');
   if (!banner) return;
   const pick = state.comparePick;
-  if (!pick) {
+  if (!pick || pick.fromList) {
     banner.hidden = true;
     banner.innerHTML = '';
     updateDirCompareBar();
@@ -17844,11 +17979,19 @@ function refreshComparePickCards() {
     el.classList.toggle('is-picked', on);
     el.setAttribute('aria-pressed', on ? 'true' : 'false');
   });
+  document.querySelectorAll('[data-lrow-cmp]').forEach(btn => {
+    const on = keys.has(btn.getAttribute('data-lrow-cmp'));
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.closest('tr')?.classList.toggle('is-picked', on);
+  });
 }
 
 function toggleComparePickProduct(p) {
+  if (!p) return;
+  if (!state.comparePick) {
+    state.comparePick = { source: null, selected: [], chatId: null, fromList: true };
+  }
   const pick = state.comparePick;
-  if (!pick || !p) return;
   if (!Array.isArray(pick.selected)) pick.selected = [];
   const i = pick.selected.findIndex(x => prodKey(x) === prodKey(p));
   if (i >= 0) {
@@ -17861,8 +18004,11 @@ function toggleComparePickProduct(p) {
     pick.selected.push(p);
     rememberProducts([p]);
   }
+  if (!pick.selected.length && pick.fromList && !pick.source) {
+    state.comparePick = null;
+  }
   refreshComparePickCards();
-  updateDirCompareBar();
+  updateDirCompareBanner();
 }
 
 function cancelComparePick() {
@@ -18333,6 +18479,7 @@ async function openDirectory() {
   setView('directory');
   _dirApplyDefaultsOnce();
   updateDirCompareBanner();
+  void refreshTrackedKwSet();
   // Always browse national aggregates (all cities). City UI was removed.
   state.dirCities = [];
 
@@ -18378,43 +18525,34 @@ function dirPetaQuery() {
   return city ? `Yang Laku di ${city}` : '';
 }
 
-function dirPetaExtra() {
-  return {
-    list: false,
-    onTrend: () => { paintDirectoryTable({ remountPeta: false }); },
-    onHighlight: (listing) => {
-      const grid = $('dir-grid');
-      if (!grid) return;
-      const key = listing ? prodKey(listing) : '';
-      grid.querySelectorAll('.lrow').forEach(tr => {
-        const on = !!(key && tr.getAttribute('data-prod') === key);
-        tr.classList.toggle('is-hl', on);
-        if (on) tr.scrollIntoView({ block: 'nearest' });
-      });
-    },
-    onZoneFilter: (_id, list) => {
-      state.dirZoneKeys = list ? new Set(list.map(prodKey)) : null;
-      paintDirectoryTable({ remountPeta: false });
-    },
-  };
-}
+let _dirTrendSeq = 0;
 
-function mountDirPeta() {
-  const host = $('dir-peta');
-  if (!host || !window.PetaPeluang) return;
-  const q = dirPetaQuery();
+function dirTrendListings() {
   const chip = state.dirChipKw || '';
   let pts = state.dirPoolListings || [];
   if (chip) pts = pts.filter(r => (r.keyword || '') === chip);
-  pts = pts.slice(0, 200);
-  if (pts.length < 2) {
-    if (host._petaCtl) { host._petaCtl.destroy(); host._petaCtl = null; }
-    host.innerHTML = '';
-    host.hidden = true;
+  return pts;
+}
+
+function paintDirTrending(opts = {}) {
+  const host = $('dir-trending-now');
+  if (!host) return;
+  paintTrendingNow(host, dirTrendListings(), opts);
+}
+
+function hydrateDirTrends() {
+  const seq = ++_dirTrendSeq;
+  const all = (state.dirPoolListings || []).slice(0, 200);
+  const host = $('dir-trending-now');
+  if (!all.length) {
+    if (host) { host.innerHTML = ''; host.hidden = true; }
     return;
   }
-  host.hidden = false;
-  mountPeta(host, q, pts, dirPetaExtra());
+  paintDirTrending({ pending: true });
+  hydrateListingTrends(all, () => {
+    if (seq !== _dirTrendSeq) return;
+    paintDirectoryTable({ remountPeta: false });
+  });
 }
 
 function paintDirectoryTable(opts = {}) {
@@ -18422,7 +18560,6 @@ function paintDirectoryTable(opts = {}) {
   const pager = $('dir-pager');
   const chips = $('dir-chips');
   if (!grid) return;
-  const picking = !!state.comparePick;
   const filtered = sortDirRows(
     filterListingPool(state.dirPoolListings, state.dirChipKw || '', state.dirZoneKeys),
     state.dirSort || 'omset',
@@ -18450,14 +18587,14 @@ function paintDirectoryTable(opts = {}) {
         state.dirChipKw = btn.getAttribute('data-lrow-kw') || '';
         state.dirPage = 1;
         state.dirZoneKeys = null;
-        paintDirectoryTable({ remountPeta: true });
+        paintDirectoryTable({ remountPeta: false });
       });
     });
   }
   grid.innerHTML = slice.length
     ? nearbyLead + listingRowsHtml(slice, {
-        pick: picking,
-        highlightKey: picking ? '' : '',
+        actions: true,
+        highlightKey: '',
         sort: state.dirSort || 'omset',
       }) + listingUnsoldNote(state.dirUnsold)
     : (nearbyLead + emptyMsg);
@@ -18466,18 +18603,16 @@ function paintDirectoryTable(opts = {}) {
       state.dirSort = mode;
       state.dirPage = 1;
       try { $('dir-filters-range')?._dirApi?.setValue?.(mode); } catch (_) {}
-      paintDirectoryTable();
-    },
-    onHover: (key) => {
-      const ctl = $('dir-peta')?._petaCtl;
-      ctl?.hoverKey?.(key);
+      paintDirectoryTable({ remountPeta: false });
     },
   });
-  if (picking) refreshComparePickCards();
+  refreshComparePickCards();
+  syncFavButtons(grid);
   renderDirPager(pager, filtered.length);
   updateDirCount(filtered.length, slice.length, state.dirNearby);
   updateDirHeading();
-  if (opts.remountPeta !== false) mountDirPeta();
+  if (opts.remountPeta !== false) hydrateDirTrends();
+  else paintDirTrending();
 }
 
 async function renderDirectory() {
@@ -18495,10 +18630,10 @@ async function renderDirectory() {
   const seq = ++_dirRenderSeq;
 
   grid.innerHTML = garudaLoadingHtml('Memuat…');
-  const petaHost = $('dir-peta');
-  if (petaHost && window.PetaPeluang && typeof PetaPeluang.skeleton === 'function') {
-    petaHost.hidden = false;
-    PetaPeluang.skeleton(petaHost, q || dirPetaQuery());
+  const trendHost = $('dir-trending-now');
+  if (trendHost) {
+    trendHost.hidden = false;
+    paintTrendingNow(trendHost, [], { pending: true });
   }
 
   const pool = await resolveListingPool({ q, cats, sub, home });

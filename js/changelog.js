@@ -15,6 +15,10 @@ window.LARIS_CHANGELOG = [
     title: 'Ask Laris jawab lebih cepat dan lebih jujur soal apa yang kami punya',
     items: [
       {
+        text: 'Cari Produk tidak lagi menampilkan peta sebar. Di atas daftar ada Trending Sekarang — tiga produk dengan kenaikan omset terbesar — lalu urutan, lalu baris produk. Centang untuk bandingkan, panah untuk Deep Dive, bookmark untuk memasukkan keyword-nya ke Pantauan. Angka kenaikan itu 2 minggu vs 2 minggu sebelumnya, bukan “minggu ini”.',
+        tech: 'PetaPeluang.hydrateTrends (peta_batch) without canvas; #dir-trending-now + .trend-host; listingRowsHtml actions (checkbox / fav / chevron); gpt-dir-filters trending option; Favorit = trackKeywordWithNotify via dir_favorit.',
+      },
+      {
         text: 'Ketik merek atau produk sekarang langsung tampil daftar listing plus ringkasan pasar, tanpa proses berpikir yang panjang. “Terlaris minggu ini” meninjau data dulu lalu menampilkan sekitar 10 produk. Pertanyaan lanjutan seperti “ada yang dari Bandung?” menyaring daftar yang barusan. Kalau kamu tanya afiliasi, kami bilang terus terang datanya belum ada dan mengarahkan ke Kalodata untuk TikTok Shop.',
         tech: 'detectResponseMode in gpt-chat-memory.js routes LOOKUP/WEEKLY/FILTER/REFER before AI_AGENT_ALL. runMarketAgent thinking is wantsDeepReasoning only. lastShown + <lanjut> chips; persistMessage _persisting; aiDataContext(); ringkasan_kategori RPC; cari-web edge function (Tavily/Brave, refuse sold/affiliate).',
       },

@@ -1,8 +1,8 @@
 # Bandingkan Pasar — retired from Cari Produk (chat-only)
 
 **Status (2026-09-05):** retired from Cari Produk. Directory home / category /
-search now show **listing rows** + Peta Peluang (`list:false`). Do not remount
-this board on `#dir-peta` or revive `#dir-home-compare`.
+search now show **listing rows** + Trending Sekarang. Do not remount
+this board on `#dir-trending-now` / `#dir-peta` or revive `#dir-home-compare`.
 
 The module stays in the repo for the chat **Bandingkan A vs B** intent
 (`handleBandingkanIntent` in `js/gpt-app.js`), which now paints two labelled

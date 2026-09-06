@@ -854,16 +854,15 @@
     return null;
   };
 
-  PetaController.prototype.stampTrends = function () {
-    var weeks = (this.batch && this.batch.weeks) || [];
+  function attachTrends(listings, batch, status) {
+    var weeks = (batch && batch.weeks) || [];
     var posMap = {};
-    (this.batch && this.batch.positions || []).forEach(function (p) {
+    ((batch && batch.positions) || []).forEach(function (p) {
       var k = String(p.item_id) + '|' + String(p.shop_id);
       if (!posMap[k]) posMap[k] = {};
       posMap[k][weekKey(p.week_start)] = p;
     });
-    var status = this.batchStatus;
-    (this.listings || []).forEach(function (listing) {
+    (listings || []).forEach(function (listing) {
       if (status === 'pending') {
         listing._petaTrend = emptyTrend(true);
         return;
@@ -874,6 +873,62 @@
       }
       listing._petaTrend = omsetTrendFrom(posMap[keyOf(listing)] || {}, weeks);
     });
+    return listings || [];
+  }
+
+  function hydrateTrends(listings, opts) {
+    opts = opts || {};
+    var list = listings || [];
+    var sb = opts.supabase;
+    function ping() {
+      if (typeof opts.onTrend === 'function') {
+        try { opts.onTrend(list); } catch (_) {}
+      }
+    }
+    attachTrends(list, null, 'pending');
+    ping();
+    if (!sb || !list.length) {
+      attachTrends(list, null, 'missing');
+      ping();
+      return Promise.resolve(list);
+    }
+    try {
+      if (sessionStorage.getItem(SS_BATCH) === '1') {
+        attachTrends(list, null, 'missing');
+        ping();
+        return Promise.resolve(list);
+      }
+    } catch (_) {}
+    var keys = list.slice(0, 200).map(function (p) {
+      return { item_id: p.item_id, shop_id: p.shop_id };
+    });
+    return new Promise(function (resolve) {
+      var settled = false;
+      var t = setTimeout(fail, 8000);
+      function fail() {
+        if (settled) return;
+        settled = true;
+        clearTimeout(t);
+        try { sessionStorage.setItem(SS_BATCH, '1'); } catch (_) {}
+        attachTrends(list, null, 'missing');
+        ping();
+        resolve(list);
+      }
+      sb.rpc('peta_batch', { p_keys: keys, p_weeks: 8 }).then(function (res) {
+        if (settled) return;
+        if (res.error) { fail(); return; }
+        settled = true;
+        clearTimeout(t);
+        var batch = res.data || null;
+        attachTrends(list, batch, batch ? 'ok' : 'missing');
+        ping();
+        resolve(list);
+      }, fail);
+    });
+  }
+
+  PetaController.prototype.stampTrends = function () {
+    attachTrends(this.listings, this.batch, this.batchStatus);
     if (typeof this.opts.onTrend === 'function' && !this._trendLock) {
       this._trendLock = true;
       try { this.opts.onTrend(); } catch (_) {}
@@ -1663,6 +1718,7 @@
   w.PetaPeluang = {
     mount: mount,
     skeleton: skeleton,
+    hydrateTrends: hydrateTrends,
     calcListingScore: calcListingScore,
     calcLarisScore: calcLarisScore,
     sidikJariHtml: sidikJariHtml,
