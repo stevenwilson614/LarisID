@@ -3,11 +3,11 @@
 --
 -- Two changes, both consequences of the 2026-08-10 gpt-only cutover:
 --
--- 1. KEYWORDS + TOKO are the live tracking model. user_tracked_products took
---    its last row on 2026-08-08 and cannot take another — the write path went
---    away with Site A — so a dashboard led by `tracked_total` shows a
---    permanently flat line that reads as a broken chart. It is kept, renamed in
---    the UI as an archive, and joined by the two counters that do move.
+-- 1. KEYWORDS + TOKO were the live tracking model here. Superseded 2026-09-06
+--    by Favorit Aku (`20260906123000_favorit_aku.sql`): user_tracked_products
+--    is live again (product favorites, daily tracked_pass). KPI now exposes
+--    favorited_products_distinct vs scraper_ceiling = 200. Do not treat this
+--    table as an archive.
 --
 -- 2. DEEP DIVES now come from public.deepdive_opens rather than the
 --    greatest(user_journey_stats, activity_events) reconciliation. That

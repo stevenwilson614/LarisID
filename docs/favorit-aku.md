@@ -44,3 +44,12 @@ Per-favorite “Pantau toko ini” writes `user_tracked_stores`. Store charts st
 
 Apply SQL: `bash scripts/apply-selfhost.sh supabase/migrations/20260906123000_favorit_aku.sql`
 Deploy notify: `bash scripts/deploy-function-selfhost.sh tracker-change-notify`
+Weekly cron: `bash scripts/schedule-tracker-favorite-weekly.sh` (Monday 01:00 UTC)
+
+`v_tracked_products` is also defined in the scraper repo `scrape_queue.sql`.
+Keep the paused-user filter in both places so a scraper re-apply does not
+drop it.
+
+Next-day smoke (after `tracked_pass`): favorited listing gets a
+`search_rank = -100` row; Favorit Aku detail shows that point as perkiraan
+unless it also landed from a search-result scrape.

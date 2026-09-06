@@ -107,8 +107,10 @@ Favorit Aku (product favorites, daily `tracked_pass.py`): schema in
 `supabase/migrations/20260906123000_favorit_aku.sql`. Notify cadence lives on
 `user_tracker_state.notify_cadence`. Deploy
 `bash scripts/deploy-function-selfhost.sh tracker-change-notify`. Weekly
-digest is `{"task":"weekly"}` on that function (Monday 08:00 WIB); the old
-`weekly-digest` cron is unscheduled. See [favorit-aku.md](./favorit-aku.md).
+digest is `{"task":"weekly"}` on that function (Monday 08:00 WIB); schedule
+it with `bash scripts/schedule-tracker-favorite-weekly.sh` (reads the
+service-role key on the VPS, never commits it). The old `weekly-digest`
+cron is unscheduled. See [favorit-aku.md](./favorit-aku.md).
 
 `rise-crawl-watchdog` (LARISE shop crawl coverage, 14:00 WIB) is scheduled with:
 

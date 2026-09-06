@@ -527,6 +527,7 @@ on conflict (user_id, item_id, shop_id) do nothing;
 alter table public.user_tracked_products enable trigger trg_utp_limit;
 
 -- ── Admin KPI: live favorites vs scraper ceiling ────────────────────────────
+-- user_tracked_products is the live Favorit Aku write path, not an archive.
 create or replace function public.admin_dashboard_kpis()
 returns json
 language plpgsql
@@ -597,6 +598,9 @@ begin
   return v_result;
 end;
 $$;
+
+comment on function public.admin_dashboard_kpis() is
+  'Admin KPI. favorited_products_distinct vs scraper_ceiling=200; tracked_total is row count.';
 
 -- ── Grants ──────────────────────────────────────────────────────────────────
 revoke all on function
