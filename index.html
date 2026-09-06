@@ -6057,11 +6057,11 @@ body.home-finder-done .home-hero {
 #dir-grid .lrow-img,
 #dir-grid .lrow-img--ph { width: 84px; height: 84px; border-radius: 14px; }
 @media (max-width: 559px) {
-  /* Mobile Cari Produk: each row scrolls sideways.
-     Checkbox + photo stay anchored; swipe past Harga/Omset for tren, grafik, terjual, review, usia. */
+  /* Mobile Cari Produk: first screen shows photo + title + Harga/Omset stacked.
+     Swipe sideways for tren %, grafik, terjual, review, usia. Photo stays anchored. */
   #dir-grid {
-    --lrow-sticky-pick-w: 32px;
-    --lrow-sticky-thumb-w: 80px;
+    --lrow-sticky-pick-w: 28px;
+    --lrow-sticky-thumb-w: 60px;
   }
   #dir-grid .lrow-wrap {
     overflow: visible;
@@ -6074,13 +6074,13 @@ body.home-finder-done .home-hero {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
-    font-size: .88rem;
+    font-size: .84rem;
   }
   #dir-grid .lrow-table thead { display: none; }
   #dir-grid .lrow-table tbody {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
   }
   #dir-grid .lrow-table td {
     border-bottom: none;
@@ -6088,19 +6088,30 @@ body.home-finder-done .home-hero {
     background: transparent;
   }
   #dir-grid .lrow {
-    display: flex;
-    flex-wrap: nowrap;
+    --lrow-gap: 6px;
+    display: grid;
+    grid-template-columns:
+      var(--lrow-sticky-pick-w)
+      var(--lrow-sticky-thumb-w)
+      minmax(0, 1fr)
+      max-content
+      16px
+      max-content max-content max-content max-content max-content;
+    grid-template-rows: auto auto;
+    column-gap: var(--lrow-gap);
+    row-gap: 0;
     align-items: center;
-    gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-x: contain;
     scroll-snap-type: x proximity;
-    padding: 12px 10px 12px 8px;
+    padding: 10px 8px 10px 4px;
     background: #fff;
     border: 1px solid #ECEFF3;
-    border-radius: 16px;
+    border-radius: 14px;
     box-shadow: 0 1px 2px rgba(16, 24, 40, .04);
     outline: none;
   }
@@ -6130,32 +6141,28 @@ body.home-finder-done .home-hero {
     max-width: none;
   }
   #dir-grid .lrow-pick {
+    grid-column: 1;
+    grid-row: 1 / span 2;
     left: 0;
-    flex: 0 0 var(--lrow-sticky-pick-w);
-    width: var(--lrow-sticky-pick-w);
-    min-width: var(--lrow-sticky-pick-w);
-    max-width: var(--lrow-sticky-pick-w);
     display: grid;
     place-items: center;
     align-self: stretch;
-    padding: 0 0 0 2px;
+    padding: 0;
     background: inherit;
   }
   #dir-grid .lrow-thumb {
+    grid-column: 2;
+    grid-row: 1 / span 2;
     left: var(--lrow-sticky-pick-w);
-    flex: 0 0 72px;
-    width: 72px;
-    min-width: 72px;
-    max-width: 72px;
     padding: 0;
     background: inherit;
     z-index: 4;
   }
   #dir-grid .lrow-thumb .lrow-img,
   #dir-grid .lrow-thumb .lrow-img--ph {
-    width: 68px;
-    height: 68px;
-    border-radius: 14px;
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
   }
   #dir-grid .lrow-table .lrow:hover .lrow-pick,
   #dir-grid .lrow-table .lrow:hover .lrow-thumb,
@@ -6168,51 +6175,46 @@ body.home-finder-done .home-hero {
     background: inherit;
   }
   #dir-grid .lrow-check {
-    width: 18px; height: 18px; border-radius: 5px;
+    width: 17px; height: 17px; border-radius: 5px;
     border-color: #D0D5DD; background: #F8FAFC;
   }
-  #dir-grid .lrow-check-btn { width: 28px; height: 28px; }
-  /* Title scrolls with metrics so the photo stays the only anchored identity. */
+  #dir-grid .lrow-check-btn { width: 26px; height: 26px; }
   #dir-grid .lrow-prod {
+    grid-column: 3;
+    grid-row: 1 / span 2;
     position: static !important;
     left: auto !important;
-    flex: 0 0 148px;
-    width: 148px;
-    min-width: 148px;
-    max-width: 148px;
+    min-width: 0;
+    width: auto;
+    max-width: none;
     padding: 0;
     box-shadow: none !important;
     background: transparent !important;
-    scroll-snap-align: start;
   }
   #dir-grid .lrow-open {
     display: block;
     width: 100%;
+    min-width: 0;
     gap: 0;
   }
   #dir-grid .lrow-name {
-    font-size: .82rem;
+    font-size: .78rem;
     font-weight: 800;
     -webkit-line-clamp: 2;
     color: #0F172A;
   }
   #dir-grid .lrow-toko {
-    font-size: .7rem;
+    font-size: .66rem;
     font-weight: 500;
     color: #667085;
     margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  #dir-grid .lrow-cat {
-    margin-top: 5px;
-    font-size: .64rem;
-    background: #F2F4F7;
-    color: #667085;
-  }
-  #dir-grid .lrow-meta {
-    margin-top: 4px;
-    font-size: .64rem;
-    color: #98A2B3;
-  }
+  /* Keep the first screen tight: category + meta wait behind the swipe. */
+  #dir-grid .lrow-cat,
+  #dir-grid .lrow-meta { display: none; }
   #dir-grid .lrow-harga,
   #dir-grid .lrow-omset,
   #dir-grid .lrow-trend,
@@ -6224,69 +6226,78 @@ body.home-finder-done .home-hero {
     flex-direction: column;
     justify-content: center;
     align-items: flex-start;
-    flex: 0 0 auto;
-    min-width: 76px;
-    padding: 0 10px !important;
+    min-width: 0;
+    padding: 0 0 0 8px !important;
     border-left: 1px solid #EAECF0;
     text-align: left;
     white-space: nowrap;
     scroll-snap-align: start;
     background: transparent !important;
   }
-  #dir-grid .lrow-harga { min-width: 88px; }
-  #dir-grid .lrow-omset { min-width: 84px; }
-  #dir-grid .lrow-trend { min-width: 72px; }
-  #dir-grid .lrow-spark { min-width: 70px; }
-  #dir-grid .lrow-sold { min-width: 72px; }
-  #dir-grid .lrow-reviews { min-width: 68px; }
-  #dir-grid .lrow-usia { min-width: 60px; }
+  /* Harga above Omset in one column so both fit the first screen. */
+  #dir-grid .lrow-harga {
+    grid-column: 4;
+    grid-row: 1;
+    align-self: end;
+    padding-bottom: 2px !important;
+  }
+  #dir-grid .lrow-omset {
+    grid-column: 4;
+    grid-row: 2;
+    align-self: start;
+    padding-top: 2px !important;
+  }
+  #dir-grid .lrow-trend { grid-column: 6; grid-row: 1 / span 2; min-width: 68px; padding: 0 10px !important; }
+  #dir-grid .lrow-spark { grid-column: 7; grid-row: 1 / span 2; min-width: 64px; padding: 0 10px !important; }
+  #dir-grid .lrow-sold { grid-column: 8; grid-row: 1 / span 2; min-width: 68px; padding: 0 10px !important; }
+  #dir-grid .lrow-reviews { grid-column: 9; grid-row: 1 / span 2; min-width: 64px; padding: 0 10px !important; }
+  #dir-grid .lrow-usia { grid-column: 10; grid-row: 1 / span 2; min-width: 56px; padding: 0 10px !important; }
   #dir-grid .lrow-metric-lbl {
     display: block;
-    font-size: .62rem;
+    font-size: .58rem;
     font-weight: 600;
     color: #98A2B3;
-    line-height: 1.2;
-    margin-bottom: 2px;
+    line-height: 1.15;
+    margin-bottom: 1px;
   }
   #dir-grid .lrow-metric-val {
     display: block;
-    font-size: .78rem;
+    font-size: .74rem;
     font-weight: 800;
     color: #0F172A;
     letter-spacing: -.02em;
-    line-height: 1.25;
+    line-height: 1.2;
   }
   #dir-grid .lrow-omset .omset-chip { display: none; }
-  #dir-grid .lrow-trend .lrow-trend-pct {
-    font-size: .78rem;
-  }
+  #dir-grid .lrow-trend .lrow-trend-pct { font-size: .74rem; }
   #dir-grid .lrow-trend .lrow-trend-pct small { display: none; }
   #dir-grid .lrow-spark .trend-now-bolt-wrap {
     display: block;
-    width: 48px;
-    height: 28px;
+    width: 44px;
+    height: 26px;
   }
   #dir-grid .lrow-spark .trend-now-bolt {
-    width: 48px;
-    height: 28px;
+    width: 44px;
+    height: 26px;
   }
   #dir-grid .lrow-wide { display: flex !important; }
   #dir-grid .lrow-act {
+    grid-column: 5;
+    grid-row: 1 / span 2;
     position: static !important;
-    flex: 0 0 22px;
-    width: 22px;
-    min-width: 22px;
+    width: 16px;
+    min-width: 16px;
     padding: 0;
     white-space: nowrap;
-    margin-left: auto;
   }
   #dir-grid .lrow-fav { display: none; }
   #dir-grid .lrow-go {
-    width: 20px; height: 28px; margin: 0;
+    width: 18px; height: 26px; margin: 0;
     color: #98A2B3;
   }
   #dir-grid .lrow-go:hover { background: none; color: #667085; }
 }
+
 
 .badge-comp-tinggi { background: var(--red-bg); color: var(--accent); }
 .badge-comp-sedang { background: var(--amber-bg); color: var(--amber); }
@@ -6580,12 +6591,26 @@ body.calc-open .calc-panel { display: flex; animation: calcIn .24s var(--ease); 
 body.calc-resizing .calc-resize::before { background: var(--accent); }
 .sheet-grab {
   display: none; align-items: center; justify-content: center;
-  width: 100%; padding: 9px 0 5px; flex-shrink: 0;
+  width: 100%; padding: 12px 0 8px; flex-shrink: 0;
+  /* Invisible extended hit area above/below the pill (mobile ~44px target). */
+  position: relative;
   background: transparent; border: none; cursor: grab;
   touch-action: none;
+  -webkit-user-select: none; user-select: none;
+}
+.sheet-grab::before {
+  content: '';
+  position: absolute; left: 0; right: 0; top: -6px; bottom: -4px;
 }
 .sheet-grab span {
-  width: 42px; height: 5px; border-radius: 999px; background: var(--line);
+  width: 44px; height: 5px; border-radius: 999px; background: var(--line);
+  transition: background .15s, width .15s, transform .15s;
+  pointer-events: none;
+}
+.sheet-grab.is-dragging { cursor: grabbing; }
+.sheet-grab.is-dragging span {
+  width: 56px; background: var(--accent, #e11d48);
+  transform: scaleY(1.15);
 }
 .calc-head {
   display: flex; align-items: center; justify-content: space-between;
@@ -8596,7 +8621,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 
   <aside class="calc-panel" id="calc-panel" aria-hidden="true" aria-label="Panel samping">
     <div class="calc-resize" id="calc-resize" role="separator" aria-orientation="vertical" title="Geser untuk ubah lebar"></div>
-    <div class="sheet-grab" id="sheet-grab" role="button" tabindex="0" aria-label="Kecilkan atau besarkan panel"><span></span></div>
+    <div class="sheet-grab" id="sheet-grab" role="button" tabindex="0" aria-label="Geser untuk ubah tinggi panel"><span></span></div>
     <div class="calc-head">
       <div class="calc-head-txt">
         <div class="side-tabs" role="tablist" aria-label="Mode panel">
@@ -8988,6 +9013,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
      larisLoadScript() when the admin view actually renders. -->
 <script src="/js/peta-peluang.js?v=20260906b" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
-<script src="/js/gpt-app.js?v=20260906u" defer></script>
+<script src="/js/gpt-app.js?v=20260906v" defer></script>
 </body>
 </html>

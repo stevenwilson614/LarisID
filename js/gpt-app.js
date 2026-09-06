@@ -6743,77 +6743,163 @@ function wireCalcPanel() {
   $('serupa-rail')?.addEventListener('click', () => openSerupaPanel({ via: 'rail' }));
   $('calc-close')?.addEventListener('click', closeCalcPanel);
 
-  // Mobile bottom-sheet grab: pointer-drag to resize height; <10% viewport auto-collapses.
-  // Tap (tiny movement) still toggles collapse.
+  // Mobile bottom-sheet grab: 1:1 pointer-drag from the *visible* height,
+  // rubber-band at the top, then snap/fling to peek | mid | full.
+  // Tap (tiny movement) still toggles collapse. Header chrome is also draggable
+  // (tabs/close excluded) so users are not stuck hunting the thin pill.
   const grab = $('sheet-grab');
   if (grab) {
     const isSheet = () => window.matchMedia('(max-width: 860px)').matches;
+    const PEEK_PX = 96;
+    const MID_PCT = 0.52;
+    const FULL_PCT = 0.9;
+    const MOVE_PX = 8; // ignore finger jitter before treating as a drag
     const setCollapsed = (on) => {
       $('calc-panel')?.classList.toggle('sheet-collapsed', on);
       saveSidePrefs({ collapsed: on });
     };
+    const sheetMaxPct = () => {
+      const vh = _sheetVh();
+      return Math.min(0.98, Math.max(0.5, (vh - 8) / vh));
+    };
+    const applySheetPct = (pct, { collapse } = {}) => {
+      const vh = _sheetVh();
+      if (collapse || pct * vh <= PEEK_PX + 8 || pct < 0.18) {
+        setCollapsed(true);
+        return null;
+      }
+      setCollapsed(false);
+      return setSheetHeight(pct);
+    };
+    const snapSheet = (pct, velocityY) => {
+      // velocityY: finger px/ms; positive = dragging down (shrinking).
+      const vh = _sheetVh();
+      const maxPct = sheetMaxPct();
+      const full = Math.min(FULL_PCT, maxPct);
+      const mid = Math.min(MID_PCT, full - 0.08);
+      const peekPct = PEEK_PX / vh;
+      const FLICK = 0.55; // px/ms ≈ quick swipe
+
+      let target;
+      if (velocityY <= -FLICK) target = full;          // flick up → expand
+      else if (velocityY >= FLICK) {                   // flick down → shrink a step
+        if (pct > mid + 0.08) target = mid;
+        else target = peekPct;
+      } else {
+        // Nearest detent (peek / mid / full).
+        const candidates = [peekPct, mid, full];
+        target = candidates.reduce((best, c) =>
+          Math.abs(c - pct) < Math.abs(best - pct) ? c : best, candidates[0]);
+      }
+      const saved = applySheetPct(target, { collapse: target <= peekPct + 0.02 });
+      if (saved != null) saveSidePrefs({ sheetPct: saved, collapsed: false });
+    };
     if (prefs.sheetPct) setSheetHeight(prefs.sheetPct);
     else setSheetHeight(0.8);
 
-    let drag = null; // { pointerId, startY, startH, moved, lastPct }
+    let drag = null; // { pointerId, startY, startH, moved, lastPct, lastY, lastT, vY, captureEl }
+    const paintSheetHeight = (px) => {
+      const vh = _sheetVh();
+      const h = Math.max(44, Math.round(px));
+      const panel = $('calc-panel');
+      if (panel) panel.style.height = h + 'px';
+      document.documentElement.style.setProperty('--sheet-h', h + 'px');
+      return h / vh;
+    };
     const onPointerMove = (e) => {
       if (!drag || e.pointerId !== drag.pointerId || !isSheet()) return;
+      const now = e.timeStamp || performance.now();
       const dy = e.clientY - drag.startY;
-      if (Math.abs(dy) > 4) drag.moved = true;
+      if (Math.abs(dy) > MOVE_PX) drag.moved = true;
+      const dt = Math.max(1, now - drag.lastT);
+      // EMA so a noisy last frame does not dominate the fling decision.
+      const instV = (e.clientY - drag.lastY) / dt;
+      drag.vY = drag.vY * 0.6 + instV * 0.4;
+      drag.lastY = e.clientY;
+      drag.lastT = now;
+
       const vh = _sheetVh();
-      const nextH = drag.startH - dy; // drag up → taller
-      const pct = nextH / vh;
-      if (pct < 0.10) {
-        setCollapsed(true);
-        return;
+      const maxH = vh * sheetMaxPct();
+      let nextH = drag.startH - dy; // drag up → taller
+      // Rubber-band past the top so "already tall" still feels responsive —
+      // previously an upward drag at max did nothing until you pulled down first.
+      if (nextH > maxH) {
+        nextH = maxH + (nextH - maxH) * 0.22;
+      } else if (nextH < PEEK_PX) {
+        nextH = Math.max(52, PEEK_PX - (PEEK_PX - nextH) * 0.28);
       }
+      // Keep expanded while dragging so height tracks the finger 1:1 from peek.
+      // Paint px directly (bypass setSheetHeight's 0.15 floor) for smooth shrink-to-peek.
       setCollapsed(false);
-      drag.lastPct = setSheetHeight(pct);
+      drag.lastPct = paintSheetHeight(nextH);
       if (e.cancelable) e.preventDefault();
     };
     const onPointerUp = (e) => {
       if (!drag || e.pointerId !== drag.pointerId) return;
       const moved = drag.moved;
       const lastPct = drag.lastPct;
+      const vY = drag.vY || 0;
+      const captureEl = drag.captureEl || grab;
       const collapsed = $('calc-panel')?.classList.contains('sheet-collapsed');
       drag = null;
       document.body.classList.remove('sheet-resizing');
-      try { grab.releasePointerCapture(e.pointerId); } catch (_) {}
+      grab.classList.remove('is-dragging');
+      const panel = $('calc-panel');
+      if (panel) panel.style.height = ''; // return to --sheet-h / collapsed rule
+      try { captureEl.releasePointerCapture(e.pointerId); } catch (_) {}
       if (!moved) {
         setCollapsed(!collapsed);
         return;
       }
-      if (collapsed) return;
-      if (lastPct != null) saveSidePrefs({ sheetPct: lastPct, collapsed: false });
-      else {
-        const pct = ($('calc-panel')?.getBoundingClientRect().height || 0) / _sheetVh();
-        if (pct < 0.10) setCollapsed(true);
-        else saveSidePrefs({ sheetPct: setSheetHeight(pct), collapsed: false });
-      }
+      const pct = lastPct != null
+        ? lastPct
+        : (($('calc-panel')?.getBoundingClientRect().height || 0) / _sheetVh());
+      snapSheet(pct, vY);
     };
-    const onPointerDown = (e) => {
-      if (!isSheet()) return;
-      if (e.pointerType === 'mouse' && e.button !== 0) return;
+    const beginSheetDrag = (e, captureEl) => {
+      if (!isSheet()) return false;
+      if (e.pointerType === 'mouse' && e.button !== 0) return false;
       const panel = $('calc-panel');
-      if (!panel) return;
+      if (!panel) return false;
       if (e.cancelable) e.preventDefault();
-      try { grab.setPointerCapture(e.pointerId); } catch (_) {}
-      const vh = _sheetVh();
+      try { captureEl.setPointerCapture(e.pointerId); } catch (_) {}
+      // Always start from the *visible* height so a collapsed peek (96px)
+      // expands smoothly as the finger moves up — not from the saved 80% jump.
+      const startH = panel.getBoundingClientRect().height || PEEK_PX;
       drag = {
         pointerId: e.pointerId,
         startY: e.clientY,
-        startH: panel.classList.contains('sheet-collapsed')
-          ? Math.round(vh * (loadSidePrefs().sheetPct || 0.8))
-          : panel.getBoundingClientRect().height,
+        startH,
         moved: false,
         lastPct: null,
+        lastY: e.clientY,
+        lastT: e.timeStamp || performance.now(),
+        vY: 0,
+        captureEl,
       };
       document.body.classList.add('sheet-resizing');
+      grab.classList.add('is-dragging');
+      return true;
     };
+    const onPointerDown = (e) => { beginSheetDrag(e, grab); };
     grab.addEventListener('pointerdown', onPointerDown);
     grab.addEventListener('pointermove', onPointerMove);
     grab.addEventListener('pointerup', onPointerUp);
     grab.addEventListener('pointercancel', onPointerUp);
+
+    // Drag from the tab header chrome (not the tab/close controls themselves).
+    const head = $('calc-panel')?.querySelector?.('.calc-head');
+    if (head) {
+      head.addEventListener('pointerdown', (e) => {
+        if (!isSheet()) return;
+        const t = e.target;
+        if (t.closest?.('button, a, input, select, textarea, [role="tab"]')) return;
+        beginSheetDrag(e, head);
+      });
+      head.addEventListener('pointermove', onPointerMove);
+      head.addEventListener('pointerup', onPointerUp);
+      head.addEventListener('pointercancel', onPointerUp);
+    }
 
     const refreshSheetLayout = () => {
       if (!isSheet() || document.body.classList.contains('sheet-resizing')) return;
