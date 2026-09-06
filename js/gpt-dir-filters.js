@@ -45,6 +45,11 @@
     ['review', 'Review terbanyak'],
     ['terbaru', 'Paling baru'],
   ];
+  var SESUAI_OPTION = ['sesuai', 'Paling sesuai'];
+
+  function sortOptionList(showSesuai) {
+    return (showSesuai ? [SESUAI_OPTION] : []).concat(SORT_OPTIONS);
+  }
 
   var FLAME = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22c4.4 0 7-2.8 7-6.5 0-2.5-1.4-4.6-3-6.5-.6 1.2-1.4 2-2.5 2.5C13.9 9 13 5.5 9.5 2c.3 3-.5 4.6-2 6.5C6 10.4 5 12.3 5 15.5 5 19.2 7.6 22 12 22z"/></svg>';
 
@@ -64,15 +69,19 @@
    * in the results-bar mega-menu / subcategory cards, not here — this used to
    * also render a Kategori/Harga/Omset/Skor filter panel; that's gone.
    *
-   * opts: { value: string, onSortChange: (value:string) => void }
+   * opts: { value: string, onSortChange: (value:string) => void, showSesuai?: boolean }
    * -------------------------------------------------------------------------- */
   function renderControls(container, opts) {
     if (!container || !container.appendChild) return;
     var onSortChange = (opts && typeof opts.onSortChange === 'function') ? opts.onSortChange : null;
     var current = (opts && opts.value) || 'omset';
+    var showSesuai = !!(opts && opts.showSesuai);
 
     if (container.dataset.mounted === 'true') {
-      if (container._dirApi) container._dirApi.setValue(current);
+      if (container._dirApi) {
+        container._dirApi.setShowSesuai(showSesuai);
+        container._dirApi.setValue(current);
+      }
       return;
     }
     container.dataset.mounted = 'true';
@@ -84,11 +93,7 @@
       '<label class="dir-sort-label" for="dir-sort-select">Urutkan</label>' +
       '<div class="dir-sort-pill">' +
         '<span class="dir-sort-flame" data-dir-sort-flame hidden>' + FLAME + '</span>' +
-        '<select class="dir-sort-select" id="dir-sort-select">' +
-        SORT_OPTIONS.map(function (o) {
-          return '<option value="' + esc(o[0]) + '"' + (o[0] === current ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
-        }).join('') +
-        '</select>' +
+        '<select class="dir-sort-select" id="dir-sort-select"></select>' +
       '</div>';
     container.appendChild(wrap);
 
@@ -98,7 +103,17 @@
       if (flame) flame.hidden = v !== 'trending';
       wrap.classList.toggle('is-trending', v === 'trending');
     }
-    syncFlame(current);
+    function fillOptions(v) {
+      var cur = v || 'omset';
+      if (!showSesuai && cur === 'sesuai') cur = 'omset';
+      select.innerHTML = sortOptionList(showSesuai).map(function (o) {
+        return '<option value="' + esc(o[0]) + '"' + (o[0] === cur ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+      }).join('');
+      select.value = cur;
+      syncFlame(cur);
+      return cur;
+    }
+    fillOptions(current);
     select.addEventListener('change', function () {
       syncFlame(select.value);
       if (onSortChange) onSortChange(select.value);
@@ -106,8 +121,18 @@
 
     container._dirApi = {
       setValue: function (v) {
-        select.value = v || 'omset';
-        syncFlame(select.value);
+        var next = v || 'omset';
+        if (!showSesuai && next === 'sesuai') next = 'omset';
+        if (![].some.call(select.options, function (o) { return o.value === next; })) {
+          fillOptions(next);
+        } else {
+          select.value = next;
+          syncFlame(next);
+        }
+      },
+      setShowSesuai: function (on) {
+        showSesuai = !!on;
+        fillOptions(select.value);
       }
     };
   }

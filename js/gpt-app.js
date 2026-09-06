@@ -1693,6 +1693,9 @@ const state = {
   dirCities: [],   // multi-select city filter (empty = ALL / nasional)
   dirSearch: '',   // sticky Produk search query (filters the directory grid)
   dirNearby: false, // current dirTypes came from listing-title nearby lift
+  dirMatchLevel: '', // keyword | title | brand | nearby
+  dirBrand: '',
+  dirBrandMissing: false,
   dirSub: null,    // selected sub-group within a single selected category
   dirSort: 'omset',
   dirRangeFilters: null,
@@ -4817,6 +4820,7 @@ async function applyDirectoryCategory(cat, sub) {
   state.dirSub = nextCat ? nextSub : null;
   state.dirSearch = '';
   state.dirPage = 1;
+  resetDirSearchMeta();
   // An explicit pick (rail, mega-menu, hero CTA) — not the onboarding
   // auto-filter below — so the hero should stay hidden after this one.
   state.dirCatsFromOnboarding = false;
@@ -5209,6 +5213,7 @@ function wireResultsBar() {
     if (!v && state.dirSearch) {
       state.dirSearch = '';
       state.dirPage = 1;
+      resetDirSearchMeta();
       updateDirHeading();
       if (state.view === 'directory') void renderDirectory();
     }
@@ -5275,6 +5280,9 @@ async function runResultsBarSearch(q) {
   state.dirSearch = query;
   state.dirPage = 1;
   state.dirCatsFromOnboarding = false;
+  if (!state.dirSort || state.dirSort === 'omset' || state.dirSort === 'sesuai') {
+    state.dirSort = 'sesuai';
+  }
   closeResultsBarMega();
   if (state.view !== 'directory') {
     state.comparePick = null;
@@ -7357,15 +7365,28 @@ async function countKeywordUnsold(kw) {
 
 async function resolveListingPool({ q, cats, sub, home } = {}) {
   const query = (q || '').trim();
-  const out = { keywords: [], listings: [], primaryKw: '', nearby: false, unsold: 0 };
+  const out = emptyListingPool();
   if (query) {
-    let types = await searchProductTypes(query, [], 24);
-    if (!types.length) {
-      types = await searchNearbyProductTypes(query, [], 24);
-      out.nearby = !!types.length;
+    const plan = await planSearch(query).catch(() => ({ queries: [], brand: null }));
+    out.brand = plan?.brand || '';
+    const exactKw = await productTypeExactKeyword(query);
+    const brandPrimary = !exactKw && isBrandPrimaryQuery(query, plan);
+    if (brandPrimary) {
+      const brandPool = await resolveBrandListingPool(query, plan);
+      if (brandPool && brandPool.listings.length) {
+        Object.assign(out, brandPool);
+        out.nearby = false;
+        out.listings = dedupeListings(out.listings);
+        rememberProducts(out.listings);
+        registerTypes(out.keywords);
+        return out;
+      }
     }
-    out.keywords = types.some(t => t._nearby) ? types : markTerlarisMinggu(types.slice());
+
+    let types = exactKw ? [exactKw] : await searchProductTypes(query, [], 24);
     if (types.length) {
+      out.matchLevel = 'keyword';
+      out.keywords = types.some(t => t._nearby) ? types : markTerlarisMinggu(types.slice());
       out.primaryKw = types[0].keyword || '';
       const kws = types.map(t => t.keyword).filter(Boolean).slice(0, 15);
       if (kws.length === 1) {
@@ -7379,9 +7400,42 @@ async function resolveListingPool({ q, cats, sub, home } = {}) {
         out.listings = dedupeListings(primary.concat(extra));
       }
       out.unsold = await countKeywordUnsold(out.primaryKw);
+      const terms = _searchTerms(query);
+      const phrase = query.toLowerCase();
+      out.listings.forEach(r => attachRelScore(r, terms, phrase, {}, 1));
+      if (terms.length >= 2) {
+        const filtered = filterRelevantHits(out.listings, terms, phrase);
+        if (filtered.length) out.listings = filtered;
+      }
+    }
+    if (!out.listings.length) {
+      const titlePool = await resolveTitleListingPool(query);
+      if (titlePool.listings.length) {
+        Object.assign(out, titlePool);
+        out.brand = plan?.brand || out.brand;
+      }
+    }
+    if (!out.listings.length) {
+      types = await searchNearbyProductTypes(query, [], 24);
+      if (types.length) {
+        out.matchLevel = 'nearby';
+        out.nearby = true;
+        out.keywords = types;
+        out.primaryKw = '';
+        const kws = types.map(t => t.keyword).filter(Boolean).slice(0, 15);
+        out.listings = await fetchListingsForKeywords(kws, 20, 240);
+        const terms = _searchTerms(query);
+        const phrase = query.toLowerCase();
+        out.listings.forEach(r => attachRelScore(r, terms, phrase, {}, 1));
+        if (terms.length >= 2) {
+          const filtered = filterRelevantHits(out.listings, terms, phrase);
+          if (filtered.length) out.listings = filtered;
+        }
+      }
     }
     if (!out.listings.length) {
       out.listings = (await searchListings(query, [], 80)).map(asListingProduct);
+      if (out.listings.length && !out.matchLevel) out.matchLevel = 'title';
     }
   } else {
     let types = [];
@@ -7394,6 +7448,7 @@ async function resolveListingPool({ q, cats, sub, home } = {}) {
     }
     types = sortTypeRows(types, 'sesuai', false);
     types = markTerlarisMinggu(types);
+    out.matchLevel = 'keyword';
     out.keywords = types;
     out.primaryKw = '';
     out.listings = await fetchListingsForKeywords(
@@ -8018,33 +8073,13 @@ async function handleLookupIntent(chat, text) {
   const place = parsePlaceFromQuery(text);
   const q = cleanDiscoveryQuery(place.cleaned || text) || (place.cleaned || text);
   const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Mencari ${esc(q)}…</p>`);
-  const gate = await ensureIntentChat(chat, q.slice(0, 60), { kind: 'pasar_search', q });
-  if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
-  const listings = await searchListings(q, place.locations || [], 16);
-  let types = [];
-  try { types = await typesForListings(listings, '', 6); } catch (_) {}
-  if (!types.length) {
-    try { types = await searchProductTypes(q, '', 6, { skipLog: true }); } catch (_) {}
-    registerTypes(types);
-  }
-  if (!listings.length && !types.length) {
-    const html = `<p>Belum ketemu listing untuk “${esc(q)}” di data kami.</p>`;
-    await revealAssistant(loading, html);
-    pushMessage(chat, 'assistant', { text: 'Hasil pasar', q }, html);
-    return;
-  }
-  const rows = listings.length
-    ? listings
-    : await fetchListingsForKeywords(types.map(t => t.keyword), 8, 16);
-  const lead = lookupOverviewHtml(types[0], q, place.label || place.city);
-  await revealListingRows(loading, chat, lead, rows, {
-    text: 'Hasil pasar',
-    kind: 'pasar_search',
-    q,
-    types: types.map(t => t.keyword),
-    query: q,
-  }, defaultLookupFollowups(rows));
-  void logUserEvent('discover_view', { ui: 'gpt', q, count: rows.length, mode: 'lookup' });
+  const placeLabel = place.label || place.city || '';
+  // Same pool as Cari Produk — raw searchListings + typesForListings used to
+  // crown "kaca film mobil" for "rayban" because film titles mention the brand.
+  if (await replyWithPasarTypes(chat, text, [], { loading, label: q, placeLabel })) return;
+  const html = `<p>Belum ketemu listing untuk “${esc(q)}” di data kami.</p>`;
+  await revealAssistant(loading, html);
+  pushMessage(chat, 'assistant', { text: 'Hasil pasar', q }, html);
 }
 
 async function handleFilterFollowup(chat, text) {
@@ -8991,6 +9026,385 @@ function filterRelevantHits(hits, terms, phrase = '', opts = {}) {
   return good.map(x => x.h);
 }
 
+const BRAND_FILLER_TOKENS = new Set(['ori', 'original', 'asli', 'kw', 'premium', 'official', 'resmi', 'branded']);
+
+function foldSearchKey(s) {
+  return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function kwHasTerm(kw, term) {
+  const k = String(kw || '').toLowerCase();
+  const t = String(term || '').toLowerCase().trim();
+  if (!t || t.length < 3) return false;
+  if (t.includes(' ')) return k === t || k.includes(t);
+  if (k === t) return true;
+  return k.split(/[\s/-]+/).some(w => w === t);
+}
+
+function tokenOverlapCount(kw, toks) {
+  return (toks || []).filter(t => {
+    if (kwHasTerm(kw, t)) return true;
+    return (SEARCH_SYNONYMS[t] || []).some(s => kwHasTerm(kw, s));
+  }).length;
+}
+
+function extraIsSynonym(extra, qTokens, q) {
+  const el = String(extra || '').toLowerCase().trim();
+  if (!el || el === q) return false;
+  const eToks = _searchTerms(el);
+  if (!eToks.length) return false;
+  if (eToks.every(t => qTokens.includes(t))) return false;
+  if (eToks.some(t => qTokens.includes(t))) return false;
+  return true;
+}
+
+function searchPivots(qTokens, hitCounts) {
+  const toks = (qTokens || []).filter(Boolean);
+  if (!toks.length) return { head: '', rarest: '', pivots: [] };
+  const head = toks[0];
+  let rarest = '';
+  let best = Infinity;
+  for (const t of toks) {
+    const n = Number(hitCounts.get(t) || 0);
+    if (!n) continue;
+    if (n < best || (n === best && t.length > rarest.length)) {
+      best = n;
+      rarest = t;
+    }
+  }
+  return { head, rarest, pivots: [...new Set([head, rarest].filter(Boolean))] };
+}
+
+function hayHasToken(hay, token) {
+  const h = String(hay || '').toLowerCase();
+  const t = String(token || '').toLowerCase();
+  if (!t) return false;
+  if (h.includes(t)) return true;
+  return (SEARCH_SYNONYMS[t] || []).some(s => h.includes(String(s).toLowerCase()));
+}
+
+function listingHasPivots(row, pivots, qTokens) {
+  const hay = `${row.product_name || ''} ${row.keyword || ''}`.toLowerCase();
+  if (!(pivots || []).some(p => hayHasToken(hay, p))) return false;
+  const others = (qTokens || []).filter(t => !pivots.includes(t));
+  if (!others.length) return true;
+  return others.some(t => hayHasToken(hay, t));
+}
+
+function attachRelScore(row, terms, phrase, opts, tier) {
+  const s = scoreSearchHit(row, terms, phrase, opts);
+  row._relScore = s.score;
+  row._relTier = tier;
+  row._relCoverage = s.coverage;
+  return s;
+}
+
+function brandSearchVariants(raw, brand) {
+  const out = [];
+  const seen = new Set();
+  const add = (s) => {
+    const t = String(s || '').trim();
+    if (t.length < 2) return;
+    const k = t.toLowerCase();
+    if (seen.has(k)) return;
+    seen.add(k);
+    out.push(t);
+  };
+  add(raw);
+  add(brand);
+  add(String(brand || '').replace(/[-_]+/g, ' '));
+  add(String(brand || '').replace(/\s+/g, '-'));
+  add(String(brand || '').replace(/[-_\s]+/g, ''));
+  add(String(raw || '').replace(/[-_]+/g, ' '));
+  add(String(raw || '').replace(/[-_\s]+/g, ''));
+  return out.slice(0, 6);
+}
+
+function hayHasBrand(hay, brand) {
+  const h = foldSearchKey(hay);
+  const b = foldSearchKey(brand);
+  return !!(h && b && b.length >= 3 && h.includes(b));
+}
+
+function isBrandPrimaryQuery(raw, plan) {
+  const brand = String(plan?.brand || '').trim();
+  if (!brand) return false;
+  const bFold = foldSearchKey(brand);
+  const qFold = foldSearchKey(raw);
+  if (!bFold || !qFold) return false;
+  if (!qFold.includes(bFold) && !bFold.includes(qFold)) return false;
+  const leftover = _searchTerms(raw).filter(t => {
+    const f = foldSearchKey(t);
+    if (!f) return false;
+    if (bFold.includes(f) || f.includes(bFold)) return false;
+    return true;
+  });
+  const planTerms = new Set((plan.queries || []).flatMap(q => _searchTerms(q)));
+  return leftover.every(t => BRAND_FILLER_TOKENS.has(t) || planTerms.has(t));
+}
+
+function titleSearchQueries(raw) {
+  const terms = _searchTerms(raw);
+  const bigrams = [];
+  for (let i = 0; i < terms.length - 1; i++) bigrams.push(`${terms[i]} ${terms[i + 1]}`);
+  return [...new Set([String(raw || '').trim(), ...bigrams])].filter(Boolean).slice(0, 4);
+}
+
+async function searchListingsFanout(queries, limitEach = 40) {
+  const pool = [];
+  const qs = [...new Set((queries || []).map(q => String(q || '').trim()).filter(Boolean))].slice(0, 4);
+  if (!qs.length) return pool;
+  const groups = await Promise.all(qs.map(q => searchListings(q, [], limitEach)));
+  groups.forEach(rows => mergePool(pool, rows));
+  return pool;
+}
+
+function searchMatchLeadHtml(q, pool) {
+  const level = pool?.matchLevel || (pool?.nearby ? 'nearby' : '');
+  const query = String(q || '').trim();
+  if (!query || !level || level === 'keyword') return '';
+  const kws = (pool.keywords || []).map(t => t.keyword).filter(Boolean);
+  const named = kws.slice(0, 3).map(esc);
+  if (level === 'title') {
+    const from = named.length ? ` — dari pasar ${named.join(', ')}` : '';
+    return `<p class="dd-sub dir-nearby-lead">Produk yang judulnya cocok dengan “<strong>${esc(query)}</strong>”${from}.</p>`;
+  }
+  if (level === 'brand') {
+    const brand = pool.brand || query;
+    const typeKw = kws[0] || '';
+    const typeLabel = typeKw || 'produk';
+    const pasar = typeKw ? ` di pasar ${esc(typeKw)}` : '';
+    if (pool.brandMissing) {
+      return `<p class="dd-sub dir-nearby-lead">Brand <strong>${esc(brand)}</strong> belum ada di data kami — menampilkan tipe produk yang paling mirip${typeKw ? ` (${esc(typeKw)})` : ''}.</p>`;
+    }
+    return `<p class="dd-sub dir-nearby-lead">Produk ${esc(brand)} dan ${esc(typeLabel)} sejenis — merek dulu, lalu produk mirip${pasar}.</p>`;
+  }
+  if (level === 'nearby') {
+    return `<p class="dd-sub dir-nearby-lead">Belum ketemu produk untuk “<strong>${esc(query)}</strong>”. Ini produk dari pasar terdekat:</p>`;
+  }
+  return '';
+}
+
+async function productTypeExactKeyword(text) {
+  if (!_supabase) return null;
+  const needle = _sanitizeSearchToken(text);
+  if (needle.length < 2) return null;
+  try {
+    const build = () => _supabase.from('product_types_v')
+      .select(ptypeCols())
+      .eq('city', 'ALL')
+      .ilike('keyword', needle)
+      .gte('n_listings', 3)
+      .limit(4);
+    let { data, error } = await build();
+    if (ptypeWeeklyMissing(error)) ({ data } = await build());
+    const want = needle.toLowerCase();
+    return (data || []).find(r => String(r.keyword || '').trim().toLowerCase() === want) || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function emptyListingPool() {
+  return {
+    keywords: [], listings: [], primaryKw: '', nearby: false,
+    matchLevel: '', unsold: 0, brand: '', brandMissing: false,
+  };
+}
+
+async function resolveTitleListingPool(query) {
+  const qTokens = _searchTerms(query);
+  const phrase = String(query || '').toLowerCase();
+  const pool = await searchListingsFanout(titleSearchQueries(query), 40);
+  if (!pool.length) return emptyListingPool();
+
+  const hitCounts = new Map();
+  qTokens.forEach(t => {
+    const n = new Set(pool
+      .filter(r => kwHasTerm(r.keyword, t) || hayHasToken(r.product_name, t))
+      .map(r => r.keyword)).size;
+    hitCounts.set(t, n);
+  });
+  const { pivots } = searchPivots(qTokens, hitCounts);
+  const usePivots = qTokens.length >= 2 ? pivots : qTokens;
+
+  const scored = [];
+  for (const row of pool) {
+    if (qTokens.length >= 2 && usePivots.length && !listingHasPivots(row, usePivots, qTokens)) continue;
+    const s = attachRelScore(row, qTokens, phrase, {}, 2);
+    scored.push({ row, s });
+  }
+  const byKwA = new Map();
+  scored.forEach(({ row, s }) => {
+    const k = row.keyword || '';
+    const full = s.coverage >= 1
+      || (phrase.length >= 5 && String(row.product_name || '').toLowerCase().includes(phrase));
+    if (full) byKwA.set(k, (byKwA.get(k) || 0) + 1);
+  });
+  const A = [];
+  const B = [];
+  const C = [];
+  scored.forEach(({ row, s }) => {
+    const full = s.coverage >= 1
+      || (phrase.length >= 5 && String(row.product_name || '').toLowerCase().includes(phrase));
+    if (full) {
+      row._relTier = 0;
+      A.push(row);
+    } else if (byKwA.get(row.keyword || '')) {
+      row._relTier = 1;
+      B.push(row);
+    } else {
+      row._relTier = 2;
+      C.push(row);
+    }
+  });
+  const byRel = (a, b) => (b._relScore || 0) - (a._relScore || 0)
+    || (estOmsetBulan(b) || 0) - (estOmsetBulan(a) || 0);
+  A.sort(byRel);
+  B.sort(byRel);
+  C.sort(byRel);
+  let listings = A.concat(B);
+  if (listings.length < PAGE_SIZE) listings = listings.concat(C.slice(0, PAGE_SIZE - listings.length));
+  if (!A.length && !B.length) return emptyListingPool();
+
+  const types = await typesForListings(listings, '', 12);
+  return {
+    ...emptyListingPool(),
+    matchLevel: 'title',
+    primaryKw: '',
+    keywords: (types || []).map(t => ({ ...t, _nearby: true })),
+    listings: dedupeListings(listings),
+  };
+}
+
+async function resolveBrandListingPool(query, plan) {
+  const brand = String(plan?.brand || '').trim();
+  if (!brand) return null;
+  const variants = brandSearchVariants(query, brand);
+  const titleHits = await searchListingsFanout(variants, 40);
+  let brandRows = [];
+  titleHits.forEach(row => {
+    const hay = `${row.product_name || ''} ${row.keyword || ''}`;
+    if (hayHasBrand(hay, brand) || variants.some(v => hayHasBrand(hay, v))) {
+      attachRelScore(row, _searchTerms(query), String(query).toLowerCase(), {}, 0);
+      brandRows.push(row);
+    }
+  });
+
+  const typeQueries = [...new Set((plan.queries || []).map(q => {
+    const bFold = foldSearchKey(brand);
+    const kept = String(q || '').split(/\s+/).filter(w => {
+      const low = w.toLowerCase();
+      if (BRAND_FILLER_TOKENS.has(low)) return false;
+      const f = foldSearchKey(w);
+      return f && f.length >= 3 && !bFold.includes(f) && !f.includes(bFold);
+    });
+    return kept.join(' ').trim();
+  }).filter(q => q && foldSearchKey(q) !== foldSearchKey(brand)))].slice(0, 4);
+  // Head noun only ("kacamata" from "kacamata hitam"). Color/size leftovers
+  // like "hitam" match kaca-film "Rayban Hitam" and crowd out glasses.
+  const typeNouns = [...new Set(typeQueries.map(q => _searchTerms(q)[0]).filter(t => t && t.length >= 3))];
+  const hayHasTypeNoun = (hay) => typeNouns.some(n => hayHasToken(hay, n));
+  let typeTypes = [];
+  if (typeQueries.length) {
+    const groups = await Promise.all(typeQueries.map(q => searchProductTypes(q, [], 6, { skipLog: true })));
+    const seen = new Set();
+    for (const rows of groups) {
+      for (const t of rows || []) {
+        if (!t?.keyword || seen.has(t.keyword) || hayHasBrand(t.keyword, brand)) continue;
+        if (typeNouns.length && !hayHasTypeNoun(t.keyword)) continue;
+        seen.add(t.keyword);
+        typeTypes.push(t);
+        if (typeTypes.length >= 5) break;
+      }
+      if (typeTypes.length >= 5) break;
+    }
+  }
+  const hostTypes = brandRows.length ? await typesForListings(brandRows, '', 5) : [];
+  const typeMarkets = [];
+  const seenT = new Set();
+  // Planner types win when we have them. Host keywords of brand-title hits
+  // are the fallback only — "rayban" film stickers host "kaca film mobil"
+  // and used to write that into the lead plus dump sanitizer/belt siblings.
+  const hostCap = typeTypes.length ? 0 : 5;
+  let hostAdded = 0;
+  for (const t of [...typeTypes, ...hostTypes]) {
+    if (!t?.keyword || seenT.has(t.keyword)) continue;
+    const fromHost = !typeTypes.some(x => x.keyword === t.keyword);
+    if (fromHost && hostAdded >= hostCap) continue;
+    if (fromHost && typeNouns.length && !hayHasTypeNoun(t.keyword)) continue;
+    seenT.add(t.keyword);
+    if (fromHost) hostAdded += 1;
+    typeMarkets.push({ ...t, _nearby: true });
+    if (typeMarkets.length >= 5) break;
+  }
+  if (typeNouns.length && brandRows.some(row => hayHasTypeNoun(`${row.product_name || ''} ${row.keyword || ''}`))) {
+    brandRows = brandRows.filter(row => hayHasTypeNoun(`${row.product_name || ''} ${row.keyword || ''}`));
+  }
+  const brandIsAccessory = (row) => {
+    const name = String(row.product_name || '').toLowerCase();
+    if (/\b(lanyard|aksesoris|accessories|casing|gantungan|strap|tali)\b/.test(name)) return true;
+    return typeNouns.some(n => new RegExp(`(?:^|\\s)(?:untuk|for)\\s+${n}(?:\\s|$)`, 'i').test(name));
+  };
+  brandRows.forEach(row => {
+    if (brandIsAccessory(row)) row._relTier = 0.5;
+  });
+  brandRows.sort((a, b) => (a._relTier || 0) - (b._relTier || 0)
+    || (b._relScore || 0) - (a._relScore || 0)
+    || (estOmsetBulan(b) || 0) - (estOmsetBulan(a) || 0));
+
+  const takeSiblings = (rows) => {
+    const variantsHit = (row) => {
+      const hay = `${row.product_name || ''} ${row.keyword || ''}`;
+      return hayHasBrand(hay, brand) || variants.some(v => hayHasBrand(hay, v));
+    };
+    const sibs = (rows || []).filter(row => {
+      if (variantsHit(row)) return false;
+      if (!typeNouns.length) return true;
+      // Title only — keyword pollution (V-Ray software under kacamata pria)
+      // used to sneak in when we trusted the scrape keyword.
+      return hayHasTypeNoun(row.product_name || '');
+    });
+    sibs.forEach(row => attachRelScore(row, _searchTerms(typeMarkets[0]?.keyword || query), '', {}, 1));
+    sibs.sort((a, b) => (estOmsetBulan(b) || 0) - (estOmsetBulan(a) || 0));
+    return sibs;
+  };
+
+  let siblings = [];
+  if (typeMarkets.length) {
+    const fetched = await fetchListingsForKeywords(typeMarkets.map(t => t.keyword), 20, 240);
+    const cap = Math.max(PAGE_SIZE, PAGE_SIZE * 2 - brandRows.length);
+    siblings = takeSiblings(fetched).slice(0, cap);
+  }
+  const listings = dedupeListings(brandRows.concat(siblings));
+  if (brandRows.length && listings.length) {
+    return {
+      ...emptyListingPool(),
+      matchLevel: 'brand',
+      brand,
+      brandMissing: false,
+      primaryKw: '',
+      keywords: typeMarkets,
+      listings,
+    };
+  }
+  if (!brandRows.length && typeMarkets.length) {
+    const fetched = siblings.length
+      ? siblings
+      : takeSiblings(await fetchListingsForKeywords(typeMarkets.map(t => t.keyword), 20, 240));
+    return {
+      ...emptyListingPool(),
+      matchLevel: 'brand',
+      brand,
+      brandMissing: true,
+      primaryKw: '',
+      keywords: typeMarkets,
+      listings: dedupeListings(fetched).slice(0, PAGE_SIZE * 2),
+    };
+  }
+  return null;
+}
+
 /**
  * Product keyword search. Prefer the trigram-backed search_listings RPC —
  * raw listings_deduped `.or(ilike…)` hits the anon statement_timeout (~3s)
@@ -9333,11 +9747,18 @@ async function fetchCategoryShowcase(cat, limit = 12) {
  * Returns false when nothing matched, so callers can fall back.
  */
 async function replyWithPasarTypes(chat, text, types, opts = {}) {
-  if (!types || !types.length) return false;
+  const list = types || [];
   const loading = opts.loading || null;
+  const pool = await resolveListingPool({ q: opts.label || text });
+  if (list.length && !pool.keywords.length) pool.keywords = list;
+  if (!pool.listings.length) {
+    const extra = await fetchPetaListings(text, list);
+    if (extra.length) pool.listings = dedupeListings(extra);
+  }
+  if (!list.length && !pool.listings.length) return false;
   const gate = await ensureIntentChat(chat, text.slice(0, 60), { kind: 'pasar_search', q: text });
   if (!gate.ok) { limitReply(loading, gate.resetAt); return true; }
-  registerTypes(types);
+  registerTypes(list.length ? list : pool.keywords);
   const placeLabel = opts.placeLabel || '';
   const en = detectReplyLanguage(text) === 'en';
   const qLabel = esc(opts.label || text);
@@ -9351,40 +9772,36 @@ async function replyWithPasarTypes(chat, text, types, opts = {}) {
       ? `Products matching \u201c${qLabel}\u201d${placeLabel ? ` around <strong>${esc(placeLabel)}</strong>` : ''} \u2014 each row is one listing:`
       : `Produk yang cocok dengan \u201c${qLabel}\u201d${placeLabel ? ` di sekitar <strong>${esc(placeLabel)}</strong>` : ''} \u2014 tiap baris itu satu listing:`;
   }
-  // When the query named a brand (DeepSeek-corrected) but none of the markets
-  // we're about to show actually carry it, say so explicitly instead of
-  // silently substituting the closest product type \u2014 this is the
-  // brand-vs-type breakdown the "belum ketemu untuk brand X" reports asked for.
+  if (opts.brand && !pool.brand) pool.brand = opts.brand;
+  if (opts.nearby && !pool.matchLevel) {
+    pool.matchLevel = 'nearby';
+    pool.nearby = true;
+  }
+  const lifted = pool.matchLevel === 'title' || pool.matchLevel === 'brand';
+  const matchLead = searchMatchLeadHtml(opts.label || text, pool);
   let brandNote = '';
-  if (opts.brand) {
-    const bNorm = _rbNormStr(opts.brand);
-    const brandSeen = types.some(t => _rbNormStr(`${t.keyword || ''} ${t.rep_product_name || ''}`).includes(bNorm));
-    if (!brandSeen) {
-      brandNote = en
-        ? `<p>We don't have data for the brand <strong>${esc(opts.brand)}</strong> \u2014 showing the closest matching product type instead:</p>`
-        : `<p>Brand <strong>${esc(opts.brand)}</strong> belum ada di data kami \u2014 menampilkan tipe produk yang paling mirip:</p>`;
-    }
+  const brand = opts.brand || pool.brand;
+  if (brand && pool.brandMissing && !matchLead) {
+    brandNote = en
+      ? `<p>We don't have data for the brand <strong>${esc(brand)}</strong> \u2014 showing the closest matching product type instead:</p>`
+      : `<p>Brand <strong>${esc(brand)}</strong> belum ada di data kami — menampilkan tipe produk yang paling mirip:</p>`;
   }
   const trendId = 'trend-' + Date.now();
-  const pool = await resolveListingPool({ q: opts.label || text });
-  if (types.length && !pool.keywords.length) pool.keywords = types;
-  if (!pool.listings.length) {
-    const extra = await fetchPetaListings(text, types);
-    if (extra.length) pool.listings = dedupeListings(extra);
-  }
-  const html = `${brandNote}<p>${lead}</p><div data-lrow-block>${listingBlockHtml(pool, {
-    petaId: trendId, query: opts.label || text, chipKw: pool.primaryKw || '', compact: true,
+  const intro = matchLead || `<p>${lead}</p>`;
+  const html = `${brandNote}${intro}<div data-lrow-block>${listingBlockHtml(pool, {
+    petaId: trendId, query: opts.label || text, chipKw: lifted ? '' : (pool.primaryKw || ''),
+    compact: true, skipLead: true, sort: lifted ? 'sesuai' : 'omset',
   })}</div>`;
   if (loading) await revealAssistant(loading, html);
   else await appendAssistantStream(html);
   pushMessage(chat, 'assistant', {
-    text: 'Hasil produk', q: text, level: 'listing', types: types.map(t => t.keyword),
+    text: 'Hasil produk', q: text, level: 'listing', types: (list.length ? list : pool.keywords).map(t => t.keyword),
   }, html);
   const block = document.getElementById(trendId)?.closest('[data-lrow-block]')
     || $('chat-thread')?.querySelector('[data-lrow-block]:last-of-type');
-  if (block) bindListingBlock(block, pool, { query: opts.label || text, compact: true });
+  if (block) bindListingBlock(block, pool, { query: opts.label || text, compact: true, sort: lifted ? 'sesuai' : 'omset' });
   void logUserEvent('discover_view', {
-    ui: 'gpt', q: text, count: types.length, level: 'pasar', nearby: opts.nearby ? 1 : 0,
+    ui: 'gpt', q: text, count: (list.length ? list : pool.keywords).length, level: 'pasar', nearby: pool.matchLevel === 'nearby' ? 1 : 0,
   });
   return true;
 }
@@ -10339,6 +10756,7 @@ async function typesToListingPool(types) {
     listings: dedupeListings(listings),
     primaryKw: '',
     nearby: false,
+    matchLevel: 'keyword',
     unsold: 0,
   };
 }
@@ -10356,16 +10774,16 @@ async function revealListingPool(loading, chat, leadHtml, pool, meta) {
 }
 
 function listingBlockHtml(pool, opts = {}) {
-  const chip = opts.chipKw != null ? opts.chipKw : (pool.primaryKw || '');
+  const lifted = pool.matchLevel === 'title' || pool.matchLevel === 'brand';
+  const chip = opts.chipKw != null ? opts.chipKw : (lifted ? '' : (pool.primaryKw || ''));
+  const sort = opts.sort || ((lifted || pool.matchLevel === 'nearby') ? 'sesuai' : 'omset');
   let rows = filterListingPool(pool.listings, chip, null);
-  rows = sortDirRows(rows, opts.sort || 'omset');
+  rows = sortDirRows(rows, sort);
   const trendId = opts.petaId || opts.trendId || '';
-  const nearbyLead = pool.nearby && opts.query
-    ? `<p class="dd-sub dir-nearby-lead">Belum ketemu produk untuk “<strong>${esc(opts.query)}</strong>”. Ini produk dari pasar terdekat:</p>`
-    : '';
+  const nearbyLead = opts.skipLead ? '' : searchMatchLeadHtml(opts.query, pool);
   return `${nearbyLead}${keywordChipsHtml(pool.keywords, chip, { showSemua: true })}
     ${trendId ? `<div class="trend-host" id="${esc(trendId)}"></div>` : ''}
-    <div class="lrow-host">${listingRowsHtml(rows, { compact: opts.compact !== false, sort: opts.sort || 'omset', actions: true })}${listingUnsoldNote(pool.unsold)}</div>`;
+    <div class="lrow-host">${listingRowsHtml(rows, { compact: opts.compact !== false, sort, actions: true })}${listingUnsoldNote(pool.unsold)}</div>`;
 }
 
 /** Compact Deep Dive summary kept in the chat thread so scrolling history still reaches it. */
@@ -15561,6 +15979,7 @@ async function handleComposerSubmit(text, opts = {}) {
     if (widened.length && await replyWithPasarTypes(chat, text, widened, {
       loading, label: cleaned, placeLabel, nearby: true,
     })) return;
+    if (await replyWithPasarTypes(chat, text, [], { loading, label: cleaned, placeLabel })) return;
 
     // Dead-end rescue: both the pasar search and the listing-widening found
     // nothing, so this used to end at a clarification card. If the question was
@@ -17575,14 +17994,19 @@ async function searchProductTypes(text, cities, limit = 12, opts) {
     return out;
   }
   let terms = [raw];
+  let plan = null;
   try {
-    const plan = await planSearch(raw);
+    plan = await planSearch(raw);
     const extra = (plan?.queries || []).filter(Boolean);
     const tokens = _searchTerms(raw);
-    // Phrase + original tokens first so a long AI plan cannot drop
-    // "penghitam" / "kasar". Extras fill the remaining slots. Tokens still
-    // ILIKE on their own so "gelang manik" reaches `kalung manik`.
-    terms = [...new Set([raw, ...tokens, ...extra])].slice(0, 8);
+    // Brand-primary queries must not ILIKE planner extras (that dumps
+    // "kacamata hitam" as if the user searched sunglasses). Phrase + original
+    // tokens first so a long AI plan cannot drop "penghitam" / "kasar".
+    if (isBrandPrimaryQuery(raw, plan)) {
+      terms = [...new Set([raw, ...tokens])].slice(0, 8);
+    } else {
+      terms = [...new Set([raw, ...tokens, ...extra])].slice(0, 8);
+    }
   } catch (_) {
     terms = [...new Set([raw, ..._searchTerms(raw)])].slice(0, 8);
   }
@@ -17629,18 +18053,20 @@ async function searchProductTypes(text, cities, limit = 12, opts) {
   const planTokens = [...new Set(
     terms.flatMap(t => String(t).toLowerCase().split(/\s+/).filter(x => x.length > 2))
   )];
-  const qTokens = q.split(/\s+/).filter(t => t.length > 2);
-  const kwHasTerm = (kw, term) => {
-    const t = String(term || '').toLowerCase().trim();
-    if (!t || t.length < 3) return false;
-    if (t.includes(' ')) return kw === t || kw.includes(t);
-    if (kw === t) return true;
-    return kw.split(/[\s/-]+/).some(w => w === t);
-  };
-  const tokenOverlap = (kw, toks) => toks.filter(t => {
-    if (kwHasTerm(kw, t)) return true;
-    return (SEARCH_SYNONYMS[t] || []).some(s => kwHasTerm(kw, s));
-  }).length;
+  const qTokens = _searchTerms(raw);
+  const termsLower = terms.map(t => String(t).toLowerCase());
+  const hitCounts = new Map();
+  qTokens.forEach(tok => {
+    const seenKw = new Set();
+    termsLower.forEach((t, i) => {
+      if (t !== tok) return;
+      (runs[i] || []).forEach(r => { if (r?.keyword) seenKw.add(r.keyword); });
+    });
+    if (!seenKw.size) {
+      hits.forEach(r => { if (kwHasTerm(r.keyword, tok)) seenKw.add(r.keyword); });
+    }
+    hitCounts.set(tok, seenKw.size);
+  });
   hits.forEach(h => {
     const kw = String(h.keyword || '').toLowerCase();
     let score = 0;
@@ -17653,16 +18079,54 @@ async function searchProductTypes(text, cities, limit = 12, opts) {
     if (kw.includes(q)) score += 40;
     planTokens.forEach(t => { if (kwHasTerm(kw, t)) score += 12; });
     qTokens.forEach(t => { if (kwHasTerm(kw, t)) score += 10; });
-    // Multi-token overlap so "gelang manik" / "kalung manik" beat generic "gelang".
-    const overlap = tokenOverlap(kw, qTokens);
+    const overlap = tokenOverlapCount(kw, qTokens);
     score += overlap * 28;
     if (qTokens.length >= 2 && overlap >= 2) score += 50;
     score += Math.min(10, Math.log10(Number(h.omset_top15) || 1));
     h._score = score;
   });
   hits.sort((a, b) => b._score - a._score);
-  let ranked = hits.filter(h => h._score >= 10).slice(0, limit);
-  if (!ranked.length) {
+
+  const brandPrimary = isBrandPrimaryQuery(raw, plan);
+  const extraStrong = (plan?.queries || []).filter(e => extraIsSynonym(e, qTokens, q));
+  let ranked = [];
+  let skipFuzzy = false;
+  if (brandPrimary) {
+    const b = String(plan?.brand || '').toLowerCase();
+    ranked = hits.filter(h => {
+      const kw = String(h.keyword || '').toLowerCase().trim();
+      return kw === q || (b && kw === b);
+    }).slice(0, limit);
+    skipFuzzy = true;
+  } else if (qTokens.length >= 2) {
+    const { head, rarest, pivots } = searchPivots(qTokens, hitCounts);
+    const strong = [];
+    const headOnly = [];
+    const rareOnly = [];
+    hits.forEach(h => {
+      const kw = String(h.keyword || '').toLowerCase();
+      const overlap = tokenOverlapCount(kw, qTokens);
+      const hasPivot = pivots.some(p => kwHasTerm(kw, p));
+      const extraHit = extraStrong.some(e => kwHasTerm(kw, e));
+      const isStrong = kw === q || kw.includes(q) || extraHit || (overlap >= 2 && hasPivot);
+      if (isStrong) strong.push(h);
+      else if (head && kwHasTerm(kw, head) && overlap === 1) headOnly.push(h);
+      else if (rarest && rarest !== head && kwHasTerm(kw, rarest) && overlap === 1) rareOnly.push(h);
+    });
+    if (strong.length) {
+      const byScore = (a, b) => (b._score || 0) - (a._score || 0);
+      ranked = [
+        ...strong.sort(byScore),
+        ...headOnly.sort(byScore),
+        ...rareOnly.sort(byScore).slice(0, 3),
+      ].slice(0, limit);
+    } else if (hits.length) {
+      skipFuzzy = true;
+    }
+  } else {
+    ranked = hits.filter(h => h._score >= 10).slice(0, limit);
+  }
+  if (!ranked.length && !skipFuzzy) {
     // Nothing matched even with synonym expansion — try the typo-tolerant
     // fuzzy fallback, then re-fetch full columns for whatever it found (the
     // fuzzy pool only carries a lean column subset).
@@ -17700,12 +18164,7 @@ async function searchNearbyProductTypes(text, cities, limit = 12) {
   if (raw.length < 2) return [];
   const terms = _searchTerms(raw);
   if (!terms.length) return [];
-  const bigrams = [];
-  for (let i = 0; i < terms.length - 1; i++) bigrams.push(`${terms[i]} ${terms[i + 1]}`);
-  const queries = [...new Set([raw, ...bigrams])].slice(0, 4);
-  const pool = [];
-  const groups = await Promise.all(queries.map(q => searchListings(q, [], 40)));
-  groups.forEach(rows => mergePool(pool, rows));
+  const pool = await searchListingsFanout(titleSearchQueries(raw), 40);
   const need = Math.min(2, terms.length);
   const titleHits = pool.filter(p => {
     const hay = String(p.product_name || '').toLowerCase();
@@ -18186,6 +18645,22 @@ function sortDirRows(rows, mode) {
   else if (mode === 'trending') {
     const pct = p => (listingTrendEligible(p) ? (Number(p._petaTrend.wkPct) || 0) : -1e12);
     out.sort((a, b) => pct(b) - pct(a));
+  }
+  else if (mode === 'sesuai') {
+    const hasRel = out.some(p => p._relTier != null || p._relScore != null);
+    if (hasRel) {
+      out.sort((a, b) => {
+        const ta = a._relTier;
+        const tb = b._relTier;
+        if ((ta ?? 99) !== (tb ?? 99)) return (ta ?? 99) - (tb ?? 99);
+        const sa = Number(a._relScore);
+        const sb = Number(b._relScore);
+        if (sa === sa && sb === sb && sa !== sb) return sb - sa;
+        return (Number(estOmsetBulan(b)) || 0) - (Number(estOmsetBulan(a)) || 0);
+      });
+    } else {
+      out.sort((a, b) => (Number(estOmsetBulan(b)) || 0) - (Number(estOmsetBulan(a)) || 0));
+    }
   }
   else out.sort((a, b) => (Number(estOmsetBulan(b)) || 0) - (Number(estOmsetBulan(a)) || 0)); // omset default
   return out;
@@ -18676,6 +19151,22 @@ function isDirHomeBrowse() {
 
 /* Nav re-entry (Cari Produk tab) always lands on the default home. Deep Dive
  * back must NOT call this — it reopens the filtered/simple grid the user left. */
+function resetDirSearchMeta() {
+  if (state.dirSort === 'sesuai') state.dirSort = 'omset';
+  state.dirMatchLevel = '';
+  state.dirBrand = '';
+  state.dirBrandMissing = false;
+  state.dirNearby = false;
+  syncDirSortControls();
+}
+
+function syncDirSortControls() {
+  const host = $('dir-filters-range');
+  const hasQ = !!(state.dirSearch || '').trim();
+  try { host?._dirApi?.setShowSesuai?.(hasQ); } catch (_) {}
+  try { host?._dirApi?.setValue?.(state.dirSort || 'omset'); } catch (_) {}
+}
+
 function resetDirectoryToHome() {
   state.dirCats = [];
   state.dirSub = null;
@@ -18686,9 +19177,13 @@ function resetDirectoryToHome() {
   state.dirZoneKeys = null;
   state.dirCatsFromOnboarding = false;
   state.dirNearby = false;
+  state.dirMatchLevel = '';
+  state.dirBrand = '';
+  state.dirBrandMissing = false;
   const searchInp = $('results-bar-input');
   if (searchInp) searchInp.value = '';
   const host = $('dir-filters-range');
+  try { host?._dirApi?.setShowSesuai?.(false); } catch (_) {}
   try { host?._dirApi?.setValue?.('omset'); } catch (_) {}
   try { host?._dirApi?.setCategories?.([]); } catch (_) {}
 }
@@ -18804,6 +19299,7 @@ async function openDirectory() {
   if (filtersHost && window.LarisGptDirFilters) {
     window.LarisGptDirFilters.renderControls(filtersHost, {
       value: state.dirSort || 'omset',
+      showSesuai: !!(state.dirSearch || '').trim(),
       onSortChange: (v) => {
         state.dirSort = v;
         state.dirPage = 1;
@@ -18885,9 +19381,12 @@ function paintDirectoryTable(opts = {}) {
   const emptyMsg = q
     ? `<p class="dd-sub">Belum ketemu produk untuk “<strong>${esc(q)}</strong>”. Coba kata kunci lain.</p>`
     : '<p class="dd-sub">Belum ketemu produk untuk filter ini.</p>';
-  const nearbyLead = state.dirNearby
-    ? `<p class="dd-sub dir-nearby-lead">Belum ketemu produk untuk “<strong>${esc(q)}</strong>”. Ini produk dari pasar terdekat:</p>`
-    : '';
+  const nearbyLead = searchMatchLeadHtml(q, {
+    matchLevel: state.dirMatchLevel || (state.dirNearby ? 'nearby' : ''),
+    keywords: state.dirTypes,
+    brand: state.dirBrand,
+    brandMissing: state.dirBrandMissing,
+  });
   grid.innerHTML = slice.length
     ? nearbyLead + listingRowsHtml(slice, {
         actions: true,
@@ -18955,16 +19454,23 @@ async function renderDirectory() {
   }
 
   state.dirTypes = pool.keywords;
-  state.dirNearby = pool.nearby;
+  state.dirNearby = pool.matchLevel === 'nearby' || !!pool.nearby;
+  state.dirMatchLevel = pool.matchLevel || (state.dirNearby ? 'nearby' : '');
+  state.dirBrand = pool.brand || '';
+  state.dirBrandMissing = !!pool.brandMissing;
   state.dirPoolListings = pool.listings;
   state.dirUnsold = pool.unsold || 0;
   rememberProducts(pool.listings);
+  syncDirSortControls();
 
   if (state._dirSkipScroll) state._dirSkipScroll = false;
   else scrollPanelToTop();
   paintDirectoryTable({ remountPeta: true });
-  if (q && !pool.listings.length) {
-    void logUncoveredSearch(q, { category: detectSearchDomain(q.toLowerCase())?.id || null });
+  if (q && (pool.matchLevel !== 'keyword' || !pool.listings.length)) {
+    void logUncoveredSearch(q, {
+      category: detectSearchDomain(q.toLowerCase())?.id || null,
+      brand: pool.brand || null,
+    });
   }
 }
 

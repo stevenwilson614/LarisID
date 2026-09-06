@@ -19,5 +19,11 @@ Use this before changing Beranda, onboarding, Cari Produk, Deep Dive, or Favorit
 12. Mobile: finder, Deep Dive, alert card, and Langkah usable at 390px width.
 13. Laris AI (logged in): `Crocs` → listing rows + short Indonesian overview, no “Proses berpikir”. Typed and chip “Apa yang terlaris minggu ini?” → reviewing steps then ~10 rows. Follow-up “ada yang dari Bandung?” → subset of those rows. “untuk affiliate…” → short Kalodata/TikTok REFER, no rows. Judgment question still shows thinking. “Lanjutkan jawaban” continues, does not filter. Profit chip still opens the calculator.
 14. Cari Produk Trending Sekarang (`#dir-trending-now` and chat `.trend-host`): place trophy/medal on the far left, then mascot; title above harga; omset and % columns align across ranks; weekly % + bolt (max 60°, light green under-fill); no “perkiraan” on the strip (held/stale 3-scrape % stays on the table only). Row click still opens Deep Dive.
+15. Cari Produk search (bar Enter, not only a suggestion click):
+    - `sendok bayi silikon`: page 1 is feeding-spoon / MPASI rows whose titles contain `sendok`; lead says judulnya cocok and names `peralatan mpasi set`; Urutkan shows Paling sesuai; no stroller, popok, spatula, or `kursi camping`. Switching Urutkan to Omset reorders the same pool (strollers do not reappear).
+    - `rayban` / `ray-ban`: titles mentioning Ray-Ban + kacamata/sunglasses first, then other kacamata from planner type markets (not kaca film / riben); lead is merek dulu, lalu produk mirip in a kacamata pasar; no resmi/original claim. Same string in Laris AI uses the Semua chip.
+    - `gelang manik`: keyword-level, `gelang manik` rows first, `kalung manik` still present, no lead.
+    - `tumbler`: unchanged single-keyword grid — not treated as a brand, no sibling dump into `botol minum`.
+    - `cross stitch` still reaches `kristik`; `dress wanita` unchanged.
 
 If a check mentions `laris-app.js`, `larisid_journey_v1`, or `lid_ddtrack_promo_v1` as a live modal, the doc is stale — update this file instead of the code.
