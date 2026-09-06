@@ -2778,6 +2778,9 @@ function setView(name, opts = {}) {
       (id === 'btn-community' && name === 'community') ||
       (id === 'btn-cohort' && name === 'cohort'));
   });
+  // Mobile Tentang accordion: highlight the parent when a child page is current.
+  const aboutChildActive = name === 'harga' || name === 'faq' || name === 'landing' || name === 'community';
+  $('btn-side-about')?.classList.toggle('is-child-active', aboutChildActive);
   if (leaving === 'tracker' && name !== 'tracker' && window.LarisTracker) {
     try { window.LarisTracker.close(); } catch (_) {}
   }
@@ -2851,6 +2854,13 @@ window.addEventListener('popstate', (e) => {
   }
 });
 
+function setSideAboutOpen(open) {
+  const wrap = $('side-about');
+  const btn = $('btn-side-about');
+  if (!wrap || !btn) return;
+  wrap.classList.toggle('open', !!open);
+  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
 function openSidebar() {
   $('sidebar')?.classList.add('open');
   $('sidebar-backdrop')?.classList.add('open');
@@ -2858,6 +2868,8 @@ function openSidebar() {
 function closeSidebar() {
   $('sidebar')?.classList.remove('open');
   $('sidebar-backdrop')?.classList.remove('open');
+  // Collapse meta pages again so the next open leaves Riwayat tall.
+  setSideAboutOpen(false);
 }
 
 const PLATFORM_ADMIN_EMAILS = ['stevenwilson614@gmail.com'];
@@ -20385,6 +20397,10 @@ function wireUi() {
   $('btn-harga')?.addEventListener('click', () => setView('harga'));
   $('btn-faq')?.addEventListener('click', () => setView('faq'));
   $('btn-tentang')?.addEventListener('click', goHome);
+  $('btn-side-about')?.addEventListener('click', () => {
+    const wrap = $('side-about');
+    setSideAboutOpen(!wrap?.classList.contains('open'));
+  });
   // The Beta badge was decoration; it now opens the changelog on both the
   // desktop sidebar and the mobile topbar.
   document.querySelectorAll('.brand-beta').forEach(el => {
