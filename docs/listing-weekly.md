@@ -79,7 +79,7 @@ velocity nowcast.
 
 ```
 listings push
-  → refresh_listing_deltas(day)
+  → refresh_listing_deltas catch-up (pending UTC days, not laptop today)
   → refresh_omset_estimates(day)
   → refresh_velocity (cohorts + products)
   → refresh_listing_weekly(day)     ← this file
@@ -94,8 +94,13 @@ SSH/psql only (`refresh_listing_weekly.sh`). If any of those steps is skipped
 the site goes stale — seen 2026-08-13, when Aug 10–13 listings had 0% omset
 because the matview refresh did not run. Seen again 2026-09-06: scrapes landed
 through 2026-09-02 but `listing_deltas` / `product_velocity` stopped at
-2026-08-30 (scraper Phase 4/5b). That is a scraper-repo issue; Trending %
-was moved off this chain so it keeps working. The `scrape-digest` job (see
+2026-08-30 because Phase 4 ran only for laptop `date +%F` (WIB) and burst
+lanes pushed without it. Fix: `refresh_deltas.sh` defaults to catch-up of
+pending UTC days; Contabo `listing-delta-catchup` (hourly) calls
+`refresh_listing_deltas_catchup_and_downstream()` so same-day scrapes become
+measured rates without waiting for a laptop. Estimates stay only where there
+is no scrape pair. Trending % was moved off this chain so it keeps working
+if velocity lags. The `scrape-digest` job (see
 `larisid-infra/cron/recreate_cron_jobs.sql`) no-ops until the measured
 watermark advances; it does not invent daily deltas.
 
