@@ -5621,9 +5621,12 @@ body.home-finder-done .home-hero {
 }
 .lrow-check {
   display: none; width: 16px; height: 16px; border-radius: 4px;
-  border: 1.5px solid var(--line); background: #fff;
+  border: 1.5px solid var(--line); background: #fff; color: transparent;
 }
-.lrow.is-picked .lrow-check { display: grid; place-items: center; background: var(--green, #16A34A); border-color: var(--green, #16A34A); color: #fff; }
+.lrow.is-picked .lrow-check {
+  display: grid; place-items: center;
+  background: var(--green, #16A34A); border-color: var(--green, #16A34A); color: #fff;
+}
 .lrow-wrap--pick .lrow-check,
 .lrow-wrap--actions .lrow-check { display: grid; place-items: center; }
 .lrow-open {
