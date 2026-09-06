@@ -31,9 +31,17 @@
     'Produk trending', 'Rencana perlu produk',
   ]);
   const WEEKLY_RE = /terlaris.{0,24}(minggu|pekan) ini|(minggu|pekan) ini.{0,24}terlaris|paling laris.{0,24}(minggu|pekan)|terlaris (minggu|pekan)|(terlaris|best.?sell\w*|top.?sell\w*).{0,24}this week|this week.{0,24}(terlaris|best.?sell\w*|top.?sell\w*)/;
-  const REFER_RE = /\b(afiliasi|affiliate|affiliator|komisi\s*xtra|xtra\s*komisi|shopee\s*live|live\s*gmv|berapa (orang )?(affiliate|afiliasi|kreator))\b/;
+  const PROMO_RE = /\b(afiliasi|affiliate|affiliator|komisi\s*xtra|xtra\s*komisi|shopee\s*live|live\s*gmv|berapa (orang )?(affiliate|afiliasi|kreator|creator)|di-?live|sedang live)\b/;
+  const PROMO_KOMISI_RE = /\bkomisi\b/;
+  const PROMO_KOMISI_PAIR_RE = /\b(afiliasi|affiliate|kreator|creator|konten)\b/;
+  const TIKTOK_CHANNEL_RE = /\b(tiktok|kalodata)\b/;
+  const CREATOR_GMV_RE = /\b((video|creator|kreator)\s*gmv|gmv\s*(video|live|kreator|creator))\b/;
+  const JOB_B_RE = /\b(jualan|jual sendiri|saingan|kompetitor|pesaing|sudah (banyak )?(yang )?(dorong|push|promosi)|sering di-?live|berapa (orang )?(yang )?(push|live|promosi))\b/;
   const PUBLIC_RE = /\b(supplier|grosir|pabrik|wholesale|aturan|regulasi|berita|undang[\s-]?undang|bea cukai|tiktok shop|kalodata)\b/;
   const JUDGMENT_RE = /\b(kenapa|mengapa|why|bandingkan|banding|compare|mana yang|yang mana|which|sebaiknya|should i|worth|bedanya|beda|risiko|risk|strategi|strategy|prospek|peluang|jelaskan|explain|analisa|analisis|analyze|paling bagus|terbaik|best)\b/;
+  const PROMO_JUDGMENT_RE = /\b(kenapa|mengapa|why|bandingkan|banding|compare|\bvs\b|sebaiknya|should i|worth|bedanya|beda|risiko|risk|strategi|strategy|prospek|peluang|jelaskan|explain|analisa|analisis|analyze)\b/;
+  const PROMO_STRIP_RE = /\b(afiliasi|affiliate|affiliator|komisi|xtra|shopee|live|gmv|kreator|creator|konten|orang|berapa|untuk|produk|mana|yang|bagus|buat|tentang|apakah|gimana|bagaimana|ada|ini|itu|di|ke|dari|dong|gak|nggak|tidak|ya|kah|saya|aku|mau|cocok|layak|promosi|promote|push|jualan|jual|sendiri|sering|sudah|banyak|seller|toko|the|for|good|best|should|would|what|which|how|many|affiliator|commission)\b/g;
+  const PROMO_DEMAND_FLOOR = 25;
   const CONTINUE_RE = /lanjutkan jawaban|^(ya,?\s*)?lanjut(kan)?(\s+jawaban)?[\s!.]*$/;
   const SHOWN_REF = /\b(yang tadi|yang itu|those|these|them|tadi|barusan|di atas|any of|ada yang|seller|toko|penjual)\b/;
   const FILTER_HINT = /\b(di|dari|kota|lokasi|in|from|harga|usia|umur|bandung|jakarta|surabaya|medan|bekasi|tangerang|depok|semarang|makassar|palembang)\b/;
@@ -248,8 +256,151 @@
     return CONTINUE_RE.test(norm(text));
   }
 
+  function isPromoVocab(text) {
+    const s = norm(text);
+    if (PROMO_RE.test(s)) return true;
+    return PROMO_KOMISI_RE.test(s) && PROMO_KOMISI_PAIR_RE.test(s);
+  }
+
+  function isTiktokReferAsk(text) {
+    const s = norm(text);
+    if (CREATOR_GMV_RE.test(s)) return true;
+    if (/\bkalodata\b/.test(s)) return true;
+    if (!TIKTOK_CHANNEL_RE.test(s)) return false;
+    return isPromoVocab(s) || /\b(kreator|creator|live|gmv|afiliasi|affiliate)\b/.test(s);
+  }
+
+  function isPromoAsk(text) {
+    return isPromoVocab(text) && !isTiktokReferAsk(text);
+  }
+
+  function isPromoJobB(text) {
+    return JOB_B_RE.test(norm(text));
+  }
+
+  function extractPromoQuery(text) {
+    let s = norm(text).replace(/[?!.,]+/g, ' ');
+    s = s.replace(PROMO_STRIP_RE, ' ').replace(/\s+/g, ' ').trim();
+    const tokens = s.split(/\s+/).filter((w) => w && w.length >= 2);
+    return tokens.join(' ');
+  }
+
+  function shopTierIsStrong(tier) {
+    const t = String(tier || '').toLowerCase();
+    return t === 'official' || t === 'preferred_plus';
+  }
+
+  function shopTierLabel(tier) {
+    const t = String(tier || '').toLowerCase();
+    if (t === 'official') return 'Official Store';
+    if (t === 'preferred_plus') return 'Preferred Plus';
+    if (t === 'preferred') return 'Preferred';
+    if (t === 'normal') return 'biasa';
+    return '';
+  }
+
+  function listingVelocityWk(row) {
+    const u = Number(row && row._petaTrend && row._petaTrend.unitsNowWk);
+    if (Number.isFinite(u) && u > 0) return u;
+    const v = Number(row && row.nowcast_velocity_daily);
+    if (Number.isFinite(v) && v > 0) return v * 7;
+    return null;
+  }
+
+  function velocityTopTercile(row, peers) {
+    const mine = listingVelocityWk(row);
+    const vals = (Array.isArray(peers) ? peers : [])
+      .map(listingVelocityWk)
+      .filter((n) => n != null)
+      .sort((a, b) => a - b);
+    if (mine == null || vals.length < 3) return null;
+    const cut = vals[Math.floor(vals.length * 2 / 3)];
+    return mine >= cut;
+  }
+
+  function promoPressureOf(row, peers) {
+    const inputs = [];
+    if (row && (row.is_ad === 1 || row.is_ad === true)) {
+      inputs.push({ key: 'iklan', available: true, positive: true });
+    } else if (row && (row.is_ad === 0 || row.is_ad === false)) {
+      inputs.push({ key: 'iklan', available: true, positive: false });
+    }
+    const tier = row && row.shop_tier;
+    if (tier != null && String(tier).trim() !== '') {
+      inputs.push({ key: 'toko', available: true, positive: shopTierIsStrong(tier) });
+    }
+    if (row && row.video_count != null) {
+      inputs.push({ key: 'video', available: true, positive: Number(row.video_count) >= 1 });
+    }
+    const top = velocityTopTercile(row, peers);
+    if (top != null) {
+      inputs.push({ key: 'laju', available: true, positive: !!top });
+    }
+    const available = inputs.filter((i) => i.available);
+    // Kill: never show when only is_ad is available, or fewer than 2 inputs.
+    if (available.length < 2) {
+      return { class: 'belum', label: 'belum cukup data', inputs };
+    }
+    const positives = available.filter((i) => i.positive).length;
+    let cls = 'rendah';
+    if (positives >= 3) cls = 'tinggi';
+    else if (positives >= 2) cls = 'sedang';
+    return { class: cls, label: cls, inputs };
+  }
+
+  function promoDemandOf(row) {
+    const t = row && row._petaTrend;
+    if (t && !t.belum && t.unitsNowWk != null && Number.isFinite(Number(t.unitsNowWk))) {
+      return {
+        unitsWk: Number(t.unitsNowWk),
+        label: t.terukur ? 'terukur' : 'perkiraan',
+        span: t.spanNow != null ? Number(t.spanNow) : null,
+      };
+    }
+    const v = Number(row && row.nowcast_velocity_daily);
+    if (Number.isFinite(v) && v > 0) {
+      return { unitsWk: v * 7, label: omsetLabel(row), span: null };
+    }
+    return { unitsWk: null, label: null, span: null };
+  }
+
+  function promoTrustOf(row) {
+    const rating = Number(row && row.rating);
+    const reviews = Number(row && row.reviews);
+    const ok = Number.isFinite(rating) && rating >= 4.5
+      && Number.isFinite(reviews) && reviews >= 50;
+    let inStock = null;
+    if (row && (row.in_stock === true || row.in_stock === false)) inStock = !!row.in_stock;
+    return {
+      rating: Number.isFinite(rating) ? rating : null,
+      reviews: Number.isFinite(reviews) ? reviews : null,
+      tier: shopTierLabel(row && row.shop_tier),
+      ageDays: listingAgeDays(row && row.listing_date),
+      inStock,
+      ok,
+    };
+  }
+
+  function promoMarginRoom(row) {
+    const price = Number(row && row.price);
+    const lo = Number(row && row.price_p25);
+    const hi = Number(row && row.price_p75);
+    if (!(price > 0) || !(lo > 0) || !(hi > 0)) return { kind: 'belum', mid: null };
+    const mid = (lo + hi) / 2;
+    return { kind: price >= mid ? 'atas' : 'bawah', mid };
+  }
+
+  function promoCalcFromRate(price, ratePct, targetRp) {
+    const p = Number(price) || 0;
+    const rate = Number(ratePct) || 0;
+    const rpPerSale = p > 0 && rate > 0 ? p * (rate / 100) : 0;
+    const target = Number(targetRp) || 0;
+    const salesNeeded = rpPerSale > 0 && target > 0 ? Math.ceil(target / rpPerSale) : null;
+    return { rpPerSale, salesNeeded };
+  }
+
   function isOutOfScopeRefer(text) {
-    return REFER_RE.test(norm(text));
+    return isTiktokReferAsk(text);
   }
 
   function isWeeklyAsk(text) {
@@ -258,13 +409,13 @@
 
   function isPublicAsk(text) {
     const s = norm(text);
-    if (isOutOfScopeRefer(s) || isWeeklyAsk(s)) return false;
+    if (isOutOfScopeRefer(s) || isPromoAsk(s) || isWeeklyAsk(s)) return false;
     return PUBLIC_RE.test(s);
   }
 
   function isLookupAsk(text) {
     const s = norm(text);
-    if (!s || isOutOfScopeRefer(s) || isWeeklyAsk(s) || isPublicAsk(s)) return false;
+    if (!s || isOutOfScopeRefer(s) || isPromoAsk(s) || isWeeklyAsk(s) || isPublicAsk(s)) return false;
     if (JUDGMENT_RE.test(s)) return false;
     if (isAffirmativeReply(s) || isDeclineReply(s) || isContinueReply(s)) return false;
     const tokens = s.replace(/[?!.,]+/g, ' ').split(/\s+/).filter(Boolean);
@@ -276,7 +427,7 @@
   function isShownSetFilter(text, chat) {
     const s = norm(text);
     if (!s || isContinueReply(s) || isAffirmativeReply(s) || isDeclineReply(s)) return false;
-    if (isOutOfScopeRefer(s) || isWeeklyAsk(s)) return false;
+    if (isOutOfScopeRefer(s) || isPromoAsk(s) || isWeeklyAsk(s)) return false;
     const listings = chat?.context?.lastShown?.listings;
     if (!Array.isArray(listings) || !listings.length) return false;
     // "Crocs Bandung" is a new lookup-with-city, not a filter of the last set.
@@ -287,7 +438,8 @@
   function detectResponseMode(text, chat) {
     const s = String(text || '');
     if (isContinueReply(s)) return 'continue';
-    if (isOutOfScopeRefer(s)) return 'refer';
+    if (isTiktokReferAsk(s)) return 'refer';
+    if (isPromoVocab(s)) return PROMO_JUDGMENT_RE.test(norm(s)) ? 'judgment' : 'promo';
     if (isShownSetFilter(s, chat)) return 'filter';
     if (isWeeklyAsk(s)) return 'weekly';
     if (isLookupAsk(s)) return 'lookup';
@@ -342,6 +494,11 @@
         nowcast_omset_monthly: r && r.nowcast_omset_monthly,
         nowcast_confidence: r && r.nowcast_confidence,
         nowcast_method: r && r.nowcast_method,
+        nowcast_velocity_daily: r && r.nowcast_velocity_daily,
+        is_ad: r && r.is_ad,
+        shop_tier: r && r.shop_tier,
+        search_rank: r && r.search_rank,
+        in_stock: r && r.in_stock,
       })).filter(r => r.item_id != null),
     };
   }
@@ -363,6 +520,19 @@
     packListingFields,
     isContinueReply,
     isOutOfScopeRefer,
+    isTiktokReferAsk,
+    isPromoVocab,
+    isPromoAsk,
+    isPromoJobB,
+    extractPromoQuery,
+    shopTierIsStrong,
+    shopTierLabel,
+    promoPressureOf,
+    promoDemandOf,
+    promoTrustOf,
+    promoMarginRoom,
+    promoCalcFromRate,
+    PROMO_DEMAND_FLOOR,
     isWeeklyAsk,
     isPublicAsk,
     isLookupAsk,

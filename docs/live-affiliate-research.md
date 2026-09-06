@@ -1,6 +1,6 @@
 # Shopee Live + Affiliate data — research (no build)
 
-*Internal feasibility brief. Last updated: 26 Aug 2026. No scrapers, schema, or UI shipped from this doc. Read [MISSION.md](../MISSION.md) before acting on any of this.*
+*Internal feasibility brief. Last updated: 6 Sep 2026. Phase 0 UI (Sinyal Promosi proxies) shipped; collectors and schema are still **not** started. Read [MISSION.md](../MISSION.md) before acting on any of this.*
 
 **Assumptions:** both personas (aspiring affiliates + competing sellers); path toward Kalodata-style depth; **no Shopee partner / Open Platform API applications** — collect our own data.
 
@@ -22,9 +22,10 @@ Do not promise Kalodata parity. Do not invent affiliate headcounts.
 |---|---|
 | Keyword search scrape → `listings` | Yes (price, sold, `is_ad`, `search_rank`, shop tier) |
 | Optional PDP → `product_details` | Yes (`video_count` = PDP videos, not Live) |
-| Marketplace seller **fee** calculator (“komisi”) | Yes — platform take-rate, **not** affiliate commission |
+| Marketplace seller **fee** calculator (“komisi”) | Yes — platform take-rate, labelled **biaya platform (bukan komisi afiliasi)** |
 | Shopee Live sessions / hosts / bags | **None** |
 | Affiliate / Komisi XTRA rates / affiliate counts | **None** |
+| Phase 0 Sinyal Promosi (chat `promo` + Deep Dive) | Yes — perkiraan from demand, shop, `is_ad`, `shop_tier`; user-supplied rate calculator. No live/affiliate fields. |
 
 Public copy already concedes creator/video/live analytics to **Kalodata** ([seo.md](./seo.md), [pricing-research.md](./pricing-research.md)). Kalodata is **TikTok Shop**, not Shopee. The channel analogy is wrong; the **depth** analogy (creator + live metrics) is what users are reaching for.
 
@@ -230,18 +231,25 @@ A read-only CDP capture (no pipeline) is the next research step. Partial capture
 
 ---
 
-## 10. Go / no-go (research)
+## 10. Go / no-go
 
 | Bet | Call | Condition |
 |---|---|---|
-| Live session metadata + bag items, given a session id | **Go** | Consumer API + third-party proof |
-| Market-wide live discovery | **Conditional** | `/pc` does **not** list other rooms; `webapi/v1/session` is *your* host session |
-| Commission rates without Open API | **Conditional** | Logged-in **affiliate** account (buyer scrape profile is not enough) |
-| Exact affiliate headcount per SKU | **No** | No public field found |
-| Live GMV as terukur | **No** | Partner metrics only; proxy = perkiraan |
-| Ship UI / Kalodata comparison rewrite | **No until data** | Honesty |
+| Phase 0 proxies from existing listings / velocity / ads / shop_tier | **Go** | Shipped 6 Sep 2026. Risk: ordinal read as headcount — footnotes + `belum cukup data` |
+| Phase 0b `video_count` read surface (`promo_signals_batch`) | **No** | S4 (6 Sep 2026): 32 / 679.765 listings in 45d (~0%) have `product_details`. Do not join. |
+| Live session metadata + bag items, given a session id | **Go** | Research only until hub discovery works |
+| Market-wide live discovery | **Hold** | `/pc` is host studio. Viewer-feed XHR still unknown (S1) |
+| Commission rates via Affiliate Center (Path B) | **Hold, policy first** | Approved affiliate account, separate profile from `acct614`, ToS read |
+| Affiliate headcount per SKU | **No** | Permanent |
+| Live GMV as terukur | **No** | Permanent |
+| Sold-delta during live | **No** | Cadence 12–17 days; no pre/post `tracked_pass` |
+| TikTok Shop collection | **No** | S3 is documentation only |
+| Collectors on Contabo | **No** | Mac CDP lanes only |
+| Kalodata comparison rewrite | **No until data** | Honesty |
 
-No collectors, migrations, or UI until Path B and live-hub discovery are accepted operationally and legally.
+Phase 2 collection needs explicit acceptance: (a) legal read on logged-in Affiliate Center automation, (b) ops budget for evening Mac lanes, (c) named owner of the affiliate account, kept off `acct614`.
+
+Default stays **no partner API**. Revisit Affiliate Open API only if the legal read says cookie automation of the Center is riskier than a registered affiliate developer app. AMS and Livestream Open APIs stay out.
 
 ---
 
@@ -281,5 +289,56 @@ No collectors, migrations, or UI until Path B and live-hub discovery are accepte
 | Viewer-feed XHR | **Still missing.** Extra pass (same probe `--only-extra`): `https://shopee.co.id/live` → `pages/is_short_url/?path=live` with empty url, then mall chrome — **no** `/webapi/` or `/api/v1/session` list. Homepage `campaign_modules` had no live module. |
 
 **Would show in Deep Dive today:** shop not live (terukur from `show_live_tab`). Not room count, not komisi %. Viewer discovery still blocked.
+
+---
+
+## 13. Phase 0 copy (`mentor-copy` — confirm with Afryian & Hendra)
+
+Shipped as draft. Do not treat as final until mentors confirm aloud.
+
+**Job A lead:** Untuk afiliasi, aku cek tiga hal dari data Shopee kami: permintaan, toko, dan seberapa ramai produk ini sudah didorong. Komisi dan Komisi XTRA tidak ada di data kami (1) — masukkan angka dari Affiliate Center-mu di kalkulator di bawah.
+
+**Job B lead:** Kalau kamu mau jualan di pasar ini: dari {n} listing teratas, {k} pakai iklan pencarian. Aku tidak bisa menghitung berapa afiliator atau berapa sesi live (1) — ini bacaan tekanan, bukan sensus.
+
+**TikTok refer:** Data kami hanya Shopee. Untuk kreator, afiliasi, dan GMV live di TikTok Shop, coba Kalodata — itu alat TikTok Shop, bukan Shopee.
+
+**Footnotes:** (1) Shopee tidak mempublikasikan komisi afiliasi, Komisi XTRA, jumlah afiliator, atau GMV live per produk. Kami tidak menebak angkanya. (2) Unit/minggu terukur hanya bila bertanda terukur. (3) Tekanan promosi dari iklan, tipe toko, dan laju penjualan — bukan jumlah afiliator. Video halaman produk belum kami cek.
+
+## 14. Phase 1 spike runbook (research only — do not start a collector)
+
+Run on a Mac. Network domain only. Raw dumps in `/tmp/larisid_live_aff_spike/` (not git). Nothing writes to `api.larisid.com`.
+
+| Spike | Account | When | Success | Kill |
+|---|---|---|---|---|
+| **S1** viewer live-feed XHR | Buyer `acct614` | 19:00–22:00 WIB, max 3 sessions | List/recommend XHR with multiple `session_id`s not owned by the account + one ID `more_items` with `item_id` / `shop_id` | Three evenings, no list XHR → live metrics stay out of product |
+| **S2** Affiliate Center offer XHR | **Approved affiliate**, dedicated Chrome profile, **not** `acct614` | After policy/ToS yes | `productOffer`-class payload for one `listings` item_id; note limits, captcha, item-id lookup; confirm no count field | No account or ToS forbids automation → Path B = No |
+| **S3** TikTok Shop PDP (optional) | Normal TikTok account | One PDP + “Dipromosikan oleh” | Field shape + how incomplete the creator sample is | Doc only. Does not move the Kalodata concession |
+| **S4** `product_details` coverage | Read-only psql | Done 6 Sep 2026 | 32 / 679.765 (~0%) | `video_count` stays unused |
+| **S5** session + `more_items` | Buyer, when `show_live_tab=true` | Opportunistic | Pin ID JSON shape (today’s fields are third-party) | Still no hub list |
+
+Commands (scraper repo): `bash chrome.sh 9224` then `/usr/bin/python3 scripts/probe_live_affiliate_one_sku.py`. Click the **viewer** live feed, not host `/pc`.
+
+Still blocked after Phase 1 regardless: affiliate headcount; live-attributed GMV; competitor AMS; TikTok creator GMV.
+
+## 15. Phase 2 collection design (do not apply)
+
+Only if S1 succeeds and S2 + legal/ops accept. Scraper Macs → PostgREST. Later: `bash scripts/apply-selfhost.sh` / `bash scripts/deploy-function-selfhost.sh`. Never run the lane on Contabo.
+
+- `live_sessions` — `session_id` PK, host, role (`unknown|seller|affiliate`), title, start/end, `discovery_source` (`hub_feed|shop_tab|pdp_chip|manual`), first/last seen
+- `live_session_snapshots` — `(session_id, snapped_at)`, viewer/like/member/share/`items_cnt`/`err_code`. Keep failed snaps; pause the lane on `err_code != 0`
+- `live_session_items` — `(session_id, item_id, shop_id)`, bag_rank, first/last seen
+- `affiliate_offer_snapshots` — `(item_id, shop_id, snapped_at)`, rates, `is_xtra`, campaign, period, `account_ref` (hash). View `affiliate_offer_latest`. Expect 7-day decrease lag
+- `mv_product_promo_signals` — lives 7d/28d, distinct hosts, peak viewers, `live_coverage` (`hub|partial|none`), latest rate + timestamp, `promo_pressure_class`. Live fields always perkiraan; rate is terukur only with its timestamp
+
+Cadence: rates daily for Deep Dive / Favorit items; live 18:00–23:00 WIB, session every 5–10 min, bag every 15 min. Grants: `anon, authenticated` select on the matview only.
+
+## 16. Open questions (Network tab or policy)
+
+1. Who owns the approved Shopee Affiliate account for S2, and is automated Center reading acceptable under its ToS?
+2. Exact viewer live-feed list XHR on `live.shopee.co.id` (S1).
+3. Affiliate Center offer payload, rate limits, item-id lookup (S2).
+4. Does ID `more_items` return `shop_id` (S5)?
+5. Is any TikTok public capture (S3) wanted, or stay Kalodata-only?
+6. Evening Mac lane budget vs batch keyword days.
 
 ---

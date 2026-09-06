@@ -11,10 +11,10 @@ QA: [journey-funnel-test.md](./journey-funnel-test.md) (Laris AI beats at the en
 ## `handleComposerSubmit` order
 
 1. “Produk lain” → directory.
-2. Conversational thread: decline pending offer; then `detectResponseMode` (`refer` / `filter` / `weekly` / `lookup`); then affirm / refine → agent or product AI.
+2. Conversational thread: decline pending offer; then `detectResponseMode` (`refer` / `promo` / `filter` / `weekly` / `lookup`); then affirm / refine → agent or product AI.
 3. Product compare / topic-change (fresh chat).
 4. Category evaluate (“apakah jualan fashion bagus?”).
-5. Typed modes **before** `AI_AGENT_ALL`: refer, weekly, lookup, filter.
+5. Typed modes **before** `AI_AGENT_ALL`: refer, promo, weekly, lookup, filter.
 6. Market agent (judgment / public / leftover typed asks). `thinking: wantsDeepReasoning(text)` — not always on.
 7. Chip `detectIntent` (profit, bandingkan, modal, lowcomp, rencana, trending, terlaris chip).
 8. Logged-out card path.
@@ -30,7 +30,8 @@ Logged-out visitors never hit the agent or `cari_web`.
 | LOOKUP | `Crocs` | Off | 2–4 sentence overview | Listing table | LarisID |
 | WEEKLY | `apa yang terlaris minggu ini` | Deterministic reviewing steps | 1–2 sentences + window | ~10 from winning markets | `wk_units` then listings |
 | FILTER | `ada yang dari Bandung?` | Off | 1–2 sentences | Subset of `lastShown` | Last pool + location |
-| REFER | `untuk affiliate produk mana yang bagus` | Off | 2–3 sentences | None | Named handoff |
+| REFER | `affiliate tiktok` / `kalodata` | Off | 1–2 sentences | None | Kalodata handoff (TikTok Shop only) |
+| PROMO | `untuk affiliate produk mana yang bagus` | Off | Lead + checklist + footnotes | Listing table | Shopee proxies (demand, shop, tekanan) + user-rate calculator |
 | JUDGMENT | `sebaiknya jual Crocs atau sandal?` | If `wantsDeepReasoning` | 2–4 short paragraphs | Optional | LarisID first |
 | CALC | profit / bandingkan / modal chips | Off (purpose-built UI) | UI | As that flow | LarisID |
 | PUBLIC | `supplier Crocs di mana` | Light plan; thinking off unless evaluative | Short + sources | Only if also a product ask | `cari_web` |
@@ -56,7 +57,17 @@ Logged-out visitors never hit the agent or `cari_web`.
 | `pemain_baru` / `pola_toko_baru` / `judul_menang` | New-shop playbook |
 | `cari_web` | Labeled public search (Tavily / Brave). Refuses sold / omset / terlaris / affiliate / live GMV |
 
-`cari_web` is not attached on LOOKUP / WEEKLY / FILTER / REFER / CALC (those paths skip the agent).
+`cari_web` is not attached on LOOKUP / WEEKLY / FILTER / REFER / PROMO / CALC (those paths skip the agent).
+
+### Affiliate / Live routing (Phase 0)
+
+- Shopee affiliate / Live / Komisi XTRA / “berapa orang affiliate” **without** TikTok or Kalodata → `promo`. Paint listing rows + Sinyal Promosi (perkiraan) + checklist + a calculator on the **user’s** commission %. Never invent a rate, XTRA flag, affiliate headcount, or live GMV.
+- TikTok Shop / Kalodata / creator-or-video GMV → `refer`. Short Kalodata handoff. No Shopee listing rows under a TikTok question.
+- Judgment + affiliate (“sebaiknya jadi affiliate atau jualan sendiri?”) → agent. Same honesty: 4-part partial contract, proxies only.
+- Bare `komisi` without affiliate/kreator/konten stays the marketplace fee calculator. Fee copy says “biaya platform”, not affiliate commission.
+- `video_count` is **not** used: Contabo `product_details` covers ~0% of 45-day listings (S4, 6 Sep 2026). Tooltip: “video: tidak diperiksa”.
+
+See [live-affiliate-research.md](./live-affiliate-research.md). Copy is `mentor-copy` until Afryian & Hendra confirm.
 
 ---
 

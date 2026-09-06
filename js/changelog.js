@@ -23,8 +23,12 @@ window.LARIS_CHANGELOG = [
         tech: 'mv_listing_momentum S0 window 70d; momentum_source held vs measured; listingTrendEligible requires terukur; table shows perkiraan chip for held rows (20260906183000).',
       },
       {
-        text: 'Ketik merek atau produk sekarang langsung tampil daftar listing plus ringkasan pasar, tanpa proses berpikir yang panjang. “Terlaris minggu ini” meninjau data dulu lalu menampilkan sekitar 10 produk. Pertanyaan lanjutan seperti “ada yang dari Bandung?” menyaring daftar yang barusan. Kalau kamu tanya afiliasi, kami bilang terus terang datanya belum ada dan mengarahkan ke Kalodata untuk TikTok Shop.',
-        tech: 'detectResponseMode in gpt-chat-memory.js routes LOOKUP/WEEKLY/FILTER/REFER before AI_AGENT_ALL. runMarketAgent thinking is wantsDeepReasoning only. lastShown + <lanjut> chips; persistMessage _persisting; aiDataContext(); ringkasan_kategori RPC; cari-web edge function (Tavily/Brave, refuse sold/affiliate).',
+        text: 'Ketik merek atau produk sekarang langsung tampil daftar listing plus ringkasan pasar, tanpa proses berpikir yang panjang. “Terlaris minggu ini” meninjau data dulu lalu menampilkan sekitar 10 produk. Pertanyaan lanjutan seperti “ada yang dari Bandung?” menyaring daftar yang barusan. Kalau kamu tanya afiliasi Shopee, kami baca permintaan, toko, dan seberapa ramai produk itu sudah didorong (perkiraan) — bukan komisi atau jumlah afiliator. Pertanyaan TikTok Shop tetap diarahkan ke Kalodata.',
+        tech: 'detectResponseMode in gpt-chat-memory.js routes LOOKUP/WEEKLY/FILTER/REFER/PROMO before AI_AGENT_ALL. runMarketAgent thinking is wantsDeepReasoning only. lastShown + <lanjut> chips; persistMessage _persisting; aiDataContext(); ringkasan_kategori RPC; cari-web edge function (Tavily/Brave, refuse sold/affiliate).',
+      },
+      {
+        text: 'Pertanyaan afiliasi Shopee sekarang dapat bacaan proksi (permintaan, toko, tekanan iklan) plus kalkulator dari angka komisi yang kamu masukkan sendiri. Bukan data afiliasi resmi, dan kami tidak mengarang jumlah afiliator atau GMV live.',
+        tech: 'promo mode + Sinyal Promosi on Deep Dive; shop_tier enrich from listings; fee card relabel to biaya platform; video_count unused (product_details 0% coverage).',
       },
     ],
   },

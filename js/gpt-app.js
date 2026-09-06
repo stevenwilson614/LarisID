@@ -4379,6 +4379,7 @@ function renderChatThread() {
     bindTrackerCards(thread);
     bindTrendingCards(thread);
     bindGptKalc(thread);
+    bindPromoCalc(thread);
     bindSearchSuggests(thread);
     updateThreadWide();
     // Product threads: land on the Deep Dive card. Search threads: top of results.
@@ -6344,14 +6345,17 @@ function resolveSidePeers(product) {
 async function fetchSidePeers(product) {
   const kw = product?.keyword || '';
   if (!_supabase || !kw) return [];
+  const build = () => _supabase.from('listings_deduped')
+    .select(listingCoreSelect())
+    .gt('total_sold', 0)
+    .ilike('keyword', kw)
+    .eq('is_offtopic', false)
+    .order('total_sold', { ascending: false })
+    .limit(120);
   try {
-    const { data } = await _supabase.from('listings_deduped')
-      .select('item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,keyword,category,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method,is_ad')
-      .gt('total_sold', 0)
-      .ilike('keyword', kw)
-      .eq('is_offtopic', false)
-      .order('total_sold', { ascending: false })
-      .limit(120);
+    let { data, error } = await build();
+    if (listingIsAdMissing(error)) ({ data, error } = await build());
+    if (error) throw error;
     return data || [];
   } catch (_) {
     return [];
@@ -7249,17 +7253,31 @@ function asListingProduct(r) {
 }
 
 let _listingHasIsAd = true;
+let _listingHasPromoCols = true;
+// shop_tier lives on listings, not listings_deduped — attachShopTiers() fills it.
 function listingCoreSelect() {
   const core = 'item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,url,keyword,category,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method';
-  return _listingHasIsAd ? `${core},is_ad` : core;
+  const extras = [];
+  if (_listingHasIsAd) extras.push('is_ad');
+  if (_listingHasPromoCols) extras.push('search_rank', 'in_stock');
+  return extras.length ? `${core},${extras.join(',')}` : core;
 }
 function listingIsAdMissing(error) {
-  if (!_listingHasIsAd || !error) return false;
+  if (!error) return false;
   const s = `${error.code || ''} ${error.message || ''}`;
-  if (!/42703/.test(s) && !/\bis_ad\b/.test(s)) return false;
-  console.warn('[peta] is_ad missing — dashed ad rings disabled');
-  _listingHasIsAd = false;
-  return true;
+  if (!/42703/.test(s)) return false;
+  let changed = false;
+  if (_listingHasIsAd && /\bis_ad\b/.test(s)) {
+    console.warn('[peta] is_ad missing — dashed ad rings disabled');
+    _listingHasIsAd = false;
+    changed = true;
+  }
+  if (_listingHasPromoCols && (/\bsearch_rank\b/.test(s) || /\bin_stock\b/.test(s))) {
+    console.warn('[listings] search_rank/in_stock missing — promo signals degrade');
+    _listingHasPromoCols = false;
+    changed = true;
+  }
+  return changed;
 }
 
 function dedupeListings(rows) {
@@ -7545,15 +7563,19 @@ function mountPeta(hostEl, query, listings, extra) {
 
 async function fetchListingsCityCat(locations, cats, limit = 80) {
   if (!_supabase || !locations.length) return [];
-  try {
+  const build = () => {
     let q = _supabase.from('listings_deduped')
-      .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method,is_ad')
+      .select(listingCoreSelect())
       .in('location', locations)
       .eq('is_offtopic', false)
       .order('total_sold', { ascending: false })
       .limit(limit * 2);
     if (cats.length) q = q.in('category', cats);
-    const { data, error } = await q;
+    return q;
+  };
+  try {
+    let { data, error } = await build();
+    if (listingIsAdMissing(error)) ({ data, error } = await build());
     if (error) throw error;
     return mergePool([], data || []).map(asListingProduct);
   } catch (_) { return []; }
@@ -8115,10 +8137,266 @@ async function handleFilterFollowup(chat, text) {
 async function handleReferIntent(chat, text) {
   const en = detectReplyLanguage(text) === 'en';
   const html = en
-    ? `<p>We don't have Shopee affiliate rates, Komisi XTRA, or how many affiliates promote a SKU. For TikTok Shop creator / affiliate / live GMV, try <a href="https://www.kalodata.com/" target="_blank" rel="nofollow noopener">Kalodata</a> — that is a TikTok Shop tool, not Shopee. We are working on Shopee Live and affiliate data; no date yet.</p>`
-    : `<p>Kami belum punya data afiliasi Shopee (komisi, XTRA, atau berapa orang yang mempromosikan satu SKU). Untuk kreator / afiliasi / GMV live di <strong>TikTok Shop</strong>, coba <a href="https://www.kalodata.com/" target="_blank" rel="nofollow noopener">Kalodata</a> — itu alat TikTok Shop, bukan Shopee. Kami sedang mengerjakan data Shopee Live dan afiliasi, tanpa janji tanggal.</p>`;
+    ? `<p>Our data is Shopee only. For TikTok Shop creators, affiliates, and live GMV, try <a href="https://www.kalodata.com/" target="_blank" rel="nofollow noopener">Kalodata</a> — that is a TikTok Shop tool, not Shopee.</p>`
+    : `<p>Data kami hanya Shopee. Untuk kreator, afiliasi, dan GMV live di TikTok Shop, coba <a href="https://www.kalodata.com/" target="_blank" rel="nofollow noopener">Kalodata</a> — itu alat TikTok Shop, bukan Shopee.</p>`;
   await appendAssistantStream(html);
-  pushMessage(chat, 'assistant', { text: 'Afiliasi belum tersedia' }, html);
+  pushMessage(chat, 'assistant', { text: 'TikTok Shop — Kalodata' }, html);
+}
+
+async function attachShopTiers(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  if (!_supabase || !list.length) return list;
+  const need = list.filter((r) => r && (r.shop_tier == null || r.shop_tier === ''));
+  if (!need.length) return list;
+  const ids = [...new Set(need.map((r) => r.item_id).filter((id) => id != null))].slice(0, 40);
+  if (!ids.length) return list;
+  try {
+    const { data, error } = await _supabase.from('listings')
+      .select('item_id,shop_id,shop_tier,scraped_at')
+      .in('item_id', ids)
+      .order('scraped_at', { ascending: false })
+      .limit(200);
+    if (error || !data) return list;
+    const latest = new Map();
+    for (const row of data) {
+      const k = `${row.item_id}|${row.shop_id}`;
+      if (!latest.has(k) && row.shop_tier) latest.set(k, row.shop_tier);
+    }
+    list.forEach((r) => {
+      const t = latest.get(`${r.item_id}|${r.shop_id}`);
+      if (t) r.shop_tier = t;
+    });
+  } catch (_) { /* shop_tier is optional */ }
+  return list;
+}
+
+function promoPressureTip(pressure) {
+  const used = (pressure?.inputs || []).filter((i) => i.available).map((i) => {
+    const name = { iklan: 'iklan pencarian', toko: 'tipe toko', video: 'video halaman produk', laju: 'laju penjualan' }[i.key] || i.key;
+    return `${name}${i.positive ? '' : ' (tidak)'}`;
+  });
+  const missing = ['iklan', 'toko', 'video', 'laju'].filter((k) => !(pressure?.inputs || []).some((i) => i.key === k && i.available));
+  const missLabel = { iklan: 'iklan', toko: 'tipe toko', video: 'video: tidak diperiksa', laju: 'laju vs pasar' };
+  const miss = missing.map((k) => missLabel[k] || k);
+  return `Dipakai: ${used.join(', ') || '—'}. Tidak ada: ${miss.join(', ') || '—'}. Bukan jumlah afiliator.`;
+}
+
+function promoNotesHtml(spanDays) {
+  const span = Number(spanDays) > 0 ? Math.round(spanDays) : null;
+  return `<ol class="promo-notes">
+    <li>Shopee tidak mempublikasikan komisi afiliasi, Komisi XTRA, jumlah afiliator, atau GMV live per produk. Kami tidak menebak angkanya.</li>
+    <li>${span
+      ? `Perkiraan dari ${span} hari scrape terakhir, disetarakan ke 7 hari. Terukur hanya bila bertanda terukur.`
+      : 'Angka unit/minggu terukur hanya bila bertanda terukur. Lainnya perkiraan dari model kecepatan (scrape 12–17 hari).'}</li>
+    <li>Tekanan promosi adalah perkiraan dari status iklan, tipe toko, dan laju penjualan — bukan jumlah afiliator. Video halaman produk belum kami cek (cakupan detail tipis).</li>
+  </ol>`;
+}
+
+function promoChecklistHtml(row, peers, mem) {
+  const demand = mem.promoDemandOf(row);
+  const trust = mem.promoTrustOf(row);
+  const margin = mem.promoMarginRoom(row);
+  const pressure = mem.promoPressureOf(row, peers);
+  const floor = mem.PROMO_DEMAND_FLOOR || 25;
+  const demandYes = demand.unitsWk != null && demand.label === 'terukur' && demand.unitsWk >= floor;
+  const demandLine = demand.unitsWk == null
+    ? 'belum cukup data penjualan mingguan'
+    : demandYes
+      ? `ya — sekitar ${fmtSold(Math.round(demand.unitsWk))} unit/minggu (${demand.label})`
+      : `belum jelas — sekitar ${fmtSold(Math.round(demand.unitsWk))} unit/minggu (${demand.label || 'perkiraan'})`;
+  const age = trust.ageDays != null ? listingUsiaLabel({ listing_date: row.listing_date }).text : '—';
+  const trustBits = [
+    trust.rating != null ? `rating ${String(trust.rating).replace('.', ',')}` : null,
+    trust.reviews != null ? `${fmtSold(trust.reviews)} ulasan` : null,
+    trust.tier || null,
+    age !== '—' ? `listing ${age}` : null,
+    trust.inStock === false ? 'stok: tidak tersedia' : null,
+  ].filter(Boolean).join(', ');
+  const trustLine = trust.ok
+    ? `cukup — ${trustBits || 'rating & ulasan ada'}`
+    : `perlu dicek — ${trustBits || 'rating/ulasan tipis'}`;
+  const marginLine = margin.kind === 'atas'
+    ? 'harga di atas median pasar — toko punya ruang untuk bayar komisi'
+    : margin.kind === 'bawah'
+      ? 'harga di bawah median pasar — komisi kemungkinan tipis'
+      : 'median harga pasar belum cukup untuk dibanding';
+  const pressLine = pressure.class === 'belum'
+    ? 'belum cukup data'
+    : pressure.label;
+  return `<ul class="promo-check">
+    <li><strong>Permintaan nyata:</strong> ${esc(demandLine)}</li>
+    <li><strong>Toko bisa dipercaya:</strong> ${esc(trustLine)}</li>
+    <li><strong>Ruang margin toko:</strong> ${esc(marginLine)}</li>
+    <li><strong>Sudah ramai di-dorong:</strong> ${esc(pressLine)} — kami tidak tahu berapa afiliator</li>
+  </ul>`;
+}
+
+function promoCalcHtml(listings, en) {
+  const rows = (listings || []).filter((r) => Number(r.price) > 0).slice(0, 8);
+  if (!rows.length) return '';
+  const opts = rows.map((r, i) => {
+    const name = String(r.product_name || 'Listing').slice(0, 48);
+    return `<option value="${i}" data-price="${Number(r.price)}">${esc(name)} — ${esc(fmtRp(r.price))}</option>`;
+  }).join('');
+  return `<div class="promo-calc" data-promo-calc>
+    <p class="promo-calc-lead">${en
+      ? 'Enter the commission % you see in your own Affiliate Center. We only do the arithmetic — we do not know the rate.'
+      : 'Masukkan komisi yang kamu lihat di Affiliate Center-mu (%). Angka di bawah dari input kamu, bukan dari data kami.'}</p>
+    <div class="promo-calc-grid">
+      <label>Listing<select data-promo-item>${opts}</select></label>
+      <label>Komisi %<input type="number" data-promo-rate min="0" max="80" step="0.1" inputmode="decimal" placeholder="mis. 8"></label>
+      <label>Target (opsional)<input type="number" data-promo-target min="0" step="1000" inputmode="numeric" placeholder="Rp"></label>
+    </div>
+    <div class="promo-calc-out" data-promo-out></div>
+    <p class="promo-calc-foot">${en
+      ? 'Gross before Shopee Affiliate withholding or tax — we do not model those rules.'
+      : 'Kotor, sebelum potongan Shopee Affiliate atau pajak yang tidak kami modelkan.'}</p>
+  </div>`;
+}
+
+function promoCalcRefresh(panel) {
+  if (!panel) return;
+  const sel = panel.querySelector('[data-promo-item]');
+  const rateEl = panel.querySelector('[data-promo-rate]');
+  const targetEl = panel.querySelector('[data-promo-target]');
+  const out = panel.querySelector('[data-promo-out]');
+  if (!out) return;
+  const opt = sel?.selectedOptions?.[0];
+  const price = Number(opt?.getAttribute('data-price') || 0);
+  const rate = Number(rateEl?.value);
+  const target = Number(targetEl?.value);
+  const mem = _gptMem();
+  if (!(rate > 0) || !(price > 0)) {
+    out.innerHTML = '<p class="dd-sub">Isi persentase dari Affiliate Center-mu dulu.</p>';
+    return;
+  }
+  const calc = mem.promoCalcFromRate(price, rate, target);
+  const need = calc.salesNeeded != null
+    ? ` Untuk target ${fmtRp(target)} perlu sekitar ${calc.salesNeeded.toLocaleString('id-ID')} penjualan.`
+    : '';
+  out.innerHTML = `<p>Per penjualan (dari angka yang kamu masukkan): <strong>${fmtRp(Math.round(calc.rpPerSale))}</strong> di harga ${fmtRp(price)}.${need}</p>`;
+}
+
+function bindPromoCalc(root) {
+  (root || document).querySelectorAll('[data-promo-calc]').forEach((panel) => {
+    if (panel.dataset.bound === '1') {
+      promoCalcRefresh(panel);
+      return;
+    }
+    panel.dataset.bound = '1';
+    panel.querySelectorAll('input, select').forEach((el) => {
+      el.addEventListener('input', () => promoCalcRefresh(panel));
+      el.addEventListener('change', () => promoCalcRefresh(panel));
+    });
+    promoCalcRefresh(panel);
+  });
+}
+
+function promoRowReadHtml(row, peers, mem) {
+  const demand = mem.promoDemandOf(row);
+  const trust = mem.promoTrustOf(row);
+  const pressure = mem.promoPressureOf(row, peers);
+  const usia = listingUsiaLabel(row);
+  const units = demand.unitsWk != null
+    ? `sekitar ${fmtSold(Math.round(demand.unitsWk))} unit/minggu (${demand.label})`
+    : 'laju mingguan belum cukup';
+  const tier = trust.tier || 'tipe toko tidak diketahui';
+  const rev = trust.reviews != null ? `${fmtSold(trust.reviews)} ulasan` : 'ulasan belum ada';
+  const press = pressure.class === 'belum' ? 'belum cukup data' : pressure.label;
+  return `<p class="promo-row-read"><strong>${esc((row.product_name || '').slice(0, 72))}</strong> — ${esc(units)}, toko ${esc(tier)}, ${esc(rev)}, listing sejak ${esc(usia.text)}. Tekanan promosi: <strong title="${esc(promoPressureTip(pressure))}">${esc(press)}</strong>.</p>`;
+}
+
+function ddPromoCardHtml(product, peers) {
+  const mem = _gptMem();
+  const row = product || {};
+  const set = (peers && peers.length) ? peers : [row];
+  const pressure = mem.promoPressureOf(row, set);
+  const demand = mem.promoDemandOf(row);
+  return `<div class="ddr-card ddr-promo" data-dd-sec="sinyal_promosi">
+    <div class="ddr-sec-head">
+      <h3>Sinyal Promosi</h3>
+      <span class="omset-chip omset-chip--perkiraan" title="${esc(promoPressureTip(pressure))}">perkiraan</span>
+    </div>
+    <p class="dd-sub">Bacaan untuk afiliasi atau seller — bukan komisi, bukan jumlah afiliator, bukan Shopee Live.</p>
+    ${promoRowReadHtml(row, set, mem)}
+    ${promoChecklistHtml(row, set, mem)}
+    ${promoCalcHtml([row], false)}
+    ${promoNotesHtml(demand.span)}
+  </div>`;
+}
+
+async function handlePromoIntent(chat, text) {
+  if (!(await ensureSearchAllowed())) return;
+  const mem = _gptMem();
+  const en = detectReplyLanguage(text) === 'en';
+  const jobB = mem.isPromoJobB?.(text);
+  const q = mem.extractPromoQuery?.(text) || '';
+  const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">${en ? 'Checking Shopee demand and shop signals…' : 'Mengecek permintaan dan toko dari data Shopee…'}</p>`);
+
+  let rows = [];
+  let usedQuery = q;
+  let fromLast = false;
+  if (q) {
+    const pool = await resolveListingPool({ q });
+    rows = dedupeListings(pool.listings || []).slice(0, 12);
+    if (!rows.length) {
+      const extra = await searchListings(q, [], 12);
+      rows = dedupeListings(extra).slice(0, 12);
+    }
+  }
+  if (!rows.length) {
+    const last = chat?.context?.lastShown?.listings || [];
+    if (last.length) {
+      rows = last.map(asListingProduct).slice(0, 12);
+      fromLast = true;
+      usedQuery = chat.context.lastShown.query || '';
+    }
+  }
+  if (!rows.length) {
+    const types = await fetchTerlarisMinggu('', 6);
+    if (types.length) {
+      const pool = await typesToListingPool(types);
+      rows = dedupeListings(pool.listings || []).slice(0, 12);
+      usedQuery = '';
+    }
+  }
+
+  const gate = await ensureIntentChat(chat, (q || 'Sinyal promosi').slice(0, 60), { kind: 'promo', q: usedQuery || text });
+  if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
+
+  if (!rows.length) {
+    const html = en
+      ? '<p>Name a Shopee product — I can check demand and the shop from our data. We do not have commission rates or affiliate counts.</p>'
+      : '<p>Sebut produk Shopee-nya dulu — aku cek permintaan dan toko dari data kami. Komisi dan jumlah afiliator tidak ada di data kami.</p>';
+    await revealAssistant(loading, html);
+    pushMessage(chat, 'assistant', { text: 'Sinyal promosi' }, html);
+    return;
+  }
+
+  await attachShopTiers(rows);
+  try { await attachTypeQuartiles(rows); } catch (_) {}
+  try { await hydrateListingTrends(rows); } catch (_) {}
+
+  const n = rows.length;
+  const ads = rows.filter((r) => r.is_ad === 1 || r.is_ad === true).length;
+  const lead = jobB
+    ? (en
+      ? `<p>If you want to sell in this niche: of ${n} top listings, ${ads} use search ads. I cannot count affiliates or live sessions (1) — this is a pressure read, not a census.</p>`
+      : `<p>Kalau kamu mau jualan di pasar ini: dari ${n} listing teratas, ${ads} pakai iklan pencarian. Aku tidak bisa menghitung berapa afiliator atau berapa sesi live (1) — ini bacaan tekanan, bukan sensus.</p>`)
+    : (en
+      ? `<p>For affiliates I check three things in our Shopee data: demand, the shop, and how hard this is already being pushed. Commission and Komisi XTRA are not in our data (1) — enter the number from your Affiliate Center in the calculator below.</p>`
+      : `<p>Untuk afiliasi, aku cek tiga hal dari data Shopee kami: permintaan, toko, dan seberapa ramai produk ini sudah didorong. Komisi dan Komisi XTRA tidak ada di data kami (1) — masukkan angka dari Affiliate Center-mu di kalkulator di bawah.</p>`);
+  const fallbackNote = fromLast
+    ? (en ? '<p class="dd-sub">Using the listings from this thread — you did not name a new product.</p>' : '<p class="dd-sub">Pakai listing di thread ini — kamu belum sebut produk baru.</p>')
+    : (!q ? (en ? '<p class="dd-sub">You did not name a product — these are measured weekly markets, not an affiliate ranking.</p>' : '<p class="dd-sub">Belum disebut produk tertentu — ini pasar yang penjualan mingguannya terukur, bukan ranking afiliasi.</p>') : '');
+  const first = rows[0];
+  const span = first?._petaTrend?.spanNow;
+  const html = `${lead}${fallbackNote}${promoRowReadHtml(first, rows, mem)}${promoChecklistHtml(first, rows, mem)}${listingRowsHtml(rows, { compact: true })}${promoCalcHtml(rows, en)}${promoNotesHtml(span)}`;
+  await revealAssistant(loading, html);
+  pushMessage(chat, 'assistant', { text: 'Sinyal promosi', q: usedQuery || text }, html);
+  bindListingRows(loading);
+  bindPromoCalc(loading);
+  rememberLastShown(chat, rows, [], usedQuery || q);
 }
 
 async function handleTerlarisMingguIntent(chat, text) {
@@ -8196,13 +8474,16 @@ async function handleModalIntent(chat, text) {
   const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Mencari produk laris di bawah ${fmtRp(budget)}…</p>`);
   let rows = [];
   try {
-    const { data } = await _supabase.from('listings_deduped')
-      .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method,is_ad')
+    const buildModal = () => _supabase.from('listings_deduped')
+      .select(listingCoreSelect())
       .gte('price', 1000).lte('price', budget)
       .gt('total_sold', 100)
       .eq('is_offtopic', false)
       .order('total_sold', { ascending: false })
       .limit(60);
+    let { data, error } = await buildModal();
+    if (listingIsAdMissing(error)) ({ data, error } = await buildModal());
+    if (error) throw error;
     rows = (data || []).map(asListingProduct);
   } catch (_) {}
   const gate = await ensureIntentChat(chat, `Modal ${fmtRp(budget)}`, { kind: 'modal', budget });
@@ -10122,13 +10403,16 @@ async function resolveProduct(item_id, shop_id, btn) {
   if (found) return asListingProduct(found);
   if (_supabase && item_id != null && shop_id != null) {
     try {
-      const { data } = await _supabase.from('listings_deduped')
-        .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method,is_ad')
+      const buildOne = () => _supabase.from('listings_deduped')
+        .select(listingCoreSelect())
         .eq('item_id', item_id)
         .eq('shop_id', shop_id)
         .order('scraped_at', { ascending: false })
         .limit(1)
         .maybeSingle();
+      let { data, error } = await buildOne();
+      if (listingIsAdMissing(error)) ({ data, error } = await buildOne());
+      if (error) throw error;
       if (data) {
         const prod = asListingProduct(data);
         rememberProducts([prod]);
@@ -13173,7 +13457,7 @@ function platformFeeDetail(plat, cat, vol){
   const fee = platformFeePerProduct(plat, cat, price);
   const rows = [];
   if (f.admin)   rows.push({ name:'Biaya administrasi', where:'Biaya tetap platform tiap transaksi', pct:f.admin, rpPer: price*f.admin/100 });
-  rows.push({ name:'Komisi / biaya kategori', where:'Potongan platform tiap produk terjual', pct:(f.comm[t]||0), rpPer: price*(f.comm[t]||0)/100 });
+  rows.push({ name:'Biaya platform (bukan komisi afiliasi)', where:'Potongan platform tiap produk terjual', pct:(f.comm[t]||0), rpPer: price*(f.comm[t]||0)/100 });
   if (f.program) rows.push({ name:'Program Gratis Ongkir & promo', where:'Subsidi ongkir / voucher untuk pembeli', pct:f.program, rpPer: price*f.program/100 });
   if (f.flat)    rows.push({ name:'Biaya proses pesanan', where:'Rp '+f.flat.toLocaleString('id-ID')+' / order (tetap, bukan %)', pct:null, rpPer: f.flat });
   return { rows, pctOnly: fee.pctOnly, totalRp: fee.totalRp, note:f.note };
@@ -13241,7 +13525,7 @@ function ddFeesSectionHtml(product) {
     return `<div class="ddr-card ddr-fee-card">
       <div class="ddr-fee-card-head">
         <div class="ddr-mp-brand">${f.logo}<span class="ddr-mp-name">${esc(f.label)}</span></div>
-        <div class="ddr-fee-card-total"><div class="ddr-fee-card-pct">${ecomFmtPct(d.pctOnly)}</div><div class="ddr-fee-card-sub">komisi + program</div></div>
+        <div class="ddr-fee-card-total"><div class="ddr-fee-card-pct">${ecomFmtPct(d.pctOnly)}</div><div class="ddr-fee-card-sub">biaya platform + program</div></div>
       </div>
       ${rowsHtml}
       <div class="ddr-fee-total-row">
@@ -13261,7 +13545,7 @@ function ddFeesSectionHtml(product) {
     <div class="ddr-fees-grid">${cards}</div>
     <div class="ddr-fees-disclaimer">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      <div>Belum termasuk <b>modal produk, ongkir, biaya iklan</b>, &amp; <b>PPh Final 0,5%</b> (pajak penghasilan UMKM, berlaku di semua platform). Biaya proses pesanan (Rp/order) ditampilkan terpisah agar tidak membesar jadi persentase di produk murah. Angka adalah <b>perkiraan per ${ECOM_FEE_UPDATED}</b> — tarif tiap platform berubah sewaktu-waktu &amp; bergantung tipe penjual, kategori spesifik, dan program yang diikuti. Selalu cek halaman resmi tiap platform untuk angka final.</div>
+      <div>Belum termasuk <b>modal produk, ongkir, biaya iklan</b>, &amp; <b>PPh Final 0,5%</b> (pajak penghasilan UMKM, berlaku di semua platform). Biaya proses pesanan (Rp/order) ditampilkan terpisah agar tidak membesar jadi persentase di produk murah. Angka adalah <b>perkiraan per ${ECOM_FEE_UPDATED}</b> — tarif tiap platform berubah sewaktu-waktu &amp; bergantung tipe penjual, kategori spesifik, dan program yang diikuti. <b>Komisi afiliasi berbeda dan tidak ada di data kami.</b> Selalu cek halaman resmi tiap platform untuk angka final.</div>
     </div>
   </div>`;
 }
@@ -14035,13 +14319,16 @@ async function openDeepDive(product, ddOpts = {}) {
       if (kw) {
         // listings_deduped: trgm-indexed, deduped, and carries listing_date
         // (shop-age proxy) since migration 20260717120000.
-        const { data } = await _supabase.from('listings_deduped')
-          .select('item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,keyword,category,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method,is_ad')
+        const buildPeers = () => _supabase.from('listings_deduped')
+          .select(listingCoreSelect())
           .gt('total_sold', 0)
           .ilike('keyword', kw)
           .eq('is_offtopic', false)
           .order('total_sold', { ascending: false })
           .limit(120);
+        let { data, error } = await buildPeers();
+        if (listingIsAdMissing(error)) ({ data, error } = await buildPeers());
+        if (error) throw error;
         peers = data || [];
       }
     } catch (_) {}
@@ -14188,6 +14475,8 @@ async function openDeepDive(product, ddOpts = {}) {
   void gptJourneyNoteDeepDive();
   funnelStep(_gptDiveSeen++ === 0 ? 'first_dive' : 'second_dive');
 
+  try { await attachShopTiers([product, ...(peers || [])]); } catch (_) {}
+  try { await attachTypeQuartiles([product, ...(peers || []).slice(0, 12)]); } catch (_) {}
   const stats = ddStats(peers);
   // Listing omset only — keyword/market series used to be the hero chart.
   // Client path stays as fallback when product_daily_series is thin.
@@ -14286,6 +14575,7 @@ async function openDeepDive(product, ddOpts = {}) {
     ${ddToolPillsHtml(product)}
     ${ddFeeStripHtml(product)}
     ${ddHeroRowHtml(product, stats, peers, hasTrend)}
+    ${ddPromoCardHtml(product, peers)}
     ${isDesktopDeepDive ? kompCardHtml : ''}
     ${ddAksiCepatHtml(product)}
     ${ddAlertCardHtml(product)}
@@ -14373,6 +14663,7 @@ async function openDeepDive(product, ddOpts = {}) {
   bindDdrCarousel(root);
   wireDdrToolPills(root, product, peers);
   wireDdrAksiCepat(root, product, peers);
+  bindPromoCalc(root);
   root.querySelector('[data-ddr-fav]')?.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -15041,7 +15332,9 @@ YANG DATA LARISID TIDAK PUNYA — sebut jujur kalau ditanya, JANGAN mengarang:
 - Stok real-time, retur, komplain, biaya iklan, ROAS, konversi.
 - Demografi pembeli, status Shopee Mall / Star Seller, data per varian.
 - Isi foto produk dan kontak supplier.
-- Komisi afiliasi Shopee, Komisi XTRA, jumlah affiliate per SKU, Shopee Live GMV, dan hitungan kreator. Kalau user bertanya itu, JANGAN memakai pola 4 bagian di bawah. Jawab 2–3 kalimat: kami belum punya datanya; untuk kreator/afiliasi/GMV live TikTok Shop arahkan ke Kalodata (bukan alat Shopee); kami sedang mengerjakan Shopee Live + afiliasi tanpa janji tanggal.
+- Komisi afiliasi Shopee, Komisi XTRA, jumlah affiliate per SKU, Shopee Live GMV, dan hitungan kreator. JANGAN mengarang persen komisi, status XTRA, atau jumlah afiliator.
+  Kalau channel-nya TikTok Shop / Kalodata: satu paragraf, arahkan ke Kalodata (alat TikTok Shop, bukan Shopee). Jangan campur angka Shopee ke pertanyaan TikTok.
+  Kalau channel-nya Shopee: pakai pola 4 bagian. Jawab dulu dari proksi yang ADA — permintaan (unit/minggu terukur atau perkiraan), kepercayaan toko (rating, ulasan, shop_tier, umur listing), ruang harga vs median pasar, dan tekanan promosi ordinal (iklan / tipe toko / laju). Satu kalimat: komisi, XTRA, jumlah afiliator, dan sesi live tidak ada. Lalu langkah berikutnya: buka Affiliate Center sendiri atau pakai kalkulator komisi dengan angka yang user masukkan.
 
 CARA MENJAWAB KALAU DATANYA CUMA SEBAGIAN (WAJIB, 4 bagian, urut):
 1. JAWAB DULU dari data yang ADA — angka konkret, nama pasar/produk konkret.
@@ -15709,12 +16002,13 @@ async function handleComposerSubmit(text, opts = {}) {
       return;
     }
     const threadMode = mem.detectResponseMode?.(text, liveChat);
-    if (threadMode === 'refer' || threadMode === 'filter' || threadMode === 'weekly' || threadMode === 'lookup') {
+    if (threadMode === 'refer' || threadMode === 'promo' || threadMode === 'filter' || threadMode === 'weekly' || threadMode === 'lookup') {
       setView('chat');
       appendBubble('user', `<p>${esc(text)}</p>`);
       pushMessage(liveChat, 'user', text);
       void logUserEvent('gpt_intent', { ui: 'gpt', intent: threadMode, via: 'followup' });
       if (threadMode === 'refer') await handleReferIntent(liveChat, text);
+      else if (threadMode === 'promo') await handlePromoIntent(liveChat, text);
       else if (threadMode === 'filter') await handleFilterFollowup(liveChat, text);
       else if (threadMode === 'weekly') await handleTerlarisMingguIntent(liveChat, text);
       else await handleLookupIntent(liveChat, text);
@@ -15822,7 +16116,7 @@ async function handleComposerSubmit(text, opts = {}) {
   // Typed modes before the agent: lookup / weekly / refer / filter skip thinking.
   if (!inProductCtx && opts.via !== 'chip') {
     const mode = _gptMem().detectResponseMode?.(text, activeChat());
-    if (mode === 'refer' || mode === 'weekly' || mode === 'lookup' || mode === 'filter') {
+    if (mode === 'refer' || mode === 'promo' || mode === 'weekly' || mode === 'lookup' || mode === 'filter') {
       if (inResultsThread) beginFreshChat();
       setView('chat');
       const chat = ensureComposerChat(text);
@@ -15831,6 +16125,7 @@ async function handleComposerSubmit(text, opts = {}) {
       void logUserEvent('gpt_message_sent', { ui: 'gpt' });
       void logUserEvent('gpt_intent', { ui: 'gpt', intent: mode, via: 'router' });
       if (mode === 'refer') await handleReferIntent(chat, text);
+      else if (mode === 'promo') await handlePromoIntent(chat, text);
       else if (mode === 'weekly') await handleTerlarisMingguIntent(chat, text);
       else if (mode === 'lookup') await handleLookupIntent(chat, text);
       else await handleFilterFollowup(chat, text);
@@ -16866,7 +17161,7 @@ async function _aiToolCariWeb({ query }) {
   const q = String(query || '').trim();
   if (!q) return { error: 'query wajib' };
   if (/\b(terjual|omset|omzet|terlaris minggu|affiliate|afiliasi|komisi xtra|live gmv|berapa orang live)\b/i.test(q)) {
-    return { refused: true, reason: 'Angka penjualan, omset, terlaris, atau afiliasi tidak diambil dari web. Pakai alat data LarisID, atau jawab REFER untuk afiliasi.' };
+    return { refused: true, reason: 'Angka penjualan, omset, terlaris, atau afiliasi tidak diambil dari web. Pakai alat data LarisID. Untuk TikTok Shop arahkan ke Kalodata. Jangan mengarang komisi atau jumlah afiliator.' };
   }
   try {
     const session = _supabase?.auth ? (await _supabase.auth.getSession())?.data?.session : null;
@@ -18850,13 +19145,16 @@ async function fetchPeersForCompare(product) {
   let niche = product?._niche || null;
   if (!_supabase || !kw) return { peers, niche, stats: ddStats([]), score: ddScore(product || {}, ddStats([]), niche) };
   try {
-    const { data } = await _supabase.from('listings_deduped')
-      .select('item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,keyword,category,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method,is_ad')
+    const buildPeers = () => _supabase.from('listings_deduped')
+      .select(listingCoreSelect())
       .gt('total_sold', 0)
       .ilike('keyword', kw)
       .eq('is_offtopic', false)
       .order('total_sold', { ascending: false })
       .limit(120);
+    let { data, error } = await buildPeers();
+    if (listingIsAdMissing(error)) ({ data, error } = await buildPeers());
+    if (error) throw error;
     peers = data || [];
   } catch (_) {}
   try {

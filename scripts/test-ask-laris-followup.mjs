@@ -158,11 +158,31 @@ eq('terlaris minggu is weekly', mem.detectResponseMode('Apa yang terlaris minggu
 eq('Bandung follow-up is filter', mem.detectResponseMode('are any of those sellers in bandung', shownChat), 'filter');
 eq('ada yang dari Bandung is filter', mem.detectResponseMode('ada yang dari Bandung?', shownChat), 'filter');
 eq('Crocs Bandung is lookup not filter', mem.detectResponseMode('Crocs Bandung', shownChat), 'lookup');
-eq('affiliate is refer', mem.detectResponseMode('untuk affiliate produk mana yang bagus', shownChat), 'refer');
-eq('affiliator is refer', mem.detectResponseMode('produk bagus untuk affiliator', { messages: [] }), 'refer');
+eq('affiliate is promo', mem.detectResponseMode('untuk affiliate produk mana yang bagus', shownChat), 'promo');
+eq('affiliator is promo', mem.detectResponseMode('produk bagus untuk affiliator', { messages: [] }), 'promo');
+eq('komisi + affiliate is promo', mem.detectResponseMode('berapa komisi serum wajah buat affiliate', { messages: [] }), 'promo');
+eq('tiktok affiliate is refer', mem.detectResponseMode('untuk affiliate tiktok produk mana yang bagus', { messages: [] }), 'refer');
+eq('kalodata is refer', mem.detectResponseMode('kalodata', { messages: [] }), 'refer');
+eq('affiliate judgment is judgment', mem.detectResponseMode('sebaiknya jadi affiliate atau jualan sendiri?', { messages: [] }), 'judgment');
 eq('lanjutkan jawaban is continue not filter', mem.detectResponseMode('Lanjutkan jawaban', shownChat), 'continue');
 eq('supplier ask is public', mem.detectResponseMode('supplier Crocs di mana', { messages: [] }), 'public');
 eq('judgment compare', mem.detectResponseMode('sebaiknya jual Crocs atau sandal?', { messages: [] }), 'judgment');
+eq('extractPromoQuery keeps product', mem.extractPromoQuery('berapa komisi serum wajah buat affiliate'), 'serum wajah');
+eq('extractPromoQuery empty generic', mem.extractPromoQuery('untuk affiliate produk mana yang bagus'), '');
+ok('job B seller framing', mem.isPromoJobB('sering di-live saingan di pasar ini?'));
+ok('job A not job B', !mem.isPromoJobB('untuk affiliate produk mana yang bagus'));
+
+const pressureHigh = mem.promoPressureOf(
+  { is_ad: 1, shop_tier: 'official', nowcast_velocity_daily: 20 },
+  [
+    { nowcast_velocity_daily: 1 },
+    { nowcast_velocity_daily: 2 },
+    { nowcast_velocity_daily: 20 },
+  ]
+);
+eq('pressure tinggi', pressureHigh.class, 'tinggi');
+eq('pressure kill only is_ad', mem.promoPressureOf({ is_ad: 1 }, []).class, 'belum');
+eq('calc from user rate', mem.promoCalcFromRate(100000, 10, 500000), { rpPerSale: 10000, salesNeeded: 50 });
 
 const lanjut = mem.extractLanjutBlock('Ringkas.\n<lanjut>\n1. Ada seller dari Bandung?\n2. Bandingkan harga\n</lanjut>');
 eq('lanjut lines', lanjut.lines, ['Ada seller dari Bandung?', 'Bandingkan harga']);

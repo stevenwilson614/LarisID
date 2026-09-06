@@ -5233,6 +5233,38 @@ body.home-finder-done .home-hero {
 @media (min-width: 880px) {
   .ddr-hero-row { grid-template-columns: minmax(0, 32fr) minmax(0, 68fr); }
 }
+.ddr-promo { margin: 0 0 12px; padding: 16px; }
+.ddr-promo .ddr-sec-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.ddr-promo .ddr-sec-head h3 { margin: 0; }
+.promo-check { margin: 8px 0; padding-left: 1.15em; }
+.promo-check li { margin: 4px 0; font-size: .82rem; line-height: 1.45; }
+.promo-row-read { font-size: .86rem; line-height: 1.45; margin: 8px 0; }
+.promo-notes { margin: 10px 0 0; padding-left: 1.15em; color: var(--muted); font-size: .68rem; line-height: 1.45; }
+.promo-calc {
+  margin-top: 12px; padding: 12px; border: 1px solid var(--line);
+  border-radius: 12px; background: #fff;
+}
+.promo-calc-lead { font-size: .82rem; margin: 0 0 8px; }
+.promo-calc-grid {
+  display: grid; grid-template-columns: 1fr; gap: 8px;
+}
+@media (min-width: 640px) {
+  .promo-calc-grid { grid-template-columns: 1.4fr .7fr .9fr; }
+}
+.promo-calc-grid label {
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: .62rem; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .03em;
+}
+.promo-calc-grid input,
+.promo-calc-grid select {
+  font: inherit; font-size: .82rem; font-weight: 600; color: var(--ink);
+  text-transform: none; letter-spacing: 0;
+  border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+  background: #fff;
+}
+.promo-calc-out { margin-top: 8px; font-size: .82rem; }
+.promo-calc-foot { font-size: .62rem; color: var(--muted); margin: 6px 0 0; }
 .ddr-hero-nums {
   border: 1px solid var(--line); border-radius: 16px; background: #fff;
   box-shadow: 0 1px 2px rgba(16, 24, 40, .03);
@@ -9043,7 +9075,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 </aside>
 
 <script src="/js/laris-merdeka.js?v=20260816b" defer></script>
-<script src="/js/changelog.js?v=20260906b" defer></script>
+<script src="/js/changelog.js?v=20260906c" defer></script>
 <script defer src="/js/gpt-dir-filters.js?v=20260906b"></script>
 <script defer src="/js/gpt-dir-hero.js?v=20260824a"></script>
 <script defer src="/js/gpt-dir-home.js?v=20260824d"></script>
@@ -9054,7 +9086,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <script defer src="/js/laris-cohort.js?v=20260906a"></script>
 <script defer src="/js/laris-mascot-rigs.js?v=20260812a"></script>
 <script defer src="/js/laris-mascot.js?v=20260812a"></script>
-<script defer src="/js/gpt-chat-memory.js?v=20260906a"></script>
+<script defer src="/js/gpt-chat-memory.js?v=20260906b"></script>
 <!-- laris-tracker.js (167KB) also used to load here for every visitor.
      Lighthouse mobile: 40.9KB of its 49KB transfer went unused on a normal
      visit. ensureTracker() in gpt-app.js pulls it on first tracker use. -->
@@ -9063,6 +9095,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
      larisLoadScript() when the admin view actually renders. -->
 <script src="/js/peta-peluang.js?v=20260906b" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
-<script src="/js/gpt-app.js?v=20260907f" defer></script>
+<script src="/js/gpt-app.js?v=20260907g" defer></script>
 </body>
 </html>
