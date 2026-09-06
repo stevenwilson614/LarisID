@@ -5675,16 +5675,17 @@ body.home-finder-done .home-hero {
   background: #F5F5F5;
   box-shadow: inset 0 -1px 0 var(--line);
 }
+/* Stack pick < thumb < title so sideways scroll never paints the name over the photo. */
 #dir-grid .lrow-table .lrow-pick,
 #dir-grid .lrow-table .lrow-thumb,
 #dir-grid .lrow-table .lrow-col-prod,
 #dir-grid .lrow-table .lrow-prod {
   position: sticky;
-  z-index: 2;
   background: #fff;
 }
 #dir-grid .lrow-table .lrow-pick {
   left: 0;
+  z-index: 4;
   width: var(--lrow-sticky-pick-w);
   min-width: var(--lrow-sticky-pick-w);
   max-width: var(--lrow-sticky-pick-w);
@@ -5693,12 +5694,13 @@ body.home-finder-done .home-hero {
   background: #fff;
 }
 #dir-grid .lrow-table thead th.lrow-pick {
-  z-index: 6;
+  z-index: 7;
   background: #F5F5F5;
 }
 #dir-grid .lrow-table .lrow-thumb,
 #dir-grid .lrow-table thead th.lrow-thumb {
   left: var(--lrow-sticky-pick-w);
+  z-index: 5;
   width: var(--lrow-sticky-thumb-w);
   min-width: var(--lrow-sticky-thumb-w);
   max-width: var(--lrow-sticky-thumb-w);
@@ -5706,12 +5708,13 @@ body.home-finder-done .home-hero {
   padding-right: 8px;
 }
 #dir-grid .lrow-table thead th.lrow-thumb {
-  z-index: 6;
+  z-index: 8;
   background: #F5F5F5;
 }
 #dir-grid .lrow-table .lrow-col-prod,
 #dir-grid .lrow-table .lrow-prod {
   left: calc(var(--lrow-sticky-pick-w) + var(--lrow-sticky-thumb-w));
+  z-index: 3;
   box-shadow: 6px 0 10px -8px rgba(16, 24, 40, .35);
 }
 #dir-grid .lrow-table thead th.lrow-col-prod {
@@ -6141,33 +6144,42 @@ body.home-finder-done .home-hero {
     background: #ECFDF5;
     border-color: rgba(22, 163, 74, .28);
   }
+  /* Only checkbox + photo stick. Title scrolls with metrics and must stay
+     under the photo (same z-index + later DOM used to paint the name on top). */
   #dir-grid .lrow-table .lrow-pick,
-  #dir-grid .lrow-table .lrow-thumb,
-  #dir-grid .lrow-table .lrow-col-prod,
-  #dir-grid .lrow-table .lrow-prod {
+  #dir-grid .lrow-table .lrow-thumb {
     position: sticky;
-    z-index: 3;
     box-shadow: none;
     width: auto;
     max-width: none;
   }
-  #dir-grid .lrow-pick {
+  #dir-grid .lrow-table .lrow-col-prod,
+  #dir-grid .lrow-table .lrow-prod {
+    position: relative;
+    left: auto;
+    z-index: 1;
+    box-shadow: none;
+    width: auto;
+    max-width: none;
+  }
+  #dir-grid .lrow-table .lrow-pick {
     grid-column: 1;
     grid-row: 1 / span 2;
     left: 0;
+    z-index: 4;
     display: grid;
     place-items: center;
     align-self: stretch;
     padding: 0;
-    background: inherit;
+    background: #fff;
   }
-  #dir-grid .lrow-thumb {
+  #dir-grid .lrow-table .lrow-thumb {
     grid-column: 2;
     grid-row: 1 / span 2;
     left: var(--lrow-sticky-pick-w);
+    z-index: 5;
     padding: 0;
-    background: inherit;
-    z-index: 4;
+    background: #fff;
   }
   #dir-grid .lrow-thumb .lrow-img,
   #dir-grid .lrow-thumb .lrow-img--ph {
@@ -6178,12 +6190,16 @@ body.home-finder-done .home-hero {
   #dir-grid .lrow-table .lrow:hover .lrow-pick,
   #dir-grid .lrow-table .lrow:hover .lrow-thumb,
   #dir-grid .lrow-table .lrow.is-hl .lrow-pick,
-  #dir-grid .lrow-table .lrow.is-hl .lrow-thumb,
+  #dir-grid .lrow-table .lrow.is-hl .lrow-thumb {
+    background: #FFF8F0;
+  }
   #dir-grid .lrow-table .lrow.is-sel .lrow-pick,
-  #dir-grid .lrow-table .lrow.is-sel .lrow-thumb,
+  #dir-grid .lrow-table .lrow.is-sel .lrow-thumb {
+    background: #FEF2F2;
+  }
   #dir-grid .lrow-table .lrow.is-picked .lrow-pick,
   #dir-grid .lrow-table .lrow.is-picked .lrow-thumb {
-    background: inherit;
+    background: #ECFDF5;
   }
   #dir-grid .lrow-check {
     display: grid;
@@ -6200,15 +6216,16 @@ body.home-finder-done .home-hero {
   #dir-grid .lrow-prod {
     grid-column: 3;
     grid-row: 1 / span 2;
-    position: static !important;
-    left: auto !important;
+    position: relative;
+    left: auto;
+    z-index: 1;
     min-width: max(7.25rem, calc(100cqi - var(--lrow-sticky-pick-w) - var(--lrow-sticky-thumb-w) - 7.75rem));
     width: auto;
     max-width: 100%;
     overflow: hidden;
     padding: 0 2px 0 0;
-    box-shadow: none !important;
-    background: transparent !important;
+    box-shadow: none;
+    background: transparent;
   }
   #dir-grid .lrow-open {
     display: block;
