@@ -9944,7 +9944,7 @@ function listingRowsHtml(list, opts = {}) {
     <table class="ddr-table lrow-table">
       <thead><tr>
         ${actions || pick ? '<th class="lrow-pick"></th>' : ''}
-        <th>Produk</th>
+        <th class="lrow-col-prod">Produk</th>
         ${th('termurah', 'Harga')}
         ${th('omset', 'Omset')}
         ${th('trending', 'Trending')}
