@@ -19331,16 +19331,17 @@ function renderAdminKpis(users) {
   const viewsTotal = s.landing_views_total;
   const viewsDaily = admSeriesFromDaily(s.landing_views_daily, 'views', days);
 
+  const favAddedTotal = k.tracked_total != null
+    ? k.tracked_total
+    : (users || []).reduce((n, u) => n + (Number(u.tracked_count) || 0), 0);
+  const favAddedDaily = admSeriesFromDaily(k.tracked_daily, 'n', days);
+
   const trackedTotal = k.favorited_products_distinct != null
     ? k.favorited_products_distinct
-    : (k.tracked_total != null
-      ? k.tracked_total
-      : (users || []).reduce((n, u) => n + (Number(u.tracked_count) || 0), 0));
-  const trackedDaily = admSeriesFromDaily(k.tracked_daily, 'n', days);
+    : favAddedTotal;
+  const trackedDaily = favAddedDaily;
   const scraperCeiling = k.scraper_ceiling || 200;
 
-  const keywordsTotal = k.keywords_total;
-  const keywordsDaily = admSeriesFromDaily(k.keywords_daily, 'n', days);
   const storesTotal = k.stores_total;
   const storesDaily = admSeriesFromDaily(k.stores_daily, 'n', days);
 
@@ -19360,9 +19361,9 @@ function renderAdminKpis(users) {
   set('adm-kpi-views-sub', viewsTotal == null ? 'Data tampilan belum tersedia' : 'Semua waktu');
   spark('adm-kpi-views-spark', viewsDaily, '#EA580C');
 
-  set('adm-kpi-keywords', admFmtNum(keywordsTotal));
-  set('adm-kpi-keywords-sub', keywordsTotal == null ? 'Belum tersedia' : 'Semua waktu');
-  spark('adm-kpi-keywords-spark', keywordsDaily, '#16A34A');
+  set('adm-kpi-keywords', admFmtNum(favAddedTotal));
+  set('adm-kpi-keywords-sub', 'Semua waktu');
+  spark('adm-kpi-keywords-spark', favAddedDaily, '#16A34A');
 
   set('adm-kpi-stores', admFmtNum(storesTotal));
   set('adm-kpi-stores-sub', storesTotal == null ? 'Belum tersedia' : 'Semua waktu');
