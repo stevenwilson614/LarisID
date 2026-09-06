@@ -1678,8 +1678,8 @@ const state = {
   pendingDeepdive: null, // { item_id, shop_id } clicked behind the login gate; opened after sign-in
   pendingCompare: null, // { products: [...] } (legacy { a, b }) behind login gate
   pendingFinder: null,  // landing finder answers given before signup; re-run after
-  pendingTracker: null, // in-progress tracker wizard draft behind the login gate; resumed after sign-in
-  pendingTrackKeyword: null, // one-tap "Kabari Kalau Berubah" caught by the signup gate; added after sign-in
+  pendingTracker: null, // Favorit Aku seed behind the login gate; resumed after sign-in
+  pendingTrackKeyword: null, // one-tap Favorit caught by the signup gate; added after sign-in
   everOpenedDeepdive: false,
   lastDeepDiveKeyword: '',
   lastDeepDiveCategory: '',
@@ -3775,7 +3775,7 @@ async function _authOnSignIn(session, opts) {
     const ptk = state.pendingTrackKeyword;
     state.pendingTrackKeyword = null;
     saveLocalState();
-    void quickTrackKeyword({ keyword: ptk.keyword, category: ptk.category });
+    void trackProductFavorite(ptk, { via: 'pending_signin' });
   }
 
   // Someone who answered the landing questions and then signed up should land
@@ -9769,24 +9769,29 @@ function listingTrendCellHtml(p) {
   return `<td class="lrow-trend" title="${esc(listingTrendTitle(p && p._petaTrend))}">${listingTrendInnerHtml(p)}</td>`;
 }
 
-let _trackedKwSet = new Set();
+let _trackedFavSet = new Set();
 let _trackedKwLoaded = false;
 
-function isKwTracked(kw) {
-  const k = String(kw || '').trim().toLowerCase();
-  return !!(k && _trackedKwSet.has(k));
+function favKey(p) {
+  if (p && p.item_id != null && p.shop_id != null) return `${p.item_id}|${p.shop_id}`;
+  return '';
+}
+
+function isFavTracked(p) {
+  const k = typeof p === 'string' ? p : favKey(p);
+  return !!(k && _trackedFavSet.has(k));
 }
 
 async function refreshTrackedKwSet() {
   if (!_supabase || !currentUser) {
-    _trackedKwSet = new Set();
+    _trackedFavSet = new Set();
     _trackedKwLoaded = true;
     return;
   }
   try {
-    const { data } = await _supabase.rpc('get_my_tracking');
-    _trackedKwSet = new Set(
-      (data?.keywords || []).map(k => String(k.keyword || k || '').trim().toLowerCase()).filter(Boolean),
+    const { data } = await _supabase.rpc('get_my_favorites');
+    _trackedFavSet = new Set(
+      (data?.products || []).map(p => favKey(p)).filter(Boolean),
     );
     _trackedKwLoaded = true;
   } catch (_) {
@@ -9811,7 +9816,7 @@ function listingRowHtml(p, opts = {}) {
   const picking = actions || !!opts.pick;
   const picked = picking && (state.comparePick?.selected || []).some(x => prodKey(x) === key);
   const hl = opts.highlightKey && opts.highlightKey === key;
-  const favOn = actions && isKwTracked(p.keyword);
+  const favOn = actions && isFavTracked(p);
   const cls = [
     'lrow',
     picking ? 'is-pickable' : '',
@@ -9839,7 +9844,7 @@ function listingRowHtml(p, opts = {}) {
     : `<td class="lrow-prod">${prodInner}</td>`;
   const actCell = actions
     ? `<td class="lrow-act">
-        <button type="button" class="lrow-fav${favOn ? ' is-on' : ''}" data-lrow-fav="${esc(key)}" aria-pressed="${favOn ? 'true' : 'false'}" title="${favOn ? 'Sudah di pantauan' : 'Tambah ke pantauan'}" aria-label="${favOn ? 'Sudah di pantauan' : 'Favorit — tambah ke pantauan'}">${ico('bookmark', 16)}</button>
+        <button type="button" class="lrow-fav${favOn ? ' is-on' : ''}" data-lrow-fav="${esc(key)}" aria-pressed="${favOn ? 'true' : 'false'}" title="${favOn ? 'Hapus dari Favorit Aku' : 'Simpan ke Favorit Aku'}" aria-label="${favOn ? 'Hapus dari Favorit Aku' : 'Simpan ke Favorit Aku'}">${ico('bookmark', 16)}</button>
         <button type="button" class="lrow-go" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} aria-label="Lihat Deep Dive">${ico('chevronRight', 18)}</button>
       </td>`
     : '';
@@ -9974,7 +9979,7 @@ function bindListingRows(root, extra = {}) {
           showToast('Produk tidak ditemukan — coba cari lagi');
           return;
         }
-        const ok = await trackKeywordWithNotify(p, { via: 'dir_favorit' });
+        const ok = await trackProductFavorite(p, { via: 'dir_favorit' });
         if (ok) {
           await refreshTrackedKwSet();
           syncFavButtons();
@@ -10008,11 +10013,11 @@ function syncFavButtons(root) {
   (root || document).querySelectorAll('[data-lrow-fav]').forEach(el => {
     const key = el.getAttribute('data-lrow-fav');
     const p = key ? state.productByKey[key] : null;
-    const on = isKwTracked(p?.keyword);
+    const on = isFavTracked(p) || isFavTracked(key);
     el.classList.toggle('is-on', on);
     el.setAttribute('aria-pressed', on ? 'true' : 'false');
-    el.title = on ? 'Sudah di pantauan' : 'Tambah ke pantauan';
-    el.setAttribute('aria-label', on ? 'Sudah di pantauan' : 'Favorit — tambah ke pantauan');
+    el.title = on ? 'Hapus dari Favorit Aku' : 'Simpan ke Favorit Aku';
+    el.setAttribute('aria-label', on ? 'Hapus dari Favorit Aku' : 'Simpan ke Favorit Aku');
   });
 }
 
@@ -10666,19 +10671,33 @@ function gptTrackerAdapter() {
     openTrackerView() { openTrackerView(); },
     openHowCalculated() { setView('faq'); },
 
-    getTracking()          { return rpc('get_my_tracking'); },
-    // Reads mv_keyword_daily / mv_shop_daily, tiled from listing_deltas
-    // (refresh_listing_deltas after each scrape day).
+    getTracking()          { return rpc('get_my_favorites'); },
+    getFavorites()         { return rpc('get_my_favorites'); },
     getRollup(days, scope) { return rpc('get_tracker_rollup', { p_days: days, p_scope: scope || 'keyword' }); },
     touchViewed()          { return rpc('touch_tracker_viewed'); },
-    // These two are the wizard's only commit routes, so retiring the Deep Dive
-    // promo here covers the full-panel flow the same way quickTrackKeyword
-    // covers the one-tap one. The RPCs report refusals as { ok: false } rather
-    // than throwing, so a refused add must not count as a conversion.
-    async addKeyword(kw, cat) {
-      const d = await rpc('add_tracked_keyword', { p_keyword: kw, p_category: cat || '' });
+    async addProduct(p) {
+      const d = await rpc('add_tracked_product', {
+        p_item_id: p.item_id,
+        p_shop_id: p.shop_id,
+        p_keyword: p.keyword || '',
+        p_product_name: p.product_name || '',
+        p_image_url: p.image_url || '',
+        p_price: p.price != null ? p.price : null,
+        p_category: p.category || p.category_canonical || '',
+        p_store_name: p.store_name || '',
+        p_total_sold: p.total_sold != null ? p.total_sold : null,
+      });
       if (!d || d.ok !== false) ddtpRetire();
       return d;
+    },
+    removeProduct(p) {
+      return rpc('remove_tracked_product', { p_item_id: p.item_id, p_shop_id: p.shop_id });
+    },
+    async addKeyword(kw, cat) {
+      const rows = await this.getKeywordTopListings(kw);
+      const top = rows && rows[0];
+      if (!top) return { ok: false, error: 'no_listing' };
+      return this.addProduct({ ...top, keyword: kw, category: cat || '' });
     },
     async addStore(id, name) {
       const d = await rpc('add_tracked_store', { p_shop_id: id, p_store_name: name || '' });
@@ -10688,12 +10707,25 @@ function gptTrackerAdapter() {
     getStoresByCategory(cat) { return rpc('find_shops_by_category', { p_category: cat, p_limit: 30 }); },
     removeKeyword(id)      { return rpc('remove_tracked_keyword', { p_id: id }); },
     setMetrics(list)       { return rpc('set_tracker_metrics', { p_metrics: list }); },
-    // Returns { ok:false, error:'wa_number_required' } when whatsapp is picked
-    // without a reachable number — the module surfaces that inline.
-    setNotifyPrefs(channels, waNumber) {
+    setNotifyPrefs(optsOrChannels, waNumber, cadence) {
+      const o = optsOrChannels && !Array.isArray(optsOrChannels)
+        ? optsOrChannels
+        : { channels: optsOrChannels, waNumber, cadence };
       return rpc('set_tracker_notify_prefs', {
-        p_channels: channels || [], p_wa_number: waNumber || null,
+        p_channels: o.channels || [],
+        p_wa_number: o.waNumber || o.wa || null,
+        p_cadence: o.cadence || 'on_update',
       });
+    },
+    searchListings(q) { return searchListings(q, [], 8); },
+    waAlertsReady() { return WA_ALERTS_READY; },
+    hasRealEmail() {
+      const email = String(currentUser?.email || '');
+      return !!(email && !/@wa\.larisid\.com$/i.test(email));
+    },
+    userEmail() {
+      const email = String(currentUser?.email || '');
+      return /@wa\.larisid\.com$/i.test(email) ? '' : email;
     },
     async getStoreInfo(shopId) {
       if (!_supabase || shopId == null) return null;
@@ -10720,10 +10752,8 @@ function gptTrackerAdapter() {
         .order('omset_top15', { ascending: false }).limit(limit || 24);
       return data || [];
     },
-    // fromTracked used to be seeded from user_tracked_products. That table has
-    // been read-only since the 2026-08-10 cutover removed its write path, so it
-    // could only ever suggest a pre-cutover user's stale products. Seeds now
-    // come from onboarding categories alone.
+    // Seed keywords for the retired wizard. Favorit Aku no longer uses this
+    // path; kept so a stale host call does not throw.
     async getSeedCandidates() {
       const out = { fromTracked: [], categories: [] };
       if (!_supabase || !currentUser) return out;
@@ -10852,15 +10882,20 @@ function pantauNudgeSave(st) {
 }
 
 function pantauNudgeSeedFromProduct(product) {
-  const keyword = String(product?.keyword || '').trim();
-  if (!keyword) return null;
+  if (!product || product.item_id == null || product.shop_id == null) {
+    const keyword = String(product?.keyword || '').trim();
+    if (!keyword) return null;
+  }
   return {
-    keyword,
+    keyword: String(product?.keyword || '').trim(),
     category: product.category || product.category_canonical || '',
     shop_id: product.shop_id ?? null,
     store_name: product.store_name || '',
     item_id: product.item_id ?? null,
     image_url: product.image_url || '',
+    product_name: product.product_name || '',
+    price: product.price ?? null,
+    total_sold: product.total_sold ?? null,
   };
 }
 
@@ -10912,7 +10947,7 @@ function resumePantauNavPulse() {
 function consumePantauNudgeSeed() {
   const st = pantauNudgeLoad();
   if (st.phase !== 'pulsing' && st.phase !== 'armed') return null;
-  const seed = st.seed && st.seed.keyword ? st.seed : null;
+  const seed = (st.seed && (st.seed.item_id || st.seed.keyword)) ? st.seed : null;
   pantauNudgeClear();
   return seed;
 }
@@ -10933,9 +10968,9 @@ async function ddtpUserHasTracked() {
   if (_ddtpHasTracked === true) return true;
   if (!_supabase || !currentUser) return false;
   try {
-    const { data, error } = await _supabase.rpc('get_my_tracking');
+    const { data, error } = await _supabase.rpc('get_my_favorites');
     if (error) throw error;
-    const n = (data?.keywords?.length || 0) + (data?.stores?.length || 0);
+    const n = (data?.products?.length || 0) + (data?.keywords?.length || 0) + (data?.stores?.length || 0);
     if (n > 0) { _ddtpHasTracked = true; return true; }
     _ddtpHasTracked = false;
     return false;
@@ -11086,68 +11121,112 @@ function sddvCancel() {
   }
 }
 
-/** One-tap keyword tracking straight from a Deep Dive.
- *
- *  The old path opened the setup wizard with the keyword pre-filled. Aksi
- *  Cepat was opened 72 times in the week of 16-23 Aug 2026 by 21 users and
- *  this button was clicked twice, by one person: the offer was a chore, and
- *  the tap led to more chores. This does the whole thing in one call and
- *  leaves "Atur" in the toast for anyone who wants the full panel.
- *
- *  add_tracked_keyword is exactly what the wizard's commit() calls, so nothing
- *  is skipped except the screens. Deliberately does NOT load laris-tracker.js.
- */
-async function trackKeywordWithNotify(product, opts = {}) {
-  const kw = String(product?.keyword || '').trim();
-  if (!kw) { showToast('Produk ini belum punya keyword untuk dipantau'); return false; }
+/** One-click product favorite. Toggle off removes. May set notify prefs
+ *  if the user has never answered (or if a channel is passed from #ddr-alert). */
+async function trackProductFavorite(product, opts = {}) {
+  let p = product;
+  if ((!p || p.item_id == null || p.shop_id == null) && p?.keyword && _supabase) {
+    try {
+      const { data } = await _supabase.from('listings_deduped')
+        .select('item_id,shop_id,store_name,product_name,image_url,price,total_sold,keyword,category')
+        .eq('keyword', String(p.keyword).trim().toLowerCase())
+        .eq('is_offtopic', false)
+        .order('total_sold', { ascending: false }).limit(1);
+      if (data && data[0]) p = { ...p, ...data[0] };
+    } catch (_) {}
+  }
+  if (!p || p.item_id == null || p.shop_id == null) {
+    showToast('Produk ini belum bisa disimpan ke favorit.');
+    return false;
+  }
   if (!currentUser) {
-    try { state.pendingTrackKeyword = { keyword: kw, category: product?.category || product?.category_canonical || '' }; saveLocalState(); } catch (_) {}
+    try {
+      state.pendingTrackKeyword = {
+        item_id: p.item_id, shop_id: p.shop_id, keyword: p.keyword || '',
+        category: p.category || p.category_canonical || '',
+        product_name: p.product_name || '', image_url: p.image_url || '',
+        price: p.price ?? null, store_name: p.store_name || '',
+        total_sold: p.total_sold ?? null,
+      };
+      saveLocalState();
+    } catch (_) {}
     openAuthModal('signup', 'gpt_gate_track');
     return false;
   }
   try {
-    const res = await _supabase.rpc('add_tracked_keyword', {
-      p_keyword: kw,
-      p_category: product?.category || product?.category_canonical || '',
+    await refreshTrackedKwSet();
+    if (isFavTracked(p)) {
+      const rem = await _supabase.rpc('remove_tracked_product', {
+        p_item_id: p.item_id, p_shop_id: p.shop_id,
+      });
+      if (rem?.error) throw rem.error;
+      _trackedFavSet.delete(favKey(p));
+      syncFavButtons();
+      void logUserEvent('favorite_removed', { ui: 'gpt', via: opts.via || 'toggle' });
+      showToast('Dihapus dari Favorit Aku.');
+      return true;
+    }
+    const res = await _supabase.rpc('add_tracked_product', {
+      p_item_id: p.item_id,
+      p_shop_id: p.shop_id,
+      p_keyword: p.keyword || '',
+      p_product_name: p.product_name || '',
+      p_image_url: p.image_url || '',
+      p_price: p.price != null ? p.price : null,
+      p_category: p.category || p.category_canonical || '',
+      p_store_name: p.store_name || '',
+      p_total_sold: p.total_sold != null ? p.total_sold : null,
     });
     if (res?.error) throw res.error;
     const data = res?.data;
     if (data && data.ok === false) {
       const msg = {
-        limit_reached:     'Daftar pantauan sudah penuh. Buka Pantauan untuk mengatur.',
-        already_tracked:   `"${kw}" sudah kamu pantau.`,
-        keyword_too_short: 'Keyword ini terlalu pendek untuk dipantau.',
-      }[data.error] || 'Tidak bisa menambah pantauan sekarang.';
+        limit_reached:     'Favorit penuh (30). Buka Favorit Aku untuk mengatur — batas ini biar data tetap segar.',
+        listing_required:  'Produk ini tidak bisa disimpan.',
+      }[data.error] || 'Tidak bisa menambah favorit sekarang.';
       showToast(msg);
-      void logUserEvent('quick_track_refused', { ui: 'gpt', keyword: kw, reason: data.error || 'unknown' });
+      void logUserEvent('favorite_refused', { ui: 'gpt', reason: data.error || 'unknown' });
       return false;
     }
-    void logUserEvent('quick_track_added', { ui: 'gpt', keyword: kw, via: opts.via || 'aksi_cepat' });
+    _trackedFavSet.add(favKey(p));
+    syncFavButtons();
+    void logUserEvent('favorite_added', { ui: 'gpt', via: opts.via || 'aksi_cepat' });
 
     let notifyOn = false;
     let wa = String(opts.wa || '').trim();
     let channel = opts.channel || '';
     try {
-      const cur = await _supabase.rpc('get_my_tracking');
+      const cur = await _supabase.rpc('get_my_favorites');
       const ch = cur?.data?.notify_channels;
       const neverSet = Array.isArray(ch) && ch.length === 0;
       if (neverSet || channel) {
         if (!wa) wa = await loadProfileWaNumber();
-        if (!channel) channel = (WA_ALERTS_READY && wa) ? 'whatsapp' : 'email';
-        if (channel === 'whatsapp' && !WA_ALERTS_READY) channel = 'email';
+        const email = String(currentUser.email || '');
+        const emailOk = !!(email && !/@wa\.larisid\.com$/i.test(email));
+        if (!channel) channel = (WA_ALERTS_READY && wa) ? 'whatsapp' : (emailOk ? 'email' : (wa ? 'whatsapp' : ''));
         if (channel === 'whatsapp' && !wa) {
           showToast('Isi nomor WhatsApp dulu.');
-          return false;
+          return true;
+        }
+        if (channel === 'email' && !emailOk) {
+          if (wa) channel = 'whatsapp';
+          else {
+            showToast('Tersimpan. Pilih saluran kabar di Favorit Aku.');
+            pantauNudgeClear();
+            ddtpRetire();
+            return true;
+          }
         }
         if (channel === 'whatsapp') await saveProfileWaNumber(wa);
         const set = await _supabase.rpc('set_tracker_notify_prefs', {
-          p_channels: [channel],
+          p_channels: channel ? [channel] : [],
           p_wa_number: wa || null,
+          p_cadence: 'on_update',
         });
         notifyOn = !set?.error && set?.data?.ok !== false;
         if (set?.data?.ok === false && set.data.error === 'wa_number_required') {
           showToast('Isi nomor WhatsApp dulu.');
-          return false;
+          return true;
         }
         if (notifyOn) void logUserEvent('quick_track_notify_on', { ui: 'gpt', channel });
       }
@@ -11155,20 +11234,25 @@ async function trackKeywordWithNotify(product, opts = {}) {
 
     pantauNudgeClear();
     ddtpRetire();
+    const name = p.product_name || 'Produk';
     showToast(notifyOn
       ? (channel === 'whatsapp'
-        ? `Siap — kami kabari di WhatsApp saat data scrape baru masuk (biasanya tiap ~2 minggu)`
-        : `Siap — kami email kamu saat data scrape baru masuk (biasanya tiap ~2 minggu)`)
-      : `Siap — "${kw}" masuk pantauan kamu`);
+        ? `Siap — kami kabari di WhatsApp saat favorit ini berubah`
+        : `Siap — kami email kamu saat favorit ini berubah`)
+      : `Siap — "${name}" masuk Favorit Aku`);
     return true;
   } catch (_) {
-    showToast('Gagal menyimpan pantauan. Coba lagi.');
+    showToast('Gagal menyimpan favorit. Coba lagi.');
     return false;
   }
 }
 
+async function trackKeywordWithNotify(product, opts = {}) {
+  return trackProductFavorite(product, opts);
+}
+
 async function quickTrackKeyword(product) {
-  return trackKeywordWithNotify(product, { via: 'aksi_cepat' });
+  return trackProductFavorite(product, { via: 'aksi_cepat' });
 }
 
 // laris-tracker.js is no longer in the eager <script> list — it is the single
@@ -11184,12 +11268,12 @@ function ensureTracker() {
       if (!document.getElementById('ltk-css')) {
         const l = document.createElement('link');
         l.id = 'ltk-css'; l.rel = 'stylesheet';
-        l.href = '/styles/laris-tracker.css?v=20260901f';
+        l.href = '/styles/laris-tracker.css?v=20260906a';
         document.head.appendChild(l);
       }
     } catch (_) {}
     _trkLoadPromise = (typeof larisLoadScript === 'function'
-      ? larisLoadScript('/js/laris-tracker.js?v=20260901f')
+      ? larisLoadScript('/js/laris-tracker.js?v=20260906a')
       : Promise.reject(new Error('no loader')))
       .then(() => window.LarisTracker || null)
       .catch(() => { _trkLoadPromise = null; return null; });
@@ -11198,10 +11282,7 @@ function ensureTracker() {
 }
 
 async function openTrackerView(seed, resumeDraft) {
-  // First-dive Pantauan pulse: clicking the nav icon (or any tracker entry)
-  // while the nudge is active opens the seeded setup wizard and stops the pulse.
-  // Cancel/close in the wizard is fine — nothing is saved until they commit.
-  if (!seed || !seed.keyword) {
+  if (!seed || (!seed.item_id && !seed.keyword)) {
     const nudged = consumePantauNudgeSeed();
     if (nudged) seed = nudged;
   } else {
@@ -11209,22 +11290,16 @@ async function openTrackerView(seed, resumeDraft) {
     if (st.phase === 'pulsing' || st.phase === 'armed') pantauNudgeClear();
   }
   setView('tracker');
-  // Parity with Site A trkOpen(): view_open fires from setView; this marks the
-  // pantauan entry specifically so A/B tracker_tab rates stay comparable.
-  try { void logUserEvent('tracker_tab', { tab: 'keyword', ui: 'gpt', seeded: !!(seed && seed.keyword) }); } catch (_) {}
+  try { void logUserEvent('tracker_tab', { tab: 'product', ui: 'gpt', seeded: !!(seed && (seed.item_id || seed.keyword)) }); } catch (_) {}
   await ensureTracker();
   if (!window.LarisTracker) return;
   window.LarisTracker.mount({ hostId: 'laris-tracker-root', site: 'b', adapter: gptTrackerAdapter() });
   const p = window.LarisTracker.open({ touch: true });
-  // Arriving from a Deep Dive: drop straight into the seeded wizard rather than
-  // the rollup, which for a first-time user would be an empty table.
-  if (seed && seed.keyword) {
+  if (seed && (seed.item_id || seed.keyword)) {
     Promise.resolve(p).then(() => {
       try { window.LarisTracker.openSetup({ seed }); } catch (_) {}
     });
   } else if (resumeDraft) {
-    // Restoring a wizard draft stashed before a login interrupt — same open()
-    // race to wait out as the seed path above.
     Promise.resolve(p).then(() => {
       try { window.LarisTracker.resumeDraft(resumeDraft); } catch (_) {}
     });
@@ -11270,13 +11345,26 @@ function mountLarisCohort() {
     toast: showToast,
     isAdmin: isPlatformAdmin,
     openProfile: openUserProfile,
-    // Rencana Jualan: the cohort module owns the tab and the form, the AI
-    // machinery stays here. trackKeyword goes through the same RPC the tracker
-    // wizard and quickTrackKeyword use, so enrolment in the daily scrape lane
-    // (add_tracked_keyword -> scrape_enrol_tracked) applies to it too.
     runRencana: (input, opts) => runRencanaJualan(input, opts),
     trackKeyword: async (kw, cat) => {
-      const res = await _supabase.rpc('add_tracked_keyword', { p_keyword: kw, p_category: cat || '' });
+      const { data } = await _supabase.from('listings_deduped')
+        .select('item_id,shop_id,store_name,product_name,image_url,price,total_sold,keyword,category')
+        .eq('keyword', String(kw || '').trim().toLowerCase())
+        .eq('is_offtopic', false)
+        .order('total_sold', { ascending: false }).limit(1);
+      const top = data && data[0];
+      if (!top) return { ok: false, error: 'no_listing' };
+      const res = await _supabase.rpc('add_tracked_product', {
+        p_item_id: top.item_id,
+        p_shop_id: top.shop_id,
+        p_keyword: kw || top.keyword || '',
+        p_product_name: top.product_name || '',
+        p_image_url: top.image_url || '',
+        p_price: top.price != null ? top.price : null,
+        p_category: cat || top.category || '',
+        p_store_name: top.store_name || '',
+        p_total_sold: top.total_sold != null ? top.total_sold : null,
+      });
       if (res?.error) throw res.error;
       return res?.data;
     },
@@ -11353,16 +11441,17 @@ function openCommunityBoard() {
 function trackerChatCardHtml() {
   if (!window.LarisTracker) return '';
   const s = window.LarisTracker.summary();
+  const n = s.productCount != null ? s.productCount : s.keywordCount;
   const sub = s.configured
-    ? `${s.keywordCount} keyword${s.storeCount ? ` · ${s.storeCount} toko` : ''}`
+    ? `${n} favorit${s.storeCount ? ` · ${s.storeCount} toko` : ''}`
     : 'Belum diatur';
   return `<div class="ans-card ltk-summary-host" data-ltk-card="tracker">
     <div class="ans-head">
       <span class="ans-head-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
-      <div><div class="ans-title">Pantauan Harian</div><div class="ans-sub">${esc(sub)}</div></div>
+      <div><div class="ans-title">Favorit Aku</div><div class="ans-sub">${esc(sub)}</div></div>
     </div>
     ${window.LarisTracker.summaryCardHtml()}
-    <button type="button" class="ans-cta" data-ltk-open="tracker">Buka pantauan →</button>
+    <button type="button" class="ans-cta" data-ltk-open="tracker">Buka Favorit Aku →</button>
   </div>`;
 }
 
@@ -11373,8 +11462,8 @@ function upsertTrackerChatMessage(chat) {
   const card = trackerChatCardHtml();
   if (!card) return;
   const s = window.LarisTracker.summary();
-  const html = `<p>Pantauan harian kamu:</p>${card}`;
-  const content = { text: 'Pantauan Harian', kind: 'tracker', keywordCount: s.keywordCount, html };
+  const html = `<p>Favorit Aku:</p>${card}`;
+  const content = { text: 'Favorit Aku', kind: 'tracker', keywordCount: s.productCount || s.keywordCount, html };
   if (!chat.messages) chat.messages = [];
   const idx = chat.messages.findIndex(m => m.role === 'assistant' && m.content?.kind === 'tracker');
   if (idx >= 0) {
@@ -12656,7 +12745,7 @@ function ddAksiCepatHtml(product) {
       </button>
       <button type="button" class="ddr-aksi-btn primary" data-ddr-aksi="track">
         <span class="ddr-aksi-ico">${ico('eye', 18)}</span>
-        <span class="ddr-aksi-txt">Kabari Kalau Berubah</span>
+        <span class="ddr-aksi-txt">${isFavTracked(product) ? 'Sudah di Favorit' : 'Simpan ke Favorit'}</span>
       </button>
       <button type="button" class="ddr-aksi-btn" data-ddr-aksi="compare">
         <span class="ddr-aksi-ico">${ico('scale', 18)}</span>
@@ -12673,8 +12762,8 @@ const WA_ALERTS_READY = false;
 
 function ddAlertCardHtml(product) {
   if (!currentUser) return '';
-  const kw = String(product?.keyword || '').trim();
-  if (!kw) return '';
+  if (!product?.item_id || !product?.shop_id) return '';
+  const name = product.product_name || typeTitle(product.keyword) || 'produk ini';
   const email = String(currentUser.email || '');
   const waSignup = /@wa\.larisid\.com$/i.test(email);
   const emailOk = !!(email && !waSignup);
@@ -12686,8 +12775,8 @@ function ddAlertCardHtml(product) {
     : '';
   return `<div class="ddr-alert" id="ddr-alert" data-dd-sec="alert_optin" hidden>
     <div class="ddr-alert-copy">
-      <h3>Kabari saya kalau <em>${esc(typeTitle(kw))}</em> berubah</h3>
-      <p>Kami kabari saat data scrape baru masuk (biasanya tiap ~2 minggu). Bukan setiap hari.</p>
+      <h3>Simpan ke Favorit &amp; kabari kalau <em>${esc(name)}</em> berubah</h3>
+      <p>Kami scrape favorit ini tiap hari. Pilih saluran — kami hanya kirim saat ada perubahan, atau sekali seminggu kalau kamu atur begitu di Favorit Aku.</p>
     </div>
     <div class="ddr-alert-actions">
       ${emailOk ? `<button type="button" class="ddr-alert-btn primary" data-dd-alert="email">Email ke ${esc(email)}</button>` : ''}
@@ -12721,21 +12810,20 @@ async function wireDdAlertCard(root, product) {
 }
 
 async function submitDdAlert(product, channel, card) {
-  const kw = String(product?.keyword || '').trim();
-  if (!kw) return;
+  if (!product?.item_id || !product?.shop_id) return;
   let wa = '';
   if (channel === 'whatsapp') {
     wa = String(card.querySelector('#ddr-alert-wa')?.value || '').trim();
     if (!wa) { showToast('Isi nomor WhatsApp dulu.'); return; }
   }
-  const ok = await trackKeywordWithNotify(product, {
+  const ok = await trackProductFavorite(product, {
     channel,
     wa,
     via: 'dd_alert_card',
   });
   if (ok) {
     card.remove();
-    void logUserEvent('dd_alert_card', { ui: 'gpt', action: channel, keyword: kw });
+    void logUserEvent('dd_alert_card', { ui: 'gpt', action: channel, keyword: product.keyword || '' });
   }
 }
 
@@ -13559,6 +13647,7 @@ async function openDeepDive(product, ddOpts = {}) {
           <span class="ddr-level ddr-level-produk" title="Angka di hero ini untuk satu listing penjual">PRODUK</span>
           <h1>${esc(product.product_name || kw || 'Produk')}</h1>
           <span class="badge ${scoreInfo.cls}">${scoreInfo.label}</span>
+          <button type="button" class="lrow-fav ddr-fav${isFavTracked(product) ? ' is-on' : ''}" data-ddr-fav="1" aria-pressed="${isFavTracked(product) ? 'true' : 'false'}" title="${isFavTracked(product) ? 'Hapus dari Favorit Aku' : 'Simpan ke Favorit Aku'}" aria-label="${isFavTracked(product) ? 'Hapus dari Favorit Aku' : 'Simpan ke Favorit Aku'}">${ico('bookmark', 18)}</button>
         </div>
         <p class="ddr-cat">${esc(ddKotaLabel(product, peers))}</p>
         ${ddMarketNoteHtml(product, peers)}
@@ -13661,6 +13750,23 @@ async function openDeepDive(product, ddOpts = {}) {
   bindDdrCarousel(root);
   wireDdrToolPills(root, product, peers);
   wireDdrAksiCepat(root, product, peers);
+  root.querySelector('[data-ddr-fav]')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    void (async () => {
+      const ok = await trackProductFavorite(product, { via: 'dd_header' });
+      if (ok) {
+        await refreshTrackedKwSet();
+        const btn = root.querySelector('[data-ddr-fav]');
+        if (btn) {
+          const on = isFavTracked(product);
+          btn.classList.toggle('is-on', on);
+          btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+          btn.title = on ? 'Hapus dari Favorit Aku' : 'Simpan ke Favorit Aku';
+        }
+      }
+    })();
+  });
   void wireDdAlertCard(root, product);
   $('ddr-komp-more')?.addEventListener('click', () => {
     void logUserEvent('deepdive_section', { ui: 'gpt', section: 'kompetitor', via: 'click', keyword: kw || '' });
@@ -19005,13 +19111,13 @@ function renderAdminKpis(users) {
   const viewsTotal = s.landing_views_total;
   const viewsDaily = admSeriesFromDaily(s.landing_views_daily, 'views', days);
 
-  // Archive: user_tracked_products lost its write path at the 2026-08-10
-  // cutover and has been frozen since 2026-08-08. Kept for history; the live
-  // tracking model is keywords + toko below.
-  const trackedTotal = k.tracked_total != null
-    ? k.tracked_total
-    : (users || []).reduce((n, u) => n + (Number(u.tracked_count) || 0), 0);
+  const trackedTotal = k.favorited_products_distinct != null
+    ? k.favorited_products_distinct
+    : (k.tracked_total != null
+      ? k.tracked_total
+      : (users || []).reduce((n, u) => n + (Number(u.tracked_count) || 0), 0));
   const trackedDaily = admSeriesFromDaily(k.tracked_daily, 'n', days);
+  const scraperCeiling = k.scraper_ceiling || 200;
 
   const keywordsTotal = k.keywords_total;
   const keywordsDaily = admSeriesFromDaily(k.keywords_daily, 'n', days);
@@ -19043,8 +19149,8 @@ function renderAdminKpis(users) {
   spark('adm-kpi-stores-spark', storesDaily, '#0891B2');
 
   set('adm-kpi-tracked', admFmtNum(trackedTotal));
-  set('adm-kpi-tracked-sub', 'Beku sejak 10 Agu');
-  spark('adm-kpi-tracked-spark', trackedDaily, '#9CA3AF');
+  set('adm-kpi-tracked-sub', `${admFmtNum(trackedTotal)} / ${scraperCeiling} ceiling scrape harian`);
+  spark('adm-kpi-tracked-spark', trackedDaily, '#16A34A');
 
   set('adm-kpi-dives', admFmtNum(divesTotal));
   set('adm-kpi-dives-sub', 'Semua waktu, termasuk anonim');

@@ -1217,6 +1217,36 @@
 .ltk-notify-save { align-self: flex-start; }
 .ltk-notify-ok { font-size: .72rem; font-weight: 600; color: #1A7A46; }
 
+.ltk-empty { padding: 18px 4px 8px; }
+.ltk-empty p { font-size: .85rem; color: #4B5563; line-height: 1.5; margin: 0 0 12px; }
+.ltk-add { margin-bottom: 16px; }
+.ltk-add-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.ltk-add-row {
+  display: flex; align-items: center; gap: 10px; text-align: left;
+  font: inherit; background: #fff; border: 1px solid #E5E7EB; border-radius: 12px;
+  padding: 8px 10px; cursor: pointer; width: 100%;
+}
+.ltk-add-row:hover:not(:disabled) { border-color: #B5202A; }
+.ltk-add-row:disabled { opacity: .65; cursor: default; }
+.ltk-add-row .ltk-row-ico { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
+.ltk-add-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ltk-add-txt b { font-size: .8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ltk-add-txt i { font-style: normal; font-size: .68rem; color: #6B7280; }
+.ltk-fav-actions {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-top: 10px;
+}
+.ltk-switch { display: inline-flex; align-items: center; gap: 8px; font-size: .74rem; font-weight: 600; color: #374151; cursor: pointer; }
+.ltk-honesty { font-size: .62rem; font-weight: 700; color: #6B7280; text-transform: uppercase; letter-spacing: .03em; }
+.ltk-fav-spark { width: 88px; height: 28px; display: block; }
+.ltk-cadence { display: flex; flex-direction: column; gap: 6px; }
+.ltk-cadence-opt { font-size: .78rem; font-weight: 600; color: #374151; display: flex; align-items: center; gap: 8px; }
+.ltk-detail-toggles { display: flex; gap: 8px; margin: 12px 0; }
+.ltk-delta { display: inline-flex; align-items: center; gap: 3px; font-size: .72rem; font-weight: 800; }
+.ltk-delta.is-up { color: #16A34A; }
+.ltk-delta.is-down { color: #DC2626; }
+.ltk-delta.is-flat { color: #9CA3AF; font-weight: 600; }
+
 @media (prefers-reduced-motion: reduce) {
   .ltk-root *,
   .ltk-root *::before,

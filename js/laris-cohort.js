@@ -219,9 +219,8 @@
         rencanaPasar = res.pasar;
         const copy = $('rjl-after-copy');
         if (copy) {
-          copy.textContent = 'Simpan "' + rencanaPasar + '" di pantauan supaya kamu '
-            + 'dikabari saat harga, jumlah penjual, atau penjualan di pasar ini bergerak. '
-            + 'Kami akan mulai memeriksa pasar ini setiap hari.';
+          copy.textContent = 'Simpan produk teratas dari "' + rencanaPasar + '" ke Favorit Aku. '
+            + 'Kami scrape favorit itu tiap hari, dan kamu bisa pilih kabar WA atau email.';
         }
         if (after) after.style.display = '';
         const ts = $('rjl-track-status');
@@ -241,7 +240,7 @@
     const ts = $('rjl-track-status');
     if (!rencanaPasar) { if (ts) ts.textContent = 'Belum ada pasar untuk dipantau.'; return; }
     if (typeof trackKeyword !== 'function') {
-      if (ts) ts.textContent = 'Buka halaman Pantauan untuk menambahkannya.';
+      if (ts) ts.textContent = 'Buka Favorit Aku untuk menambahkannya.';
       return;
     }
     const btn = $('rjl-track');
@@ -253,14 +252,15 @@
       const d = await trackKeyword(rencanaPasar, '');
       if (d && d.ok === false) {
         if (ts) ts.textContent = ({
-          limit_reached: 'Daftar pantauan sudah penuh. Buka Pantauan untuk mengatur.',
-          already_tracked: '"' + rencanaPasar + '" sudah kamu pantau.',
-          keyword_too_short: 'Keyword ini terlalu pendek untuk dipantau.',
-        })[d.error] || 'Tidak bisa menambah pantauan sekarang.';
+          limit_reached: 'Favorit penuh. Buka Favorit Aku untuk mengatur.',
+          already_tracked: 'Produk ini sudah di Favorit Aku.',
+          no_listing: 'Belum ada listing untuk pasar ini.',
+          keyword_too_short: 'Keyword ini terlalu pendek.',
+        })[d.error] || 'Tidak bisa menambah favorit sekarang.';
         if (btn) btn.disabled = false;
         return;
       }
-      if (ts) ts.textContent = 'Tersimpan. Pasar ini masuk antrean scrape harian.';
+      if (ts) ts.textContent = 'Tersimpan di Favorit Aku. Data harian mulai besok pagi.';
     } catch (e) {
       if (ts) ts.textContent = (e && e.message) || 'Gagal menyimpan.';
       if (btn) btn.disabled = false;

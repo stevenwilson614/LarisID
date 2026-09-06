@@ -59,8 +59,8 @@ Scrapes land 12–17 days apart; weeks are already span-normalised in
 4. Keyword chips + listing table + pager + compare bar
 
 Table chrome (`actions: true`): bandingkan checkbox, one weekly % with arrow,
-Favorit bookmark (`trackKeywordWithNotify` — keyword Pantauan, not
-`user_tracked_products`), chevron / product cell → Deep Dive.
+Favorit bookmark (`trackProductFavorite` — product favorite on
+`user_tracked_products`, not keyword Pantauan), chevron / product cell → Deep Dive.
 
 Row click is Deep Dive. Checkboxes do not steal the row.
 
