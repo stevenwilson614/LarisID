@@ -10058,13 +10058,13 @@ function trendingNowSkeletonHtml() {
   </div>`;
 }
 
-/** Soft lightning bolt after the weekly %. Slope: 300% → 70°, 150% → 35°, 75% → 17.5°. */
+/** Soft lightning bolt after the weekly %. Slope: 300% → 60°, 150% → 30°, 75% → 15°. */
 function trendBoltHtml(wkPct) {
   if (wkPct == null || !Number.isFinite(Number(wkPct))) return '';
   const pct = Number(wkPct);
-  const deg = pct * (70 / 300);
+  const deg = pct * (60 / 300);
   const cls = pct > 0 ? 'is-up' : pct < 0 ? 'is-down' : 'is-flat';
-  return `<span class="trend-now-bolt-wrap" aria-hidden="true"><svg class="trend-now-bolt ${cls}" viewBox="0 0 48 24" width="36" height="18" style="transform:rotate(${-deg}deg)"><path d="M3 19 C10 17 13 10 18 8 C16 11 16 13 19 13 C26 8 32 5 45 3" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
+  return `<span class="trend-now-bolt-wrap" aria-hidden="true"><svg class="trend-now-bolt ${cls}" viewBox="0 0 48 24" width="36" height="18" style="transform:rotate(${-deg}deg)"><path d="M2 12 C10 11 14 8 18 11 C16.5 13.5 18 15 21 13 C28 11 36 12 46 12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
 }
 
 function trendingNowRowHtml(p, i) {
@@ -10087,11 +10087,9 @@ function trendingNowRowHtml(p, i) {
   return `<div class="trend-now-row${first ? ' trend-now-row--1' : ''}" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} tabindex="0" role="button" aria-label="Peringkat ${rank}, ${esc(name)}">
     <img class="trend-now-mascot" src="/images/brand/mascot-trend-${rank}.webp" alt="" width="${mascotPx}" height="${mascotPx}" decoding="async">
     ${thumb}
-    <div class="trend-now-txt">
-      <div class="trend-now-name" title="${esc(name)}">${esc(name)}</div>
-      <div class="trend-now-harga">${price ? fmtRp(price) : '—'}</div>
-      <div class="trend-now-omset">${omset ? fmtOmset(omset) : '—'}</div>
-    </div>
+    <div class="trend-now-name" title="${esc(name)}">${esc(name)}</div>
+    <div class="trend-now-harga">${price ? fmtRp(price) : '—'}</div>
+    <div class="trend-now-omset">${omset ? fmtOmset(omset) : '—'}</div>
     <div class="trend-now-pct" title="${esc(listingTrendTitle(p._petaTrend))}">${listingTrendInnerHtml(p)}${bolt}</div>
     <span class="trend-now-go" aria-hidden="true">${ico('chevronRight', first ? 22 : 18)}</span>
   </div>`;

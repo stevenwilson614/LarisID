@@ -5712,16 +5712,19 @@ body.home-finder-done .home-hero {
   width: 56px; height: 56px; border-radius: 12px; object-fit: cover;
   background: var(--bg-user); flex-shrink: 0;
 }
-.trend-now-txt { min-width: 0; flex: 1; }
 .trend-now-name {
+  flex: 1; min-width: 0; max-width: 100%;
   font-weight: 800; letter-spacing: -.02em; line-height: 1.25;
+  text-align: center;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .trend-now-harga {
-  margin-top: 2px; font-size: 1.05rem; font-weight: 800; letter-spacing: -.02em;
+  flex-shrink: 0; font-size: 1.05rem; font-weight: 800; letter-spacing: -.02em;
+  white-space: nowrap;
 }
 .trend-now-omset {
-  margin-top: 1px; font-size: .8rem; font-weight: 650; color: var(--ink-soft);
+  flex-shrink: 0; font-size: .8rem; font-weight: 650; color: var(--ink-soft);
+  white-space: nowrap;
 }
 .trend-now-pct {
   flex-shrink: 0; font-weight: 800;
@@ -5764,8 +5767,9 @@ body.home-finder-done .home-hero {
   .trend-now-mascot { width: 36px; height: 36px; }
   .trend-now-img, .trend-now-img--ph { width: 44px; height: 44px; }
   .trend-now-row { gap: 8px; padding: 8px 10px; flex-wrap: wrap; }
-  .trend-now-txt { flex: 1 1 7.5rem; min-width: 7.5rem; }
-  .trend-now-pct { margin-left: auto; }
+  .trend-now-name { flex: 1 1 100%; order: 3; }
+  .trend-now-harga, .trend-now-omset, .trend-now-pct { order: 4; }
+  .trend-now-go { margin-left: auto; }
   .trend-now-row--1 { gap: 12px; padding: 12px 14px; }
   .trend-now-row--1 .trend-now-mascot { width: 54px; height: 54px; }
   .trend-now-row--1 .trend-now-img,
@@ -8478,6 +8482,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
      larisLoadScript() when the admin view actually renders. -->
 <script src="/js/peta-peluang.js?v=20260906a" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
-<script src="/js/gpt-app.js?v=20260906h" defer></script>
+<script src="/js/gpt-app.js?v=20260906i" defer></script>
 </body>
 </html>
