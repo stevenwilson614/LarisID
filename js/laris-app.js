@@ -12113,11 +12113,8 @@ async function ddLoadKeywordContext(listing) {
       if (!seen.has(key) || (r.total_sold || 0) > (seen.get(key).total_sold || 0)) seen.set(key, r);
     });
     const rows = [...seen.values()].sort((a, b) => (b.total_sold || 0) - (a.total_sold || 0));
-    const heroImages = [
-      listing.image_url || '',
-      ...rows.slice(0, 10).map(r => r.image_url || ''),
-    ];
-    ddSetHeroImages(heroImages, { key: listing.item_id });
+    // Hero stays this listing only — peer covers belong in the seller table, not the gallery.
+    void _ddOwnPhotos(listing);
 
     const totalSold = rows.reduce((s, r) => s + (r.total_sold || 0), 0);
     const rank = rows.findIndex(r => String(r.item_id) === String(listing.item_id) && String(r.shop_id) === String(listing.shop_id)) + 1;
@@ -14770,11 +14767,11 @@ function ddRenderFees(){
 
 // Which product the strip currently shows, and how many photos are in it.
 // ddRender() seeds the strip with the product's own cover while
-// ddLoadKeywordContext() fills it with the market's photos — and ddRender's
+// _ddOwnPhotos() may add other scrape covers for the same item_id. ddRender's
 // body is async (it awaits Chart.js), so the seed regularly landed LAST and
-// overwrote a full gallery with a single frame. That race is why the hero never
-// swiped. Seed calls now refuse to shrink a gallery already built for the same
-// product; a different product resets it.
+// overwrote a fuller gallery with a single frame. Seed calls now refuse to
+// shrink a gallery already built for the same product; a different product
+// resets it.
 let _ddHeroFor = null;
 let _ddHeroCount = 0;
 

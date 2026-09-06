@@ -9844,7 +9844,24 @@ function listingTrendInnerHtml(p, opts = {}) {
 }
 
 function listingTrendCellHtml(p) {
-  return `<td class="lrow-trend" title="${esc(listingTrendTitle(p && p._petaTrend))}">${listingTrendInnerHtml(p)}</td>`;
+  return `<td class="lrow-trend" title="${esc(listingTrendTitle(p && p._petaTrend))}"><span class="lrow-metric-lbl">Tren</span><span class="lrow-metric-val">${listingTrendInnerHtml(p)}</span></td>`;
+}
+
+function listingTrendSparkHtml(p) {
+  const t = p && p._petaTrend;
+  if (!t || t.pending) {
+    return '<span class="lrow-metric-val lrow-trend-pending">…</span>';
+  }
+  if (t.belum || t.wkPct == null) {
+    return '<span class="lrow-metric-val">—</span>';
+  }
+  const gid = `lrow-bolt-${String(prodKey(p)).replace(/\|/g, '-')}`;
+  const bolt = trendBoltHtml(t.wkPct, gid, 2) || '—';
+  return `<span class="lrow-metric-val lrow-spark-val">${bolt}</span>`;
+}
+
+function listingTrendSparkCellHtml(p) {
+  return `<td class="lrow-spark" title="${esc(listingTrendTitle(p && p._petaTrend))}"><span class="lrow-metric-lbl">Grafik</span>${listingTrendSparkHtml(p)}</td>`;
 }
 
 let _trackedFavSet = new Set();
@@ -9913,8 +9930,10 @@ function listingRowHtml(p, opts = {}) {
     : '<div class="lrow-img lrow-img--ph"></div>';
   const cat = trendNowCatHtml(p).replace('trend-now-cat', 'lrow-cat');
   const metaSold = sold ? `${fmtSold(sold)} terjual` : '0 terjual';
-  const prodInner = `${thumb}
-      <div class="lrow-prod-txt">
+  // Thumb is its own cell so mobile can sticky-anchor the photo while metrics
+  // scroll sideways. Desktop CSS keeps thumb + title looking like one Produk col.
+  const thumbCell = `<td class="lrow-thumb">${thumb}</td>`;
+  const prodInner = `<div class="lrow-prod-txt">
         <div class="lrow-name">${esc(name)}</div>
         <div class="lrow-toko">${esc(toko)}</div>
         ${cat}
@@ -9934,13 +9953,15 @@ function listingRowHtml(p, opts = {}) {
     : `data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} tabindex="0" role="button" aria-pressed="${picked ? 'true' : 'false'}"`;
   return `<tr class="${cls}" ${rowAttrs}>
     ${check}
+    ${thumbCell}
     ${prodCell}
     <td class="lrow-num lrow-harga"><span class="lrow-metric-lbl">Harga</span><span class="lrow-metric-val">${price ? fmtRp(price) : '—'}</span></td>
     <td class="lrow-num lrow-omset"><span class="lrow-metric-lbl">Omset</span><span class="lrow-metric-val">${omset ? fmtOmset(omset) : '—'}</span>${omsetChipHtml(p)}</td>
     ${listingTrendCellHtml(p)}
-    <td class="lrow-num lrow-sold">${sold ? fmtSold(sold) : '0'}</td>
-    <td class="lrow-num lrow-wide">${reviews ? fmtSold(reviews) : '0'}</td>
-    <td class="lrow-num lrow-wide" title="${esc(usia.title)}">${esc(usia.text)}</td>
+    ${listingTrendSparkCellHtml(p)}
+    <td class="lrow-num lrow-sold"><span class="lrow-metric-lbl">Terjual</span><span class="lrow-metric-val">${sold ? fmtSold(sold) : '0'}</span></td>
+    <td class="lrow-num lrow-wide lrow-reviews"><span class="lrow-metric-lbl">Review</span><span class="lrow-metric-val">${reviews ? fmtSold(reviews) : '0'}</span></td>
+    <td class="lrow-num lrow-wide lrow-usia" title="${esc(usia.title)}"><span class="lrow-metric-lbl">Usia</span><span class="lrow-metric-val">${esc(usia.text)}</span></td>
     ${actCell}
   </tr>`;
 }
@@ -9959,10 +9980,12 @@ function listingRowsHtml(list, opts = {}) {
     <table class="ddr-table lrow-table">
       <thead><tr>
         ${actions || pick ? '<th class="lrow-pick"></th>' : ''}
+        <th class="lrow-thumb"><span class="sr-only">Foto</span></th>
         <th class="lrow-col-prod">Produk</th>
         ${th('termurah', 'Harga')}
         ${th('omset', 'Omset')}
         ${th('trending', 'Trending')}
+        <th class="lrow-spark"><span class="sr-only">Grafik tren</span></th>
         ${th('terlaris', 'Unit jual')}
         ${th('review', 'Review')}
         ${th('terbaru', 'Usia')}
@@ -10109,10 +10132,18 @@ function refreshLrowTrendCells(root, listings) {
   const map = new Map((listings || []).map(p => [prodKey(p), p]));
   (root || document).querySelectorAll('.lrow').forEach(tr => {
     const p = map.get(tr.getAttribute('data-prod'));
+    if (!p) return;
+    const title = listingTrendTitle(p._petaTrend);
     const cell = tr.querySelector('.lrow-trend');
-    if (!cell || !p) return;
-    cell.title = listingTrendTitle(p._petaTrend);
-    cell.innerHTML = listingTrendInnerHtml(p);
+    if (cell) {
+      cell.title = title;
+      cell.innerHTML = `<span class="lrow-metric-lbl">Tren</span><span class="lrow-metric-val">${listingTrendInnerHtml(p)}</span>`;
+    }
+    const spark = tr.querySelector('.lrow-spark');
+    if (spark) {
+      spark.title = title;
+      spark.innerHTML = `<span class="lrow-metric-lbl">Grafik</span>${listingTrendSparkHtml(p)}`;
+    }
   });
 }
 
@@ -12498,9 +12529,8 @@ async function fetchPeerKeywordRows(peers) {
   }
 }
 
-/** Top photos for a Product Type Deep Dive — matview images, else peers by sold. */
-/** Deep Dive gallery images: product photo first, then peer/type photos for swipe. */
-function ddHeaderImageList(product, peers) {
+/** Distinct cover URLs for this listing only (never peers / product-type mosaics). */
+function ddHeaderImageList(product, extraUrls) {
   const list = [];
   const seen = new Set();
   const push = (u) => {
@@ -12510,18 +12540,36 @@ function ddHeaderImageList(product, peers) {
     list.push(s);
   };
   if (product?.image_url) push(product.image_url);
-  (product?._ptype?.images || []).forEach(push);
-  if (list.length < 8 && peers?.length) {
-    [...peers]
-      .sort((a, b) => (Number(b.total_sold) || 0) - (Number(a.total_sold) || 0))
-      .forEach((p) => { if (list.length < 8) push(p.image_url); });
+  (extraUrls || []).forEach(push);
+  return list;
+}
+
+/**
+ * Other scrape covers for the same item_id (+ shop_id when known). Shopee often
+ * rotates the cover between scrapes — those are still this listing, not peers.
+ */
+async function ddFetchOwnListingImages(product) {
+  const seed = ddHeaderImageList(product);
+  if (!_supabase || product?.item_id == null) return seed;
+  try {
+    let q = _supabase
+      .from('listings')
+      .select('image_url,scraped_at')
+      .eq('item_id', product.item_id)
+      .order('scraped_at', { ascending: false })
+      .limit(30);
+    if (product.shop_id != null && product.shop_id !== '') {
+      q = q.eq('shop_id', product.shop_id);
+    }
+    const { data } = await q;
+    return ddHeaderImageList(product, (data || []).map((r) => r.image_url));
+  } catch (_) {
+    return seed;
   }
-  return list.slice(0, 8);
 }
 
 /** Swipeable photo gallery (Tokopedia-style on mobile). Desktop keeps thumbs. */
-function ddHeaderMediaHtml(product, peers) {
-  const imgs = ddHeaderImageList(product, peers);
+function ddGalleryHtml(imgs) {
   if (!imgs.length) return '<span class="ph" aria-hidden="true"></span>';
   if (imgs.length === 1) {
     return `<div class="ddr-gallery ddr-gallery--single" aria-label="Foto produk">
@@ -12546,6 +12594,26 @@ function ddHeaderMediaHtml(product, peers) {
       </button>`).join('')}
     </div>
   </div>`;
+}
+
+function ddHeaderMediaHtml(product) {
+  return ddGalleryHtml(ddHeaderImageList(product));
+}
+
+/** Upgrade a single-cover hero if scrape history has more covers for this listing. */
+async function enrichDdrGallery(root, product) {
+  if (!root || !product) return;
+  const imgs = await ddFetchOwnListingImages(product);
+  if (imgs.length < 2) return;
+  if (!_dd?.product || prodKey(_dd.product) !== prodKey(product)) return;
+  const old = root.querySelector('.ddr-gallery');
+  if (!old) return;
+  const wrap = document.createElement('div');
+  wrap.innerHTML = ddGalleryHtml(imgs);
+  const neu = wrap.firstElementChild;
+  if (!neu) return;
+  old.replaceWith(neu);
+  bindDdrCarousel(root);
 }
 
 function bindDdrCarousel(root) {
@@ -13835,7 +13903,7 @@ async function openDeepDive(product, ddOpts = {}) {
     <div class="ddr-header" data-dd-sec="skor">
       <div class="ddr-media">
         <button type="button" class="ddr-back" id="ddr-back" aria-label="Kembali" title="Kembali">${ico('arrowLeft', 18)}</button>
-        ${ddHeaderMediaHtml(product, peers)}
+        ${ddHeaderMediaHtml(product)}
         <span class="ddr-views" hidden data-view-key="${esc(viewCountKey(product.item_id, product.shop_id))}" title="Orang yang melihat produk ini di Laris tahun ini">${ico('eye', 13)}<span class="ddr-views-num" data-view-num-self>${viewersYtd.toLocaleString('id-ID')}</span><span class="ddr-views-lbl">sedang melihat</span></span>
       </div>
       <div class="ddr-head-main">
@@ -13944,6 +14012,7 @@ async function openDeepDive(product, ddOpts = {}) {
   wireKompClicks(root, peers, { history });
   wireDdrTrendToggles(root);
   bindDdrCarousel(root);
+  void enrichDdrGallery(root, product);
   wireDdrToolPills(root, product, peers);
   wireDdrAksiCepat(root, product, peers);
   root.querySelector('[data-ddr-fav]')?.addEventListener('click', (e) => {
