@@ -10129,9 +10129,9 @@ function trendingNowRowHtml(p, i) {
   const omset = estOmsetBulan(p);
   const rank = i + 1;
   const first = rank === 1;
-  const thumbPx = first ? 84 : 64;
-  const mascotPx = first ? 88 : 64;
-  const placePx = first ? 52 : 44;
+  const thumbPx = first ? 109 : 83;
+  const mascotPx = first ? 114 : 83;
+  const placePx = first ? 68 : 57;
   const snap = productSnapshot(p);
   const encoded = snap ? encodeURIComponent(JSON.stringify(snap)) : '';
   const t = p && p._petaTrend;
