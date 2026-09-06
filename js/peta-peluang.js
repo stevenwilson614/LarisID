@@ -49,7 +49,33 @@
     return /^https:\/\/cf\.shopee\.co\.id\/file\/[\w-]+$/.test(u) ? u + '_tn.webp' : u;
   }
   function emptyTrend(pending) {
-    return { wkPct: null, wkPctRaw: null, moPct: null, terukur: false, belum: true, pending: !!pending };
+    return {
+      wkPct: null, wkPctRaw: null, moPct: null,
+      terukur: false, belum: true, pending: !!pending,
+      unitsNowWk: null, unitsPrevWk: null,
+      spanNow: null, spanPrev: null,
+      at0: null, at1: null, at2: null
+    };
+  }
+  function trendFromMomentum(m) {
+    if (!m) return emptyTrend(false);
+    var belum = m.momentum_class === 'belum' || m.momentum_pct == null;
+    var pct = num(m.momentum_pct);
+    return {
+      wkPct: (belum || pct == null) ? null : clamp(pct, -100, 300),
+      wkPctRaw: (belum || pct == null) ? null : pct,
+      moPct: null,
+      terukur: !belum,
+      belum: !!belum,
+      pending: false,
+      unitsNowWk: num(m.units_now_wk),
+      unitsPrevWk: num(m.units_prev_wk),
+      spanNow: num(m.span_now),
+      spanPrev: num(m.span_prev),
+      at0: m.at0 || null,
+      at1: m.at1 || null,
+      at2: m.at2 || null
+    };
   }
   function windowOmset(frames, weekList) {
     var sum = 0, n = 0, measured = true, real = false;
@@ -855,23 +881,20 @@
   };
 
   function attachTrends(listings, batch, status) {
-    var weeks = (batch && batch.weeks) || [];
-    var posMap = {};
-    ((batch && batch.positions) || []).forEach(function (p) {
-      var k = String(p.item_id) + '|' + String(p.shop_id);
-      if (!posMap[k]) posMap[k] = {};
-      posMap[k][weekKey(p.week_start)] = p;
+    var momMap = {};
+    ((batch && batch.momentum) || []).forEach(function (m) {
+      momMap[String(m.item_id) + '|' + String(m.shop_id)] = m;
     });
     (listings || []).forEach(function (listing) {
       if (status === 'pending') {
         listing._petaTrend = emptyTrend(true);
         return;
       }
-      if (status !== 'ok' || !weeks.length) {
+      if (status !== 'ok') {
         listing._petaTrend = emptyTrend(false);
         return;
       }
-      listing._petaTrend = omsetTrendFrom(posMap[keyOf(listing)] || {}, weeks);
+      listing._petaTrend = trendFromMomentum(momMap[keyOf(listing)] || null);
     });
     return listings || [];
   }

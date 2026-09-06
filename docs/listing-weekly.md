@@ -69,7 +69,9 @@ Monday. Columns include `units_wk`, `omset_wk`, `source`
 `keyword_weekly` PK `(keyword, week_start)` is the sum over the keyword's
 **distinct** `(item_id, shop_id)` set, so an ad slot and an organic slot of the
 same listing are not double-counted. It is **not** `mv_keyword_weekly` (that
-matview is only the Terlaris Minggu Ini badge).
+matview is only the Terlaris Minggu Ini badge). Cari Produk / Trending
+Sekarang % does **not** read `listing_weekly` — it uses measured 3-snapshot
+momentum in `mv_listing_momentum` (see [peta-peluang.md](./peta-peluang.md)).
 
 ## Update path
 
@@ -80,15 +82,18 @@ listings push
   → refresh_velocity (cohorts + products)
   → refresh_listing_weekly(day)     ← this file
   → backfill_listing_weekly_estimates(10)
-  → refresh mv_listing_momentum + mv_listing_week_positions
-  → refresh_breakout_matviews()
+  → refresh mv_listing_week_positions
+  → refresh_breakout_matviews()   ← also rebuilds mv_listing_momentum from listings
   → next morning: scrape-digest cron (03:00 UTC / 10:00 WIB) emails Deep Dive users
     if listing_deltas has a new measured scrape day
 ```
 
 SSH/psql only (`refresh_listing_weekly.sh`). If any of those steps is skipped
 the site goes stale — seen 2026-08-13, when Aug 10–13 listings had 0% omset
-because the matview refresh did not run. The `scrape-digest` job (see
+because the matview refresh did not run. Seen again 2026-09-06: scrapes landed
+through 2026-09-02 but `listing_deltas` / `product_velocity` stopped at
+2026-08-30 (scraper Phase 4/5b). That is a scraper-repo issue; Trending %
+was moved off this chain so it keeps working. The `scrape-digest` job (see
 `larisid-infra/cron/recreate_cron_jobs.sql`) no-ops until the measured
 watermark advances; it does not invent daily deltas.
 

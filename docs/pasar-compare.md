@@ -31,7 +31,7 @@ read of `mv_new_seller_market` (already `grant select … to anon, authenticated
 | Cell | Column | Notes |
 |---|---|---|
 | Foto | `images[0]` → `rep_image_url` | Cover of the pasar (highest-sold listing that survived AI-reject / relevance). Same photo is the Peta bubble. |
-| Laku / minggu | `wk_units` (+ `wk_base` for the growth %) | span-normalised 7-day units from `mv_keyword_weekly`; fallback shows `omset_top15` as “omset/bln top-15” |
+| Laku / minggu | `wk_units` (+ `wk_units_prev` for the growth %) | span-normalised 7-day units from `mv_keyword_weekly` (3-snapshot momentum); fallback shows `omset_top15` as “omset/bln top-15” |
 | Tembok ulasan | `median_winner_reviews` | median reviews of listings with `total_sold >= 100` (`mv_niche_breakout`) |
 | Toko baru laku | `mv_new_seller_market` `segment='toko_baru'` → `pct_reached_10`, `n_listings` | share of new-shop (≤180 d) listings that reached 10 units. `n_listings < 5` = “tipis”, neutral score |
 | Harga | `price_median`, `price_p25`, `price_p75` | quartiles come from `product_type_quartiles` via `attachTypeQuartiles` |

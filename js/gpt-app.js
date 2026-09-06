@@ -9746,13 +9746,40 @@ function fmtTrendPct(n) {
   return (v > 0 ? '+' : '') + v + '%';
 }
 
+const TREND_MON = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+function fmtTrendDay(iso) {
+  if (!iso) return '—';
+  const s = String(iso).slice(0, 10);
+  const parts = s.split('-');
+  const day = Number(parts[2]);
+  const mon = Number(parts[1]);
+  if (!day || !mon) return s;
+  return `${day} ${TREND_MON[mon - 1] || ''}`;
+}
+
+function listingTrendEligible(p) {
+  const t = p && p._petaTrend;
+  if (!t || t.belum || t.pending || t.wkPct == null) return false;
+  const nowWk = Number(t.unitsNowWk);
+  const prevWk = Number(t.unitsPrevWk);
+  if (!Number.isFinite(nowWk) || !Number.isFinite(prevWk)) return false;
+  return nowWk >= 20 && prevWk >= 7;
+}
+
 function listingTrendTitle(t) {
-  if (!t || t.pending) return 'Menghitung kenaikan omset…';
+  if (!t || t.pending) return 'Menghitung kenaikan penjualan…';
   if (t.belum || t.wkPct == null) {
-    return 'Belum cukup data mingguan (butuh 4 minggu, omset sebelumnya tidak terlalu kecil).';
+    if (t && t.unitsPrevWk != null) {
+      return 'Belum cukup pergerakan terukur (penjualan sebelumnya terlalu kecil atau counter Shopee belum bergerak).';
+    }
+    return 'Butuh 3 pengukuran ≥7 hari terpisah; produk ini belum punya cukup scrape.';
   }
-  return 'Kenaikan omset dari rata-rata 2 minggu terakhir vs 2 minggu sebelumnya, disetarakan ke 7 hari — bukan vs kalender minggu lalu. '
-    + (t.terukur ? 'terukur' : 'perkiraan') + '.';
+  const n = Math.round(Number(t.unitsNowWk) || 0).toLocaleString('id-ID');
+  const m = Math.round(Number(t.unitsPrevWk) || 0).toLocaleString('id-ID');
+  const sNow = Math.round(Number(t.spanNow) || 0);
+  const sPrev = Math.round(Number(t.spanPrev) || 0);
+  const dir = t.wkPct > 0 ? 'naik' : t.wkPct < 0 ? 'turun' : 'stabil';
+  return `Penjualan ${dir} ${fmtTrendPct(t.wkPct)} : ~${n}/minggu (${fmtTrendDay(t.at1)}–${fmtTrendDay(t.at0)}, ${sNow} hari) vs ~${m}/minggu (${fmtTrendDay(t.at2)}–${fmtTrendDay(t.at1)}, ${sPrev} hari). Terukur dari 3 scrape, bukan perkiraan.`;
 }
 
 function listingTrendInnerHtml(p, opts = {}) {
@@ -9761,8 +9788,7 @@ function listingTrendInnerHtml(p, opts = {}) {
   if (t.belum || t.wkPct == null) return '—';
   const cls = t.wkPct > 0 ? 'is-up' : t.wkPct < 0 ? 'is-down' : 'is-flat';
   const arrow = t.wkPct > 0 ? ico('arrowUp', 13) : t.wkPct < 0 ? ico('arrowDown', 13) : '';
-  const perk = (opts.hidePerkiraan || t.terukur) ? '' : '<small>perkiraan</small>';
-  return `<span class="lrow-trend-pct ${cls}">${arrow}<span>${fmtTrendPct(t.wkPct)}</span>${perk}</span>`;
+  return `<span class="lrow-trend-pct ${cls}">${arrow}<span>${fmtTrendPct(t.wkPct)}</span></span>`;
 }
 
 function listingTrendCellHtml(p) {
@@ -17294,7 +17320,7 @@ const PTYPE_COLS = 'keyword,city,category,category_canonical,subgroup,n_listings
 // rather than just drop the badge. Stay optimistic, and if the first real query
 // comes back with "column does not exist", fall back for the rest of the
 // session. Static deploys and DB migrations do not land atomically here.
-const PTYPE_WEEKLY_COLS = 'wk_units,wk_base,wk_items,wk_span_days,wk_anchor_at';
+const PTYPE_WEEKLY_COLS = 'wk_units,wk_base,wk_items,wk_span_days,wk_anchor_at,wk_units_prev,wk_items_prev';
 let _ptypeHasWeekly = true;
 
 function ptypeCols() {
@@ -17305,7 +17331,7 @@ function ptypeCols() {
 function ptypeWeeklyMissing(error) {
   if (!_ptypeHasWeekly || !error) return false;
   const s = `${error.code || ''} ${error.message || ''}`;
-  if (!/42703/.test(s) && !/wk_units|wk_base|wk_items|wk_span_days|wk_anchor_at/.test(s)) return false;
+  if (!/42703/.test(s) && !/wk_units|wk_base|wk_items|wk_span_days|wk_anchor_at|wk_units_prev|wk_items_prev/.test(s)) return false;
   console.warn('[ptype] weekly columns missing — Terlaris Minggu Ini disabled until the DB is migrated');
   _ptypeHasWeekly = false;
   return true;
@@ -17732,13 +17758,20 @@ const TERLARIS_MIN_ITEMS = 2;    // listings that actually moved, so one Shopee
 function weeklyStats(t) {
   if (!t || t.wk_units == null) return null;
   const units = Number(t.wk_units) || 0;
+  const unitsPrev = t.wk_units_prev == null ? null : Number(t.wk_units_prev);
+  const itemsPrev = Number(t.wk_items_prev) || 0;
   const base = Number(t.wk_base) || 0;
+  let pct = null;
+  if (unitsPrev != null && unitsPrev >= 25 && itemsPrev >= 2) {
+    pct = Math.round((units - unitsPrev) / Math.max(unitsPrev, 1) * 100);
+  }
   return {
     units,
+    unitsPrev,
+    itemsPrev,
     base,
-    // Same definition as trendGrowthPct(): growth against the cumulative
-    // baseline, NOT against last week. The tooltip has to say so.
-    pct: base >= 50 ? Math.round(units / base * 100) : (units > 0 ? Infinity : null),
+    // Momentum: this window vs previous window, same listing set.
+    pct,
     items: Number(t.wk_items) || 0,
     spanDays: Number(t.wk_span_days) || 0,
     anchor: t.wk_anchor_at || null,
@@ -17765,11 +17798,11 @@ function markTerlarisMinggu(rows) {
     const w = weeklyStats(t);
     if (!w) return;
     if (w.units < TERLARIS_MIN_UNITS || w.items < TERLARIS_MIN_ITEMS) return;
-    if (!(w.pct > 0)) return; // null (no baseline) and 0 are both out
+    if (!(w.pct > 0)) return; // null (no prev window) and 0 are both out
     eligible.push([t, w]);
   });
   if (!eligible.length) return list;
-  const rank = w => (w.pct === Infinity ? Number.MAX_SAFE_INTEGER : w.pct);
+  const rank = w => (w.pct == null ? -1 : w.pct);
   eligible.sort((a, b) => (b[1].units - a[1].units) || (rank(b[1]) - rank(a[1])));
   const [winner, stats] = eligible[0];
   winner._terlaris = stats;
@@ -17781,17 +17814,18 @@ function markTerlarisMinggu(rows) {
  *
  * Two things are easy to misread and both are stated: the window is not a
  * calendar week (our scrapes land ~12-17 days apart, so units are normalised to
- * a 7-day rate), and the percentage is growth over lifetime sales rather than
- * versus last week. MISSION.md forbids dressing either of those up.
+ * a 7-day rate), and the percentage is this window vs the previous scrape
+ * window — not vs lifetime sales. MISSION.md forbids dressing either of those up.
  */
 function terlarisTooltip(w) {
   const units = Math.round(w.units).toLocaleString('id-ID');
   const span = w.spanDays > 0 ? `${w.spanDays} hari terakhir` : 'rentang scrape terakhir';
-  const base = w.base.toLocaleString('id-ID');
+  const prev = w.unitsPrev != null ? Math.round(w.unitsPrev).toLocaleString('id-ID') : null;
   return `Sekitar ${units} unit terjual per minggu — dihitung dari ${span} `
     + `(sampai ${fmtAnchorDate(w.anchor)}) lalu disetarakan ke 7 hari. `
-    + `Persentase = kenaikan terhadap ${base} unit yang sudah terjual sebelumnya, `
-    + 'bukan perbandingan dengan minggu lalu: jadwal scrape kami belum harian.';
+    + (prev
+      ? `Persentase = dibanding ~${prev} unit/minggu pada rentang sebelumnya (dua scrape sebelumnya).`
+      : 'Belum cukup data untuk membandingkan dengan rentang sebelumnya.');
 }
 
 function terlarisBadgeHtml() {
@@ -17806,13 +17840,14 @@ function homeMeledakBadgeHtml() {
 function homeWowHtml(w) {
   if (!w || w.pct == null) return '';
   const tip = ` title="${esc(terlarisTooltip(w))}"`;
-  if (w.pct === Infinity) return `<span class="prod-card-wow"${tip}>Baru</span>`;
-  return `<span class="prod-card-wow"${tip}>${ico('arrowUp', 10)} ${w.pct}%</span>`;
+  if (w.pct > 0) return `<span class="prod-card-wow"${tip}>${ico('arrowUp', 10)} ${w.pct}%</span>`;
+  if (w.pct < 0) return `<span class="prod-card-wow"${tip}>${ico('arrowDown', 10)} ${w.pct}%</span>`;
+  return '';
 }
 
 function terlarisWowHtml(w) {
   if (!w || w.pct == null) return '';
-  return cardWowPctHtml(w.pct === Infinity ? Infinity : w.pct, terlarisTooltip(w));
+  return cardWowPctHtml(w.pct, terlarisTooltip(w));
 }
 
 function typeCardHtml(t, absIdx, animIdx, siblings, usedImgs, variant) {
@@ -17969,7 +18004,7 @@ function sortTypeRows(rows, mode, hasQuery) {
     const rank = (t) => {
       const w = weeklyStats(t);
       if (!w || w.pct == null) return -1;
-      return w.pct === Infinity ? Number.MAX_SAFE_INTEGER : w.pct;
+      return w.pct;
     };
     out.sort((a, b) => (rank(b) - rank(a)) || ((Number(b.wk_units) || 0) - (Number(a.wk_units) || 0)));
   }
@@ -18522,7 +18557,7 @@ function pickDirHomeRows(pool) {
   const pctRank = (t) => {
     const w = weeklyStats(t);
     if (!w || w.pct == null) return -1;
-    return w.pct === Infinity ? Number.MAX_SAFE_INTEGER : w.pct;
+    return w.pct;
   };
   const byPct = list.slice().sort((a, b) =>
     (pctRank(b) - pctRank(a)) || ((Number(b.wk_units) || 0) - (Number(a.wk_units) || 0)));

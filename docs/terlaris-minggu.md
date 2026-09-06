@@ -80,27 +80,19 @@ them, and do not revive `weekly_snapshots` (frozen 2026-06-08).
 
 ## The green line
 
-`↑ X% minggu ini`, using the same definition as `trendGrowthPct()`: growth
-against the **cumulative baseline**, not against last week.
+`↑ X%` is **momentum**: this window's 7-day-equivalent units versus the
+previous window (`wk_units` / `wk_units_prev` from
+[20260906150000](../supabase/migrations/20260906150000_listing_momentum_measured.sql)).
+Both sides sum the same listing set — listings with three real scrapes that
+cleared the `belum` floors. Hidden when `wk_units_prev < 25` or
+`wk_items_prev < 2` (keep the `~N terjual` line).
 
-**Known limitation.** Because the baseline is lifetime sales, established
-markets land at **1-6%** in practice, not the 38% of the original mockup.
-Measured 2026-08-13:
+Do **not** go back to growth against lifetime sales (`wk_units / wk_base`).
+That landed at 1–6% for every established market and did not tell anyone
+what was trending. Do **not** simply rescale a percentage to look bigger.
 
-```
-matras fitness tebal    13523 units/wk   pct=2
-dumbbell set             8544 units/wk   pct=3
-rak makanan ringan       3221 units/wk   pct=3
-wadah mie instan         1397 units/wk   pct=6
-```
-
-If that reads as too flat to be worth showing, the alternative is **momentum**:
-this window's 7-day-equivalent rate versus the previous window's rate, which
-would produce mockup-sized numbers and is genuinely "week over week". It needs a
-third snapshot per listing (~24-34 days back) and a `wk_units_prev` column. Only
-`weeklyStats()` in `js/gpt-app.js` and the migration would change.
-
-Do **not** simply rescale the current percentage to look bigger.
+The chat Produk Trending board (`trendGrowthPct()` / `computeTrendingView()`)
+still uses `mv_trending` deltas vs cumulative baseline — a different surface.
 
 ## Tooltip
 
@@ -108,9 +100,8 @@ The green line carries a `title` built by `terlarisTooltip()`. It must keep
 stating both caveats:
 
 > Sekitar 4.687 unit terjual per minggu — dihitung dari 13 hari terakhir (sampai
-> 11 Agu 2026) lalu disetarakan ke 7 hari. Persentase = kenaikan terhadap
-> 224.261 unit yang sudah terjual sebelumnya, bukan perbandingan dengan minggu
-> lalu: jadwal scrape kami belum harian.
+> 11 Agu 2026) lalu disetarakan ke 7 hari. Persentase = dibanding ~3.210
+> unit/minggu pada rentang sebelumnya (dua scrape sebelumnya).
 
 ## Composer routing
 
@@ -142,6 +133,17 @@ applying DDL. Re-run it after any scrape-cadence change — a shift in cadence i
 what would silently kill or flood the badge. Coverage at 2026-08-13, of 40
 keywords sampled per category: Olahraga & Outdoor 29 usable, Dapur 8,
 Perlengkapan Ibadah 40.
+
+2026-09-06 audit (before this change): the listing % was model-vs-model
+(`nowcast`/`peer`/`forecast` compared to itself; median 0%). `_lid_corr_sold_delta`
+capped every delta at 500/day, so a real 712→336/day mover read as +5144%.
+The function now only clamps values that look like Shopee display buckets
+(round thousands ≥ 1000, or a 10rb floor cross from a round value). The
+green line and Cari Produk % both use 3-snapshot measured momentum.
+
+`listing_deltas` / `product_velocity` last refreshed 2026-08-30 while scrapes
+continued through 2026-09-02 — Phase 4/5b in the scraper `daily_scrape.sh` is
+stale. Trending % no longer reads that chain; card omset / Deep Dive still do.
 
 ## Deploy ordering
 

@@ -34,16 +34,23 @@ async function rest(path) {
   return res.json();
 }
 
-/** Port of public._lid_corr_sold_delta(). */
+/** Port of public._lid_corr_sold_delta() — bucket-only cap. */
+function looksBucketed(n) {
+  return n >= 1000 && n % 1000 === 0;
+}
 function corrSoldDelta(s1, s0, r1, r0, days) {
   if (s0 == null || s1 == null) return 0;
   const d = Math.max(1, days);
   const dr = (r1 || 0) - (r0 || 0);
-  if (s1 === s0) return Math.min(Math.max(0, Math.round(dr * 3.2)), 500 * d);
+  if (s1 === s0) {
+    return looksBucketed(s1) ? Math.min(Math.max(0, Math.round(dr * 3.2)), 500 * d) : 0;
+  }
+  const bucketed = looksBucketed(s0) || looksBucketed(s1)
+    || (s1 >= 10000 && s0 < 10000 && (s0 % 1000 === 0 || s1 % 1000 === 0));
   const bucketJump = (s1 - s0) > 500 * d
     || (s0 > 0 && s1 / s0 >= 3 && (s1 - s0) >= 10000)
     || (s1 >= 10000 && s0 < 10000);
-  if (bucketJump) {
+  if (bucketed && bucketJump) {
     const revEst = dr > 0 ? Math.round(dr * 3.2) : 500 * d;
     return Math.min(Math.max(0, s1 - s0), revEst, 500 * d);
   }
