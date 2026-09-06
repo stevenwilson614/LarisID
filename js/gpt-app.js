@@ -9911,11 +9911,14 @@ function listingRowHtml(p, opts = {}) {
   const thumb = img
     ? `<img class="lrow-img" src="${esc(imgThumb(img))}" alt="" loading="lazy" decoding="async" width="84" height="84" onerror="this.onerror=null;this.replaceWith(Object.assign(document.createElement('div'),{className:'lrow-img lrow-img--ph'}))">`
     : '<div class="lrow-img lrow-img--ph"></div>';
+  const cat = trendNowCatHtml(p).replace('trend-now-cat', 'lrow-cat');
+  const metaSold = sold ? `${fmtSold(sold)} terjual` : '0 terjual';
   const prodInner = `${thumb}
       <div class="lrow-prod-txt">
         <div class="lrow-name">${esc(name)}</div>
         <div class="lrow-toko">${esc(toko)}</div>
-        <div class="lrow-meta">${reviews ? fmtSold(reviews) + ' ulasan' : '0 ulasan'} · ${esc(usia.text)}</div>
+        ${cat}
+        <div class="lrow-meta">${metaSold} · ${esc(usia.text)}</div>
       </div>`;
   const prodCell = actions
     ? `<td class="lrow-prod"><button type="button" class="lrow-open" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''}>${prodInner}</button></td>`
@@ -9932,10 +9935,10 @@ function listingRowHtml(p, opts = {}) {
   return `<tr class="${cls}" ${rowAttrs}>
     ${check}
     ${prodCell}
-    <td class="lrow-num">${price ? fmtRp(price) : '—'}</td>
-    <td class="lrow-num">${omset ? fmtOmset(omset) : '—'}${omsetChipHtml(p)}</td>
+    <td class="lrow-num lrow-harga"><span class="lrow-metric-lbl">Harga</span><span class="lrow-metric-val">${price ? fmtRp(price) : '—'}</span></td>
+    <td class="lrow-num lrow-omset"><span class="lrow-metric-lbl">Omset</span><span class="lrow-metric-val">${omset ? fmtOmset(omset) : '—'}</span>${omsetChipHtml(p)}</td>
     ${listingTrendCellHtml(p)}
-    <td class="lrow-num">${sold ? fmtSold(sold) : '0'}</td>
+    <td class="lrow-num lrow-sold">${sold ? fmtSold(sold) : '0'}</td>
     <td class="lrow-num lrow-wide">${reviews ? fmtSold(reviews) : '0'}</td>
     <td class="lrow-num lrow-wide" title="${esc(usia.title)}">${esc(usia.text)}</td>
     ${actCell}
@@ -10201,7 +10204,7 @@ function trendingNowRowHtml(p, i) {
       <img class="trend-now-place" src="/images/brand/trend-place-${rank}.webp" alt="" width="${placePx}" height="${placePx}" decoding="async">
       <img class="trend-now-mascot" src="/images/brand/mascot-trend-${rank}.webp" alt="" width="${mascotPx}" height="${mascotPx}" decoding="async">
     </span>
-    ${thumb}
+    <span class="trend-now-media">${thumb}</span>
     <div class="trend-now-main">
       <div class="trend-now-name" title="${esc(name)}">${esc(name)}</div>
       ${trendNowCatHtml(p)}
