@@ -133,6 +133,50 @@ ok('after agent, mau would stay in thread', mem.chatIsConversationalThread(agent
 ok('after agent, fashion refine stays in thread', mem.chatIsConversationalThread(agentChat) && mem.isConstraintRefinement('untuk pashion seperti celana kulot'));
 ok('new noun search still not a follow-up', !mem.isConstraintRefinement('celana kulot linen') && !mem.isAffirmativeReply('celana kulot linen'));
 
+ok('ya, lanjut is affirmative', mem.isAffirmativeReply('ya, lanjut'));
+ok('oke lanjut is affirmative', mem.isAffirmativeReply('oke lanjut'));
+ok('boleh dong is affirmative', mem.isAffirmativeReply('boleh dong'));
+ok('lanjutkan jawaban is continue', mem.isContinueReply('Lanjutkan jawaban'));
+ok('ya boleh is affirmative', mem.isAffirmativeReply('ya boleh'));
+
+const shownChat = {
+  context: {
+    kind: 'market_agent',
+    lastShown: {
+      query: 'crocs',
+      types: ['crocs original'],
+      listings: [{ item_id: 1, shop_id: 2, location: 'Kota Bandung', product_name: 'Crocs Classic' }],
+    },
+  },
+  messages: [
+    { role: 'user', content: { text: 'Crocs' } },
+    { role: 'assistant', content: { text: 'Pasar Crocs', types: ['crocs original'] } },
+  ],
+};
+eq('Crocs is lookup', mem.detectResponseMode('Crocs', { messages: [] }), 'lookup');
+eq('terlaris minggu is weekly', mem.detectResponseMode('Apa yang terlaris minggu ini?', shownChat), 'weekly');
+eq('Bandung follow-up is filter', mem.detectResponseMode('are any of those sellers in bandung', shownChat), 'filter');
+eq('ada yang dari Bandung is filter', mem.detectResponseMode('ada yang dari Bandung?', shownChat), 'filter');
+eq('Crocs Bandung is lookup not filter', mem.detectResponseMode('Crocs Bandung', shownChat), 'lookup');
+eq('affiliate is refer', mem.detectResponseMode('untuk affiliate produk mana yang bagus', shownChat), 'refer');
+eq('affiliator is refer', mem.detectResponseMode('produk bagus untuk affiliator', { messages: [] }), 'refer');
+eq('lanjutkan jawaban is continue not filter', mem.detectResponseMode('Lanjutkan jawaban', shownChat), 'continue');
+eq('supplier ask is public', mem.detectResponseMode('supplier Crocs di mana', { messages: [] }), 'public');
+eq('judgment compare', mem.detectResponseMode('sebaiknya jual Crocs atau sandal?', { messages: [] }), 'judgment');
+
+const lanjut = mem.extractLanjutBlock('Ringkas.\n<lanjut>\n1. Ada seller dari Bandung?\n2. Bandingkan harga\n</lanjut>');
+eq('lanjut lines', lanjut.lines, ['Ada seller dari Bandung?', 'Bandingkan harga']);
+ok('lanjut rest drops tags', lanjut.rest === 'Ringkas.' && !/<lanjut>/.test(lanjut.rest));
+
+const packedShown = mem.packLastShown(
+  [{ item_id: 9, shop_id: 8, product_name: 'Crocs', location: 'Kota Bandung', price: 120000 }],
+  [{ keyword: 'crocs original' }],
+  'crocs'
+);
+eq('packLastShown query', packedShown.query, 'crocs');
+eq('packLastShown type', packedShown.types, ['crocs original']);
+ok('packLastShown listing', packedShown.listings[0].item_id === 9 && packedShown.listings[0].location === 'Kota Bandung');
+
 if (failed) {
   console.error(`\n${failed} failed`);
   process.exit(1);

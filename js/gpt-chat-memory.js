@@ -10,7 +10,7 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
 
-  const AFFIRM = /^(mau|iya+|ya+|yes|yep|yeah|oke+|ok|okay|boleh|lanjut|silakan|gas|yuk|sure|yess|yap)(\s+(dong|deh|aja|a|lah|bang|kak|min))?[\s!.]*$/i;
+  const AFFIRM = /^(mau|iya+|ya+|yes|yep|yeah|oke+|ok|okay|boleh|lanjut|lanjutkan|silakan|gas|yuk|sure|yess|yap)(\s+(dong|deh|aja|a|lah|bang|kak|min|boleh|lanjut|jawaban))?[\s!,.]*$|^(ya|iya|oke|ok|boleh),?\s+(boleh|lanjut|lanjutkan)(\s+jawaban)?[\s!,.]*$|^lanjutkan jawaban[\s!,.]*$/i;
   const DECLINE = /^(tidak|nggak|gak|ga|enggak|no|nope|skip|batal|jangan)(\s+(dong|deh|aja|lah|makasih|terima kasih))?[\s!.]*$/i;
   const REFINE = /^(untuk|tapi|bukan|jangan|kecuali|yang tadi|di kategori|kalau untuk|kalau di|kalau yang)\b|\b(untuk|tapi|bukan|kecuali|yang tadi|di kategori)\b/;
   // Broad category words only — product nouns like "celana" must stay searches.
@@ -30,6 +30,13 @@
     'Klarifikasi pencarian', 'Hasil pasar', 'Hasil kategori',
     'Produk trending', 'Rencana perlu produk',
   ]);
+  const WEEKLY_RE = /terlaris.{0,24}(minggu|pekan) ini|(minggu|pekan) ini.{0,24}terlaris|paling laris.{0,24}(minggu|pekan)|terlaris (minggu|pekan)|(terlaris|best.?sell\w*|top.?sell\w*).{0,24}this week|this week.{0,24}(terlaris|best.?sell\w*|top.?sell\w*)/;
+  const REFER_RE = /\b(afiliasi|affiliate|affiliator|komisi\s*xtra|xtra\s*komisi|shopee\s*live|live\s*gmv|berapa (orang )?(affiliate|afiliasi|kreator))\b/;
+  const PUBLIC_RE = /\b(supplier|grosir|pabrik|wholesale|aturan|regulasi|berita|undang[\s-]?undang|bea cukai|tiktok shop|kalodata)\b/;
+  const JUDGMENT_RE = /\b(kenapa|mengapa|why|bandingkan|banding|compare|mana yang|yang mana|which|sebaiknya|should i|worth|bedanya|beda|risiko|risk|strategi|strategy|prospek|peluang|jelaskan|explain|analisa|analisis|analyze|paling bagus|terbaik|best)\b/;
+  const CONTINUE_RE = /lanjutkan jawaban|^(ya,?\s*)?lanjut(kan)?(\s+jawaban)?[\s!.]*$/;
+  const SHOWN_REF = /\b(yang tadi|yang itu|those|these|them|tadi|barusan|di atas|any of|ada yang|seller|toko|penjual)\b/;
+  const FILTER_HINT = /\b(di|dari|kota|lokasi|in|from|harga|usia|umur|bandung|jakarta|surabaya|medan|bekasi|tangerang|depok|semarang|makassar|palembang)\b/;
 
   function norm(text) {
     return String(text || '').toLowerCase().trim();
@@ -237,6 +244,108 @@
     };
   }
 
+  function isContinueReply(text) {
+    return CONTINUE_RE.test(norm(text));
+  }
+
+  function isOutOfScopeRefer(text) {
+    return REFER_RE.test(norm(text));
+  }
+
+  function isWeeklyAsk(text) {
+    return WEEKLY_RE.test(norm(text));
+  }
+
+  function isPublicAsk(text) {
+    const s = norm(text);
+    if (isOutOfScopeRefer(s) || isWeeklyAsk(s)) return false;
+    return PUBLIC_RE.test(s);
+  }
+
+  function isLookupAsk(text) {
+    const s = norm(text);
+    if (!s || isOutOfScopeRefer(s) || isWeeklyAsk(s) || isPublicAsk(s)) return false;
+    if (JUDGMENT_RE.test(s)) return false;
+    if (isAffirmativeReply(s) || isDeclineReply(s) || isContinueReply(s)) return false;
+    const tokens = s.replace(/[?!.,]+/g, ' ').split(/\s+/).filter(Boolean);
+    if (!tokens.length || tokens.length > 6) return false;
+    if (/^(cari|carikan|tunjukkan|tampilkan|show|find)\b/.test(s) && tokens.length <= 6) return true;
+    return !/\b(apakah|kenapa|mengapa|sebaiknya|bagaimana)\b/.test(s);
+  }
+
+  function isShownSetFilter(text, chat) {
+    const s = norm(text);
+    if (!s || isContinueReply(s) || isAffirmativeReply(s) || isDeclineReply(s)) return false;
+    if (isOutOfScopeRefer(s) || isWeeklyAsk(s)) return false;
+    const listings = chat?.context?.lastShown?.listings;
+    if (!Array.isArray(listings) || !listings.length) return false;
+    // "Crocs Bandung" is a new lookup-with-city, not a filter of the last set.
+    if (!SHOWN_REF.test(s) && !/ada yang/.test(s)) return false;
+    return FILTER_HINT.test(s) || /ada yang/.test(s);
+  }
+
+  function detectResponseMode(text, chat) {
+    const s = String(text || '');
+    if (isContinueReply(s)) return 'continue';
+    if (isOutOfScopeRefer(s)) return 'refer';
+    if (isShownSetFilter(s, chat)) return 'filter';
+    if (isWeeklyAsk(s)) return 'weekly';
+    if (isLookupAsk(s)) return 'lookup';
+    if (JUDGMENT_RE.test(norm(s))) return 'judgment';
+    if (isPublicAsk(s)) return 'public';
+    return 'judgment';
+  }
+
+  function parseLanjutLines(body) {
+    return String(body || '').split('\n')
+      .map(l => l.replace(/^\s*\d{1,2}\s*[.)\-]\s*/, '').replace(/^\s*[-•*]\s*/, '').trim())
+      .filter(Boolean)
+      .slice(0, 3);
+  }
+
+  function extractLanjutBlock(text) {
+    const s = String(text || '');
+    const o = s.indexOf('<lanjut>');
+    if (o < 0) return { lines: [], rest: s, open: false };
+    const c = s.indexOf('</lanjut>', o);
+    if (c < 0) return { lines: [], rest: s.slice(0, o), open: true };
+    return {
+      lines: parseLanjutLines(s.slice(o + 8, c)),
+      rest: (s.slice(0, o) + s.slice(c + 9)).trim(),
+      open: false,
+    };
+  }
+
+  function packLastShown(listings, types, query) {
+    const rows = Array.isArray(listings) ? listings : [];
+    const typeKeys = Array.isArray(types)
+      ? types.map(t => (typeof t === 'string' ? t : t && t.keyword)).filter(Boolean)
+      : [];
+    return {
+      query: String(query || ''),
+      types: typeKeys.slice(0, 12),
+      listings: rows.slice(0, 24).map(r => ({
+        item_id: r && r.item_id,
+        shop_id: r && r.shop_id,
+        product_name: r && r.product_name,
+        store_name: r && r.store_name,
+        location: r && r.location,
+        price: r && r.price,
+        image_url: r && r.image_url,
+        url: r && r.url,
+        keyword: r && r.keyword,
+        category: r && r.category,
+        total_sold: r && r.total_sold,
+        reviews: r && r.reviews,
+        rating: r && r.rating,
+        listing_date: r && r.listing_date,
+        nowcast_omset_monthly: r && r.nowcast_omset_monthly,
+        nowcast_confidence: r && r.nowcast_confidence,
+        nowcast_method: r && r.nowcast_method,
+      })).filter(r => r.item_id != null),
+    };
+  }
+
   return {
     isAffirmativeReply,
     isDeclineReply,
@@ -252,5 +361,15 @@
     listingAgeDays,
     omsetLabel,
     packListingFields,
+    isContinueReply,
+    isOutOfScopeRefer,
+    isWeeklyAsk,
+    isPublicAsk,
+    isLookupAsk,
+    isShownSetFilter,
+    detectResponseMode,
+    parseLanjutLines,
+    extractLanjutBlock,
+    packLastShown,
   };
 });

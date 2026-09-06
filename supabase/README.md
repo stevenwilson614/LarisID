@@ -8,6 +8,8 @@ bash scripts/apply-selfhost.sh supabase/migrations/<file>.sql
 bash scripts/deploy-function-selfhost.sh <slug>
 ```
 
+Ask Laris category overview: `20260906093000_ringkasan_kategori.sql`. Public web search: `supabase/functions/cari-web/` (needs `TAVILY_API_KEY` or `BRAVE_API_KEY` on Contabo). See [docs/ask-laris.md](../docs/ask-laris.md).
+
 Do **not** `supabase db push --linked`. The old cloud ref `bzmvlraziqevqdyotvgy`
 was migrated off and removed. `supabase/.temp/linked-project.json` is a leftover
 and must not be used.
@@ -152,10 +154,11 @@ On the self-host box, keep these in `ADDITIONAL_REDIRECT_URLS` / GoTrue env
 ## Listing pool RPC (`migrations/20260905180000_listings_for_keywords.sql`)
 
 `listings_for_keywords(p_keywords text[], p_per_kw int default 20, p_max int default 300)`
-returns `setof listings_deduped`: top-N sold listings per keyword
-(`row_number() over (partition by keyword order by total_sold desc)`),
-`is_offtopic = false` and `total_sold > 0`. `security invoker`; granted to
-`anon` and `authenticated`. Uses `listings_deduped_kw_sold_ontopic_idx`.
+returns `setof listings_deduped`: top-N sold listings per keyword via
+`LATERAL` + exact `keyword` match (`is_offtopic = false`, `total_sold > 0`).
+`security invoker`; granted to `anon` and `authenticated`. Uses
+`listings_deduped_kw_sold_ontopic_idx`. Do not wrap the column in `btrim()` —
+that forced a 400k-row scan (~2.5s) and left the Peta Peluang skeleton up.
 
 The SPA (`js/gpt-app.js` `fetchListingsForKeywords`) calls this for category /
 home / multi-keyword pools. On `42883` / missing RPC it falls back to at most

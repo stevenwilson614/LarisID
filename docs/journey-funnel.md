@@ -6,6 +6,8 @@ Read **[MISSION.md](../MISSION.md)** first. Do not reintroduce a blocking onboar
 
 **QA checklist:** [journey-funnel-test.md](./journey-funnel-test.md)
 
+**Ask Laris replies:** [ask-laris.md](./ask-laris.md) — lookup / weekly / filter / refer / judgment. Do not send every typed prompt through visible thinking.
+
 **Retention re-read:** [RETENTION.sql](./RETENTION.sql)
 
 ---

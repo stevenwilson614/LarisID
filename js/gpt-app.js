@@ -1103,22 +1103,39 @@ async function askLarisRecommend(freeText) {
   }
 }
 
-const ASK_LARIS_PROMPTS = [
-  { id: 'al_terlaris', label: 'Produk terlaris kotaku', run: () => askLarisRecommend('') },
-  { id: 'al_modal', label: 'Modal 500rb, jualan apa?', run: () => askLarisRecommend('Modal 500rb, mau mulai jualan apa?') },
-  { id: 'al_evaluasi', label: 'Apakah jualan sepatu bagus?', run: () => submitFromHome('Apakah jualan sepatu ide bagus?') },
-];
+function askLarisPrompts() {
+  const city = String(state.onboarding?.city || '').trim();
+  const minat = (state.onboarding?.categories || []).filter(Boolean)[0] || '';
+  const terlarisQ = city ? `Produk terlaris di ${city}` : 'Apa yang terlaris minggu ini?';
+  const evalQ = minat
+    ? `Apakah jualan ${minat} ide bagus?`
+    : 'Apakah jualan sepatu ide bagus?';
+  return [
+    {
+      id: 'al_terlaris',
+      label: city ? `Produk terlaris di ${city}` : 'Produk terlaris kotaku',
+      run: () => submitFromHome(terlarisQ),
+    },
+    { id: 'al_modal', label: 'Modal 500rb, jualan apa?', run: () => askLarisRecommend('Modal 500rb, mau mulai jualan apa?') },
+    {
+      id: 'al_evaluasi',
+      label: minat ? `Apakah jualan ${minat} bagus?` : 'Apakah jualan sepatu bagus?',
+      run: () => submitFromHome(evalQ),
+    },
+  ];
+}
 
 function renderAskLarisChips() {
   const wrap = $('composer-chips');
   if (!wrap) return;
   wrap.hidden = false;
-  wrap.innerHTML = ASK_LARIS_PROMPTS.map(c =>
+  const prompts = askLarisPrompts();
+  wrap.innerHTML = prompts.map(c =>
     `<button type="button" class="chip" data-al-chip="${esc(c.id)}">${esc(c.label)}</button>`
   ).join('');
   wrap.querySelectorAll('[data-al-chip]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const cfg = ASK_LARIS_PROMPTS.find(c => c.id === btn.getAttribute('data-al-chip'));
+      const cfg = prompts.find(c => c.id === btn.getAttribute('data-al-chip'));
       if (!cfg) return;
       void logUserEvent('gpt_chip_click', { ui: 'gpt', chip: cfg.id, surface: 'ask_laris' });
       clarityEvt('gpt_chip_click', { chip: cfg.id });
@@ -1128,17 +1145,18 @@ function renderAskLarisChips() {
 }
 
 /** "Contoh pertanyaan lainnya" list on the home-landing Ask Laris teaser —
- * sourced from the same ASK_LARIS_PROMPTS the composer chips use, so the
+ * sourced from the same askLarisPrompts() the composer chips use, so the
  * marketing copy can't drift from what the product actually does. */
 function renderHomeLandingExamples() {
   const wrap = $('hl-ai-examples-list');
   if (!wrap) return;
-  wrap.innerHTML = ASK_LARIS_PROMPTS.map(c =>
+  const prompts = askLarisPrompts();
+  wrap.innerHTML = prompts.map(c =>
     `<button type="button" class="hl-ai-example" data-hl-example="${esc(c.id)}">${esc(c.label)}</button>`
   ).join('');
   wrap.querySelectorAll('[data-hl-example]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const cfg = ASK_LARIS_PROMPTS.find(c => c.id === btn.getAttribute('data-hl-example'));
+      const cfg = prompts.find(c => c.id === btn.getAttribute('data-hl-example'));
       if (!cfg) return;
       void logUserEvent('gpt_chip_click', { ui: 'gpt', chip: cfg.id, surface: 'home_landing' });
       clarityEvt('gpt_chip_click', { chip: cfg.id });
@@ -4139,7 +4157,7 @@ function appendBubble(role, html, opts = {}) {
   if (!thread) return null;
   const div = document.createElement('div');
   div.className = `msg ${role}`;
-  div.innerHTML = `<div class="msg-role">${role === 'user' ? 'Kamu' : 'LARISgpt'}</div><div class="msg-bubble">${html}</div>`;
+  div.innerHTML = `<div class="msg-role">${role === 'user' ? 'Kamu' : 'Ask Laris'}</div><div class="msg-bubble">${html}</div>`;
   thread.appendChild(div);
   if (opts.root) {
     thread.scrollTop = thread.scrollHeight;
@@ -5916,24 +5934,35 @@ function closeProfileNudge() {
 // Persist a single in-memory message to gpt_messages. Idempotent via the
 // client-only `_saved` flag; only chat_id/role/content are sent to the DB.
 async function persistMessage(chat, m) {
-  if (!currentUser || !_supabase || !chat || !chat.id || !m || m._saved) return;
+  if (!currentUser || !_supabase || !chat || !chat.id || !m || m._saved || m._persisting) return;
+  m._persisting = true;
   try {
     const { error } = await _supabase.from('gpt_messages').insert({
       chat_id: chat.id,
       role: m.role,
       content: typeof m.content === 'object' ? m.content : { text: m.content },
     });
-    if (error) { console.warn('[gpt] message persist failed:', error.message); return; }
+    if (error) {
+      delete m._persisting;
+      console.warn('[gpt] message persist failed:', error.message);
+      return;
+    }
     m._saved = true;
+    delete m._persisting;
     saveLocalState();
-  } catch (e) { console.warn('[gpt] message persist error:', e); }
+  } catch (e) {
+    delete m._persisting;
+    console.warn('[gpt] message persist error:', e);
+  }
 }
 
 // Backfill any messages pushed before the chat had a remote id. Call right
 // after chat.id is assigned from gpt_new_chat.
 function flushChatMessages(chat) {
   if (!chat || !chat.id) return;
-  for (const m of (chat.messages || [])) { if (!m._saved) void persistMessage(chat, m); }
+  for (const m of (chat.messages || [])) {
+    if (!m._saved && !m._persisting) void persistMessage(chat, m);
+  }
 }
 
 // Assign chat.id via gpt_new_chat when the user is under their daily cap, then
@@ -7880,6 +7909,126 @@ async function fetchTerlarisMinggu(cat, limit = 9) {
   }
 }
 
+function lookupOverviewHtml(type, query, placeLabel) {
+  if (!type) {
+    const where = placeLabel ? ` di ${placeLabel}` : '';
+    return `<p>Ini listing yang cocok dengan <strong>${esc(query)}</strong>${where} dari data scrape LarisID. Angka omset terukur atau perkiraan — bukan agregat tahunan.</p>`;
+  }
+  const sellers = Number(type.n_sellers) || 0;
+  const median = Number(type.price_median) || 0;
+  const omset = Number(type.omset_top15) || 0;
+  const w = weeklyStats(type);
+  const bits = [];
+  if (sellers) bits.push(`${sellers.toLocaleString('id-ID')} seller`);
+  if (median) bits.push(`harga median ${fmtRp(median)}`);
+  if (omset) bits.push(`omset top-15/bln sekitar ${fmtOmset(omset)}`);
+  const week = w
+    ? ` Penjualan terukur sekitar ${fmtSold(w.units)} unit/minggu (disetarakan dari ${w.spanDays} hari, sampai ${fmtAnchorDate(w.anchor)}).`
+    : '';
+  const where = placeLabel ? ` Lokasi di data kami adalah kota seller, bukan pembeli${placeLabel ? ` — filter ${esc(placeLabel)}` : ''}.` : '';
+  return `<p>Pasar <strong>${esc(type.keyword)}</strong>: ${bits.join(', ') || 'data agregat masih tipis'}.${week}${where}</p>`;
+}
+
+function defaultLookupFollowups(listings) {
+  const loc = _aiHistogram(listings, 'location')[0];
+  const city = loc?.lokasi ? String(loc.lokasi).replace(/^(Kota|Kab\.?)\s+/i, '') : '';
+  const out = [];
+  if (city) out.push(`Ada yang dari ${city}?`);
+  out.push('Bandingkan harga');
+  out.push('Mana yang omsetnya paling besar?');
+  return out.slice(0, 3);
+}
+
+async function revealListingRows(loading, chat, leadHtml, listings, meta, followups) {
+  const rows = (listings || []).slice(0, 12);
+  rememberProducts(rows.map(asListingProduct));
+  const tail = listingRowsHtml(rows, { compact: true }) + followupChipsHtml(followups);
+  const html = `${leadHtml}${tail}`;
+  await revealAssistant(loading, html);
+  pushMessage(chat, 'assistant', {
+    ...meta,
+    followups: followups || [],
+    types: meta.types || [],
+  }, html);
+  bindListingRows(loading);
+  bindSearchSuggests(loading);
+  rememberLastShown(chat, rows, (meta.types || []).map(k => ({ keyword: k })), meta.query || '');
+  return rows;
+}
+
+async function handleLookupIntent(chat, text) {
+  if (!(await ensureSearchAllowed())) return;
+  const place = parsePlaceFromQuery(text);
+  const q = cleanDiscoveryQuery(place.cleaned || text) || (place.cleaned || text);
+  const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Mencari ${esc(q)}…</p>`);
+  const gate = await ensureIntentChat(chat, q.slice(0, 60), { kind: 'pasar_search', q });
+  if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
+  const listings = await searchListings(q, place.locations || [], 16);
+  let types = [];
+  try { types = await typesForListings(listings, '', 6); } catch (_) {}
+  if (!types.length) {
+    try { types = await searchProductTypes(q, '', 6, { skipLog: true }); } catch (_) {}
+    registerTypes(types);
+  }
+  if (!listings.length && !types.length) {
+    const html = `<p>Belum ketemu listing untuk “${esc(q)}” di data kami.</p>`;
+    await revealAssistant(loading, html);
+    pushMessage(chat, 'assistant', { text: 'Hasil pasar', q }, html);
+    return;
+  }
+  const rows = listings.length
+    ? listings
+    : await fetchListingsForKeywords(types.map(t => t.keyword), 8, 16);
+  const lead = lookupOverviewHtml(types[0], q, place.label || place.city);
+  await revealListingRows(loading, chat, lead, rows, {
+    text: 'Hasil pasar',
+    kind: 'pasar_search',
+    q,
+    types: types.map(t => t.keyword),
+    query: q,
+  }, defaultLookupFollowups(rows));
+  void logUserEvent('discover_view', { ui: 'gpt', q, count: rows.length, mode: 'lookup' });
+}
+
+async function handleFilterFollowup(chat, text) {
+  const last = chat?.context?.lastShown;
+  const listings = last?.listings || [];
+  if (!listings.length) {
+    const html = '<p>Belum ada daftar produk di thread ini yang bisa disaring. Cari produk dulu.</p>';
+    await appendAssistantStream(html);
+    pushMessage(chat, 'assistant', { text: 'Saring listing' }, html);
+    return;
+  }
+  const place = cityNamedIn(text);
+  const locs = place.locations || [];
+  const city = place.city || place.label || '';
+  let rows = listings.map(asListingProduct);
+  if (locs.length) rows = rows.filter(r => locMatches(r.location, locs));
+  else if (city) {
+    const needle = city.toLowerCase();
+    rows = rows.filter(r => String(r.location || '').toLowerCase().includes(needle));
+  }
+  const label = city || place.label || 'lokasi itu';
+  const lead = rows.length
+    ? `<p>${rows.length} produk ini dijual dari toko di <strong>${esc(label)}</strong>. Lokasi di data kami adalah kota seller, bukan pembeli.</p>`
+    : `<p>Dari yang barusan, tidak ada yang lokasi sellernya di <strong>${esc(label)}</strong>.</p>`;
+  const loading = appendBubble('assistant', lead);
+  const html = lead + (rows.length ? listingRowsHtml(rows, { compact: true }) : '');
+  await revealAssistant(loading, html);
+  pushMessage(chat, 'assistant', { text: `Filter ${label}`, types: last.types || [] }, html);
+  bindListingRows(loading);
+  rememberLastShown(chat, rows.length ? rows : listings, last.types, last.query);
+}
+
+async function handleReferIntent(chat, text) {
+  const en = detectReplyLanguage(text) === 'en';
+  const html = en
+    ? `<p>We don't have Shopee affiliate rates, Komisi XTRA, or how many affiliates promote a SKU. For TikTok Shop creator / affiliate / live GMV, try <a href="https://www.kalodata.com/" target="_blank" rel="nofollow noopener">Kalodata</a> — that is a TikTok Shop tool, not Shopee. We are working on Shopee Live and affiliate data; no date yet.</p>`
+    : `<p>Kami belum punya data afiliasi Shopee (komisi, XTRA, atau berapa orang yang mempromosikan satu SKU). Untuk kreator / afiliasi / GMV live di <strong>TikTok Shop</strong>, coba <a href="https://www.kalodata.com/" target="_blank" rel="nofollow noopener">Kalodata</a> — itu alat TikTok Shop, bukan Shopee. Kami sedang mengerjakan data Shopee Live dan afiliasi, tanpa janji tanggal.</p>`;
+  await appendAssistantStream(html);
+  pushMessage(chat, 'assistant', { text: 'Afiliasi belum tersedia' }, html);
+}
+
 async function handleTerlarisMingguIntent(chat, text) {
   if (!(await ensureSearchAllowed())) return;
   await loadCanonicalCats();
@@ -7888,52 +8037,57 @@ async function handleTerlarisMingguIntent(chat, text) {
   const cat = toCanonicalCat(detectCategoryFromText(String(text).toLowerCase()) || '');
   const inCat = cat ? ` di <strong>${esc(cat)}</strong>` : '';
   const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Menghitung penjualan minggu ini${cat ? ` di ${esc(cat)}` : ''}…</p>`);
+  const bubble = loading.querySelector?.('.msg-bubble') || loading;
+  const run = createAgentRun(bubble, { scroll: scrollChatToBottom });
+  run.plan(['Ambil pasar terukur minggu ini', 'Ambil listingnya', 'Susun 10 produk']);
+  run.beginStep(0);
   const types = await fetchTerlarisMinggu(cat, 9);
   const gate = await ensureIntentChat(chat, `Terlaris minggu ini${cat ? ` — ${cat}` : ''}`, { kind: 'terlaris_minggu', cat });
   if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
 
-  let html;
-  let ndTypes = [];
+  let useTypes = types;
+  let lead;
   if (types.length) {
     const w = weeklyStats(types[0]);
-    // Say what was actually measured. Our scrapes land ~12-17 days apart, so
-    // claiming a clean Mon-Sun week here would be a fabricated delta.
     const window = w && w.spanDays > 0
       ? ` — dihitung dari perubahan terjual dalam ${w.spanDays} hari terakhir (sampai ${esc(fmtAnchorDate(w.anchor))}), disetarakan ke 7 hari`
       : '';
     registerTypes(types);
-    const pool = await typesToListingPool(markTerlarisMinggu(types.slice()));
-    await revealListingPool(loading, chat,
-      `<p>Produk dari pasar dengan penjualan tertinggi minggu ini${inCat}${window}:</p>`,
-      pool, { text: 'Terlaris minggu ini', kind: 'terlaris_minggu', cat, types: types.map(t => t.keyword), query: cat || 'terlaris minggu ini' });
-    setComposerChips(TRENDING_CHIPS, 'trending');
-    void logUserEvent('discover_view', { ui: 'gpt', kind: 'terlaris_minggu', cat: cat || '', count: types.length });
-    return;
+    lead = `<p>Produk dari pasar dengan penjualan tertinggi minggu ini${inCat}${window}:</p>`;
   } else {
     const nd = mergePool([], await fetchNaikDaunGlobal(60));
-    ndTypes = await typesForListings(nd, '', 6);
-    registerTypes(ndTypes);
+    useTypes = await typesForListings(nd, '', 6);
+    registerTypes(useTypes);
     const why = cat
       ? `Belum ada pasar${inCat} yang penjualannya cukup terukur minggu ini — scrape terakhir untuk kategori ini belum punya dua titik data yang cukup rapat.`
       : 'Belum ada pasar dengan penjualan mingguan yang cukup terukur saat ini.';
-    if (ndTypes.length) {
-      const pool = await typesToListingPool(ndTypes);
-      await revealListingPool(loading, chat,
-        `<p>${why} Ini produk dari pasar yang lagi naik daun dalam rentang lebih panjang:</p>`,
-        pool, { text: 'Terlaris minggu ini', kind: 'terlaris_minggu', cat, types: ndTypes.map(t => t.keyword), query: cat || 'naik daun' });
-      setComposerChips(TRENDING_CHIPS, 'trending');
-      void logUserEvent('discover_view', { ui: 'gpt', kind: 'terlaris_minggu', cat: cat || '', count: 0 });
-      return;
-    }
-    html = `<p>${why}</p>`;
+    lead = useTypes.length
+      ? `<p>${why} Ini produk dari pasar yang lagi naik daun dalam rentang lebih panjang:</p>`
+      : `<p>${why}</p>`;
   }
-  await revealAssistant(loading, html);
+  run.beginStep(1);
+  const pool = useTypes.length ? await typesToListingPool(markTerlarisMinggu(useTypes.slice())) : { listings: [] };
+  const rows = (pool.listings || []).slice(0, 10);
+  run.beginStep(2);
+  run.finish();
+  rememberProducts(rows.map(asListingProduct));
+  const followups = defaultLookupFollowups(rows);
+  const answerHtml = lead
+    + (rows.length ? listingRowsHtml(rows, { compact: true }) : '')
+    + followupChipsHtml(followups);
+  if (run.answerEl) run.answerEl.innerHTML = answerHtml;
+  bindListingRows(loading);
+  bindSearchSuggests(loading);
+  const html = (run.staticHtml?.() || '') + answerHtml;
   pushMessage(chat, 'assistant', {
     text: 'Terlaris minggu ini',
     kind: 'terlaris_minggu',
     cat,
-    types: (types.length ? types : ndTypes).map(t => t.keyword),
+    types: useTypes.map(t => t.keyword),
+    followups,
+    query: cat || 'terlaris minggu ini',
   }, html);
+  rememberLastShown(chat, rows, useTypes, cat || 'terlaris minggu ini');
   setComposerChips(TRENDING_CHIPS, 'trending');
   void logUserEvent('discover_view', { ui: 'gpt', kind: 'terlaris_minggu', cat: cat || '', count: types.length });
 }
@@ -13906,17 +14060,18 @@ function detectReplyLanguage(text) {
     'pun', 'tapi', 'atau', 'nggak', 'gak', 'ga', 'aja', 'banget', 'nih', 'deh', 'buat',
     'punya', 'masih', 'harus', 'boleh', 'tolong', 'dong', 'nih', 'juga', 'sekali',
     'bagusan', 'lebih', 'cocok', 'layak', 'jualannya', 'penjualannya',
+    'hitung', 'estimasi', 'affiliator', 'perlengkapan', 'praktis',
   ]);
   const enWords = new Set([
     'the', 'and', 'for', 'with', 'what', 'how', 'why', 'this', 'that', 'price', 'sell',
     'selling', 'product', 'products', 'my', 'is', 'are', 'can', 'if', 'same', 'from',
     'also', 'already', 'not', 'will', 'because', 'so', 'more', 'less', 'many', 'good',
-    'shop', 'seller', 'competitor', 'profit', 'capital', 'when', 'where', 'who', 'which',
+    'shop', 'seller', 'competitor', 'when', 'where', 'who', 'which',
     'should', 'would', 'could', 'about', 'into', 'than', 'then', 'just', 'only', 'really',
     'please', 'thanks', 'hello', 'does', 'do', 'did', 'have', 'has', 'been', 'being',
     'their', 'there', 'these', 'those', 'your', 'you', 'me', 'we', 'our', 'of', 'to',
     'in', 'on', 'at', 'by', 'or', 'but', 'as', 'an', 'be', 'it', 'its', 'was', 'were',
-    'best', 'better', 'worth', 'market', 'margin', 'cost', 'compare', 'versus', 'vs',
+    'best', 'better', 'worth', 'market', 'cost', 'compare', 'versus',
   ]);
   let id = 0, en = 0;
   for (const w of tokens) {
@@ -13924,17 +14079,10 @@ function detectReplyLanguage(text) {
     if (enWords.has(w)) en += 1;
   }
   // Strong Indo particles even if sparse token list
-  if (/\b(nggak|gak|gimana|berapa|dong|sih|banget|kah|lah|kok|udah|kalo)\b/.test(raw)) id += 2;
+  if (/\b(nggak|gak|gimana|berapa|dong|sih|banget|kah|lah|kok|udah|kalo|hitung|estimasi|affiliator|perlengkapan|praktis)\b/.test(raw)) id += 2;
   // Strong English question openers
   if (/^(what|how|why|should|could|would|is|are|does|do|can|which|where|when)\b/.test(raw.trim())) en += 2;
-  if (en > id) return 'en';
-  if (id > en) return 'id';
-  // Exact tie / no markers: prefer English if the message has no Indo particles
-  // and looks like Latin English prose; otherwise Bahasa (default product locale).
-  if (en === 0 && id === 0 && /\b[a-z]{3,}\b/.test(raw) && !/\b(yang|dan|untuk|dengan|apa|ini|itu)\b/.test(raw)) {
-    const asciiLetters = (raw.match(/[a-z]/g) || []).length;
-    if (asciiLetters >= 8) return 'en';
-  }
+  if (en >= 2 && en > id) return 'en';
   return 'id';
 }
 
@@ -13976,6 +14124,22 @@ function _skorOf(row) {
  * so the only good answer is a partial one, and the model has to be told
  * explicitly that reasoning past a missing field is required, not optional.
  */
+function aiDataContext() {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Jakarta', day: 'numeric', month: 'long', year: 'numeric',
+  }).formatToParts(now);
+  const pick = (t) => parts.find(p => p.type === t)?.value || '';
+  const dateStr = `${pick('day')} ${pick('month')} ${pick('year')}`;
+  return `
+KONTEKS DATA (wajib):
+- Hari ini: ${dateStr} (WIB). Tahun ${pick('year')} sudah berjalan — jangan bilang tahun ini "belum terjadi".
+- Data LarisID adalah snapshot Shopee Indonesia. Sapuan scrape tiap 12–17 hari, bukan harian dan bukan agregat tahunan.
+- Tidak ada GMV tahunan. Angka omset adalah per bulan (terukur atau perkiraan).
+- Persona: kamu Ask Laris. Pakai "aku/kamu", jangan "gue/lo".
+- Jangan sebut "jatah alat", "batas alat", atau "tool budget". Kalau data banyak, bilang "aku ambil N pasar/kategori terbesar dulu" dan tawarkan sisanya sebagai follow-up.`;
+}
+
 function aiCapabilityContract() {
   return `
 YANG DATA LARISID PUNYA:
@@ -13994,6 +14158,7 @@ YANG DATA LARISID TIDAK PUNYA — sebut jujur kalau ditanya, JANGAN mengarang:
 - Stok real-time, retur, komplain, biaya iklan, ROAS, konversi.
 - Demografi pembeli, status Shopee Mall / Star Seller, data per varian.
 - Isi foto produk dan kontak supplier.
+- Komisi afiliasi Shopee, Komisi XTRA, jumlah affiliate per SKU, Shopee Live GMV, dan hitungan kreator. Kalau user bertanya itu, JANGAN memakai pola 4 bagian di bawah. Jawab 2–3 kalimat: kami belum punya datanya; untuk kreator/afiliasi/GMV live TikTok Shop arahkan ke Kalodata (bukan alat Shopee); kami sedang mengerjakan Shopee Live + afiliasi tanpa janji tanggal.
 
 CARA MENJAWAB KALAU DATANYA CUMA SEBAGIAN (WAJIB, 4 bagian, urut):
 1. JAWAB DULU dari data yang ADA — angka konkret, nama pasar/produk konkret.
@@ -14035,8 +14200,8 @@ SKOR (0-100):
 function aiToolsInstruction() {
   return `
 ALAT DATA: kamu punya alat untuk membaca data LarisID sendiri (cari_pasar,
-pasar_kota, pasar_kategori, detail_pasar, cari_listing, filter_listing,
-produk_dibuka, pemain_baru, pola_toko_baru, judul_menang).
+pasar_kota, pasar_kategori, ringkasan_kategori, detail_pasar, cari_listing, filter_listing,
+produk_dibuka, pemain_baru, pola_toko_baru, judul_menang) dan satu alat publik (cari_web).
 - Kalau pertanyaan butuh data yang belum ada di prompt ini, PANGGIL ALAT dulu.
 - JANGAN menyuruh user "cek sendiri", "cari sendiri", "lihat di halaman Produk",
   atau "buka Skor Produk" untuk sesuatu yang bisa kamu ambil sendiri lewat alat.
@@ -14079,7 +14244,14 @@ mengikat, karena ketiganya gampang dibaca terlalu percaya diri:
   dipakai listing yang laku di pasar ini", bukan "pakai ini biar laku".
 - Kami TIDAK punya deskripsi produk kompetitor dalam jumlah berarti. Kalau
   menyusun deskripsi, katakan sekali bahwa itu susunanmu dari pola judul dan
-  konteks pasar, bukan contekan dari deskripsi toko lain.`;
+  konteks pasar, bukan contekan dari deskripsi toko lain.
+- ringkasan_kategori: untuk "top kategori" / laporan lintas kategori — SATU
+  panggilan, jangan fan-out pasar_kategori.
+- cari_web: HANYA untuk supplier/grosir/pabrik, berita/aturan, atau latar merek
+  yang tidak ada di data. Setiap kalimat dari alat ini WAJIB dilabeli
+  "dari pencarian web, bukan data scrape LarisID" dan sertakan URL sumber.
+  JANGAN memakai cari_web untuk terjual, omset, terlaris minggu ini, komisi
+  afiliasi, atau jumlah live. Kalau alat menolak, katakan terus terang.`;
 }
 
 /**
@@ -14105,6 +14277,14 @@ Tulis SATU blok persis seperti ini, tanpa kalimat pembuka:
 - Tulis blok <rencana> SEKALI saja per jawaban. Jangan mengulanginya.
 - Di antara putaran alat, boleh satu kalimat pendek soal apa yang barusan
   ketemu dan apa yang diambil berikutnya.
+
+SESUDAH jawaban (bukan di dalam <rencana>), tulis SATU blok:
+<lanjut>
+1. Pertanyaan lanjutan dalam suara user (maks 8 kata)
+2. …
+</lanjut>
+- 1 sampai 3 item. Kalimat yang user sendiri bisa ketik. Jangan "Mau?".
+- Jangan menulis "lanjutkan jawaban" kecuali jawaban terpotong.
 
 TERLARIS MINGGU INI (kalau pertanyaannya soal produk atau pasar):
 - Field terjual_minggu = unit terjual disetarakan per 7 hari; listing_gerak_minggu
@@ -14152,8 +14332,9 @@ SKOR PRODUK INI: ${scoreInfo.score}/100 — "${scoreInfo.label}". Komponennya:
     ? 'Reply in clear English (informal professional "you").'
     : 'Jawab dalam Bahasa Indonesia informal ("kamu").';
 
-  return `You are LarisID's product research assistant (LARISgpt). ${voice}
+  return `You are Ask Laris, LarisID's product research assistant. ${voice}
 LANGUAGE: Write ONLY in ${langLabel}. If the user mixed languages, use the language that is most prevalent in their message — never answer in Bahasa Indonesia when they primarily wrote in English.
+${aiDataContext()}
 PENTING:
 - Angka penjualan/harga/rating HARUS dari data berikut. Jangan mengarang statistik pasar.
 - Untuk pertanyaan desain/spesifikasi (kantong/pocket, bahan, warna, model, ukuran, fitur): WAJIB sift dari SAMPLE NAMA PRODUK + TOP PENJUAL di bawah. Hitung pola yang paling umum — terutama di listing terlaris. Jangan bilang "aku nggak punya info" kalau ada nama produk di bawah.
@@ -14349,7 +14530,7 @@ function _gptPocketStats(rows) {
 // Text-only callers read `.text`. Anything driving the tool loop needs
 // toolUses + stopReason, which is why these are no longer plain strings.
 const AI_MAX_TOKENS = 1200;         // simple lookups
-const AI_MAX_TOKENS_DEEP = 3000;    // judgment answers / any turn with thinking
+const AI_MAX_TOKENS_DEEP = 4096;    // judgment answers / any turn with thinking (proxy cap)
 
 function _aiReply(text, extra = {}) {
   return { text: text || '', thinking: '', toolUses: [], stopReason: null, ...extra };
@@ -14644,6 +14825,18 @@ async function handleComposerSubmit(text, opts = {}) {
       pushMessage(liveChat, 'assistant', { text: 'Oke' }, html);
       return;
     }
+    const threadMode = mem.detectResponseMode?.(text, liveChat);
+    if (threadMode === 'refer' || threadMode === 'filter' || threadMode === 'weekly' || threadMode === 'lookup') {
+      setView('chat');
+      appendBubble('user', `<p>${esc(text)}</p>`);
+      pushMessage(liveChat, 'user', text);
+      void logUserEvent('gpt_intent', { ui: 'gpt', intent: threadMode, via: 'followup' });
+      if (threadMode === 'refer') await handleReferIntent(liveChat, text);
+      else if (threadMode === 'filter') await handleFilterFollowup(liveChat, text);
+      else if (threadMode === 'weekly') await handleTerlarisMingguIntent(liveChat, text);
+      else await handleLookupIntent(liveChat, text);
+      return;
+    }
     if (mem.isAffirmativeReply?.(lower) || mem.isConstraintRefinement?.(lower)) {
       const sendText = mem.isAffirmativeReply?.(lower)
         ? mem.resolveAffirmativePrompt(text, liveChat.context?.pendingOffer)
@@ -14743,6 +14936,25 @@ async function handleComposerSubmit(text, opts = {}) {
   // purpose-built card (profit calculator, A-vs-B panels, terlaris grid): those
   // are hand-built answers the agent cannot reproduce. Logged-out visitors keep
   // the old card path because runMarketAgent is behind a login gate.
+  // Typed modes before the agent: lookup / weekly / refer / filter skip thinking.
+  if (!inProductCtx && opts.via !== 'chip') {
+    const mode = _gptMem().detectResponseMode?.(text, activeChat());
+    if (mode === 'refer' || mode === 'weekly' || mode === 'lookup' || mode === 'filter') {
+      if (inResultsThread) beginFreshChat();
+      setView('chat');
+      const chat = ensureComposerChat(text);
+      appendBubble('user', `<p>${esc(text)}</p>`);
+      pushMessage(chat, 'user', text);
+      void logUserEvent('gpt_message_sent', { ui: 'gpt' });
+      void logUserEvent('gpt_intent', { ui: 'gpt', intent: mode, via: 'router' });
+      if (mode === 'refer') await handleReferIntent(chat, text);
+      else if (mode === 'weekly') await handleTerlarisMingguIntent(chat, text);
+      else if (mode === 'lookup') await handleLookupIntent(chat, text);
+      else await handleFilterFollowup(chat, text);
+      return;
+    }
+  }
+
   const analytical = isAnalyticalAsk(lower);
   const agentAll = AI_AGENT_ALL && !!currentUser && opts.via !== 'chip';
   if (AI_AGENT_ROUTER && !inProductCtx && (analytical || agentAll)) {
@@ -14997,8 +15209,9 @@ function buildCategoryEvalSystemPrompt(category, types, question) {
     ? 'Reply in clear English (informal professional "you").'
     : 'Jawab dalam Bahasa Indonesia informal ("kamu").';
 
-  return `You are LarisID's product research assistant (Ask Laris). ${voice}
+  return `You are Ask Laris, LarisID's product research assistant. ${voice}
 LANGUAGE: Write ONLY in ${langLabel}.
+${aiDataContext()}
 User is deciding whether "${category}" is a good category to sell in on Shopee.
 PENTING:
 - Jawab berdasarkan DATA PASAR di bawah — jangan mengarang angka.
@@ -15054,8 +15267,9 @@ ATURAN MINAT (mengikat):
   }
   const thread = _gptMem().researchPromptBlock?.(research) || '';
 
-  return `You are LarisID's product research assistant (LARISgpt). ${voice}
+  return `You are Ask Laris, LarisID's product research assistant. ${voice}
 LANGUAGE: Write ONLY in ${langLabel}. If the user mixed languages, use the language that is most prevalent in their message.
+${aiDataContext()}
 User bertanya soal PASAR secara umum — belum membuka satu produk tertentu.
 PENTING:
 - Angka penjualan/harga/omset/skor HARUS dari alat data. Jangan mengarang statistik pasar.
@@ -15191,7 +15405,8 @@ pembeli — jadi pakai ini untuk membahas ongkir dan di mana pesaing menumpuk,
 JANGAN mengklaim tahu di mana pembelinya berada.`
     : `KOTA USER: belum disebut. Boleh tanya sekali di akhir kalau relevan.`;
 
-  return `You are LARISgpt, pendamping riset untuk peserta kelas jualan LarisID.
+  return `You are Ask Laris, pendamping riset untuk peserta kelas jualan LarisID.
+${aiDataContext()}
 Jawab dalam Bahasa Indonesia informal ("kamu"). Tanpa emoji.
 
 TUGAS: user ini PENJUAL BARU yang mau mulai jual "${produk}". Susun rencana
@@ -15603,6 +15818,16 @@ const AI_TOOLS = [
     },
   },
   {
+    name: 'ringkasan_kategori',
+    description: 'Ringkas top-N pasar per kategori kanonik dalam SATU panggilan. Pakai untuk “top 10 kategori” atau laporan lintas kategori — jangan fan-out pasar_kategori.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        top: { type: 'integer', minimum: 3, maximum: 15, default: 8, description: 'Berapa pasar teratas per kategori.' },
+      },
+    },
+  },
+  {
     name: 'detail_pasar',
     description: 'Detail satu pasar: agregat lengkap, skor, 10 seller teratas, dan SEBARAN LOKASI SELLER. Pakai setelah cari_pasar untuk menjawab siapa yang menang, dari mana sellernya, berapa harganya.',
     input_schema: {
@@ -15698,6 +15923,17 @@ const AI_TOOLS = [
       required: ['pasar'],
     },
   },
+  {
+    name: 'cari_web',
+    description: 'Cari sumber publik (supplier, aturan, berita, latar merek). Bukan data scrape LarisID. Jangan dipakai untuk terjual/omset/afiliasi/live. Hasil wajib dilabeli “dari pencarian web”.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Kueri pencarian singkat, bukan kalimat panjang.' },
+      },
+      required: ['query'],
+    },
+  },
 ];
 
 async function _aiToolCariPasar({ query, kota, limit }) {
@@ -15713,6 +15949,61 @@ async function _aiToolCariPasar({ query, kota, limit }) {
     pasar: rows.slice(0, 15).map(_aiPackType),
     __view: { kind: 'pasar', n: rows.length, rows: rows.slice(0, 8) },
   };
+}
+
+async function _aiToolRingkasanKategori({ top }) {
+  const d = await _aiPlaybookRpc('ringkasan_kategori', {
+    p_top: Math.min(Math.max(top || 8, 3), 15),
+  });
+  if (d.error) return d;
+  const rows = [];
+  (d.kategori || []).forEach((k) => {
+    (k.pasar || []).slice(0, 2).forEach((p) => {
+      if (p.pasar) rows.push({ keyword: p.pasar, category_canonical: k.kategori, omset_top15: (p.omset_top15_jt || 0) * 1e6, n_sellers: p.seller });
+    });
+  });
+  if (rows.length) {
+    try {
+      const kws = rows.map(r => r.keyword);
+      const { data } = await _supabase.from('product_types_v').select(ptypeCols())
+        .in('keyword', kws).eq('city', 'ALL');
+      registerTypes(data || []);
+    } catch (_) { /* overview still useful without clickable types */ }
+  }
+  return {
+    n: (d.kategori || []).length,
+    kategori: d.kategori,
+    catatan: d.catatan || 'Snapshot Shopee, bukan agregat tahunan.',
+    __view: { kind: 'pasar', n: rows.length, rows: rows.slice(0, 8).map(r => _ptypeByKeyword.get(r.keyword) || r) },
+  };
+}
+
+async function _aiToolCariWeb({ query }) {
+  const q = String(query || '').trim();
+  if (!q) return { error: 'query wajib' };
+  if (/\b(terjual|omset|omzet|terlaris minggu|affiliate|afiliasi|komisi xtra|live gmv|berapa orang live)\b/i.test(q)) {
+    return { refused: true, reason: 'Angka penjualan, omset, terlaris, atau afiliasi tidak diambil dari web. Pakai alat data LarisID, atau jawab REFER untuk afiliasi.' };
+  }
+  try {
+    const session = _supabase?.auth ? (await _supabase.auth.getSession())?.data?.session : null;
+    const token = session?.access_token || '';
+    const res = await fetch(`${SUPA_URL}/functions/v1/cari-web`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SUPA_ANON,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ query: q }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { error: data.error || 'web_search_unavailable', hint: 'Sumber publik sedang tidak tersedia. Jangan mengarang URL.' };
+    }
+    return { ...data, catatan: 'bukan data LarisID' };
+  } catch (e) {
+    return { error: 'web_search_unavailable', detail: String(e?.message || e).slice(0, 120) };
+  }
 }
 
 async function _aiToolPasarKategori({ kategori, kota, limit }) {
@@ -15949,6 +16240,7 @@ const AI_TOOL_IMPL = {
   cari_pasar: _aiToolCariPasar,
   pasar_kota: _aiToolPasarKota,
   pasar_kategori: _aiToolPasarKategori,
+  ringkasan_kategori: _aiToolRingkasanKategori,
   detail_pasar: _aiToolDetailPasar,
   cari_listing: _aiToolCariListing,
   filter_listing: _aiToolFilterListing,
@@ -15956,6 +16248,7 @@ const AI_TOOL_IMPL = {
   pemain_baru: _aiToolPemainBaru,
   pola_toko_baru: _aiToolPolaTokoBaru,
   judul_menang: _aiToolJudulMenang,
+  cari_web: _aiToolCariWeb,
 };
 
 /** Run one tool with a hard timeout. Never rejects — the loop must survive. */
@@ -16002,6 +16295,7 @@ const AI_TOOL_LABEL = {
   cari_pasar: 'Cari pasar',
   pasar_kota: 'Baca pasar di kotamu',
   pasar_kategori: 'Buka kategori',
+  ringkasan_kategori: 'Ringkas kategori',
   detail_pasar: 'Baca detail pasar',
   cari_listing: 'Cari listing',
   filter_listing: 'Saring listing',
@@ -16009,6 +16303,7 @@ const AI_TOOL_LABEL = {
   pemain_baru: 'Cek pemain baru di pasar',
   pola_toko_baru: 'Pelajari pola toko baru',
   judul_menang: 'Bandingkan judul yang laku',
+  cari_web: 'Cari sumber publik',
 };
 
 /**

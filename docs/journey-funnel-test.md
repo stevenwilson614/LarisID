@@ -16,5 +16,6 @@ Use this before changing Beranda, onboarding, Cari Produk, Deep Dive, or Pantaua
 10. Return visit: no fabricated price/sales deltas. Omset chips say terukur or perkiraan. Existing users who have not dismissed it may see one-time `#product-rows-notice` (pasar → produk); new signups must not. Dismiss persists via `lid_product_rows_notice_v1`.
 11. Leaders / platform admins are not gated.
 12. Mobile: finder, Deep Dive, alert card, and Langkah usable at 390px width.
+13. Ask Laris (logged in): `Crocs` → listing rows + short Indonesian overview, no “Proses berpikir”. Typed and chip “Apa yang terlaris minggu ini?” → reviewing steps then ~10 rows. Follow-up “ada yang dari Bandung?” → subset of those rows. “untuk affiliate…” → short Kalodata/TikTok REFER, no rows. Judgment question still shows thinking. “Lanjutkan jawaban” continues, does not filter. Profit chip still opens the calculator.
 
 If a check mentions `laris-app.js`, `larisid_journey_v1`, or `lid_ddtrack_promo_v1` as a live modal, the doc is stale — update this file instead of the code.
