@@ -5700,83 +5700,100 @@ body.home-finder-done .home-hero {
   margin: 4px 0 0; font-size: .78rem; color: var(--ink-soft); line-height: 1.4;
 }
 .trend-now-row {
-  display: flex; align-items: center; gap: 12px;
+  /* Shared tracks so place / mascot / foto / title / omset / tren line up across ranks. */
+  display: grid;
+  grid-template-columns: 52px 84px 84px minmax(0, 1.2fr) 8rem 10.5rem 28px;
+  align-items: center;
+  column-gap: 12px;
   padding: 10px 12px; border: 1px solid var(--line); border-radius: 16px;
   background: #fff; cursor: pointer;
 }
 .trend-now-row:hover { border-color: #F5D0A9; background: #FFF7ED; }
+.trend-now-place {
+  width: 44px; height: 44px; object-fit: contain; justify-self: center;
+}
 .trend-now-mascot {
-  width: 48px; height: 48px; object-fit: contain; flex-shrink: 0;
+  width: 64px; height: 64px; object-fit: contain; justify-self: center;
 }
 .trend-now-img, .trend-now-img--ph {
-  width: 56px; height: 56px; border-radius: 12px; object-fit: cover;
-  background: var(--bg-user); flex-shrink: 0;
+  width: 64px; height: 64px; border-radius: 12px; object-fit: cover;
+  background: var(--bg-user); justify-self: center;
 }
+.trend-now-main { min-width: 0; }
 .trend-now-name {
-  flex: 1; min-width: 0; max-width: 100%;
   font-weight: 800; letter-spacing: -.02em; line-height: 1.25;
-  text-align: center;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .trend-now-harga {
-  flex-shrink: 0; font-size: 1.05rem; font-weight: 800; letter-spacing: -.02em;
+  margin-top: 2px; font-size: 1.05rem; font-weight: 800; letter-spacing: -.02em;
   white-space: nowrap;
 }
 .trend-now-omset {
-  flex-shrink: 0; font-size: .8rem; font-weight: 650; color: var(--ink-soft);
-  white-space: nowrap;
+  font-size: .9rem; font-weight: 700; color: var(--ink-soft);
+  white-space: nowrap; text-align: right;
 }
 .trend-now-pct {
-  flex-shrink: 0; font-weight: 800;
-  display: flex; align-items: center; gap: 6px;
+  font-weight: 800;
+  display: flex; align-items: center; justify-content: flex-end; gap: 6px;
+  white-space: nowrap;
 }
 .trend-now-pct .is-up { color: #16A34A; }
 .trend-now-pct .is-down { color: #DC2626; }
 .trend-now-pct .is-flat { color: #94A3B8; }
 .trend-now-bolt-wrap {
-  width: 40px; height: 28px; display: grid; place-items: center; flex-shrink: 0;
+  width: 44px; height: 32px; display: grid; place-items: center; flex-shrink: 0;
 }
 .trend-now-bolt {
-  width: 36px; height: 18px; overflow: visible; transform-origin: center;
+  width: 40px; height: 24px; overflow: visible; transform-origin: center;
 }
-.trend-now-go { color: var(--ink-soft); flex-shrink: 0; display: grid; place-items: center; }
+.trend-now-go { color: var(--ink-soft); display: grid; place-items: center; }
 .trend-now-row--1 {
-  gap: 18px; padding: 15px 18px; border-radius: 20px;
+  padding: 14px 16px; border-radius: 20px;
 }
-.trend-now-row--1 .trend-now-mascot { width: 72px; height: 72px; }
+.trend-now-row--1 .trend-now-place { width: 52px; height: 52px; }
+.trend-now-row--1 .trend-now-mascot { width: 88px; height: 88px; }
 .trend-now-row--1 .trend-now-img,
 .trend-now-row--1 .trend-now-img--ph { width: 84px; height: 84px; border-radius: 16px; }
-.trend-now-row--1 .trend-now-name { font-size: 1.2rem; }
-.trend-now-row--1 .trend-now-harga { font-size: 1.55rem; }
+.trend-now-row--1 .trend-now-name { font-size: 1.15rem; }
+.trend-now-row--1 .trend-now-harga { font-size: 1.45rem; }
 .trend-now-row--1 .trend-now-omset { font-size: 1.05rem; }
-.trend-now-row--1 .trend-now-pct { font-size: 1.2rem; }
-.trend-now-row--1 .trend-now-bolt-wrap { width: 58px; height: 40px; }
-.trend-now-row--1 .trend-now-bolt { width: 54px; height: 27px; }
+.trend-now-row--1 .trend-now-pct { font-size: 1.15rem; }
+.trend-now-row--1 .trend-now-bolt-wrap { width: 54px; height: 38px; }
+.trend-now-row--1 .trend-now-bolt { width: 50px; height: 30px; }
 .trend-now-shimmer {
-  height: 76px; border-radius: 16px; border: 1px solid var(--line);
+  height: 88px; border-radius: 16px; border: 1px solid var(--line);
   background: linear-gradient(90deg, #f3f4f6 0%, #fff 50%, #f3f4f6 100%);
   background-size: 200% 100%;
   animation: trendShimmer 1.2s ease-in-out infinite;
 }
-.trend-now-shimmer.trend-now-row--1 { height: 114px; border-radius: 20px; }
+.trend-now-shimmer.trend-now-row--1 { height: 122px; border-radius: 20px; }
 @keyframes trendShimmer {
   0% { background-position: 100% 0; }
   100% { background-position: -100% 0; }
 }
-@media (max-width: 559px) {
-  .trend-now-mascot { width: 36px; height: 36px; }
-  .trend-now-img, .trend-now-img--ph { width: 44px; height: 44px; }
-  .trend-now-row { gap: 8px; padding: 8px 10px; flex-wrap: wrap; }
-  .trend-now-name { flex: 1 1 100%; order: 3; }
-  .trend-now-harga, .trend-now-omset, .trend-now-pct { order: 4; }
-  .trend-now-go { margin-left: auto; }
-  .trend-now-row--1 { gap: 12px; padding: 12px 14px; }
-  .trend-now-row--1 .trend-now-mascot { width: 54px; height: 54px; }
+@media (max-width: 719px) {
+  .trend-now-row {
+    grid-template-columns: 40px 56px 56px minmax(0, 1fr);
+    grid-template-areas:
+      "place mascot img main"
+      "place mascot img omset"
+      "pct pct pct go";
+    row-gap: 6px; column-gap: 10px; padding: 10px;
+  }
+  .trend-now-place { grid-area: place; width: 36px; height: 36px; }
+  .trend-now-mascot { grid-area: mascot; width: 48px; height: 48px; }
+  .trend-now-img, .trend-now-img--ph { grid-area: img; width: 48px; height: 48px; }
+  .trend-now-main { grid-area: main; }
+  .trend-now-omset { grid-area: omset; text-align: left; }
+  .trend-now-pct { grid-area: pct; justify-content: flex-start; }
+  .trend-now-go { grid-area: go; justify-self: end; }
+  .trend-now-row--1 .trend-now-place { width: 44px; height: 44px; }
+  .trend-now-row--1 .trend-now-mascot { width: 64px; height: 64px; }
   .trend-now-row--1 .trend-now-img,
-  .trend-now-row--1 .trend-now-img--ph { width: 66px; height: 66px; }
-  .trend-now-row--1 .trend-now-bolt-wrap { width: 40px; height: 28px; }
-  .trend-now-row--1 .trend-now-bolt { width: 36px; height: 18px; }
-  .trend-now-shimmer.trend-now-row--1 { height: 96px; }
+  .trend-now-row--1 .trend-now-img--ph { width: 64px; height: 64px; }
+  .trend-now-row--1 .trend-now-bolt-wrap { width: 44px; height: 32px; }
+  .trend-now-row--1 .trend-now-bolt { width: 40px; height: 24px; }
+  .trend-now-shimmer.trend-now-row--1 { height: 132px; }
 }
 #dir-grid .lrow-table { font-size: .95rem; min-width: 860px; }
 #dir-grid .lrow-table thead th {
@@ -8482,6 +8499,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
      larisLoadScript() when the admin view actually renders. -->
 <script src="/js/peta-peluang.js?v=20260906a" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
-<script src="/js/gpt-app.js?v=20260906i" defer></script>
+<script src="/js/gpt-app.js?v=20260906j" defer></script>
 </body>
 </html>

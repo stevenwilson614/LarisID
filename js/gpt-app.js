@@ -9755,13 +9755,13 @@ function listingTrendTitle(t) {
     + (t.terukur ? 'terukur' : 'perkiraan') + '.';
 }
 
-function listingTrendInnerHtml(p) {
+function listingTrendInnerHtml(p, opts = {}) {
   const t = p && p._petaTrend;
   if (!t || t.pending) return '<span class="lrow-trend-pending">…</span>';
   if (t.belum || t.wkPct == null) return '—';
   const cls = t.wkPct > 0 ? 'is-up' : t.wkPct < 0 ? 'is-down' : 'is-flat';
   const arrow = t.wkPct > 0 ? ico('arrowUp', 13) : t.wkPct < 0 ? ico('arrowDown', 13) : '';
-  const perk = t.terukur ? '' : '<small>perkiraan</small>';
+  const perk = (opts.hidePerkiraan || t.terukur) ? '' : '<small>perkiraan</small>';
   return `<span class="lrow-trend-pct ${cls}">${arrow}<span>${fmtTrendPct(t.wkPct)}</span>${perk}</span>`;
 }
 
@@ -10037,10 +10037,7 @@ function refreshLrowTrendCells(root, listings) {
 
 function topTrendingListings(listings, n = 3) {
   return (listings || [])
-    .filter(p => {
-      const t = p && p._petaTrend;
-      return t && !t.belum && !t.pending && t.wkPct != null;
-    })
+    .filter(listingTrendEligible)
     .slice()
     .sort((a, b) => (Number(b._petaTrend.wkPct) || 0) - (Number(a._petaTrend.wkPct) || 0))
     .slice(0, n);
@@ -10050,7 +10047,7 @@ function trendingNowSkeletonHtml() {
   return `<div class="trend-now is-skel">
     <div class="trend-now-hd">
       <h3 class="trend-now-title">Trending Sekarang</h3>
-      <p class="trend-now-sub">Menghitung kenaikan omset…</p>
+      <p class="trend-now-sub">Menghitung kenaikan penjualan…</p>
     </div>
     <div class="trend-now-row trend-now-row--1 trend-now-shimmer"></div>
     <div class="trend-now-row trend-now-shimmer"></div>
@@ -10059,12 +10056,14 @@ function trendingNowSkeletonHtml() {
 }
 
 /** Soft lightning bolt after the weekly %. Slope: 300% → 60°, 150% → 30°, 75% → 15°. */
-function trendBoltHtml(wkPct) {
+function trendBoltHtml(wkPct, gid = 'tb') {
   if (wkPct == null || !Number.isFinite(Number(wkPct))) return '';
   const pct = Number(wkPct);
   const deg = pct * (60 / 300);
   const cls = pct > 0 ? 'is-up' : pct < 0 ? 'is-down' : 'is-flat';
-  return `<span class="trend-now-bolt-wrap" aria-hidden="true"><svg class="trend-now-bolt ${cls}" viewBox="0 0 48 24" width="36" height="18" style="transform:rotate(${-deg}deg)"><path d="M2 12 C10 11 14 8 18 11 C16.5 13.5 18 15 21 13 C28 11 36 12 46 12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
+  const stop = pct < 0 ? '#DC2626' : '#16A34A';
+  const id = esc(String(gid));
+  return `<span class="trend-now-bolt-wrap" aria-hidden="true"><svg class="trend-now-bolt ${cls}" viewBox="0 0 48 28" width="40" height="24" style="transform:rotate(${-deg}deg)"><defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${stop}" stop-opacity="0.32"/><stop offset="100%" stop-color="${stop}" stop-opacity="0"/></linearGradient></defs><path d="M2 14 C10 13 14 10 18 13 C16.5 15.5 18 17 21 15 C28 13 36 14 46 14 L46 26 L2 26 Z" fill="url(#${id})"/><path d="M2 14 C10 13 14 10 18 13 C16.5 15.5 18 17 21 15 C28 13 36 14 46 14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
 }
 
 function trendingNowRowHtml(p, i) {
@@ -10075,22 +10074,28 @@ function trendingNowRowHtml(p, i) {
   const omset = estOmsetBulan(p);
   const rank = i + 1;
   const first = rank === 1;
-  const thumbPx = first ? 84 : 56;
-  const mascotPx = first ? 72 : 48;
+  const thumbPx = first ? 84 : 64;
+  const mascotPx = first ? 88 : 64;
+  const placePx = first ? 52 : 44;
   const snap = productSnapshot(p);
   const encoded = snap ? encodeURIComponent(JSON.stringify(snap)) : '';
   const t = p && p._petaTrend;
-  const bolt = (t && !t.pending && !t.belum && t.wkPct != null) ? trendBoltHtml(t.wkPct) : '';
+  const bolt = (t && !t.pending && !t.belum && t.wkPct != null)
+    ? trendBoltHtml(t.wkPct, `tn-bolt-${rank}-${String(key).replace(/\|/g, '-')}`)
+    : '';
   const thumb = img
     ? `<img class="trend-now-img" src="${esc(imgThumb(img))}" alt="" loading="lazy" decoding="async" width="${thumbPx}" height="${thumbPx}" onerror="this.onerror=null;this.replaceWith(Object.assign(document.createElement('div'),{className:'trend-now-img trend-now-img--ph'}))">`
     : '<div class="trend-now-img trend-now-img--ph"></div>';
   return `<div class="trend-now-row${first ? ' trend-now-row--1' : ''}" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} tabindex="0" role="button" aria-label="Peringkat ${rank}, ${esc(name)}">
+    <img class="trend-now-place" src="/images/brand/trend-place-${rank}.webp" alt="" width="${placePx}" height="${placePx}" decoding="async">
     <img class="trend-now-mascot" src="/images/brand/mascot-trend-${rank}.webp" alt="" width="${mascotPx}" height="${mascotPx}" decoding="async">
     ${thumb}
-    <div class="trend-now-name" title="${esc(name)}">${esc(name)}</div>
-    <div class="trend-now-harga">${price ? fmtRp(price) : '—'}</div>
+    <div class="trend-now-main">
+      <div class="trend-now-name" title="${esc(name)}">${esc(name)}</div>
+      <div class="trend-now-harga">${price ? fmtRp(price) : '—'}</div>
+    </div>
     <div class="trend-now-omset">${omset ? fmtOmset(omset) : '—'}</div>
-    <div class="trend-now-pct" title="${esc(listingTrendTitle(p._petaTrend))}">${listingTrendInnerHtml(p)}${bolt}</div>
+    <div class="trend-now-pct" title="${esc(listingTrendTitle(p._petaTrend))}">${listingTrendInnerHtml(p, { hidePerkiraan: true })}${bolt}</div>
     <span class="trend-now-go" aria-hidden="true">${ico('chevronRight', first ? 22 : 18)}</span>
   </div>`;
 }
@@ -10104,7 +10109,7 @@ function trendingNowHtml(listings, opts = {}) {
   return `<div class="trend-now">
     <div class="trend-now-hd">
       <h3 class="trend-now-title">Trending Sekarang</h3>
-      <p class="trend-now-sub">Kenaikan omset 2 minggu vs 2 minggu sebelumnya — disetarakan ke 7 hari, bukan vs kalender minggu lalu.</p>
+      <p class="trend-now-sub">Kenaikan penjualan: ~2 minggu terakhir vs ~2 minggu sebelumnya, dari scrape nyata.</p>
     </div>
     ${top.map((p, i) => trendingNowRowHtml(p, i)).join('')}
   </div>`;
@@ -17986,10 +17991,7 @@ function sortDirRows(rows, mode) {
   else if (mode === 'terbaru') out.sort((a, b) => age(a) - age(b));
   else if (mode === 'terlaris') out.sort((a, b) => (Number(b.total_sold) || 0) - (Number(a.total_sold) || 0));
   else if (mode === 'trending') {
-    const pct = p => {
-      const t = p && p._petaTrend;
-      return (t && !t.belum && t.wkPct != null) ? t.wkPct : -1e12;
-    };
+    const pct = p => (listingTrendEligible(p) ? (Number(p._petaTrend.wkPct) || 0) : -1e12);
     out.sort((a, b) => pct(b) - pct(a));
   }
   else out.sort((a, b) => (Number(estOmsetBulan(b)) || 0) - (Number(estOmsetBulan(a)) || 0)); // omset default

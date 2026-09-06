@@ -54,7 +54,7 @@ Scrapes land 12–17 days apart; weeks are already span-normalised in
 ## Cari Produk layout
 
 1. Cat rail + heading / count
-2. Trending Sekarang (rank mascot + photo + one-line title in the middle + harga + omset + one % with arrow + tren bolt + Deep Dive). Rank 1 is 50% larger. Bolt slope caps at 60°.
+2. Trending Sekarang (place icon + rank mascot + photo + title/harga stack + omset + one % with tren bolt + Deep Dive). Rank 1 is larger. Shared grid columns align across the top 3. Bolt slope caps at 60° with a light green fill under the stroke. No “perkiraan” label on this strip.
 3. Urutkan (`#dir-filters-range` — includes Paling Trending; default remains omset)
 4. Keyword chips + listing table + pager + compare bar
 
