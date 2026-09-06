@@ -6057,11 +6057,12 @@ body.home-finder-done .home-hero {
 #dir-grid .lrow-img,
 #dir-grid .lrow-img--ph { width: 84px; height: 84px; border-radius: 14px; }
 @media (max-width: 559px) {
-  /* Mobile Cari Produk: first screen shows photo + title + Harga/Omset stacked.
-     Swipe sideways for tren %, grafik, terjual, review, usia. Photo stays anchored. */
+  /* Mobile Cari Produk: match the card mock (photo + title/cat/meta + stacked
+     Harga/Omset) on the first screen; swipe for tren / grafik / terjual / review / usia.
+     Checkbox + photo stay sticky. */
   #dir-grid {
-    --lrow-sticky-pick-w: 28px;
-    --lrow-sticky-thumb-w: 60px;
+    --lrow-sticky-pick-w: 30px;
+    --lrow-sticky-thumb-w: 78px;
   }
   #dir-grid .lrow-wrap {
     overflow: visible;
@@ -6074,13 +6075,13 @@ body.home-finder-done .home-hero {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
-    font-size: .84rem;
+    font-size: .86rem;
   }
   #dir-grid .lrow-table thead { display: none; }
   #dir-grid .lrow-table tbody {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
   }
   #dir-grid .lrow-table td {
     border-bottom: none;
@@ -6088,14 +6089,14 @@ body.home-finder-done .home-hero {
     background: transparent;
   }
   #dir-grid .lrow {
-    --lrow-gap: 6px;
+    --lrow-gap: 8px;
     display: grid;
     grid-template-columns:
       var(--lrow-sticky-pick-w)
       var(--lrow-sticky-thumb-w)
       minmax(0, 1fr)
       max-content
-      16px
+      18px
       max-content max-content max-content max-content max-content;
     grid-template-rows: auto auto;
     column-gap: var(--lrow-gap);
@@ -6108,10 +6109,10 @@ body.home-finder-done .home-hero {
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-x: contain;
     scroll-snap-type: x proximity;
-    padding: 10px 8px 10px 4px;
+    padding: 12px 10px 12px 8px;
     background: #fff;
     border: 1px solid #ECEFF3;
-    border-radius: 14px;
+    border-radius: 16px;
     box-shadow: 0 1px 2px rgba(16, 24, 40, .04);
     outline: none;
   }
@@ -6160,9 +6161,9 @@ body.home-finder-done .home-hero {
   }
   #dir-grid .lrow-thumb .lrow-img,
   #dir-grid .lrow-thumb .lrow-img--ph {
-    width: 56px;
-    height: 56px;
-    border-radius: 12px;
+    width: 72px;
+    height: 72px;
+    border-radius: 14px;
   }
   #dir-grid .lrow-table .lrow:hover .lrow-pick,
   #dir-grid .lrow-table .lrow:hover .lrow-thumb,
@@ -6175,10 +6176,17 @@ body.home-finder-done .home-hero {
     background: inherit;
   }
   #dir-grid .lrow-check {
-    width: 17px; height: 17px; border-radius: 5px;
-    border-color: #D0D5DD; background: #F8FAFC;
+    display: grid;
+    place-items: center;
+    width: 18px; height: 18px; border-radius: 5px;
+    border: 1.5px solid #D0D5DD; background: #fff; color: transparent;
   }
-  #dir-grid .lrow-check-btn { width: 26px; height: 26px; }
+  #dir-grid .lrow.is-picked .lrow-check {
+    background: var(--green, #16A34A);
+    border-color: var(--green, #16A34A);
+    color: #fff;
+  }
+  #dir-grid .lrow-check-btn { width: 28px; height: 28px; }
   #dir-grid .lrow-prod {
     grid-column: 3;
     grid-row: 1 / span 2;
@@ -6187,7 +6195,7 @@ body.home-finder-done .home-hero {
     min-width: 0;
     width: auto;
     max-width: none;
-    padding: 0;
+    padding: 0 2px 0 0;
     box-shadow: none !important;
     background: transparent !important;
   }
@@ -6198,23 +6206,50 @@ body.home-finder-done .home-hero {
     gap: 0;
   }
   #dir-grid .lrow-name {
-    font-size: .78rem;
+    font-size: .88rem;
     font-weight: 800;
+    letter-spacing: -.02em;
+    line-height: 1.2;
     -webkit-line-clamp: 2;
     color: #0F172A;
   }
   #dir-grid .lrow-toko {
-    font-size: .66rem;
+    font-size: .72rem;
     font-weight: 500;
     color: #667085;
-    margin-top: 1px;
+    margin-top: 2px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  /* Keep the first screen tight: category + meta wait behind the swipe. */
-  #dir-grid .lrow-cat,
-  #dir-grid .lrow-meta { display: none; }
+  #dir-grid .lrow-cat {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 4px;
+    margin-top: 6px;
+    max-width: 100%;
+    padding: 2px 8px 2px 6px;
+    border-radius: 999px;
+    background: #F1F5F9;
+    color: #64748B;
+    font-size: .66rem;
+    font-weight: 650;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: fit-content;
+  }
+  #dir-grid .lrow-cat svg { width: 12px; height: 12px; flex-shrink: 0; }
+  #dir-grid .lrow-meta {
+    display: block !important;
+    margin-top: 5px;
+    font-size: .66rem;
+    color: #98A2B3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   #dir-grid .lrow-harga,
   #dir-grid .lrow-omset,
   #dir-grid .lrow-trend,
@@ -6227,57 +6262,57 @@ body.home-finder-done .home-hero {
     justify-content: center;
     align-items: flex-start;
     min-width: 0;
-    padding: 0 0 0 8px !important;
+    padding: 0 0 0 10px !important;
     border-left: 1px solid #EAECF0;
     text-align: left;
     white-space: nowrap;
     scroll-snap-align: start;
     background: transparent !important;
   }
-  /* Harga above Omset in one column so both fit the first screen. */
+  /* Harga above Omset — same column as the mock. */
   #dir-grid .lrow-harga {
     grid-column: 4;
     grid-row: 1;
     align-self: end;
-    padding-bottom: 2px !important;
+    padding-bottom: 4px !important;
   }
   #dir-grid .lrow-omset {
     grid-column: 4;
     grid-row: 2;
     align-self: start;
-    padding-top: 2px !important;
+    padding-top: 4px !important;
   }
-  #dir-grid .lrow-trend { grid-column: 6; grid-row: 1 / span 2; min-width: 68px; padding: 0 10px !important; }
-  #dir-grid .lrow-spark { grid-column: 7; grid-row: 1 / span 2; min-width: 64px; padding: 0 10px !important; }
-  #dir-grid .lrow-sold { grid-column: 8; grid-row: 1 / span 2; min-width: 68px; padding: 0 10px !important; }
-  #dir-grid .lrow-reviews { grid-column: 9; grid-row: 1 / span 2; min-width: 64px; padding: 0 10px !important; }
-  #dir-grid .lrow-usia { grid-column: 10; grid-row: 1 / span 2; min-width: 56px; padding: 0 10px !important; }
+  #dir-grid .lrow-trend { grid-column: 6; grid-row: 1 / span 2; min-width: 72px; padding: 0 12px !important; }
+  #dir-grid .lrow-spark { grid-column: 7; grid-row: 1 / span 2; min-width: 68px; padding: 0 12px !important; }
+  #dir-grid .lrow-sold { grid-column: 8; grid-row: 1 / span 2; min-width: 72px; padding: 0 12px !important; }
+  #dir-grid .lrow-reviews { grid-column: 9; grid-row: 1 / span 2; min-width: 68px; padding: 0 12px !important; }
+  #dir-grid .lrow-usia { grid-column: 10; grid-row: 1 / span 2; min-width: 58px; padding: 0 12px !important; }
   #dir-grid .lrow-metric-lbl {
     display: block;
-    font-size: .58rem;
+    font-size: .62rem;
     font-weight: 600;
     color: #98A2B3;
-    line-height: 1.15;
-    margin-bottom: 1px;
+    line-height: 1.2;
+    margin-bottom: 2px;
   }
   #dir-grid .lrow-metric-val {
     display: block;
-    font-size: .74rem;
+    font-size: .8rem;
     font-weight: 800;
     color: #0F172A;
     letter-spacing: -.02em;
     line-height: 1.2;
   }
   #dir-grid .lrow-omset .omset-chip { display: none; }
-  #dir-grid .lrow-trend .lrow-trend-pct { font-size: .74rem; }
+  #dir-grid .lrow-trend .lrow-trend-pct { font-size: .78rem; }
   #dir-grid .lrow-trend .lrow-trend-pct small { display: none; }
   #dir-grid .lrow-spark .trend-now-bolt-wrap {
     display: block;
-    width: 44px;
+    width: 46px;
     height: 26px;
   }
   #dir-grid .lrow-spark .trend-now-bolt {
-    width: 44px;
+    width: 46px;
     height: 26px;
   }
   #dir-grid .lrow-wide { display: flex !important; }
@@ -6285,18 +6320,19 @@ body.home-finder-done .home-hero {
     grid-column: 5;
     grid-row: 1 / span 2;
     position: static !important;
-    width: 16px;
-    min-width: 16px;
+    width: 18px;
+    min-width: 18px;
     padding: 0;
     white-space: nowrap;
   }
   #dir-grid .lrow-fav { display: none; }
   #dir-grid .lrow-go {
-    width: 18px; height: 26px; margin: 0;
+    width: 18px; height: 28px; margin: 0;
     color: #98A2B3;
   }
   #dir-grid .lrow-go:hover { background: none; color: #667085; }
 }
+
 
 
 .badge-comp-tinggi { background: var(--red-bg); color: var(--accent); }
@@ -8999,6 +9035,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
      larisLoadScript() when the admin view actually renders. -->
 <script src="/js/peta-peluang.js?v=20260906b" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
-<script src="/js/gpt-app.js?v=20260906v" defer></script>
+<script src="/js/gpt-app.js?v=20260906w" defer></script>
 </body>
 </html>

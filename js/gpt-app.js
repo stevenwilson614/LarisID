@@ -9937,7 +9937,7 @@ function listingRowHtml(p, opts = {}) {
         <div class="lrow-name">${esc(name)}</div>
         <div class="lrow-toko">${esc(toko)}</div>
         ${cat}
-        <div class="lrow-meta">${metaSold} · ${esc(usia.text)}</div>
+        <div class="lrow-meta">${metaSold} • ${esc(usia.text)}</div>
       </div>`;
   const prodCell = actions
     ? `<td class="lrow-prod"><button type="button" class="lrow-open" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''}>${prodInner}</button></td>`
