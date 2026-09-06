@@ -6068,6 +6068,7 @@ body.home-finder-done .home-hero {
     overflow: visible;
     margin: 0;
     -webkit-overflow-scrolling: auto;
+    container-type: inline-size;
   }
   #dir-grid .lrow-table {
     display: block;
@@ -6091,10 +6092,20 @@ body.home-finder-done .home-hero {
   #dir-grid .lrow {
     --lrow-gap: 8px;
     display: grid;
+    /* Fallback if 100cqi is unavailable: keep at least 7.25rem for the name. */
     grid-template-columns:
       var(--lrow-sticky-pick-w)
       var(--lrow-sticky-thumb-w)
-      minmax(0, 1fr)
+      minmax(7.25rem, 1fr)
+      max-content
+      18px
+      max-content max-content max-content max-content max-content;
+    /* overflow-x:auto zeroes the 1fr minimum, so minmax(0,1fr) hid the title.
+       max() keeps a floor when 100cqi is 0; 1fr as the max stays valid. */
+    grid-template-columns:
+      var(--lrow-sticky-pick-w)
+      var(--lrow-sticky-thumb-w)
+      minmax(max(7.25rem, calc(100cqi - var(--lrow-sticky-pick-w) - var(--lrow-sticky-thumb-w) - 7.75rem)), 1fr)
       max-content
       18px
       max-content max-content max-content max-content max-content;
@@ -6138,7 +6149,6 @@ body.home-finder-done .home-hero {
     z-index: 3;
     box-shadow: none;
     width: auto;
-    min-width: 0;
     max-width: none;
   }
   #dir-grid .lrow-pick {
@@ -6192,9 +6202,10 @@ body.home-finder-done .home-hero {
     grid-row: 1 / span 2;
     position: static !important;
     left: auto !important;
-    min-width: 0;
+    min-width: max(7.25rem, calc(100cqi - var(--lrow-sticky-pick-w) - var(--lrow-sticky-thumb-w) - 7.75rem));
     width: auto;
-    max-width: none;
+    max-width: 100%;
+    overflow: hidden;
     padding: 0 2px 0 0;
     box-shadow: none !important;
     background: transparent !important;
@@ -6205,13 +6216,18 @@ body.home-finder-done .home-hero {
     min-width: 0;
     gap: 0;
   }
+  #dir-grid .lrow-prod-txt { min-width: 0; max-width: 100%; }
   #dir-grid .lrow-name {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
     font-size: .88rem;
     font-weight: 800;
     letter-spacing: -.02em;
     line-height: 1.2;
     -webkit-line-clamp: 2;
     color: #0F172A;
+    word-break: break-word;
   }
   #dir-grid .lrow-toko {
     font-size: .72rem;
