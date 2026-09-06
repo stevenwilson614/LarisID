@@ -19,7 +19,7 @@ PDP sold is a **bucket floor** (`10RB+`). Day-to-day units are review-based esti
 
 ## List card
 
-Each favorite stays on the list (no click-to-detail). Photo / toko / harga / omset / one % sit beside a **3-month dated dual chart**: last 13 WIB Mondays of `listing_weekly` omset + units (independent Y-axes). Solid = terukur, dashed = perkiraan. No next-week forecast. Under that row, plain-text **updates this week** (omit the block if none):
+Each favorite stays on the list (no click-to-detail). Photo / toko / harga / omset / one % sit beside a **3-month dated dual chart**: last 13 WIB Mondays of `listing_weekly` omset + units (independent Y-axes). Drawn with Chart.js in the same style as Deep Dive Tren produk (tension `.35`, point radius 3, red omset fill, Rp ticks). Solid = terukur, dashed = perkiraan. No next-week forecast. Under that row, plain-text **updates this week** (omit the block if none):
 
 - Title change (`listings.product_name` this WIB week vs last name before Monday) — listing title, not scrape-slot keyword
 - Harga change (this week vs last `listing_weekly.price`; ignore under Rp 100 or 0.5%)

@@ -10472,6 +10472,7 @@ function gptTrackerAdapter() {
       if (!row || !row.item_id) return;
       try { openDeepDive(row); } catch (_) { showToast('Gagal membuka produk'); }
     },
+    ensureChart() { return larisEnsureChart(); },
     openDiscovery() { try { openDirectory(); } catch (_) {} },
     // Was previously wired to the kebab menu's "Buka Deep Dive" via
     // openDiscovery(), which ignored the passed key entirely and just opened

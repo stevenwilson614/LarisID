@@ -29,6 +29,7 @@
   var bound = false;
   var inflight = null;
   var timers = { abort: 0, typeahead: 0, resize: 0 };
+  var favCharts = [];
 
   var S = {
     screen: 'list',
@@ -162,12 +163,27 @@
   }
 
   function weekLabel(iso) {
+    var ts = Date.parse(String(iso || '').slice(0, 10) + 'T00:00:00Z');
+    if (!isNaN(ts)) {
+      try {
+        return new Date(ts).toLocaleDateString('id-ID', {
+          day: 'numeric', month: 'short', timeZone: 'UTC',
+        });
+      } catch (_) { /* fall through */ }
+    }
     var parts = String(iso || '').slice(0, 10).split('-');
     if (parts.length < 3) return '';
     var day = Number(parts[2]);
     var mon = Number(parts[1]) - 1;
     if (!day || mon < 0 || mon > 11) return '';
     return day + ' ' + MONS_SHORT[mon];
+  }
+
+  function rpTick(v) {
+    if (v >= 1e9) return (v / 1e9).toFixed(1) + 'M';
+    if (v >= 1e6) return Math.round(v / 1e6) + 'jt';
+    if (v >= 1e3) return Math.round(v / 1e3) + 'rb';
+    return v;
   }
 
   function normTitle(s) {
@@ -236,25 +252,26 @@
     return '<div class="' + cls + ' ltk-row-ico--letter" aria-hidden="true">P</div>';
   }
 
+  function destroyCharts() {
+    favCharts.forEach(function (c) { try { c.destroy(); } catch (_) {} });
+    favCharts = [];
+  }
+
   function yScaleFn(vals, top, height) {
-    var min = Math.min.apply(null, vals);
-    var max = Math.max.apply(null, vals);
-    if (!isFinite(min) || !isFinite(max)) { min = 0; max = 1; }
-    if (min === max) {
-      var pad = Math.abs(min) * 0.1 || 1;
-      min -= pad;
-      max += pad;
-    }
-    var span = (max - min) || 1;
+    var min = 0;
+    var max = Math.max.apply(null, vals.concat([0]));
+    if (!isFinite(max) || max <= 0) max = 1;
+    var span = max - min || 1;
     return function (v) { return top + height - ((Number(v) || 0) - min) / span * height; };
   }
 
-  function drawDualChart(cv, weeks) {
+  /** Canvas fallback when Chart.js is not available — same colors / points / fill. */
+  function drawDualChartFallback(cv, weeks) {
     if (!cv || !cv.getContext) return;
     var rows = chartSeries(weeks);
     var dpr = global.devicePixelRatio || 1;
     var w = cv.clientWidth || 320;
-    var h = cv.clientHeight || 160;
+    var h = cv.clientHeight || 180;
     cv.width = Math.round(w * dpr);
     cv.height = Math.round(h * dpr);
     var ctx = cv.getContext('2d');
@@ -262,34 +279,68 @@
     ctx.clearRect(0, 0, w, h);
     if (rows.length < 2) return;
 
-    var padL = 6, padR = 6, padT = 8, padB = 22;
+    var padL = 36, padR = 28, padT = 10, padB = 22;
     var plotW = Math.max(1, w - padL - padR);
     var plotH = Math.max(1, h - padT - padB);
     var times = rows.map(function (r) { return Date.parse(String(r.week_start).slice(0, 10)); });
     var minT = times[0], maxT = times[times.length - 1];
     var spanT = (maxT - minT) || 1;
     function xAt(t) { return padL + ((t - minT) / spanT) * plotW; }
-    var yOm = yScaleFn(rows.map(function (r) { return Number(r.omset_wk) || 0; }), padT, plotH);
-    var yUn = yScaleFn(rows.map(function (r) { return Number(r.units_wk) || 0; }), padT, plotH);
+    var omVals = rows.map(function (r) { return Number(r.omset_wk) || 0; });
+    var unVals = rows.map(function (r) { return Number(r.units_wk) || 0; });
+    var yOm = yScaleFn(omVals, padT, plotH);
+    var yUn = yScaleFn(unVals, padT, plotH);
 
-    function strokeSeries(key, yFn, color) {
+    ctx.strokeStyle = 'rgba(0,0,0,.06)';
+    ctx.lineWidth = 1;
+    for (var g = 0; g < 4; g++) {
+      var gy = padT + (plotH * g) / 3;
+      ctx.beginPath();
+      ctx.moveTo(padL, gy);
+      ctx.lineTo(padL + plotW, gy);
+      ctx.stroke();
+    }
+
+    var omPts = rows.map(function (r, i) {
+      return { x: xAt(times[i]), y: yOm(omVals[i]), measured: r.source === 'measured' };
+    });
+    if (omPts.length) {
+      ctx.beginPath();
+      ctx.moveTo(omPts[0].x, padT + plotH);
+      omPts.forEach(function (p) { ctx.lineTo(p.x, p.y); });
+      ctx.lineTo(omPts[omPts.length - 1].x, padT + plotH);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(181,32,42,.06)';
+      ctx.fill();
+    }
+
+    function strokeSeries(pts, color) {
       ctx.lineWidth = 2;
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
       ctx.strokeStyle = color;
-      for (var i = 1; i < rows.length; i++) {
-        var a = rows[i - 1], b = rows[i];
-        var measured = a.source === 'measured' && b.source === 'measured';
-        ctx.setLineDash(measured ? [] : [5, 4]);
+      for (var i = 1; i < pts.length; i++) {
+        ctx.setLineDash(pts[i - 1].measured && pts[i].measured ? [] : [5, 5]);
         ctx.beginPath();
-        ctx.moveTo(xAt(times[i - 1]), yFn(Number(a[key]) || 0));
-        ctx.lineTo(xAt(times[i]), yFn(Number(b[key]) || 0));
+        ctx.moveTo(pts[i - 1].x, pts[i - 1].y);
+        ctx.lineTo(pts[i].x, pts[i].y);
         ctx.stroke();
       }
       ctx.setLineDash([]);
+      pts.forEach(function (p) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = '#fff';
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = color;
+        ctx.stroke();
+      });
     }
-    strokeSeries('omset_wk', yOm, '#B5202A');
-    strokeSeries('units_wk', yUn, '#2563EB');
+    strokeSeries(omPts, '#B5202A');
+    strokeSeries(rows.map(function (r, i) {
+      return { x: xAt(times[i]), y: yUn(unVals[i]), measured: r.source === 'measured' };
+    }), '#2563EB');
 
     ctx.fillStyle = '#9CA3AF';
     ctx.font = '10px system-ui, -apple-system, sans-serif';
@@ -307,19 +358,160 @@
     }
     for (var i = 0; i < n; i += step) tick(i, i === 0 ? 'left' : 'center');
     tick(n - 1, 'right');
+
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(rpTick(Math.max.apply(null, omVals)), padL - 4, padT + 2);
+    ctx.fillText('0', padL - 4, padT + plotH);
+  }
+
+  function makeFavChart(cv, weeks) {
+    var rows = chartSeries(weeks);
+    if (rows.length < 2 || typeof global.Chart === 'undefined') {
+      drawDualChartFallback(cv, weeks);
+      return;
+    }
+    if (typeof global.Chart.getChart === 'function') {
+      var existing = global.Chart.getChart(cv);
+      if (existing) { try { existing.destroy(); } catch (_) {} }
+    }
+    var sources = rows.map(function (r) { return r.source; });
+    var labels = rows.map(function (r) { return weekLabel(r.week_start); });
+    var omsets = rows.map(function (r) { return Number(r.omset_wk) || 0; });
+    var units = rows.map(function (r) { return Number(r.units_wk) || 0; });
+    function dashSeg(ctx) {
+      var i = ctx.p0DataIndex;
+      var a = sources[i];
+      var b = sources[i + 1];
+      return (a === 'measured' && b === 'measured') ? undefined : [5, 5];
+    }
+    var chart = new global.Chart(cv, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Omset / minggu (Rp)',
+            data: omsets,
+            yAxisID: 'y',
+            borderColor: '#B5202A',
+            backgroundColor: 'rgba(181,32,42,.06)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.35,
+            pointRadius: 3,
+            pointHoverRadius: 4,
+            spanGaps: true,
+            segment: { borderDash: dashSeg },
+          },
+          {
+            label: 'Unit / minggu',
+            data: units,
+            yAxisID: 'y1',
+            borderColor: '#2563EB',
+            backgroundColor: 'transparent',
+            borderWidth: 2,
+            fill: false,
+            tension: 0.35,
+            pointRadius: 3,
+            pointHoverRadius: 4,
+            spanGaps: true,
+            segment: { borderDash: dashSeg },
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function (c) {
+                if (c.parsed.y == null) return '';
+                if (c.dataset.yAxisID === 'y1') {
+                  return 'Unit: ' + Math.round(c.parsed.y);
+                }
+                var short = call('fmtRpShort', c.parsed.y);
+                return 'Omset: ' + (short != null ? short : fmtRpShort(c.parsed.y));
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            ticks: {
+              maxRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: 6,
+              font: { size: 10 },
+              color: '#9CA3AF',
+            },
+            grid: { display: false },
+            border: { display: false },
+          },
+          y: {
+            display: true,
+            position: 'left',
+            min: 0,
+            ticks: {
+              callback: rpTick,
+              maxTicksLimit: 5,
+              font: { size: 10 },
+              color: '#9CA3AF',
+            },
+            grid: { color: 'rgba(0,0,0,.06)' },
+            border: { display: false },
+          },
+          y1: {
+            display: true,
+            position: 'right',
+            min: 0,
+            ticks: {
+              maxTicksLimit: 5,
+              font: { size: 10 },
+              color: '#9CA3AF',
+            },
+            grid: { drawOnChartArea: false },
+            border: { display: false },
+          },
+        },
+      },
+    });
+    favCharts.push(chart);
   }
 
   function paintCharts() {
     if (!host) return;
-    host.querySelectorAll('[data-ltk-chart]').forEach(function (cv) {
-      var key = cv.getAttribute('data-ltk-chart');
-      drawDualChart(cv, S.weeklyByKey[key] || []);
+    var canvases = host.querySelectorAll('[data-ltk-chart]');
+    if (!canvases.length) return;
+    callP('ensureChart').then(function () {
+      if (!host) return;
+      destroyCharts();
+      host.querySelectorAll('[data-ltk-chart]').forEach(function (cv) {
+        var key = cv.getAttribute('data-ltk-chart');
+        makeFavChart(cv, S.weeklyByKey[key] || []);
+      });
+    }).catch(function () {
+      if (!host) return;
+      destroyCharts();
+      host.querySelectorAll('[data-ltk-chart]').forEach(function (cv) {
+        var key = cv.getAttribute('data-ltk-chart');
+        drawDualChartFallback(cv, S.weeklyByKey[key] || []);
+      });
     });
   }
 
   function onResize() {
     if (timers.resize) clearTimeout(timers.resize);
-    timers.resize = setTimeout(paintCharts, 120);
+    timers.resize = setTimeout(function () {
+      if (favCharts.length) {
+        favCharts.forEach(function (c) { try { c.resize(); } catch (_) {} });
+      } else {
+        paintCharts();
+      }
+    }, 120);
   }
 
   function productUpdates(p) {
@@ -488,13 +680,13 @@
         '</div>' +
         (hasChart
           ? '<div class="ltk-card-chart">' +
-              '<div class="ltk-cchart-head">' +
-                '<span class="ltk-cchart-legend">' +
-                  '<span class="ltk-cchart-om"><i class="ltk-lg-om" aria-hidden="true"></i>Omset</span>' +
-                  '<span class="ltk-cchart-un"><i class="ltk-lg-un" aria-hidden="true"></i>Unit</span>' +
-                '</span>' +
+              '<div class="ltk-chart-wrap">' +
+                '<canvas class="ltk-card-chart-canvas" data-ltk-chart="' + attr(key) + '"></canvas>' +
               '</div>' +
-              '<canvas class="ltk-card-chart-canvas" data-ltk-chart="' + attr(key) + '" width="640" height="200"></canvas>' +
+              '<div class="ltk-chart-legend">' +
+                '<span class="ltk-chart-leg-row"><span class="ltk-swatch" style="background:#B5202A"></span>Omset / minggu (Rp)</span>' +
+                '<span class="ltk-chart-leg-row"><span class="ltk-swatch" style="background:#2563EB"></span>Unit / minggu</span>' +
+              '</div>' +
             '</div>'
           : '') +
       '</div>' +
@@ -574,6 +766,7 @@
   function renderList() {
     var pane = $('[data-ltk-screen="list"]');
     if (!pane) return;
+    destroyCharts();
     if (S.tab === 'store') {
       pane.innerHTML =
         (S.stores.length ? S.stores.map(storeCardHtml).join('') : '<p class="ltk-hint">Belum ada toko. Nyalakan “Pantau toko ini” di kartu produk.</p>') +
@@ -957,6 +1150,7 @@
     if (timers.abort) clearTimeout(timers.abort);
     if (timers.typeahead) clearTimeout(timers.typeahead);
     if (timers.resize) clearTimeout(timers.resize);
+    destroyCharts();
     if (bound) {
       global.document.removeEventListener('click', onClick, true);
       global.document.removeEventListener('change', onChange, true);
@@ -1012,6 +1206,6 @@
     summaryCardHtml: summaryCardHtml,
     bindSummary: bindSummary,
     destroy: destroy,
-    version: '3.1.0',
+    version: '3.1.1',
   };
 })(typeof window !== 'undefined' ? window : this);
