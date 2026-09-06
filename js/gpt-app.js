@@ -3541,9 +3541,14 @@ async function verifyWhatsappOtp() {
   const otpEl = $('wa-otp-input');
   const errEl = $('wa-otp-error');
   const btn = $('wa-verify-btn');
+  const showErr = (msg) => { if (!errEl) return; errEl.textContent = msg; errEl.style.display = 'block'; };
   const otp = (otpEl?.value || '').replace(/\s/g, '');
   if (!otp || !/^\d{6}$/.test(otp)) {
-    if (errEl) { errEl.textContent = 'Masukkan 6 digit kode OTP.'; errEl.style.display = ''; }
+    showErr('Masukkan 6 digit kode OTP.');
+    return;
+  }
+  if (!_waPhone) {
+    showErr('Nomor WhatsApp hilang. Kirim ulang kode dulu.');
     return;
   }
   if (errEl) errEl.style.display = 'none';
@@ -3556,12 +3561,12 @@ async function verifyWhatsappOtp() {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.ok) {
-      if (errEl) { errEl.textContent = _waErrText(res, data, 'Verifikasi gagal. Periksa kode OTP kamu.'); errEl.style.display = ''; }
+      showErr(_waErrText(res, data, 'Verifikasi gagal. Periksa kode OTP kamu.'));
       return;
     }
     const session = data.session;
     if (!session || !session.access_token) {
-      if (errEl) { errEl.textContent = 'Gagal membuat sesi. Coba lagi.'; errEl.style.display = ''; }
+      showErr('Gagal membuat sesi. Coba lagi.');
       return;
     }
     if (data.is_new_user) _lidFireSignupSuccess();
@@ -3569,7 +3574,7 @@ async function verifyWhatsappOtp() {
     closeAuthModal();
     await _authOnSignIn(session);
   } catch (_) {
-    if (errEl) { errEl.textContent = 'Gagal terhubung ke server. Coba lagi.'; errEl.style.display = ''; }
+    showErr('Gagal terhubung ke server. Coba lagi.');
   } finally {
     if (btn) { btn.textContent = 'Verifikasi'; btn.disabled = false; }
   }

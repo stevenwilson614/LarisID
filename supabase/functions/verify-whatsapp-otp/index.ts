@@ -125,28 +125,57 @@ serve(async (req) => {
     })
     if (linkErr || !linkData) throw linkErr || new Error('generateLink failed')
 
-    // Exchange the hashed token for access+refresh tokens via the REST verify endpoint
-    const actionLink = linkData.properties.action_link || ''
-    const actionUrl = new URL(actionLink)
-    const hashedToken = actionUrl.searchParams.get('token')
-      || actionUrl.searchParams.get('token_hash')
-      || ''
+    // Exchange the hashed token for access+refresh tokens.
+    // Prefer POST /verify (JSON body). GET+redirect:manual used to fail every
+    // login: GoTrue returns 302 with tokens in Location#hash, and Response.ok
+    // is false for 3xx — so we treated a successful exchange as failure.
+    const props = linkData.properties || ({} as { action_link?: string; hashed_token?: string })
+    const actionLink = props.action_link || ''
+    let hashedToken = props.hashed_token || ''
+    if (!hashedToken && actionLink) {
+      const actionUrl = new URL(actionLink)
+      hashedToken = actionUrl.searchParams.get('token')
+        || actionUrl.searchParams.get('token_hash')
+        || ''
+    }
     if (!hashedToken) throw new Error('Magic link token missing')
 
-    const verifyRes = await fetch(
-      `${supabaseUrl}/auth/v1/verify?token=${encodeURIComponent(hashedToken)}&type=magiclink`,
-      { method: 'GET', headers: { apikey: anonKey }, redirect: 'manual' }
-    )
+    let access_token: string | null = null
+    let refresh_token: string | null = null
+    let expires_in: string | null = null
 
-    const location = verifyRes.headers.get('location') || ''
-    const hashPart = location.includes('#') ? location.split('#')[1] : ''
-    const params = new URLSearchParams(hashPart)
-    const access_token = params.get('access_token')
-    const refresh_token = params.get('refresh_token')
-    const expires_in = params.get('expires_in')
+    const postRes = await fetch(`${supabaseUrl}/auth/v1/verify`, {
+      method: 'POST',
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${anonKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ type: 'magiclink', token_hash: hashedToken }),
+    })
+    if (postRes.ok) {
+      const body = await postRes.json().catch(() => ({} as Record<string, unknown>))
+      access_token = (body.access_token as string) || null
+      refresh_token = (body.refresh_token as string) || null
+      expires_in = body.expires_in != null ? String(body.expires_in) : '3600'
+    } else {
+      const getRes = await fetch(
+        `${supabaseUrl}/auth/v1/verify?token=${encodeURIComponent(hashedToken)}&type=magiclink`,
+        { method: 'GET', headers: { apikey: anonKey }, redirect: 'manual' }
+      )
+      const location = getRes.headers.get('location') || ''
+      const hashPart = location.includes('#') ? location.split('#')[1] : ''
+      const params = new URLSearchParams(hashPart)
+      access_token = params.get('access_token')
+      refresh_token = params.get('refresh_token')
+      expires_in = params.get('expires_in')
+      // Do NOT require getRes.ok — 302 with tokens in Location is success.
+      if (!access_token) {
+        console.error('Token exchange failed. POST status:', postRes.status, 'GET status:', getRes.status, 'Location:', location)
+      }
+    }
 
-    if (!verifyRes.ok || !access_token) {
-      console.error('Token exchange failed. Location:', location)
+    if (!access_token) {
       return new Response(
         JSON.stringify({ error: 'Gagal membuat sesi. Coba lagi.' }),
         { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } }
