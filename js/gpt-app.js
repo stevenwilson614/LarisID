@@ -20407,7 +20407,7 @@ function wireUi() {
       clarityEvt('gpt_landing_card_click', { card });
       if (card === 'produk') { $('btn-produk')?.click(); return; }
       if (card === 'tracker') { $('btn-tracker')?.click(); return; }
-      if (card === 'supplier') { $('btn-supplier')?.click(); return; }
+      if (card === 'supplier') { openSupplierBrowse('landing'); return; }
       hlGoToAskLaris(); // 'kompetitor' has no dedicated view yet — send them into Laris AI
     });
   });
@@ -20422,17 +20422,6 @@ function wireUi() {
     void openDirectory();
   });
   $('btn-tracker')?.addEventListener('click', () => { openTrackerView(); });
-  // Intentional entry into the supplier probe (the Deep Dive pill is the
-  // contextual one). Clears any product filter so this is the "browse" path.
-  $('btn-supplier')?.addEventListener('click', () => {
-    if (!supplierProbeVisible()) return;
-    _supFilterKeyword = null;
-    _supFilterCategory = null;
-    _supSource = 'tab';
-    _supShowAll = false;
-    closeSidebar();
-    openSidePanel('supplier', { via: 'sidebar' });
-  });
   $('btn-cohort')?.addEventListener('click', () => { openCohortView(); });
   $('btn-community')?.addEventListener('click', () => { openCommunityBoard(); });
   $('btn-harga')?.addEventListener('click', () => setView('harga'));
@@ -20659,7 +20648,7 @@ let _supLoadPromise = null;
 let _supLoadError   = false;
 let _supShowAll     = false;
 let _supListeners   = false;
-// Assigned by runDdrTool('supplier') and the btn-supplier handler above; this
+// Assigned by runDdrTool('supplier') and openSupplierBrowse; this
 // file is 'use strict', so they must be declared or those writes throw.
 let _supFilterKeyword  = null;
 let _supFilterCategory = null;
@@ -20954,14 +20943,23 @@ async function fillSupplierContent(opts = {}) {
   supMaybeShowSurvey();
 }
 
-/** Sidebar entry visibility. Deep Dive pill gates itself in ddToolPillsHtml. */
+/** Side-panel Supplier tab visibility. No left-nav entry (removed). */
 function supplierSyncNavVisibility() {
   const on = supplierProbeVisible();
-  const btn = $('btn-supplier');
-  if (btn) btn.style.display = on ? '' : 'none';
   const tab = $('side-tab-supplier');
   if (tab) tab.hidden = !on;
   if (on) void supLoadData().catch(() => {});
+}
+
+/** Browse-all suppliers (landing card). Deep Dive uses runDdrTool('supplier'). */
+function openSupplierBrowse(via) {
+  if (!supplierProbeVisible()) return;
+  _supFilterKeyword = null;
+  _supFilterCategory = null;
+  _supSource = 'tab';
+  _supShowAll = false;
+  closeSidebar();
+  openSidePanel('supplier', { via: via || 'landing' });
 }
 
 function supOpenLink(id, which) {
