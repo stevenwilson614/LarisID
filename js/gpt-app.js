@@ -12534,54 +12534,27 @@ async function fetchPeerKeywordRows(peers) {
   }
 }
 
-/** Top photos for a Product Type Deep Dive — matview images, else peers by sold. */
-/** Deep Dive gallery images: product photo first, then peer/type photos for swipe. */
-function ddHeaderImageList(product, peers) {
-  const list = [];
-  const seen = new Set();
-  const push = (u) => {
-    const s = String(u || '').trim();
-    if (!s || seen.has(s)) return;
-    seen.add(s);
-    list.push(s);
-  };
-  if (product?.image_url) push(product.image_url);
-  (product?._ptype?.images || []).forEach(push);
-  if (list.length < 8 && peers?.length) {
-    [...peers]
-      .sort((a, b) => (Number(b.total_sold) || 0) - (Number(a.total_sold) || 0))
-      .forEach((p) => { if (list.length < 8) push(p.image_url); });
-  }
-  return list.slice(0, 8);
+/**
+ * Deep Dive header photo — only this listing's image.
+ * `_ptype.images` and peer covers are other sellers' products, not extra shots
+ * of the same listing (we only scrape one cover URL per item).
+ */
+function ddHeaderImageList(product) {
+  const s = String(product?.image_url || '').trim();
+  return s ? [s] : [];
 }
 
-/** Swipeable photo gallery (Tokopedia-style on mobile). Desktop keeps thumbs. */
-function ddHeaderMediaHtml(product, peers) {
-  const imgs = ddHeaderImageList(product, peers);
+/** Single product photo (carousel kept for a future multi-image scrape). */
+function ddHeaderMediaHtml(product) {
+  const imgs = ddHeaderImageList(product);
   if (!imgs.length) return '<span class="ph" aria-hidden="true"></span>';
-  if (imgs.length === 1) {
-    return `<div class="ddr-gallery ddr-gallery--single" aria-label="Foto produk">
+  return `<div class="ddr-gallery ddr-gallery--single" aria-label="Foto produk">
       <div class="ddr-gallery-main">
         <div class="ddr-carousel-track" data-ddr-track>
           <div class="ddr-slide"><img src="${esc(imgs[0])}" alt="" draggable="false"></div>
         </div>
       </div>
     </div>`;
-  }
-  const srcsAttr = esc(JSON.stringify(imgs));
-  return `<div class="ddr-gallery" data-ddr-carousel data-ddr-srcs="${srcsAttr}" role="region" aria-roledescription="carousel" aria-label="Foto produk (${imgs.length})">
-    <div class="ddr-gallery-main">
-      <div class="ddr-carousel-track" data-ddr-track>
-        ${imgs.map((u) => `<div class="ddr-slide"><img src="${esc(u)}" alt="" loading="lazy" draggable="false"></div>`).join('')}
-      </div>
-      <div class="ddr-carousel-count"><span data-ddr-count>1</span>/${imgs.length}</div>
-    </div>
-    <div class="ddr-gallery-thumbs" role="tablist" aria-label="Pilih foto" style="grid-template-columns:repeat(${Math.min(imgs.length, 5)},1fr)">
-      ${imgs.slice(0, 5).map((u, i) => `<button type="button" class="ddr-gallery-thumb${i === 0 ? ' on' : ''}" data-ddr-dot="${i}" data-ddr-src="${esc(u)}" aria-label="Foto ${i + 1}" aria-selected="${i === 0 ? 'true' : 'false'}">
-        <img src="${esc(imgThumb(u))}" alt="" loading="lazy" decoding="async" draggable="false">
-      </button>`).join('')}
-    </div>
-  </div>`;
 }
 
 function bindDdrCarousel(root) {
@@ -13871,7 +13844,7 @@ async function openDeepDive(product, ddOpts = {}) {
     <div class="ddr-header" data-dd-sec="skor">
       <div class="ddr-media">
         <button type="button" class="ddr-back" id="ddr-back" aria-label="Kembali" title="Kembali">${ico('arrowLeft', 18)}</button>
-        ${ddHeaderMediaHtml(product, peers)}
+        ${ddHeaderMediaHtml(product)}
         <span class="ddr-views" hidden data-view-key="${esc(viewCountKey(product.item_id, product.shop_id))}" title="Orang yang melihat produk ini di Laris tahun ini">${ico('eye', 13)}<span class="ddr-views-num" data-view-num-self>${viewersYtd.toLocaleString('id-ID')}</span><span class="ddr-views-lbl">sedang melihat</span></span>
       </div>
       <div class="ddr-head-main">
