@@ -18857,7 +18857,6 @@ function hydrateDirTrends() {
 function paintDirectoryTable(opts = {}) {
   const grid = $('dir-grid');
   const pager = $('dir-pager');
-  const chips = $('dir-chips');
   if (!grid) return;
   const filtered = sortDirRows(
     filterListingPool(state.dirPoolListings, state.dirChipKw || '', state.dirZoneKeys),
@@ -18877,19 +18876,6 @@ function paintDirectoryTable(opts = {}) {
   const nearbyLead = state.dirNearby
     ? `<p class="dd-sub dir-nearby-lead">Belum ketemu produk untuk “<strong>${esc(q)}</strong>”. Ini produk dari pasar terdekat:</p>`
     : '';
-  if (chips) {
-    const html = keywordChipsHtml(state.dirTypes, state.dirChipKw || '', { showSemua: true });
-    chips.innerHTML = html;
-    chips.hidden = !html;
-    chips.querySelectorAll('[data-lrow-kw]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        state.dirChipKw = btn.getAttribute('data-lrow-kw') || '';
-        state.dirPage = 1;
-        state.dirZoneKeys = null;
-        paintDirectoryTable({ remountPeta: false });
-      });
-    });
-  }
   grid.innerHTML = slice.length
     ? nearbyLead + listingRowsHtml(slice, {
         actions: true,
@@ -18949,7 +18935,9 @@ async function renderDirectory() {
   state._dirPoolCats = cats.join('|');
   state._dirPoolSub = sub;
   if (scopeChanged) {
-    state.dirChipKw = q ? (pool.primaryKw || '') : '';
+    // Keyword chips were removed from the directory UI; never pin the pool
+    // to primaryKw or results would stay silently filtered.
+    state.dirChipKw = '';
     state.dirZoneKeys = null;
     state.dirPage = 1;
   }
