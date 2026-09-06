@@ -1089,7 +1089,7 @@ function setComposerChips(list, surface) {
   });
 }
 
-// ── Ask Laris (dedicated chat page) ───────────────────────────────────────
+// ── Laris AI (dedicated chat page) ───────────────────────────────────────
 // Pre-prompt chips run a dedicated action rather than free text through the
 // generic router: "kotaku"/"my city" needs the user's real onboarding city,
 // which only startRecommendationChat resolves — a generic search for the
@@ -1145,7 +1145,7 @@ function renderAskLarisChips() {
   });
 }
 
-/** "Contoh pertanyaan lainnya" list on the home-landing Ask Laris teaser —
+/** "Contoh pertanyaan lainnya" list on the home-landing Laris AI teaser —
  * sourced from the same askLarisPrompts() the composer chips use, so the
  * marketing copy can't drift from what the product actually does. */
 function renderHomeLandingExamples() {
@@ -1166,7 +1166,7 @@ function renderHomeLandingExamples() {
   });
 }
 
-// Ask Laris AI landing demo (Bandung/fashion example) — real listings
+// Laris AI landing demo (Bandung/fashion example) — real listings
 // (item_id/shop_id/product_name/image_url/price/total_sold/rating/store_name
 // all pulled from the live DB), hardcoded since this is a one-time scripted
 // demo, not a live query — see initLandingAiDemo().
@@ -1258,7 +1258,7 @@ function initLandingAiDemo() {
   io.observe(section);
 }
 
-/** Sidebar "Ask Laris" entry — same landing as clicking the logo. */
+/** Sidebar "Laris AI" entry — same landing as clicking the logo. */
 function openAskLaris() {
   abortAssistantStream();
   renderHome();
@@ -2758,7 +2758,7 @@ function setView(name, opts = {}) {
   }
   // The composer has nothing to say on the tracker either — it is a
   // configuration + data surface, not a place to ask a question. The chat
-  // view is Ask Laris and keeps its own docked chat bar (see the
+  // view is Laris AI and keeps its own docked chat bar (see the
   // .composer-dock display rule) — everywhere else now hides the bar
   // entirely rather than just clearing its chips, so this list stops
   // mattering for those views, but chips are still irrelevant on them either way.
@@ -3196,7 +3196,7 @@ function openAuthModal(mode, source) {
     }
   } catch (_) {}
   // Carry landing answers across signup only when the user actually changed
-  // them — defaults would otherwise resume Ask Laris instead of a deep dive.
+  // them — defaults would otherwise resume Laris AI instead of a deep dive.
   try {
     if (!currentUser && finderHasCustomAnswers()) {
       state.pendingFinder = { ...(_finder || {}) };
@@ -4194,7 +4194,7 @@ function appendBubble(role, html, opts = {}) {
   if (!thread) return null;
   const div = document.createElement('div');
   div.className = `msg ${role}`;
-  div.innerHTML = `<div class="msg-role">${role === 'user' ? 'Kamu' : 'Ask Laris'}</div><div class="msg-bubble">${html}</div>`;
+  div.innerHTML = `<div class="msg-role">${role === 'user' ? 'Kamu' : 'Laris AI'}</div><div class="msg-bubble">${html}</div>`;
   thread.appendChild(div);
   if (opts.root) {
     thread.scrollTop = thread.scrollHeight;
@@ -4422,8 +4422,8 @@ function renderHome() {
 }
 
 /** Marketing landing (view-landing) — reached via the logo (goHome) and
- * the sidebar Tentang button. Separate surface from Ask Laris
- * (renderHome/view-home): the sidebar "Ask Laris" entry and every other
+ * the sidebar Tentang button. Separate surface from Laris AI
+ * (renderHome/view-home): the sidebar "Laris AI" entry and every other
  * renderHome() caller are untouched by this. */
 function renderLanding() {
   setView('landing');
@@ -4524,7 +4524,7 @@ function updateHomeFinderVisibility() {
   // The finder is a first-run affordance. Once the user has completed
   // onboarding, sent a message, or opened a deep dive, the composer
   // becomes the primary entry point — the finder stays hidden for good.
-  // The Ask Laris Garuda only mounts once home-finder-done reveals it;
+  // The Laris AI Garuda only mounts once home-finder-done reveals it;
   // init/refresh here so the rig can measure a visible host.
   if (MASCOT_ALIVE && window.LarisMascot) {
     try { window.LarisMascot.init(); window.LarisMascot.refresh(); } catch (_) {}
@@ -4568,7 +4568,7 @@ async function syncHomeFirstDdCard() {
     const best = sortTypeRows((packed.types || []).slice(), 'terlaris')[0];
     if (!best) {
       card.innerHTML = `<p class="home-ret-kicker">Analisis pertama</p>
-        <p class="home-ret-sub">Belum ketemu pasar untuk ${esc(cats.join(', '))}. Coba tanya Ask Laris.</p>`;
+        <p class="home-ret-sub">Belum ketemu pasar untuk ${esc(cats.join(', '))}. Coba tanya Laris AI.</p>`;
       return;
     }
     registerTypes([best]);
@@ -4779,10 +4779,10 @@ async function fetchRegionFromIp() {
 
 // ── Sticky results search/sort bar ──────────────────────────────────────────
 // Deliberately NOT a chat input — it's the browse/search entry point that
-// replaced the always-visible composer on every view except Ask Laris. Holds
+// replaced the always-visible composer on every view except Laris AI. Holds
 // the most recently rendered market-card set so choosing a sort order can
 // Deliberately directory-only. Finder results land in #chat-thread, which is
-// also Ask Laris's thread — and Ask Laris keeps its own dedicated bottom
+// also Laris AI's thread — and Laris AI keeps its own dedicated bottom
 // composer, so a second search surface on the same view would be redundant
 // with (and visually compete against) that composer. Produk/directory has no
 // composer at all, so this bar is its sole search entry point (also covers
@@ -5785,7 +5785,7 @@ function renderSidebarLocCard() {
 function syncDirectoryFromOnboarding() {
   const o = state.onboarding || {};
   if (o.step !== 'done') return;
-  // City and minat stay on Discover / Ask Laris / the heading. Cari Produk
+  // City and minat stay on Discover / Laris AI / the heading. Cari Produk
   // default home is unfiltered — copying onboarding cats into dirCats used to
   // select "Olahraga & Outdoor" (FINDER_DEFAULT_CAT maps there) and fetch
   // only that bucket under the hero. An explicit rail / mega / hero click
@@ -8768,7 +8768,7 @@ function isCategoryLevelAsk(lower, cat) {
 }
 
 /**
- * "Is X a good idea to sell" style asks (Ask Laris' comparative-reasoning
+ * "Is X a good idea to sell" style asks (Laris AI's comparative-reasoning
  * prompt) — distinct from a plain category search/showcase ask: the user
  * wants a judgment ("shoes are overrun, women's could work"), not a grid of
  * cards. Caught only when paired with a resolved category (see call site).
@@ -11860,7 +11860,7 @@ async function openChat(id) {
   state.activeChatId = id;
   saveLocalState();
   renderChatList();
-  // Ask Laris' pre-prompt chips (or a leftover deep-dive chip set) must not
+  // Laris AI's pre-prompt chips (or a leftover deep-dive chip set) must not
   // bleed into an unrelated resumed thread — the product/AI paths below set
   // their own chips as needed.
   setComposerChips(null);
@@ -14628,7 +14628,7 @@ KONTEKS DATA (wajib):
 - Hari ini: ${dateStr} (WIB). Tahun ${pick('year')} sudah berjalan — jangan bilang tahun ini "belum terjadi".
 - Data LarisID adalah snapshot Shopee Indonesia. Sapuan scrape tiap 12–17 hari, bukan harian dan bukan agregat tahunan.
 - Tidak ada GMV tahunan. Angka omset adalah per bulan (terukur atau perkiraan).
-- Persona: kamu Ask Laris. Pakai "aku/kamu", jangan "gue/lo".
+- Persona: kamu Laris AI. Pakai "aku/kamu", jangan "gue/lo".
 - Jangan sebut "jatah alat", "batas alat", atau "tool budget". Kalau data banyak, bilang "aku ambil N pasar/kategori terbesar dulu" dan tawarkan sisanya sebagai follow-up.`;
 }
 
@@ -14824,7 +14824,7 @@ SKOR PRODUK INI: ${scoreInfo.score}/100 — "${scoreInfo.label}". Komponennya:
     ? 'Reply in clear English (informal professional "you").'
     : 'Jawab dalam Bahasa Indonesia informal ("kamu").';
 
-  return `You are Ask Laris, LarisID's product research assistant. ${voice}
+  return `You are Laris AI, LarisID's product research assistant. ${voice}
 LANGUAGE: Write ONLY in ${langLabel}. If the user mixed languages, use the language that is most prevalent in their message — never answer in Bahasa Indonesia when they primarily wrote in English.
 ${aiDataContext()}
 PENTING:
@@ -15403,7 +15403,7 @@ async function handleComposerSubmit(text, opts = {}) {
   // trending”) — specific nouns (“dresses”) fall through to planned search.
   const catAsk = detectCategoryFromText(lower);
 
-  // "Is [category] a good idea?" (Ask Laris' reasoning prompt) wants a
+  // "Is [category] a good idea?" (Laris AI's reasoning prompt) wants a
   // judgment call, not a card grid — intercept before the showcase branch.
   if (!inProductCtx && catAsk && isEvaluativeAsk(lower)) {
     if (inResultsThread) beginFreshChat();
@@ -15701,7 +15701,7 @@ function buildCategoryEvalSystemPrompt(category, types, question) {
     ? 'Reply in clear English (informal professional "you").'
     : 'Jawab dalam Bahasa Indonesia informal ("kamu").';
 
-  return `You are Ask Laris, LarisID's product research assistant. ${voice}
+  return `You are Laris AI, LarisID's product research assistant. ${voice}
 LANGUAGE: Write ONLY in ${langLabel}.
 ${aiDataContext()}
 User is deciding whether "${category}" is a good category to sell in on Shopee.
@@ -15759,7 +15759,7 @@ ATURAN MINAT (mengikat):
   }
   const thread = _gptMem().researchPromptBlock?.(research) || '';
 
-  return `You are Ask Laris, LarisID's product research assistant. ${voice}
+  return `You are Laris AI, LarisID's product research assistant. ${voice}
 LANGUAGE: Write ONLY in ${langLabel}. If the user mixed languages, use the language that is most prevalent in their message.
 ${aiDataContext()}
 User bertanya soal PASAR secara umum — belum membuka satu produk tertentu.
@@ -15824,7 +15824,7 @@ async function runMarketAgent(chat, text, loading, opts = {}) {
   extractFactsFromText(text).forEach(([k, v]) => { void rememberFact(k, v, 'chat'); });
 }
 
-/** Ask Laris' "should I sell X category" turn — category-level, not one product. */
+/** Laris AI's "should I sell X category" turn — category-level, not one product. */
 async function handleAskLarisEvaluate(chat, text, category, loading) {
   if (!(await _useAi('mls_chat'))) { loading?.remove?.(); return; }
   applyResearchFromText(chat, text);
@@ -15897,7 +15897,7 @@ pembeli — jadi pakai ini untuk membahas ongkir dan di mana pesaing menumpuk,
 JANGAN mengklaim tahu di mana pembelinya berada.`
     : `KOTA USER: belum disebut. Boleh tanya sekali di akhir kalau relevan.`;
 
-  return `You are Ask Laris, pendamping riset untuk peserta kelas jualan LarisID.
+  return `You are Laris AI, pendamping riset untuk peserta kelas jualan LarisID.
 ${aiDataContext()}
 Jawab dalam Bahasa Indonesia informal ("kamu"). Tanpa emoji.
 
@@ -20408,7 +20408,7 @@ function wireUi() {
       if (card === 'produk') { $('btn-produk')?.click(); return; }
       if (card === 'tracker') { $('btn-tracker')?.click(); return; }
       if (card === 'supplier') { $('btn-supplier')?.click(); return; }
-      hlGoToAskLaris(); // 'kompetitor' has no dedicated view yet — send them into Ask Laris
+      hlGoToAskLaris(); // 'kompetitor' has no dedicated view yet — send them into Laris AI
     });
   });
 

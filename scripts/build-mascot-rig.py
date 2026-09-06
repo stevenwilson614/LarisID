@@ -64,7 +64,7 @@ POSES = {
             {"id": "l", "outer": (549, 192, 17, 18), "clip_beak": True},
         ],
     },
-    # Ask Laris composer perch — full-body streetwear Garuda with glasses.
+    # Laris AI composer perch — full-body streetwear Garuda with glasses.
     # No wing patch (hands in pocket). Lids only: irises behind the frames
     # smear at the ~100px display size, so we skip iris travel.
     "ask": {
@@ -168,7 +168,7 @@ def sample_feather_tone(img, outer):
 def build_pose(name, cfg, debug=False):
     src_path = os.path.join(ROOT, cfg["src"])
     raw = Image.open(src_path)
-    # Transparent sources (Ask Laris perch) are composited onto white so the
+    # Transparent sources (Laris AI perch) are composited onto white so the
     # feathered patches match the hero pipeline. The page still serves the
     # RGBA original as the static <img>.
     if raw.mode == "RGBA":

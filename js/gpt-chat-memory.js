@@ -1,5 +1,5 @@
 /**
- * Ask Laris thread memory — follow-up detection, research constraints, and
+ * Laris AI thread memory — follow-up detection, research constraints, and
  * history serialization. Loaded before gpt-app.js in the browser; required by
  * scripts/test-ask-laris-followup.mjs in Node. No DOM, no fetch.
  */

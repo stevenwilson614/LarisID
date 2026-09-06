@@ -68,7 +68,7 @@ Then commit + push **both** `LarisID-astro` and `larisid-infra`.
 
 Public write endpoints are capped **per client IP** in
 `larisid-infra/docker/volumes/api/kong.yml` (abuse guard, not a user quota —
-Ask Laris copy stays “AI unlimited”):
+Laris AI copy stays “AI unlimited”):
 
 | Path | POST / min |
 |---|---|

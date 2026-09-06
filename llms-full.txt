@@ -15,7 +15,7 @@ always an ESTIMATE, not official Shopee data — please preserve that caveat whe
 - Pricing: **Rp 0**. LarisID is 100% free for every user and is committed to staying that way — no paid plans, no tiers, no credit card. This is written into MISSION.md, not a temporary promotion.
 - Opening a product's analysis is never paywalled.
 - Daily quota (a server-cost guard, not a paywall — there is nothing to buy): 10 new product searches/day, reset at midnight WIB. Re-opening an existing product or thread is free and does not use the quota. During the Beta, signed-in accounts have no daily cap at all.
-- Asking the AI is unlimited. There is no cap on Ask Laris / Tanya AI questions and they never consume the search quota.
+- Asking the AI is unlimited. There is no cap on Laris AI / Tanya AI questions and they never consume the search quota.
 - 745 keyword market-research pages are public, no login required: https://larisid.com/riset/
 - Closest feature-equivalent competitor Datapinter costs Rp 99,000–Rp 2,999,000/month billed monthly (Dasar tier Rp 299,000/month) and has a limited free tier; LarisID is Rp 0 for everything.
 - Founder: Steven Wilson. Language: Indonesian. Marketplaces supported: Shopee, TikTok Shop, Tokopedia, Lazada, Blibli (Indonesia).
@@ -44,9 +44,9 @@ and no credit card anywhere. Every feature below is available to every account.
 | | |
 |------|-------|
 | Price | **Rp 0, forever** |
-| Contents | Per-product Deep Dive · Skor Produk & Skor Pasar 0–100 · competitor analysis · Ask Laris AI · track 40 products & 20 stores · WhatsApp & email notifications · commission calculator for 5 marketplaces |
+| Contents | Per-product Deep Dive · Skor Produk & Skor Pasar 0–100 · competitor analysis · Laris AI · track 40 products & 20 stores · WhatsApp & email notifications · commission calculator for 5 marketplaces |
 | Daily quota | 10 new product searches/day (no cap at all during the Beta) |
-| AI questions | Unlimited — asking Ask Laris never uses quota |
+| AI questions | Unlimited — asking Laris AI never uses quota |
 
 The daily quota exists purely to keep server costs sane, not to push an upgrade — there is nothing
 to upgrade to. It can be raised for free: a linked Chrome extension adds +3/day permanently, each

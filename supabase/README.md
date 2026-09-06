@@ -8,7 +8,7 @@ bash scripts/apply-selfhost.sh supabase/migrations/<file>.sql
 bash scripts/deploy-function-selfhost.sh <slug>
 ```
 
-Ask Laris category overview: `20260906093000_ringkasan_kategori.sql`. Public web search: `supabase/functions/cari-web/` (needs `TAVILY_API_KEY` or `BRAVE_API_KEY` on Contabo). See [docs/ask-laris.md](../docs/ask-laris.md).
+Laris AI category overview: `20260906093000_ringkasan_kategori.sql`. Public web search: `supabase/functions/cari-web/` (needs `TAVILY_API_KEY` or `BRAVE_API_KEY` on Contabo). See [docs/ask-laris.md](../docs/ask-laris.md).
 
 Do **not** `supabase db push --linked`. The old cloud ref `bzmvlraziqevqdyotvgy`
 was migrated off and removed. `supabase/.temp/linked-project.json` is a leftover

@@ -37,7 +37,7 @@ uji coba yang berakhir, tidak perlu kartu kredit. Semua fitur di bawah tersedia 
 | | |
 |-------|-------|
 | Harga | **Rp 0, selamanya** |
-| Isi | Deep Dive per produk · Skor Produk & Skor Pasar 0–100 · analisis kompetitor · Ask Laris AI (tanpa batas) · pantau 40 produk & 20 toko · notifikasi WhatsApp & Email · kalkulator komisi 5 marketplace |
+| Isi | Deep Dive per produk · Skor Produk & Skor Pasar 0–100 · analisis kompetitor · Laris AI (tanpa batas) · pantau 40 produk & 20 toko · notifikasi WhatsApp & Email · kalkulator komisi 5 marketplace |
 | Jatah harian | 10 pencarian produk baru/hari (tidak dibatasi selama masa Beta) |
 
 Jatah harian ada semata untuk menahan biaya server, bukan untuk mendorong pembelian — tidak ada
@@ -46,7 +46,7 @@ yang mendaftar lewat link ajakan = +1/hari permanen (maks +5); mengisi form masu
 
 Jatah di-reset setiap tengah malam WIB dan hanya berlaku untuk MEMULAI pencarian baru — membuka lagi
 produk atau percakapan yang sudah ada tidak memakai jatah. Membuka analisa produk TIDAK PERNAH dikunci.
-BERTANYA KE AI (Ask Laris / Tanya AI) TIDAK DIBATASI SAMA SEKALI dan tidak memakai jatah — jatah
+BERTANYA KE AI (Laris AI / Tanya AI) TIDAK DIBATASI SAMA SEKALI dan tidak memakai jatah — jatah
 harian hanya untuk memulai pencarian produk baru.
 Yang gratis tanpa jatah dan tanpa login: direktori Produk, Pantauan Harian, halaman riset pasar
 /riset/ dan /kota/.

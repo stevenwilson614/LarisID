@@ -6,7 +6,7 @@ Read **[MISSION.md](../MISSION.md)** first. Do not reintroduce a blocking onboar
 
 **QA checklist:** [journey-funnel-test.md](./journey-funnel-test.md)
 
-**Ask Laris replies:** [ask-laris.md](./ask-laris.md) — lookup / weekly / filter / refer / judgment. Do not send every typed prompt through visible thinking.
+**Laris AI replies:** [ask-laris.md](./ask-laris.md) — lookup / weekly / filter / refer / judgment. Do not send every typed prompt through visible thinking.
 
 **Retention re-read:** [RETENTION.sql](./RETENTION.sql)
 
@@ -14,7 +14,7 @@ Read **[MISSION.md](../MISSION.md)** first. Do not reintroduce a blocking onboar
 
 ## Live flow
 
-**Login → Beranda (`#home-finder`) → Cari Produk / Ask Laris → Deep Dive → end-of-dive alert card → Favorit Aku pulse / scrape digest / Langkah minggu ini**
+**Login → Beranda (`#home-finder`) → Cari Produk / Laris AI → Deep Dive → end-of-dive alert card → Favorit Aku pulse / scrape digest / Langkah minggu ini**
 
 Onboarding is in-page on Beranda (`state.onboarding`: city → category → experience → notes), plus `#prefs-drawer` and a profile nudge. It is **not** a modal overlay.
 

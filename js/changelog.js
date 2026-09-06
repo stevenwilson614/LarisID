@@ -12,7 +12,7 @@
 window.LARIS_CHANGELOG = [
   {
     date: '2026-09-06',
-    title: 'Ask Laris jawab lebih cepat dan lebih jujur soal apa yang kami punya',
+    title: 'Laris AI jawab lebih cepat dan lebih jujur soal apa yang kami punya',
     items: [
       {
         text: 'Cari Produk tidak lagi menampilkan peta sebar. Di atas daftar ada Trending Sekarang — tiga produk dengan kenaikan omset terbesar — lalu urutan, lalu baris produk. Centang untuk bandingkan, panah untuk Deep Dive, bookmark untuk memasukkan keyword-nya ke Pantauan. Angka kenaikan itu 2 minggu vs 2 minggu sebelumnya, bukan “minggu ini”.',

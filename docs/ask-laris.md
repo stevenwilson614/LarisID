@@ -1,10 +1,10 @@
-# Ask Laris — routing, modes, and honesty
+# Laris AI — routing, modes, and honesty
 
 Live chat is `index.html` + `js/gpt-app.js`. Thread memory lives in `js/gpt-chat-memory.js`.
 
 Read **[MISSION.md](../MISSION.md)** first. Do not invent sold / omset / affiliate / live numbers. Weekly answers stay span-normalised — see [terlaris-minggu.md](./terlaris-minggu.md). Location is **seller** location. Kalodata is **TikTok Shop**, not Shopee.
 
-QA: [journey-funnel-test.md](./journey-funnel-test.md) (Ask Laris beats at the end).
+QA: [journey-funnel-test.md](./journey-funnel-test.md) (Laris AI beats at the end).
 
 ---
 
@@ -70,7 +70,7 @@ Empty assistant text is not persisted. `max_tokens` appends a “Lanjutkan jawab
 
 ## Shared prompt context
 
-`aiDataContext()` is on every prompt builder: today’s date (WIB), scrape every 12–17 days, no yearly GMV, persona **Ask Laris**, aku/kamu, never mention tool limits.
+`aiDataContext()` is on every prompt builder: today’s date (WIB), scrape every 12–17 days, no yearly GMV, persona **Laris AI**, aku/kamu, never mention tool limits.
 
 `detectReplyLanguage` defaults to `id`. English only when `en >= 2 && en > id`.
 

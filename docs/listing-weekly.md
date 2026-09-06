@@ -121,7 +121,7 @@ closed-form decay (`W(t') = W(t)·exp(−Δ/τ)`) revises this week and next wee
 - UI sequence: last 6 WIB weeks through today (this week = nowcast, perkiraan
   unless `source=measured`) → next week (forecast, perkiraan). Chart labels
   are week starts (`10 Agu`), not calendar months (`Agu 26`).
-- Deep Dive tren graphs (Ask Laris `#ddr-trend-canvas`, dashboard
+- Deep Dive tren graphs (Laris AI `#ddr-trend-canvas`, dashboard
   `#tren-main-chart` / `#ap-demand-chart` / `#dd-chart-trend`) plot weekly
   scrape-interval rates. They take the last 6 **non-empty** weeks (skipping
   `prior` peer-fill and empty Mondays) so a long scrape gap does not draw as a

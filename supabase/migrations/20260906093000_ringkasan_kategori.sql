@@ -69,7 +69,7 @@ as $$
 $$;
 
 comment on function public.ringkasan_kategori(int) is
-  'Top-N pasar per canonical category for Ask Laris. One round-trip; not a yearly GMV.';
+  'Top-N pasar per canonical category for Laris AI. One round-trip; not a yearly GMV.';
 
 grant execute on function public.ringkasan_kategori(int) to anon, authenticated;
 

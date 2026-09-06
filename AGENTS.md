@@ -6,7 +6,7 @@ If a task would violate LarisID’s non-negotiables (access for all, honesty, no
 
 For UI and marketing copy, follow **[docs/BRAND_V2_PHOENIX.md](./docs/BRAND_V2_PHOENIX.md)** (logo lockups, four color schemes, paint text, voice).
 
-Ask Laris modes, thinking, follow-ups, and data-vs-web rules: **[docs/ask-laris.md](./docs/ask-laris.md)**.
+Laris AI modes, thinking, follow-ups, and data-vs-web rules: **[docs/ask-laris.md](./docs/ask-laris.md)**.
 
 ## Dashboard SPA: onboarding & journey funnel
 

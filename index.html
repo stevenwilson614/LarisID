@@ -3808,7 +3808,7 @@ body.view-tracker .panel-inner { max-width: none; width: 100%; }
 @media (max-width: 760px) {
   body.view-tracker .panel { padding-left: 10px; padding-right: 10px; }
 }
-/* The chat/thread view (view-chat) is Ask Laris — reached either via the
+/* The chat/thread view (view-chat) is Laris AI — reached either via the
    dedicated nav button (fresh thread + pre-prompts) or via a finder search
    landing on its results. It's the one view with a docked AI chat bar; the
    top search bar (added for the directory/browse views) replaced it
@@ -3843,7 +3843,7 @@ body.view-chat .panel { padding-bottom: calc(var(--composer-h) + 28px); }
   -webkit-background-clip: text; background-clip: text;
   color: transparent;
 }
-/* Ask Laris: 2-line title + icons stay centered over the composer.
+/* Laris AI: 2-line title + icons stay centered over the composer.
    Garuda is out of flow to the left, so it never wraps the heading. */
 .home-ask-stage {
   display: flex;
@@ -3923,7 +3923,7 @@ body.home-finder-done .home-markets { margin-bottom: 10px; }
 body.home-finder-done .home-finder,
 body.home-finder-done .finder-atau,
 body.home-finder-done .home-sub { display: none !important; }
-/* Landing: 4 questions + submit only. Composer stays on Ask Laris. */
+/* Landing: 4 questions + submit only. Composer stays on Laris AI. */
 body.view-home:not(.home-finder-done) .home-composer,
   body.view-home:not(.home-finder-done) .finder-atau,
   body.view-home:not(.home-finder-done) .home-prompts,
@@ -4177,7 +4177,7 @@ body.home-finder-done .home-hero {
   /* The space before this <br> in the markup is deliberate: hiding the break
      here would otherwise render "kamumau" as one word. */
   .home-title br { display: none; }
-  /* Ask Laris: force the <br> split only — never a 3rd line. */
+  /* Laris AI: force the <br> split only — never a 3rd line. */
   body.home-finder-done.view-home .home-title {
     font-size: clamp(1.3rem, 6vw, 1.85rem);
     line-height: 1.18;
@@ -4660,7 +4660,7 @@ body.home-finder-done .home-hero {
 .hl-ai-bubble { max-width: 88%; padding: 10px 14px; border-radius: 14px; font-size: .78rem; line-height: 1.4; background: #fff; color: var(--ink); }
 .hl-ai-bubble--user { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
 .hl-ai-bubble--assistant { align-self: flex-start; border-bottom-left-radius: 4px; }
-/* Ask Laris AI demo — typed question/answer (see initLandingAiDemo) followed
+/* Laris AI demo — typed question/answer (see initLandingAiDemo) followed
    by real product cards, reusing .card-grid/.prod-card so they read exactly
    like real search results instead of a separate visual language. */
 .hl-ai-demo-cards {
@@ -7062,9 +7062,9 @@ body:has(.modal-overlay.open) .msg-steven-fab {
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ic-a" d="M12 2.6 20.8 7 12 11.4 3.2 7z"/><path class="ic-a" d="M3.2 7v10L12 21.4V11.4"/><path class="ic-a" d="M20.8 7v10L12 21.4"/><path class="ic-a" d="m8.4 7.9 5.8-2.9"/><path class="ic-a" d="m11.83 4.65 2.37.35-1.14 2.11"/></svg>
       Cari Produk
     </button>
-    <button type="button" class="side-btn" id="btn-ask-laris" title="Ask Laris">
+    <button type="button" class="side-btn" id="btn-ask-laris" title="Laris AI">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ic-a" d="M17.8 4H6.2A2.2 2.2 0 0 0 4 6.2v8.6A2.2 2.2 0 0 0 6.2 17H7v3.2a.5.5 0 0 0 .85.36L11.4 17h6.4A2.2 2.2 0 0 0 20 14.8V6.2A2.2 2.2 0 0 0 17.8 4Z"/><path class="ic-a" stroke-width="1.5" d="M12 6.7c.44 2.5 1.16 3.22 3.66 3.66-2.5.44-3.22 1.16-3.66 3.66-.44-2.5-1.16-3.22-3.66-3.66 2.5-.44 3.22-1.16 3.66-3.66Z"/></svg>
-      Ask Laris
+      Laris AI
     </button>
     <!-- Primary daily destination, so it sits with the action buttons rather
          than in .sidebar-foot with the meta pages (Harga/FAQ). -->
@@ -7252,8 +7252,8 @@ body:has(.modal-overlay.open) .msg-steven-fab {
       <div class="panel-inner">
         <!-- Marketing landing — reached via the logo (goHome/#btn-home,
              #btn-home-mobile) and the sidebar Tentang button. Deliberately
-             separate from #view-home (Ask Laris), which stays the original
-             hero+finder+composer surface reached from the sidebar "Ask Laris"
+             separate from #view-home (Laris AI), which stays the original
+             hero+finder+composer surface reached from the sidebar "Laris AI"
              button and every other renderHome() caller. -->
         <div class="view" id="view-landing">
           <div class="home-landing" id="home-landing">
@@ -7601,14 +7601,14 @@ body:has(.modal-overlay.open) .msg-steven-fab {
                 <section class="hl-ai">
                   <div class="hl-ai-top">
                     <div class="hl-ai-art">
-                      <img src="/images/brand/mascot-ai.webp" width="900" height="600" alt="Maskot Laris memakai headset, siap menjawab pertanyaan lewat Ask Laris" loading="lazy" decoding="async">
+                      <img src="/images/brand/mascot-ai.webp" width="900" height="600" alt="Maskot Laris memakai headset, siap menjawab pertanyaan lewat Laris AI" loading="lazy" decoding="async">
                     </div>
                     <div class="hl-ai-body">
                       <p class="hl-ai-kicker">Bingung mulai dari mana?</p>
                       <h2 class="hl-ai-title">Tanya Laris AI.<br>Jawabannya <em>pakai data</em>.</h2>
                       <p class="hl-ai-sub">AI Laris terhubung langsung dengan data marketplace untuk memberikan rekomendasi terbaik untukmu.</p>
                       <button type="button" class="hl-ai-cta" data-hl-start>
-                        Coba Ask Laris sekarang
+                        Coba Laris AI sekarang
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
                       </button>
                     </div>

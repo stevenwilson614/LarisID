@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Unit tests for Ask Laris follow-up routing helpers (js/gpt-chat-memory.js).
+ * Unit tests for Laris AI follow-up routing helpers (js/gpt-chat-memory.js).
  * No network. Run: node scripts/test-ask-laris-followup.mjs
  */
 import { createRequire } from 'node:module';
