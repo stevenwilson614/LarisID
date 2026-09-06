@@ -9849,7 +9849,7 @@ function listingRowHtml(p, opts = {}) {
       </td>`
     : '';
   const rowAttrs = actions
-    ? `data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''}`
+    ? `data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} tabindex="0" role="button"`
     : `data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} tabindex="0" role="button" aria-pressed="${picked ? 'true' : 'false'}"`;
   return `<tr class="${cls}" ${rowAttrs}>
     ${check}
@@ -9905,7 +9905,10 @@ function prodKey(p) {
 function bindProductCards(root) {
   (root || document).querySelectorAll('[data-prod]').forEach(btn => {
     if (btn.dataset.boundProd) return;
-    if (btn.matches('tr.lrow') && btn.querySelector('[data-prod]')) return;
+    // Cari Produk actions rows put data-prod on the <tr> and also on the
+    // title/chevron controls. Bind the row so harga/omset/etc. open Deep Dive;
+    // skip nested controls so we don't double-fire.
+    if (!btn.matches('tr.lrow') && btn.closest('tr.lrow[data-prod]')) return;
     btn.dataset.boundProd = '1';
     const onPick = (e) => {
       if (e && e.target && e.target.closest && e.target.closest('[data-lrow-cmp],[data-lrow-fav]')) return;
