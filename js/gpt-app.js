@@ -9844,7 +9844,24 @@ function listingTrendInnerHtml(p, opts = {}) {
 }
 
 function listingTrendCellHtml(p) {
-  return `<td class="lrow-trend" title="${esc(listingTrendTitle(p && p._petaTrend))}">${listingTrendInnerHtml(p)}</td>`;
+  return `<td class="lrow-trend" title="${esc(listingTrendTitle(p && p._petaTrend))}"><span class="lrow-metric-lbl">Tren</span><span class="lrow-metric-val">${listingTrendInnerHtml(p)}</span></td>`;
+}
+
+function listingTrendSparkHtml(p) {
+  const t = p && p._petaTrend;
+  if (!t || t.pending) {
+    return '<span class="lrow-metric-val lrow-trend-pending">…</span>';
+  }
+  if (t.belum || t.wkPct == null) {
+    return '<span class="lrow-metric-val">—</span>';
+  }
+  const gid = `lrow-bolt-${String(prodKey(p)).replace(/\|/g, '-')}`;
+  const bolt = trendBoltHtml(t.wkPct, gid, 2) || '—';
+  return `<span class="lrow-metric-val lrow-spark-val">${bolt}</span>`;
+}
+
+function listingTrendSparkCellHtml(p) {
+  return `<td class="lrow-spark" title="${esc(listingTrendTitle(p && p._petaTrend))}"><span class="lrow-metric-lbl">Grafik</span>${listingTrendSparkHtml(p)}</td>`;
 }
 
 let _trackedFavSet = new Set();
@@ -9913,8 +9930,10 @@ function listingRowHtml(p, opts = {}) {
     : '<div class="lrow-img lrow-img--ph"></div>';
   const cat = trendNowCatHtml(p).replace('trend-now-cat', 'lrow-cat');
   const metaSold = sold ? `${fmtSold(sold)} terjual` : '0 terjual';
-  const prodInner = `${thumb}
-      <div class="lrow-prod-txt">
+  // Thumb is its own cell so mobile can sticky-anchor the photo while metrics
+  // scroll sideways. Desktop CSS keeps thumb + title looking like one Produk col.
+  const thumbCell = `<td class="lrow-thumb">${thumb}</td>`;
+  const prodInner = `<div class="lrow-prod-txt">
         <div class="lrow-name">${esc(name)}</div>
         <div class="lrow-toko">${esc(toko)}</div>
         ${cat}
@@ -9934,13 +9953,15 @@ function listingRowHtml(p, opts = {}) {
     : `data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} tabindex="0" role="button" aria-pressed="${picked ? 'true' : 'false'}"`;
   return `<tr class="${cls}" ${rowAttrs}>
     ${check}
+    ${thumbCell}
     ${prodCell}
     <td class="lrow-num lrow-harga"><span class="lrow-metric-lbl">Harga</span><span class="lrow-metric-val">${price ? fmtRp(price) : '—'}</span></td>
     <td class="lrow-num lrow-omset"><span class="lrow-metric-lbl">Omset</span><span class="lrow-metric-val">${omset ? fmtOmset(omset) : '—'}</span>${omsetChipHtml(p)}</td>
     ${listingTrendCellHtml(p)}
-    <td class="lrow-num lrow-sold">${sold ? fmtSold(sold) : '0'}</td>
-    <td class="lrow-num lrow-wide">${reviews ? fmtSold(reviews) : '0'}</td>
-    <td class="lrow-num lrow-wide" title="${esc(usia.title)}">${esc(usia.text)}</td>
+    ${listingTrendSparkCellHtml(p)}
+    <td class="lrow-num lrow-sold"><span class="lrow-metric-lbl">Terjual</span><span class="lrow-metric-val">${sold ? fmtSold(sold) : '0'}</span></td>
+    <td class="lrow-num lrow-wide lrow-reviews"><span class="lrow-metric-lbl">Review</span><span class="lrow-metric-val">${reviews ? fmtSold(reviews) : '0'}</span></td>
+    <td class="lrow-num lrow-wide lrow-usia" title="${esc(usia.title)}"><span class="lrow-metric-lbl">Usia</span><span class="lrow-metric-val">${esc(usia.text)}</span></td>
     ${actCell}
   </tr>`;
 }
@@ -9959,10 +9980,12 @@ function listingRowsHtml(list, opts = {}) {
     <table class="ddr-table lrow-table">
       <thead><tr>
         ${actions || pick ? '<th class="lrow-pick"></th>' : ''}
+        <th class="lrow-thumb"><span class="sr-only">Foto</span></th>
         <th class="lrow-col-prod">Produk</th>
         ${th('termurah', 'Harga')}
         ${th('omset', 'Omset')}
         ${th('trending', 'Trending')}
+        <th class="lrow-spark"><span class="sr-only">Grafik tren</span></th>
         ${th('terlaris', 'Unit jual')}
         ${th('review', 'Review')}
         ${th('terbaru', 'Usia')}
@@ -10109,10 +10132,18 @@ function refreshLrowTrendCells(root, listings) {
   const map = new Map((listings || []).map(p => [prodKey(p), p]));
   (root || document).querySelectorAll('.lrow').forEach(tr => {
     const p = map.get(tr.getAttribute('data-prod'));
+    if (!p) return;
+    const title = listingTrendTitle(p._petaTrend);
     const cell = tr.querySelector('.lrow-trend');
-    if (!cell || !p) return;
-    cell.title = listingTrendTitle(p._petaTrend);
-    cell.innerHTML = listingTrendInnerHtml(p);
+    if (cell) {
+      cell.title = title;
+      cell.innerHTML = `<span class="lrow-metric-lbl">Tren</span><span class="lrow-metric-val">${listingTrendInnerHtml(p)}</span>`;
+    }
+    const spark = tr.querySelector('.lrow-spark');
+    if (spark) {
+      spark.title = title;
+      spark.innerHTML = `<span class="lrow-metric-lbl">Grafik</span>${listingTrendSparkHtml(p)}`;
+    }
   });
 }
 
