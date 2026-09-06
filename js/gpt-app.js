@@ -10052,33 +10052,48 @@ function trendingNowSkeletonHtml() {
       <h3 class="trend-now-title">Trending Sekarang</h3>
       <p class="trend-now-sub">Menghitung kenaikan omset…</p>
     </div>
-    <div class="trend-now-row trend-now-shimmer"></div>
+    <div class="trend-now-row trend-now-row--1 trend-now-shimmer"></div>
     <div class="trend-now-row trend-now-shimmer"></div>
     <div class="trend-now-row trend-now-shimmer"></div>
   </div>`;
+}
+
+/** Soft lightning bolt after the weekly %. Slope: 300% → 70°, 150% → 35°, 75% → 17.5°. */
+function trendBoltHtml(wkPct) {
+  if (wkPct == null || !Number.isFinite(Number(wkPct))) return '';
+  const pct = Number(wkPct);
+  const deg = pct * (70 / 300);
+  const cls = pct > 0 ? 'is-up' : pct < 0 ? 'is-down' : 'is-flat';
+  return `<span class="trend-now-bolt-wrap" aria-hidden="true"><svg class="trend-now-bolt ${cls}" viewBox="0 0 48 24" width="36" height="18" style="transform:rotate(${-deg}deg)"><path d="M3 19 C10 17 13 10 18 8 C16 11 16 13 19 13 C26 8 32 5 45 3" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
 }
 
 function trendingNowRowHtml(p, i) {
   const key = prodKey(p);
   const name = p.product_name || p.keyword || 'Produk';
   const img = p.image_url || '';
-  const sold = Number(p.total_sold) || 0;
   const price = Number(p.price) || 0;
+  const omset = estOmsetBulan(p);
+  const rank = i + 1;
+  const first = rank === 1;
+  const thumbPx = first ? 84 : 56;
+  const mascotPx = first ? 72 : 48;
   const snap = productSnapshot(p);
   const encoded = snap ? encodeURIComponent(JSON.stringify(snap)) : '';
+  const t = p && p._petaTrend;
+  const bolt = (t && !t.pending && !t.belum && t.wkPct != null) ? trendBoltHtml(t.wkPct) : '';
   const thumb = img
-    ? `<img class="trend-now-img" src="${esc(imgThumb(img))}" alt="" loading="lazy" decoding="async" width="64" height="64" onerror="this.onerror=null;this.replaceWith(Object.assign(document.createElement('div'),{className:'trend-now-img trend-now-img--ph'}))">`
+    ? `<img class="trend-now-img" src="${esc(imgThumb(img))}" alt="" loading="lazy" decoding="async" width="${thumbPx}" height="${thumbPx}" onerror="this.onerror=null;this.replaceWith(Object.assign(document.createElement('div'),{className:'trend-now-img trend-now-img--ph'}))">`
     : '<div class="trend-now-img trend-now-img--ph"></div>';
-  return `<div class="trend-now-row" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} tabindex="0" role="button">
-    <span class="trend-now-rank trend-now-rank--${i + 1}" aria-hidden="true">${i + 1}</span>
-    <img class="trend-now-mascot" src="/images/brand/mascot-card-search.webp" alt="" width="56" height="56" decoding="async">
+  return `<div class="trend-now-row${first ? ' trend-now-row--1' : ''}" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} tabindex="0" role="button" aria-label="Peringkat ${rank}, ${esc(name)}">
+    <img class="trend-now-mascot" src="/images/brand/mascot-trend-${rank}.webp" alt="" width="${mascotPx}" height="${mascotPx}" decoding="async">
     ${thumb}
     <div class="trend-now-txt">
-      <div class="trend-now-name">${esc(name)}</div>
-      <div class="trend-now-meta">${price ? fmtRp(price) : '—'} · ${sold ? fmtSold(sold) + ' terjual' : '0 terjual'}</div>
+      <div class="trend-now-name" title="${esc(name)}">${esc(name)}</div>
+      <div class="trend-now-harga">${price ? fmtRp(price) : '—'}</div>
+      <div class="trend-now-omset">${omset ? fmtOmset(omset) : '—'}</div>
     </div>
-    <div class="trend-now-pct" title="${esc(listingTrendTitle(p._petaTrend))}">${listingTrendInnerHtml(p)}</div>
-    <span class="trend-now-go" aria-hidden="true">${ico('chevronRight', 18)}</span>
+    <div class="trend-now-pct" title="${esc(listingTrendTitle(p._petaTrend))}">${listingTrendInnerHtml(p)}${bolt}</div>
+    <span class="trend-now-go" aria-hidden="true">${ico('chevronRight', first ? 22 : 18)}</span>
   </div>`;
 }
 

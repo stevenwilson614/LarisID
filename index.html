@@ -5705,15 +5705,6 @@ body.home-finder-done .home-hero {
   background: #fff; cursor: pointer;
 }
 .trend-now-row:hover { border-color: #F5D0A9; background: #FFF7ED; }
-.trend-now-rank {
-  flex-shrink: 0; width: 28px; height: 28px; border-radius: 999px;
-  display: grid; place-items: center;
-  font-size: .78rem; font-weight: 800; color: #fff;
-  background: #94A3B8;
-}
-.trend-now-rank--1 { background: linear-gradient(180deg, #EAB308, #CA8A04); }
-.trend-now-rank--2 { background: linear-gradient(180deg, #94A3B8, #64748B); }
-.trend-now-rank--3 { background: linear-gradient(180deg, #D97706, #B45309); }
 .trend-now-mascot {
   width: 48px; height: 48px; object-fit: contain; flex-shrink: 0;
 }
@@ -5724,19 +5715,47 @@ body.home-finder-done .home-hero {
 .trend-now-txt { min-width: 0; flex: 1; }
 .trend-now-name {
   font-weight: 800; letter-spacing: -.02em; line-height: 1.25;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.trend-now-meta { font-size: .75rem; font-weight: 650; color: var(--ink-soft); margin-top: 2px; }
-.trend-now-pct { flex-shrink: 0; font-weight: 800; }
+.trend-now-harga {
+  margin-top: 2px; font-size: 1.05rem; font-weight: 800; letter-spacing: -.02em;
+}
+.trend-now-omset {
+  margin-top: 1px; font-size: .8rem; font-weight: 650; color: var(--ink-soft);
+}
+.trend-now-pct {
+  flex-shrink: 0; font-weight: 800;
+  display: flex; align-items: center; gap: 6px;
+}
 .trend-now-pct .is-up { color: #16A34A; }
 .trend-now-pct .is-down { color: #DC2626; }
+.trend-now-pct .is-flat { color: #94A3B8; }
+.trend-now-bolt-wrap {
+  width: 40px; height: 28px; display: grid; place-items: center; flex-shrink: 0;
+}
+.trend-now-bolt {
+  width: 36px; height: 18px; overflow: visible; transform-origin: center;
+}
 .trend-now-go { color: var(--ink-soft); flex-shrink: 0; display: grid; place-items: center; }
+.trend-now-row--1 {
+  gap: 18px; padding: 15px 18px; border-radius: 20px;
+}
+.trend-now-row--1 .trend-now-mascot { width: 72px; height: 72px; }
+.trend-now-row--1 .trend-now-img,
+.trend-now-row--1 .trend-now-img--ph { width: 84px; height: 84px; border-radius: 16px; }
+.trend-now-row--1 .trend-now-name { font-size: 1.2rem; }
+.trend-now-row--1 .trend-now-harga { font-size: 1.55rem; }
+.trend-now-row--1 .trend-now-omset { font-size: 1.05rem; }
+.trend-now-row--1 .trend-now-pct { font-size: 1.2rem; }
+.trend-now-row--1 .trend-now-bolt-wrap { width: 58px; height: 40px; }
+.trend-now-row--1 .trend-now-bolt { width: 54px; height: 27px; }
 .trend-now-shimmer {
   height: 76px; border-radius: 16px; border: 1px solid var(--line);
   background: linear-gradient(90deg, #f3f4f6 0%, #fff 50%, #f3f4f6 100%);
   background-size: 200% 100%;
   animation: trendShimmer 1.2s ease-in-out infinite;
 }
+.trend-now-shimmer.trend-now-row--1 { height: 114px; border-radius: 20px; }
 @keyframes trendShimmer {
   0% { background-position: 100% 0; }
   100% { background-position: -100% 0; }
@@ -5744,7 +5763,16 @@ body.home-finder-done .home-hero {
 @media (max-width: 559px) {
   .trend-now-mascot { width: 36px; height: 36px; }
   .trend-now-img, .trend-now-img--ph { width: 44px; height: 44px; }
-  .trend-now-row { gap: 8px; padding: 8px 10px; }
+  .trend-now-row { gap: 8px; padding: 8px 10px; flex-wrap: wrap; }
+  .trend-now-txt { flex: 1 1 7.5rem; min-width: 7.5rem; }
+  .trend-now-pct { margin-left: auto; }
+  .trend-now-row--1 { gap: 12px; padding: 12px 14px; }
+  .trend-now-row--1 .trend-now-mascot { width: 54px; height: 54px; }
+  .trend-now-row--1 .trend-now-img,
+  .trend-now-row--1 .trend-now-img--ph { width: 66px; height: 66px; }
+  .trend-now-row--1 .trend-now-bolt-wrap { width: 40px; height: 28px; }
+  .trend-now-row--1 .trend-now-bolt { width: 36px; height: 18px; }
+  .trend-now-shimmer.trend-now-row--1 { height: 96px; }
 }
 #dir-grid .lrow-table { font-size: .95rem; min-width: 860px; }
 #dir-grid .lrow-table thead th {
@@ -8450,6 +8478,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
      larisLoadScript() when the admin view actually renders. -->
 <script src="/js/peta-peluang.js?v=20260906a" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
-<script src="/js/gpt-app.js?v=20260906g" defer></script>
+<script src="/js/gpt-app.js?v=20260906h" defer></script>
 </body>
 </html>
