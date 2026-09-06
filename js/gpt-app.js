@@ -15110,7 +15110,7 @@ async function runMarketAgent(chat, text, loading, opts = {}) {
   const history = chatHistoryForAi(chat, text);
   const reply = await streamAssistantReply(loading, system, history, {
     tools: AI_TOOLS,
-    thinking: true,   // first turn only — streamAssistantReply drops it after
+    thinking: wantsDeepReasoning(text),
   });
   await paintAgentMarketReply(chat, loading, reply);
   void logUserEvent('gpt_ai_reply', { ui: 'gpt', via: 'market_agent' });
@@ -15289,9 +15289,63 @@ function pendingOfferChipsHtml(offer) {
   const yes = offer.yesLabel || 'Ya, lanjut';
   const no = offer.noLabel || 'Tidak, cari yang lain';
   return `<div class="chips" style="margin-top:10px">`
-    + `<button type="button" class="chip" data-suggest-q="${esc(offer.prompt)}">${esc(yes)}</button>`
+    + `<button type="button" class="chip" data-suggest-q="Ya, lanjut">${esc(yes)}</button>`
     + `<button type="button" class="chip" data-suggest-q="Tidak, cari yang lain">${esc(no)}</button>`
     + `</div>`;
+}
+
+function followupChipsHtml(lines) {
+  const items = (lines || []).map(s => String(s || '').trim()).filter(Boolean).slice(0, 3);
+  if (!items.length) return '';
+  return `<div class="chips" style="margin-top:10px">`
+    + items.map(q => `<button type="button" class="chip" data-suggest-q="${esc(q)}">${esc(q)}</button>`).join('')
+    + `</div>`;
+}
+
+function continueChipHtml() {
+  return `<div class="chips" style="margin-top:10px">`
+    + `<button type="button" class="chip" data-suggest-q="Lanjutkan jawaban">Lanjutkan jawaban</button>`
+    + `</div>`;
+}
+
+function interruptedReplyHtml(lastUser) {
+  const q = String(lastUser || '').trim();
+  const retry = q
+    ? `<button type="button" class="chip" data-suggest-q="${esc(q)}">Coba lagi</button>`
+    : '';
+  return `<p>Jawaban terputus. Ketuk Coba lagi kalau mau diulangi.</p>`
+    + (retry ? `<div class="chips" style="margin-top:10px">${retry}</div>` : '');
+}
+
+function lastUserText(chat) {
+  const msgs = chat?.messages || [];
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    if (msgs[i].role !== 'user') continue;
+    const c = msgs[i].content;
+    return typeof c === 'string' ? c : String(c?.text || '');
+  }
+  return '';
+}
+
+function rememberLastShown(chat, listings, types, query) {
+  if (!chat) return;
+  if (!chat.context) chat.context = {};
+  const mem = _gptMem();
+  chat.context.lastShown = mem.packLastShown
+    ? mem.packLastShown(listings, types, query)
+    : { query: query || '', types: [], listings: listings || [] };
+}
+
+function cityNamedIn(text) {
+  const place = parsePlaceFromQuery(text);
+  if (place.city || (place.locations && place.locations.length)) return place;
+  const lower = String(text || '').toLowerCase();
+  for (const c of Object.keys(CITY_LOCATIONS || {})) {
+    if (new RegExp(`\\b${c.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(lower)) {
+      return { city: c, label: c, locations: expandCityLocations(c), cleaned: text };
+    }
+  }
+  return { city: '', label: '', locations: [], cleaned: text };
 }
 
 async function resolvePasarTypes(keys) {
@@ -15373,10 +15427,8 @@ async function paintAgentMarketReply(chat, loading, replyObj, fallbackTypes) {
 // RLS and the model never authors SQL — tools are named functions with typed
 // args.
 
-const AI_TOOL_MAX_TURNS = 4;   // = 3 tool rounds, then a forced prose turn
-// 8, not 6: in testing the model fanned out 6 detail_pasar calls in a single
-// round, which exhausted a 6-budget and left it apologising about the limit.
-const AI_TOOL_MAX_CALLS = 8;
+const AI_TOOL_MAX_TURNS = 5;   // = 4 tool rounds, then a forced prose turn
+const AI_TOOL_MAX_CALLS = 12;
 const AI_TOOL_TIMEOUT_MS = 8000;
 
 // Questions that deserve reasoning rather than a lookup. Extended thinking costs
@@ -15992,6 +16044,7 @@ function _aiStripToolMarkup(text) {
 function _aiSplitPlan(text) {
   let s = String(text || '');
   let plan = [];
+  let lanjut = [];
   let open = false;
   for (let guard = 0; guard < 4; guard++) {
     const o = s.indexOf('<rencana>');
@@ -16002,7 +16055,14 @@ function _aiSplitPlan(text) {
     s = s.slice(0, o) + s.slice(c + 10);
     if (!plan.length) plan = found;
   }
-  return { plan, rest: _aiStripToolMarkup(s), open };
+  const mem = _gptMem();
+  if (mem.extractLanjutBlock) {
+    const lifted = mem.extractLanjutBlock(s);
+    s = lifted.rest;
+    lanjut = lifted.lines || [];
+    if (lifted.open) open = true;
+  }
+  return { plan, lanjut, rest: _aiStripToolMarkup(s), open };
 }
 
 function _aiPlanLines(body) {
@@ -16424,6 +16484,7 @@ async function streamAssistantReply(loading, system, messages, opts = {}) {
   const signal = _streamAbort.signal;
   setComposerStopping(true);
   const pasarKeys = [];
+  let lastStop = null;
   try {
     const useTools = Array.isArray(opts.tools) && opts.tools.length > 0;
     const turns = messages.slice();
@@ -16448,6 +16509,7 @@ async function streamAssistantReply(loading, system, messages, opts = {}) {
 
       if (reply.text) acc = reply.text;
       if (reply.thinking) thinkAcc = reply.thinking;
+      if (reply.stopReason) lastStop = reply.stopReason;
       if (signal.aborted) break;
 
       const split = _aiSplitPlan(acc);
@@ -16487,7 +16549,7 @@ async function streamAssistantReply(loading, system, messages, opts = {}) {
       const seen = new Map();
       const results = await Promise.all(wants.map(async (t) => {
         if (calls >= AI_TOOL_MAX_CALLS) {
-          const out = { error: 'tool_budget_exhausted', hint: 'Jawab dengan data yang sudah ada.' };
+          const out = { error: 'tool_budget_exhausted', hint: 'Ambil N pasar/kategori terbesar yang sudah terkumpul, lalu tawarkan sisanya sebagai follow-up. Jangan sebut batas alat.' };
           run.toolDone(t.id, t.name, null);
           return { id: t.id, out };
         }
@@ -16528,7 +16590,14 @@ async function streamAssistantReply(loading, system, messages, opts = {}) {
     }
     scroll();
     // Callers persist and replay `text`, so the plan block must be gone from it.
-    return { text: final.rest, thinking: thinkAcc, pasarKeys, run };
+    return {
+      text: final.rest,
+      thinking: thinkAcc,
+      pasarKeys,
+      run,
+      stopReason: lastStop,
+      lanjut: final.lanjut || [],
+    };
   } finally {
     setComposerStopping(false);
     _streamAbort = null;
@@ -18958,6 +19027,21 @@ function renderAdminMap(users) {
   admMapApplyView();
 }
 
+function admFmtWa(wa) {
+  const d = String(wa || '').trim();
+  if (!d) return '';
+  return d.indexOf('62') === 0 ? '+' + d : d;
+}
+
+function admWaLink(wa) {
+  const digits = String(wa || '').replace(/[^0-9]/g, '');
+  return digits ? `https://wa.me/${digits}` : '';
+}
+
+function admUserWa(u) {
+  return String(u?.wa_number || '').trim();
+}
+
 function adminFilteredUsers() {
   const q = ($('adm-users-search')?.value || '').trim().toLowerCase();
   const tipe = $('adm-filter-tipe')?.value || 'all';
@@ -18966,7 +19050,7 @@ function adminFilteredUsers() {
     if (tipe !== 'all' && admSellerStatus(u) !== tipe) return false;
     if (cat && !(u.categories || []).includes(cat)) return false;
     if (!q) return true;
-    const hay = [u.display_name, u.email, u.region, u.city].join(' ').toLowerCase();
+    const hay = [u.display_name, u.email, admUserWa(u), u.region, u.city].join(' ').toLowerCase();
     return hay.includes(q);
   });
 }
@@ -19137,6 +19221,15 @@ function adminBindUi() {
         navigator.clipboard.writeText(email).then(() => showToast('Email disalin.')).catch(() => {});
       }
       adminCloseMenus();
+      return;
+    }
+    const copyWa = e.target.closest('[data-copy-wa]');
+    if (copyWa) {
+      const wa = copyWa.getAttribute('data-copy-wa') || '';
+      if (wa && navigator.clipboard) {
+        navigator.clipboard.writeText(wa).then(() => showToast('Nomor WA disalin.')).catch(() => {});
+      }
+      adminCloseMenus();
     }
   });
   document.addEventListener('click', e => {
@@ -19158,11 +19251,11 @@ async function loadAdminDirectory() {
   adminBindUi();
   if (!isPlatformAdmin() || !_supabase) {
     const body = $('admin-users-body');
-    if (body) body.innerHTML = '<tr><td colspan="7" class="dd-sub">Login sebagai admin dulu.</td></tr>';
+    if (body) body.innerHTML = '<tr><td colspan="8" class="dd-sub">Login sebagai admin dulu.</td></tr>';
     return;
   }
   const body = $('admin-users-body');
-  if (body) body.innerHTML = '<tr><td colspan="7" class="dd-sub">Memuat…</td></tr>';
+  if (body) body.innerHTML = '<tr><td colspan="8" class="dd-sub">Memuat…</td></tr>';
   // rpc() returns a thenable builder, not a Promise — wrap so .catch works.
   const wrap = (p) => Promise.resolve(p).catch(e => ({ data: null, error: e }));
   try {
@@ -19184,7 +19277,7 @@ async function loadAdminDirectory() {
     renderAdminKpis(_adminUsers);
     renderAdminTrend();
   } catch (e) {
-    if (body) body.innerHTML = `<tr><td colspan="7" class="dd-sub">${esc(e.message || 'Gagal memuat.')}</td></tr>`;
+    if (body) body.innerHTML = `<tr><td colspan="8" class="dd-sub">${esc(e.message || 'Gagal memuat.')}</td></tr>`;
   }
 }
 

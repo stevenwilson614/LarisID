@@ -3030,6 +3030,10 @@ body.view-harga .panel-inner { max-width: 1180px; }
   font-size: .68rem; font-weight: 750; color: #fff; flex-shrink: 0;
 }
 .adm-email { color: #6B7280; }
+.adm-wa { white-space: nowrap; }
+.adm-wa a { color: #128C7E; text-decoration: none; font-weight: 550; }
+.adm-wa a:hover { text-decoration: underline; }
+.adm-wa-empty { color: #9CA3AF; }
 .adm-pill {
   display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px;
   font-size: .68rem; font-weight: 700; white-space: nowrap;
@@ -7779,7 +7783,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
                 <h3>Daftar Pengguna</h3>
                 <label class="adm-search">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-                  <input type="search" id="adm-users-search" placeholder="Cari nama atau email..." autocomplete="off">
+                  <input type="search" id="adm-users-search" placeholder="Cari nama, email, atau WA..." autocomplete="off">
                 </label>
                 <div class="adm-filter-wrap">
                   <button type="button" class="adm-tb-btn" id="adm-users-filter-btn">
@@ -7810,6 +7814,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
                     <tr>
                       <th>Nama</th>
                       <th>Email</th>
+                      <th>WA</th>
                       <th>Lokasi</th>
                       <th>Tipe Pengguna</th>
                       <th>Kategori yang Diminati</th>
@@ -7818,7 +7823,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
                     </tr>
                   </thead>
                   <tbody id="admin-users-body">
-                    <tr><td colspan="7" class="dd-sub">Memuat…</td></tr>
+                    <tr><td colspan="8" class="dd-sub">Memuat…</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -8253,6 +8258,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
      larisLoadScript() when the admin view actually renders. -->
 <script src="/js/peta-peluang.js?v=20260905d" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
-<script src="/js/gpt-app.js?v=20260905n" defer></script>
+<script src="/js/gpt-app.js?v=20260906a" defer></script>
 </body>
 </html>
