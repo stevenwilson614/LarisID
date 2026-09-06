@@ -51,6 +51,10 @@ never peer / nowcast / forecast / `listing_weekly` frames.
 - While `peta_batch` is in flight, show a 3-row skeleton (not a grey square).
   Do not invent a %. If the RPC is missing, the strip stays hidden and the
   table Trending column shows `—`.
+- `hydrateTrends` only sticky-skips `peta_batch` in `sessionStorage` when the
+  RPC is actually missing (schema cache / 42883), with a 5-minute TTL. Timeouts
+  and transient errors retry on the next paint — a migration blip must not
+  blank Trending Sekarang for the rest of the tab.
 
 Never present a raw two-snapshot delta as “minggu ini”. Scrapes land 12–17
 days apart; both windows are span-normalised to a 7-day rate. Same-day

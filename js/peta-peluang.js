@@ -9,7 +9,14 @@
   'use strict';
 
   var LS_COLLAPSE = 'larisid_peta_collapsed';
+  // Sticky only for "RPC missing" (schema not deployed). Timeouts / transient
+  // errors must not kill Trending Sekarang for the rest of the tab session —
+  // a migration blip used to set this and leave the strip empty until the tab
+  // was closed.
   var SS_BATCH = 'larisid_peta_batch_missing';
+  var SS_BATCH_AT = 'larisid_peta_batch_missing_at';
+  var SS_BATCH_TTL_MS = 5 * 60 * 1000;
+  var BATCH_TIMEOUT_MS = 12000;
   var MIN_POINTS = 8;
   var TOP_N = 20;
   var OMSET_PREV_FLOOR = 50000;
@@ -880,6 +887,34 @@
     return null;
   };
 
+  function batchRpcMissing(err) {
+    if (!err) return false;
+    var s = String(err.code || '') + ' ' + String(err.message || '') + ' ' + String(err.details || '');
+    return /PGRST202|42883|404|peta_batch/.test(s) && /not find|does not exist|Could not find|schema cache/i.test(s);
+  }
+  function batchSkipCached() {
+    try {
+      if (sessionStorage.getItem(SS_BATCH) !== '1') return false;
+      var at = Number(sessionStorage.getItem(SS_BATCH_AT) || 0);
+      if (at && (Date.now() - at) < SS_BATCH_TTL_MS) return true;
+      sessionStorage.removeItem(SS_BATCH);
+      sessionStorage.removeItem(SS_BATCH_AT);
+    } catch (_) {}
+    return false;
+  }
+  function markBatchMissing() {
+    try {
+      sessionStorage.setItem(SS_BATCH, '1');
+      sessionStorage.setItem(SS_BATCH_AT, String(Date.now()));
+    } catch (_) {}
+  }
+  function clearBatchMissing() {
+    try {
+      sessionStorage.removeItem(SS_BATCH);
+      sessionStorage.removeItem(SS_BATCH_AT);
+    } catch (_) {}
+  }
+
   function attachTrends(listings, batch, status) {
     var momMap = {};
     ((batch && batch.momentum) || []).forEach(function (m) {
@@ -915,38 +950,38 @@
       ping();
       return Promise.resolve(list);
     }
-    try {
-      if (sessionStorage.getItem(SS_BATCH) === '1') {
-        attachTrends(list, null, 'missing');
-        ping();
-        return Promise.resolve(list);
-      }
-    } catch (_) {}
+    if (batchSkipCached()) {
+      attachTrends(list, null, 'missing');
+      ping();
+      return Promise.resolve(list);
+    }
     var keys = list.slice(0, 200).map(function (p) {
       return { item_id: p.item_id, shop_id: p.shop_id };
     });
     return new Promise(function (resolve) {
       var settled = false;
-      var t = setTimeout(fail, 8000);
-      function fail() {
+      var t = setTimeout(function () { fail(null, true); }, BATCH_TIMEOUT_MS);
+      function fail(err, fromTimeout) {
         if (settled) return;
         settled = true;
         clearTimeout(t);
-        try { sessionStorage.setItem(SS_BATCH, '1'); } catch (_) {}
+        // Only sticky-cache definite missing-RPC; timeouts / 5xx retry next paint.
+        if (!fromTimeout && batchRpcMissing(err)) markBatchMissing();
         attachTrends(list, null, 'missing');
         ping();
         resolve(list);
       }
       sb.rpc('peta_batch', { p_keys: keys, p_weeks: 8 }).then(function (res) {
         if (settled) return;
-        if (res.error) { fail(); return; }
+        if (res.error) { fail(res.error, false); return; }
         settled = true;
         clearTimeout(t);
+        clearBatchMissing();
         var batch = res.data || null;
         attachTrends(list, batch, batch ? 'ok' : 'missing');
         ping();
         resolve(list);
-      }, fail);
+      }, function (err) { fail(err, false); });
     });
   }
 
@@ -1693,7 +1728,7 @@
       this.rebuild();
       return;
     }
-    if (sessionStorage.getItem(SS_BATCH) === '1') {
+    if (batchSkipCached()) {
       this.batchStatus = 'missing';
       this.rebuild();
       return;
@@ -1702,21 +1737,27 @@
     var keys = this.listings.slice(0, 200).map(function (p) {
       return { item_id: p.item_id, shop_id: p.shop_id };
     });
-    var t = setTimeout(function () { fail(); }, 8000);
-    function fail() {
+    var settled = false;
+    var t = setTimeout(function () { fail(null, true); }, BATCH_TIMEOUT_MS);
+    function fail(err, fromTimeout) {
+      if (settled) return;
+      settled = true;
       clearTimeout(t);
-      try { sessionStorage.setItem(SS_BATCH, '1'); } catch (_) {}
+      if (!fromTimeout && batchRpcMissing(err)) markBatchMissing();
       self.batch = null;
       self.batchStatus = 'missing';
       self.rebuild();
     }
     sb.rpc('peta_batch', { p_keys: keys, p_weeks: 8 }).then(function (res) {
+      if (settled) return;
+      if (res.error) { fail(res.error, false); return; }
+      settled = true;
       clearTimeout(t);
-      if (res.error) { fail(); return; }
+      clearBatchMissing();
       self.batch = res.data || null;
       self.batchStatus = self.batch ? 'ok' : 'missing';
       self.rebuild();
-    }, fail);
+    }, function (err) { fail(err, false); });
   };
 
   function mount(containerEl, listings, opts) {

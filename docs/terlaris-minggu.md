@@ -91,6 +91,11 @@ Do **not** go back to growth against lifetime sales (`wk_units / wk_base`).
 That landed at 1–6% for every established market and did not tell anyone
 what was trending. Do **not** simply rescale a percentage to look bigger.
 
+`fetchTerlarisMinggu` over-fetches (~5× limit, capped at 400) by `wk_units`
+then keeps `pct > 0` client-side. A tight SQL `LIMIT` on volume alone often
+returns only cooling markets after the prev-window %, which emptied the Cari
+Produk home pool (and Trending Sekarang with it).
+
 The chat Produk Trending board (`trendGrowthPct()` / `computeTrendingView()`)
 still uses `mv_trending` deltas vs cumulative baseline — a different surface.
 

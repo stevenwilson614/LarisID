@@ -7902,6 +7902,10 @@ async function handleTrendingIntent(chat) {
 async function fetchTerlarisMinggu(cat, limit = 9) {
   if (!_supabase || !_ptypeHasWeekly) return [];
   try {
+    // Over-fetch: pct > 0 is a client filter on wk_units vs wk_units_prev.
+    // Top-N by volume alone is often cooling down, so a tight LIMIT then
+    // filter can wipe the home pool (and Trending Sekarang with it).
+    const fetchN = Math.min(Math.max(limit * 5, 80), 400);
     let q = _supabase.from('product_types_v')
       .select(ptypeCols())
       .eq('city', 'ALL')
@@ -7909,13 +7913,19 @@ async function fetchTerlarisMinggu(cat, limit = 9) {
       .gte('wk_units', TERLARIS_MIN_UNITS)
       .gte('wk_items', TERLARIS_MIN_ITEMS)
       .order('wk_units', { ascending: false, nullsFirst: false })
-      .limit(limit);
+      .limit(fetchN);
     if (cat) q = q.eq('category_canonical', cat);
     const { data, error } = await q;
     if (ptypeWeeklyMissing(error)) return [];
     if (error) throw error;
-    // pct is the one part of the floor SQL cannot express (it needs wk_base).
-    const rows = (data || []).filter(t => { const w = weeklyStats(t); return w && w.pct > 0; });
+    const rows = (data || [])
+      .filter(t => { const w = weeklyStats(t); return w && w.pct > 0; })
+      .sort((a, b) => {
+        const wa = weeklyStats(a); const wb = weeklyStats(b);
+        return ((wb?.units || 0) - (wa?.units || 0))
+          || ((wb?.pct || 0) - (wa?.pct || 0));
+      })
+      .slice(0, limit);
     await attachTypeQuartiles(rows);
     return rows;
   } catch (e) {
