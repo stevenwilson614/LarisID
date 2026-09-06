@@ -19382,12 +19382,17 @@ function renderAdminUsers() {
   const start = (_adminUserPage - 1) * _adminPageSize;
   const slice = rows.slice(start, start + _adminPageSize);
   if (!slice.length) {
-    body.innerHTML = '<tr><td colspan="7" class="dd-sub">Tidak ada pengguna yang cocok.</td></tr>';
+    body.innerHTML = '<tr><td colspan="8" class="dd-sub">Tidak ada pengguna yang cocok.</td></tr>';
     return;
   }
   body.innerHTML = slice.map((u, i) => {
     const name = u.display_name || u.email || 'User';
     const loc = u.region || u.city || '—';
+    const wa = admUserWa(u);
+    const waHref = admWaLink(wa);
+    const waCell = wa
+      ? `<td class="adm-wa"><a href="${esc(waHref)}" target="_blank" rel="noopener">${esc(admFmtWa(wa))}</a></td>`
+      : '<td class="adm-wa adm-wa-empty">—</td>';
     const status = admSellerStatus(u);
     const tipe = status === 'first_time'
       ? '<span class="adm-pill baru">Baru</span>'
@@ -19399,9 +19404,13 @@ function renderAdminUsers() {
       return `<span class="adm-cat-pill" style="background:${color}22;color:${color}">${esc(c)}</span>`;
     }).join('') || '<span class="dd-sub">—</span>';
     const idx = start + i;
+    const copyWaBtn = wa
+      ? `<button type="button" data-copy-wa="${esc(wa)}">Salin WA</button>`
+      : '';
     return `<tr>
       <td><div class="adm-name"><span class="adm-av" style="background:${admAvColor(name)}">${esc(admInitials(name))}</span>${esc(name)}</div></td>
       <td class="adm-email">${esc(u.email || '')}</td>
+      ${waCell}
       <td>${esc(loc)}</td>
       <td>${tipe}</td>
       <td><div class="adm-cat-pills">${cats}</div></td>
@@ -19413,6 +19422,7 @@ function renderAdminUsers() {
         <div class="adm-menu" hidden>
           <button type="button" data-sample-idx="${idx}">Sample view</button>
           <button type="button" data-copy-email="${esc(u.email || '')}">Salin email</button>
+          ${copyWaBtn}
         </div>
       </td>
     </tr>`;
@@ -19431,12 +19441,13 @@ function admFillCatFilter(users) {
 
 function adminExportUsers() {
   const rows = adminFilteredUsers();
-  const header = ['Nama', 'Email', 'Lokasi', 'Tipe', 'Kategori', 'Bergabung'];
+  const header = ['Nama', 'Email', 'WA', 'Lokasi', 'Tipe', 'Kategori', 'Bergabung'];
   const lines = [header.join(',')].concat(rows.map(u => {
     const tipe = admSellerStatus(u) === 'existing' ? 'Experienced' : admSellerStatus(u) === 'first_time' ? 'Baru' : '';
     const cells = [
       u.display_name || '',
       u.email || '',
+      admUserWa(u),
       u.region || u.city || '',
       tipe,
       (u.categories || []).join('; '),
