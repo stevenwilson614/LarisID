@@ -10522,8 +10522,9 @@ function gptTrackerAdapter() {
         return mergePool([], data || []);
       } catch (_) { return []; }
     },
-    // Batch listing_weekly for Favorit Aku cards (3-month dual chart + WoW %).
-    // item_id IN is enough; the client matches (item_id, shop_id) pairs.
+    // Batch listing_weekly for Favorit Aku price-change lines (and legacy
+    // callers). Chart omset/units come from getFavoriteTrendWeeklies — the
+    // same product_daily_series estimator as Deep Dive Tren produk.
     async getListingsWeeklyBatch(listings) {
       if (!_supabase || !listings || !listings.length) return [];
       const ids = [...new Set(listings.map(l => l.item_id).filter(id => id != null))];
@@ -10540,6 +10541,44 @@ function gptTrackerAdapter() {
         if (error) throw error;
         return data || [];
       } catch (_) { return []; }
+    },
+    /** Deep Dive Tren weekly series per favorite (product_daily_series → weeks). */
+    async getFavoriteTrendWeeklies(listings) {
+      if (!_supabase || !listings || !listings.length) return [];
+      const thisMon = Date.parse(listingWeekStartISO() + 'T00:00:00Z');
+      const out = [];
+      const queue = listings.filter(l => l && l.item_id != null && l.shop_id != null);
+      const CONCURRENCY = 4;
+      let cursor = 0;
+      async function worker() {
+        while (cursor < queue.length) {
+          const i = cursor++;
+          const l = queue[i];
+          try {
+            const weekly = await ddServerWeeklySeries(l, 98);
+            if (!weekly || !weekly.length) continue;
+            const rows = weekly
+              .filter(w => w.ts <= thisMon + 12 * 3600 * 1000)
+              .filter(w => (Number(w.units) || 0) > 0 || (Number(w.omset) || 0) > 0)
+              .sort((a, b) => a.ts - b.ts)
+              .slice(-13)
+              .map(w => ({
+                item_id: l.item_id,
+                shop_id: l.shop_id,
+                week_start: w.d || new Date(w.ts).toISOString().slice(0, 10),
+                omset_wk: Math.round(Number(w.omset) || 0),
+                units_wk: Math.round(Number(w.units) || 0),
+                source: w.perkiraan ? 'estimated' : 'measured',
+              }));
+            out.push(...rows);
+          } catch (_) { /* skip listing */ }
+        }
+      }
+      await Promise.all(Array.from(
+        { length: Math.min(CONCURRENCY, queue.length) },
+        () => worker()
+      ));
+      return out;
     },
     /** Recent listing snapshots for Favorit Aku "updates this week" lines. */
     async getFavoriteListingSnaps(listings) {

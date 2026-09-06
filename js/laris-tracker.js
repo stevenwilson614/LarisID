@@ -45,6 +45,7 @@
     notifyAsked: false,
     notifyCadence: 'on_update',
     weeklyByKey: {},
+    listingWeeklyByKey: {},
     snapsByKey: {},
     addQ: '',
     addRows: [],
@@ -208,15 +209,10 @@
   }
 
   function chartSeries(weeks) {
-    var today = wibTodayISO();
     return sortedWeeks(weeks).filter(function (w) {
-      var d = String(w.week_start || '').slice(0, 10);
-      if (d > today) return false;
-      if (w.source === 'prior') return false;
       var om = Number(w.omset_wk) || 0;
       var un = Number(w.units_wk) || 0;
-      if (!om && !un && w.source !== 'measured') return false;
-      return true;
+      return om > 0 || un > 0;
     }).slice(-CHART_WEEKS);
   }
 
@@ -302,7 +298,7 @@
     }
 
     var omPts = rows.map(function (r, i) {
-      return { x: xAt(times[i]), y: yOm(omVals[i]), measured: r.source === 'measured' };
+      return { x: xAt(times[i]), y: yOm(omVals[i]) };
     });
     if (omPts.length) {
       ctx.beginPath();
@@ -318,15 +314,12 @@
       ctx.lineWidth = 2;
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
-      ctx.strokeStyle = color;
-      for (var i = 1; i < pts.length; i++) {
-        ctx.setLineDash(pts[i - 1].measured && pts[i].measured ? [] : [5, 5]);
-        ctx.beginPath();
-        ctx.moveTo(pts[i - 1].x, pts[i - 1].y);
-        ctx.lineTo(pts[i].x, pts[i].y);
-        ctx.stroke();
-      }
       ctx.setLineDash([]);
+      ctx.strokeStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (var i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.stroke();
       pts.forEach(function (p) {
         ctx.beginPath();
         ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
@@ -339,7 +332,7 @@
     }
     strokeSeries(omPts, '#B5202A');
     strokeSeries(rows.map(function (r, i) {
-      return { x: xAt(times[i]), y: yUn(unVals[i]), measured: r.source === 'measured' };
+      return { x: xAt(times[i]), y: yUn(unVals[i]) };
     }), '#2563EB');
 
     ctx.fillStyle = '#9CA3AF';
@@ -375,16 +368,9 @@
       var existing = global.Chart.getChart(cv);
       if (existing) { try { existing.destroy(); } catch (_) {} }
     }
-    var sources = rows.map(function (r) { return r.source; });
     var labels = rows.map(function (r) { return weekLabel(r.week_start); });
     var omsets = rows.map(function (r) { return Number(r.omset_wk) || 0; });
     var units = rows.map(function (r) { return Number(r.units_wk) || 0; });
-    function dashSeg(ctx) {
-      var i = ctx.p0DataIndex;
-      var a = sources[i];
-      var b = sources[i + 1];
-      return (a === 'measured' && b === 'measured') ? undefined : [5, 5];
-    }
     var chart = new global.Chart(cv, {
       type: 'line',
       data: {
@@ -402,7 +388,6 @@
             pointRadius: 3,
             pointHoverRadius: 4,
             spanGaps: true,
-            segment: { borderDash: dashSeg },
           },
           {
             label: 'Unit / minggu',
@@ -416,7 +401,6 @@
             pointRadius: 3,
             pointHoverRadius: 4,
             spanGaps: true,
-            segment: { borderDash: dashSeg },
           },
         ],
       },
@@ -534,11 +518,14 @@
     }
     var pair = weekPair(weeklyFor(p));
     if (pair) {
-      var p0 = Number(pair.prev.price) || 0;
-      var p1 = Number(pair.cur.price) || 0;
-      if (p0 > 0 && p1 > 0 && Math.abs(p1 - p0) >= Math.max(100, p0 * 0.005)) {
-        var dir = p1 > p0 ? 'naik' : 'turun';
-        lines.push('Harga ' + dir + ' ' + fmtRp(p0) + ' jadi ' + fmtRp(p1));
+      var lw = weekPair(S.listingWeeklyByKey[prodKey(p)] || []);
+      if (lw) {
+        var p0 = Number(lw.prev.price) || 0;
+        var p1 = Number(lw.cur.price) || 0;
+        if (p0 > 0 && p1 > 0 && Math.abs(p1 - p0) >= Math.max(100, p0 * 0.005)) {
+          var dir = p1 > p0 ? 'naik' : 'turun';
+          lines.push('Harga ' + dir + ' ' + fmtRp(p0) + ' jadi ' + fmtRp(p1));
+        }
       }
       var omPct = pctChange(pair.cur.omset_wk, pair.prev.omset_wk);
       if (omPct != null && isFinite(omPct) && omPct >= OMSET_SPIKE_PCT) {
@@ -819,21 +806,23 @@
   function loadWeekly() {
     if (!S.products.length) {
       S.weeklyByKey = {};
+      S.listingWeeklyByKey = {};
       S.snapsByKey = {};
       return Promise.resolve();
     }
     return Promise.all([
-      callP('getListingsWeeklyBatch', S.products),
+      callP('getFavoriteTrendWeeklies', S.products),
       callP('getFavoriteListingSnaps', S.products),
-    ]).then(function (pair) {
+      callP('getListingsWeeklyBatch', S.products),
+    ]).then(function (triple) {
       var map = {};
-      (pair[0] || []).forEach(function (w) {
+      (triple[0] || []).forEach(function (w) {
         var k = w.item_id + '|' + w.shop_id;
         (map[k] = map[k] || []).push(w);
       });
       S.weeklyByKey = map;
       var snaps = {};
-      (pair[1] || []).forEach(function (r) {
+      (triple[1] || []).forEach(function (r) {
         var k = r.item_id + '|' + r.shop_id;
         (snaps[k] = snaps[k] || []).push({
           d: String(r.scraped_at || '').slice(0, 10),
@@ -843,6 +832,12 @@
         });
       });
       S.snapsByKey = snaps;
+      var lw = {};
+      (triple[2] || []).forEach(function (w) {
+        var k = w.item_id + '|' + w.shop_id;
+        (lw[k] = lw[k] || []).push(w);
+      });
+      S.listingWeeklyByKey = lw;
     });
   }
 
@@ -1206,6 +1201,6 @@
     summaryCardHtml: summaryCardHtml,
     bindSummary: bindSummary,
     destroy: destroy,
-    version: '3.1.1',
+    version: '3.1.2',
   };
 })(typeof window !== 'undefined' ? window : this);
