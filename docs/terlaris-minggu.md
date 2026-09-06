@@ -84,7 +84,9 @@ them, and do not revive `weekly_snapshots` (frozen 2026-06-08).
 previous window (`wk_units` / `wk_units_prev` from
 [20260906150000](../supabase/migrations/20260906150000_listing_momentum_measured.sql)).
 Both sides sum the same listing set — listings with three real scrapes that
-cleared the `belum` floors. Hidden when `wk_units_prev < 25` or
+cleared the `belum` floors **and** a fresh S0 (≤21d). Held/stale listing %
+does not enter this rollup ([20260906183000](../supabase/migrations/20260906183000_listing_momentum_held.sql)).
+Hidden when `wk_units_prev < 25` or
 `wk_items_prev < 2` (keep the `~N terjual` line).
 
 Do **not** go back to growth against lifetime sales (`wk_units / wk_base`).

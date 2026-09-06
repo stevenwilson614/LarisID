@@ -12,6 +12,7 @@ One listing = `(item_id, shop_id)`.
 - Module: [`js/peta-peluang.js`](../js/peta-peluang.js) (`window.PetaPeluang`)
 - CSS (scatter, unused on Cari Produk): [`styles/peta-peluang.css`](../styles/peta-peluang.css)
 - SQL: [`supabase/migrations/20260906150000_listing_momentum_measured.sql`](../supabase/migrations/20260906150000_listing_momentum_measured.sql)
+  then held fallback [`20260906183000_listing_momentum_held.sql`](../supabase/migrations/20260906183000_listing_momentum_held.sql)
   (positions / Jejak still from [`20260904120000_peta_peluang.sql`](../supabase/migrations/20260904120000_peta_peluang.sql))
 - Weekly backfill: `~/shopee_scraper/listing_weekly.sql` (`backfill_listing_weekly_estimates`)
 - Hosts:
@@ -24,7 +25,7 @@ One listing = `(item_id, shop_id)`.
 `PetaPeluang.hydrateTrends(listings, { supabase, onTrend })` is the live path.
 It marks `_petaTrend.pending`, calls `peta_batch` (max 200 keys), then attaches
 `{ wkPct, unitsNowWk, unitsPrevWk, spanNow, spanPrev, at0, at1, at2, terukur,
-belum, pending }` from `mv_listing_momentum`. It does not draw SVG.
+held, belum, pending }` from `mv_listing_momentum`. It does not draw SVG.
 
 The Cari Produk listing pool uses `listings_for_keywords` (LATERAL per-keyword
 lookup — do not `btrim()` the `listings_deduped.keyword` column). Home
@@ -38,16 +39,22 @@ never peer / nowcast / forecast / `listing_weekly` frames.
 
 | Window | Formula |
 |---|---|
-| Rate now | `(sold_S0 − sold_S1) / span_now` — S0 newest (≤21d), S1 ≤ S0−7d |
+| Rate now | `(sold_S0 − sold_S1) / span_now` — S0 newest in 70d, S1 ≤ S0−7d |
 | Rate prev | `(sold_S1 − sold_S2) / span_prev` — S2 ≤ S1−7d |
 | Weekly % | `(rate_now − rate_prev) / rate_prev × 100`, each span 7–28 days |
 
+- `measured` / `terukur` when S0 is ≤21 days.
+- `held` / perkiraan when the listing still has 3 valid scrapes but S0 is
+  22–70 days old. Same formula, last known windows held as the estimate of
+  recent trend. Tooltip states the real dates and “bukan scrape 21 hari
+  terakhir.” Table column shows the % with a perkiraan mark.
 - `belum` if there is no S2, `rate_prev < 1` unit/day, `d_now + d_prev < 10`,
   or sold stayed flat while reviews rose by more than 5 (counter lag).
-- Clamp `−100` … `+300`. Always `terukur` when a % is shown.
-- **Trending Sekarang** shows the top **3** by weekly % desc among rows with
-  `unitsNowWk ≥ 20` and `unitsPrevWk ≥ 7`. Skip `belum` / missing. If none
-  qualify after hydrate, hide the strip. Paling Trending uses the same floor.
+- Clamp `−100` … `+300`. Do not invent a % from peer / nowcast / forecast.
+- **Trending Sekarang** shows the top **3** by weekly % desc among **fresh
+  (`terukur`)** rows with `unitsNowWk ≥ 20` and `unitsPrevWk ≥ 7`. Skip
+  `belum` / `held` / missing. If none qualify after hydrate, hide the strip.
+  Paling Trending uses the same floor.
 - While `peta_batch` is in flight, show a 3-row skeleton (not a grey square).
   Do not invent a %. If the RPC is missing, the strip stays hidden and the
   table Trending column shows `—`.
@@ -80,10 +87,11 @@ Row click is Deep Dive. Checkboxes do not steal the row.
 
 Tooltip on % states the real windows (dates + span days) and that the number
 is units sold, not omset: “~N/minggu (D1–D0) vs ~M/minggu (D2–D1). Terukur
-dari 3 scrape.” `belum` copy: need 3 measurements ≥7 days apart, or previous
-rate too small. Do not label perkiraan — if we cannot measure, show `—`.
-Do not revive `weekly_snapshots`. `listing_weekly` stays Deep Dive / Jejak
-only; it does not feed this %.
+dari 3 scrape.” Held copy names the last scrape date and that it is perkiraan
+from older 3-scrape windows. `belum` copy: need 3 measurements ≥7 days apart,
+or previous rate too small. No S2 still shows `—` — do not fall back to the
+velocity model. Do not revive `weekly_snapshots`. `listing_weekly` stays
+Deep Dive / Jejak only; it does not feed this %.
 
 ## Momentum class (same rows)
 
@@ -123,7 +131,7 @@ PetaPeluang.hydrateTrends(listings, {
 })
 ```
 
-`_petaTrend`: `{ wkPct, unitsNowWk, unitsPrevWk, spanNow, spanPrev, at0, at1, at2, terukur, belum, pending }`.
+`_petaTrend`: `{ wkPct, unitsNowWk, unitsPrevWk, spanNow, spanPrev, at0, at1, at2, terukur, held, belum, pending }`.
 
 ## Copy
 

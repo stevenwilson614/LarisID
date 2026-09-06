@@ -9767,9 +9767,16 @@ function fmtTrendDay(iso) {
   return `${day} ${TREND_MON[mon - 1] || ''}`;
 }
 
+function trendAgeDays(iso) {
+  if (!iso) return null;
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return null;
+  return Math.max(0, Math.round((Date.now() - t) / 86400000));
+}
+
 function listingTrendEligible(p) {
   const t = p && p._petaTrend;
-  if (!t || t.belum || t.pending || t.wkPct == null) return false;
+  if (!t || t.belum || t.pending || t.held || !t.terukur || t.wkPct == null) return false;
   const nowWk = Number(t.unitsNowWk);
   const prevWk = Number(t.unitsPrevWk);
   if (!Number.isFinite(nowWk) || !Number.isFinite(prevWk)) return false;
@@ -9789,7 +9796,13 @@ function listingTrendTitle(t) {
   const sNow = Math.round(Number(t.spanNow) || 0);
   const sPrev = Math.round(Number(t.spanPrev) || 0);
   const dir = t.wkPct > 0 ? 'naik' : t.wkPct < 0 ? 'turun' : 'stabil';
-  return `Penjualan ${dir} ${fmtTrendPct(t.wkPct)} : ~${n}/minggu (${fmtTrendDay(t.at1)}–${fmtTrendDay(t.at0)}, ${sNow} hari) vs ~${m}/minggu (${fmtTrendDay(t.at2)}–${fmtTrendDay(t.at1)}, ${sPrev} hari). Terukur dari 3 scrape, bukan perkiraan.`;
+  const windows = `~${n}/minggu (${fmtTrendDay(t.at1)}–${fmtTrendDay(t.at0)}, ${sNow} hari) vs ~${m}/minggu (${fmtTrendDay(t.at2)}–${fmtTrendDay(t.at1)}, ${sPrev} hari)`;
+  if (t.held || !t.terukur) {
+    const age = trendAgeDays(t.at0);
+    const ageBit = age != null ? `, ${age} hari lalu` : '';
+    return `Perkiraan dari 3 scrape terakhir (terbaru ${fmtTrendDay(t.at0)}${ageBit}). Penjualan ${dir} ${fmtTrendPct(t.wkPct)} : ${windows}. Bukan scrape 21 hari terakhir.`;
+  }
+  return `Penjualan ${dir} ${fmtTrendPct(t.wkPct)} : ${windows}. Terukur dari 3 scrape, bukan perkiraan.`;
 }
 
 function listingTrendInnerHtml(p, opts = {}) {
@@ -9798,7 +9811,9 @@ function listingTrendInnerHtml(p, opts = {}) {
   if (t.belum || t.wkPct == null) return '—';
   const cls = t.wkPct > 0 ? 'is-up' : t.wkPct < 0 ? 'is-down' : 'is-flat';
   const arrow = t.wkPct > 0 ? ico('arrowUp', 13) : t.wkPct < 0 ? ico('arrowDown', 13) : '';
-  return `<span class="lrow-trend-pct ${cls}">${arrow}<span>${fmtTrendPct(t.wkPct)}</span></span>`;
+  const est = !!(t.held || !t.terukur);
+  const chip = (est && !opts.hidePerkiraan) ? '<small>perkiraan</small>' : '';
+  return `<span class="lrow-trend-pct ${cls}${est ? ' is-est' : ''}">${arrow}<span>${fmtTrendPct(t.wkPct)}</span>${chip}</span>`;
 }
 
 function listingTrendCellHtml(p) {
@@ -10184,7 +10199,7 @@ function hydrateListingTrends(listings, onTrend) {
   const list = (listings || []).slice(0, 200);
   if (!list.length || !window.PetaPeluang || typeof PetaPeluang.hydrateTrends !== 'function') {
     (listings || []).forEach(p => {
-      if (!p._petaTrend) p._petaTrend = { wkPct: null, moPct: null, terukur: false, belum: true, pending: false };
+      if (!p._petaTrend) p._petaTrend = { wkPct: null, moPct: null, terukur: false, held: false, belum: true, pending: false };
     });
     if (typeof onTrend === 'function') onTrend(list);
     return Promise.resolve(list);

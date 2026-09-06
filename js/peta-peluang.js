@@ -59,6 +59,7 @@
     return {
       wkPct: null, wkPctRaw: null, moPct: null,
       terukur: false, belum: true, pending: !!pending,
+      held: false,
       unitsNowWk: null, unitsPrevWk: null,
       spanNow: null, spanPrev: null,
       at0: null, at1: null, at2: null
@@ -68,11 +69,14 @@
     if (!m) return emptyTrend(false);
     var belum = m.momentum_class === 'belum' || m.momentum_pct == null;
     var pct = num(m.momentum_pct);
+    // Old peta_batch (no fresh/source) counts as measured.
+    var held = m.momentum_source === 'held' || m.fresh === false;
     return {
       wkPct: (belum || pct == null) ? null : clamp(pct, -100, 300),
       wkPctRaw: (belum || pct == null) ? null : pct,
       moPct: null,
-      terukur: !belum,
+      terukur: !belum && !held,
+      held: !belum && held,
       belum: !!belum,
       pending: false,
       unitsNowWk: num(m.units_now_wk),

@@ -70,8 +70,10 @@ Monday. Columns include `units_wk`, `omset_wk`, `source`
 **distinct** `(item_id, shop_id)` set, so an ad slot and an organic slot of the
 same listing are not double-counted. It is **not** `mv_keyword_weekly` (that
 matview is only the Terlaris Minggu Ini badge). Cari Produk / Trending
-Sekarang % does **not** read `listing_weekly` — it uses measured 3-snapshot
-momentum in `mv_listing_momentum` (see [peta-peluang.md](./peta-peluang.md)).
+Sekarang % does **not** read `listing_weekly` — it uses 3-snapshot momentum
+in `mv_listing_momentum` (see [peta-peluang.md](./peta-peluang.md)). Fresh
+S0 (≤21d) is terukur; older 3-scrape rows are a held perkiraan, not a
+velocity nowcast.
 
 ## Update path
 

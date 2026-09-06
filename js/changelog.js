@@ -19,6 +19,10 @@ window.LARIS_CHANGELOG = [
         tech: 'PetaPeluang.hydrateTrends (peta_batch) without canvas; #dir-trending-now + .trend-host; listingRowsHtml actions (checkbox / fav / chevron); gpt-dir-filters trending option; Favorit = trackKeywordWithNotify via dir_favorit.',
       },
       {
+        text: 'Kalau scrape terakhir suatu produk lebih dari 21 hari lalu tapi kami sudah punya 3 pengukuran, kolom Trending tetap menampilkan persentase sebagai perkiraan (bukan terukur). Trending Sekarang hanya memakai produk yang scrapenya masih baru.',
+        tech: 'mv_listing_momentum S0 window 70d; momentum_source held vs measured; listingTrendEligible requires terukur; table shows perkiraan chip for held rows (20260906183000).',
+      },
+      {
         text: 'Ketik merek atau produk sekarang langsung tampil daftar listing plus ringkasan pasar, tanpa proses berpikir yang panjang. “Terlaris minggu ini” meninjau data dulu lalu menampilkan sekitar 10 produk. Pertanyaan lanjutan seperti “ada yang dari Bandung?” menyaring daftar yang barusan. Kalau kamu tanya afiliasi, kami bilang terus terang datanya belum ada dan mengarahkan ke Kalodata untuk TikTok Shop.',
         tech: 'detectResponseMode in gpt-chat-memory.js routes LOOKUP/WEEKLY/FILTER/REFER before AI_AGENT_ALL. runMarketAgent thinking is wantsDeepReasoning only. lastShown + <lanjut> chips; persistMessage _persisting; aiDataContext(); ringkasan_kategori RPC; cari-web edge function (Tavily/Brave, refuse sold/affiliate).',
       },
