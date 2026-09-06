@@ -6591,12 +6591,26 @@ body.calc-open .calc-panel { display: flex; animation: calcIn .24s var(--ease); 
 body.calc-resizing .calc-resize::before { background: var(--accent); }
 .sheet-grab {
   display: none; align-items: center; justify-content: center;
-  width: 100%; padding: 9px 0 5px; flex-shrink: 0;
+  width: 100%; padding: 12px 0 8px; flex-shrink: 0;
+  /* Invisible extended hit area above/below the pill (mobile ~44px target). */
+  position: relative;
   background: transparent; border: none; cursor: grab;
   touch-action: none;
+  -webkit-user-select: none; user-select: none;
+}
+.sheet-grab::before {
+  content: '';
+  position: absolute; left: 0; right: 0; top: -6px; bottom: -4px;
 }
 .sheet-grab span {
-  width: 42px; height: 5px; border-radius: 999px; background: var(--line);
+  width: 44px; height: 5px; border-radius: 999px; background: var(--line);
+  transition: background .15s, width .15s, transform .15s;
+  pointer-events: none;
+}
+.sheet-grab.is-dragging { cursor: grabbing; }
+.sheet-grab.is-dragging span {
+  width: 56px; background: var(--accent, #e11d48);
+  transform: scaleY(1.15);
 }
 .calc-head {
   display: flex; align-items: center; justify-content: space-between;
@@ -8607,7 +8621,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 
   <aside class="calc-panel" id="calc-panel" aria-hidden="true" aria-label="Panel samping">
     <div class="calc-resize" id="calc-resize" role="separator" aria-orientation="vertical" title="Geser untuk ubah lebar"></div>
-    <div class="sheet-grab" id="sheet-grab" role="button" tabindex="0" aria-label="Kecilkan atau besarkan panel"><span></span></div>
+    <div class="sheet-grab" id="sheet-grab" role="button" tabindex="0" aria-label="Geser untuk ubah tinggi panel"><span></span></div>
     <div class="calc-head">
       <div class="calc-head-txt">
         <div class="side-tabs" role="tablist" aria-label="Mode panel">
