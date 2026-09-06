@@ -10201,7 +10201,7 @@ function trendingNowRowHtml(p, i) {
       <img class="trend-now-place" src="/images/brand/trend-place-${rank}.webp" alt="" width="${placePx}" height="${placePx}" decoding="async">
       <img class="trend-now-mascot" src="/images/brand/mascot-trend-${rank}.webp" alt="" width="${mascotPx}" height="${mascotPx}" decoding="async">
     </span>
-    ${thumb}
+    <span class="trend-now-media">${thumb}</span>
     <div class="trend-now-main">
       <div class="trend-now-name" title="${esc(name)}">${esc(name)}</div>
       ${trendNowCatHtml(p)}
