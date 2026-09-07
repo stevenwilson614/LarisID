@@ -4867,15 +4867,54 @@ function _rbLevenshtein(a, b) {
   }
   return row[b.length];
 }
+/** Longer tokens get one extra edit so ID↔EN pairs like elektrik/electric still match. */
+function _rbMaxEdits(len) {
+  if (len >= 8) return 2;
+  if (len >= 4) return 1;
+  return 0;
+}
 function _rbTokenMatch(token, hay) {
   if (!token) return true;
   if (hay.includes(token)) return true;
   const words = hay.split(/\s+/).filter(w => w.length >= 3);
+  const maxEd = _rbMaxEdits(token.length);
   return words.some(w => {
     if (w.includes(token) || token.includes(w)) return true;
-    if (token.length >= 4 && w.length >= 4 && _rbLevenshtein(token, w) <= 1) return true;
+    if (maxEd > 0 && w.length >= 4) {
+      const cap = Math.min(maxEd, _rbMaxEdits(w.length));
+      if (_rbLevenshtein(token, w) <= cap) return true;
+    }
     return false;
   });
+}
+/** Whole-word edit-distance only — avoids "tas" matching "kertas" via substring. */
+function _rbWordFuzzy(token, hay) {
+  const tn = _rbNormStr(token);
+  if (!tn || tn.length < 4) return false;
+  const maxEd = _rbMaxEdits(tn.length);
+  if (maxEd <= 0) return false;
+  const words = _rbNormStr(hay).split(/\s+/).filter(w => w.length >= 3);
+  return words.some(w => {
+    if (w === tn) return true;
+    if (Math.abs(w.length - tn.length) > maxEd) return false;
+    if (w.length < 4) return false;
+    return _rbLevenshtein(tn, w) <= Math.min(maxEd, _rbMaxEdits(w.length));
+  });
+}
+/** Token + SEARCH_SYNONYMS expansions ("elektrik" also tries "electric"). */
+function _rbTokenAlts(token) {
+  const t = _rbNormStr(token);
+  if (!t) return [];
+  const out = new Set([t]);
+  try {
+    (SEARCH_SYNONYMS[t] || []).forEach(s => {
+      String(s).toLowerCase().split(/[\s/-]+/).forEach(w => {
+        const n = _rbNormStr(w);
+        if (n.length >= 3) out.add(n);
+      });
+    });
+  } catch (_) { /* SEARCH_SYNONYMS may be TDZ only during module init */ }
+  return [...out];
 }
 
 // Lazily-built, cached pool of keywords for the fuzzy/typo fallback — built once
@@ -4887,7 +4926,10 @@ async function _rbFuzzyPoolGet() {
   if (_rbFuzzyPoolPromise) return _rbFuzzyPoolPromise;
   if (!_supabase) return [];
   _rbFuzzyPoolPromise = _supabase.from('product_types_v')
+    // city=ALL only — PostgREST caps at ~1000 rows; city duplicates used to
+    // crowd out long-tail keywords the typo fallback needs.
     .select('keyword, category_canonical, category, omset_top15')
+    .eq('city', 'ALL')
     .gte('n_listings', 3)
     .order('omset_top15', { ascending: false, nullsFirst: false })
     .limit(6000)
@@ -4898,11 +4940,19 @@ async function _rbFuzzyPoolGet() {
 
 // Fuzzy fallback: normalize + token-match `raw` against the cached keyword pool.
 // Returns lean rows { keyword, category_canonical, category, omset_top15 }.
+// Handles typos ("choper"→"chopper") and EN/ID pairs via edit distance + synonyms.
 async function _rbFuzzyMatch(raw, limit = 12) {
   const pool = await _rbFuzzyPoolGet();
   if (!pool.length) return [];
   const qTokens = _rbNormStr(raw).split(/\s+/).filter(Boolean);
   if (!qTokens.length) return [];
+  const altSets = qTokens.map(_rbTokenAlts);
+  // Original token: edit-distance OK. Synonym alts: exact/substring only —
+  // otherwise choper→chopper alt fuzz-matches "copper".
+  const tokenHits = (alts, hay, original) => {
+    if (_rbTokenMatch(original, hay)) return true;
+    return alts.some(t => t !== original && (hay.includes(t) || hay.split(/\s+/).includes(t)));
+  };
   const collect = (pred) => {
     const hits = [];
     for (const row of pool) {
@@ -4913,19 +4963,24 @@ async function _rbFuzzyMatch(raw, limit = 12) {
     }
     return hits;
   };
-  let hits = collect(hay => qTokens.every(t => _rbTokenMatch(t, hay)));
+  // Prefer AND across tokens, allowing each token to match via a synonym alt
+  // ("choper elektrik" → chopper + electric/elektrik).
+  let hits = collect(hay => altSets.every((alts, i) => tokenHits(alts, hay, qTokens[i])));
   // AND-all-tokens misses related types ("galang manik" when no keyword
   // contains both). Fall back to the rarest/longest token with the same
   // typo tolerance so `manik` still surfaces bead crafts.
   if (!hits.length && qTokens.length >= 2) {
+    let bestAlts = null;
     let bestTok = null;
     let bestCount = Infinity;
-    for (const t of qTokens) {
+    for (let i = 0; i < qTokens.length; i++) {
+      const t = qTokens[i];
       if (t.length < 4) continue;
+      const alts = altSets[i];
       let n = 0;
       for (const row of pool) {
         const hay = _rbNormStr(row.keyword || '');
-        if (hay && _rbTokenMatch(t, hay)) n++;
+        if (hay && tokenHits(alts, hay, t)) n++;
       }
       // Skip tokens that hit nothing — otherwise a missing word like
       // "penghitam" (0) beats "kasar" (1) and the fallback returns [].
@@ -4933,9 +4988,10 @@ async function _rbFuzzyMatch(raw, limit = 12) {
       if (n < bestCount || (n === bestCount && t.length > (bestTok ? bestTok.length : 0))) {
         bestCount = n;
         bestTok = t;
+        bestAlts = alts;
       }
     }
-    if (bestTok) hits = collect(hay => _rbTokenMatch(bestTok, hay));
+    if (bestAlts && bestTok) hits = collect(hay => tokenHits(bestAlts, hay, bestTok));
   }
   return hits.slice(0, limit);
 }
@@ -7420,9 +7476,11 @@ async function resolveListingPool({ q, cats, sub, home } = {}) {
       out.unsold = await countKeywordUnsold(out.primaryKw);
       const terms = _searchTerms(query);
       const phrase = query.toLowerCase();
-      out.listings.forEach(r => attachRelScore(r, terms, phrase, {}, 1));
+      const synonyms = _planSynonymTerms(terms, plan?.queries || []);
+      const rankOpts = { synonyms };
+      out.listings.forEach(r => attachRelScore(r, terms, phrase, rankOpts, 1));
       if (terms.length >= 2) {
-        const filtered = filterRelevantHits(out.listings, terms, phrase);
+        const filtered = filterRelevantHits(out.listings, terms, phrase, rankOpts);
         if (filtered.length) out.listings = filtered;
       }
     }
@@ -8934,6 +8992,13 @@ const SEARCH_SYNONYMS = {
   manik: ['gelang manik', 'manik-manik'],
   gelang: ['bracelet'],
   galang: ['gelang'],
+  // Kitchen appliances — ID/EN spelling + common typos (choper→chopper)
+  elektrik: ['electric', 'listrik', 'elektrik'],
+  electric: ['elektrik', 'listrik'],
+  listrik: ['elektrik', 'electric'],
+  chopper: ['choper', 'food chopper', 'pencacah', 'blender chopper', 'blender bumbu chopper', 'chopper elektrik'],
+  choper: ['chopper', 'food chopper', 'pencacah', 'blender chopper', 'blender bumbu chopper', 'chopper elektrik', 'chopper electric'],
+  pencacah: ['chopper', 'food chopper', 'chopper elektrik', 'blender bumbu chopper'],
 };
 
 // Multi-word phrase → craft cluster. Single-token expansion can't express
@@ -8957,6 +9022,11 @@ const PHRASE_SYNONYMS = {
   'bead bracelet': ['gelang manik', 'manik', 'manik-manik', 'gelang', 'kalung manik'],
   'gelang manik': ['manik', 'manik-manik', 'gelang', 'kalung manik'],
   'galang manik': ['gelang manik', 'manik', 'gelang', 'kalung manik'],
+  'chopper electric': ['chopper elektrik', 'food chopper', 'pencacah', 'blender chopper', 'chopper'],
+  'chopper elektrik': ['chopper electric', 'food chopper', 'pencacah', 'blender chopper', 'chopper'],
+  'choper elektrik': ['chopper electric', 'chopper elektrik', 'food chopper', 'pencacah', 'chopper', 'blender bumbu chopper'],
+  'choper electric': ['chopper electric', 'chopper elektrik', 'food chopper', 'pencacah', 'chopper', 'blender bumbu chopper'],
+  'food chopper': ['chopper elektrik', 'chopper electric', 'pencacah', 'chopper', 'blender bumbu chopper'],
 };
 
 // When the catalog has nothing like the ask, suggest the nearest sellable niches.
@@ -9252,10 +9322,13 @@ function scoreSearchHit(row, terms, phrase = '', opts = {}) {
     const inName = name.includes(t);
     const inKw = kw.includes(t);
     const inCat = cat.includes(t);
-    if (inName || inKw || inCat) matched += 1;
+    // Typo / synonym soft match ("choper"→"chopper", "elektrik"→"electric")
+    const soft = !inName && !inKw && !inCat && (hayHasToken(hay, t) || hayHasToken(cat, t));
+    if (inName || inKw || inCat || soft) matched += 1;
     if (inName) score += 14;
     else if (inKw) score += 8;
     else if (inCat) score += 5;
+    else if (soft) score += 10;
   }
   const coverage = terms.length ? matched / terms.length : 0;
   score += coverage * 50;
@@ -9319,7 +9392,9 @@ function kwHasTerm(kw, term) {
   if (!t || t.length < 3) return false;
   if (t.includes(' ')) return k === t || k.includes(t);
   if (k === t) return true;
-  return k.split(/[\s/-]+/).some(w => w === t);
+  if (k.split(/[\s/-]+/).some(w => w === t)) return true;
+  // Typo-tolerant whole-word match only (not substring) so "tas" ≠ "kertas".
+  return _rbWordFuzzy(t, k);
 }
 
 function tokenOverlapCount(kw, toks) {
@@ -9361,7 +9436,14 @@ function hayHasToken(hay, token) {
   const t = String(token || '').toLowerCase();
   if (!t) return false;
   if (h.includes(t)) return true;
-  return (SEARCH_SYNONYMS[t] || []).some(s => h.includes(String(s).toLowerCase()));
+  if ((SEARCH_SYNONYMS[t] || []).some(s => {
+    const sLow = String(s).toLowerCase();
+    if (h.includes(sLow)) return true;
+    const parts = sLow.split(/\s+/).filter(w => w.length >= 3);
+    return parts.length >= 2 && parts.every(p => h.includes(p));
+  })) return true;
+  // Typo-tolerant: "choper" matches "chopper" in title/keyword.
+  return _rbWordFuzzy(t, h);
 }
 
 function listingHasPivots(row, pivots, qTokens) {
@@ -9425,15 +9507,19 @@ function isBrandPrimaryQuery(raw, plan) {
 }
 
 function titleSearchQueries(raw) {
-  const terms = _searchTerms(raw);
+  const text = String(raw || '').trim();
+  const terms = _searchTerms(text);
   const bigrams = [];
   for (let i = 0; i < terms.length - 1; i++) bigrams.push(`${terms[i]} ${terms[i + 1]}`);
-  return [...new Set([String(raw || '').trim(), ...bigrams])].filter(Boolean).slice(0, 4);
+  // Offline EN/ID + typo expansions so "choper elektrik" also searches
+  // "chopper electric" titles (most listings use the corrected spelling).
+  const extras = (_staticPlan(text).queries || []).slice(0, 4);
+  return [...new Set([text, ...bigrams, ...extras])].filter(Boolean).slice(0, 6);
 }
 
 async function searchListingsFanout(queries, limitEach = 40) {
   const pool = [];
-  const qs = [...new Set((queries || []).map(q => String(q || '').trim()).filter(Boolean))].slice(0, 4);
+  const qs = [...new Set((queries || []).map(q => String(q || '').trim()).filter(Boolean))].slice(0, 6);
   if (!qs.length) return pool;
   const groups = await Promise.all(qs.map(q => searchListings(q, [], limitEach)));
   groups.forEach(rows => mergePool(pool, rows));
@@ -9699,6 +9785,8 @@ async function searchListings(q, locations = [], limit = 30) {
   const scoreTerms = terms.length ? terms : _searchTerms(clean);
   const phrase = clean.toLowerCase();
   const fetchLim = Math.max(limit * 4, 40);
+  const synPlan = _staticPlan(clean);
+  const synonyms = _planSynonymTerms(scoreTerms, synPlan.queries || []);
 
   try {
     const { data, error } = await _supabase.rpc('search_listings', {
@@ -9723,7 +9811,7 @@ async function searchListings(q, locations = [], limit = 30) {
       const locFiltered = rows.filter(r => locMatches(r.location, locations));
       if (locFiltered.length) rows = locFiltered;
     }
-    const relevant = filterRelevantHits(rows, scoreTerms, phrase);
+    const relevant = filterRelevantHits(rows, scoreTerms, phrase, { synonyms });
     if (relevant.length) return relevant.slice(0, limit);
     if (scoreTerms.length <= 1) return rows.slice(0, limit);
     return [];
@@ -18385,14 +18473,13 @@ async function searchProductTypes(text, cities, limit = 12, opts) {
   const brandPrimary = isBrandPrimaryQuery(raw, plan);
   const extraStrong = (plan?.queries || []).filter(e => extraIsSynonym(e, qTokens, q));
   let ranked = [];
-  let skipFuzzy = false;
   if (brandPrimary) {
+    // Exact brand only — never fuzzy-broaden into unrelated niches.
     const b = String(plan?.brand || '').toLowerCase();
     ranked = hits.filter(h => {
       const kw = String(h.keyword || '').toLowerCase().trim();
       return kw === q || (b && kw === b);
     }).slice(0, limit);
-    skipFuzzy = true;
   } else if (qTokens.length >= 2) {
     const { head, rarest, pivots } = searchPivots(qTokens, hitCounts);
     const strong = [];
@@ -18415,13 +18502,14 @@ async function searchProductTypes(text, cities, limit = 12, opts) {
         ...headOnly.sort(byScore),
         ...rareOnly.sort(byScore).slice(0, 3),
       ].slice(0, limit);
-    } else if (hits.length) {
-      skipFuzzy = true;
     }
+    // Weak shared-token hits ("elektrik" alone) used to set skipFuzzy and
+    // return empty — that blocked typo rescue for "choper elektrik". Leave
+    // ranked empty here so the fuzzy fallback below can run.
   } else {
     ranked = hits.filter(h => h._score >= 10).slice(0, limit);
   }
-  if (!ranked.length && !skipFuzzy) {
+  if (!ranked.length && !brandPrimary) {
     // Nothing matched even with synonym expansion — try the typo-tolerant
     // fuzzy fallback, then re-fetch full columns for whatever it found (the
     // fuzzy pool only carries a lean column subset).
