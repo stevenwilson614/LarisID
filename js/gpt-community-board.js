@@ -4,40 +4,40 @@
   let _opts;
   let _container;
   let _listEl;
-  let _activeKind = 'all'; // all | feature | complaint
+  let _tab = 'diskusi'; // diskusi | usulan
+  let _activeTopic = '';
+  let _usulanKind = 'all';
   let _posts = [];
   let _expandedPostIds = new Set();
   let _expandedBodyIds = new Set();
   let _commentsCache = {};
+  let _followedTopics = new Set();
+  let _focusPostId = '';
+  let _likePromptIds = new Set();
+
+  const TOPICS = [
+    'Foto & Deskripsi',
+    'Packing & Ongkir',
+    'Iklan Shopee',
+    'Kebijakan Shopee',
+    'Cara Baca Data LarisID',
+    'Cerita & Pelajaran',
+  ];
 
   const STATUS_META = {
-    open: {
-      label: 'Baru',
-      cls: 'baru',
-    },
-    considering: {
-      label: 'Dikerjakan',
-      cls: 'considering',
-    },
-    done: {
-      label: 'Selesai',
-      cls: 'reviewed',
-    },
+    open: { label: 'Baru', cls: 'baru' },
+    considering: { label: 'Dikerjakan', cls: 'considering' },
+    done: { label: 'Selesai', cls: 'reviewed' },
   };
 
   const AVATAR_PALETTE = [
     '#DBEAFE', '#FCE7F3', '#E0E7FF', '#D1FAE5', '#FEF3C7', '#FDE68A', '#FBCFE8', '#CFFAFE',
   ];
 
-  // ---------- helpers ----------
-
   function formatDate(iso) {
     try {
-      const d = new Date(iso);
-      return d.toLocaleDateString('id-ID', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
+      return new Date(iso).toLocaleDateString('id-ID', {
+        day: 'numeric', month: 'short', year: 'numeric',
       });
     } catch (e) {
       return '';
@@ -46,8 +46,7 @@
 
   function svgThumb(active) {
     const fill = active ? '#B5202A' : 'none';
-    const stroke = active ? '#B5202A' : '#B5202A';
-    return `<svg width="20" height="20" viewBox="0 0 24 24" fill="${fill}" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>`;
+    return `<svg width="20" height="20" viewBox="0 0 24 24" fill="${fill}" stroke="#B5202A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>`;
   }
 
   function svgComment() {
@@ -107,7 +106,7 @@
 
   function adminBadgeHtml(row) {
     if (!row.author_is_admin) return '';
-    return `<span class="msb-role" title="Founder LarisID">Admin</span>`;
+    return `<span class="msb-role" title="Founder / mentor LarisID">Admin</span>`;
   }
 
   function authorTagHtml(row) {
@@ -136,7 +135,12 @@
     return isOwn(authorId) || isAdmin();
   }
 
+  function isDiskusi() {
+    return _tab === 'diskusi';
+  }
+
   function statusControlHtml(post) {
+    if (isDiskusi() && !isAdmin()) return '';
     if (!isAdmin()) return statusBadgeHtml(post.status);
     const current = STATUS_META[post.status] ? post.status : 'open';
     const meta = STATUS_META[current];
@@ -173,10 +177,19 @@
       .catch(() => {});
   }
 
-  function kindChipHtml(kind) {
-    const label = kind === 'complaint' ? 'Keluhan' : 'Fitur';
-    const cls = kind === 'complaint' ? 'complaint' : 'feature';
+  function kindChipHtml(post) {
+    if (isDiskusi()) {
+      if (!post.topic) return '';
+      return `<span class="msb-kind msb-kind--topic">${_opts.esc(post.topic)}</span>`;
+    }
+    const label = post.kind === 'complaint' ? 'Keluhan' : 'Fitur';
+    const cls = post.kind === 'complaint' ? 'complaint' : 'feature';
     return `<span class="msb-kind msb-kind--${cls}">${svgPlus()} ${_opts.esc(label)}</span>`;
+  }
+
+  function voteLabel(post) {
+    if (post.kind === 'question' || isDiskusi()) return 'Saya juga';
+    return 'Saya juga butuh';
   }
 
   function showLoading(show) {
@@ -187,14 +200,19 @@
   function updateLikeDisplay(postId, liked, count) {
     const btn = _listEl && _listEl.querySelector(`.msb-vote[data-post-id="${postId}"]`);
     if (!btn) return;
+    const post = _posts.find((p) => p.id === postId);
     btn.classList.toggle('is-liked', !!liked);
-    btn.innerHTML = `${svgThumb(!!liked)}<span class="msb-vote-count">${count}</span><span class="msb-vote-label">Dukung</span>`;
+    btn.innerHTML = `${svgThumb(!!liked)}<span class="msb-vote-count">${count}</span><span class="msb-vote-label">${_opts.esc(voteLabel(post || {}))}</span>`;
   }
 
   function updateCommentCountDisplay(postId, count) {
     const el = _listEl && _listEl.querySelector(`.msb-comments-count[data-post-id="${postId}"]`);
     if (!el) return;
-    el.innerHTML = `${svgComment()} ${count} komentar`;
+    const unanswered = count === 0 && isDiskusi();
+    el.classList.toggle('is-unanswered', unanswered);
+    el.innerHTML = unanswered
+      ? `${svgComment()} 0 jawaban — bantu?`
+      : `${svgComment()} ${count} jawaban`;
   }
 
   function renderCommentsForPost(postId) {
@@ -211,7 +229,10 @@
               <button type="button" data-action="delete-comment" data-post-id="${postId}" data-comment-id="${c.id}">Hapus</button>
             </span>`
           : '';
-        return `<div class="msb-comment" data-comment-id="${c.id}">${authorTagHtml(c)}<span class="msb-comment-body">${_opts.esc(c.body)}</span><span class="msb-comment-date">${formatDate(c.created_at)}</span>${manage}</div>`;
+        const msg = (!isOwn(c.author_id) && c.author_id)
+          ? `<span class="msb-dm-wrap"><button type="button" class="msb-dm" data-action="message-user" data-user-id="${_opts.esc(c.author_id)}" data-user-name="${_opts.esc(authorDisplayName(c))}">Kirim Pesan</button><span class="msb-dm-hint">Mau lanjut ngobrol privat?</span></span>`
+          : '';
+        return `<div class="msb-comment" data-comment-id="${c.id}">${authorTagHtml(c)}<span class="msb-comment-body">${_opts.esc(c.body)}</span><span class="msb-comment-date">${formatDate(c.created_at)}</span>${msg}${manage}</div>`;
       })
       .join('');
   }
@@ -231,8 +252,6 @@
     renderCommentsForPost(postId);
   }
 
-  // Independent of toggleComments — a long usulan body shouldn't force the
-  // comment thread open just to read the rest of it.
   function toggleBody(postId) {
     const post = _posts.find((p) => p.id === postId);
     const card = _listEl && _listEl.querySelector(`.msb-card[data-post-id="${postId}"]`);
@@ -285,14 +304,20 @@
       post.liked_by_me = wasLiked;
       post.like_count = prevCount;
       updateLikeDisplay(postId, post.liked_by_me, post.like_count);
-      _opts.toast('Gagal memperbarui dukungan. Coba lagi.');
+      _opts.toast('Gagal memperbarui. Coba lagi.');
       if (typeof _opts.onError === 'function') _opts.onError(error);
+      return;
+    }
+    if (!wasLiked && !isDiskusi()) {
+      _likePromptIds.add(postId);
+      _expandedPostIds.add(postId);
+      renderPosts();
     }
   }
 
   async function addComment(postId, body) {
     if (!body.trim()) {
-      _opts.toast('Komentar tidak boleh kosong.');
+      _opts.toast('Balasan tidak boleh kosong.');
       return;
     }
     const { data, error } = await _opts.supabase
@@ -305,7 +330,7 @@
       .select('id, author_id, author_first_name, author_city, author_headshot_url, author_is_admin, body, created_at')
       .single();
     if (error) {
-      _opts.toast('Gagal mengirim komentar. Coba lagi.');
+      _opts.toast('Gagal mengirim balasan. Coba lagi.');
       if (typeof _opts.onError === 'function') _opts.onError(error);
       return;
     }
@@ -318,6 +343,15 @@
       updateCommentCountDisplay(postId, post.comment_count);
     }
     notifyAuthor({ kind: 'comment', request_id: postId, comment_id: data.id });
+    maybeNudgePublicProfile();
+  }
+
+  function maybeNudgePublicProfile() {
+    try {
+      if (localStorage.getItem('lid_komunitas_public_nudge_v1')) return;
+      localStorage.setItem('lid_komunitas_public_nudge_v1', '1');
+    } catch (_) {}
+    _opts.toast('Biar seller lain bisa kirim pesan, buka profil publik di akunmu.');
   }
 
   async function setPostStatus(postId, status) {
@@ -343,7 +377,7 @@
   }
 
   async function deletePost(postId) {
-    if (!confirm('Hapus usulan ini? Komentar ikut terhapus.')) return;
+    if (!confirm(isDiskusi() ? 'Hapus pertanyaan ini? Balasan ikut terhapus.' : 'Hapus usulan ini? Komentar ikut terhapus.')) return;
     const { error } = await _opts.supabase.from('feature_requests').delete().eq('id', postId);
     if (error) {
       _opts.toast('Gagal menghapus.');
@@ -399,10 +433,10 @@
   }
 
   async function deleteComment(postId, commentId) {
-    if (!confirm('Hapus komentar ini?')) return;
+    if (!confirm('Hapus balasan ini?')) return;
     const { error } = await _opts.supabase.from('feature_request_comments').delete().eq('id', commentId);
     if (error) {
-      _opts.toast('Gagal menghapus komentar.');
+      _opts.toast('Gagal menghapus balasan.');
       if (typeof _opts.onError === 'function') _opts.onError(error);
       return;
     }
@@ -418,7 +452,7 @@
   async function saveCommentEdit(postId, commentId, body) {
     const b = (body || '').trim();
     if (!b) {
-      _opts.toast('Komentar tidak boleh kosong.');
+      _opts.toast('Balasan tidak boleh kosong.');
       return;
     }
     const { error } = await _opts.supabase
@@ -426,7 +460,7 @@
       .update({ body: b })
       .eq('id', commentId);
     if (error) {
-      _opts.toast('Gagal menyimpan komentar.');
+      _opts.toast('Gagal menyimpan balasan.');
       if (typeof _opts.onError === 'function') _opts.onError(error);
       return;
     }
@@ -457,17 +491,69 @@
     });
   }
 
+  async function loadFollows() {
+    const { data, error } = await _opts.supabase
+      .from('board_topic_follows')
+      .select('topic');
+    if (error) return;
+    _followedTopics = new Set((data || []).map((r) => r.topic));
+    syncFollowBtn();
+  }
+
+  function syncFollowBtn() {
+    const btn = _container && _container.querySelector('#msb-follow-topic');
+    if (!btn) return;
+    if (!isDiskusi() || !_activeTopic) {
+      btn.hidden = true;
+      return;
+    }
+    btn.hidden = false;
+    const on = _followedTopics.has(_activeTopic);
+    btn.classList.toggle('is-on', on);
+    btn.textContent = on ? 'Berhenti kabari topik ini' : 'Kabari kalau ada pertanyaan baru di topik ini';
+  }
+
+  async function toggleFollowTopic() {
+    if (!_activeTopic) return;
+    const on = _followedTopics.has(_activeTopic);
+    if (on) {
+      const { error } = await _opts.supabase
+        .from('board_topic_follows')
+        .delete()
+        .eq('user_id', _opts.currentUserId)
+        .eq('topic', _activeTopic);
+      if (error) {
+        _opts.toast('Gagal mengubah langganan.');
+        return;
+      }
+      _followedTopics.delete(_activeTopic);
+    } else {
+      const { error } = await _opts.supabase
+        .from('board_topic_follows')
+        .insert({ user_id: _opts.currentUserId, topic: _activeTopic });
+      if (error) {
+        _opts.toast('Gagal berlangganan topik.');
+        return;
+      }
+      _followedTopics.add(_activeTopic);
+    }
+    syncFollowBtn();
+  }
+
   async function fetchPosts() {
     if (!_listEl) return;
     _listEl.innerHTML = '';
     showLoading(true);
-    let q = _opts.supabase
-      .from('feature_requests_feed')
-      .select('*')
-      .order('like_count', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(50);
-    if (_activeKind !== 'all') q = q.eq('kind', _activeKind);
+    let q = _opts.supabase.from('feature_requests_feed').select('*').limit(50);
+    if (isDiskusi()) {
+      q = q.eq('kind', 'question');
+      if (_activeTopic) q = q.eq('topic', _activeTopic);
+      q = q.order('comment_count', { ascending: true }).order('created_at', { ascending: false });
+    } else {
+      if (_usulanKind === 'all') q = q.in('kind', ['feature', 'complaint']);
+      else q = q.eq('kind', _usulanKind);
+      q = q.order('like_count', { ascending: false }).order('created_at', { ascending: false });
+    }
     const { data, error } = await q;
     showLoading(false);
     if (error) {
@@ -476,7 +562,22 @@
       return;
     }
     _posts = data || [];
+    if (isDiskusi()) {
+      _posts.sort((a, b) => {
+        const au = (a.comment_count || 0) === 0 ? 0 : 1;
+        const bu = (b.comment_count || 0) === 0 ? 0 : 1;
+        if (au !== bu) return au - bu;
+        return new Date(b.created_at) - new Date(a.created_at);
+      });
+    }
     renderPosts();
+    if (_focusPostId) {
+      const card = _listEl.querySelector(`.msb-card[data-post-id="${_focusPostId}"]`);
+      if (card) {
+        card.classList.add('is-focus');
+        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
   }
 
   function renderPosts() {
@@ -485,7 +586,9 @@
     if (_posts.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'msb-empty';
-      empty.textContent = 'Belum ada usulan. Jadi yang pertama!';
+      empty.textContent = isDiskusi()
+        ? 'Belum ada pertanyaan. Jadi yang pertama — tanya sesuatu yang pernah kamu alami.'
+        : 'Belum ada usulan. Jadi yang pertama!';
       _listEl.appendChild(empty);
       return;
     }
@@ -493,17 +596,28 @@
       const card = document.createElement('article');
       card.className = 'msb-card';
       card.dataset.postId = post.id;
-      const isExpanded = _expandedPostIds.has(post.id);
+      const alwaysOpen = isDiskusi();
+      const isExpanded = alwaysOpen || _expandedPostIds.has(post.id);
       const rawBody = post.body || '';
       const bodyExpanded = _expandedBodyIds.has(post.id);
       const bodyText = truncateBody(rawBody, bodyExpanded);
       const needsBodyToggle = rawBody.length > 220;
-      const commentLabel = `${post.comment_count || 0} komentar`;
+      const unanswered = isDiskusi() && !(post.comment_count > 0);
+      const commentLabel = unanswered
+        ? '0 jawaban — bantu?'
+        : `${post.comment_count || 0} jawaban`;
+      const likePrompt = !isDiskusi() && _likePromptIds.has(post.id);
+      const commentPh = likePrompt
+        ? 'Ceritakan kasusmu singkat…'
+        : (isDiskusi() ? 'Tulis jawaban…' : 'Tulis komentar…');
+      const authorDm = (!isOwn(post.author_id) && post.author_id)
+        ? `<button type="button" class="msb-dm" data-action="message-user" data-user-id="${_opts.esc(post.author_id)}" data-user-name="${_opts.esc(authorDisplayName(post))}">Kirim Pesan</button>`
+        : '';
       card.innerHTML = `
-        <button type="button" class="msb-vote ${post.liked_by_me ? 'is-liked' : ''}" data-action="like" data-post-id="${post.id}" aria-label="Dukung usulan">
+        <button type="button" class="msb-vote ${post.liked_by_me ? 'is-liked' : ''}" data-action="like" data-post-id="${post.id}" aria-label="${_opts.esc(voteLabel(post))}">
           ${svgThumb(!!post.liked_by_me)}
           <span class="msb-vote-count">${post.like_count || 0}</span>
-          <span class="msb-vote-label">Dukung</span>
+          <span class="msb-vote-label">${_opts.esc(voteLabel(post))}</span>
         </button>
         <div class="msb-card-main">
           <div class="msb-card-top">
@@ -517,19 +631,21 @@
             ${authorTagHtml(post)}
             <span class="msb-dot">·</span>
             <span class="msb-date">${formatDate(post.created_at)}</span>
+            ${authorDm}
           </div>
           <p class="msb-body">${bodyHtml(bodyText)}</p>
           ${needsBodyToggle ? `<button type="button" class="msb-body-toggle" data-action="toggle-body" data-post-id="${post.id}">${bodyExpanded ? 'Sembunyikan' : 'Baca selengkapnya'}</button>` : ''}
           <div class="msb-card-foot">
-            ${kindChipHtml(post.kind)}
-            <button type="button" class="msb-comments-count" data-action="toggle-comments" data-post-id="${post.id}">
+            ${kindChipHtml(post)}
+            <button type="button" class="msb-comments-count${unanswered ? ' is-unanswered' : ''}" data-action="toggle-comments" data-post-id="${post.id}">
               ${svgComment()} ${commentLabel}
             </button>
           </div>
+          ${likePrompt ? `<p class="msb-like-hint">Kamu mendukung ini. Ceritakan kasusmu singkat supaya thread-nya hidup.</p>` : ''}
           <div class="msb-comments" data-comments-for="${post.id}" ${isExpanded ? '' : 'hidden'}>
             <div class="msb-comments-list"></div>
             <div class="msb-comment-form">
-              <input type="text" class="msb-comment-input" placeholder="Tulis komentar…" data-post-id="${post.id}">
+              <input type="text" class="msb-comment-input" placeholder="${_opts.esc(commentPh)}" data-post-id="${post.id}">
               <button type="button" class="msb-comment-send" data-action="send-comment" data-post-id="${post.id}">${svgSend()}</button>
             </div>
           </div>
@@ -544,20 +660,24 @@
     const titleInput = _container.querySelector('#msb-title');
     const bodyInput = _container.querySelector('#msb-body');
     const kindSelect = _container.querySelector('#msb-kind');
+    const topicSelect = _container.querySelector('#msb-topic');
     if (!titleInput || !bodyInput) return;
     const title = titleInput.value.trim();
     const body = bodyInput.value.trim();
-    const kind = (kindSelect && kindSelect.value) || 'feature';
+    const kind = isDiskusi() ? 'question' : ((kindSelect && kindSelect.value) || 'feature');
+    const topic = isDiskusi() ? ((topicSelect && topicSelect.value) || '') : '';
     if (!title || !body) {
       _opts.toast('Judul dan deskripsi harus diisi.');
       return;
     }
-    const { error } = await _opts.supabase.from('feature_requests').insert({
+    const row = {
       author_id: _opts.currentUserId,
       kind,
       title,
       body,
-    });
+    };
+    if (topic) row.topic = topic;
+    const { data, error } = await _opts.supabase.from('feature_requests').insert(row).select('id').single();
     if (error) {
       _opts.toast('Gagal mengirim. Coba lagi.');
       if (typeof _opts.onError === 'function') _opts.onError(error);
@@ -567,13 +687,30 @@
     titleInput.value = '';
     bodyInput.value = '';
     closeForm();
+    if (kind === 'question' && data?.id) {
+      notifyAuthor({ kind: 'new_question', request_id: data.id });
+    }
     fetchPosts();
+  }
+
+  function syncFormFields() {
+    const kindWrap = _container.querySelector('#msb-kind-wrap');
+    const topicWrap = _container.querySelector('#msb-topic-wrap');
+    const title = _container.querySelector('#msb-title');
+    const body = _container.querySelector('#msb-body');
+    if (kindWrap) kindWrap.hidden = isDiskusi();
+    if (topicWrap) topicWrap.hidden = !isDiskusi();
+    if (title) title.placeholder = isDiskusi() ? 'Pertanyaan singkat' : 'Judul singkat';
+    if (body) body.placeholder = isDiskusi()
+      ? 'Ceritakan situasinya. Proses dan pelajaran boleh — niche, supplier, margin pribadi tidak perlu.'
+      : 'Jelaskan singkat apa yang kamu butuhkan…';
   }
 
   function openForm() {
     const panel = _container.querySelector('#msb-form-panel');
     if (panel) {
       panel.hidden = false;
+      syncFormFields();
       _container.querySelector('#msb-title')?.focus();
     }
   }
@@ -583,13 +720,88 @@
     if (panel) panel.hidden = true;
   }
 
-  function switchKind(kind) {
-    _activeKind = kind;
-    _container.querySelectorAll('.msb-filter').forEach((btn) => {
-      btn.classList.toggle('is-active', btn.dataset.kind === kind);
+  function syncChrome() {
+    _container.querySelectorAll('.msb-tab').forEach((btn) => {
+      btn.classList.toggle('is-active', btn.dataset.tab === _tab);
     });
+    const topicRow = _container.querySelector('#msb-topics');
+    const usulanFilters = _container.querySelector('#msb-usulan-filters');
+    const rules = _container.querySelector('#msb-rules');
+    const heroTitle = _container.querySelector('#msb-hero-title');
+    const heroSub = _container.querySelector('#msb-hero-sub');
+    const openBtn = _container.querySelector('#msb-open-form');
+    const ctaBtn = _container.querySelector('#msb-cta-open');
+    const ctaText = _container.querySelector('#msb-cta-text');
+    if (topicRow) topicRow.hidden = !isDiskusi();
+    if (usulanFilters) usulanFilters.hidden = isDiskusi();
+    if (rules) rules.hidden = !isDiskusi();
+    if (heroTitle) heroTitle.textContent = isDiskusi() ? 'Komunitas' : 'Ajukan Fitur';
+    if (heroSub) {
+      heroSub.textContent = isDiskusi()
+        ? 'Tanya dan bantu seller lain. Proses dan pelajaran — bukan rahasia toko.'
+        : 'Usulkan fitur atau laporkan keluhan — dibaca dan bisa didukung/dikomentari user lain.';
+    }
+    if (openBtn) openBtn.innerHTML = `${svgPlus()} ${isDiskusi() ? 'Tanya sesuatu' : 'Ajukan Ide Baru'}`;
+    if (ctaBtn) ctaBtn.innerHTML = `${svgPlus()} ${isDiskusi() ? 'Tanya sesuatu' : 'Ajukan Ide Baru'}`;
+    if (ctaText) {
+      ctaText.textContent = isDiskusi()
+        ? 'Punya pertanyaan yang pernah kamu alami? Tanya di sini. Jawab yang belum terjawab kalau kamu pernah melewatinya.'
+        : 'Punya ide atau menemukan hal yang mengganggu? Sampaikan masukanmu, komunitas akan mendukung dan tim LarisID akan meninjaunya.';
+    }
+    _container.querySelectorAll('#msb-topics .msb-filter').forEach((btn) => {
+      btn.classList.toggle('is-active', (btn.dataset.topic || '') === _activeTopic);
+    });
+    _container.querySelectorAll('#msb-usulan-filters .msb-filter').forEach((btn) => {
+      btn.classList.toggle('is-active', btn.dataset.kind === _usulanKind);
+    });
+    syncFormFields();
+    syncFollowBtn();
+  }
+
+  function switchTab(tab) {
+    _tab = tab === 'usulan' ? 'usulan' : 'diskusi';
     _posts = [];
+    syncChrome();
     fetchPosts();
+  }
+
+  function switchTopic(topic) {
+    _activeTopic = topic || '';
+    _posts = [];
+    syncChrome();
+    fetchPosts();
+  }
+
+  function switchUsulanKind(kind) {
+    _usulanKind = kind || 'all';
+    _posts = [];
+    syncChrome();
+    fetchPosts();
+  }
+
+  function startPeerMessage(userId) {
+    if (!userId || userId === _opts.currentUserId) return;
+    if (typeof _opts.onOpenProfile === 'function') {
+      _opts.onOpenProfile(userId, { openMessage: true });
+      return;
+    }
+    if (typeof _opts.onMessageUser === 'function') {
+      _opts.onMessageUser(userId);
+    }
+  }
+
+  function applyLaunchOpts() {
+    if (_opts.initialTab === 'usulan' || _opts.initialTab === 'diskusi') _tab = _opts.initialTab;
+    if (_opts.prefillTopic && TOPICS.includes(_opts.prefillTopic)) _activeTopic = _opts.prefillTopic;
+    _focusPostId = _opts.focusPostId || '';
+    if (_opts.prefillTitle) {
+      openForm();
+      const title = _container.querySelector('#msb-title');
+      if (title && !title.value) title.value = _opts.prefillTitle;
+      const topicSel = _container.querySelector('#msb-topic');
+      if (topicSel && _opts.prefillTopic) topicSel.value = _opts.prefillTopic;
+    }
+    syncChrome();
   }
 
   function injectStyles() {
@@ -611,76 +823,50 @@
         font-family: inherit;
         max-width: 920px;
       }
-      /* Top hero: title+CTA left, Garuda right. Waist hangs into the white
-         panel below so the card edge cuts the torso for a 3D pop. */
       .msb-hero {
-        display: flex;
-        align-items: flex-end;
-        justify-content: space-between;
-        gap: 12px 20px;
-        margin: 0 0 0;
-        position: relative;
-        z-index: 0;
+        display: flex; align-items: flex-end; justify-content: space-between;
+        gap: 12px 20px; margin: 0; position: relative; z-index: 0;
       }
-      .msb-hero-text {
-        flex: 1 1 auto;
-        min-width: 0;
-        align-self: center;
-        padding: 8px 0 22px;
-      }
+      .msb-hero-text { flex: 1 1 auto; min-width: 0; align-self: center; padding: 8px 0 22px; }
       .msb-hero-text h2 {
-        margin: 0 0 8px;
-        font-size: clamp(1.7rem, 3vw, 2.15rem);
-        font-weight: 800;
-        letter-spacing: -.03em;
-        color: #0f172a;
-        line-height: 1.15;
+        margin: 0 0 8px; font-size: clamp(1.7rem, 3vw, 2.15rem);
+        font-weight: 800; letter-spacing: -.03em; color: #0f172a; line-height: 1.15;
       }
-      .msb-hero-text p {
-        margin: 0 0 16px;
-        color: var(--msb-muted);
-        font-size: .95rem;
-        line-height: 1.5;
-        max-width: 42ch;
+      .msb-hero-text p { margin: 0 0 16px; color: var(--msb-muted); font-size: .95rem; line-height: 1.5; max-width: 46ch; }
+      .msb-rules {
+        margin: 0 0 14px; padding: 10px 12px; border-radius: 12px;
+        background: #FFF7ED; color: #9A3412; font-size: .8rem; line-height: 1.45;
       }
+      .msb-rules strong { font-weight: 750; }
       .msb-hero-mascot {
-        flex: 0 0 auto;
-        display: block;
-        align-self: flex-end;
-        margin: 0 -6px -42px 0;
-        line-height: 0;
-        pointer-events: none;
-        user-select: none;
-        position: relative;
-        z-index: 0;
+        flex: 0 0 auto; display: block; align-self: flex-end;
+        margin: 0 -6px -42px 0; line-height: 0; pointer-events: none; user-select: none;
+        position: relative; z-index: 0;
       }
-      .msb-hero-mascot img {
-        display: block;
-        width: 280px;
-        height: auto;
-      }
+      .msb-hero-mascot img { display: block; width: 280px; height: auto; }
       .msb-panel {
-        position: relative;
-        z-index: 1;
-        background: #fff;
-        border: 1px solid var(--msb-line);
-        border-radius: 22px;
-        padding: 18px 20px 22px;
-        box-shadow: 0 1px 2px rgba(0,0,0,.03);
+        position: relative; z-index: 1; background: #fff;
+        border: 1px solid var(--msb-line); border-radius: 22px;
+        padding: 18px 20px 22px; box-shadow: 0 1px 2px rgba(0,0,0,.03);
       }
-      .msb-toolbar {
-        display: flex; align-items: center; justify-content: space-between; gap: 12px;
-        flex-wrap: wrap; margin-bottom: 14px;
+      .msb-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+      .msb-tab {
+        border: 1px solid #D1D5DB; background: #fff; color: #374151;
+        padding: 8px 16px; border-radius: 999px; font-size: .9rem; font-weight: 750; cursor: pointer;
       }
+      .msb-tab.is-active { background: var(--msb-red); border-color: var(--msb-red); color: #fff; }
+      .msb-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
       .msb-filters { display: flex; gap: 8px; flex-wrap: wrap; }
       .msb-filter {
         border: 1px solid #D1D5DB; background: #fff; color: #374151;
-        padding: 7px 14px; border-radius: 999px; font-size: .875rem; font-weight: 600;
-        cursor: pointer;
+        padding: 7px 14px; border-radius: 999px; font-size: .875rem; font-weight: 600; cursor: pointer;
       }
-      .msb-filter.is-active {
-        background: var(--msb-red); border-color: var(--msb-red); color: #fff;
+      .msb-filter.is-active { background: var(--msb-red); border-color: var(--msb-red); color: #fff; }
+      .msb-follow {
+        border: 1px dashed #D1D5DB; background: #fff; color: #374151;
+        padding: 6px 12px; border-radius: 999px; font-size: .78rem; font-weight: 650; cursor: pointer;
       }
+      .msb-follow.is-on { border-style: solid; border-color: var(--msb-red); color: var(--msb-red); }
       .msb-btn-primary {
         display: inline-flex; align-items: center; gap: 6px;
         background: var(--msb-red); color: #fff; border: none;
@@ -688,55 +874,35 @@
         cursor: pointer; white-space: nowrap;
       }
       .msb-btn-primary:hover { filter: brightness(.96); }
-      .msb-form {
-        border: 1px solid var(--msb-line); border-radius: 14px; background: #fff;
-        padding: 14px; margin-bottom: 14px;
-      }
+      .msb-form { border: 1px solid var(--msb-line); border-radius: 14px; background: #fff; padding: 14px; margin-bottom: 14px; }
       .msb-form input, .msb-form textarea, .msb-form select {
         width: 100%; border: 1px solid #D1D5DB; border-radius: 10px;
         padding: 9px 11px; font-size: .9rem; margin-bottom: 8px; font: inherit;
       }
       .msb-form textarea { min-height: 90px; resize: vertical; }
       .msb-form-actions { display: flex; justify-content: flex-end; gap: 8px; }
-      .msb-btn-ghost {
-        background: #F3F4F6; color: #374151; border: none; padding: 8px 14px;
-        border-radius: 999px; cursor: pointer; font-weight: 600;
-      }
-      .msb-loading, .msb-empty {
-        text-align: center; color: var(--msb-muted); padding: 28px 12px; font-size: .95rem;
-      }
+      .msb-btn-ghost { background: #F3F4F6; color: #374151; border: none; padding: 8px 14px; border-radius: 999px; cursor: pointer; font-weight: 600; }
+      .msb-loading, .msb-empty { text-align: center; color: var(--msb-muted); padding: 28px 12px; font-size: .95rem; }
       .msb-list { display: flex; flex-direction: column; gap: 12px; }
       .msb-card {
-        display: grid; grid-template-columns: 72px 1fr; gap: 4px 10px;
+        display: grid; grid-template-columns: 84px 1fr; gap: 4px 10px;
         background: #fff; border: 1px solid var(--msb-line); border-radius: 14px;
         padding: 14px 14px 14px 10px;
       }
+      .msb-card.is-focus { box-shadow: 0 0 0 2px rgba(181,32,42,.28); }
       .msb-vote {
         display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
         gap: 2px; padding: 8px 4px; background: none; border: none; cursor: pointer;
         color: var(--msb-red); min-height: 84px;
       }
-      .msb-vote-count {
-        font-size: 1.15rem; font-weight: 800; color: var(--msb-ink); line-height: 1.1;
-      }
-      .msb-vote-label {
-        font-size: .72rem; font-weight: 700; color: var(--msb-red); letter-spacing: .01em;
-      }
+      .msb-vote-count { font-size: 1.15rem; font-weight: 800; color: var(--msb-ink); line-height: 1.1; }
+      .msb-vote-label { font-size: .68rem; font-weight: 700; color: var(--msb-red); letter-spacing: .01em; text-align: center; line-height: 1.2; }
       .msb-vote.is-liked .msb-vote-count { color: var(--msb-red); }
       .msb-card-main { min-width: 0; }
-      .msb-card-top {
-        display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
-      }
-      .msb-title {
-        margin: 0; font-size: 1.02rem; font-weight: 750; color: #0f172a;
-        line-height: 1.35; flex: 1; min-width: 0;
-      }
+      .msb-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+      .msb-title { margin: 0; font-size: 1.02rem; font-weight: 750; color: #0f172a; line-height: 1.35; flex: 1; min-width: 0; }
       .msb-card-aside { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; }
-      .msb-status {
-        display: inline-flex; align-items: center; gap: 5px;
-        padding: 4px 10px; border-radius: 999px; font-size: .72rem; font-weight: 700;
-        white-space: nowrap;
-      }
+      .msb-status { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; font-size: .72rem; font-weight: 700; white-space: nowrap; }
       .msb-status--baru { background: #DBEAFE; color: #1D4ED8; }
       .msb-status--considering { background: #FFEDD5; color: #C2410C; }
       .msb-status--reviewed { background: #D1FAE5; color: #047857; }
@@ -752,10 +918,7 @@
       .msb-status-select.msb-status--considering { background-color: #FFEDD5; color: #C2410C; }
       .msb-status-select.msb-status--reviewed { background-color: #D1FAE5; color: #047857; }
       .msb-menu { position: relative; }
-      .msb-more {
-        border: none; background: none; color: #9CA3AF; cursor: pointer; padding: 2px;
-        line-height: 0;
-      }
+      .msb-more { border: none; background: none; color: #9CA3AF; cursor: pointer; padding: 2px; line-height: 0; }
       .msb-more:hover { color: #374151; }
       .msb-menu-pop {
         position: absolute; right: 0; top: 100%; z-index: 5;
@@ -769,17 +932,11 @@
       }
       .msb-menu-pop button:hover { background: #F3F4F6; }
       .msb-menu-danger { color: #B91C1C !important; }
-      .msb-edit-title, .msb-edit-body {
-        width: 100%; border: 1px solid #D1D5DB; border-radius: 10px;
-        padding: 8px 10px; font: inherit; margin: 0 0 8px;
-      }
+      .msb-edit-title, .msb-edit-body { width: 100%; border: 1px solid #D1D5DB; border-radius: 10px; padding: 8px 10px; font: inherit; margin: 0 0 8px; }
       .msb-edit-title { font-weight: 750; font-size: 1.02rem; }
       .msb-edit-body { min-height: 90px; resize: vertical; }
       .msb-edit-actions { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 8px; }
-      .msb-meta {
-        display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-        margin-top: 8px; font-size: .8rem; color: var(--msb-muted);
-      }
+      .msb-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 8px; font-size: .8rem; color: var(--msb-muted); }
       .msb-author {
         display: inline-flex; align-items: center; gap: 6px;
         border: none; background: none; padding: 0; cursor: pointer;
@@ -787,94 +944,57 @@
       }
       button.msb-author:hover .msb-author-name { text-decoration: underline; }
       .msb-role {
-        display: inline-flex; align-items: center;
-        margin-left: 2px; padding: 1px 7px; border-radius: 999px;
-        background: #B5202A; color: #fff; font-size: .65rem; font-weight: 800;
-        letter-spacing: .02em; line-height: 1.4;
+        display: inline-flex; align-items: center; margin-left: 2px; padding: 1px 7px; border-radius: 999px;
+        background: #B5202A; color: #fff; font-size: .65rem; font-weight: 800; letter-spacing: .02em; line-height: 1.4;
       }
-      .msb-avatar {
-        border-radius: 50%; object-fit: cover; flex-shrink: 0; width: 22px; height: 22px;
-        background: #E5E7EB;
-      }
-      .msb-avatar--letter {
-        display: inline-flex; align-items: center; justify-content: center;
-        font-size: 11px; font-weight: 800; color: #374151;
-      }
+      .msb-avatar { border-radius: 50%; object-fit: cover; flex-shrink: 0; width: 22px; height: 22px; background: #E5E7EB; }
+      .msb-avatar--letter { display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: #374151; }
       .msb-dot { color: #D1D5DB; }
-      .msb-body {
-        margin: 8px 0 0; font-size: .9rem; line-height: 1.5; color: #4B5563;
-        white-space: pre-wrap;
+      .msb-dm-wrap { display: inline-flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+      .msb-dm {
+        border: none; background: none; padding: 0; cursor: pointer;
+        font-size: .75rem; font-weight: 700; color: var(--msb-red);
       }
-      .msb-body-toggle {
-        display: inline-block; margin: 4px 0 0; padding: 0;
-        background: none; border: none; cursor: pointer;
-        font-size: .82rem; font-weight: 700; color: var(--msb-red);
-      }
+      .msb-dm-hint { font-size: .72rem; color: var(--msb-muted); font-weight: 500; }
+      .msb-body { margin: 8px 0 0; font-size: .9rem; line-height: 1.5; color: #4B5563; white-space: pre-wrap; }
+      .msb-body-toggle { display: inline-block; margin: 4px 0 0; padding: 0; background: none; border: none; cursor: pointer; font-size: .82rem; font-weight: 700; color: var(--msb-red); }
       .msb-body-toggle:hover { text-decoration: underline; }
-      .msb-card-foot {
-        display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px;
-      }
-      .msb-kind {
-        display: inline-flex; align-items: center; gap: 4px;
-        padding: 3px 9px; border-radius: 999px; font-size: .72rem; font-weight: 700;
-        background: #F3F4F6; color: #4B5563;
-      }
+      .msb-card-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+      .msb-kind { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; font-size: .72rem; font-weight: 700; background: #F3F4F6; color: #4B5563; }
       .msb-kind--feature { background: #EDE9FE; color: #6D28D9; }
       .msb-kind--complaint { background: #FEE2E2; color: #B91C1C; }
+      .msb-kind--topic { background: #FFEDD5; color: #C2410C; }
       .msb-comments-count {
         display: inline-flex; align-items: center; gap: 5px;
         border: none; background: none; color: var(--msb-muted); cursor: pointer;
         font-size: .8rem; font-weight: 600; padding: 0;
       }
       .msb-comments-count:hover { color: var(--msb-ink); }
-      .msb-comments {
-        margin-top: 12px; padding-top: 10px; border-top: 1px solid #F3F4F6;
-      }
-      .msb-comment {
-        display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
-        margin-bottom: 8px; font-size: .82rem; color: #374151;
-      }
+      .msb-comments-count.is-unanswered { color: var(--msb-red); font-weight: 750; }
+      .msb-like-hint { margin: 10px 0 0; font-size: .8rem; color: #9A3412; }
+      .msb-comments { margin-top: 12px; padding-top: 10px; border-top: 1px solid #F3F4F6; }
+      .msb-comment { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 8px; font-size: .82rem; color: #374151; }
       .msb-comment-body { flex: 1 1 50%; }
       .msb-comment-date { color: #9CA3AF; font-size: .75rem; }
       .msb-comment-actions { display: inline-flex; gap: 8px; }
-      .msb-comment-actions button {
-        border: none; background: none; padding: 0; cursor: pointer;
-        font-size: .75rem; font-weight: 700; color: var(--msb-red);
-      }
+      .msb-comment-actions button { border: none; background: none; padding: 0; cursor: pointer; font-size: .75rem; font-weight: 700; color: var(--msb-red); }
       .msb-comment-edit { display: flex; flex: 1 1 100%; gap: 6px; align-items: center; }
-      .msb-comment-edit-input {
-        flex: 1; border: 1px solid #D1D5DB; border-radius: 999px; padding: 6px 10px; font-size: .82rem;
-      }
-      .msb-comment-edit button {
-        border: none; background: none; cursor: pointer; font-weight: 700; font-size: .75rem; color: var(--msb-red);
-      }
+      .msb-comment-edit-input { flex: 1; border: 1px solid #D1D5DB; border-radius: 999px; padding: 6px 10px; font-size: .82rem; }
+      .msb-comment-edit button { border: none; background: none; cursor: pointer; font-weight: 700; font-size: .75rem; color: var(--msb-red); }
       .msb-comment-form { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
-      .msb-comment-input {
-        flex: 1; border: 1px solid #D1D5DB; border-radius: 999px;
-        padding: 7px 12px; font-size: .85rem;
-      }
-      .msb-comment-send {
-        border: none; background: none; color: var(--msb-red); cursor: pointer; padding: 4px;
-      }
+      .msb-comment-input { flex: 1; border: 1px solid #D1D5DB; border-radius: 999px; padding: 7px 12px; font-size: .85rem; }
+      .msb-comment-send { border: none; background: none; color: var(--msb-red); cursor: pointer; padding: 4px; }
       .msb-cta {
         display: flex; align-items: center; justify-content: space-between; gap: 16px;
-        margin-top: 18px; padding: 16px 18px;
-        background: #fff; border: 1px solid #E5E7EB; border-radius: 14px;
-        flex-wrap: wrap;
+        margin-top: 18px; padding: 16px 18px; background: #fff; border: 1px solid #E5E7EB; border-radius: 14px; flex-wrap: wrap;
       }
-      .msb-cta-left {
-        display: flex; align-items: flex-start; gap: 12px; min-width: 0; flex: 1;
-      }
-      .msb-cta-ico {
-        width: 36px; height: 36px; border-radius: 999px; flex-shrink: 0;
-        display: grid; place-items: center; background: #FEE2E2; color: var(--msb-red);
-      }
+      .msb-cta-left { display: flex; align-items: flex-start; gap: 12px; min-width: 0; flex: 1; }
+      .msb-cta-ico { width: 36px; height: 36px; border-radius: 999px; flex-shrink: 0; display: grid; place-items: center; background: #FEE2E2; color: var(--msb-red); }
       .msb-cta-text { margin: 0; font-size: .875rem; line-height: 1.45; color: #374151; }
       .msb-btn-outline {
         display: inline-flex; align-items: center; gap: 6px;
         background: #fff; color: var(--msb-red); border: 1.5px solid var(--msb-red);
-        padding: 9px 14px; border-radius: 999px; font-size: .85rem; font-weight: 750;
-        cursor: pointer; white-space: nowrap;
+        padding: 9px 14px; border-radius: 999px; font-size: .85rem; font-weight: 750; cursor: pointer; white-space: nowrap;
       }
       .msb-btn-outline:hover { background: var(--msb-red-soft); }
       @media (max-width: 700px) {
@@ -885,7 +1005,7 @@
         .msb-hero-mascot { align-self: center; margin: 0 0 4px; order: -1; }
         .msb-hero-mascot img { width: 200px; }
         .msb-panel { padding: 14px 14px 18px; border-radius: 18px; }
-        .msb-card { grid-template-columns: 58px 1fr; padding: 12px 10px; }
+        .msb-card { grid-template-columns: 70px 1fr; padding: 12px 10px; }
         .msb-status { font-size: .68rem; padding: 3px 8px; }
         .msb-cta { padding: 14px; }
       }
@@ -893,27 +1013,33 @@
     document.head.appendChild(style);
   }
 
+  function topicButtonsHtml() {
+    const all = `<button type="button" class="msb-filter is-active" data-topic="">Semua</button>`;
+    const rest = TOPICS.map((t) => `<button type="button" class="msb-filter" data-topic="${_opts.esc(t)}">${_opts.esc(t)}</button>`).join('');
+    return all + rest;
+  }
+
   function mount(container, options) {
     _opts = options;
     _container = container;
 
-    if (container.dataset.communityBoardMounted === 'msb-v5') {
-      // Already built — just refresh the list instead of losing an
-      // in-progress form by rebuilding the DOM from scratch.
+    if (container.dataset.communityBoardMounted === 'msb-v6') {
       _listEl = container.querySelector('#msb-list');
+      applyLaunchOpts();
+      loadFollows();
       fetchPosts();
       return;
     }
-    container.dataset.communityBoardMounted = 'msb-v5';
+    container.dataset.communityBoardMounted = 'msb-v6';
     injectStyles();
 
     container.innerHTML = `
       <div id="msb">
         <header class="msb-hero">
           <div class="msb-hero-text">
-            <h2>Ajukan Fitur</h2>
-            <p>Usulkan fitur atau laporkan keluhan — dibaca dan bisa disukai/dikomentari user lain.</p>
-            <button type="button" class="msb-btn-primary" id="msb-open-form">${svgPlus()} Ajukan Ide Baru</button>
+            <h2 id="msb-hero-title">Komunitas</h2>
+            <p id="msb-hero-sub">Tanya dan bantu seller lain. Proses dan pelajaran — bukan rahasia toko.</p>
+            <button type="button" class="msb-btn-primary" id="msb-open-form">${svgPlus()} Tanya sesuatu</button>
           </div>
           <div class="msb-hero-mascot" aria-hidden="true">
             <img src="/images/brand/mascot-fitur.webp" width="280" height="235" alt="" loading="lazy" decoding="async">
@@ -921,21 +1047,39 @@
         </header>
 
         <div class="msb-panel">
+          <div class="msb-tabs" role="tablist" aria-label="Komunitas">
+            <button type="button" class="msb-tab is-active" data-tab="diskusi">Diskusi</button>
+            <button type="button" class="msb-tab" data-tab="usulan">Ajukan Fitur</button>
+          </div>
+          <p class="msb-rules" id="msb-rules">
+            <strong>Bagikan proses dan pelajaran.</strong> Niche, supplier, margin pribadi tidak perlu dibagikan di sini — pakai Kirim Pesan.
+            Jawab pertanyaan yang belum terjawab kalau kamu pernah mengalaminya.
+          </p>
           <div class="msb-toolbar">
-            <div class="msb-filters" role="tablist" aria-label="Filter usulan">
+            <div class="msb-filters" id="msb-topics" role="tablist" aria-label="Topik diskusi">${topicButtonsHtml()}</div>
+            <div class="msb-filters" id="msb-usulan-filters" hidden role="tablist" aria-label="Filter usulan">
               <button type="button" class="msb-filter is-active" data-kind="all">Semua</button>
               <button type="button" class="msb-filter" data-kind="feature">Fitur</button>
               <button type="button" class="msb-filter" data-kind="complaint">Keluhan</button>
             </div>
+            <button type="button" class="msb-follow" id="msb-follow-topic" hidden>Kabari kalau ada pertanyaan baru di topik ini</button>
           </div>
 
           <div class="msb-form" id="msb-form-panel" hidden>
-            <select id="msb-kind">
-              <option value="feature">Fitur</option>
-              <option value="complaint">Keluhan</option>
-            </select>
-            <input id="msb-title" type="text" placeholder="Judul singkat" maxlength="120" required>
-            <textarea id="msb-body" placeholder="Jelaskan singkat apa yang kamu butuhkan…" maxlength="4000" required></textarea>
+            <div id="msb-kind-wrap" hidden>
+              <select id="msb-kind">
+                <option value="feature">Fitur</option>
+                <option value="complaint">Keluhan</option>
+              </select>
+            </div>
+            <div id="msb-topic-wrap">
+              <select id="msb-topic">
+                <option value="">Topik (opsional)</option>
+                ${TOPICS.map((t) => `<option value="${t}">${t}</option>`).join('')}
+              </select>
+            </div>
+            <input id="msb-title" type="text" placeholder="Pertanyaan singkat" maxlength="120" required>
+            <textarea id="msb-body" placeholder="Ceritakan situasinya. Proses dan pelajaran boleh — niche, supplier, margin pribadi tidak perlu." maxlength="4000" required></textarea>
             <div class="msb-form-actions">
               <button type="button" class="msb-btn-ghost" id="msb-cancel">Batal</button>
               <button type="button" class="msb-btn-primary" id="msb-submit">Kirim</button>
@@ -949,18 +1093,28 @@
         <div class="msb-cta">
           <div class="msb-cta-left">
             <div class="msb-cta-ico">${svgBulb()}</div>
-            <p class="msb-cta-text">Punya ide atau menemukan hal yang mengganggu? Sampaikan masukanmu, komunitas akan mendukung dan tim LarisID akan meninjaunya.</p>
+            <p class="msb-cta-text" id="msb-cta-text">Punya pertanyaan yang pernah kamu alami? Tanya di sini. Jawab yang belum terjawab kalau kamu pernah melewatinya.</p>
           </div>
-          <button type="button" class="msb-btn-outline" id="msb-cta-open">${svgPlus()} Ajukan Ide Baru</button>
+          <button type="button" class="msb-btn-outline" id="msb-cta-open">${svgPlus()} Tanya sesuatu</button>
         </div>
       </div>
     `;
 
     _listEl = container.querySelector('#msb-list');
+    applyLaunchOpts();
 
-    container.querySelectorAll('.msb-filter').forEach((btn) => {
-      btn.addEventListener('click', () => switchKind(btn.dataset.kind));
+    container.querySelectorAll('.msb-tab').forEach((btn) => {
+      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
     });
+    container.querySelector('#msb-topics')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-topic]');
+      if (btn) switchTopic(btn.dataset.topic || '');
+    });
+    container.querySelector('#msb-usulan-filters')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-kind]');
+      if (btn) switchUsulanKind(btn.dataset.kind);
+    });
+    container.querySelector('#msb-follow-topic')?.addEventListener('click', () => { void toggleFollowTopic(); });
     container.querySelector('#msb-open-form')?.addEventListener('click', openForm);
     container.querySelector('#msb-cta-open')?.addEventListener('click', openForm);
     container.querySelector('#msb-cancel')?.addEventListener('click', closeForm);
@@ -987,6 +1141,9 @@
         e.preventDefault();
         const userId = actionEl.dataset.userId;
         if (userId && typeof _opts.onOpenProfile === 'function') _opts.onOpenProfile(userId);
+      } else if (action === 'message-user') {
+        e.preventDefault();
+        startPeerMessage(actionEl.dataset.userId, actionEl.dataset.userName);
       } else if (action === 'like') {
         e.preventDefault();
         await toggleLike(postId);
@@ -995,7 +1152,12 @@
         toggleBody(postId);
       } else if (action === 'toggle-comments') {
         e.preventDefault();
-        toggleComments(postId);
+        if (isDiskusi()) {
+          const input = _listEl.querySelector(`.msb-comment-input[data-post-id="${postId}"]`);
+          input?.focus();
+        } else {
+          toggleComments(postId);
+        }
       } else if (action === 'send-comment') {
         e.preventDefault();
         const input = _listEl.querySelector(`.msb-comment-input[data-post-id="${postId}"]`);
@@ -1057,6 +1219,7 @@
       }
     });
 
+    loadFollows();
     fetchPosts();
   }
 

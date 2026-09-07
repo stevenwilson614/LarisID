@@ -10,6 +10,10 @@ const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') || 'Steven <steven@larisid.
 const SITE = 'https://larisid.com'
 const ADMIN_EMAIL = 'stevenwilson614@gmail.com'
 
+function threadUrl(requestId: string) {
+  return `${SITE}/?komunitas=${encodeURIComponent(requestId)}`
+}
+
 function escapeHtml(s: string) {
   return String(s || '')
     .replace(/&/g, '&amp;')
@@ -45,7 +49,9 @@ serve(async (req) => {
     }
 
     const body = await req.json()
-    const kind = body?.kind === 'resolved' ? 'resolved' : 'comment'
+    const kind = body?.kind === 'resolved'
+      ? 'resolved'
+      : (body?.kind === 'new_question' ? 'new_question' : 'comment')
     const requestId = body?.request_id
     const commentId = body?.comment_id
     if (!requestId) {
@@ -59,7 +65,7 @@ serve(async (req) => {
 
     const { data: post, error: postErr } = await db
       .from('feature_requests')
-      .select('id, author_id, title, body, status')
+      .select('id, author_id, title, body, status, kind, topic')
       .eq('id', requestId)
       .single()
     if (postErr || !post) {
@@ -84,6 +90,13 @@ serve(async (req) => {
       if (post.status !== 'done') {
         return new Response(JSON.stringify({ ok: true, skipped: 'not_done' }), { headers: CORS })
       }
+    } else if (kind === 'new_question') {
+      if (post.author_id !== user.id && !isAdmin) {
+        return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: CORS })
+      }
+      if (post.kind !== 'question') {
+        return new Response(JSON.stringify({ ok: true, skipped: 'not_question' }), { headers: CORS })
+      }
     } else {
       if (!commentId) {
         return new Response(JSON.stringify({ error: 'Missing comment_id' }), { status: 400, headers: CORS })
@@ -104,13 +117,23 @@ serve(async (req) => {
     }
 
     const watcherIds = new Set<string>()
-    watcherIds.add(post.author_id)
-    const [{ data: likes }, { data: comments }] = await Promise.all([
-      db.from('feature_request_likes').select('user_id').eq('request_id', requestId),
-      db.from('feature_request_comments').select('author_id').eq('request_id', requestId),
-    ])
-    for (const row of likes || []) if (row.user_id) watcherIds.add(row.user_id)
-    for (const row of comments || []) if (row.author_id) watcherIds.add(row.author_id)
+    if (kind === 'new_question') {
+      if (post.topic) {
+        const { data: followers } = await db
+          .from('board_topic_follows')
+          .select('user_id')
+          .eq('topic', post.topic)
+        for (const row of followers || []) if (row.user_id) watcherIds.add(row.user_id)
+      }
+    } else {
+      watcherIds.add(post.author_id)
+      const [{ data: likes }, { data: comments }] = await Promise.all([
+        db.from('feature_request_likes').select('user_id').eq('request_id', requestId),
+        db.from('feature_request_comments').select('author_id').eq('request_id', requestId),
+      ])
+      for (const row of likes || []) if (row.user_id) watcherIds.add(row.user_id)
+      for (const row of comments || []) if (row.author_id) watcherIds.add(row.author_id)
+    }
     watcherIds.delete(user.id)
 
     const RESEND_KEY = Deno.env.get('RESEND_API_KEY')
@@ -118,8 +141,10 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'RESEND_API_KEY missing' }), { status: 500, headers: CORS })
     }
 
-    const titlePlain = post.title || 'usulan'
+    const titlePlain = post.title || (kind === 'new_question' ? 'pertanyaan' : 'usulan')
     const title = escapeHtml(titlePlain)
+    const ctaHref = threadUrl(post.id)
+    const ctaLabel = post.kind === 'question' ? 'Buka Diskusi' : 'Buka Ajukan Fitur'
     const recipients: { id: string; email: string }[] = []
     for (const id of watcherIds) {
       const { data: userRes } = await db.auth.admin.getUserById(id)
@@ -136,20 +161,32 @@ serve(async (req) => {
       const isAuthor = rec.id === post.author_id
       const subject = kind === 'resolved'
         ? (isAuthor ? `Usulanmu sudah selesai: ${titlePlain}` : `Usulan yang kamu ikuti sudah selesai: ${titlePlain}`)
-        : (isAuthor ? `Komentar baru pada usulanmu: ${titlePlain}` : `Komentar baru pada usulan yang kamu ikuti: ${titlePlain}`)
+        : kind === 'new_question'
+          ? `Pertanyaan baru di ${post.topic || 'Diskusi'}: ${titlePlain}`
+          : (isAuthor ? `Balasan baru pada tulisanmu: ${titlePlain}` : `Balasan baru pada tulisan yang kamu ikuti: ${titlePlain}`)
       const leadResolved = isAuthor
         ? 'Usulanmu di LarisID sudah ditandai <strong>selesai</strong>:'
         : 'Usulan yang kamu dukung atau komentari sudah ditandai <strong>selesai</strong>:'
       const leadComment = isAuthor
-        ? `<strong>${escapeHtml(commenterName)}</strong> mengomentari usulanmu:`
-        : `<strong>${escapeHtml(commenterName)}</strong> mengomentari usulan yang kamu ikuti:`
+        ? `<strong>${escapeHtml(commenterName)}</strong> membalas tulisanmu:`
+        : `<strong>${escapeHtml(commenterName)}</strong> membalas tulisan yang kamu ikuti:`
+      const leadQuestion = `Ada pertanyaan baru di topik <strong>${escapeHtml(post.topic || 'Diskusi')}</strong>:`
       const html = kind === 'resolved'
         ? `
           <div style="font-family:system-ui,-apple-system,sans-serif;max-width:520px;line-height:1.6;color:#1A1F3C">
             <p>Halo,</p>
             <p>${leadResolved}</p>
             <p style="font-size:16px;font-weight:700;margin:12px 0">${title}</p>
-            <p><a href="${SITE}" style="display:inline-block;padding:10px 18px;background:#B5202A;color:#fff;text-decoration:none;border-radius:8px">Buka Ajukan Fitur</a></p>
+            <p><a href="${ctaHref}" style="display:inline-block;padding:10px 18px;background:#B5202A;color:#fff;text-decoration:none;border-radius:8px">${ctaLabel}</a></p>
+            <p style="color:#6B7280;font-size:13px">Steven · LarisID</p>
+          </div>`
+        : kind === 'new_question'
+        ? `
+          <div style="font-family:system-ui,-apple-system,sans-serif;max-width:520px;line-height:1.6;color:#1A1F3C">
+            <p>Halo,</p>
+            <p>${leadQuestion}</p>
+            <p style="font-size:16px;font-weight:700;margin:12px 0">${title}</p>
+            <p><a href="${ctaHref}" style="display:inline-block;padding:10px 18px;background:#B5202A;color:#fff;text-decoration:none;border-radius:8px">${ctaLabel}</a></p>
             <p style="color:#6B7280;font-size:13px">Steven · LarisID</p>
           </div>`
         : `
@@ -160,7 +197,7 @@ serve(async (req) => {
             <div style="padding:14px;background:#F9FAFB;border-left:3px solid #B5202A;border-radius:4px">
               <p style="margin:0;white-space:pre-wrap">${escapeHtml(commentBody)}</p>
             </div>
-            <p style="margin-top:16px"><a href="${SITE}" style="display:inline-block;padding:10px 18px;background:#B5202A;color:#fff;text-decoration:none;border-radius:8px">Buka Ajukan Fitur</a></p>
+            <p style="margin-top:16px"><a href="${ctaHref}" style="display:inline-block;padding:10px 18px;background:#B5202A;color:#fff;text-decoration:none;border-radius:8px">${ctaLabel}</a></p>
             <p style="color:#6B7280;font-size:13px">Steven · LarisID</p>
           </div>`
 

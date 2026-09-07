@@ -397,7 +397,7 @@ html.session-restoring body::after {
   padding-top: 8px;
   display: flex; flex-direction: column; gap: 2px;
 }
-/* Tentang accordion: desktop keeps Ajukan Fitur / Harga / FAQ / Tentang
+/* Tentang accordion: desktop keeps Harga / FAQ / Tentang
    flat; mobile collapses them behind one "Tentang" toggle so Riwayat can grow. */
 .side-about-toggle { display: none; }
 .side-about-menu {
@@ -5445,6 +5445,34 @@ body.home-finder-done .home-hero {
   font-size: .9rem; line-height: 1.4; color: var(--ink); cursor: pointer;
 }
 .home-langkah-list input { margin-top: 3px; accent-color: var(--accent); }
+.home-komunitas-q {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 10px; margin-top: 10px;
+}
+.home-komunitas-q + .home-komunitas-q {
+  padding-top: 10px; border-top: 1px solid var(--line);
+}
+.home-komunitas-q p { margin: 0; font-size: .88rem; font-weight: 650; color: var(--ink); }
+.dir-ask-sellers {
+  margin: 0 0 12px; padding: 12px 14px;
+  background: #fff; border: 1px solid var(--line); border-radius: 14px;
+}
+.dir-ask-sellers[hidden] { display: none !important; }
+.dir-ask-sellers p { margin: 0 0 8px; font-size: .88rem; color: var(--ink); }
+.dir-ask-sellers button {
+  border: 0; background: var(--accent); color: #fff;
+  padding: 8px 12px; border-radius: 10px; font: inherit; font-weight: 700; font-size: .82rem; cursor: pointer;
+}
+.adm-komunitas-card { padding: 16px 18px; margin-bottom: 14px; }
+.adm-komunitas-grid {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px;
+}
+.adm-komunitas-grid h4 { margin: 0 0 6px; font-size: .78rem; font-weight: 750; }
+.adm-komunitas-list { font-size: .8rem; line-height: 1.45; color: #374151; }
+.adm-komunitas-list ul { margin: 0; padding-left: 18px; }
+@media (max-width: 900px) {
+  .adm-komunitas-grid { grid-template-columns: 1fr; }
+}
 .ddr-alert {
   margin: 0 0 16px;
   padding: 16px 18px;
@@ -7122,6 +7150,10 @@ body:has(.modal-overlay.open) .msg-steven-fab {
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
       Favorit Aku
     </button>
+    <button type="button" class="side-btn" id="btn-community" title="Komunitas">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 4H6.2A2.2 2.2 0 0 0 4 6.2v8.6A2.2 2.2 0 0 0 6.2 17H7v3.2a.5.5 0 0 0 .85.36L11.4 17h6.4A2.2 2.2 0 0 0 20 14.8V6.2A2.2 2.2 0 0 0 17.8 4Z"/><path class="ic-a" d="M12 7.8v5.4M9.3 10.5h5.4"/></svg>
+      Komunitas
+    </button>
     <button type="button" class="side-btn" id="btn-cohort" title="Kohort LarisRise" style="display:none">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8.6" cy="7.4" r="3.2"/><path d="M2.6 20.4v-1.2a4.8 4.8 0 0 1 4.8-4.8h2.4a4.8 4.8 0 0 1 4.8 4.8v1.2"/><path class="ic-a" d="M16.6 11.2 19.2 8.6l2.6 2.6"/><path class="ic-a" d="M19.2 9v6.4"/></svg>
       Kohort
@@ -7162,10 +7194,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
           <svg class="side-about-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
         </button>
         <div class="side-about-menu" id="side-about-menu">
-          <button type="button" class="side-btn" id="btn-community">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 4H6.2A2.2 2.2 0 0 0 4 6.2v8.6A2.2 2.2 0 0 0 6.2 17H7v3.2a.5.5 0 0 0 .85.36L11.4 17h6.4A2.2 2.2 0 0 0 20 14.8V6.2A2.2 2.2 0 0 0 17.8 4Z"/><path class="ic-a" d="M12 7.8v5.4M9.3 10.5h5.4"/></svg>
-            Ajukan Fitur
-          </button>
           <button type="button" class="side-btn" id="btn-harga">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.4 10.6 10.6 3.4A2 2 0 0 1 12 2.8h7.2a2 2 0 0 1 2 2V12a2 2 0 0 1-.6 1.4l-7.2 7.2a2 2 0 0 1-2.8 0l-7.2-7.2a2 2 0 0 1 0-2.8Z"/><circle cx="16.5" cy="7.5" r="1.35"/><text class="ic-af" x="10.3" y="15.6" text-anchor="middle" font-size="7.4" font-weight="800" letter-spacing="-.3">Rp</text></svg>
             Harga
@@ -7834,6 +7862,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
               <div id="home-retention" class="home-retention" hidden>
                 <div id="home-first-dd" class="home-ret-card" hidden></div>
                 <div id="home-langkah" class="home-ret-card" hidden></div>
+                <div id="home-komunitas" class="home-ret-card" hidden></div>
               </div>
               </div>
             </div>
@@ -7902,6 +7931,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
           </div>
           <div class="dir-compare-banner" id="dir-compare-banner" hidden></div>
           <div id="dir-trending-now" class="trend-host"></div>
+          <div id="dir-ask-sellers" class="dir-ask-sellers" hidden></div>
           <div id="dir-filters-range"></div>
           <div class="dir-grid" id="dir-grid"></div>
           <div class="dir-pager" id="dir-pager"></div>
@@ -8485,6 +8515,29 @@ body:has(.modal-overlay.open) .msg-steven-fab {
               </div>
             </div>
             <div id="admin-sample-banner" class="admin-banner" hidden></div>
+
+            <section class="adm-card adm-komunitas-card" id="adm-komunitas">
+              <div class="adm-users-toolbar">
+                <h3>Komunitas — staf</h3>
+                <button type="button" class="adm-tb-btn" id="adm-komunitas-refresh">Muat ulang</button>
+                <button type="button" class="adm-tb-btn" id="adm-komunitas-digest">Kirim digest ke tim</button>
+              </div>
+              <p class="dd-sub" id="adm-komunitas-metrics">Memuat metrik…</p>
+              <div class="adm-komunitas-grid">
+                <div>
+                  <h4>Belum terjawab 48 jam</h4>
+                  <div id="adm-komunitas-unanswered" class="adm-komunitas-list">—</div>
+                </div>
+                <div>
+                  <h4>Draft thread data (perkiraan)</h4>
+                  <div id="adm-komunitas-draft" class="adm-komunitas-list">—</div>
+                </div>
+                <div>
+                  <h4>Calon diundang</h4>
+                  <div id="adm-komunitas-invites" class="adm-komunitas-list">—</div>
+                </div>
+              </div>
+            </section>
 
             <div class="adm-kpis" id="admin-stats">
               <article class="adm-card adm-kpi adm-kpi--signups">
@@ -9098,8 +9151,8 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <script defer src="/js/gpt-dir-home.js?v=20260824d"></script>
 <script defer src="/js/gpt-photo-analyze.js?v=20260824a"></script>
 <script defer src="/js/gpt-referral.js?v=20260821a"></script>
-<script defer src="/js/gpt-profile.js?v=20260821a"></script>
-<script defer src="/js/gpt-community-board.js?v=20260815c"></script>
+<script defer src="/js/gpt-profile.js?v=20260907a"></script>
+<script defer src="/js/gpt-community-board.js?v=20260907b"></script>
 <script defer src="/js/laris-cohort.js?v=20260906a"></script>
 <script defer src="/js/laris-mascot-rigs.js?v=20260812a"></script>
 <script defer src="/js/laris-mascot.js?v=20260812a"></script>
@@ -9112,6 +9165,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
      larisLoadScript() when the admin view actually renders. -->
 <script src="/js/peta-peluang.js?v=20260906b" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
-<script src="/js/gpt-app.js?v=20260907i" defer></script>
+<script src="/js/gpt-app.js?v=20260907j" defer></script>
 </body>
 </html>

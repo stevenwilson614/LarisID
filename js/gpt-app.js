@@ -1680,6 +1680,7 @@ const state = {
   pendingFinder: null,  // landing finder answers given before signup; re-run after
   pendingTracker: null, // Favorit Aku seed behind the login gate; resumed after sign-in
   pendingTrackKeyword: null, // one-tap Favorit caught by the signup gate; added after sign-in
+  pendingKomunitas: null, // { tab, title, topic, postId } behind login / email deep link
   everOpenedDeepdive: false,
   lastDeepDiveKeyword: '',
   lastDeepDiveCategory: '',
@@ -1724,6 +1725,7 @@ function loadLocalState() {
     if (raw.pendingFinder) state.pendingFinder = raw.pendingFinder;
     if (raw.pendingTracker) state.pendingTracker = raw.pendingTracker;
     if (raw.pendingTrackKeyword) state.pendingTrackKeyword = raw.pendingTrackKeyword;
+    if (raw.pendingKomunitas) state.pendingKomunitas = raw.pendingKomunitas;
     if (raw.everOpenedDeepdive != null) state.everOpenedDeepdive = !!raw.everOpenedDeepdive;
     if (raw.lastDeepDiveKeyword) state.lastDeepDiveKeyword = String(raw.lastDeepDiveKeyword);
     if (raw.lastDeepDiveCategory) state.lastDeepDiveCategory = String(raw.lastDeepDiveCategory);
@@ -1743,6 +1745,7 @@ function saveLocalState() {
       pendingFinder: state.pendingFinder || null,
       pendingTracker: state.pendingTracker || null,
       pendingTrackKeyword: state.pendingTrackKeyword || null,
+      pendingKomunitas: state.pendingKomunitas || null,
       everOpenedDeepdive: state.everOpenedDeepdive || false,
       lastDeepDiveKeyword: state.lastDeepDiveKeyword || '',
       lastDeepDiveCategory: state.lastDeepDiveCategory || '',
@@ -2906,7 +2909,7 @@ function setView(name, opts = {}) {
       (id === 'btn-cohort' && name === 'cohort'));
   });
   // Mobile Tentang accordion: highlight the parent when a child page is current.
-  const aboutChildActive = name === 'harga' || name === 'faq' || name === 'landing' || name === 'community';
+  const aboutChildActive = name === 'harga' || name === 'faq' || name === 'landing';
   $('btn-side-about')?.classList.toggle('is-child-active', aboutChildActive);
   if (leaving === 'tracker' && name !== 'tracker' && window.LarisTracker) {
     try { window.LarisTracker.close(); } catch (_) {}
@@ -3922,6 +3925,11 @@ async function _authOnSignIn(session, opts) {
     state.pendingTracker = null;
     saveLocalState();
     void openTrackerView(null, pt);
+  } else if (state.pendingKomunitas) {
+    const pk = state.pendingKomunitas;
+    state.pendingKomunitas = null;
+    saveLocalState();
+    openCommunityBoard(pk);
   }
 
   // A one-tap "Kabari Kalau Berubah" that hit the signup gate finishes itself
@@ -4683,6 +4691,61 @@ async function syncHomeRetentionCards() {
   if (host) host.hidden = shouldShowLandingFinder();
   await syncHomeFirstDdCard();
   await syncHomeLangkahCard();
+  await syncHomeKomunitasCard();
+}
+
+async function syncHomeKomunitasCard() {
+  const card = $('home-komunitas');
+  if (!card) return;
+  if (!currentUser || shouldShowLandingFinder() || !_supabase) {
+    card.hidden = true;
+    card.innerHTML = '';
+    return;
+  }
+  try {
+    const { data, error } = await _supabase.rpc('komunitas_beranda_cards');
+    if (error || !data) {
+      card.hidden = true;
+      card.innerHTML = '';
+      return;
+    }
+    const weekly = data.weekly || null;
+    const unanswered = Array.isArray(data.unanswered) ? data.unanswered : [];
+    if (!weekly && !unanswered.length) {
+      card.hidden = true;
+      card.innerHTML = '';
+      return;
+    }
+    const rows = [];
+    if (weekly) {
+      rows.push(`<div class="home-komunitas-q">
+        <div>
+          <p class="home-ret-kicker">Pertanyaan minggu ini</p>
+          <p>${esc(weekly.title)}</p>
+        </div>
+        <button type="button" class="home-ret-link" data-komunitas-open="${esc(weekly.id)}">Bantu jawab</button>
+      </div>`);
+    }
+    unanswered.forEach((row) => {
+      rows.push(`<div class="home-komunitas-q">
+        <div>
+          <p class="home-ret-kicker">Belum terjawab</p>
+          <p>${esc(row.title)}</p>
+        </div>
+        <button type="button" class="home-ret-link" data-komunitas-open="${esc(row.id)}">Bantu jawab</button>
+      </div>`);
+    });
+    card.hidden = false;
+    card.innerHTML = rows.join('');
+    card.querySelectorAll('[data-komunitas-open]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        openCommunityBoard({ tab: 'diskusi', postId: btn.getAttribute('data-komunitas-open') });
+      });
+    });
+  } catch (_) {
+    card.hidden = true;
+    card.innerHTML = '';
+  }
 }
 
 async function syncHomeFirstDdCard() {
@@ -12572,7 +12635,7 @@ async function openTrackerView(seed, resumeDraft) {
 // name opens the editable profile (GptProfile.viewPublic redirects there
 // itself when targetUserId === currentUserId); clicking anyone else's opens
 // the read-only public view (name/city/avatar/bio only — never contact info).
-function openUserProfile(userId) {
+function openUserProfile(userId, extra) {
   if (!currentUser) { openAuthModal('login', 'gpt_gate_profile'); return; }
   if (!userId || !window.GptProfile) return;
   window.GptProfile.viewPublic(userId, {
@@ -12581,6 +12644,7 @@ function openUserProfile(userId) {
     toast: showToast,
     currentUserId: currentUser.id,
     userEmail: currentUser.email || '',
+    openMessage: !!(extra && extra.openMessage),
     onError: (err) => { try { console.warn('[profile]', err); } catch (_) {} },
     selfOpenOptions: {
       supabase: _supabase, userId: currentUser.id, userEmail: currentUser.email || '',
@@ -12682,8 +12746,68 @@ function openCohortView() {
   if (window.LarisCohort) void window.LarisCohort.open();
 }
 
-function openCommunityBoard() {
-  if (!currentUser) { openAuthModal('login', 'gpt_gate_community'); return; }
+function stashPendingKomunitas(opts) {
+  state.pendingKomunitas = {
+    tab: opts?.tab || 'diskusi',
+    title: opts?.title || '',
+    topic: opts?.topic || '',
+    postId: opts?.postId || '',
+  };
+  saveLocalState();
+}
+
+function consumeKomunitasDeepLink() {
+  try {
+    const q = new URLSearchParams(location.search);
+    const raw = q.get('komunitas');
+    const tab = q.get('tab');
+    const title = q.get('tanya') || q.get('qtitle') || '';
+    const topic = q.get('topic') || '';
+    if (!raw && !title && tab !== 'diskusi' && tab !== 'usulan') return false;
+    const postId = raw && raw !== 'board' && /^[0-9a-f-]{16,}$/i.test(raw) ? raw : '';
+    stashPendingKomunitas({
+      tab: tab === 'usulan' ? 'usulan' : 'diskusi',
+      title,
+      topic,
+      postId,
+    });
+    q.delete('komunitas');
+    q.delete('tab');
+    q.delete('tanya');
+    q.delete('qtitle');
+    q.delete('topic');
+    const qs = q.toString();
+    history.replaceState(history.state || {}, '', location.pathname + (qs ? '?' + qs : '') + location.hash);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function askSellersAbout(keyword, opts) {
+  const kw = String(keyword || '').trim();
+  const title = kw ? `Ada yang pernah jualan di pasar "${kw}"?` : '';
+  openCommunityBoard({
+    tab: 'diskusi',
+    title,
+    topic: opts?.topic || '',
+  });
+}
+
+function openCommunityBoard(opts = {}) {
+  const next = {
+    tab: opts.tab || state.pendingKomunitas?.tab || 'diskusi',
+    title: opts.title || state.pendingKomunitas?.title || '',
+    topic: opts.topic || state.pendingKomunitas?.topic || '',
+    postId: opts.postId || state.pendingKomunitas?.postId || '',
+  };
+  if (!currentUser) {
+    stashPendingKomunitas(next);
+    openAuthModal('login', 'gpt_gate_community');
+    return;
+  }
+  state.pendingKomunitas = null;
+  saveLocalState();
   setView('community');
   const root = $('community-board-root');
   if (!root || !window.GptCommunityBoard) return;
@@ -12693,8 +12817,12 @@ function openCommunityBoard() {
     currentUserId: currentUser.id,
     isAdmin: isPlatformAdmin,
     toast: showToast,
+    initialTab: next.tab,
+    prefillTitle: next.title,
+    prefillTopic: next.topic,
+    focusPostId: next.postId,
     onError: (err) => { try { console.warn('[community-board]', err); } catch (_) {} },
-    onOpenProfile: (userId) => { openUserProfile(userId); },
+    onOpenProfile: (userId, opts) => { openUserProfile(userId, opts); },
   });
 }
 
@@ -13986,6 +14114,10 @@ function ddAksiCepatHtml(product) {
         <span class="ddr-aksi-ico">${ico('scale', 18)}</span>
         <span class="ddr-aksi-txt">Bandingkan</span>
       </button>
+      <button type="button" class="ddr-aksi-btn" data-ddr-aksi="komunitas">
+        <span class="ddr-aksi-ico">${ico('users', 18)}</span>
+        <span class="ddr-aksi-txt">Tanya seller lain</span>
+      </button>
     </div>
   </div>`;
 }
@@ -14176,6 +14308,11 @@ function wireDdrAksiCepat(root, product, peers) {
       if (aksi === 'compare') {
         void logUserEvent('deepdive_section', { ui: 'gpt', section: 'compare_cta', via: 'aksi_cepat', keyword: product?.keyword || '' });
         void startComparePick(product);
+        return;
+      }
+      if (aksi === 'komunitas') {
+        void logUserEvent('deepdive_section', { ui: 'gpt', section: 'komunitas_cta', via: 'aksi_cepat', keyword: product?.keyword || '' });
+        askSellersAbout(product?.keyword || '');
         return;
       }
     });
@@ -19988,6 +20125,26 @@ function hydrateDirTrends() {
   });
 }
 
+function paintDirAskSellers(q, keywords) {
+  const host = $('dir-ask-sellers');
+  if (!host) return;
+  const kw = String(q || '').trim()
+    || (Array.isArray(keywords) && keywords[0] && (keywords[0].keyword || keywords[0]))
+    || '';
+  const label = String(kw || '').trim();
+  if (!label || isDirHomeBrowse()) {
+    host.hidden = true;
+    host.innerHTML = '';
+    return;
+  }
+  host.hidden = false;
+  host.innerHTML = `<p>Tanya seller lain tentang <strong>${esc(label)}</strong> — proses dan pelajaran, bukan rahasia toko.</p>
+    <button type="button" data-dir-ask>Tanya seller lain tentang “${esc(label)}”</button>`;
+  host.querySelector('[data-dir-ask]')?.addEventListener('click', () => {
+    askSellersAbout(label);
+  });
+}
+
 function paintDirectoryTable(opts = {}) {
   const grid = $('dir-grid');
   const pager = $('dir-pager');
@@ -20013,6 +20170,7 @@ function paintDirectoryTable(opts = {}) {
     brand: state.dirBrand,
     brandMissing: state.dirBrandMissing,
   });
+  paintDirAskSellers(q, state.dirTypes);
   grid.innerHTML = slice.length
     ? nearbyLead + listingRowsHtml(slice, {
         actions: true,
@@ -21216,6 +21374,63 @@ function gptMountWinback() {
   } catch (_) {}
 }
 
+async function loadAdminKomunitasOps() {
+  const metricsEl = $('adm-komunitas-metrics');
+  const unansweredEl = $('adm-komunitas-unanswered');
+  const draftEl = $('adm-komunitas-draft');
+  const invitesEl = $('adm-komunitas-invites');
+  if (!metricsEl || !_supabase) return;
+  const fail = (el, msg) => { if (el) el.textContent = msg; };
+  try {
+    const [m, u, d, i] = await Promise.all([
+      _supabase.rpc('komunitas_board_metrics'),
+      _supabase.rpc('komunitas_unanswered_staff'),
+      _supabase.rpc('komunitas_weekly_draft'),
+      _supabase.rpc('komunitas_invite_candidates'),
+    ]);
+    const metrics = m.data || {};
+    metricsEl.textContent = `${metrics.questions || 0} diskusi · ${metrics.usulan || 0} usulan · ${metrics.unanswered_questions || 0} belum terjawab · ${metrics.non_admin_repliers_30d || 0} replier non-admin / 30 hari`;
+    const unanswered = Array.isArray(u.data) ? u.data : [];
+    unansweredEl.innerHTML = unanswered.length
+      ? `<ul>${unanswered.map((row) => `<li><button type="button" class="home-ret-link" data-adm-kpost="${esc(row.id)}">${esc(row.title)}</button> (${esc(String(row.hours_old))} jam)</li>`).join('')}</ul>`
+      : 'Tidak ada yang lewat 48 jam.';
+    unansweredEl.querySelectorAll('[data-adm-kpost]').forEach((btn) => {
+      btn.addEventListener('click', () => openCommunityBoard({ tab: 'diskusi', postId: btn.getAttribute('data-adm-kpost') }));
+    });
+    const draft = d.data || {};
+    draftEl.innerHTML = draft.ok
+      ? `<p><strong>${esc(draft.keyword)}</strong> · ~${esc(String(draft.wk_units ?? '—'))} unit/minggu (${esc(draft.label || 'perkiraan')})</p>
+         <p>${esc(draft.draft_body || '')}</p>
+         <button type="button" class="adm-tb-btn" id="adm-komunitas-use-draft">Buka form dengan draft ini</button>`
+      : 'Belum ada keyword draft.';
+    $('adm-komunitas-use-draft')?.addEventListener('click', () => {
+      openCommunityBoard({ tab: 'diskusi', title: draft.draft_title || '', topic: 'Cara Baca Data LarisID' });
+    });
+    const invites = Array.isArray(i.data) ? i.data : [];
+    invitesEl.innerHTML = invites.length
+      ? `<ul>${invites.map((row) => `<li>${esc(row.first_name || 'Pengguna')} — ${esc(row.keyword || '—')}</li>`).join('')}</ul>`
+      : 'Belum ada kandidat.';
+  } catch (err) {
+    fail(metricsEl, 'Gagal memuat.');
+    try { console.warn('[komunitas-ops]', err); } catch (_) {}
+  }
+}
+
+async function sendAdminKomunitasDigest() {
+  if (!_supabase) return;
+  showToast('Mengirim digest…');
+  try {
+    const { error } = await _supabase.functions.invoke('komunitas-staff-digest', {
+      body: { include_weekly: true, include_invites: true },
+    });
+    if (error) throw error;
+    showToast('Digest terkirim ke tim.');
+  } catch (err) {
+    showToast('Gagal mengirim digest.');
+    try { console.warn('[komunitas-digest]', err); } catch (_) {}
+  }
+}
+
 function openAdminView() {
   if (!isPlatformAdmin()) {
     showToast('Admin only.');
@@ -21223,6 +21438,7 @@ function openAdminView() {
   }
   setView('admin');
   void loadAdminDirectory();
+  void loadAdminKomunitasOps();
   gptMountWinback();
   try { if (window.LarisCohort) void window.LarisCohort.renderOps(); } catch (_) {}
   void fillAdminCohortPreview();
@@ -21573,6 +21789,8 @@ function wireUi() {
   $('btn-mentor-siswa')?.addEventListener('click', () => openMentorRail('students'));
   $('btn-mentor-jadwal')?.addEventListener('click', () => openMentorRail('jadwal'));
   $('adm-cohort-preview-go')?.addEventListener('click', () => void openAdminCohortPreview());
+  $('adm-komunitas-refresh')?.addEventListener('click', () => { void loadAdminKomunitasOps(); });
+  $('adm-komunitas-digest')?.addEventListener('click', () => { void sendAdminKomunitasDigest(); });
   $('admin-sample-new')?.addEventListener('click', () => adminSampleNewUser());
   $('admin-sample-exit')?.addEventListener('click', () => adminExitSample());
   $('sample-strip-exit')?.addEventListener('click', () => {
@@ -21723,6 +21941,13 @@ async function boot() {
 
   if (typeof ensureSupabase === 'function') await ensureSupabase();
   await initSupabase();
+  consumeKomunitasDeepLink();
+  if (currentUser && state.pendingKomunitas) {
+    const pk = state.pendingKomunitas;
+    state.pendingKomunitas = null;
+    saveLocalState();
+    openCommunityBoard(pk);
+  }
   // Keep the promise: routeCohortHome needs the answer, and calling
   // refreshCohortNav a second time would just re-run the membership query.
   try { mountLarisCohort(); _bootCohortNav = refreshCohortNav(); } catch (_) {}
@@ -21738,9 +21963,10 @@ async function boot() {
 
   // Landing is the default surface; onboarding never auto-starts.
   // Don't overwrite a deep dive that _authOnSignIn just resumed.
-  const pendingResume = !!(state.pendingDeepdive || state.pendingCompare || state.pendingTracker);
+  const pendingResume = !!(state.pendingDeepdive || state.pendingCompare || state.pendingTracker || state.pendingKomunitas);
   const alreadyDeepdive = state.view === 'deepdive' && !!state.deepdiveProduct;
-  if (!_offerActive && !pendingResume && !alreadyDeepdive) {
+  const alreadyCommunity = state.view === 'community';
+  if (!_offerActive && !pendingResume && !alreadyDeepdive && !alreadyCommunity) {
     if (state.activeChatId && activeChat()) {
       setView('chat');
       renderChatThread();

@@ -610,7 +610,7 @@
     return `<div class="gpt-avatar-fallback" style="display:flex">${esc(getInitials(name || '?'))}</div>`;
   }
 
-  function renderPublicProfile(row, viewerId) {
+  function renderPublicProfile(row, viewerId, openMessage) {
     const name = esc(row.display_name || row.first_name || 'Pengguna LarisID');
     const role = row.is_admin ? ' <span class="gpt-pv-role">Admin</span>' : '';
     const cityLine = row.city ? `<div class="gpt-pv-city">${esc(row.city)}</div>` : '';
@@ -618,6 +618,7 @@
     const storesLine = publicStoresHtml(row);
     const badgesLine = publicBadgesHtml(row);
     const canMessage = viewerId && viewerId !== row.user_id;
+    const formOpen = !!(openMessage && canMessage);
     const html = modalHTML(
       `<button class="gpt-close js-close-btn">${closeSVG}</button>` +
       '<div style="text-align:center">' +
@@ -629,8 +630,8 @@
       (canMessage
         ? '<div class="gpt-pv-msg" id="gpt-pv-msg-block">' +
             '<button type="button" class="gpt-btn js-msg-toggle" style="width:100%">Kirim Pesan</button>' +
-            '<div class="gpt-pv-msg-form" style="display:none">' +
-              '<textarea class="js-msg-input" rows="3" maxlength="2000" placeholder="Tulis pesan…"></textarea>' +
+            `<div class="gpt-pv-msg-form" style="display:${formOpen ? 'block' : 'none'}">` +
+              '<textarea class="js-msg-input" rows="3" maxlength="2000" placeholder="Tulis pesan privat. Jangan tulis niche, supplier, atau margin."></textarea>' +
               '<div class="gpt-actions"><button type="button" class="gpt-btn js-msg-send">Kirim</button></div>' +
             '</div>' +
           '</div>'
@@ -693,13 +694,13 @@
       if (!row) {
         const html = modalHTML(
           `<button class="gpt-close js-close-btn">${closeSVG}</button>` +
-          '<div class="gpt-status info">Profil ini tidak tersedia.</div>'
+          '<div class="gpt-status info">Profil privat atau belum dibuka. Kirim Pesan hanya jalan kalau seller ini menyalakan profil publik di akunnya.</div>'
         );
         renderState(html);
         getRoot().querySelector('.js-close-btn')?.addEventListener('click', close);
         return;
       }
-      renderPublicProfile(row, opts.currentUserId || null);
+      renderPublicProfile(row, opts.currentUserId || null, !!opts.openMessage);
     } catch (err) {
       const html = modalHTML(
         `<button class="gpt-close js-close-btn">${closeSVG}</button>` +

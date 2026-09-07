@@ -18,6 +18,8 @@ The logged-in product UI lives in **`index.html` + `js/gpt-app.js`** (not Astro 
 
 **Do not** reintroduce a blocking popup for onboarding. **Do not** fabricate price/sales deltas in return strips. Leaders and platform admins bypass journey gating.
 
+Komunitas (ex-Ajukan Fitur) is a logged-in peer board: Diskusi default, Usulan Fitur second. Before changing tabs, unanswered sort, Beranda `#home-komunitas`, or “Tanya seller lain”, read **[docs/komunitas-board.md](./docs/komunitas-board.md)**. Do not auto-post as a user. Do not pay or quota-gate Deep Dives for replies.
+
 Cari Produk shows **listing rows** (photo, harga, omset, unit, review, usia) with **Trending Sekarang** (top 3 by weekly omset %) above Urutkan. Keyword chips filter both. Do not remount the Peta Peluang scatter on `#dir-trending-now` or chat `.trend-host` — `peta_batch` still feeds `_petaTrend` via `PetaPeluang.hydrateTrends`. Row chrome: bandingkan checkbox, one % with arrow, Favorit bookmark (`trackProductFavorite` → `user_tracked_products`), chevron → Deep Dive. Deep Dive is **PRODUK-only**; keyword-grain entries (`#home-first-dd`, Langkah, terlaris minggu) open that keyword's top listing. Favorit Aku is product-grain — see **[docs/favorit-aku.md](./docs/favorit-aku.md)**. **Bandingkan Pasar** is retired from Cari Produk and lives only in the chat `handleBandingkanIntent` path — see **[docs/pasar-compare.md](./docs/pasar-compare.md)**. Before changing Skor Mudah Masuk weights (still used by that chat board), read that doc. Never add a hard filter on that score. Also **[docs/peta-peluang.md](./docs/peta-peluang.md)** and **[docs/pasar-compare.md](./docs/pasar-compare.md)**.
 
 ## "Terlaris Minggu Ini" badge
