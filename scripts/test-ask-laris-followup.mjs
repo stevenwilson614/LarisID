@@ -154,6 +154,7 @@ const shownChat = {
   ],
 };
 eq('Crocs is lookup', mem.detectResponseMode('Crocs', { messages: [] }), 'lookup');
+eq('Botol Minyak is lookup', mem.detectResponseMode('Botol Minyak', { messages: [] }), 'lookup');
 eq('terlaris minggu is weekly', mem.detectResponseMode('Apa yang terlaris minggu ini?', shownChat), 'weekly');
 eq('Bandung follow-up is filter', mem.detectResponseMode('are any of those sellers in bandung', shownChat), 'filter');
 eq('ada yang dari Bandung is filter', mem.detectResponseMode('ada yang dari Bandung?', shownChat), 'filter');

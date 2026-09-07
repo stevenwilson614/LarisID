@@ -7685,6 +7685,20 @@ function filterListingPool(listings, chipKw, zoneKeys) {
   return rows;
 }
 
+/** Chip filter + sort for a listing block. Empty chip → Semua. If the active
+ *  keyword has no sold rows left, fall back to Semua so the table is not blank. */
+function listingRowsForChip(pool, chipKw, opts = {}) {
+  let chip = chipKw == null ? '' : String(chipKw);
+  let rows = filterListingPool(pool.listings, chip, null);
+  if (chip && !rows.length && (pool.listings || []).length) {
+    chip = '';
+    rows = filterListingPool(pool.listings, '', null);
+  }
+  rows = sortDirRows(rows, opts.sort || 'omset');
+  if (opts.limit) rows = rows.slice(0, opts.limit);
+  return { chip, rows };
+}
+
 function keywordChipsHtml(types, activeKw, opts = {}) {
   const list = types || [];
   if (!list.length) return '';
@@ -7693,7 +7707,7 @@ function keywordChipsHtml(types, activeKw, opts = {}) {
   if (showSemua) {
     chips.push(`<button type="button" class="lrow-chip${activeKw === '' ? ' is-on' : ''}" data-lrow-kw="">Semua</button>`);
   }
-  list.slice(0, 16).forEach(t => {
+  list.slice(0, opts.maxChips || 16).forEach(t => {
     const kw = t.keyword || '';
     const on = activeKw === kw;
     const badge = t._terlaris
@@ -8244,9 +8258,14 @@ async function fetchTerlarisMinggu(cat, limit = 9) {
 }
 
 function lookupOverviewHtml(type, query, placeLabel) {
+  const q = esc(query);
+  const where = placeLabel
+    ? ` Lokasi di data kami adalah kota seller, bukan pembeli — filter ${esc(placeLabel)}.`
+    : '';
+  const honesty = ' Omset terukur atau perkiraan dari scrape 12–17 hari — bukan agregat tahunan.';
   if (!type) {
-    const where = placeLabel ? ` di ${placeLabel}` : '';
-    return `<p>Ini listing yang cocok dengan <strong>${esc(query)}</strong>${where} dari data scrape LarisID. Angka omset terukur atau perkiraan — bukan agregat tahunan.</p>`;
+    return `<p>Ini listing yang cocok dengan <strong>${q}</strong> dari data scrape LarisID.${where}${honesty}</p>
+      <p>Tiap baris satu listing Shopee. Ketuk baris untuk Deep Dive.</p>`;
   }
   const sellers = Number(type.n_sellers) || 0;
   const median = Number(type.price_median) || 0;
@@ -8259,8 +8278,54 @@ function lookupOverviewHtml(type, query, placeLabel) {
   const week = w
     ? ` Penjualan terukur sekitar ${fmtSold(w.units)} unit/minggu (disetarakan dari ${w.spanDays} hari, sampai ${fmtAnchorDate(w.anchor)}).`
     : '';
-  const where = placeLabel ? ` Lokasi di data kami adalah kota seller, bukan pembeli${placeLabel ? ` — filter ${esc(placeLabel)}` : ''}.` : '';
-  return `<p>Pasar <strong>${esc(type.keyword)}</strong>: ${bits.join(', ') || 'data agregat masih tipis'}.${week}${where}</p>`;
+  return `<p>Pasar <strong>${esc(type.keyword)}</strong> paling dekat dengan “${q}”: ${bits.join(', ') || 'data agregat masih tipis'}.${week}${where}</p>
+    <p>Tiap baris di bawah satu listing.${honesty} Ketuk baris untuk Deep Dive.</p>`;
+}
+
+/** Keep 2+ token lookups on markets that actually contain the query (both
+ *  "botol" and "minyak"), not every scrape keyword that shares the head noun. */
+function lookupStrongTypes(query, types) {
+  const list = types || [];
+  const q = String(query || '').toLowerCase().trim();
+  const qTokens = _searchTerms(q);
+  if (!list.length || qTokens.length < 2) return list;
+  const hitCounts = new Map();
+  qTokens.forEach(tok => {
+    hitCounts.set(tok, list.filter(t => kwHasTerm(t.keyword, tok)).length);
+  });
+  const { pivots } = searchPivots(qTokens, hitCounts);
+  const strong = list.filter(t => {
+    const kw = String(t.keyword || '').toLowerCase();
+    const overlap = tokenOverlapCount(kw, qTokens);
+    const hasPivot = pivots.some(p => kwHasTerm(kw, p));
+    return kw === q || kw.includes(q) || (overlap >= 2 && hasPivot);
+  });
+  return strong.length ? strong : list;
+}
+
+function tightenLookupPool(query, pool) {
+  if (!pool) return pool;
+  const strong = lookupStrongTypes(query, pool.keywords);
+  const phrase = String(query || '').toLowerCase();
+  if (strong.length && strong.length < (pool.keywords || []).length) {
+    const kset = new Set(strong.map(t => t.keyword));
+    const kept = (pool.listings || []).filter(r =>
+      kset.has(r.keyword)
+      || (phrase.length >= 5 && String(r.product_name || '').toLowerCase().includes(phrase))
+    );
+    if (kept.length) pool.listings = kept;
+    pool.keywords = markTerlarisMinggu(strong.slice());
+    pool.primaryKw = strong[0].keyword || '';
+  }
+  const present = new Set((pool.listings || []).map(r => r.keyword).filter(Boolean));
+  if (present.size && (pool.keywords || []).length) {
+    const withRows = pool.keywords.filter(t => present.has(t.keyword));
+    if (withRows.length) {
+      pool.keywords = withRows;
+      if (!present.has(pool.primaryKw)) pool.primaryKw = withRows[0].keyword || '';
+    }
+  }
+  return pool;
 }
 
 function defaultLookupFollowups(listings) {
@@ -8296,12 +8361,43 @@ async function handleLookupIntent(chat, text) {
   const q = cleanDiscoveryQuery(place.cleaned || text) || (place.cleaned || text);
   const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Mencari ${esc(q)}…</p>`);
   const placeLabel = place.label || place.city || '';
-  // Same pool as Cari Produk — raw searchListings + typesForListings used to
-  // crown "kaca film mobil" for "rayban" because film titles mention the brand.
-  if (await replyWithPasarTypes(chat, text, [], { loading, label: q, placeLabel })) return;
-  const html = `<p>Belum ketemu listing untuk “${esc(q)}” di data kami.</p>`;
+  // Overview + listing rows (docs/ask-laris.md LOOKUP). Do not reuse
+  // replyWithPasarTypes — that path dumps every head-token keyword chip
+  // ("botol" → sabun bayi / sterilizer) and locks the table to primaryKw,
+  // which often paints zero sold rows.
+  const pool = await resolveListingPool({ q });
+  tightenLookupPool(q, pool);
+  if (!pool.listings.length && (pool.keywords || []).length) {
+    const kws = pool.keywords.map(t => t.keyword).filter(Boolean).slice(0, 8);
+    pool.listings = dedupeListings(await fetchListingsForKeywords(kws, 40, 200));
+    rememberProducts(pool.listings);
+  }
+  if (!pool.listings.length) {
+    const html = `<p>Belum ketemu listing untuk “${esc(q)}” di data kami.</p>`;
+    await revealAssistant(loading, html);
+    pushMessage(chat, 'assistant', { text: 'Hasil pasar', q }, html);
+    return;
+  }
+  const gate = await ensureIntentChat(chat, q.slice(0, 60), { kind: 'lookup', q });
+  if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
+  registerTypes(pool.keywords);
+  const type = pool.keywords.find(t => t.keyword === pool.primaryKw) || pool.keywords[0] || null;
+  const followups = defaultLookupFollowups(pool.listings);
+  const html = `${lookupOverviewHtml(type, q, placeLabel)}<div data-lrow-block>${listingBlockHtml(pool, {
+    query: q, chipKw: '', compact: true, skipLead: true, sort: 'sesuai', limit: 12, maxChips: 8,
+  })}</div>${followupChipsHtml(followups)}`;
   await revealAssistant(loading, html);
-  pushMessage(chat, 'assistant', { text: 'Hasil pasar', q }, html);
+  pushMessage(chat, 'assistant', {
+    text: 'Hasil produk', q, level: 'listing',
+    types: pool.keywords.map(t => t.keyword),
+    followups,
+  }, html);
+  const block = loading?.querySelector?.('[data-lrow-block]')
+    || $('chat-thread')?.querySelector('[data-lrow-block]:last-of-type');
+  if (block) bindListingBlock(block, pool, { query: q, compact: true, sort: 'sesuai', limit: 12 });
+  bindSearchSuggests(loading);
+  rememberLastShown(chat, pool.listings, pool.keywords, q);
+  void logUserEvent('discover_view', { ui: 'gpt', q, count: pool.listings.length, level: 'lookup' });
 }
 
 async function handleFilterFollowup(chat, text) {
@@ -10300,7 +10396,7 @@ async function replyWithPasarTypes(chat, text, types, opts = {}) {
   const trendId = 'trend-' + Date.now();
   const intro = matchLead || `<p>${lead}</p>`;
   const html = `${brandNote}${intro}<div data-lrow-block>${listingBlockHtml(pool, {
-    petaId: trendId, query: opts.label || text, chipKw: lifted ? '' : (pool.primaryKw || ''),
+    petaId: trendId, query: opts.label || text, chipKw: '',
     compact: true, skipLead: true, sort: lifted ? 'sesuai' : 'omset',
   })}</div>`;
   if (loading) await revealAssistant(loading, html);
@@ -10311,6 +10407,7 @@ async function replyWithPasarTypes(chat, text, types, opts = {}) {
   const block = document.getElementById(trendId)?.closest('[data-lrow-block]')
     || $('chat-thread')?.querySelector('[data-lrow-block]:last-of-type');
   if (block) bindListingBlock(block, pool, { query: opts.label || text, compact: true, sort: lifted ? 'sesuai' : 'omset' });
+  rememberLastShown(chat, pool.listings, list.length ? list : pool.keywords, opts.label || text);
   void logUserEvent('discover_view', {
     ui: 'gpt', q: text, count: (list.length ? list : pool.keywords).length, level: 'pasar', nearby: pool.matchLevel === 'nearby' ? 1 : 0,
   });
@@ -11224,19 +11321,20 @@ function bindListingBlock(root, pool, opts = {}) {
   if (!block || !pool) return;
   const paint = (chipKw) => {
     const host = block.querySelector('.lrow-host');
-    const rows = sortDirRows(filterListingPool(pool.listings, chipKw, null), opts.sort || 'omset');
+    const sort = opts.sort || 'omset';
+    const painted = listingRowsForChip(pool, chipKw, { sort, limit: opts.limit });
     if (host) {
-      host.innerHTML = listingRowsHtml(rows, { compact: opts.compact !== false, sort: opts.sort || 'omset', actions: true })
-        + listingUnsoldNote(chipKw ? 0 : pool.unsold);
+      host.innerHTML = listingRowsHtml(painted.rows, { compact: opts.compact !== false, sort, actions: true })
+        + listingUnsoldNote(painted.chip ? 0 : pool.unsold);
     }
     block.querySelectorAll('.lrow-chip').forEach(b => {
-      b.classList.toggle('is-on', (b.getAttribute('data-lrow-kw') || '') === chipKw);
+      b.classList.toggle('is-on', (b.getAttribute('data-lrow-kw') || '') === painted.chip);
     });
     bindListingRows(block);
     const trend = block.querySelector('.trend-host');
     if (trend) {
       let pts = pool.listings || [];
-      if (chipKw) pts = pts.filter(r => (r.keyword || '') === chipKw);
+      if (painted.chip) pts = pts.filter(r => (r.keyword || '') === painted.chip);
       paintTrendingNow(trend, pts, { query: opts.query || '' });
     }
   };
@@ -11289,15 +11387,15 @@ async function revealListingPool(loading, chat, leadHtml, pool, meta) {
 
 function listingBlockHtml(pool, opts = {}) {
   const lifted = pool.matchLevel === 'title' || pool.matchLevel === 'brand';
-  const chip = opts.chipKw != null ? opts.chipKw : (lifted ? '' : (pool.primaryKw || ''));
   const sort = opts.sort || ((lifted || pool.matchLevel === 'nearby') ? 'sesuai' : 'omset');
-  let rows = filterListingPool(pool.listings, chip, null);
-  rows = sortDirRows(rows, sort);
+  const wantChip = opts.chipKw != null ? opts.chipKw : (lifted ? '' : (pool.primaryKw || ''));
+  const painted = listingRowsForChip(pool, wantChip, { sort, limit: opts.limit });
   const trendId = opts.petaId || opts.trendId || '';
   const nearbyLead = opts.skipLead ? '' : searchMatchLeadHtml(opts.query, pool);
-  return `${nearbyLead}${keywordChipsHtml(pool.keywords, chip, { showSemua: true })}
+  const unsold = painted.chip ? 0 : pool.unsold;
+  return `${nearbyLead}${keywordChipsHtml(pool.keywords, painted.chip, { showSemua: true, maxChips: opts.maxChips })}
     ${trendId ? `<div class="trend-host" id="${esc(trendId)}"></div>` : ''}
-    <div class="lrow-host">${listingRowsHtml(rows, { compact: opts.compact !== false, sort, actions: true })}${listingUnsoldNote(pool.unsold)}</div>`;
+    <div class="lrow-host">${listingRowsHtml(painted.rows, { compact: opts.compact !== false, sort, actions: true })}${listingUnsoldNote(unsold)}</div>`;
 }
 
 /** Compact Deep Dive summary kept in the chat thread so scrolling history still reaches it. */

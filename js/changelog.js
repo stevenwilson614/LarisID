@@ -18,6 +18,10 @@ window.LARIS_CHANGELOG = [
         text: 'Kalau kamu daftar atau masuk pakai WhatsApp dan nama belum tersimpan, kami minta nama kamu dulu. Jadi akun tidak cuma tampil sebagai nomor HP.',
         tech: '#name-capture after WA OTP (required, including session restore); verify-whatsapp-otp upserts user_profiles.wa_number; admin_user_directory skips phone-like names and derives WA from auth.phone / @wa.larisid.com (20260907120000).',
       },
+      {
+        text: 'Ketik nama produk di Laris AI (misalnya “botol minyak”) sekarang dapat ringkasan pasar plus daftar listing yang benar-benar cocok — bukan tumpukan kata kunci yang cuma berbagi satu kata, dan bukan tabel kosong.',
+        tech: 'handleLookupIntent no longer calls replyWithPasarTypes. tightenLookupPool keeps strong 2-token keyword matches; listingRowsForChip falls back to Semua when primaryKw has zero sold rows; no trend-host on LOOKUP; lastShown persisted.',
+      },
     ],
   },
   {

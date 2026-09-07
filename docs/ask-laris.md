@@ -27,7 +27,7 @@ Logged-out visitors never hit the agent or `cari_web`.
 
 | Mode | Example | Thinking | Length | Rows | Data |
 |---|---|---|---|---|---|
-| LOOKUP | `Crocs` | Off | 2–4 sentence overview | Listing table | LarisID |
+| LOOKUP | `Crocs` / `botol minyak` | Off | 2–4 sentence overview from `product_types_v` | Listing table (Semua). Chips = strong keyword matches only, not every market sharing one token | LarisID |
 | WEEKLY | `apa yang terlaris minggu ini` | Deterministic reviewing steps | 1–2 sentences + window | ~10 from winning markets | `wk_units` then listings |
 | FILTER | `ada yang dari Bandung?` | Off | 1–2 sentences | Subset of `lastShown` | Last pool + location |
 | REFER | `affiliate tiktok` / `kalodata` | Off | 1–2 sentences | None | Kalodata handoff (TikTok Shop only) |
@@ -38,6 +38,8 @@ Logged-out visitors never hit the agent or `cari_web`.
 | PARTIAL | `ini impor dari mana?` | Same as judgment if evaluative | 4-part contract | Maybe | Proxies, then labeled knowledge |
 
 `lastShown` is stored on `chat.context` whenever rows are painted. “Crocs Bandung” with no demonstrative is LOOKUP-with-city, not FILTER. `Lanjutkan jawaban` / `Ya, lanjut` are never FILTER.
+
+LOOKUP is `handleLookupIntent` → `resolveListingPool` + `tightenLookupPool` (2+ token queries keep only keywords that contain the full phrase / both pivots) → `lookupOverviewHtml` + compact listing rows. It does **not** call `replyWithPasarTypes` (that dump of head-token chips is what made “botol minyak” return baby-bottle soap). No Peta / Trending Sekarang in the LOOKUP bubble. Default chip is **Semua**.
 
 ---
 
