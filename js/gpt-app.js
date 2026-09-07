@@ -527,7 +527,7 @@ function _ceFlush(useKeepalive) {
   const seen = new Set();
   function report(kind, msg, extra) {
     const key = String(msg || '').slice(0, 180);
-    if (!key || seen.has(key) || seen.size > 12) return;
+    if (!key || seen.has(key) || seen.size > 40) return;
     seen.add(key);
     logClientEvent('js_error', { kind, message: key, ...(extra || {}) });
   }
@@ -536,7 +536,12 @@ function _ceFlush(useKeepalive) {
   });
   window.addEventListener('unhandledrejection', (ev) => {
     const reason = ev.reason;
-    report('unhandledrejection', reason && reason.message ? reason.message : reason);
+    // Carry the stack. Without it a rejection is just a message with no origin,
+    // which is why a recurring "reading 'M_ID'" could not be attributed to our
+    // code, an extension, or a CDN bundle.
+    const stack = String((reason && reason.stack) || '').slice(0, 500);
+    report('unhandledrejection', reason && reason.message ? reason.message : reason,
+      stack ? { stack } : undefined);
   });
 })();
 
@@ -1603,8 +1608,6 @@ const PROVINCE_CITIES = {
 };
 
 // Landing finder defaults / quick chips
-const FINDER_DEFAULT_CITY = 'Bandung';
-const FINDER_DEFAULT_CAT = 'Olahraga';
 const FINDER_PASAR_LIMIT = 60;
 // NU_ONB_CATS (finder chips) → category_map canonical. Used when the live
 // category_map fetch has not landed yet so Hobi & Kerajinan never queries
@@ -1642,8 +1645,13 @@ const FINDER_XP = [
 const FINDER_STATE_KEY = '_lid_gpt_finder_v1';
 let _finderGeoTried = false;
 let _finder = {
-  city: FINDER_DEFAULT_CITY,
-  categories: [FINDER_DEFAULT_CAT],
+  // No fabricated defaults. A pre-ticked category the user never chose was
+  // promoted into their saved onboarding interest on sign-in (and that interest
+  // is fed to the AI as a hint), which is why half of all saved prefs read
+  // {Olahraga}. Empty until the user actually answers; the CTA stays disabled
+  // until then — see syncFinderUi().
+  city: '',
+  categories: [],
   budget: '1jt_10jt',
   experience: 'first_time',
 };
@@ -1862,28 +1870,71 @@ function imgThumb(url) {
   return /^https:\/\/cf\.shopee\.co\.id\/file\/[\w-]+$/.test(u) ? u + '_tn.webp' : u;
 }
 
-const GARUDA_LOAD_POSES = [
-  { id: 'binocs', src: '/images/brand/mascot-load-binocs.webp', w: 496, h: 641 },
-  { id: 'magnify', src: '/images/brand/mascot-load-magnify.webp', w: 483, h: 558 },
-];
+/* Loading poses. The pose is tied to the surface rather than picked at
+   random: binoculars scan wide (browsing the catalogue), the magnifier
+   inspects one thing (a single product's deep dive). `steps` escalate only
+   when the wait actually runs long, so a fast load never shows the later
+   lines and the copy stays honest instead of theatrical. */
+const GARUDA_LOAD_POSES = {
+  binocs: {
+    pose: 'load-binocs', src: '/images/brand/mascot-load-binocs.webp',
+    w: 496, h: 641,
+    steps: ['Memuat', 'Menyisir katalog produk', 'Sebentar lagi'],
+  },
+  magnify: {
+    pose: 'load-magnify', src: '/images/brand/mascot-load-magnify.webp',
+    w: 483, h: 558,
+    steps: ['Memuat data Deep Dive', 'Menghitung omset & pesaing', 'Sebentar lagi'],
+  },
+};
+const GL_STEP_AT = [1400, 3600];
 
-function garudaLoadingHtml(label) {
-  const pose = GARUDA_LOAD_POSES[Math.random() < 0.5 ? 0 : 1];
-  const text = label || 'Memuat…';
-  return `<div class="gl-load gl-load--${pose.id}" role="status" aria-label="${esc(text)}">` +
-    `<div class="gl-load-stage">` +
-      `<div class="gl-load-breathe">` +
-        `<img class="gl-load-img" src="${pose.src}" alt="" width="${pose.w}" height="${pose.h}" decoding="async">` +
-        `<span class="gl-load-tool" aria-hidden="true"><img src="${pose.src}" alt="" width="${pose.w}" height="${pose.h}" decoding="async"></span>` +
-        `<span class="gl-load-lid" aria-hidden="true"></span>` +
-      `</div>` +
+function garudaLoadingHtml(which) {
+  const p = GARUDA_LOAD_POSES[which] || GARUDA_LOAD_POSES.binocs;
+  // data-mascot hands the stage to js/laris-mascot.js, which builds the
+  // feathered rig over this same <img>. No second copy, no clip-path.
+  return `<div class="gl-load gl-load--${which}" role="status">` +
+    `<div class="gl-load-stage" data-mascot="${p.pose}" data-mascot-motion="scanning">` +
+      `<img class="gl-load-img" src="${p.src}" alt="" width="${p.w}" height="${p.h}" decoding="async">` +
     `</div>` +
-    `<p class="gl-load-label">${esc(text)}</p>` +
+    `<p class="gl-load-label">` +
+      `<span class="gl-word">${esc(p.steps[0])}</span>` +
+      `<span class="gl-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span>` +
+    `</p>` +
   `</div>`;
 }
 
+/* Paint a loader into `host` and bring it to life. LarisMascot.init() only
+   scans at DOMContentLoaded, so an injected host has to be handed to it. */
+function paintGarudaLoading(host, which) {
+  if (!host) return;
+  host.innerHTML = garudaLoadingHtml(which);
+  try { window.LarisMascot?.init(host); } catch (_) {}
+
+  const p = GARUDA_LOAD_POSES[which] || GARUDA_LOAD_POSES.binocs;
+  const word = host.querySelector('.gl-word');
+  if (!word) return;
+  GL_STEP_AT.forEach((ms, i) => {
+    const next = p.steps[i + 1];
+    if (!next) return;
+    setTimeout(() => {
+      // Hosts are re-rendered wholesale, so a stale timer simply finds a
+      // detached node and does nothing.
+      if (!word.isConnected) return;
+      word.classList.add('is-swap');
+      setTimeout(() => {
+        if (!word.isConnected) return;
+        word.textContent = next;
+        word.classList.remove('is-swap');
+      }, 180);
+    }, ms);
+  });
+}
+
 function preloadGarudaLoaders() {
-  GARUDA_LOAD_POSES.forEach((p) => {
+  // The rig layers are masked copies of these same files, so warming the two
+  // base renders warms the whole thing.
+  Object.values(GARUDA_LOAD_POSES).forEach((p) => {
     const im = new Image();
     im.decoding = 'async';
     im.src = p.src;
@@ -2285,6 +2336,9 @@ async function submitWaCapture() {
 }
 
 let _nameCaptureThenOnboarding = false;
+// Session-scoped, like the WhatsApp capture skip: a name is still wanted, but a
+// modal with no way out must not be able to trap someone on every reload.
+const _LID_NAME_CAPTURE_SKIP_KEY = '_lid_name_capture_skip_v1';
 
 function openNameCapture() {
   const overlay = $('name-capture');
@@ -2302,6 +2356,13 @@ function closeNameCapture() {
   $('name-capture')?.classList.remove('open');
 }
 
+function skipNameCapture() {
+  try { sessionStorage.setItem(_LID_NAME_CAPTURE_SKIP_KEY, '1'); } catch (_) {}
+  closeNameCapture();
+  void logUserEvent('name_capture', { ui: 'gpt', action: 'later' });
+  _nameCaptureContinue();
+}
+
 function _nameCaptureContinue() {
   if (_nameCaptureThenOnboarding) offerOnboardingAfterSignin();
   else scheduleProductRowsNotice({ fromRestore: false, isNewSignup: false });
@@ -2310,6 +2371,7 @@ function _nameCaptureContinue() {
 async function maybeOfferNameCapture(opts) {
   _nameCaptureThenOnboarding = !!(opts && opts.thenOnboarding);
   if (adminIsPreviewing() || !_isWaUser() || !currentUser) return false;
+  try { if (sessionStorage.getItem(_LID_NAME_CAPTURE_SKIP_KEY)) return false; } catch (_) {}
   let profileName = _profileDisplayName;
   if (profileName === undefined && _supabase) {
     try {
@@ -3488,8 +3550,8 @@ async function submitAuth() {
   const pass = $('auth-pass')?.value;
   const name = $('auth-name')?.value.trim();
   const hdrs = { apikey: SUPA_KEY, 'Content-Type': 'application/json' };
-  const showErr = msg => { if (errEl) { errEl.style.color = '#c0392b'; errEl.textContent = _authErrMsg(msg); errEl.style.display = ''; } };
-  const showOk = msg => { if (errEl) { errEl.style.color = '#1a7f45'; errEl.textContent = msg; errEl.style.display = ''; } };
+  const showErr = msg => { if (errEl) { errEl.style.color = '#c0392b'; errEl.textContent = _authErrMsg(msg); errEl.style.display = 'block'; } };
+  const showOk = msg => { if (errEl) { errEl.style.color = '#1a7f45'; errEl.textContent = msg; errEl.style.display = 'block'; } };
 
   // Reset asks for the email only — GoTrue mails a #type=recovery link back to
   // the site root, which handleRecoveryHash() picks up on the next load.
@@ -3571,7 +3633,7 @@ async function signInWithProvider(provider) {
   const { error } = await _supabase.auth.signInWithOAuth({ provider, options: { redirectTo } });
   if (error) {
     const errEl = $('auth-error');
-    if (errEl) { errEl.textContent = 'Login dengan Google gagal. Coba lagi.'; errEl.style.display = ''; }
+    if (errEl) { errEl.textContent = 'Login dengan Google gagal. Coba lagi.'; errEl.style.display = 'block'; }
   }
 }
 
@@ -3752,8 +3814,8 @@ async function submitRecoveryPassword() {
   const btn = $('recovery-submit-btn');
   const p1 = $('recovery-pass')?.value || '';
   const p2 = $('recovery-pass2')?.value || '';
-  const showErr = msg => { if (errEl) { errEl.style.color = '#c0392b'; errEl.textContent = msg; errEl.style.display = ''; } };
-  const showOk = msg => { if (errEl) { errEl.style.color = '#1a7f45'; errEl.textContent = msg; errEl.style.display = ''; } };
+  const showErr = msg => { if (errEl) { errEl.style.color = '#c0392b'; errEl.textContent = msg; errEl.style.display = 'block'; } };
+  const showOk = msg => { if (errEl) { errEl.style.color = '#1a7f45'; errEl.textContent = msg; errEl.style.display = 'block'; } };
 
   if (!_recoverySession?.access_token) { showErr('Link reset sudah tidak berlaku. Minta link baru lewat "Lupa password?".'); return; }
   if (!p1 || !p2) { showErr('Isi password baru dua kali.'); return; }
@@ -4076,8 +4138,10 @@ async function persistOnboardingPrefs() {
       // never written, so the answer was collected and thrown away.
       budget_min: bud ? bud.min : null,
       budget_max: bud && Number.isFinite(bud.max) ? bud.max : null,
-      completed_at: o.step === 'done' ? new Date().toISOString() : null,
       updated_at: new Date().toISOString(),
+      // Only assert completion when it happened. Writing `completed_at: null` on
+      // every sign-in stamped finished onboarding back to unfinished.
+      ...(o.step === 'done' ? { completed_at: new Date().toISOString() } : {}),
     }, { onConflict: 'user_id' });
   } catch (_) {}
 }
@@ -4626,16 +4690,13 @@ function finderIsComplete() {
   return !!(_finder && _finder.city && _finder.categories && _finder.categories.length && _finder.budget && _finder.experience);
 }
 
-/** True when the user changed at least one finder field from the built-in defaults. */
+/** True when the user actually answered the finder themselves.
+ *  The finder no longer ships pre-filled answers, so a complete finder is by
+ *  definition the user's own. This used to diff each field against a built-in
+ *  default, which also meant someone who genuinely picked the default city and
+ *  category had their answers thrown away at signup. */
 function finderHasCustomAnswers() {
-  if (!finderIsComplete()) return false;
-  const cats = Array.isArray(_finder.categories) ? _finder.categories : [];
-  const city = String(_finder.city || '').trim();
-  if (city && city !== FINDER_DEFAULT_CITY) return true;
-  if (cats.length !== 1 || cats[0] !== FINDER_DEFAULT_CAT) return true;
-  if (_finder.budget && _finder.budget !== '1jt_10jt') return true;
-  if (_finder.experience && _finder.experience !== 'first_time') return true;
-  return false;
+  return finderIsComplete();
 }
 
 function syncFinderToOnboarding() {
@@ -5032,8 +5093,6 @@ async function applyDirectoryCategory(cat, sub) {
   state.dirCatsFromOnboarding = false;
   const searchInp = $('results-bar-input');
   if (searchInp) searchInp.value = '';
-  const host = $('dir-filters-range');
-  try { host?._dirApi?.setCategories?.(state.dirCats); } catch (_) {}
   closeResultsBarMega();
   if (state.view !== 'directory') {
     state.comparePick = null;
@@ -5577,7 +5636,7 @@ function finderCatTriggerLabel() {
 function syncFinderUi() {
   const citySel = $('finder-city');
   // Show what the user actually typed; _finder.city holds the resolved bucket.
-  if (citySel) citySel.value = _finder.cityTyped || _finder.city || FINDER_DEFAULT_CITY;
+  if (citySel) citySel.value = _finder.cityTyped || _finder.city || '';
   const trigLabel = $('finder-cat-trigger-label');
   if (trigLabel) trigLabel.textContent = finderCatTriggerLabel();
   document.querySelectorAll('#finder-cat-popup-list .finder-cat-opt input[type=checkbox]').forEach(cb => {
@@ -5589,6 +5648,10 @@ function syncFinderUi() {
   document.querySelectorAll('#finder-xp-pills .finder-pill').forEach(btn => {
     btn.classList.toggle('on', btn.getAttribute('data-xp') === _finder.experience);
   });
+  // The finder can no longer run on defaults nobody chose, so the CTA is the
+  // thing that has to hold the line against an unsearchable state.
+  const go = $('finder-go');
+  if (go) go.disabled = !finderIsComplete();
 }
 
 function wireHomeFinder() {
@@ -5608,7 +5671,7 @@ function wireHomeFinder() {
     const commit = (name) => {
       const picked = String(name || cityInp.value || '').trim();
       const res = resolveNearestCityBucket(picked);
-      _finder.city = res.bucket || picked || FINDER_DEFAULT_CITY;
+      _finder.city = res.bucket || picked || '';
       _finder.cityTyped = picked;
       cityInp.value = picked;
       saveFinderState();
@@ -5694,10 +5757,11 @@ function wireHomeFinder() {
         cb.addEventListener('change', () => {
           const set = new Set(_finder.categories || []);
           if (cb.checked) set.add(cb.value); else set.delete(cb.value);
-          // Never allow every category to be de-selected — fall back to the
-          // default rather than leaving the finder in an unsearchable state.
-          _finder.categories = set.size ? Array.from(set) : [FINDER_DEFAULT_CAT];
-          if (!set.size) cb.checked = (cb.value === FINDER_DEFAULT_CAT);
+          // De-selecting everything is allowed now: syncFinderUi() disables the
+          // CTA while the list is empty, which is what the old forced default was
+          // really guarding. Forcing a category back desynced the checkbox from
+          // _finder.categories and re-saved an interest the user had just removed.
+          _finder.categories = Array.from(set);
           saveFinderState();
           syncFinderUi();
           void logUserEvent('gpt_finder_category_interaction', { ui: 'gpt', action: 'change', categories: _finder.categories.join(', ') });
@@ -5767,12 +5831,14 @@ async function detectFinderCityFromIp() {
   })();
   if (saved?.city || state.onboarding?.city) return;
   const resolved = await fetchRegionFromIp();
+  // A failed or unmappable lookup leaves the city blank rather than guessing.
+  // Guessing here is what put a city the user never gave into their saved
+  // region, and the CTA stays disabled until they answer.
   if (!resolved?.region) {
-    _finder.city = FINDER_DEFAULT_CITY;
     syncFinderUi();
     return;
   }
-  _finder.city = resolved.inList ? resolved.region : FINDER_DEFAULT_CITY;
+  _finder.city = resolved.inList ? resolved.region : '';
   saveFinderState();
   syncFinderUi();
 }
@@ -6034,7 +6100,7 @@ async function runFinderSearch() {
       }
     }
   } finally {
-    if (go) go.disabled = false;
+    if (go) go.disabled = !finderIsComplete();
   }
 }
 
@@ -6057,7 +6123,7 @@ function syncDirectoryFromOnboarding() {
   if (o.step !== 'done') return;
   // City and minat stay on Discover / Laris AI / the heading. Cari Produk
   // default home is unfiltered — copying onboarding cats into dirCats used to
-  // select "Olahraga & Outdoor" (FINDER_DEFAULT_CAT maps there) and fetch
+  // select "Olahraga & Outdoor" (the old default category mapped there) and fetch
   // only that bucket under the hero. An explicit rail / mega / hero click
   // is what sets dirCats.
 }
@@ -6216,10 +6282,6 @@ async function savePrefsDrawer() {
     }
 
     if (state.view === 'directory') {
-      const filtersHost = $('dir-filters-range');
-      if (filtersHost?._dirApi) {
-        filtersHost._dirApi.setCategories(state.dirCats || []);
-      }
       void renderSubcats(primaryDirCat());
       updateDirHeading();
       await renderDirectory();
@@ -14762,7 +14824,7 @@ async function openDeepDive(product, ddOpts = {}) {
   dwellStart(product.category);
   const root = $('deepdive-root');
   if (!root) return;
-  root.innerHTML = garudaLoadingHtml('Memuat data Deep Dive…');
+  paintGarudaLoading(root, 'magnify');
   scrollPanelToTop();
 
   product = { ...product, _fromListing: true };
@@ -19948,7 +20010,6 @@ function resetDirectoryToHome() {
   const host = $('dir-filters-range');
   try { host?._dirApi?.setShowSesuai?.(false); } catch (_) {}
   try { host?._dirApi?.setValue?.('omset'); } catch (_) {}
-  try { host?._dirApi?.setCategories?.([]); } catch (_) {}
 }
 
 let _dirHomePool = null;
@@ -20209,7 +20270,7 @@ async function renderDirectory() {
   const home = isDirHomeBrowse();
   const seq = ++_dirRenderSeq;
 
-  grid.innerHTML = garudaLoadingHtml('Memuat…');
+  paintGarudaLoading(grid, 'binocs');
   const trendHost = $('dir-trending-now');
   if (trendHost) {
     trendHost.hidden = false;
@@ -21587,6 +21648,10 @@ function wireUi() {
     if (e.key === 'Enter') { e.preventDefault(); void submitWaCapture(); }
   });
   $('name-capture-save')?.addEventListener('click', () => void submitNameCapture());
+  $('name-capture-later')?.addEventListener('click', skipNameCapture);
+  $('name-capture')?.addEventListener('click', (e) => {
+    if (e.target === $('name-capture')) skipNameCapture();
+  });
   $('name-capture-input')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); void submitNameCapture(); }
   });
@@ -21604,6 +21669,10 @@ function wireUi() {
 
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
+    if ($('name-capture')?.classList.contains('open')) {
+      skipNameCapture();
+      return;
+    }
     if ($('product-rows-notice')?.classList.contains('open')) {
       closeProductRowsNotice('esc');
       return;

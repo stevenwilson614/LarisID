@@ -17,6 +17,13 @@
  *   LarisMascot.success()         a small nod, then back to idle
  *   LarisMascot.refresh()         re-measure after a layout change
  *   LarisMascot.destroyAll()
+ *
+ * Two kinds of rig share all of the above. The hero and Ask poses read
+ * pre-cut patches from js/laris-mascot-rigs.js. The loading poses build their
+ * patches at runtime instead, by masking copies of the base <img> with a
+ * radial-gradient -- same feathered edge, but no extra files and no extra
+ * bytes, which matters for artwork that is only on screen for ~1s. See
+ * LOADER_RIGS below.
  */
 (function () {
   'use strict';
@@ -35,6 +42,74 @@
   var SWAY_PERIOD = 17.3;    // weight shift. Incommensurate with the breath
   var WING_PERIOD = 7.1;     // period so the combined loop never repeats.
   var ENGAGE_PX = 420;       // how near the cursor must be to be noticed
+
+  // Searching, not resting. The sweep is shaped so it dwells at each end of
+  // its arc -- that pause is what reads as looking at something, rather than
+  // panning past it.
+  var SCAN_PERIOD = 3.4;     // binoculars: one sweep of the horizon
+  var SCAN_DWELL = 0.55;     // exponent < 1 snaps the sweep toward its extremes
+  var INSPECT_X = 2.6;       // magnifier: two incommensurate frequencies, so
+  var INSPECT_Y = 1.7;       // it never pores over the same loop twice
+  var EYE_LEAD = 0.18;       // the eye arrives before the head does
+  var SCAN_BREATH = 0.6;     // breath stays, but underneath the search
+  var CURSOR_BIAS = 0.35;    // how much a nearby cursor pulls the gaze
+
+  /*
+   * Loading poses. Geometry is in source-image pixels, read off a coordinate
+   * grid of each render; ellipses are (cx, cy, rx, ry) and `f` is the feather
+   * width. Unlike the pre-cut rigs, every layer here is a full-bleed copy of
+   * the base <img> that a radial-gradient mask cuts down -- so a layer's own
+   * box IS the canvas, and the tick's percentage maths needs no special case.
+   *
+   * In both poses the tool is pressed to the face and held in the mascot's own
+   * hands, so one ellipse covers skull + tool + hands and the whole group
+   * sweeps together. For the magnifier that is not just tidier, it is required:
+   * a lens moving on its own would slide off the magnified eye behind it.
+   */
+  var LOADER_RIGS = {
+    'load-binocs': {
+      mask: true, src: '/images/brand/mascot-load-binocs.webp', w: 496, h: 641,
+      motion: 'sweep', pivot: [290, 235],
+      layers: [
+        { n: 'wing',  g: 'base', e: [135, 350, 115, 105], f: 40, o: [255, 290] },
+        { n: 'torso', g: 'base', e: [310, 290, 120, 80],  f: 38, o: [310, 370] },
+        { n: 'head',  g: 'head', e: [300, 130, 165, 125], f: 46 }
+      ],
+      // The barrels cover the face completely, so there is nothing to blink.
+      eyes: []
+    },
+    'load-magnify': {
+      mask: true, src: '/images/brand/mascot-load-magnify.webp', w: 483, h: 558,
+      motion: 'inspect', pivot: [255, 330],
+      layers: [
+        { n: 'torso', g: 'base', e: [270, 420, 135, 95],  f: 38, o: [270, 510] },
+        { n: 'head',  g: 'head', e: [210, 225, 195, 190], f: 46 }
+      ],
+      // Only the eye behind the lens; the other is drawn winked shut, so
+      // blinking this one alone still reads as a whole-face blink. The iris
+      // patch is masked wide enough to carry its own white surround, which is
+      // what keeps the painted iris underneath covered at every offset -- no
+      // inpainted sclera needed here.
+      eyes: [{
+        iris: [155, 234, 36, 38], f: 9, travel: [5.5, 5.0],
+        // Sized well inside the eye's drawn rim (~0.8x): a lid that covers
+        // the rim too reads as a pale blob rather than a closed eye.
+        lid: [156, 233, 34, 33], tone: '238,232,228'
+      }]
+    }
+  };
+
+  function poseManifest(name) { return RIGS[name] || LOADER_RIGS[name] || null; }
+
+  /* radial-gradient whose solid stop sits at the un-feathered radius, so the
+     ramp spans exactly `f` source pixels either side of the ellipse. */
+  function maskFor(e, f, W, H) {
+    var rx = e[2] + f, ry = e[3] + f;
+    return 'radial-gradient(ellipse ' + (rx / W * 100).toFixed(4) + '% ' +
+      (ry / H * 100).toFixed(4) + '% at ' + (e[0] / W * 100).toFixed(4) + '% ' +
+      (e[1] / H * 100).toFixed(4) + '%, #000 ' +
+      (e[2] / rx * 100).toFixed(1) + '%, transparent 100%)';
+  }
 
   var rigs = [];
   var raf = 0;
@@ -55,7 +130,12 @@
   function tickAll(ts) {
     raf = 0;
     var live = 0;
-    for (var i = 0; i < rigs.length; i++) {
+    for (var i = rigs.length - 1; i >= 0; i--) {
+      // Loader rigs are thrown away wholesale every time their container is
+      // re-rendered (grid.innerHTML = ...). Without this the Rig object
+      // outlives its DOM forever, holding a detached subtree alive and still
+      // being walked by each() on every state change.
+      if (!rigs[i].host.isConnected) { rigs[i].destroy(); continue; }
       if (rigs[i].visible && !rigs[i].hidden) { rigs[i].tick(ts); live++; }
     }
     if (live) raf = requestAnimationFrame(tickAll);
@@ -89,21 +169,25 @@
   /* rig                                                                 */
   /* ------------------------------------------------------------------ */
 
-  function Rig(host, poseName) {
+  function Rig(host, poseName, opts) {
+    opts = opts || {};
     this.host = host;
     this.pose = poseName;
-    this.man = RIGS[poseName];
+    this.man = poseManifest(poseName);
     this.img = host.querySelector('img');
     this.built = false;
     this.visible = false;
     this.hidden = document.hidden;
-    this.state = 'idle';
+    this.state = opts.state || 'idle';
+    // A locked rig drives itself and ignores the global state API, so the
+    // LarisMascot.thinking() fired by the AI stream cannot hijack a loader.
+    this.locked = !!opts.locked;
     this.lookEl = null;
     this.t0 = now();
 
     this.look = { x: 0, y: 0 };
     this.settle = { x: 0, y: 0, r: 0, tx: 0, ty: 0, tr: 0, next: 0 };
-    this.blinkAt = now() + rand(1200, 3600);
+    this.blinkAt = now() + (this.locked ? rand(700, 1800) : rand(1200, 3600));
     this.blinkT = -1;
     this.nodT = -1;
 
@@ -113,9 +197,87 @@
     this.rectAt = 0;
   }
 
+  /*
+   * Runtime-masked rig. Every layer is a full-bleed copy of the same cached
+   * <img>, so nothing extra is fetched, and because a layer's box equals the
+   * canvas the tick's percentage maths (which divides by the layer's own
+   * width/height) resolves to canvas percentages with no special case.
+   */
+  Rig.prototype.buildMask = function () {
+    var man = this.man, W = man.w, H = man.h, self = this;
+
+    var box = document.createElement('div');
+    // The layers are pixel-identical to the <img> already on screen, so there
+    // is nothing to fade in from -- and a 450ms fade is half a loader's life.
+    box.className = 'mrig is-ready';
+    box.setAttribute('aria-hidden', 'true');
+
+    var headGroup = document.createElement('div');
+    headGroup.className = 'mrig-head';
+    headGroup.style.transformOrigin =
+      (man.pivot[0] / W * 100) + '% ' + (man.pivot[1] / H * 100) + '%';
+
+    var groups = { base: box, head: headGroup };
+
+    function patch(e, f, parent, origin) {
+      var el = document.createElement('img');
+      el.className = 'mrig-l';
+      el.alt = '';
+      el.decoding = 'async';
+      // The shared .mrig-l rule pins height:auto !important for the pre-cut
+      // rigs, so a full-bleed layer has to out-important it.
+      imp(el, 'left', '0'); imp(el, 'top', '0');
+      imp(el, 'width', '100%'); imp(el, 'height', '100%');
+      var m = maskFor(e, f, W, H);
+      el.style.webkitMaskImage = m; el.style.maskImage = m;
+      el.style.webkitMaskRepeat = 'no-repeat'; el.style.maskRepeat = 'no-repeat';
+      if (origin) el.style.transformOrigin =
+        (origin[0] / W * 100) + '% ' + (origin[1] / H * 100) + '%';
+      el.src = man.src;
+      parent.appendChild(el);
+      return el;
+    }
+
+    for (var i = 0; i < man.layers.length; i++) {
+      var L = man.layers[i];
+      this.layers[L.n] = {
+        el: patch(L.e, L.f, groups[L.g] || box, L.o),
+        d: { w: W, h: H }
+      };
+    }
+
+    this.eyes = [];
+    var eyes = man.eyes || [];
+    for (var k = 0; k < eyes.length; k++) {
+      var E = eyes[k];
+      var iris = patch(E.iris, E.f, headGroup);
+
+      var lid = document.createElement('div');
+      lid.className = 'mrig-lid mrig-lid--soft';
+      lid.style.left = ((E.lid[0] - E.lid[2]) / W * 100) + '%';
+      lid.style.top = ((E.lid[1] - E.lid[3]) / H * 100) + '%';
+      lid.style.width = (E.lid[2] * 2 / W * 100) + '%';
+      lid.style.height = (E.lid[3] * 2 / H * 100) + '%';
+      lid.style.background =
+        'radial-gradient(ellipse at 50% 20%, rgba(' + E.tone + ',1) 44%,' +
+        'rgba(' + E.tone + ',.94) 78%, rgba(188,178,170,.88) 100%)';
+      headGroup.appendChild(lid);
+
+      this.eyes.push({ iris: iris, lid: lid, travel: E.travel,
+                       irisBox: { w: W, h: H } });
+    }
+
+    box.appendChild(headGroup);
+    this.box = box;
+    this.headGroup = headGroup;
+    (this.img.parentNode || this.host).appendChild(box);
+    this.place();
+  };
+
   Rig.prototype.build = function () {
     if (this.built || !this.man || !this.img) return;
     this.built = true;
+    if (this.man.mask) return this.buildMask();
 
     var man = this.man, L = man.layers, self = this;
     var box = document.createElement('div');
@@ -215,6 +377,24 @@
 
   /* Where the eyes should be pointing, as -1..1 either side of centre. */
   Rig.prototype.lookTarget = function (t, ts) {
+    if (this.state === 'scanning') {
+      // Led by the scan itself, with a light pull toward a nearby cursor --
+      // searching for your thing, but it notices you.
+      var lx, ly;
+      if (this.man.motion === 'sweep') {
+        lx = shapeSweep(t + EYE_LEAD); ly = 0;
+      } else {
+        lx = Math.sin((t + EYE_LEAD) * TAU / INSPECT_X);
+        ly = Math.sin((t + EYE_LEAD) * TAU / INSPECT_Y);
+      }
+      var near = this.cursorTarget(ts);
+      if (near) {
+        lx += (near.x - lx) * CURSOR_BIAS;
+        ly += (near.y - ly) * CURSOR_BIAS;
+      }
+      return { x: clamp(lx, -1, 1), y: clamp(ly, -1, 1) };
+    }
+
     if (this.state === 'thinking') {
       // Eyes wander up and off to one side, the way people look at nothing
       // while they think.
@@ -256,19 +436,46 @@
     };
   };
 
+  /* The cursor as -1..1, or null when it is nowhere near. */
+  Rig.prototype.cursorTarget = function (ts) {
+    if (!pointer.seen || !this.box) return null;
+    if (!this.rect || ts - this.rectAt > 200) {
+      this.rect = this.box.getBoundingClientRect();
+      this.rectAt = ts;
+    }
+    var r = this.rect;
+    if (!r.width) return null;
+    var cx = r.left + r.width * 0.5, cy = r.top + r.height * 0.42;
+    var dx = pointer.x - cx, dy = pointer.y - cy;
+    if (Math.sqrt(dx * dx + dy * dy) > ENGAGE_PX + r.width * 0.5) return null;
+    return { x: clamp(dx / (r.width * 0.9), -1, 1),
+             y: clamp(dy / (r.height * 0.9), -1, 1) };
+  };
+
+  /* |sin|^0.55 keeps its sign but snaps toward the extremes, so the sweep
+     lingers at each end of the arc and transits quickly between. */
+  function shapeSweep(t) {
+    var v = Math.sin(t * TAU / SCAN_PERIOD);
+    return (v < 0 ? -1 : 1) * Math.pow(Math.abs(v), SCAN_DWELL);
+  }
+
   Rig.prototype.tick = function (ts) {
     if (!this.built) { this.build(); if (!this.built) return; }
     var man = this.man;
     var t = (ts - this.t0) / 1000;
 
+    var scanning = this.state === 'scanning';
     var period = this.state === 'thinking' ? BREATH_PERIOD * 1.18 : BREATH_PERIOD;
-    var br = Math.sin(t * TAU / period);
-    var brLag = Math.sin((t - BREATH_LAG) * TAU / period);
-    var sway = Math.sin(t * TAU / SWAY_PERIOD);
+    // While searching the breath is the floor, not the figure.
+    var depth = scanning ? SCAN_BREATH : 1;
+    var br = Math.sin(t * TAU / period) * depth;
+    var brLag = Math.sin((t - BREATH_LAG) * TAU / period) * depth;
+    var sway = scanning ? 0 : Math.sin(t * TAU / SWAY_PERIOD);
 
     /* occasional head settle ---------------------------------------- */
     var s = this.settle;
-    if (ts >= s.next) {
+    if (scanning) { s.x = s.y = s.r = 0; s.next = ts + 9e5; }
+    else if (ts >= s.next) {
       s.tx = rand(-1.1, 1.1);
       s.ty = rand(-0.9, 0.9);
       s.tr = rand(-0.22, 0.22);
@@ -284,8 +491,9 @@
     this.look.y += (want.y - this.look.y) * 0.075;
 
     /* blink ---------------------------------------------------------- */
+    // A pose whose eyes are hidden behind its own tool has nothing to blink.
     var lid = 0;
-    if (this.blinkT < 0 && ts >= this.blinkAt) this.blinkT = 0;
+    if (this.eyes.length && this.blinkT < 0 && ts >= this.blinkAt) this.blinkT = 0;
     if (this.blinkT >= 0) {
       this.blinkT = ts - (this.blinkAt);
       var b = this.blinkT;
@@ -294,7 +502,8 @@
       else if (b < 315) lid = 1 - (b - 165) / 150;
       else {
         lid = 0; this.blinkT = -1;
-        this.blinkAt = ts + rand(4800, 8200);
+        // A searching bird blinks more than a resting one.
+        this.blinkAt = ts + (scanning ? rand(2600, 4500) : rand(4800, 8200));
       }
       lid = clamp(lid, 0, 1);
     }
@@ -317,6 +526,24 @@
     var headX = sway * 1.3 + s.x + this.look.x * 2.2;
     var headY = -brLag * 1.9 + s.y + nodY;
     var headR = sway * 0.18 + s.r + this.look.x * 0.7 + tilt + nodR;
+
+    if (scanning) {
+      // The search drives the head outright here; the gaze is a passenger, so
+      // it is not added on top the way it is at rest.
+      if (this.man.motion === 'sweep') {
+        var sw = shapeSweep(t);
+        headX = sw * 5.5;
+        headR = sw * 1.9;
+        headY = -brLag * 1.9 - Math.pow(Math.abs(sw), 2) * 1.2;
+        var wingEl = this.layers.wing;
+        if (wingEl) setT(wingEl.el, 'rotate(' +
+          (Math.sin(t * TAU / 4.9 + 1.1) * 0.85).toFixed(3) + 'deg)');
+      } else {
+        headX = Math.sin(t * TAU / INSPECT_X) * 4.2;
+        headY = -brLag * 1.9 + Math.sin(t * TAU / INSPECT_Y) * 2.4;
+        headR = Math.sin(t * TAU / INSPECT_X) * 1.4;
+      }
+    }
 
     setT(this.headGroup,
       'translate(' + (headX / man.w * 100).toFixed(3) + '%,' +
@@ -352,8 +579,16 @@
 
   Rig.prototype.observe = function () {
     var self = this;
-    if (!('IntersectionObserver' in window)) {
-      this.visible = true; this.build(); wake(); return;
+    // A loader lives about a second. Waiting on IntersectionObserver's async
+    // first callback would spend a visible slice of that doing nothing, so
+    // locked rigs start immediately and only observe for the resize path.
+    if (this.locked || !('IntersectionObserver' in window)) {
+      this.visible = true; this.build(); wake();
+      if (this.locked && 'ResizeObserver' in window) {
+        this.ro = new ResizeObserver(function () { self.place(); });
+        this.ro.observe(this.img);
+      }
+      return;
     }
     this.io = new IntersectionObserver(function (entries) {
       for (var i = 0; i < entries.length; i++) {
@@ -382,7 +617,10 @@
   /* public                                                              */
   /* ------------------------------------------------------------------ */
 
-  function each(fn) { for (var i = 0; i < rigs.length; i++) fn(rigs[i]); }
+  // Locked rigs run their own state, so the global API steps over them.
+  function each(fn) {
+    for (var i = 0; i < rigs.length; i++) if (!rigs[i].locked) fn(rigs[i]);
+  }
 
   var LarisMascot = {
     reduced: REDUCED,
@@ -394,8 +632,10 @@
         var host = nodes[i];
         if (host._mrig) continue;
         var pose = host.getAttribute('data-mascot');
-        if (!RIGS[pose] || !host.querySelector('img')) continue;
-        var rig = new Rig(host, pose);
+        if (!poseManifest(pose) || !host.querySelector('img')) continue;
+        var motion = host.getAttribute('data-mascot-motion');
+        var rig = new Rig(host, pose, motion === 'scanning'
+          ? { state: 'scanning', locked: true } : null);
         host._mrig = rig;
         rigs.push(rig);
         rig.observe();
