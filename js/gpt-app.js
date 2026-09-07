@@ -20131,13 +20131,8 @@ async function syncDirHome() {
  * js/gpt-dir-hero.js and only toggled after that, so autoplay position and
  * already-fetched thumbnails survive a filter round-trip. */
 async function openInsightHeroCta() {
-  if (currentUser) {
-    await gptJourneyLoad();
-    await refreshTrackedKwSet();
-  }
-  const hasFavs = _trackedFavSet.size > 0;
-  const hasDd = (_gptJourney.deepdiveCount || 0) > 0 || !!state.everOpenedDeepdive;
-  if (hasFavs || hasDd) {
+  if (currentUser) await refreshTrackedKwSet();
+  if (_trackedFavSet.size > 0) {
     $('btn-tracker')?.click();
     return;
   }
