@@ -22,6 +22,10 @@ window.LARIS_CHANGELOG = [
         text: 'Ketik nama produk di Laris AI (misalnya “botol minyak”) sekarang dapat ringkasan pasar plus daftar listing yang benar-benar cocok — bukan tumpukan kata kunci yang cuma berbagi satu kata, dan bukan tabel kosong.',
         tech: 'handleLookupIntent no longer calls replyWithPasarTypes. tightenLookupPool keeps strong 2-token keyword matches; listingRowsForChip falls back to Semua when primaryKw has zero sold rows; no trend-host on LOOKUP; lastShown persisted.',
       },
+      {
+        text: 'Daftar dari pencarian di halaman depan sekarang langsung ke daftar produk dan Deep Dive pertama — tidak kembali ke Beranda kosong. Favorit hanya menyalakan kabar kalau ada saluran yang benar-benar bisa mengirim.',
+        tech: 'Await resumeFinderAfterSignin in _authOnSignIn; boot skips renderHome when finder rows are up; auto-DD allows home after a stomp; persistOnboardingPrefs from runFinderSearch; notify prefs skip empty channels; Insight CTA opens first listing when Favorit is empty. product_type_quartiles restores omset_p60/p100 and raises statement_timeout (20260907160000).',
+      },
     ],
   },
   {

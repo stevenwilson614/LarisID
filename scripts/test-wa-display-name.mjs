@@ -26,6 +26,24 @@ function waFromEmail(email) {
   return m ? m[1] : '';
 }
 
+function waNormalisePhone(raw) {
+  const s = String(raw || '').replace(/[\s\-().]/g, '');
+  if (/^\+62\d{8,13}$/.test(s)) return s;
+  if (/^628\d{7,12}$/.test(s)) return '+' + s;
+  if (/^08\d{7,12}$/.test(s)) return '+62' + s.slice(1);
+  if (/^8\d{7,12}$/.test(s)) return '+62' + s;
+  return null;
+}
+
+function waNumberFromIdentity(user) {
+  const fromPhone = waNormalisePhone(
+    user?.phone || user?.user_metadata?.phone_number || user?.user_metadata?.phone || '',
+  );
+  if (fromPhone) return fromPhone;
+  const m = String(user?.email || '').match(/^(\+?62\d{8,13})@wa\.larisid\.com$/i);
+  return m ? (waNormalisePhone(m[1]) || '') : '';
+}
+
 function displayName(u) {
   const raw = String(u?.display_name || '').trim();
   if (isRealPersonName(raw)) return raw;
@@ -47,6 +65,9 @@ ok('phone rejected as name', !isRealPersonName('6282256315108'));
 ok('email rejected as name', !isRealPersonName('6282256315108@wa.larisid.com'));
 ok('short A rejected', !isRealPersonName('A'));
 ok('wa email yields number', waFromEmail('6282256315108@wa.larisid.com') === '6282256315108');
+ok('identity from synthetic email', waNumberFromIdentity({ email: '6282256315108@wa.larisid.com' }) === '+6282256315108');
+ok('identity from phone field', waNumberFromIdentity({ phone: '6282120070952' }) === '+6282120070952');
+ok('identity ignores gmail', waNumberFromIdentity({ email: 'siti@gmail.com' }) === '');
 ok('gmail has no wa', waFromEmail('siti@gmail.com') === '');
 ok('admin fallback for phone display_name', displayName({
   display_name: '6282256315108',

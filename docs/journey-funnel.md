@@ -27,7 +27,7 @@ Onboarding is in-page on Beranda (`state.onboarding`: city → category → expe
 | Beranda finder | `#home-finder` | first-run 4-step, not a popup |
 | Prefs | `#prefs-drawer` | city / category / experience after first run |
 | Deep Dive count | `user_journey_stats.deepdive_count` | written from gpt-app |
-| Session-one Deep Dive | `runFinderSearch` auto-open of the first listing row while `deepdive_count === 0`; Cari Produk first row click (`dir_first_click_deepdive`); `#home-first-dd` card | skip reasons logged as `finder_auto_deepdive_skipped` |
+| Session-one Deep Dive | `runFinderSearch` auto-open of the first listing row while `deepdive_count === 0`; Cari Produk first row click (`dir_first_click_deepdive`); `#home-first-dd` card | skip reasons logged as `finder_auto_deepdive_skipped`. Landing-finder signup **awaits** `resumeFinderAfterSignin` and must not `renderHome()` over the result thread. Auto-DD still opens if boot briefly showed Beranda (`view === 'home'`) while the listing block is on screen. `runFinderSearch` writes `user_onboarding_prefs.completed_at`. |
 | End-of-dive alert | `#ddr-alert` | email / WhatsApp one-tap → product favorite + `set_tracker_notify_prefs`. Mid-dive `ddtp*` promo is retired. |
 | Favorit Aku nav pulse | `lid_pantau_nudge_v1`, `schedulePantauNavPulse` | first Deep Dive pulse; stops once the user has ≥ 1 favorite |
 | Pasar → produk notice | `#product-rows-notice`, `lid_product_rows_notice_v1` | one-time dismissible for returning (not new) signed-in users; not onboarding |

@@ -1655,6 +1655,8 @@ let _finder = {
   budget: '1jt_10jt',
   experience: 'first_time',
 };
+let _finderResumeInFlight = false;
+let _finderAutoDdGen = 0;
 
 // ── App state ────────────────────────────────────────────────────────────
 const state = {
@@ -2173,16 +2175,28 @@ async function gptJourneyLoad() {
   } catch (_) {}
 }
 
+function waNumberFromIdentity(user) {
+  const u = user || currentUser;
+  if (!u) return '';
+  const fromPhone = _waNormalisePhone(
+    u.phone || u.user_metadata?.phone_number || u.user_metadata?.phone || '',
+  );
+  if (fromPhone) return fromPhone;
+  const m = String(u.email || '').match(/^(\+?62\d{8,13})@wa\.larisid\.com$/i);
+  return m ? (_waNormalisePhone(m[1]) || '') : '';
+}
+
 async function loadProfileWaNumber() {
   if (_profileWa !== undefined) return _profileWa;
   _profileWa = '';
-  if (!_supabase || !currentUser) return '';
+  if (!_supabase || !currentUser) return waNumberFromIdentity(currentUser);
   try {
     const { data } = await _supabase.from('user_profiles')
       .select('wa_number, public_whatsapp')
       .eq('user_id', currentUser.id).maybeSingle();
     _profileWa = String(data?.wa_number || data?.public_whatsapp || '').trim();
   } catch (_) {}
+  if (!_profileWa) _profileWa = waNumberFromIdentity(currentUser);
   return _profileWa;
 }
 
@@ -4010,10 +4024,17 @@ async function _authOnSignIn(session, opts) {
   let resumedFinder = false;
   if (!hadPending && state.pendingFinder) {
     const pf = state.pendingFinder;
-    state.pendingFinder = null;
-    saveLocalState();
     resumedFinder = true;
-    void resumeFinderAfterSignin(pf);
+    _finderResumeInFlight = true;
+    try {
+      await resumeFinderAfterSignin(pf);
+      state.pendingFinder = null;
+      saveLocalState();
+    } catch (_) {
+      // Keep pendingFinder so a refresh can retry the landing answers.
+    } finally {
+      _finderResumeInFlight = false;
+    }
   }
 
   // Skippable post-sign-in profile nudge — re-offered on every sign-in until
@@ -6011,6 +6032,7 @@ async function runFinderSearch() {
     syncDirectoryFromOnboarding();
     renderSidebarLocCard();
     updateHomeFinderVisibility();
+    if (currentUser) await persistOnboardingPrefs();
 
     const bud = finderBudgetCfg(_finder.budget);
     const catLabel = _finder.categories.join(', ');
@@ -6091,8 +6113,17 @@ async function runFinderSearch() {
         if (!neverDived) {
           skipAuto('already_once');
         } else {
+          const autoDdGen = ++_finderAutoDdGen;
           setTimeout(() => {
-            if (state.view !== 'chat') { skipAuto('view_changed'); return; }
+            if (autoDdGen !== _finderAutoDdGen) { skipAuto('superseded'); return; }
+            const block = $('chat-thread')?.querySelector('[data-lrow-block]');
+            if (!block) { skipAuto('no_block'); return; }
+            // boot() used to stomp chat → home before this timer. The listing
+            // block still on screen is the user they never saw — still open it.
+            if (state.view !== 'chat' && state.view !== 'home') {
+              skipAuto('view_changed');
+              return;
+            }
             void logUserEvent('finder_auto_deepdive', { ui: 'gpt', keyword: firstListing.keyword || '' });
             void openDeepDive(firstListing);
           }, 1400);
@@ -12590,13 +12621,23 @@ async function trackProductFavorite(product, opts = {}) {
         if (!wa) wa = await loadProfileWaNumber();
         const email = String(currentUser.email || '');
         const emailOk = !!(email && !/@wa\.larisid\.com$/i.test(email));
-        if (!channel) channel = (WA_ALERTS_READY && wa) ? 'whatsapp' : (emailOk ? 'email' : (wa ? 'whatsapp' : ''));
+        if (!channel) {
+          if (WA_ALERTS_READY && wa) channel = 'whatsapp';
+          else if (emailOk) channel = 'email';
+          else channel = '';
+        }
+        if (!channel) {
+          pantauNudgeClear();
+          ddtpRetire();
+          showToast(`Siap — "${p.product_name || 'Produk'}" masuk Favorit Aku`);
+          return true;
+        }
         if (channel === 'whatsapp' && !wa) {
           showToast('Isi nomor WhatsApp dulu.');
           return true;
         }
         if (channel === 'email' && !emailOk) {
-          if (wa) channel = 'whatsapp';
+          if (WA_ALERTS_READY && wa) channel = 'whatsapp';
           else {
             showToast('Tersimpan. Pilih saluran kabar di Favorit Aku.');
             pantauNudgeClear();
@@ -12606,7 +12647,7 @@ async function trackProductFavorite(product, opts = {}) {
         }
         if (channel === 'whatsapp') await saveProfileWaNumber(wa);
         const set = await _supabase.rpc('set_tracker_notify_prefs', {
-          p_channels: channel ? [channel] : [],
+          p_channels: [channel],
           p_wa_number: wa || null,
           p_cadence: 'on_update',
         });
@@ -20089,6 +20130,25 @@ async function syncDirHome() {
  * compare-picking (that flow needs the grid immediately). Rendered once by
  * js/gpt-dir-hero.js and only toggled after that, so autoplay position and
  * already-fetched thumbnails survive a filter round-trip. */
+async function openInsightHeroCta() {
+  if (currentUser) {
+    await gptJourneyLoad();
+    await refreshTrackedKwSet();
+  }
+  const hasFavs = _trackedFavSet.size > 0;
+  const hasDd = (_gptJourney.deepdiveCount || 0) > 0 || !!state.everOpenedDeepdive;
+  if (hasFavs || hasDd) {
+    $('btn-tracker')?.click();
+    return;
+  }
+  const first = (state.dirRows || []).find((r) => r && r.item_id);
+  if (first) {
+    void openDeepDive(first);
+    return;
+  }
+  showToast('Cari produk dulu, lalu simpan ke Favorit Aku.');
+}
+
 function syncDirHero() {
   const host = $('dir-hero');
   if (!host) return;
@@ -20106,7 +20166,7 @@ function syncDirHero() {
     // the hero CTA's own click is still bubbling — opening the mega-menu inline
     // would have it closed again by the same click.
     onKategoriMenu: () => { setTimeout(() => $('results-bar-kategori')?.click(), 0); },
-    onTracker: () => { $('btn-tracker')?.click(); },
+    onTracker: () => { void openInsightHeroCta(); },
     onEvent: (name, meta) => { void logUserEvent(name, { ui: 'gpt', ...(meta || {}) }); },
   });
 }
@@ -22031,11 +22091,12 @@ async function boot() {
   void refreshGptUsage();
 
   // Landing is the default surface; onboarding never auto-starts.
-  // Don't overwrite a deep dive that _authOnSignIn just resumed.
-  const pendingResume = !!(state.pendingDeepdive || state.pendingCompare || state.pendingTracker || state.pendingKomunitas);
+  // Don't overwrite a deep dive / finder that _authOnSignIn just resumed.
+  const pendingResume = !!(state.pendingDeepdive || state.pendingCompare || state.pendingTracker || state.pendingKomunitas || state.pendingFinder || _finderResumeInFlight);
   const alreadyDeepdive = state.view === 'deepdive' && !!state.deepdiveProduct;
   const alreadyCommunity = state.view === 'community';
-  if (!_offerActive && !pendingResume && !alreadyDeepdive && !alreadyCommunity) {
+  const finderResultsUp = !!$('chat-thread')?.querySelector('[data-lrow-block]');
+  if (!_offerActive && !pendingResume && !alreadyDeepdive && !alreadyCommunity && !finderResultsUp) {
     if (state.activeChatId && activeChat()) {
       setView('chat');
       renderChatThread();

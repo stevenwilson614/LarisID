@@ -15,6 +15,82 @@ function normalisePhone(raw: string): string | null {
   return null
 }
 
+function tokensFromLocation(location: string): {
+  access_token: string | null
+  refresh_token: string | null
+  expires_in: string | null
+} {
+  const hashPart = location.includes('#') ? location.split('#')[1] : ''
+  const params = new URLSearchParams(hashPart)
+  return {
+    access_token: params.get('access_token'),
+    refresh_token: params.get('refresh_token'),
+    expires_in: params.get('expires_in'),
+  }
+}
+
+type SessionTokens = {
+  access_token: string | null
+  refresh_token: string | null
+  expires_in: string | null
+}
+
+async function exchangeMagicLinkTokens(
+  supabaseUrl: string,
+  anonKey: string,
+  hashedToken: string,
+): Promise<SessionTokens> {
+  let access_token: string | null = null
+  let refresh_token: string | null = null
+  let expires_in: string | null = null
+
+  const postRes = await fetch(`${supabaseUrl}/auth/v1/verify`, {
+    method: 'POST',
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${anonKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ type: 'magiclink', token_hash: hashedToken }),
+    redirect: 'manual',
+  })
+  if (postRes.ok) {
+    const body = await postRes.json().catch(() => ({} as Record<string, unknown>))
+    access_token = (body.access_token as string) || null
+    refresh_token = (body.refresh_token as string) || null
+    expires_in = body.expires_in != null ? String(body.expires_in) : '3600'
+  }
+  if (!access_token) {
+    const fromPost = tokensFromLocation(postRes.headers.get('location') || '')
+    access_token = fromPost.access_token
+    refresh_token = fromPost.refresh_token
+    expires_in = fromPost.expires_in
+  }
+  let getStatus = 0
+  let getLocation = ''
+  if (!access_token) {
+    const getRes = await fetch(
+      `${supabaseUrl}/auth/v1/verify?token=${encodeURIComponent(hashedToken)}&type=magiclink`,
+      { method: 'GET', headers: { apikey: anonKey }, redirect: 'manual' },
+    )
+    getStatus = getRes.status
+    getLocation = getRes.headers.get('location') || ''
+    const fromGet = tokensFromLocation(getLocation)
+    access_token = fromGet.access_token
+    refresh_token = fromGet.refresh_token
+    expires_in = fromGet.expires_in
+  }
+  if (!access_token) {
+    // 302 + Location#access_token is success. Only log when that hash is missing.
+    console.error(
+      'Token exchange failed. POST status:', postRes.status,
+      'GET status:', getStatus,
+      'Location:', getLocation || postRes.headers.get('location') || '',
+    )
+  }
+  return { access_token, refresh_token, expires_in }
+}
+
 async function sha256Hex(data: string): Promise<string> {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(data))
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('')
@@ -132,17 +208,28 @@ serve(async (req) => {
       if (profileErr) console.error('wa profile upsert failed', profileErr)
     }
 
-    // Generate a one-use magic link and exchange it for a real session
+    // generateLink needs the auth user, so create happens first. If the
+    // token exchange then fails, delete a brand-new row so we do not leave
+    // a ghost @wa.larisid.com account the client never signed into.
+    const rollbackNewUser = async () => {
+      if (!isNew || !userId) return
+      try { await supabase.from('user_profiles').delete().eq('user_id', userId) } catch (e) {
+        console.error('wa rollback profile failed', e)
+      }
+      try { await supabase.auth.admin.deleteUser(userId) } catch (e) {
+        console.error('wa rollback user failed', e)
+      }
+    }
+
     const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
       type: 'magiclink',
       email: syntheticEmail,
     })
-    if (linkErr || !linkData) throw linkErr || new Error('generateLink failed')
+    if (linkErr || !linkData) {
+      await rollbackNewUser()
+      throw linkErr || new Error('generateLink failed')
+    }
 
-    // Exchange the hashed token for access+refresh tokens.
-    // Prefer POST /verify (JSON body). GET+redirect:manual used to fail every
-    // login: GoTrue returns 302 with tokens in Location#hash, and Response.ok
-    // is false for 3xx — so we treated a successful exchange as failure.
     const props = linkData.properties || ({} as { action_link?: string; hashed_token?: string })
     const actionLink = props.action_link || ''
     let hashedToken = props.hashed_token || ''
@@ -152,44 +239,19 @@ serve(async (req) => {
         || actionUrl.searchParams.get('token_hash')
         || ''
     }
-    if (!hashedToken) throw new Error('Magic link token missing')
-
-    let access_token: string | null = null
-    let refresh_token: string | null = null
-    let expires_in: string | null = null
-
-    const postRes = await fetch(`${supabaseUrl}/auth/v1/verify`, {
-      method: 'POST',
-      headers: {
-        apikey: anonKey,
-        Authorization: `Bearer ${anonKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ type: 'magiclink', token_hash: hashedToken }),
-    })
-    if (postRes.ok) {
-      const body = await postRes.json().catch(() => ({} as Record<string, unknown>))
-      access_token = (body.access_token as string) || null
-      refresh_token = (body.refresh_token as string) || null
-      expires_in = body.expires_in != null ? String(body.expires_in) : '3600'
-    } else {
-      const getRes = await fetch(
-        `${supabaseUrl}/auth/v1/verify?token=${encodeURIComponent(hashedToken)}&type=magiclink`,
-        { method: 'GET', headers: { apikey: anonKey }, redirect: 'manual' }
-      )
-      const location = getRes.headers.get('location') || ''
-      const hashPart = location.includes('#') ? location.split('#')[1] : ''
-      const params = new URLSearchParams(hashPart)
-      access_token = params.get('access_token')
-      refresh_token = params.get('refresh_token')
-      expires_in = params.get('expires_in')
-      // Do NOT require getRes.ok — 302 with tokens in Location is success.
-      if (!access_token) {
-        console.error('Token exchange failed. POST status:', postRes.status, 'GET status:', getRes.status, 'Location:', location)
-      }
+    if (!hashedToken) {
+      await rollbackNewUser()
+      throw new Error('Magic link token missing')
     }
 
+    const { access_token, refresh_token, expires_in } = await exchangeMagicLinkTokens(
+      supabaseUrl,
+      anonKey,
+      hashedToken,
+    )
+
     if (!access_token) {
+      await rollbackNewUser()
       return new Response(
         JSON.stringify({ error: 'Gagal membuat sesi. Coba lagi.' }),
         { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } }
