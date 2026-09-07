@@ -5,13 +5,10 @@
   let _container;
   let _listEl;
   let _tab = 'diskusi'; // diskusi | usulan
-  let _activeTopic = '';
-  let _usulanKind = 'all';
   let _posts = [];
   let _expandedPostIds = new Set();
   let _expandedBodyIds = new Set();
   let _commentsCache = {};
-  let _followedTopics = new Set();
   let _focusPostId = '';
   let _likePromptIds = new Set();
 
@@ -491,55 +488,6 @@
     });
   }
 
-  async function loadFollows() {
-    const { data, error } = await _opts.supabase
-      .from('board_topic_follows')
-      .select('topic');
-    if (error) return;
-    _followedTopics = new Set((data || []).map((r) => r.topic));
-    syncFollowBtn();
-  }
-
-  function syncFollowBtn() {
-    const btn = _container && _container.querySelector('#msb-follow-topic');
-    if (!btn) return;
-    if (!isDiskusi() || !_activeTopic) {
-      btn.hidden = true;
-      return;
-    }
-    btn.hidden = false;
-    const on = _followedTopics.has(_activeTopic);
-    btn.classList.toggle('is-on', on);
-    btn.textContent = on ? 'Berhenti kabari topik ini' : 'Kabari kalau ada pertanyaan baru di topik ini';
-  }
-
-  async function toggleFollowTopic() {
-    if (!_activeTopic) return;
-    const on = _followedTopics.has(_activeTopic);
-    if (on) {
-      const { error } = await _opts.supabase
-        .from('board_topic_follows')
-        .delete()
-        .eq('user_id', _opts.currentUserId)
-        .eq('topic', _activeTopic);
-      if (error) {
-        _opts.toast('Gagal mengubah langganan.');
-        return;
-      }
-      _followedTopics.delete(_activeTopic);
-    } else {
-      const { error } = await _opts.supabase
-        .from('board_topic_follows')
-        .insert({ user_id: _opts.currentUserId, topic: _activeTopic });
-      if (error) {
-        _opts.toast('Gagal berlangganan topik.');
-        return;
-      }
-      _followedTopics.add(_activeTopic);
-    }
-    syncFollowBtn();
-  }
-
   async function fetchPosts() {
     if (!_listEl) return;
     _listEl.innerHTML = '';
@@ -547,11 +495,9 @@
     let q = _opts.supabase.from('feature_requests_feed').select('*').limit(50);
     if (isDiskusi()) {
       q = q.eq('kind', 'question');
-      if (_activeTopic) q = q.eq('topic', _activeTopic);
       q = q.order('comment_count', { ascending: true }).order('created_at', { ascending: false });
     } else {
-      if (_usulanKind === 'all') q = q.in('kind', ['feature', 'complaint']);
-      else q = q.eq('kind', _usulanKind);
+      q = q.in('kind', ['feature', 'complaint']);
       q = q.order('like_count', { ascending: false }).order('created_at', { ascending: false });
     }
     const { data, error } = await q;
@@ -724,16 +670,12 @@
     _container.querySelectorAll('.msb-tab').forEach((btn) => {
       btn.classList.toggle('is-active', btn.dataset.tab === _tab);
     });
-    const topicRow = _container.querySelector('#msb-topics');
-    const usulanFilters = _container.querySelector('#msb-usulan-filters');
     const rules = _container.querySelector('#msb-rules');
     const heroTitle = _container.querySelector('#msb-hero-title');
     const heroSub = _container.querySelector('#msb-hero-sub');
     const openBtn = _container.querySelector('#msb-open-form');
     const ctaBtn = _container.querySelector('#msb-cta-open');
     const ctaText = _container.querySelector('#msb-cta-text');
-    if (topicRow) topicRow.hidden = !isDiskusi();
-    if (usulanFilters) usulanFilters.hidden = isDiskusi();
     if (rules) rules.hidden = !isDiskusi();
     if (heroTitle) heroTitle.textContent = isDiskusi() ? 'Komunitas' : 'Ajukan Fitur';
     if (heroSub) {
@@ -748,32 +690,11 @@
         ? 'Punya pertanyaan yang pernah kamu alami? Tanya di sini. Jawab yang belum terjawab kalau kamu pernah melewatinya.'
         : 'Punya ide atau menemukan hal yang mengganggu? Sampaikan masukanmu, komunitas akan mendukung dan tim LarisID akan meninjaunya.';
     }
-    _container.querySelectorAll('#msb-topics .msb-filter').forEach((btn) => {
-      btn.classList.toggle('is-active', (btn.dataset.topic || '') === _activeTopic);
-    });
-    _container.querySelectorAll('#msb-usulan-filters .msb-filter').forEach((btn) => {
-      btn.classList.toggle('is-active', btn.dataset.kind === _usulanKind);
-    });
     syncFormFields();
-    syncFollowBtn();
   }
 
   function switchTab(tab) {
     _tab = tab === 'usulan' ? 'usulan' : 'diskusi';
-    _posts = [];
-    syncChrome();
-    fetchPosts();
-  }
-
-  function switchTopic(topic) {
-    _activeTopic = topic || '';
-    _posts = [];
-    syncChrome();
-    fetchPosts();
-  }
-
-  function switchUsulanKind(kind) {
-    _usulanKind = kind || 'all';
     _posts = [];
     syncChrome();
     fetchPosts();
@@ -792,14 +713,15 @@
 
   function applyLaunchOpts() {
     if (_opts.initialTab === 'usulan' || _opts.initialTab === 'diskusi') _tab = _opts.initialTab;
-    if (_opts.prefillTopic && TOPICS.includes(_opts.prefillTopic)) _activeTopic = _opts.prefillTopic;
     _focusPostId = _opts.focusPostId || '';
-    if (_opts.prefillTitle) {
+    if (_opts.prefillTitle || _opts.prefillTopic) {
       openForm();
       const title = _container.querySelector('#msb-title');
-      if (title && !title.value) title.value = _opts.prefillTitle;
+      if (title && _opts.prefillTitle && !title.value) title.value = _opts.prefillTitle;
       const topicSel = _container.querySelector('#msb-topic');
-      if (topicSel && _opts.prefillTopic) topicSel.value = _opts.prefillTopic;
+      if (topicSel && _opts.prefillTopic && TOPICS.includes(_opts.prefillTopic)) {
+        topicSel.value = _opts.prefillTopic;
+      }
     }
     syncChrome();
   }
@@ -855,18 +777,6 @@
         padding: 8px 16px; border-radius: 999px; font-size: .9rem; font-weight: 750; cursor: pointer;
       }
       .msb-tab.is-active { background: var(--msb-red); border-color: var(--msb-red); color: #fff; }
-      .msb-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
-      .msb-filters { display: flex; gap: 8px; flex-wrap: wrap; }
-      .msb-filter {
-        border: 1px solid #D1D5DB; background: #fff; color: #374151;
-        padding: 7px 14px; border-radius: 999px; font-size: .875rem; font-weight: 600; cursor: pointer;
-      }
-      .msb-filter.is-active { background: var(--msb-red); border-color: var(--msb-red); color: #fff; }
-      .msb-follow {
-        border: 1px dashed #D1D5DB; background: #fff; color: #374151;
-        padding: 6px 12px; border-radius: 999px; font-size: .78rem; font-weight: 650; cursor: pointer;
-      }
-      .msb-follow.is-on { border-style: solid; border-color: var(--msb-red); color: var(--msb-red); }
       .msb-btn-primary {
         display: inline-flex; align-items: center; gap: 6px;
         background: var(--msb-red); color: #fff; border: none;
@@ -1013,24 +923,17 @@
     document.head.appendChild(style);
   }
 
-  function topicButtonsHtml() {
-    const all = `<button type="button" class="msb-filter is-active" data-topic="">Semua</button>`;
-    const rest = TOPICS.map((t) => `<button type="button" class="msb-filter" data-topic="${_opts.esc(t)}">${_opts.esc(t)}</button>`).join('');
-    return all + rest;
-  }
-
   function mount(container, options) {
     _opts = options;
     _container = container;
 
-    if (container.dataset.communityBoardMounted === 'msb-v6') {
+    if (container.dataset.communityBoardMounted === 'msb-v7') {
       _listEl = container.querySelector('#msb-list');
       applyLaunchOpts();
-      loadFollows();
       fetchPosts();
       return;
     }
-    container.dataset.communityBoardMounted = 'msb-v6';
+    container.dataset.communityBoardMounted = 'msb-v7';
     injectStyles();
 
     container.innerHTML = `
@@ -1055,15 +958,6 @@
             <strong>Bagikan proses dan pelajaran.</strong> Niche, supplier, margin pribadi tidak perlu dibagikan di sini — pakai Kirim Pesan.
             Jawab pertanyaan yang belum terjawab kalau kamu pernah mengalaminya.
           </p>
-          <div class="msb-toolbar">
-            <div class="msb-filters" id="msb-topics" role="tablist" aria-label="Topik diskusi">${topicButtonsHtml()}</div>
-            <div class="msb-filters" id="msb-usulan-filters" hidden role="tablist" aria-label="Filter usulan">
-              <button type="button" class="msb-filter is-active" data-kind="all">Semua</button>
-              <button type="button" class="msb-filter" data-kind="feature">Fitur</button>
-              <button type="button" class="msb-filter" data-kind="complaint">Keluhan</button>
-            </div>
-            <button type="button" class="msb-follow" id="msb-follow-topic" hidden>Kabari kalau ada pertanyaan baru di topik ini</button>
-          </div>
 
           <div class="msb-form" id="msb-form-panel" hidden>
             <div id="msb-kind-wrap" hidden>
@@ -1106,15 +1000,6 @@
     container.querySelectorAll('.msb-tab').forEach((btn) => {
       btn.addEventListener('click', () => switchTab(btn.dataset.tab));
     });
-    container.querySelector('#msb-topics')?.addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-topic]');
-      if (btn) switchTopic(btn.dataset.topic || '');
-    });
-    container.querySelector('#msb-usulan-filters')?.addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-kind]');
-      if (btn) switchUsulanKind(btn.dataset.kind);
-    });
-    container.querySelector('#msb-follow-topic')?.addEventListener('click', () => { void toggleFollowTopic(); });
     container.querySelector('#msb-open-form')?.addEventListener('click', openForm);
     container.querySelector('#msb-cta-open')?.addEventListener('click', openForm);
     container.querySelector('#msb-cancel')?.addEventListener('click', closeForm);
@@ -1219,7 +1104,6 @@
       }
     });
 
-    loadFollows();
     fetchPosts();
   }
 

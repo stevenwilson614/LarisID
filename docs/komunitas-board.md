@@ -13,7 +13,9 @@ Two tabs. Do not add a third.
 | **Diskusi** | `question` + optional `topic` | unanswered (`comment_count = 0`) first, then newest | yes |
 | **Ajukan Fitur** | `feature` / `complaint` | likes desc, then newest | no |
 
-Topic chips (Diskusi only, all low-secrecy):
+Topic chips and Fitur/Keluhan browse filters are **deferred** while the board is empty (they clutter an empty list). Compose still offers an optional topic select. Re-add browse filters when volume warrants it.
+
+Allowed topics (low-secrecy):
 
 `Foto & Deskripsi` · `Packing & Ongkir` · `Iklan Shopee` · `Kebijakan Shopee` · `Cara Baca Data LarisID` · `Cerita & Pelajaran`
 
@@ -40,7 +42,7 @@ Public Diskusi is for **process and lessons**. Niche, supplier, margin, and winn
 `notify-feature-board` (deploy: `bash scripts/deploy-function-selfhost.sh notify-feature-board`):
 
 - New comment → author + likers + other commenters. CTA opens the thread, not the site root.
-- `kind=new_question` → users who opted in via `board_topic_follows` for that topic (“Kabari kalau ada pertanyaan baru di topik ini”).
+- `kind=new_question` → users who opted in via `board_topic_follows` for that topic. (UI opt-in is deferred with topic browse filters; schema + notify path remain.)
 - `kind=resolved` → watchers when an usulan is marked done (admin).
 
 No email without a reason. No daily user blasts. WhatsApp question digests are v2.
