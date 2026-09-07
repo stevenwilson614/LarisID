@@ -2092,11 +2092,13 @@ async function gptSeedUsageFlags() {
 let _gptJourney = { deepdiveCount: 0, firstDeepDiveAt: null, loaded: false };
 let _gptDiveSeen = 0; // dives this session, for first_dive / second_dive steps
 let _profileWa = undefined; // undefined = not loaded; '' = none
+let _profileDisplayName = undefined;
 
 function resetGptJourney() {
   _gptJourney = { deepdiveCount: 0, firstDeepDiveAt: null, loaded: false };
   _gptDiveSeen = 0;
   _profileWa = undefined;
+  _profileDisplayName = undefined;
 }
 
 function userNeverDeepDived() {
@@ -2141,6 +2143,37 @@ async function saveProfileWaNumber(wa) {
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' });
   } catch (_) {}
+}
+
+function _looksLikePhoneName(s) {
+  const raw = String(s || '').trim();
+  if (!raw) return false;
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length < 9 || digits.length > 15) return false;
+  if (!/^(62|0?8)/.test(digits)) return false;
+  return /^[0-9]+$/.test(raw.replace(/[\s+()-]/g, ''));
+}
+
+function _isRealPersonName(s) {
+  const raw = String(s || '').trim();
+  if (raw.length < 2 || raw.length > 80) return false;
+  if (_looksLikePhoneName(raw)) return false;
+  if (/@/.test(raw)) return false;
+  return /[A-Za-z\u00C0-\u024F\u1E00-\u1EFF]/.test(raw);
+}
+
+function _isWaUser(user) {
+  const u = user || currentUser;
+  if (!u) return false;
+  if (/@wa\.larisid\.com$/i.test(String(u.email || ''))) return true;
+  return String(u.user_metadata?.provider || '').toLowerCase() === 'whatsapp';
+}
+
+function _storedPersonName(user, profileName) {
+  const meta = String(user?.user_metadata?.full_name || '').trim();
+  if (_isRealPersonName(meta)) return meta;
+  if (_isRealPersonName(profileName)) return String(profileName).trim();
+  return '';
 }
 
 const _LID_WA_CAPTURE_SKIP_KEY = '_lid_wa_capture_skip_v1';
@@ -2245,6 +2278,97 @@ async function submitWaCapture() {
     showErr('Gagal menyimpan. Coba lagi.');
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Simpan nomor'; }
+  }
+}
+
+let _nameCaptureThenOnboarding = false;
+
+function openNameCapture() {
+  const overlay = $('name-capture');
+  if (!overlay) return false;
+  const err = $('name-capture-error');
+  if (err) { err.textContent = ''; err.style.display = 'none'; }
+  const input = $('name-capture-input');
+  overlay.classList.add('open');
+  setTimeout(() => input?.focus(), 80);
+  void logUserEvent('name_capture_shown', { ui: 'gpt' });
+  return true;
+}
+
+function closeNameCapture() {
+  $('name-capture')?.classList.remove('open');
+}
+
+function _nameCaptureContinue() {
+  if (_nameCaptureThenOnboarding) offerOnboardingAfterSignin();
+  else scheduleProductRowsNotice({ fromRestore: false, isNewSignup: false });
+}
+
+async function maybeOfferNameCapture(opts) {
+  _nameCaptureThenOnboarding = !!(opts && opts.thenOnboarding);
+  if (adminIsPreviewing() || !_isWaUser() || !currentUser) return false;
+  let profileName = _profileDisplayName;
+  if (profileName === undefined && _supabase) {
+    try {
+      const { data } = await _supabase.from('user_profiles')
+        .select('display_name, first_name')
+        .eq('user_id', currentUser.id).maybeSingle();
+      profileName = String(data?.display_name || data?.first_name || '').trim();
+      _profileDisplayName = profileName;
+    } catch (_) {
+      profileName = '';
+    }
+  }
+  if (_storedPersonName(currentUser, profileName)) return false;
+  return openNameCapture();
+}
+
+async function saveUserDisplayName(name) {
+  const clean = String(name || '').trim().replace(/\s+/g, ' ');
+  if (!_isRealPersonName(clean) || !_supabase || !currentUser) return false;
+  try {
+    await _supabase.auth.updateUser({ data: { full_name: clean } });
+  } catch (_) {}
+  try {
+    await _supabase.from('user_profiles').upsert({
+      user_id: currentUser.id,
+      display_name: clean,
+      first_name: clean.split(/\s+/)[0] || clean,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' });
+  } catch (_) {}
+  currentUser.user_metadata = Object.assign({}, currentUser.user_metadata, { full_name: clean });
+  _profileDisplayName = clean;
+  try {
+    const sess = _authLoad();
+    if (sess) { sess.user = currentUser; _authSave(sess); }
+  } catch (_) {}
+  updateAccountUI();
+  return true;
+}
+
+async function submitNameCapture() {
+  const err = $('name-capture-error');
+  const btn = $('name-capture-save');
+  const raw = ($('name-capture-input')?.value || '').trim();
+  const showErr = (msg) => { if (!err) return; err.textContent = msg; err.style.display = 'block'; };
+  if (!_isRealPersonName(raw)) {
+    showErr(_looksLikePhoneName(raw)
+      ? 'Pakai nama kamu, bukan nomor HP.'
+      : 'Masukkan nama asli kamu (minimal 2 huruf).');
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  try {
+    const ok = await saveUserDisplayName(raw);
+    if (!ok) { showErr('Gagal menyimpan. Coba lagi.'); return; }
+    void logUserEvent('name_capture_saved', { ui: 'gpt' });
+    closeNameCapture();
+    _nameCaptureContinue();
+  } catch (_) {
+    showErr('Gagal menyimpan. Coba lagi.');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Simpan nama'; }
   }
 }
 
@@ -2963,6 +3087,13 @@ function setHeaderAvatar(shortName) {
   }
 }
 
+function accountPersonName(profileName) {
+  const stored = _storedPersonName(currentUser, profileName);
+  if (stored) return stored;
+  if (_isWaUser() || _looksLikePhoneName(String(currentUser?.email || '').split('@')[0])) return 'Akun';
+  return String(currentUser?.user_metadata?.full_name || currentUser?.email || 'Akun').trim() || 'Akun';
+}
+
 async function refreshAccountHeadshot() {
   if (!currentUser || !_supabase) {
     _accountHeadshotUrl = null;
@@ -2976,8 +3107,8 @@ async function refreshAccountHeadshot() {
       .maybeSingle();
     if (error) throw error;
     _accountHeadshotUrl = data?.headshot_url || null;
-    const name = data?.display_name || data?.first_name ||
-      currentUser.user_metadata?.full_name || currentUser.email || 'Akun';
+    _profileDisplayName = String(data?.display_name || data?.first_name || '').trim();
+    const name = accountPersonName(_profileDisplayName);
     const short = String(name).split(' ')[0] || 'Akun';
     setHeaderName(short);
     setHeaderAvatar(short);
@@ -2999,7 +3130,7 @@ function updateAccountUI() {
   if (currentUser) {
     if (authH) authH.hidden = true;
     if (userH) userH.hidden = false;
-    const name = currentUser.user_metadata?.full_name || currentUser.email || 'Akun';
+    const name = accountPersonName();
     const short = name.split(' ')[0] || 'Akun';
     setHeaderName(short);
     setHeaderAvatar(short);
@@ -3576,6 +3707,10 @@ async function verifyWhatsappOtp() {
     _authSave(session);
     closeAuthModal();
     await _authOnSignIn(session);
+    const wa = _waNormalisePhone(_waPhone)
+      || _waNormalisePhone(session.user?.phone)
+      || _waNormalisePhone(session.user?.user_metadata?.phone_number);
+    if (wa) void saveProfileWaNumber(wa);
   } catch (_) {
     showErr('Gagal terhubung ke server. Coba lagi.');
   } finally {
@@ -3818,12 +3953,19 @@ async function _authOnSignIn(session, opts) {
   // answered without the CTA ever being pressed.
   // Google users without a WhatsApp number get #wa-capture first (also
   // skippable). That is not onboarding and must not run on session restore.
+  // WA users without a real name get #name-capture (required, including on
+  // restore) — identity, not onboarding; city/category stay in-page.
   const needsOnboarding = !hadPending && !resumedFinder && state.onboarding.step !== 'done' && !finderIsComplete();
   if (needsOnboarding) {
     state.onboarding.promptedPostSignin = true;
     saveLocalState();
   }
-  if (!hadPending && !resumedFinder && !(opts && opts.fromRestore)) {
+  const deferPostSignin = !hadPending && !resumedFinder;
+  if (deferPostSignin && _isWaUser() && !adminIsPreviewing()) {
+    void maybeOfferNameCapture({ thenOnboarding: needsOnboarding }).then((opened) => {
+      if (!opened && needsOnboarding) offerOnboardingAfterSignin();
+    });
+  } else if (deferPostSignin && !(opts && opts.fromRestore)) {
     void maybeOfferWaCapture({ thenOnboarding: needsOnboarding });
   } else if (needsOnboarding) {
     offerOnboardingAfterSignin();
@@ -6597,8 +6739,8 @@ async function fillSerupaContent(opts = {}) {
 
 /** First name only — "Halo Steven", not "Halo steven@gmail.com". */
 function aiGreetingName() {
-  const raw = String(currentUser?.user_metadata?.full_name || '').trim();
-  if (raw) return raw.split(/\s+/)[0].slice(0, 24);
+  const stored = _storedPersonName(currentUser, _profileDisplayName);
+  if (stored) return stored.split(/\s+/)[0].slice(0, 24);
   return 'kamu';
 }
 
@@ -12348,8 +12490,8 @@ function openUserProfile(userId) {
       onSignOut: () => { if (confirm('Keluar dari akun?')) void signOut(); },
       onProfileChanged: (row) => {
         _accountHeadshotUrl = row?.headshot_url || null;
-        const name = row?.display_name || row?.first_name ||
-          currentUser.user_metadata?.full_name || currentUser.email || 'Akun';
+        _profileDisplayName = String(row?.display_name || row?.first_name || '').trim();
+        const name = accountPersonName(_profileDisplayName);
         const short = String(name).split(' ')[0] || 'Akun';
         setHeaderName(short);
         setHeaderAvatar(short);
@@ -20679,8 +20821,22 @@ function admWaLink(wa) {
   return digits ? `https://wa.me/${digits}` : '';
 }
 
+function admWaFromEmail(email) {
+  const m = String(email || '').match(/^(\+?62\d{8,13})@wa\.larisid\.com$/i);
+  return m ? m[1] : '';
+}
+
 function admUserWa(u) {
-  return String(u?.wa_number || '').trim();
+  const direct = String(u?.wa_number || '').trim();
+  if (direct) return direct;
+  return admWaFromEmail(u?.email);
+}
+
+function admDisplayName(u) {
+  const raw = String(u?.display_name || '').trim();
+  if (_isRealPersonName(raw)) return raw;
+  if (/@wa\.larisid\.com$/i.test(String(u?.email || '')) || _looksLikePhoneName(raw)) return 'Pengguna WA';
+  return raw || u?.email || 'Pengguna';
 }
 
 function adminFilteredUsers() {
@@ -20691,7 +20847,7 @@ function adminFilteredUsers() {
     if (tipe !== 'all' && admSellerStatus(u) !== tipe) return false;
     if (cat && !(u.categories || []).includes(cat)) return false;
     if (!q) return true;
-    const hay = [u.display_name, u.email, admUserWa(u), u.region, u.city].join(' ').toLowerCase();
+    const hay = [admDisplayName(u), u.email, admUserWa(u), u.region, u.city].join(' ').toLowerCase();
     return hay.includes(q);
   });
 }
@@ -20732,7 +20888,7 @@ function renderAdminUsers() {
     return;
   }
   body.innerHTML = slice.map((u, i) => {
-    const name = u.display_name || u.email || 'User';
+    const name = admDisplayName(u);
     const loc = u.region || u.city || '—';
     const wa = admUserWa(u);
     const waHref = admWaLink(wa);
@@ -20791,7 +20947,7 @@ function adminExportUsers() {
   const lines = [header.join(',')].concat(rows.map(u => {
     const tipe = admSellerStatus(u) === 'existing' ? 'Experienced' : admSellerStatus(u) === 'first_time' ? 'Baru' : '';
     const cells = [
-      u.display_name || '',
+      admDisplayName(u),
       u.email || '',
       admUserWa(u),
       u.region || u.city || '',
@@ -21115,6 +21271,10 @@ function wireUi() {
   });
   $('wa-capture-input')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); void submitWaCapture(); }
+  });
+  $('name-capture-save')?.addEventListener('click', () => void submitNameCapture());
+  $('name-capture-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); void submitNameCapture(); }
   });
 
   $('product-rows-notice-go')?.addEventListener('click', () => {

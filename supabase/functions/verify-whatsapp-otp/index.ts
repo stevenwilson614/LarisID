@@ -94,6 +94,7 @@ serve(async (req) => {
 
     // Try to create the user — if already exists, look up their ID
     let isNew = false
+    let userId: string | null = null
     const createResult = await supabase.auth.admin.createUser({
       email: syntheticEmail,
       email_confirm: true,
@@ -114,8 +115,21 @@ serve(async (req) => {
       const { data: existingId, error: lookupErr } = await supabase
         .rpc('get_user_id_by_email', { p_email: syntheticEmail })
       if (lookupErr || !existingId) throw lookupErr || new Error('Cannot resolve existing user')
+      userId = String(existingId)
     } else {
       isNew = true
+      userId = createResult.data?.user?.id || null
+    }
+
+    // Admin Users + notify prefs read user_profiles.wa_number — write it on
+    // every OTP login so older WA accounts are not stuck with an empty WA column.
+    if (userId) {
+      const { error: profileErr } = await supabase.from('user_profiles').upsert({
+        user_id: userId,
+        wa_number: phone,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' })
+      if (profileErr) console.error('wa profile upsert failed', profileErr)
     }
 
     // Generate a one-use magic link and exchange it for a real session

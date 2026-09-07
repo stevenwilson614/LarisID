@@ -3605,8 +3605,10 @@ body.ddtp-open #btn-tracker svg .ic-f { fill: var(--accent); stroke: none; }
 }
 .auth-wa-input input { padding-left: 40px; }
 #wa-capture .nudge-title .auth-wa-label { display: flex; align-items: center; gap: 8px; }
-#wa-capture .field { margin: 4px 0 8px; }
-#wa-capture .nudge-actions { margin-top: 4px; }
+#wa-capture .field, #name-capture .field { margin: 4px 0 8px; }
+#wa-capture .nudge-actions, #name-capture .nudge-actions { margin-top: 4px; }
+#name-capture .nudge-actions { justify-content: stretch; }
+#name-capture .nudge-actions .btn-primary { width: 100%; }
 .auth-wa-hint { font-size: .78rem; color: var(--muted); margin: 0 0 10px; line-height: 1.4; }
 .auth-wa-resend { text-align: center; margin: 10px 0 0; font-size: .78rem; }
 .auth-wa-resend a { color: var(--auth-wa, var(--accent)); font-weight: 600; cursor: pointer; }
@@ -8901,6 +8903,21 @@ body:has(.modal-overlay.open) .msg-steven-fab {
   </div>
 </div>
 
+<div class="modal-overlay" id="name-capture">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="name-capture-title">
+    <h3 id="name-capture-title" class="nudge-title">Isi nama kamu</h3>
+    <p class="nudge-sub">Nomor WhatsApp sudah masuk. Nama dipakai di akun kamu — bukan nomor HP.</p>
+    <div class="field">
+      <label for="name-capture-input">Nama</label>
+      <input id="name-capture-input" type="text" autocomplete="name" maxlength="80" placeholder="Nama lengkap atau nama panggilan">
+    </div>
+    <div class="auth-err" id="name-capture-error"></div>
+    <div class="nudge-actions">
+      <button type="button" class="btn-primary" id="name-capture-save">Simpan nama</button>
+    </div>
+  </div>
+</div>
+
 <!-- Deep Dive → Pantauan promo retired 2026-09-05: end-of-dive #ddr-alert
      card replaced the mid-dive modal. -->
 
@@ -9075,7 +9092,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 </aside>
 
 <script src="/js/laris-merdeka.js?v=20260816b" defer></script>
-<script src="/js/changelog.js?v=20260906c" defer></script>
+<script src="/js/changelog.js?v=20260907a" defer></script>
 <script defer src="/js/gpt-dir-filters.js?v=20260906b"></script>
 <script defer src="/js/gpt-dir-hero.js?v=20260824a"></script>
 <script defer src="/js/gpt-dir-home.js?v=20260824d"></script>
@@ -9095,6 +9112,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
      larisLoadScript() when the admin view actually renders. -->
 <script src="/js/peta-peluang.js?v=20260906b" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
-<script src="/js/gpt-app.js?v=20260907g" defer></script>
+<script src="/js/gpt-app.js?v=20260907h" defer></script>
 </body>
 </html>

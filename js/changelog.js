@@ -11,6 +11,16 @@
 // A plain string is still accepted and renders with no tech line.
 window.LARIS_CHANGELOG = [
   {
+    date: '2026-09-07',
+    title: 'Daftar WhatsApp sekarang minta nama',
+    items: [
+      {
+        text: 'Kalau kamu daftar atau masuk pakai WhatsApp dan nama belum tersimpan, kami minta nama kamu dulu. Jadi akun tidak cuma tampil sebagai nomor HP.',
+        tech: '#name-capture after WA OTP (required, including session restore); verify-whatsapp-otp upserts user_profiles.wa_number; admin_user_directory skips phone-like names and derives WA from auth.phone / @wa.larisid.com (20260907120000).',
+      },
+    ],
+  },
+  {
     date: '2026-09-06',
     title: 'Laris AI jawab lebih cepat dan lebih jujur soal apa yang kami punya',
     items: [

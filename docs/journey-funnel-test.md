@@ -4,7 +4,7 @@ Use this before changing Beranda, onboarding, Cari Produk, Deep Dive, or Favorit
 
 ## Must pass
 
-1. First login: 4-step finder on Beranda (`#home-finder`). No blocking onboarding popup. Signup modal shows WhatsApp first and larger; Google is below. After a Google sign-in with no `wa_number`, `#wa-capture` may appear and must stay skippable (`Nanti dulu`).
+1. First login: 4-step finder on Beranda (`#home-finder`). No blocking onboarding popup. Signup modal shows WhatsApp first and larger; Google is below. After a Google sign-in with no `wa_number`, `#wa-capture` may appear and must stay skippable (`Nanti dulu`). After a WhatsApp signup/login with no real name, `#name-capture` must appear, cannot be skipped, and must reject a phone number as the name. Admin → Daftar Pengguna: WA accounts show a name (or “Pengguna WA”), the number in the WA column (not Nama), and `…@wa.larisid.com` in Email.
 2. After complete: prefs drawer / profile nudge can edit city, category, experience.
 3. Finder "Temukan Produk" for a signed-in user with `deepdive_count = 0` auto-opens a Deep Dive on the first listing row. If it does not, `finder_auto_deepdive_skipped` has a reason (`no_listings` / `view_changed` / `anon_seen` / `already_once`).
 4. Cari Produk: first **row** click for a dd=0 user opens Deep Dive and logs `dir_first_click_deepdive`.
