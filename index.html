@@ -1380,7 +1380,8 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
 .dd-title { font-size: 1.35rem; font-weight: 650; margin: 0 0 6px; line-height: 1.3; letter-spacing: -.02em; }
 .dd-sub { font-size: .875rem; color: var(--muted); margin: 0; line-height: 1.5; }
 
-/* Garuda loading — layered body + tool. Tools scan; the rock/body stays put. */
+/* Garuda loading poses — directory + deep dive. Motion is short and small
+   so it reads during a ~1s fetch. .gl-load spans the directory grid. */
 .gl-load {
   grid-column: 1 / -1;
   display: flex;
@@ -1388,98 +1389,88 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
   align-items: center;
   justify-content: center;
   padding: 28px 16px 36px;
-  min-height: 260px;
+  min-height: 220px;
   text-align: center;
 }
 .gl-load-stage {
   position: relative;
-  width: 200px;
+  width: 168px;
   line-height: 0;
 }
 .gl-load--magnify .gl-load-stage { width: 188px; }
-.gl-load-shadow {
-  position: absolute;
-  left: 18%;
-  right: 18%;
-  bottom: 2%;
-  height: 12%;
-  background: radial-gradient(ellipse at center, rgba(26,26,26,.16), transparent 72%);
-  pointer-events: none;
-}
-.gl-load-body {
+.gl-load-breathe { position: relative; animation: gl-breathe 1.2s ease-in-out infinite; }
+.gl-load--binocs .gl-load-stage { animation: gl-scan 1.4s ease-in-out infinite; }
+.gl-load-img,
+.gl-load-tool img {
   display: block;
   width: 100%;
   height: auto;
-  animation: gl-breathe 2.4s ease-in-out infinite;
 }
 .gl-load-tool {
   position: absolute;
+  inset: 0;
   pointer-events: none;
-  line-height: 0;
-  animation: gl-tool-scan 2.4s ease-in-out infinite;
+  overflow: hidden;
 }
-.gl-load-tool img { display: block; width: 100%; height: auto; }
 .gl-load--binocs .gl-load-tool {
-  width: 64%;
-  left: 18%;
-  top: 4%;
+  animation: gl-tool-scan 1.35s ease-in-out infinite;
+}
+.gl-load--binocs .gl-load-tool img {
+  clip-path: ellipse(32% 12% at 52% 23%);
 }
 .gl-load--magnify .gl-load-tool {
-  width: 52%;
-  left: 14%;
-  top: 8%;
+  animation: gl-tool-inspect 1.15s ease-in-out infinite;
 }
-.gl-load-spark {
+.gl-load--magnify .gl-load-tool img {
+  clip-path: ellipse(24% 22% at 60% 34%);
+}
+.gl-load-lid { display: none; }
+.gl-load--magnify .gl-load-lid {
+  display: block;
   position: absolute;
-  width: 8px;
-  height: 8px;
-  background: #C9974B;
-  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  left: 48%;
+  top: 25%;
+  width: 24%;
+  height: 16%;
+  border-radius: 50%;
+  background: #efe8dc;
+  transform: scaleY(0);
+  transform-origin: 50% 40%;
+  animation: gl-blink 2.1s ease-in-out infinite;
   pointer-events: none;
-  animation: gl-twinkle 1.8s ease-in-out infinite;
 }
-.gl-load--binocs .gl-load-spark--a { left: 74%; top: 8%; }
-.gl-load--binocs .gl-load-spark--b { left: 80%; top: 16%; width: 6px; height: 6px; animation-delay: .7s; }
-.gl-load--magnify .gl-load-spark--a { left: 62%; top: 10%; }
-.gl-load--magnify .gl-load-spark--b { left: 70%; top: 20%; width: 6px; height: 6px; animation-delay: .7s; }
 .gl-load-label {
-  margin: 12px 0 0;
+  margin: 10px 0 0;
   font-size: .8rem;
   font-weight: 550;
-  color: #5c574e;
-  min-height: 1.3em;
+  color: var(--muted);
 }
-.gl-load-dots { display: flex; gap: 5px; margin-top: 8px; }
-.gl-load-dots i {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #c9c2b4;
-  animation: gl-dot 1.2s ease-in-out infinite;
-}
-.gl-load-dots i:nth-child(2) { animation-delay: .15s; }
-.gl-load-dots i:nth-child(3) { animation-delay: .3s; }
 @keyframes gl-breathe {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-2px) scale(1.015); }
+}
+@keyframes gl-scan {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(2.4deg); }
 }
 @keyframes gl-tool-scan {
-  0%, 100% { transform: translateX(-12%) rotate(-5deg); }
-  50% { transform: translateX(12%) rotate(5deg); }
+  0%, 100% { transform: translateX(-3px); }
+  50% { transform: translateX(3px); }
 }
-@keyframes gl-twinkle {
-  0%, 100% { opacity: .2; transform: scale(.75); }
-  50% { opacity: 1; transform: scale(1); }
+@keyframes gl-tool-inspect {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(3px, -2px); }
 }
-@keyframes gl-dot {
-  0%, 100% { background: #c9c2b4; transform: scale(1); }
-  40% { background: #6b665c; transform: scale(1.15); }
+@keyframes gl-blink {
+  0%, 78%, 100% { transform: scaleY(0); }
+  86% { transform: scaleY(1); }
+  92% { transform: scaleY(0); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .gl-load-body,
+  .gl-load-breathe,
+  .gl-load--binocs .gl-load-stage,
   .gl-load-tool,
-  .gl-load-spark,
-  .gl-load-dots i {
+  .gl-load--magnify .gl-load-lid {
     animation: none;
   }
 }
@@ -9174,6 +9165,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
      larisLoadScript() when the admin view actually renders. -->
 <script src="/js/peta-peluang.js?v=20260906b" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
-<script src="/js/gpt-app.js?v=20260907k" defer></script>
+<script src="/js/gpt-app.js?v=20260907j" defer></script>
 </body>
 </html>

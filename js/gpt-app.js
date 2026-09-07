@@ -1862,52 +1862,31 @@ function imgThumb(url) {
   return /^https:\/\/cf\.shopee\.co\.id\/file\/[\w-]+$/.test(u) ? u + '_tn.webp' : u;
 }
 
-const GARUDA_LOAD = {
-  binocs: {
-    body: { src: '/images/brand/mascot-load-binocs-body.webp', w: 308, h: 433 },
-    tool: { src: '/images/brand/mascot-load-binocs-tool.webp', w: 295, h: 183 },
-    lines: ['Nyari produk yang lagi laris…', 'Ngecek tren omset…'],
-  },
-  magnify: {
-    body: { src: '/images/brand/mascot-load-magnify-body.webp', w: 247, h: 345 },
-    tool: { src: '/images/brand/mascot-load-magnify-tool.webp', w: 213, h: 300 },
-    lines: ['Lagi bedah listing ini…', 'Ngitung tren omset…'],
-  },
-};
+const GARUDA_LOAD_POSES = [
+  { id: 'binocs', src: '/images/brand/mascot-load-binocs.webp', w: 496, h: 641 },
+  { id: 'magnify', src: '/images/brand/mascot-load-magnify.webp', w: 483, h: 558 },
+];
 
-function garudaLoadingHtml(poseId, label) {
-  const pose = GARUDA_LOAD[poseId] || GARUDA_LOAD.binocs;
-  const text = label || pose.lines[0];
-  return `<div class="gl-load gl-load--${poseId || 'binocs'}" data-gl-pose="${poseId || 'binocs'}" role="status" aria-label="${esc(text)}">` +
+function garudaLoadingHtml(label) {
+  const pose = GARUDA_LOAD_POSES[Math.random() < 0.5 ? 0 : 1];
+  const text = label || 'Memuat…';
+  return `<div class="gl-load gl-load--${pose.id}" role="status" aria-label="${esc(text)}">` +
     `<div class="gl-load-stage">` +
-      `<div class="gl-load-shadow" aria-hidden="true"></div>` +
-      `<img class="gl-load-body" src="${pose.body.src}" alt="" width="${pose.body.w}" height="${pose.body.h}" decoding="async">` +
-      `<span class="gl-load-tool" aria-hidden="true"><img src="${pose.tool.src}" alt="" width="${pose.tool.w}" height="${pose.tool.h}" decoding="async"></span>` +
-      `<span class="gl-load-spark gl-load-spark--a" aria-hidden="true"></span>` +
-      `<span class="gl-load-spark gl-load-spark--b" aria-hidden="true"></span>` +
+      `<div class="gl-load-breathe">` +
+        `<img class="gl-load-img" src="${pose.src}" alt="" width="${pose.w}" height="${pose.h}" decoding="async">` +
+        `<span class="gl-load-tool" aria-hidden="true"><img src="${pose.src}" alt="" width="${pose.w}" height="${pose.h}" decoding="async"></span>` +
+        `<span class="gl-load-lid" aria-hidden="true"></span>` +
+      `</div>` +
     `</div>` +
     `<p class="gl-load-label">${esc(text)}</p>` +
-    `<div class="gl-load-dots" aria-hidden="true"><i></i><i></i><i></i></div>` +
   `</div>`;
 }
 
-function armGarudaLoadCopy(root) {
-  const el = root?.querySelector?.('.gl-load') || root;
-  if (!el || el._glArmed) return;
-  el._glArmed = true;
-  const pose = GARUDA_LOAD[el.getAttribute('data-gl-pose')];
-  const label = el.querySelector?.('.gl-load-label');
-  if (!pose || !label || pose.lines.length < 2) return;
-  setTimeout(() => { if (label.isConnected) label.textContent = pose.lines[1]; }, 1600);
-}
-
 function preloadGarudaLoaders() {
-  Object.values(GARUDA_LOAD).forEach((p) => {
-    [p.body.src, p.tool.src].forEach((src) => {
-      const im = new Image();
-      im.decoding = 'async';
-      im.src = src;
-    });
+  GARUDA_LOAD_POSES.forEach((p) => {
+    const im = new Image();
+    im.decoding = 'async';
+    im.src = p.src;
   });
 }
 
@@ -14783,6 +14762,8 @@ async function openDeepDive(product, ddOpts = {}) {
   dwellStart(product.category);
   const root = $('deepdive-root');
   if (!root) return;
+  root.innerHTML = garudaLoadingHtml('Memuat data Deep Dive…');
+  scrollPanelToTop();
 
   product = { ...product, _fromListing: true };
   state.deepdiveProduct = product;
@@ -14790,11 +14771,6 @@ async function openDeepDive(product, ddOpts = {}) {
   const kw = product.keyword || '';
   const cacheKey = ddCacheKey(product);
   const cached = ddCacheGet(cacheKey);
-  if (!cached) {
-    root.innerHTML = garudaLoadingHtml('magnify');
-    armGarudaLoadCopy(root);
-    scrollPanelToTop();
-  }
   let peers = [];
   let niche = product._niche || null;
   let history = [];
@@ -20233,20 +20209,11 @@ async function renderDirectory() {
   const home = isDirHomeBrowse();
   const seq = ++_dirRenderSeq;
 
-  const sameScope = (state._dirPoolQ || '') === q
-    && (state._dirPoolCats || '') === cats.join('|')
-    && (state._dirPoolSub || null) === sub;
-  const haveRows = (state.dirPoolListings || []).length > 0;
+  grid.innerHTML = garudaLoadingHtml('Memuat…');
   const trendHost = $('dir-trending-now');
-  if (sameScope && haveRows) {
-    if (trendHost) trendHost.hidden = false;
-  } else {
-    grid.innerHTML = garudaLoadingHtml('binocs');
-    armGarudaLoadCopy(grid);
-    if (trendHost) {
-      trendHost.hidden = true;
-      trendHost.innerHTML = '';
-    }
+  if (trendHost) {
+    trendHost.hidden = false;
+    paintTrendingNow(trendHost, [], { pending: true });
   }
 
   const pool = await resolveListingPool({ q, cats, sub, home });
