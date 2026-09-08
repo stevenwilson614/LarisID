@@ -163,7 +163,7 @@ begin
   -- Jadwal: 8× Selasa 15:00 WIB — Kegiatan 1 … Kegiatan 8
   for i in 1..8 loop
     insert into public.cohort_sessions (
-      cohort_id, title, session_date, start_time, end_time, timezone, starts_at, notes
+      cohort_id, title, session_date, start_time, end_time, timezone, starts_at, notes, meet_url
     )
     select
       v_cid,
@@ -173,7 +173,8 @@ begin
       time '16:30',
       'Asia/Jakarta',
       ((v_dates[i]::text || ' 15:00:00')::timestamp at time zone 'Asia/Jakarta'),
-      'Pertemuan mingguan · Selasa 15:00 WIB'
+      'Pertemuan mingguan · Selasa 15:00 WIB',
+      'https://us06web.zoom.us/j/88393238624?pwd=pavGSKFeAm0leH7lMSiwau0973UiOn.1'
     where not exists (
       select 1 from public.cohort_sessions s
       where s.cohort_id = v_cid

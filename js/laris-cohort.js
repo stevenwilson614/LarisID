@@ -1056,17 +1056,34 @@
       root.innerHTML = '<p class="cohort-muted">Belum ada sesi di kalender.</p>';
       return;
     }
+    // Past calendar days (WIB) = completed — strikethrough the title line.
+    const todayWib = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Jakarta',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
     const api = 'https://api.larisid.com/functions/v1/cohort-calendar-ics';
     const cal = `<p class="cohort-muted" style="margin-bottom:10px;"><a href="webcal://${api.replace(/^https?:\/\//, '')}?cohort=${encodeURIComponent(cid)}">Tambah ke Google Calendar</a></p>`;
     root.innerHTML = cal + sessions.map(s => {
-      const meet = s.meet_url ? `<a href="${esc(s.meet_url)}" target="_blank" rel="noopener">Buka Zoom</a>` : '';
+      const done = s.session_date && s.session_date < todayWib;
+      const isRiseZoom = !!(s.meet_url && String(s.meet_url).includes('88393238624'));
+      const meet = s.meet_url
+        ? `<div style="margin-top:8px;">
+            <a href="${esc(s.meet_url)}" target="_blank" rel="noopener" style="font-weight:700;">Buka Zoom</a>
+            ${isRiseZoom ? `<div class="cohort-muted" style="margin-top:4px;font-size:.72rem;line-height:1.45;">
+              Meeting ID: 883 9323 8624<br>Passcode: 744436
+            </div>` : ''}
+          </div>`
+        : '';
       const roll = asMentor
         ? `<button type="button" class="cohort-btn secondary" data-sid="${esc(s.id)}" data-act="roll">Hadir</button>`
         : '';
-      return `<div class="cohort-card" style="margin-bottom:10px;">
-        <div style="font-weight:800;">${esc(s.title || '')} · ${esc(s.session_date || '')} ${s.start_time ? esc(String(s.start_time).slice(0, 5)) : ''}</div>
-        <div class="cohort-muted">${esc(s.notes || s.location || '')}</div>
-        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">${meet}${roll}</div>
+      const titleLine = `${esc(s.title || '')} · ${esc(s.session_date || '')} ${s.start_time ? esc(String(s.start_time).slice(0, 5)) : ''}`.trim();
+      return `<div class="cohort-card" style="margin-bottom:10px;${done ? 'opacity:.72;' : ''}">
+        <div style="font-weight:800;">${done ? `<span style="text-decoration:line-through;">${titleLine}</span> <span class="cohort-muted" style="font-weight:600;">· selesai</span>` : titleLine}</div>
+        <div class="cohort-muted"${done ? ' style="text-decoration:line-through;"' : ''}>${esc(s.notes || s.location || '')}</div>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;">${meet}${roll}</div>
         <div id="cohort-roll-${esc(s.id)}"></div>
       </div>`;
     }).join('');
