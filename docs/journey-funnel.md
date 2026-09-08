@@ -34,6 +34,7 @@ Onboarding is in-page on Beranda (`state.onboarding`: city → category → expe
 | Scrape-cycle digest | `scrape-digest` edge function | every Deep Dive user, one email per measured scrape landing; WA only if opted in |
 | Langkah minggu ini | `#home-langkah` + `user_weekly_steps` | first_time sellers on Beranda after onboarding |
 | Komunitas | `#btn-community` main nav, `#home-komunitas`, Deep Dive / Cari Produk “Tanya seller lain” | Peer Diskusi + Usulan Fitur. Not under Tentang. Hidden Beranda strip when empty. Keyword-grain prefill only — no price/omset in the post. See [komunitas-board.md](./komunitas-board.md). |
+| Mentor rail | `body.mentor-shell` | Dashboard / Siswa / Jadwal. **Alat seller** accordion (`#btn-side-seller`) opens Cari Produk, Laris AI, Favorit Aku. Real mentors get this shell; platform admins stay on the seller rail unless **Mode mentor**. |
 
 Arm-A names (`nuOnb*`, `dsc*`, `userJourneyTier` 0–3, `larisid_journey_v1`, `#dd-beginner-panel`) do **not** exist in `gpt-app.js`. Do not “fix” them.
 

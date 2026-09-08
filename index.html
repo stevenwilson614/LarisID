@@ -7097,15 +7097,6 @@ body.mentor-shell .side-seller-toggle.is-child-active {
   background: #fff; box-shadow: 0 0 0 1px var(--line);
 }
 body.mentor-shell .side-seller-menu .side-btn { padding-left: 22px; }
-body.mentor-shell #btn-home { order: 0; }
-body.mentor-shell #btn-mentor-dash { order: 1; }
-body.mentor-shell #btn-mentor-siswa { order: 2; }
-body.mentor-shell #btn-mentor-jadwal { order: 3; }
-body.mentor-shell .side-seller { order: 4; }
-body.mentor-shell #btn-community { order: 5; }
-body.mentor-shell .sidebar > .side-section { order: 6; }
-body.mentor-shell #btn-set-lokasi { order: 7; }
-body.mentor-shell .sidebar-foot { order: 8; }
 body.mentor-shell #btn-cohort,
 body.mentor-shell #btn-set-lokasi,
 body.mentor-shell .sidebar > .side-section { display: none !important; }
@@ -7210,6 +7201,18 @@ body:has(.modal-overlay.open) .msg-steven-fab {
       <img class="brand-lockup" src="/images/brand/logo-horizontal-red.webp" alt="LARIS" height="36">
       <span class="brand-beta">Beta</span>
     </a>
+    <button type="button" class="side-btn mentor-nav" id="btn-mentor-dash">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect class="ic-a" x="3" y="3" width="7.4" height="7.4" rx="1.6"/><rect x="13.6" y="3" width="7.4" height="7.4" rx="1.6"/><rect x="3" y="13.6" width="7.4" height="7.4" rx="1.6"/><rect class="ic-a" x="13.6" y="13.6" width="7.4" height="7.4" rx="1.6"/></svg>
+      Dashboard
+    </button>
+    <button type="button" class="side-btn mentor-nav" id="btn-mentor-siswa">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="7.6" r="3.3"/><path d="M2.8 20.2v-1.3a4.9 4.9 0 0 1 4.9-4.9h2.6a4.9 4.9 0 0 1 4.9 4.9v1.3"/><path class="ic-a" d="M17.2 4.6a3.3 3.3 0 0 1 0 6.2"/><path class="ic-a" d="M18.4 14.2a4.9 4.9 0 0 1 2.8 4.4v1.6"/></svg>
+      Siswa
+    </button>
+    <button type="button" class="side-btn mentor-nav" id="btn-mentor-jadwal">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.2" y="4.8" width="17.6" height="16" rx="2.4"/><path d="M3.2 9.6h17.6"/><path d="M8 3.2v3.2M16 3.2v3.2"/><path class="ic-a" d="M12 12.8v4.8M9.6 15.2h4.8"/></svg>
+      Jadwal
+    </button>
     <div class="side-seller" id="side-seller">
       <button type="button" class="side-btn side-seller-toggle" id="btn-side-seller" aria-expanded="false" aria-controls="side-seller-menu" title="Alat seller">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ic-a" d="M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17a2.1 2.1 0 1 0 3 3l5.3-5.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.8-2.8 2.5-2.5Z"/></svg>
@@ -7240,18 +7243,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
     <button type="button" class="side-btn" id="btn-cohort" title="Kohort LarisRise" style="display:none">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8.6" cy="7.4" r="3.2"/><path d="M2.6 20.4v-1.2a4.8 4.8 0 0 1 4.8-4.8h2.4a4.8 4.8 0 0 1 4.8 4.8v1.2"/><path class="ic-a" d="M16.6 11.2 19.2 8.6l2.6 2.6"/><path class="ic-a" d="M19.2 9v6.4"/></svg>
       Kohort
-    </button>
-    <button type="button" class="side-btn mentor-nav" id="btn-mentor-dash">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect class="ic-a" x="3" y="3" width="7.4" height="7.4" rx="1.6"/><rect x="13.6" y="3" width="7.4" height="7.4" rx="1.6"/><rect x="3" y="13.6" width="7.4" height="7.4" rx="1.6"/><rect class="ic-a" x="13.6" y="13.6" width="7.4" height="7.4" rx="1.6"/></svg>
-      Dashboard
-    </button>
-    <button type="button" class="side-btn mentor-nav" id="btn-mentor-siswa">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="7.6" r="3.3"/><path d="M2.8 20.2v-1.3a4.9 4.9 0 0 1 4.9-4.9h2.6a4.9 4.9 0 0 1 4.9 4.9v1.3"/><path class="ic-a" d="M17.2 4.6a3.3 3.3 0 0 1 0 6.2"/><path class="ic-a" d="M18.4 14.2a4.9 4.9 0 0 1 2.8 4.4v1.6"/></svg>
-      Siswa
-    </button>
-    <button type="button" class="side-btn mentor-nav" id="btn-mentor-jadwal">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.2" y="4.8" width="17.6" height="16" rx="2.4"/><path d="M3.2 9.6h17.6"/><path d="M8 3.2v3.2M16 3.2v3.2"/><path class="ic-a" d="M12 12.8v4.8M9.6 15.2h4.8"/></svg>
-      Jadwal
     </button>
     <div class="side-section">
       <div class="side-label">Riwayat</div>
@@ -8457,6 +8448,11 @@ body:has(.modal-overlay.open) .msg-steven-fab {
                   <h3>Ringkasan kohort</h3>
                   <div id="cohort-mentor-summary" class="cohort-muted">—</div>
                   <div id="cohort-mentor-stats"></div>
+                </div>
+                <div class="cohort-card" style="margin-bottom:12px;">
+                  <h3>Mentor kohort</h3>
+                  <p class="cohort-muted" style="margin-bottom:10px;">Afryan dan Hendra — kontak WhatsApp untuk siswa.</p>
+                  <div id="cohort-mentor-mentors"></div>
                 </div>
                 <div class="cohort-card" style="margin-bottom:12px;" id="cohort-invite-share-card">
                   <h3>Undang siswa</h3>
