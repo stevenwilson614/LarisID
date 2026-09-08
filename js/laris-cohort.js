@@ -803,31 +803,67 @@
     </div>`;
   }
 
+  function bindMemberRows(root) {
+    if (!root) return;
+    root.querySelectorAll('[data-uid]').forEach(el => {
+      el.style.cursor = 'pointer';
+      el.addEventListener('click', (e) => {
+        if (e.target && e.target.closest && e.target.closest('a')) return;
+        openProfile(el.getAttribute('data-uid'));
+      });
+    });
+  }
+
+  async function loadClassRoster(cid) {
+    if (!cid) return [];
+    try { return (await rpc('cohort_class_roster', { p_cohort: cid })) || []; }
+    catch (_) { return []; }
+  }
+
+  async function renderMentorsInto(el, cid) {
+    if (!el) return;
+    el.innerHTML = '<p class="cohort-muted">Memuat…</p>';
+    const rows = await loadClassRoster(cid);
+    const mentors = rows.filter(r => r.role === 'mentor');
+    if (!mentors.length) {
+      el.innerHTML = '<p class="cohort-muted">Belum ada mentor di kohort ini.</p>';
+      return;
+    }
+    el.innerHTML = mentors.map(memberRowHtml).join('');
+    bindMemberRows(el);
+  }
+
+  async function renderMentorSummaryNames(cid, sumEl) {
+    if (!sumEl || !cid) return;
+    const rows = await loadClassRoster(cid);
+    const mentors = rows.filter(r => r.role === 'mentor');
+    if (!mentors.length) return;
+    const names = mentors.map(m => m.display_name).filter(Boolean).join(' · ');
+    const existing = sumEl.querySelector('strong');
+    const title = existing ? existing.outerHTML : `<strong>${esc(state.mentorCohort && state.mentorCohort.name || 'Kohort')}</strong>`;
+    sumEl.innerHTML = `${title}<div class="cohort-muted" style="margin-top:4px;">Mentor: ${esc(names)}</div>`;
+  }
+
   async function renderSiswaTab(cid) {
     const mentorsEl = $('cohort-siswa-mentors');
     const listEl = $('cohort-siswa-list');
     if (mentorsEl) mentorsEl.innerHTML = '<p class="cohort-muted">Memuat…</p>';
     if (listEl) listEl.innerHTML = '<p class="cohort-muted">Memuat…</p>';
     try {
-      const rows = await rpc('cohort_class_roster', { p_cohort: cid }) || [];
+      const rows = await loadClassRoster(cid);
       const mentors = rows.filter(r => r.role === 'mentor');
       const students = rows.filter(r => r.role === 'student');
       if (mentorsEl) {
         mentorsEl.innerHTML = mentors.length
           ? mentors.map(memberRowHtml).join('')
           : '<p class="cohort-muted">Belum ada mentor di kohort ini.</p>';
+        bindMemberRows(mentorsEl);
       }
       if (listEl) {
         listEl.innerHTML = students.length
           ? students.map(memberRowHtml).join('')
           : '<p class="cohort-muted">Belum ada siswa. Kirim tautan undangan dari mentor.</p>';
-        listEl.querySelectorAll('[data-uid]').forEach(el => {
-          el.style.cursor = 'pointer';
-          el.addEventListener('click', (e) => {
-            if (e.target && e.target.closest && e.target.closest('a')) return;
-            openProfile(el.getAttribute('data-uid'));
-          });
-        });
+        bindMemberRows(listEl);
       }
     } catch (e) {
       const msg = `<p class="cohort-muted">${esc(e.message || 'Gagal memuat daftar.')}</p>`;
@@ -1306,6 +1342,7 @@
       const sum = $('cohort-mentor-summary');
       if (sum && state.mentorCohort) {
         sum.innerHTML = `<strong>${esc(state.mentorCohort.name || 'Kohort')}</strong>`;
+        void renderMentorSummaryNames(state.mentorCohort.id, sum);
       }
       renderInviteShare(state.mentorCohort);
       // The student-preview card is an admin affordance and a trap here: it calls
@@ -1327,12 +1364,15 @@
 
     if (!cid) {
       if (info) info.textContent = 'Kamu belum di kohort. Pakai kode undangan, atau minta mentor.';
+      const ment = $('cohort-ringkasan-mentors');
+      if (ment) ment.innerHTML = '';
     } else {
       if (info) info.innerHTML = `<strong>${esc(c && c.name || 'Kohort')}</strong><div class="cohort-muted">Aktif · hanya terlihat anggota kohort</div>`;
       if (wa && c && c.whatsapp_invite_url) {
         wa.href = c.whatsapp_invite_url; wa.style.display = '';
       } else if (wa) wa.style.display = 'none';
       await loadNames(cid);
+      await renderMentorsInto($('cohort-ringkasan-mentors'), cid);
       await renderTokoSaya(cid);
       await renderMilestones(cid);
       await renderAnnouncements(cid);
@@ -1341,7 +1381,10 @@
 
     if (state.mentorCohort && !preview) {
       const sum = $('cohort-mentor-summary');
-      if (sum) sum.innerHTML = `<strong>${esc(state.mentorCohort.name || 'Kohort')}</strong>`;
+      if (sum) {
+        sum.innerHTML = `<strong>${esc(state.mentorCohort.name || 'Kohort')}</strong>`;
+        void renderMentorSummaryNames(state.mentorCohort.id, sum);
+      }
       renderInviteShare(state.mentorCohort);
       await renderRoster(state.mentorCohort.id);
     }
