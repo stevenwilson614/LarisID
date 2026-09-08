@@ -1797,6 +1797,9 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
 .dir-head h2 { margin: 0 0 6px; font-size: 1.35rem; font-weight: 650; letter-spacing: -.02em; }
 .dir-export-btn { flex: none; display: inline-flex; align-items: center; gap: 6px;
   padding: 7px 12px; font-size: .8rem; border-radius: 10px; }
+/* A class rule beats the UA's `[hidden] { display: none }`, so the attribute
+   alone would not hide it. Same pattern as .dir-hero[hidden] above. */
+.dir-export-btn[hidden] { display: none !important; }
 .dir-export-btn svg { flex: none; }
 @media (max-width: 560px) { .dir-export-btn span { display: none; } }
 
