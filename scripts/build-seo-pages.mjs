@@ -43,6 +43,7 @@ const SNAPSHOT_HUMAN = '19 Juni 2026';
 // own Article schema. Give hand-authored pages their real publish date instead.
 const CONTENT_2026_07 = '2026-07-24';
 const TOOLS_2026_09 = '2026-09-08'; // kalkulator fee tables refreshed
+const COPY_2026_09 = '2026-09-08'; // Excel/CSV listing + history copy on harga/perbandingan
 const OG_IMAGE = `${SITE}/images/Banner.jpg`;
 
 // Google Ads tag — lives on the /riset/ hub (parity with the committed hub; kept
@@ -489,7 +490,7 @@ function buildSitemap(entries) {
     kotaBlocks = (cur.match(/  <url>\s*<loc>[^<]*\/kota\/[^<]*<\/loc>[\s\S]*?<\/url>/g) || []).join('\n');
   } catch (_) {}
   const staticUrls = [
-    { loc: `${SITE}/`, freq: 'weekly', pri: '1.0', mod: '2026-08-10' }, // app moved from /gpt/ to / on this date
+    { loc: `${SITE}/`, freq: 'weekly', pri: '1.0', mod: COPY_2026_09 },
     { loc: `${SITE}/riset/`, freq: 'weekly', pri: '0.9', mod: SNAPSHOT },
     { loc: `${SITE}/panduan/`, freq: 'monthly', pri: '0.8', mod: CONTENT_2026_07 },
     { loc: `${SITE}/panduan/produk-terlaris-untuk-pemula-2026/`, freq: 'monthly', pri: '0.8', mod: CONTENT_2026_07 },
@@ -507,17 +508,17 @@ function buildSitemap(entries) {
     { loc: `${SITE}/kalkulator/margin-hpp/`, freq: 'monthly', pri: '0.75', mod: CONTENT_2026_07 },
     { loc: `${SITE}/kalkulator/biaya-marketplace/`, freq: 'monthly', pri: '0.8', mod: TOOLS_2026_09 },
     { loc: `${SITE}/kalkulator/biaya-shopee/`, freq: 'monthly', pri: '0.75', mod: TOOLS_2026_09 },
-    { loc: `${SITE}/perbandingan/`, freq: 'monthly', pri: '0.9', mod: '2026-09-05' },
-    { loc: `${SITE}/perbandingan/alat-riset-produk-shopee-terbaik/`, freq: 'monthly', pri: '0.8', mod: '2026-09-05' },
-    { loc: `${SITE}/perbandingan/larisid-vs-datapinter/`, freq: 'monthly', pri: '0.8', mod: SNAPSHOT },
-    { loc: `${SITE}/perbandingan/larisid-vs-tokpee/`, freq: 'monthly', pri: '0.75', mod: SNAPSHOT },
-    { loc: `${SITE}/perbandingan/larisid-vs-shoptik/`, freq: 'monthly', pri: '0.75', mod: SNAPSHOT },
-    { loc: `${SITE}/perbandingan/aplikasi-cek-produk-terlaris-shopee/`, freq: 'monthly', pri: '0.8', mod: SNAPSHOT },
-    { loc: `${SITE}/perbandingan/riset-produk-shopee-gratis-vs-berbayar/`, freq: 'monthly', pri: '0.8', mod: SNAPSHOT },
-    { loc: `${SITE}/perbandingan/alternatif-datapinter-gratis/`, freq: 'monthly', pri: '0.8', mod: SNAPSHOT },
-    { loc: `${SITE}/perbandingan/larisid-vs-kalodata/`, freq: 'monthly', pri: '0.8', mod: '2026-09-05' },
-    { loc: `${SITE}/perbandingan/alternatif-kalodata-gratis/`, freq: 'monthly', pri: '0.8', mod: '2026-09-05' },
-    { loc: `${SITE}/harga/`, freq: 'monthly', pri: '0.85', mod: '2026-09-05' },
+    { loc: `${SITE}/perbandingan/`, freq: 'monthly', pri: '0.9', mod: COPY_2026_09 },
+    { loc: `${SITE}/perbandingan/alat-riset-produk-shopee-terbaik/`, freq: 'monthly', pri: '0.8', mod: COPY_2026_09 },
+    { loc: `${SITE}/perbandingan/larisid-vs-datapinter/`, freq: 'monthly', pri: '0.8', mod: COPY_2026_09 },
+    { loc: `${SITE}/perbandingan/larisid-vs-tokpee/`, freq: 'monthly', pri: '0.75', mod: COPY_2026_09 },
+    { loc: `${SITE}/perbandingan/larisid-vs-shoptik/`, freq: 'monthly', pri: '0.75', mod: COPY_2026_09 },
+    { loc: `${SITE}/perbandingan/aplikasi-cek-produk-terlaris-shopee/`, freq: 'monthly', pri: '0.8', mod: COPY_2026_09 },
+    { loc: `${SITE}/perbandingan/riset-produk-shopee-gratis-vs-berbayar/`, freq: 'monthly', pri: '0.8', mod: COPY_2026_09 },
+    { loc: `${SITE}/perbandingan/alternatif-datapinter-gratis/`, freq: 'monthly', pri: '0.8', mod: COPY_2026_09 },
+    { loc: `${SITE}/perbandingan/larisid-vs-kalodata/`, freq: 'monthly', pri: '0.8', mod: COPY_2026_09 },
+    { loc: `${SITE}/perbandingan/alternatif-kalodata-gratis/`, freq: 'monthly', pri: '0.8', mod: COPY_2026_09 },
+    { loc: `${SITE}/harga/`, freq: 'monthly', pri: '0.85', mod: COPY_2026_09 },
     { loc: `${SITE}/rise/`, freq: 'monthly', pri: '0.8', mod: '2026-08-18' },
     { loc: `${SITE}/rise/daftar/`, freq: 'monthly', pri: '0.7', mod: '2026-08-21' },
     { loc: `${SITE}/cara-kerja/`, freq: 'monthly', pri: '0.8', mod: '2026-08-21' },

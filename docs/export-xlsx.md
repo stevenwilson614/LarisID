@@ -4,6 +4,16 @@ Shipped 2026-09-08; budgets split 2026-09-08 evening. Lets a signed-in user down
 search results or a Deep Dive's weekly omset as a spreadsheet. Capped by daily budgets
 whose real purpose is to measure demand before this becomes a paid feature.
 
+## Public copy (SEO / llms / comparisons)
+
+Use these sentences on public pages. Do **not** write “Belum ada”, “Rencana”, or
+“LarisID has none” for Excel/CSV. Paid tools still win on **unlimited/bulk**.
+
+- **Table cell (vs Datapinter / Tokpee / Shoptik):** `Ya — listing + riwayat omset (kuota harian)` vs their `Ya — massal / tanpa batas`.
+- **Table cell (vs Kalodata):** `Ya — listing Shopee + riwayat omset (kuota harian)`. Kalodata’s export is TikTok GMV, not Shopee listings.
+- **Short fact:** LarisID unduh Excel/CSV (.xlsx): hasil Cari Produk (sampai 90 baris listing/hari, omset/bulan) dan riwayat omset mingguan dari Deep Dive (4/8/12 minggu, kuota 12 minggu/hari). Kompetitor berbayar tetap unggul pada ekspor massal tanpa batas dan data listing Tokopedia.
+- **Kalodata FAQ:** do not say “ekspor belum ada di LarisID”. Say Kalodata uniquely exports **real-time TikTok GMV**; LarisID exports Shopee listing + weekly omset.
+
 ## Two budgets
 
 | Surface | Shape | Daily budget (WIB) | What you get |
@@ -36,21 +46,16 @@ always sends 1.
 
 ## Why `product_daily_series` and not `listing_weekly`
 
-`listing_weekly` writes a gap week at the moment it is missed and **never revises it** —
-`backfill_listing_weekly_estimates` has `WHERE NOT EXISTS`. For a product scraped
-2026-07-27 then 2026-08-29:
+The file and the Deep Dive chart already share `product_daily_series`. Keep it
+that way — never splice a second estimator into a third surface.
 
-| Source | Aug 3/10/17 weeks |
-|---|---|
-| `listing_deltas` (truth) | 337 units over 33.1 days, `exact`/`high` → **10.18/day** |
-| `product_daily_series` | 10.17/day, `measured` ✅ |
-| `listing_weekly` | `peer`/`low` ≈72/wk and `estimated`/`low` 69.3/wk ❌ |
-
-`listing_weekly` also backfills weeks before a product was first seen. **This is a live bug
-affecting Peta Peluang and Jejak Waktu, which read that table** — not fixed here.
-
-Building the export on `product_daily_series` also keeps the file and the deep-dive chart in
-agreement. Never splice a second estimator into a third surface.
+`listing_weekly` used to freeze a gap week the moment it was missed
+(`backfill_listing_weekly_estimates` has `WHERE NOT EXISTS`) and invent weeks
+from before a product was first seen. That is fixed as of 2026-09-08:
+`revise_listing_weekly_measured()` upgrades fully-covered gap weeks from
+`listing_deltas`, and pre-first-scrape weeks are labelled `prior`. Peta Peluang
+/ Jejak Waktu read that table. The export still does not, so a later weekly
+refresh cannot put the spreadsheet out of step with the chart.
 
 ## Traps
 

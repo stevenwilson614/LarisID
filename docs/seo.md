@@ -1,6 +1,6 @@
 # SEO & GEO (AI discoverability) — LarisID
 
-*Context for humans and AI assistants working in this repo. Last updated: 5 Sep 2026.*
+*Context for humans and AI assistants working in this repo. Last updated: 8 Sep 2026.*
 
 ## Goal
 
@@ -67,8 +67,13 @@ reintroduce prices, tiers, "Pro", "Business", or "gratis selama Beta" framing an
 
 Copy must also carry what LarisID does **not** have — data refreshes daily rather than
 real-time, no Tokopedia listing data, no TikTok creator analytics. Excel/CSV download
-**is** available (daily quota on Cari Produk + Deep Dive); do not claim “Belum ada”.
-Paid tools still win on unlimited/bulk export. Those honest rows make the comparison credible.
+**is** available; do not claim “Belum ada”, “Rencana”, or “LarisID has none”:
+
+- **Cari Produk:** listing snapshot, up to **90 product rows/day** (WIB), monthly omset per row.
+- **Deep Dive (Tren icon):** weekly omset history, user picks **4 / 8 / 12 weeks**, shared cap **12 weeks/day**.
+
+Canonical sentences: [docs/export-xlsx.md](./export-xlsx.md) § Public copy. Paid tools still
+win on **unlimited/bulk** export. Those honest rows make the comparison credible.
 
 When competitor pricing moves, update `llms.txt`, `llms-full.txt`, homepage JSON-LD, `/harga/`,
 `perbandingan/index.html`, `scripts/build-comparisons.mjs`, and this doc **together** —
@@ -87,6 +92,8 @@ inconsistent prices across pages confuse both search and AI.
   as a server-cost guard, never as an upgrade prompt — there is nothing to upgrade to. Raise it for
   free: Chrome extension +3/day permanent, referrals +1/day up to +5, product feedback +3 that day.
 - **Never gate** honesty, viability scores, sales estimates, or thin-data warnings — MISSION §3.
+- **Downloads:** listing snapshot (Cari Produk, 90 rows/day) and weekly omset history (Deep
+  Dive, 12 weeks/day). Never write “Belum ada” / “Rencana”. Paid tools still win on bulk.
 - **Everything else is free too:** 40 products & 20 stores tracked, Produk directory, `/riset/`,
   `/kota/`, and re-opening any product or thread (which never costs quota).
 - Avoid unverifiable social proof (e.g. fake member counts)
@@ -228,6 +235,7 @@ in `build-seo-pages.mjs` writing `riset/<slug>/og.png`, then point `og:image` at
 ## Related docs
 
 - `docs/pricing-research.md` — competitor pricing research
+- `docs/export-xlsx.md` — listing + history Excel/CSV (canonical public copy)
 - `docs/score-review.md` — Viability Score methodology notes
 - `docs/landing-analytics.md` — Clarity event spec
 - `docs/ai-chat-decision.md` — no standalone chatbot; product-scoped AI only

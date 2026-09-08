@@ -11,6 +11,16 @@
 // A plain string is still accepted and renders with no tech line.
 window.LARIS_CHANGELOG = [
   {
+    date: '2026-09-08',
+    title: 'Unduh listing produk dan riwayat omset ke Excel',
+    items: [
+      {
+        text: 'Hasil Cari Produk sekarang bisa diunduh sebagai file .xlsx atau CSV \u2014 satu baris per produk, sampai 90 baris per hari. Di Deep Dive, ikon unduh di grafik Tren mengunduh riwayat omset mingguan (pilih 4, 8, atau 12 minggu; kuota 12 minggu per hari). Kompetitor berbayar tetap unggul kalau kamu butuh ekspor massal tanpa batas.',
+        tech: 'export_rows + get_my_export_quota; daily_usage.export_rows_used (90) and export_weeks_used (12); Deep Dive history from product_daily_series; #dir-export on #dir-list-bar; ddr-trend-export next to Tren.',
+      },
+    ],
+  },
+  {
     date: '2026-09-07',
     title: 'Daftar WhatsApp sekarang minta nama',
     items: [
