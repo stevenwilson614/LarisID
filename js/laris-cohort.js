@@ -286,8 +286,12 @@
       void renderMentorDash(c.id);
       void renderWins(c.id);
       renderInviteShare(c);
+      void renderMentorSummaryNames(c.id, $('cohort-mentor-summary'));
     }
-    if (tab === 'students') void renderRoster(c.id);
+    if (tab === 'students') {
+      void renderRoster(c.id);
+      void renderMentorsInto($('cohort-mentor-siswa-mentors'), c.id);
+    }
     if (tab === 'jadwal') void renderJadwal(c.id, true);
   }
 
@@ -834,14 +838,31 @@
   }
 
   async function renderMentorSummaryNames(cid, sumEl) {
-    if (!sumEl || !cid) return;
+    if (!cid) return;
     const rows = await loadClassRoster(cid);
     const mentors = rows.filter(r => r.role === 'mentor');
-    if (!mentors.length) return;
-    const names = mentors.map(m => m.display_name).filter(Boolean).join(' · ');
-    const existing = sumEl.querySelector('strong');
-    const title = existing ? existing.outerHTML : `<strong>${esc(state.mentorCohort && state.mentorCohort.name || 'Kohort')}</strong>`;
-    sumEl.innerHTML = `${title}<div class="cohort-muted" style="margin-top:4px;">Mentor: ${esc(names)}</div>`;
+    if (sumEl && mentors.length) {
+      const names = mentors.map(m => m.display_name).filter(Boolean).join(' · ');
+      const existing = sumEl.querySelector('strong');
+      const title = existing ? existing.outerHTML : `<strong>${esc(state.mentorCohort && state.mentorCohort.name || 'Kohort')}</strong>`;
+      sumEl.innerHTML = `${title}<div class="cohort-muted" style="margin-top:4px;">Mentor: ${esc(names)}</div>`;
+    }
+    await renderMentorsInto($('cohort-mentor-mentors'), cid);
+    await renderMentorsInto($('cohort-mentor-siswa-mentors'), cid);
+  }
+
+  /** Prefer mentor-only shell when the student half would show a different
+   *  cohort (e.g. admin in Ocean 11 stacked under Kohort Pertama). */
+  function shouldMentorOnly() {
+    if (state.previewCid) return false;
+    if (isGenuineMentor()) return true;
+    if (!state.mentorCohort) return false;
+    if (isAdmin() && state.studentCohortId && state.studentCohortId !== state.mentorCohort.id) {
+      return true;
+    }
+    // Admin who mentors nothing as student but selected a mentor cohort.
+    if (isAdmin() && !state.studentCohortId && state.mentorCohort) return true;
+    return false;
   }
 
   async function renderSiswaTab(cid) {
@@ -1427,10 +1448,10 @@
     // A stale preview from a previous visit would hide the mentor panel with no
     // obvious cause, so every fresh open lands on the real view.
     state.previewCid = null;
-    // Genuine mentors keep the mentor-only shell; open() used to always drop
-    // it, which stacked Toko Saya under Dashboard the first time they opened
-    // Kohort from the rail.
-    state.mentorOnly = isGenuineMentor();
+    // Genuine mentors, and admins whose student cohort is a different class
+    // (Ocean 11 under Kohort Pertama), keep mentor-only so Afryan/Hendra are
+    // not buried under another cohort's Siswa list.
+    state.mentorOnly = shouldMentorOnly();
     await render();
   }
 
