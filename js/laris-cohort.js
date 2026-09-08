@@ -913,13 +913,15 @@
     box.dataset.url = url;
   }
 
-  /** Mentors (and admins) can rename the active mentor cohort. Students never see this card. */
+  /** Mentors rename from Ringkasan. Shown whenever the mentor panel is open for
+   *  a cohort — including admin Mode mentor stand-in (isAdmin is masked there).
+   *  The RPC still refuses anyone who cannot manage the cohort. */
   function renderRenameForm(c) {
     const card = $('cohort-rename-card');
     const inp = $('cohort-rename-input');
     const st = $('cohort-rename-status');
     if (!card) return;
-    const can = !!(c && (isGenuineMentor() || isAdmin()));
+    const can = !!(c && !state.previewCid);
     card.style.display = can ? '' : 'none';
     if (!can) return;
     if (inp && document.activeElement !== inp) {
@@ -935,10 +937,6 @@
     const btn = $('cohort-rename-save');
     if (!c) {
       if (st) st.textContent = 'Belum ada kohort.';
-      return;
-    }
-    if (!(isGenuineMentor() || isAdmin())) {
-      if (st) st.textContent = 'Hanya mentor kohort yang bisa mengubah nama.';
       return;
     }
     const name = String((inp && inp.value) || '').trim();
@@ -972,8 +970,17 @@
       }
       renderRenameForm(state.mentorCohort);
       renderPreviewPicker();
+      // Keep the Mode mentor strip in sync when an admin renames while standing in.
+      try {
+        if (typeof global.dispatchEvent === 'function') {
+          global.dispatchEvent(new CustomEvent('laris-cohort-renamed', {
+            detail: { id: state.mentorCohort.id, name: state.mentorCohort.name },
+          }));
+        }
+      } catch (_) {}
     } catch (e) {
-      if (st) { delete st.dataset.busy; st.textContent = (e && e.message) || 'Gagal menyimpan nama.'; }
+      const msg = (e && e.message) || 'Gagal menyimpan nama.';
+      if (st) { delete st.dataset.busy; st.textContent = /forbidden/i.test(msg) ? 'Hanya mentor kohort yang bisa mengubah nama.' : msg; }
     } finally {
       if (btn) btn.disabled = false;
     }

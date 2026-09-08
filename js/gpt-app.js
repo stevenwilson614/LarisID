@@ -20928,6 +20928,13 @@ async function exitViewAs() {
   else goHome();
 }
 
+document.addEventListener('laris-cohort-renamed', (ev) => {
+  const d = ev && ev.detail;
+  if (!_viewAs || !d || !d.id || _viewAs.cohortId !== d.id) return;
+  _viewAs.cohortName = d.name || '';
+  renderAdminSampleBanner();
+});
+
 function goHome(e) {
   if (e) e.preventDefault();
   closeSidebar();
