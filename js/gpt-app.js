@@ -2307,7 +2307,7 @@ function skipWaCapture() {
   closeWaCapture();
   void logUserEvent('wa_capture', { ui: 'gpt', action: 'later' });
   if (_waCaptureThenOnboarding) offerOnboardingAfterSignin();
-  else scheduleProductRowsNotice({ fromRestore: false, isNewSignup: false });
+  else scheduleReturningFeatureNotices({ fromRestore: false, isNewSignup: false });
 }
 
 function _waCaptureContinue() {
@@ -2388,7 +2388,7 @@ function skipNameCapture() {
 
 function _nameCaptureContinue() {
   if (_nameCaptureThenOnboarding) offerOnboardingAfterSignin();
-  else scheduleProductRowsNotice({ fromRestore: false, isNewSignup: false });
+  else scheduleReturningFeatureNotices({ fromRestore: false, isNewSignup: false });
 }
 
 async function maybeOfferNameCapture(opts) {
@@ -2931,6 +2931,71 @@ function scheduleProductRowsNotice(opts = {}) {
     }, attempt === 0 ? 1400 : 2200);
   };
   tryOpen(0);
+}
+
+// One-time notice: product XLSX/CSV download shipped.
+// Returning / existing users only — not brand-new signups, not a blocking
+// onboarding gate. Dismiss once; never re-show.
+const EXPORT_XLSX_NOTICE_KEY = 'lid_export_xlsx_notice_v1';
+let _exportXlsxNoticeTimer = 0;
+
+function exportXlsxNoticeSeen() {
+  try { return localStorage.getItem(EXPORT_XLSX_NOTICE_KEY) === '1'; } catch (_) { return true; }
+}
+
+function markExportXlsxNoticeSeen() {
+  try { localStorage.setItem(EXPORT_XLSX_NOTICE_KEY, '1'); } catch (_) {}
+}
+
+function closeExportXlsxNotice(action) {
+  const overlay = $('export-xlsx-notice');
+  if (!overlay) return;
+  overlay.classList.remove('open');
+  overlay.hidden = true;
+  markExportXlsxNoticeSeen();
+  void logUserEvent('export_xlsx_notice', { ui: 'gpt', action: action || 'dismiss' });
+}
+
+function openExportXlsxNotice() {
+  if (exportXlsxNoticeSeen() || !currentUser) return;
+  if (document.querySelector('.modal-overlay.open')) return;
+  const overlay = $('export-xlsx-notice');
+  if (!overlay) return;
+  overlay.hidden = false;
+  overlay.classList.add('open');
+  markExportXlsxNoticeSeen();
+  void logUserEvent('export_xlsx_notice', { ui: 'gpt', action: 'shown' });
+  clarityEvt('export_xlsx_notice', { action: 'shown' });
+}
+
+function scheduleExportXlsxNotice(opts = {}) {
+  if (!currentUser || exportXlsxNoticeSeen()) return;
+  if (opts.isNewSignup || _lidIsNewSignup(currentUser)) return;
+  const returning = !!(opts.fromRestore)
+    || state.onboarding.step === 'done'
+    || finderIsComplete()
+    || ((_gptJourney.loaded ? _gptJourney.deepdiveCount : 0) > 0)
+    || !!state.everOpenedDeepdive;
+  if (!returning) return;
+
+  clearTimeout(_exportXlsxNoticeTimer);
+  const tryOpen = (attempt) => {
+    _exportXlsxNoticeTimer = setTimeout(() => {
+      if (!currentUser || exportXlsxNoticeSeen()) return;
+      if (document.querySelector('.modal-overlay.open')) {
+        if (attempt < 3) tryOpen(attempt + 1);
+        return;
+      }
+      openExportXlsxNotice();
+    }, attempt === 0 ? 1600 : 2400);
+  };
+  tryOpen(0);
+}
+
+/** Returning-user feature notices (skippable; never onboarding). */
+function scheduleReturningFeatureNotices(opts = {}) {
+  scheduleProductRowsNotice(opts);
+  scheduleExportXlsxNotice(opts);
 }
 
 function formatIdDate(iso) {
@@ -4126,8 +4191,8 @@ async function _authOnSignIn(session, opts) {
     offerOnboardingAfterSignin();
   }
 
-  // Returning users: one-time "pasar → produk" notice (skippable, not onboarding).
-  scheduleProductRowsNotice({
+  // Returning users: one-time feature notices (skippable, not onboarding).
+  scheduleReturningFeatureNotices({
     fromRestore: !!(opts && opts.fromRestore),
     isNewSignup,
   });
@@ -6406,7 +6471,7 @@ function offerOnboardingAfterSignin() {
 
 function closeProfileNudge() {
   $('profile-nudge')?.classList.remove('open');
-  scheduleProductRowsNotice({ fromRestore: false, isNewSignup: false });
+  scheduleReturningFeatureNotices({ fromRestore: false, isNewSignup: false });
 }
 
 // Persist a single in-memory message to gpt_messages. Idempotent via the
@@ -22269,10 +22334,25 @@ function wireUi() {
     if (e.target === e.currentTarget) closeProductRowsNotice('backdrop');
   });
 
+  $('export-xlsx-notice-go')?.addEventListener('click', () => {
+    closeExportXlsxNotice('go_directory');
+    setView('directory');
+  });
+  $('export-xlsx-notice-close')?.addEventListener('click', () => {
+    closeExportXlsxNotice('close');
+  });
+  $('export-xlsx-notice')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeExportXlsxNotice('backdrop');
+  });
+
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     if ($('name-capture')?.classList.contains('open')) {
       skipNameCapture();
+      return;
+    }
+    if ($('export-xlsx-notice')?.classList.contains('open')) {
+      closeExportXlsxNotice('esc');
       return;
     }
     if ($('product-rows-notice')?.classList.contains('open')) {

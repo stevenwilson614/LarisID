@@ -31,6 +31,7 @@ Onboarding is in-page on Beranda (`state.onboarding`: city → category → expe
 | End-of-dive alert | `#ddr-alert` | email / WhatsApp one-tap → product favorite + `set_tracker_notify_prefs`. Mid-dive `ddtp*` promo is retired. |
 | Favorit Aku nav pulse | `lid_pantau_nudge_v1`, `schedulePantauNavPulse` | first Deep Dive pulse; stops once the user has ≥ 1 favorite |
 | Pasar → produk notice | `#product-rows-notice`, `lid_product_rows_notice_v1` | one-time dismissible for returning (not new) signed-in users; not onboarding |
+| Export XLSX notice | `#export-xlsx-notice`, `lid_export_xlsx_notice_v1` | one-time dismissible for returning users when product .xlsx/CSV download shipped; not onboarding |
 | Scrape-cycle digest | `scrape-digest` edge function | every Deep Dive user, one email per measured scrape landing; WA only if opted in |
 | Langkah minggu ini | `#home-langkah` + `user_weekly_steps` | first_time sellers on Beranda after onboarding |
 | Komunitas | `#btn-community` main nav, `#home-komunitas`, Deep Dive / Cari Produk “Tanya seller lain” | Peer Diskusi + Usulan Fitur. Not under Tentang. Hidden Beranda strip when empty. Keyword-grain prefill only — no price/omset in the post. See [komunitas-board.md](./komunitas-board.md). |

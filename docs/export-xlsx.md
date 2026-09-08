@@ -97,6 +97,13 @@ row-2 header range so sorting still works under the merged brand row.
   `ddTrendExportBtnHtml` next to Tren; `consumeProductDeepLink()`
 - `index.html` — `#dir-list-bar` / `#dir-export`, `#export-modal`, `#export-more-modal`
 
+## Returning-user notice
+
+One-time skippable popup `#export-xlsx-notice` (`lid_export_xlsx_notice_v1`) for
+returning signed-in users only — not new signups, not an onboarding gate. Same
+pattern as `#product-rows-notice`. CTA opens Cari Produk. Event:
+`export_xlsx_notice` (`shown` / `close` / `go_directory` / `backdrop` / `esc`).
+
 ## The events that are the actual point
 
 `export_open`, `export_done` (carries **both** `rows_total` / `rows_charged` and
