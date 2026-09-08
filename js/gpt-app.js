@@ -3064,6 +3064,18 @@ window.addEventListener('popstate', (e) => {
       setView(view);
       if (view === 'home') updateHomeFinderVisibility();
       if (view === 'chat' && state.activeChatId && activeChat()) renderChatThread();
+      if (view === 'cohort') {
+        void (async () => {
+          mountLarisCohort();
+          if (!window.LarisCohort) { setView('home'); return; }
+          const ok = await window.LarisCohort.open();
+          if (!ok) {
+            showToast('Kohort hanya untuk anggota.');
+            setView('home');
+            void refreshCohortNav();
+          }
+        })();
+      }
     }
   } finally {
     setTimeout(() => { _navigatingFromHistory = false; }, 0);
@@ -13097,8 +13109,21 @@ async function refreshCohortNav() {
 function openCohortView() {
   if (!currentUser) { openAuthModal('login', 'gpt_gate_cohort'); return; }
   mountLarisCohort();
-  setView('cohort');
-  if (window.LarisCohort) void window.LarisCohort.open();
+  if (!window.LarisCohort) return;
+  void (async () => {
+    try {
+      const ok = await window.LarisCohort.open();
+      if (!ok) {
+        showToast('Kohort hanya untuk anggota.');
+        void refreshCohortNav();
+        if (state.view === 'cohort') setView('home');
+        return;
+      }
+      setView('cohort');
+    } catch (_) {
+      showToast('Gagal membuka kohort.');
+    }
+  })();
 }
 
 function stashPendingKomunitas(opts) {
@@ -20903,7 +20928,7 @@ async function enterViewAs(role) {
   try {
     // open() re-reads membership under the mask, so what comes back now is what
     // this account genuinely is rather than what an admin can see.
-    await window.LarisCohort.open();
+    await window.LarisCohort.open({ force: true });
     if (role === 'mentor') {
       picked = window.LarisCohort.myMentorCohort();
       if (!picked) {
@@ -21636,7 +21661,7 @@ function renderAdminUsers() {
   const start = (_adminUserPage - 1) * _adminPageSize;
   const slice = rows.slice(start, start + _adminPageSize);
   if (!slice.length) {
-    body.innerHTML = '<tr><td colspan="8" class="dd-sub">Tidak ada pengguna yang cocok.</td></tr>';
+    body.innerHTML = '<tr><td colspan="9" class="dd-sub">Tidak ada pengguna yang cocok.</td></tr>';
     return;
   }
   body.innerHTML = slice.map((u, i) => {
@@ -21657,9 +21682,20 @@ function renderAdminUsers() {
       const color = admCatColor(c);
       return `<span class="adm-cat-pill" style="background:${color}22;color:${color}">${esc(c)}</span>`;
     }).join('') || '<span class="dd-sub">—</span>';
+    const cohortNames = Array.isArray(u.cohort_names) ? u.cohort_names.filter(Boolean) : [];
+    const cohortCell = cohortNames.length
+      ? `<td><div class="adm-cohort-pills">${cohortNames.slice(0, 3).map(n =>
+          `<span class="adm-cohort-pill" title="${esc(n)}">${esc(n)}</span>`
+        ).join('')}${cohortNames.length > 3
+          ? `<span class="adm-cohort-none">+${cohortNames.length - 3}</span>`
+          : ''}</div></td>`
+      : '<td><span class="adm-cohort-none">—</span></td>';
     const idx = start + i;
     const copyWaBtn = wa
       ? `<button type="button" data-copy-wa="${esc(wa)}">Salin WA</button>`
+      : '';
+    const addCohortBtn = u.email
+      ? `<button type="button" data-add-cohort-idx="${idx}">Tambah ke kohort</button>`
       : '';
     return `<tr>
       <td><div class="adm-name"><span class="adm-av" style="background:${admAvColor(name)}">${esc(admInitials(name))}</span>${esc(name)}</div></td>
@@ -21668,6 +21704,7 @@ function renderAdminUsers() {
       <td>${esc(loc)}</td>
       <td>${tipe}</td>
       <td><div class="adm-cat-pills">${cats}</div></td>
+      ${cohortCell}
       <td class="dd-sub">${fmtAdminDate(u.created_at)}</td>
       <td class="adm-td-aksi">
         <button type="button" class="adm-dots" data-adm-menu="${idx}" aria-label="Aksi">
@@ -21675,6 +21712,7 @@ function renderAdminUsers() {
         </button>
         <div class="adm-menu" hidden>
           <button type="button" data-sample-idx="${idx}">Sample view</button>
+          ${addCohortBtn}
           <button type="button" data-copy-email="${esc(u.email || '')}">Salin email</button>
           ${copyWaBtn}
         </div>
@@ -21695,7 +21733,7 @@ function admFillCatFilter(users) {
 
 function adminExportUsers() {
   const rows = adminFilteredUsers();
-  const header = ['Nama', 'Email', 'WA', 'Lokasi', 'Tipe', 'Kategori', 'Bergabung'];
+  const header = ['Nama', 'Email', 'WA', 'Lokasi', 'Tipe', 'Kategori', 'Kohort', 'Bergabung'];
   const lines = [header.join(',')].concat(rows.map(u => {
     const tipe = admSellerStatus(u) === 'existing' ? 'Experienced' : admSellerStatus(u) === 'first_time' ? 'Baru' : '';
     const cells = [
@@ -21705,6 +21743,7 @@ function adminExportUsers() {
       u.region || u.city || '',
       tipe,
       (u.categories || []).join('; '),
+      (Array.isArray(u.cohort_names) ? u.cohort_names : []).join('; '),
       u.created_at ? String(u.created_at).slice(0, 10) : '',
     ].map(v => `"${String(v).replace(/"/g, '""')}"`);
     return cells.join(',');
@@ -21715,6 +21754,93 @@ function adminExportUsers() {
   a.download = 'laris-pengguna.csv';
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+let _adminCohortOptions = null;
+let _adminCohortTarget = null;
+
+async function adminEnsureCohortOptions() {
+  if (_adminCohortOptions) return _adminCohortOptions;
+  if (!_supabase || !isPlatformAdmin()) {
+    _adminCohortOptions = [];
+    return _adminCohortOptions;
+  }
+  const { data, error } = await _supabase
+    .from('cohorts')
+    .select('id,name,slug,invite_code')
+    .order('created_at', { ascending: false })
+    .limit(200);
+  _adminCohortOptions = (!error && Array.isArray(data)) ? data : [];
+  return _adminCohortOptions;
+}
+
+function adminCloseCohortModal() {
+  const modal = $('adm-cohort-modal');
+  if (modal) modal.hidden = true;
+  _adminCohortTarget = null;
+  const st = $('adm-cohort-modal-status');
+  if (st) st.textContent = '';
+}
+
+async function adminOpenCohortModal(userRow) {
+  if (!userRow || !userRow.email || !isPlatformAdmin()) return;
+  _adminCohortTarget = userRow;
+  const modal = $('adm-cohort-modal');
+  const userEl = $('adm-cohort-modal-user');
+  const sel = $('adm-cohort-modal-select');
+  const st = $('adm-cohort-modal-status');
+  const go = $('adm-cohort-modal-go');
+  if (!modal || !sel) return;
+  if (userEl) {
+    const name = admDisplayName(userRow);
+    userEl.textContent = `${name} · ${userRow.email}`;
+  }
+  if (st) st.textContent = '';
+  if (go) go.disabled = false;
+  sel.innerHTML = '<option value="">Memuat…</option>';
+  modal.hidden = false;
+  const list = await adminEnsureCohortOptions();
+  const already = new Set(
+    (Array.isArray(userRow.cohort_names) ? userRow.cohort_names : []).map(n => String(n).toLowerCase())
+  );
+  if (!list.length) {
+    sel.innerHTML = '<option value="">Belum ada kohort</option>';
+    return;
+  }
+  // Prefer cohorts the user is not already in; keep all options so re-activate works.
+  const prefer = list.find(c => c.slug === 'kohort-pertama' || c.name === 'Kohort Pertama');
+  const ordered = prefer
+    ? [prefer, ...list.filter(c => c.id !== prefer.id)]
+    : list;
+  sel.innerHTML = ordered.map(c => {
+    const inIt = already.has(String(c.name || '').toLowerCase());
+    const label = `${c.name || c.slug || c.invite_code || 'Kohort'}${inIt ? ' (sudah anggota)' : ''}`;
+    return `<option value="${esc(c.id)}">${esc(label)}</option>`;
+  }).join('');
+}
+
+async function adminConfirmAddToCohort() {
+  const email = (_adminCohortTarget && _adminCohortTarget.email) || '';
+  const cohortId = $('adm-cohort-modal-select')?.value || '';
+  const st = $('adm-cohort-modal-status');
+  const go = $('adm-cohort-modal-go');
+  if (!email || !cohortId || !_supabase || !isPlatformAdmin()) return;
+  if (go) go.disabled = true;
+  if (st) st.textContent = 'Menambahkan…';
+  try {
+    const { error } = await _supabase.rpc('cohort_leader_add_student_by_email', {
+      p_cohort: cohortId,
+      p_email: email,
+    });
+    if (error) throw error;
+    if (st) st.textContent = 'Berhasil ditambahkan.';
+    showToast('Pengguna ditambahkan ke kohort.');
+    adminCloseCohortModal();
+    await loadAdminDirectory();
+  } catch (e) {
+    if (st) st.textContent = e.message || 'Gagal menambahkan.';
+    if (go) go.disabled = false;
+  }
 }
 
 function adminCloseMenus(except) {
@@ -21774,6 +21900,14 @@ function adminBindUi() {
       if (row) adminSampleAsUser(row);
       return;
     }
+    const addCohort = e.target.closest('[data-add-cohort-idx]');
+    if (addCohort) {
+      const idx = Number(addCohort.getAttribute('data-add-cohort-idx'));
+      const row = adminFilteredUsers()[idx];
+      adminCloseMenus();
+      if (row) void adminOpenCohortModal(row);
+      return;
+    }
     const copy = e.target.closest('[data-copy-email]');
     if (copy) {
       const email = copy.getAttribute('data-copy-email') || '';
@@ -21791,6 +21925,11 @@ function adminBindUi() {
       }
       adminCloseMenus();
     }
+  });
+  $('adm-cohort-modal-cancel')?.addEventListener('click', () => adminCloseCohortModal());
+  $('adm-cohort-modal-go')?.addEventListener('click', () => void adminConfirmAddToCohort());
+  $('adm-cohort-modal')?.addEventListener('click', e => {
+    if (e.target === $('adm-cohort-modal')) adminCloseCohortModal();
   });
   document.addEventListener('click', e => {
     if (!root.contains(e.target)) {
@@ -21811,11 +21950,11 @@ async function loadAdminDirectory() {
   adminBindUi();
   if (!isPlatformAdmin() || !_supabase) {
     const body = $('admin-users-body');
-    if (body) body.innerHTML = '<tr><td colspan="8" class="dd-sub">Login sebagai admin dulu.</td></tr>';
+    if (body) body.innerHTML = '<tr><td colspan="9" class="dd-sub">Login sebagai admin dulu.</td></tr>';
     return;
   }
   const body = $('admin-users-body');
-  if (body) body.innerHTML = '<tr><td colspan="8" class="dd-sub">Memuat…</td></tr>';
+  if (body) body.innerHTML = '<tr><td colspan="9" class="dd-sub">Memuat…</td></tr>';
   // rpc() returns a thenable builder, not a Promise — wrap so .catch works.
   const wrap = (p) => Promise.resolve(p).catch(e => ({ data: null, error: e }));
   try {
@@ -21828,6 +21967,7 @@ async function loadAdminDirectory() {
     renderAdminUsers();
     renderAdminKpis(_adminUsers);
     void renderAdminCategories(_adminUsers);
+    void adminEnsureCohortOptions();
     const [statsRes, kpiRes] = await Promise.all([
       wrap(_supabase.rpc('admin_stats')),
       wrap(_supabase.rpc('admin_dashboard_kpis')),
@@ -21837,7 +21977,7 @@ async function loadAdminDirectory() {
     renderAdminKpis(_adminUsers);
     renderAdminTrend();
   } catch (e) {
-    if (body) body.innerHTML = `<tr><td colspan="8" class="dd-sub">${esc(e.message || 'Gagal memuat.')}</td></tr>`;
+    if (body) body.innerHTML = `<tr><td colspan="9" class="dd-sub">${esc(e.message || 'Gagal memuat.')}</td></tr>`;
   }
 }
 

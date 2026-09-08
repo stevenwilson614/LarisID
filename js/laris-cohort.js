@@ -1453,6 +1453,7 @@
     const stu = $('cohort-student-wrap');
     const men = $('cohort-mentor-wrap');
     const joinCard = $('cohort-join-card');
+    const locked = $('cohort-locked-card');
     const info = $('cohort-student-info');
     const sub = $('cohort-student-subtabs');
     const wa = $('cohort-wa-link');
@@ -1465,6 +1466,8 @@
       if (stu) stu.style.display = 'none';
       if (sub) sub.style.display = 'none';
       if (men) men.style.display = '';
+      if (joinCard) joinCard.style.display = 'none';
+      if (locked) locked.style.display = 'none';
       // The sidebar rail replaces the subtab row in this shell.
       const msub = $('cohort-mentor-subtabs');
       if (msub) msub.style.display = 'none';
@@ -1490,10 +1493,18 @@
     // leaving it on screen would make the preview a lie.
     if (men) men.style.display = (!preview && (state.mentorCohort || isAdmin())) ? '' : 'none';
     if (sub) sub.style.display = cid ? 'flex' : 'none';
-    if (joinCard) joinCard.style.display = cid ? 'none' : '';
+    // Join card is invite-only, never a public entry point. Locked card only when
+    // someone somehow lands here without membership (gated open() should prevent).
+    const pending = getPendingInvite();
+    if (joinCard) joinCard.style.display = (!cid && pending) ? '' : 'none';
+    if (locked) locked.style.display = (!cid && !pending && !state.mentorCohort && !isAdmin()) ? '' : 'none';
 
     if (!cid) {
-      if (info) info.textContent = 'Kamu belum di kohort. Pakai kode undangan, atau minta mentor.';
+      if (info) {
+        info.textContent = pending
+          ? 'Ada undangan menunggu — konfirmasi di bawah.'
+          : 'Kohort hanya untuk anggota.';
+      }
       const ment = $('cohort-ringkasan-mentors');
       if (ment) ment.innerHTML = '';
     } else {
@@ -1554,7 +1565,8 @@
     });
   }
 
-  async function open() {
+  async function open(opts) {
+    opts = opts || {};
     bind();
     captureInviteFromUrl();
     await initMembership();
@@ -1566,7 +1578,39 @@
     // (Ocean 11 under Kohort Pertama), keep mentor-only so Afryan/Hendra are
     // not buried under another cohort's Siswa list.
     state.mentorOnly = shouldMentorOnly();
+    const access = !!(state.studentCohortId || state.mentorCohort || isAdmin() || opts.force);
+    if (!access && !getPendingInvite()) {
+      // No membership and no invite — do not expose the kohort surface.
+      await renderLocked();
+      return false;
+    }
     await render();
+    return access || !!getPendingInvite();
+  }
+
+  async function renderLocked() {
+    const stu = $('cohort-student-wrap');
+    const men = $('cohort-mentor-wrap');
+    const joinCard = $('cohort-join-card');
+    const locked = $('cohort-locked-card');
+    const sub = $('cohort-student-subtabs');
+    const info = $('cohort-student-info');
+    const previewBar = $('cohort-preview-bar');
+    if (previewBar) previewBar.style.display = 'none';
+    if (men) men.style.display = 'none';
+    if (sub) sub.style.display = 'none';
+    if (stu) stu.style.display = '';
+    if (joinCard) joinCard.style.display = 'none';
+    if (locked) locked.style.display = '';
+    if (info) info.textContent = 'Kohort hanya untuk anggota.';
+    ['ringkasan', 'siswa', 'feed', 'jadwal'].forEach(t => {
+      const el = $('cohort-student-panel-' + t);
+      if (el) el.style.display = t === 'ringkasan' ? '' : 'none';
+    });
+    const ment = $('cohort-ringkasan-mentors');
+    if (ment) ment.innerHTML = '';
+    const wa = $('cohort-wa-link');
+    if (wa) wa.style.display = 'none';
   }
 
   global.LarisCohort = {
@@ -1576,7 +1620,7 @@
     tryCompleteMilestone,
     redeemPendingInvite,
     captureInviteFromUrl,
-    hasAccess: function () { return !!(state.studentCohortId || state.mentorCohort || isAdmin()); },
+    hasAccess: function () { return !!(state.studentCohortId || state.mentorCohort || state.previewCid || isAdmin()); },
     /** The cohort this account is genuinely a student in, or null. Student mode
      *  prefers it: a real membership needs no preview, so the screen is the
      *  student's own rows rather than a stand-in. */

@@ -3087,6 +3087,42 @@ body.view-harga .panel-inner { max-width: 1180px; }
   display: inline-flex; padding: 3px 8px; border-radius: 999px;
   font-size: .66rem; font-weight: 700; white-space: nowrap;
 }
+.adm-cohort-pills { display: flex; flex-wrap: wrap; gap: 4px; max-width: 180px; }
+.adm-cohort-pill {
+  display: inline-flex; padding: 3px 8px; border-radius: 999px;
+  font-size: .66rem; font-weight: 700; white-space: nowrap;
+  background: #FEF3C7; color: #92400E;
+}
+.adm-cohort-none { color: #9CA3AF; font-size: .72rem; }
+.adm-cohort-modal {
+  position: fixed; inset: 0; z-index: 80;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px; background: rgba(17,17,17,.45);
+}
+.adm-cohort-modal[hidden] { display: none; }
+.adm-cohort-modal-card {
+  width: min(420px, 100%); background: #fff; border-radius: 14px;
+  border: 1px solid #E8E8E8; box-shadow: 0 16px 40px rgba(0,0,0,.18);
+  padding: 18px 18px 14px;
+}
+.adm-cohort-modal-card h3 { margin: 0 0 4px; font-size: 1rem; font-weight: 750; }
+.adm-cohort-modal-card .dd-sub { margin: 0 0 14px; }
+.adm-cohort-modal-card label {
+  display: block; font-size: .72rem; font-weight: 700; color: #6B7280;
+  text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px;
+}
+.adm-cohort-modal-card select {
+  width: 100%; font: inherit; font-size: .85rem; font-weight: 600;
+  border: 1px solid #E8E8E8; border-radius: 10px; padding: 10px 12px;
+  background: #fff; color: #1A1A1A; margin-bottom: 14px;
+}
+.adm-cohort-modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.adm-cohort-modal-actions button {
+  padding: 8px 14px; border-radius: 10px; font-size: .8rem; font-weight: 700;
+}
+.adm-cohort-modal-actions .adm-tb-btn { border: 1px solid #E8E8E8; background: #fff; color: #4B5563; }
+.adm-cohort-modal-actions .adm-cohort-go { background: #B5202A; color: #fff; border: none; }
+.adm-cohort-modal-actions .adm-cohort-go:disabled { opacity: .4; cursor: not-allowed; }
 .adm-td-aksi { position: relative; text-align: right; width: 40px; }
 .adm-dots {
   width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; color: #9CA3AF;
@@ -8397,12 +8433,16 @@ body:has(.modal-overlay.open) .msg-steven-fab {
                     <ul id="cohort-announce-list" class="cohort-list"></ul>
                   </div>
                 </div>
-                <div id="cohort-join-card" class="cohort-card" style="margin-top:14px;">
+                <div id="cohort-join-card" class="cohort-card" style="margin-top:14px;display:none;">
                   <h3>Gabung kohort</h3>
-                  <p class="cohort-muted" style="margin-bottom:10px;">Masukkan kode undangan dari mentor kamu.</p>
+                  <p class="cohort-muted" style="margin-bottom:10px;">Kamu punya undangan — konfirmasi untuk masuk ke kohort.</p>
                   <input type="text" id="cohort-invite-input" class="cohort-input" placeholder="Kode undangan" autocomplete="off">
                   <button type="button" class="cohort-btn" id="cohort-join-btn">Gabung</button>
                   <div id="cohort-join-status" class="cohort-muted" style="margin-top:8px;"></div>
+                </div>
+                <div id="cohort-locked-card" class="cohort-card" style="margin-top:14px;display:none;">
+                  <h3>Kohort tertutup</h3>
+                  <p class="cohort-muted" style="margin:0;">Halaman ini hanya untuk anggota kohort. Minta undangan dari mentor kalau kamu ikut program.</p>
                 </div>
               </div>
               <div id="cohort-student-panel-siswa" style="display:none;">
@@ -8729,12 +8769,13 @@ body:has(.modal-overlay.open) .msg-steven-fab {
                       <th>Lokasi</th>
                       <th>Tipe Pengguna</th>
                       <th>Kategori yang Diminati</th>
+                      <th>Kohort</th>
                       <th>Bergabung</th>
                       <th></th>
                     </tr>
                   </thead>
                   <tbody id="admin-users-body">
-                    <tr><td colspan="8" class="dd-sub">Memuat…</td></tr>
+                    <tr><td colspan="9" class="dd-sub">Memuat…</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -8748,6 +8789,22 @@ body:has(.modal-overlay.open) .msg-steven-fab {
                 </select>
               </div>
             </section>
+
+            <div class="adm-cohort-modal" id="adm-cohort-modal" hidden>
+              <div class="adm-cohort-modal-card" role="dialog" aria-modal="true" aria-labelledby="adm-cohort-modal-title">
+                <h3 id="adm-cohort-modal-title">Tambah ke kohort</h3>
+                <p class="dd-sub" id="adm-cohort-modal-user">—</p>
+                <label for="adm-cohort-modal-select">Kohort</label>
+                <select id="adm-cohort-modal-select">
+                  <option value="">Memuat…</option>
+                </select>
+                <div class="adm-cohort-modal-actions">
+                  <button type="button" class="adm-tb-btn" id="adm-cohort-modal-cancel">Batal</button>
+                  <button type="button" class="adm-cohort-go" id="adm-cohort-modal-go">Tambahkan</button>
+                </div>
+                <div class="dd-sub" id="adm-cohort-modal-status" style="margin-top:10px;"></div>
+              </div>
+            </div>
 
             <section class="adm-card adm-winback-wrap">
               <h3>LarisRise ops</h3>
@@ -9193,7 +9250,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <script defer src="/js/gpt-referral.js?v=20260821a"></script>
 <script defer src="/js/gpt-profile.js?v=20260908a"></script>
 <script defer src="/js/gpt-community-board.js?v=20260907b"></script>
-<script defer src="/js/laris-cohort.js?v=20260908h"></script>
+<script defer src="/js/laris-cohort.js?v=20260908j"></script>
 <script defer src="/js/laris-mascot-rigs.js?v=20260907k"></script>
 <script defer src="/js/laris-mascot.js?v=20260907k"></script>
 <script defer src="/js/gpt-chat-memory.js?v=20260908a"></script>
@@ -9206,6 +9263,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <script src="/js/peta-peluang.js?v=20260908a" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
-<script src="/js/gpt-app.js?v=20260908i" defer></script>
+<script src="/js/gpt-app.js?v=20260908j" defer></script>
 </body>
 </html>
