@@ -23107,7 +23107,7 @@ function supCloseSurvey() {
 const EXPORT_ROW_LIMIT = 90;      // display only; public._export_row_limit() decides
 const EXPORT_WEEK_LIMIT = 12;     // display only; public._export_week_limit() decides
 const EXPORT_HISTORY_CAP = 10;    // display only; public._export_history_cap() decides
-const EXPORT_XLSX_V = '20260909d';
+const EXPORT_XLSX_V = '20260909e';
 
 let _exportQuota = null;          // { unlimited, used, limit, remaining, weeks_*, … }
 let _exportCtx = null;            // { source, rows, shape, weeks, count, lockRows }
@@ -23259,15 +23259,15 @@ function exportRenderCost() {
   if (scopeEl) {
     if (hist) {
       scopeEl.hidden = false;
-      scopeEl.textContent = sel[0]?.product_name
-        ? `Omset mingguan · ${sel[0].product_name}`
-        : 'Omset mingguan untuk produk ini';
+      const name = sel[0]?.product_name || 'produk ini';
+      scopeEl.textContent = `1 produk · omset mingguan · ${name}. Kuota 12 minggu/hari `
+        + `(mis. 3×4 minggu atau 1×12).`;
     } else {
       const sortSel = document.getElementById('dir-sort-select');
       const sortLabel = sortSel?.selectedOptions?.[0]?.textContent?.trim() || '';
       scopeEl.hidden = false;
       scopeEl.textContent = `${sel.length} produk teratas dari ${pool.length} hasil`
-        + `${sortLabel ? ` · urut: ${sortLabel}` : ''} · omset / bulan`;
+        + `${sortLabel ? ` · urut: ${sortLabel}` : ''} · omset / bulan · 1 produk = 1 baris`;
     }
   }
 
@@ -23568,20 +23568,11 @@ const EXPORT_PRODUK_COLS = [
 ];
 
 const EXPORT_RIWAYAT_COLS = [
-  ['No. produk',        (w, i, m) => m.no,                                   'int'],
-  ['Nama Produk',       (w, i, m) => m.product_name || '',                   'text'],
-  ['Toko',              (w, i, m) => m.store_name || '',                     'text'],
-  ['item_id',           (w) => String(w.item_id ?? ''),                      'id'],
-  ['shop_id',           (w) => String(w.shop_id ?? ''),                      'id'],
-  ['Minggu (Senin WIB)',(w) => w.week_start || '',                           'text'],
-  ['Unit / minggu',     (w) => w.units_wk,                                   'dec'],
-  ['Omset / minggu (Rp)',(w) => w.omset_wk,                                  'money'],
-  ['Unit / hari',       (w) => (w.units_wk != null ? w.units_wk / 7 : null),  'dec'],
-  ['Sumber',            (w) => w.sumber || '',                               'text'],
-  ['Label',             (w) => (w.sumber === 'terukur' ? 'terukur' : 'perkiraan'), 'text'],
-  ['Hari terukur',      (w) => w.hari_terukur,                               'int'],
-  ['Hari data',         (w) => w.hari_data,                                  'int'],
-  ['Dihitung?',         (w) => (w.billable ? 'Ya' : 'Gratis'),               'text'],
+  ['Minggu ke-',          (w, i) => i + 1,                                          'int'],
+  ['Minggu (Senin WIB)',  (w) => w.week_start || '',                                'text'],
+  ['Omset / minggu (Rp)', (w) => w.omset_wk,                                        'money'],
+  ['Unit / minggu',       (w) => w.units_wk,                                        'dec'],
+  ['Sumber',              (w) => w.sumber || '',                                    'text'],
 ];
 
 function exportDateStr(v) {
@@ -23599,24 +23590,15 @@ function exportDaysSince(v) {
 
 const EXPORT_FMT = { money: '#,##0', int: '#,##0', dec: '#,##0.00', rating: '0.0' };
 
-function exportHistoryMeta(payload) {
-  const meta = new Map();
-  (payload.rows || []).forEach((r, i) => {
-    meta.set(`${r.item_id}|${r.shop_id}`, {
-      no: i + 1, product_name: r.product_name, store_name: r.store_name,
-    });
-  });
-  return meta;
-}
-
 function exportInfoRows(payload, hist) {
   return [
     ['LarisID — data produk Shopee'],
     ['Situs', 'https://larisid.com'],
     ['Dibuat', exportBrandLine('')],
     ['Baris di file', payload.rows_total],
-    ['Baris terukur yang dihitung', payload.charged],
-    ['Sisa kuota hari ini', payload.remaining ?? '—'],
+    ['Kuota terpakai', payload.charged],
+    ['Sisa baris produk hari ini', payload.remaining ?? '—'],
+    ['Sisa minggu riwayat hari ini', payload.weeks_remaining ?? '—'],
     [],
     ['Cara membaca angka'],
     ['terukur', 'Diukur dari dua kali scrape yang mengapit periode ini. Delta dibagi rata '
@@ -23628,6 +23610,8 @@ function exportInfoRows(payload, hist) {
     ['Yang perlu kamu tahu'],
     ['Jadwal scrape', 'Scrape kami turun setiap 12–17 hari. Angka mingguan sudah dinormalkan '
                     + 'ke laju 7 hari, jadi jangan dibaca sebagai hitungan mentah.'],
+    ['Omset / bulan', 'Dari kecepatan terukur/perkiraan kami (bukan jumlah mentah 4 scrape). '
+                    + 'Kalau ada beberapa scrape dalam ~sebulan, itu yang membentuk omset bulanan.'],
     ['Pertama terpantau', 'Tanggal pertama kami melihat listing ini — batas bawah, bukan '
                         + 'tanggal toko membuatnya.'],
     ['Total terjual', 'Shopee membulatkan angka besar (mis. "10RB+"), jadi angka ini bisa dibulatkan.'],
@@ -23637,7 +23621,30 @@ function exportInfoRows(payload, hist) {
                          + 'dibulatkan, jadi harga × total terjual akan menyesatkan.'],
     [],
     ['Pertanyaan atau butuh unduhan lebih besar?', 'https://larisid.com'],
-  ].concat(hist ? [[], ['Sheet Riwayat', 'Satu baris per produk per minggu (Senin WIB).']] : []);
+  ].concat(hist ? [[],
+    ['Isi file riwayat', 'Baris 1 = info produk (omset / bulan). Baris berikutnya = omset '
+                       + 'per minggu saja, tanpa mengulang nama/toko. Kuota 12 minggu/hari '
+                       + '(mis. 3 produk × 4 minggu, atau 1 × 12).'],
+  ] : []);
+}
+
+function exportApplyColFormats(ws, cols, startRow, endRow) {
+  const X = window.XLSX;
+  if (!X) return;
+  for (let R = startRow; R <= endRow; R++) {
+    cols.forEach((c, C) => {
+      const cell = ws[X.utils.encode_cell({ r: R, c: C })];
+      if (!cell) return;
+      const kind = c[2];
+      if (kind === 'id') { cell.t = 's'; cell.z = '@'; return; }
+      if (EXPORT_FMT[kind] && typeof cell.v === 'number') cell.z = EXPORT_FMT[kind];
+    });
+  }
+}
+
+function exportColWidths(cols) {
+  return cols.map((c) => ({ wch: c[0] === 'Nama Produk' ? 46
+    : c[0] === 'Toko' ? 24 : Math.max(11, Math.min(30, c[0].length + 3)) }));
 }
 
 function exportBuildWorkbook(payload, kw, hist) {
@@ -23653,47 +23660,74 @@ function exportBuildWorkbook(payload, kw, hist) {
   const brand = exportBrandLine(kw ? `kata kunci: "${kw}"` : '');
   const rows = payload.rows || [];
 
-  const mkSheet = (cols, data, metaFor) => {
-    // Row 1 = brand line, row 2 = headers, data from row 3. The autofilter is
-    // set on the header range explicitly, otherwise Excel latches onto row 1.
-    const aoa = [[brand], cols.map((c) => c[0])];
-    data.forEach((d, i) => {
-      const meta = metaFor ? metaFor(d) : null;
-      aoa.push(cols.map((c) => {
-        const v = c[1](d, i, meta);
-        return v === undefined || v === null ? '' : v;
-      }));
-    });
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-    const range = XLSX.utils.decode_range(ws['!ref']);
-    for (let R = 2; R <= range.e.r; R++) {
-      cols.forEach((c, C) => {
-        const cell = ws[XLSX.utils.encode_cell({ r: R, c: C })];
-        if (!cell) return;
-        const kind = c[2];
-        if (kind === 'id') { cell.t = 's'; cell.z = '@'; return; }
-        if (EXPORT_FMT[kind] && typeof cell.v === 'number') cell.z = EXPORT_FMT[kind];
-      });
-    }
-    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: Math.max(0, cols.length - 1) } }];
-    // Explicit header range: without it Excel's filter auto-detection latches
-    // onto the merged brand row and the sheet becomes annoying to sort.
-    ws['!autofilter'] = { ref: XLSX.utils.encode_range(
-      { s: { r: 1, c: 0 }, e: { r: Math.max(1, range.e.r), c: cols.length - 1 } }) };
-    // No frozen header row: SheetJS Community's writer does not emit panes (Pro
-    // only), and the full build is 950KB for the same gap. Verified on 0.20.3.
-    ws['!cols'] = cols.map((c) => ({ wch: c[0] === 'Nama Produk' ? 46
-      : c[0] === 'Toko' ? 24 : Math.max(11, Math.min(30, c[0].length + 3)) }));
-    return ws;
-  };
-
-  XLSX.utils.book_append_sheet(wb, mkSheet(EXPORT_PRODUK_COLS, rows), 'Produk');
-
   if (hist) {
-    const meta = exportHistoryMeta(payload);
+    // One sheet: product info once, then week omset rows only (no repeated
+    // name/toko). Matches Deep Dive's single-product download.
+    const product = rows[0] || {};
     const series = payload.history || [];
-    XLSX.utils.book_append_sheet(wb, mkSheet(EXPORT_RIWAYAT_COLS, series,
-      (w) => meta.get(`${w.item_id}|${w.shop_id}`) || {}), 'Riwayat');
+    const pCols = EXPORT_PRODUK_COLS;
+    const wCols = EXPORT_RIWAYAT_COLS;
+    const width = Math.max(pCols.length, wCols.length);
+    const pad = (arr) => {
+      const out = arr.slice();
+      while (out.length < width) out.push('');
+      return out;
+    };
+
+    const aoa = [[brand]];
+    aoa.push(pad(pCols.map((c) => c[0])));
+    const productRowIdx = aoa.length;
+    aoa.push(pad(pCols.map((c) => {
+      const v = c[1](product, 0, null);
+      return v === undefined || v === null ? '' : v;
+    })));
+    aoa.push(pad([])); // spacer
+    const weekHeaderIdx = aoa.length;
+    aoa.push(pad(wCols.map((c) => c[0])));
+    const weekStartIdx = aoa.length;
+    series.forEach((w, i) => {
+      aoa.push(pad(wCols.map((c) => {
+        const v = c[1](w, i, null);
+        return v === undefined || v === null ? '' : v;
+      })));
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    exportApplyColFormats(ws, pCols, productRowIdx, productRowIdx);
+    if (series.length) {
+      exportApplyColFormats(ws, wCols, weekStartIdx, weekStartIdx + series.length - 1);
+    }
+    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: Math.max(0, width - 1) } }];
+    // Autofilter covers the week block only — filtering product+weeks together
+    // would hide the snapshot row when someone filters by Sumber.
+    if (series.length) {
+      ws['!autofilter'] = { ref: XLSX.utils.encode_range({
+        s: { r: weekHeaderIdx, c: 0 },
+        e: { r: weekStartIdx + series.length - 1, c: wCols.length - 1 },
+      }) };
+    }
+    ws['!cols'] = exportColWidths(width === pCols.length ? pCols
+      : pCols.concat(wCols.slice(pCols.length)));
+    XLSX.utils.book_append_sheet(wb, ws, 'Omset');
+  } else {
+    const mkSheet = (cols, data) => {
+      const aoa = [[brand], cols.map((c) => c[0])];
+      data.forEach((d, i) => {
+        aoa.push(cols.map((c) => {
+          const v = c[1](d, i, null);
+          return v === undefined || v === null ? '' : v;
+        }));
+      });
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      const range = XLSX.utils.decode_range(ws['!ref']);
+      exportApplyColFormats(ws, cols, 2, range.e.r);
+      ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: Math.max(0, cols.length - 1) } }];
+      ws['!autofilter'] = { ref: XLSX.utils.encode_range(
+        { s: { r: 1, c: 0 }, e: { r: Math.max(1, range.e.r), c: cols.length - 1 } }) };
+      ws['!cols'] = exportColWidths(cols);
+      return ws;
+    };
+    XLSX.utils.book_append_sheet(wb, mkSheet(EXPORT_PRODUK_COLS, rows), 'Produk');
   }
 
   const info = XLSX.utils.aoa_to_sheet(exportInfoRows(payload, hist));
@@ -23715,23 +23749,33 @@ function exportBuildCsv(payload, kw, hist) {
   // No brand/title row: it would break every parser that is the reason someone
   // chose CSV. Branding rides on the filename and the LarisID link column.
   const rows = payload.rows || [];
-  let cols;
-  let data;
+  const lines = [];
   if (hist) {
-    // One flat file, product columns denormalised onto each week — what a CSV
-    // consumer wants. The two-sheet shape is xlsx-only.
-    const meta = exportHistoryMeta(payload);
-    cols = EXPORT_RIWAYAT_COLS;
-    data = (payload.history || []).map((w) => ({ w, m: meta.get(`${w.item_id}|${w.shop_id}`) || {} }));
+    // Same stacked shape as xlsx: product once, then week-only rows.
+    const product = rows[0] || {};
+    const series = payload.history || [];
+    lines.push(EXPORT_PRODUK_COLS.map((c) => exportCsvCell(c[0])).join(','));
+    lines.push(EXPORT_PRODUK_COLS.map((c) => {
+      const v = c[1](product, 0, null);
+      return exportCsvCell(v === undefined || v === null ? '' : v);
+    }).join(','));
+    lines.push('');
+    lines.push(EXPORT_RIWAYAT_COLS.map((c) => exportCsvCell(c[0])).join(','));
+    series.forEach((w, i) => {
+      lines.push(EXPORT_RIWAYAT_COLS.map((c) => {
+        const v = c[1](w, i, null);
+        return exportCsvCell(v === undefined || v === null ? '' : v);
+      }).join(','));
+    });
   } else {
-    cols = EXPORT_PRODUK_COLS;
-    data = rows;
+    lines.push(EXPORT_PRODUK_COLS.map((c) => exportCsvCell(c[0])).join(','));
+    rows.forEach((d, i) => {
+      lines.push(EXPORT_PRODUK_COLS.map((c) => {
+        const v = c[1](d, i, null);
+        return exportCsvCell(v === undefined || v === null ? '' : v);
+      }).join(','));
+    });
   }
-  const lines = [cols.map((c) => exportCsvCell(c[0])).join(',')];
-  data.forEach((d, i) => {
-    lines.push(cols.map((c) => exportCsvCell(
-      hist ? c[1](d.w, i, d.m) : c[1](d, i, null))).join(','));
-  });
   const name = `larisid-${hist ? 'riwayat' : 'produk'}`
     + `${kw ? `-${exportSlugify(kw)}` : ''}-${exportFileStamp()}.csv`;
   exportDownloadBlob(

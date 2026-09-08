@@ -9,7 +9,7 @@ whose real purpose is to measure demand before this becomes a paid feature.
 | Surface | Shape | Daily budget (WIB) | What you get |
 |---|---|---|---|
 | Cari Produk (`#dir-export`) | Snapshot only | **90 product rows** | Monthly omset per product (1 product = 1 row). No weekly option. |
-| Deep Dive (icon next to Tren) | History | **12 weeks** | Weekly omset for that one product |
+| Deep Dive (icon next to Tren) | History | **12 weeks** shared | One product per download, choose 4 / 8 / 12 weeks. Budget is weeks total (3×4 or 1×12). Sheet: row 1 = product info, following rows = week omset only (no repeated name/toko). |
 
 Modal copy at the top is the live remaining/limit:
 
