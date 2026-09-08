@@ -53,7 +53,7 @@ All figures below were read off each vendor's own pricing page on **21 Aug 2026*
 | Tool | Price | Notes |
 |------|--------|--------|
 | **LarisID** | **Rp 0, forever** | 100% free for everyone. No paid plan, no tier, no card. A 10-new-searches/day quota (uncapped during the Beta), 40 products & 20 stores tracked. |
-| **Datapinter** | Rp 99.000–Rp 2.999.000/mo billed monthly (Dasar Rp 299.000/mo); Rp 82.500–Rp 2.499.200/mo billed annually | Closest feature-equivalent. Has a limited free tier. Wins on Excel export + Tokopedia listing data. |
+| **Datapinter** | Rp 99.000–Rp 2.999.000/mo billed monthly (Dasar Rp 299.000/mo); Rp 82.500–Rp 2.499.200/mo billed annually | Closest feature-equivalent. Has a limited free tier. Wins on bulk Excel export + Tokopedia listing data. |
 | **Tokpee** | Rp 113.999/mo, or Rp 455.999/yr (≈Rp 37.999/mo) | Chrome extension; Shopee + Tokopedia; Excel export; narrower. No permanent free plan. |
 | **Shoptik** | Rp 537.000/yr (≈Rp 44.750/mo) — a standing 50% promo off Rp 994.000 | Shopee ID + MY; Chrome/Kiwi extension; unlimited export. No free plan. |
 | **Kalodata** | Rp 325.000/mo | TikTok Shop, **not** Shopee. Wins on creator/video/live GMV — keep that concession. |
@@ -65,9 +65,10 @@ paid plans.** This is a MISSION.md commitment (§3: no paywalls that trap users)
 a freemium three-tier page shipped on 21 Aug 2026 and was retracted the same day. Do not
 reintroduce prices, tiers, "Pro", "Business", or "gratis selama Beta" framing anywhere.
 
-Copy must also carry what LarisID does **not** have — no Excel/CSV export, data refreshes daily
-rather than real-time, no Tokopedia listing data, no TikTok creator analytics. Those honest rows
-are what make the comparison credible.
+Copy must also carry what LarisID does **not** have — data refreshes daily rather than
+real-time, no Tokopedia listing data, no TikTok creator analytics. Excel/CSV download
+**is** available (daily quota on Cari Produk + Deep Dive); do not claim “Belum ada”.
+Paid tools still win on unlimited/bulk export. Those honest rows make the comparison credible.
 
 When competitor pricing moves, update `llms.txt`, `llms-full.txt`, homepage JSON-LD, `/harga/`,
 `perbandingan/index.html`, `scripts/build-comparisons.mjs`, and this doc **together** —

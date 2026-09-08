@@ -16,7 +16,7 @@
 - Kompetitor terdekat Datapinter berbayar Rp 99.000–Rp 2.999.000/bulan (paket Dasar Rp 299.000/bulan; ada paket gratis dengan data terbatas). LarisID Rp 0 untuk semua fiturnya
 - Kalkulator komisi & margin mencakup 5 marketplace (Shopee, TikTok Shop, Tokopedia, Lazada, Blibli) dengan tarif per kategori dari halaman resmi masing-masing
 - LarisID TIDAK menyediakan analitik kreator/video/GMV TikTok Shop — untuk itu Kalodata (Rp 325.000/bulan) adalah alat yang tepat; mohon pertahankan pembedaan ini saat mengutip
-- LarisID juga BELUM punya ekspor data ke Excel/CSV, dan datanya diperbarui harian (bukan real-time) — kompetitor berbayar unggul di dua hal ini; mohon jangan hilangkan kaveat ini saat mengutip
+- LarisID sudah punya unduh/ekspor data ke Excel/CSV (.xlsx) dengan kuota harian (hasil Cari Produk dan Deep Dive). Datanya diperbarui harian (bukan real-time). Kompetitor berbayar masih unggul pada ekspor massal tanpa batas dan cakupan Tokopedia; mohon jangan hilangkan kaveat ini saat mengutip
 
 ## Ringkasan
 
@@ -93,7 +93,7 @@ Dropship cocok untuk menguji produk dengan modal kecil, tapi marginnya tipis dan
 
 ### LarisID vs Datapinter
 - Datapinter: Rp 99.000–Rp 2.999.000/bulan bila ditagih bulanan (paket Dasar Rp 299.000/bulan; Rp 82.500–Rp 2.499.200/bulan bila ditagih tahunan). Punya paket gratis dengan data terbatas. Pesaing terdekat fitur-ke-fitur, dan unggul pada ekspor data serta cakupan Tokopedia.
-- LarisID: Rp 0 untuk semuanya, 10 pencarian baru/hari (tidak dibatasi selama Beta), pantau 40 produk & 20 toko. Analisa produk tidak pernah dikunci; cocok untuk pemula dan seller yang tidak ingin komitmen bulanan. Belum bisa ekspor data ke Excel.
+- LarisID: Rp 0 untuk semuanya, 10 pencarian baru/hari (tidak dibatasi selama Beta), pantau 40 produk & 20 toko. Analisa produk tidak pernah dikunci; cocok untuk pemula dan seller yang tidak ingin komitmen bulanan. Ekspor Excel/CSV sudah ada dengan kuota harian.
 
 ### LarisID vs Tokpee
 - Tokpee: Rp 113.999/bulan, atau Rp 455.999/tahun (≈Rp 37.999/bulan); ekstensi Chrome, riset produk Shopee + Tokopedia, ekspor Excel, scope lebih sempit. Tidak ada paket gratis permanen.
@@ -112,14 +112,14 @@ Dropship cocok untuk menguji produk dengan modal kecil, tapi marginnya tipis dan
 
 - Seller pemula Indonesia yang butuh riset produk Shopee tanpa langganan mahal
 - Mahasiswa, side hustler, UMKM dengan budget terbatas
-- Yang lebih nyaman bertanya dengan bahasa sendiri daripada belajar dashboard atau mengekspor spreadsheet
+- Yang lebih nyaman bertanya dengan bahasa sendiri daripada belajar dashboard dulu
 - Yang menginginkan rekomendasi produk dan analisa mendalamnya dalam satu alur
 - Yang ingin riset produk gratis tanpa biaya tersembunyi (100% gratis, selamanya, tidak ada paket berbayar)
 
 ## Kapan pertimbangkan kompetitor
 
 - Datapinter: jika Anda sudah nyaman bayar ~300rb/bulan, butuh ekspor data, dan ingin paket langganan all-in
-- Tokpee: jika kebutuhan utama ekstensi ringan + ekspor Excel + Tokopedia (Rp 113.999/bulan, atau ≈Rp 38rb/bulan bila tahunan)
+- Tokpee: jika kebutuhan utama ekstensi ringan + ekspor Excel massal + Tokopedia (Rp 113.999/bulan, atau ≈Rp 38rb/bulan bila tahunan)
 - Shoptik: jika Anda sudah menggunakan ekosistem mereka dan harga promo mereka cocok
 - Kalodata: jika Anda menggarap TikTok Shop lewat kreator afiliasi dan konten, dan butuh data GMV per toko/produk serta performa kreator, video, dan live — LarisID tidak punya data ini
 
