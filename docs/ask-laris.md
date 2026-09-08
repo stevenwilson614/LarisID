@@ -79,6 +79,8 @@ After an agent / LOOKUP / WEEKLY answer, lift `<lanjut>` (1–3 user-voice quest
 
 Empty assistant text is not persisted. `max_tokens` appends a “Lanjutkan jawaban” chip. `AI_MAX_TOKENS_DEEP` = 4096.
 
+The written verdict belongs in `.agent-answer`, not only as a muted note inside a tool step. A same-turn compare that arrives with tool calls is kept as the answer. If the last turn is still empty, one extra prose-only call runs; if that fails, the bubble says the writing was cut and shows **Lanjutkan jawaban**. `<lanjut>` that contains a full paragraph (not 1–3 short chips) is treated as the answer, not stripped.
+
 ---
 
 ## Shared prompt context

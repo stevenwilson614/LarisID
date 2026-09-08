@@ -189,6 +189,25 @@ const lanjut = mem.extractLanjutBlock('Ringkas.\n<lanjut>\n1. Ada seller dari Ba
 eq('lanjut lines', lanjut.lines, ['Ada seller dari Bandung?', 'Bandingkan harga']);
 ok('lanjut rest drops tags', lanjut.rest === 'Ringkas.' && !/<lanjut>/.test(lanjut.rest));
 
+const swallowed = mem.extractLanjutBlock('<lanjut>\nKacang mete lebih baik dijual karena marginnya lebih besar dibanding sandal dan mangkok ceramic, dengan catatan harga 8000 per kg masih perlu dicek terhadap median pasar.\n</lanjut>');
+ok('prose inside lanjut is kept as rest', /Kacang mete lebih baik/.test(swallowed.rest) && swallowed.lines.length === 0);
+
+const openLanjut = mem.extractLanjutBlock('<lanjut>\nSandal lebih aman untuk modal kecil karena harga 10000 sudah dekat harga jual pasar, sementara mete 8000/kg belum tentu margin setelah packing.\n');
+ok('unclosed lanjut keeps the verdict', /Sandal lebih aman/.test(openLanjut.rest));
+
+const openList = mem.extractLanjutBlock('Kesimpulan di atas.\n<lanjut>\n1. Cek harga mete');
+eq('unclosed list stays chips', openList.lines, ['Cek harga mete']);
+ok('unclosed list keeps prior rest', openList.rest === 'Kesimpulan di atas.');
+
+eq(
+  'named products lebih baik is judgment',
+  mem.detectResponseMode(
+    'di pasar ada kacang mete 8000rp/kg , sandal 10000rp , dan mangkok ceramic 25000. produk apa lebih baik dijual.',
+    { messages: [] },
+  ),
+  'judgment',
+);
+
 const packedShown = mem.packLastShown(
   [{ item_id: 9, shop_id: 8, product_name: 'Crocs', location: 'Kota Bandung', price: 120000 }],
   [{ keyword: 'crocs original' }],

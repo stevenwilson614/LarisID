@@ -6388,6 +6388,12 @@ function closeProfileNudge() {
 // client-only `_saved` flag; only chat_id/role/content are sent to the DB.
 async function persistMessage(chat, m) {
   if (!currentUser || !_supabase || !chat || !chat.id || !m || m._saved || m._persisting) return;
+  // Empty assistant text with no HTML is a failed turn — do not store a blank
+  // row that reloads as a missing answer. A run panel (html) still persists.
+  if (m.role === 'assistant') {
+    const text = typeof m.content === 'object' ? String(m.content?.text || '') : String(m.content || '');
+    if (!text.trim() && !String(m.html || '').trim()) return;
+  }
   m._persisting = true;
   try {
     const { error } = await _supabase.from('gpt_messages').insert({
@@ -9696,7 +9702,17 @@ function isEvaluativeAsk(lower) {
     || /(ide|prospek) (jual|jualan|bisnis|usaha)/.test(s)
     || /jualan .*(bagus|baik|worth it|prospek)/.test(s)
     || /(baiknya|sebaiknya|worth it).*jual/.test(s)
-    || /jual.*(bagus (ga|gak|nggak|tidak)|worth it (ga|gak|nggak))\b/.test(s);
+    || /jual.*(bagus (ga|gak|nggak|tidak)|worth it (ga|gak|nggak))\b/.test(s)
+    || /(lebih baik|mending).*(jual|dijual|jualan)/.test(s)
+    || /produk apa.*(lebih baik|lebih bagus|bagus|cocok|menguntungkan)/.test(s);
+}
+
+/** Named-product verdict ("mete vs sandal, mana lebih baik dijual") — not a generic rec. */
+function isSellVerdictAsk(lower) {
+  const s = String(lower || '');
+  if (isEvaluativeAsk(s)) return true;
+  if (/(lebih baik|mending|sebaiknya|paling bagus|terbaik)/.test(s) && /jual|dijual|jualan/.test(s)) return true;
+  return false;
 }
 
 /**
@@ -16963,7 +16979,10 @@ async function handleComposerSubmit(text, opts = {}) {
   }
 
   // "Recommend me something" intent — only outside a product conversation.
-  if (!inProductCtx && /tunjukkan|rekomendasi|jual apa|produk apa|cocok buat|mulai jual/.test(lower)) {
+  // A named-product verdict ("mete / sandal / mangkok, mana lebih baik") is
+  // not this path: that needs a written comparison, not a rec card grid.
+  if (!inProductCtx && /tunjukkan|rekomendasi|jual apa|produk apa|cocok buat|mulai jual/.test(lower)
+      && !isSellVerdictAsk(lower)) {
     clarityEvt('gpt_intent_rec', {});
     await startRecommendationChat(false);
     return;
@@ -17121,12 +17140,18 @@ async function askProductAi(chat, product, text, opts = {}) {
     thinking: wantsDeepReasoning(text),
   });
   const replyText = _aiReplyText(reply);
+  const lanjut = (typeof reply === 'object' && reply.lanjut) || [];
+  const truncated = typeof reply === 'object' && reply.stopReason === 'max_tokens';
+  let extra = '';
+  if (lanjut.length) extra += followupChipsHtml(lanjut);
+  if (truncated || !replyText.trim()) extra += continueChipHtml();
+  if (extra && reply.run?.answerEl) reply.run.answerEl.insertAdjacentHTML('beforeend', extra);
   // Thinking is deliberately NOT persisted: chatHistoryForAi would replay it as
   // a visible assistant turn, and renderChatThread would show it on reload.
   // staticHtml() is the settled run panel with the trace already stripped.
   const runHtml = (typeof reply === 'object' && reply.run?.staticHtml?.()) || '';
-  pushMessage(chat, 'assistant', { text: replyText },
-    runHtml + (mdToHtml(replyText) || `<p>${esc(replyText)}</p>`));
+  pushMessage(chat, 'assistant', { text: replyText, followups: lanjut },
+    runHtml + (mdToHtml(replyText) || `<p>${esc(replyText)}</p>`) + extra);
   void logUserEvent('gpt_ai_reply', { ui: 'gpt', keyword: product.keyword, via: root ? 'side_panel' : 'composer' });
   clarityEvt('gpt_ai_reply', {});
   // Learn from what the user said, after the reply so it never delays it.
@@ -17520,9 +17545,13 @@ async function resolvePasarTypes(keys) {
 }
 
 async function paintAgentMarketReply(chat, loading, replyObj, fallbackTypes) {
-  const text = _aiReplyText(replyObj);
+  const rawText = _aiReplyText(replyObj).trim();
+  let text = rawText;
   const thinking = typeof replyObj === 'object' ? (replyObj.thinking || '') : '';
   const keys = typeof replyObj === 'object' ? (replyObj.pasarKeys || []) : [];
+  const lanjut = (typeof replyObj === 'object' && replyObj.lanjut) || [];
+  const truncated = replyObj?.stopReason === 'max_tokens';
+  const aborted = !!(replyObj && replyObj.aborted);
   let types = await resolvePasarTypes(keys);
   if (!types.length && fallbackTypes?.length) {
     registerTypes(fallbackTypes);
@@ -17543,8 +17572,20 @@ async function paintAgentMarketReply(chat, loading, replyObj, fallbackTypes) {
   }
   const fresh = types.filter(t => !shownInRun.has(t.keyword));
 
+  let answerHtml;
+  if (aborted && !text) {
+    answerHtml = interruptedReplyHtml(lastUserText(chat));
+  } else if (!text) {
+    text = 'Aku sudah kumpulkan datanya di langkah di atas, tapi tulisannya terputus. Ketuk Lanjutkan jawaban supaya aku tuliskan kesimpulannya.';
+    answerHtml = `<p>${esc(text)}</p>`;
+  } else {
+    answerHtml = _aiBubbleHtml(text, run ? '' : thinking);
+  }
+
   let tail = '';
   if (offer) tail += pendingOfferChipsHtml(offer);
+  if (lanjut.length && !aborted) tail += followupChipsHtml(lanjut);
+  if ((truncated || !rawText) && !aborted) tail += continueChipHtml();
   if (fresh.length) {
     const listings = await fetchListingsForKeywords(fresh.map(t => t.keyword), 12, 80);
     tail += listings.length
@@ -17556,7 +17597,6 @@ async function paintAgentMarketReply(chat, loading, replyObj, fallbackTypes) {
   // The run panel is live DOM built node by node — writing bubble.innerHTML here
   // would erase the whole visible plan. Only the answer region and the tail move.
   const answerEl = run?.answerEl || bubble;
-  const answerHtml = _aiBubbleHtml(text, run ? '' : thinking);
   if (answerEl) answerEl.innerHTML = answerHtml + tail;
   else if (bubble) bubble.innerHTML = answerHtml + tail;
   bindTypeCards(loading);
@@ -17570,6 +17610,7 @@ async function paintAgentMarketReply(chat, loading, replyObj, fallbackTypes) {
     text,
     q: chat.context?.q || '',
     types: types.map(t => t.keyword),
+    followups: lanjut,
   }, html);
   saveLocalState();
 }
@@ -17592,7 +17633,7 @@ const AI_TOOL_TIMEOUT_MS = 8000;
 
 // Questions that deserve reasoning rather than a lookup. Extended thinking costs
 // latency before the first token, so simple asks stay fast.
-const AI_DEEP_MARKERS = /\b(kenapa|mengapa|why|bandingkan|banding|compare|mana yang|yang mana|which|sebaiknya|should i|worth|bedanya|beda|risiko|risk|strategi|strategy|untung|rugi|prospek|peluang|jelaskan|explain|analisa|analisis|analyze|skor|score|impor|import|paling bagus|terbaik|best)\b/i;
+const AI_DEEP_MARKERS = /\b(kenapa|mengapa|why|bandingkan|banding|compare|mana yang|yang mana|which|sebaiknya|should i|worth|bedanya|beda|risiko|risk|strategi|strategy|untung|rugi|prospek|peluang|jelaskan|explain|analisa|analisis|analyze|skor|score|impor|import|paling bagus|terbaik|best|lebih baik|mending)\b/i;
 
 function wantsDeepReasoning(text) {
   const s = String(text || '').toLowerCase().trim();
@@ -17661,7 +17702,8 @@ function isAnalyticalAsk(lower) {
   const s = String(lower || '');
   if (detectIntent(s)) return false;                                  // chips own these
   if (isBareProductQuery(s)) return false;                            // "dresses" is a search
-  if (/tunjukkan|rekomendasi|jual apa|produk apa|cocok buat|mulai jual/.test(s)) return false;
+  if (/tunjukkan|rekomendasi|jual apa|produk apa|cocok buat|mulai jual/.test(s)
+      && !isSellVerdictAsk(s)) return false;
   if (/^produk lain$|tampilkan produk lain|^rekomendasi baru$/.test(s)) return false;
   return wantsDeepReasoning(s);
 }
@@ -18304,6 +18346,16 @@ function _aiSplitPlan(text) {
   return { plan, lanjut, rest: _aiStripToolMarkup(s), open };
 }
 
+/** One short beat between tool rounds — not the written verdict. */
+function _aiIsNarration(text) {
+  const s = String(text || '').trim();
+  if (!s) return false;
+  if (s.length > 240) return false;
+  if ((s.match(/\n\n/g) || []).length >= 1) return false;
+  if (/^##\s/m.test(s)) return false;
+  return true;
+}
+
 function _aiPlanLines(body) {
   return String(body || '').split('\n')
     .map(l => l.replace(/^\s*\d{1,2}\s*[.)\-]\s*/, '').replace(/^\s*[-•*]\s*/, '').trim())
@@ -18686,6 +18738,7 @@ async function streamAssistantReply(loading, system, messages, opts = {}) {
   const run = createAgentRun(bubble, { scroll, compact: !!root });
   let planShown = false;
   let curTurn = 0;
+  let heldAnswer = '';
 
   /**
    * One repaint, one target. The run view owns everything above .agent-answer
@@ -18712,8 +18765,11 @@ async function streamAssistantReply(loading, system, messages, opts = {}) {
       flushPlan();
       const split = _aiSplitPlan(acc);
       // While the block is still streaming, show the beat rather than raw tags.
-      run.answerEl.innerHTML = split.rest
-        ? (mdToHtml(split.rest) || `<p>${esc(split.rest)}</p>`)
+      // If this turn's acc was cleared after moving a verdict to heldAnswer, a
+      // late rAF must not wipe that written answer.
+      const shown = split.rest || (!split.open && heldAnswer) || '';
+      run.answerEl.innerHTML = shown
+        ? (mdToHtml(shown) || `<p>${esc(shown)}</p>`)
         : (split.open ? '<p class="agent-wait">Menyusun rencana…</p>' : '');
       scroll();
     });
@@ -18738,7 +18794,7 @@ async function streamAssistantReply(loading, system, messages, opts = {}) {
         thinking: !!(opts.thinking && turn === 0),
         onThinking: (_p, full) => { thinkAcc = full; run.thinking(full); },
         onToolStart: (name, id) => { flushPlan(); run.toolStart(id, name); },
-        ...(useTools && lastTurn ? { toolChoice: { type: 'none' } } : {}),
+        ...(useTools && lastTurn ? { toolChoice: { type: 'none' }, maxTokens: AI_MAX_TOKENS_DEEP } : {}),
       };
 
       const reply = await _mlsAIStream(system, turns, (_piece, full) => {
@@ -18770,12 +18826,22 @@ async function streamAssistantReply(loading, system, messages, opts = {}) {
       }
       if (!wants.length) break;
 
-      // Prose that came alongside the tool calls is this round's narration.
-      // acc clears here, not after the tools: a rAF still queued from the last
-      // delta would otherwise repaint the answer with text we just moved.
-      if (split.rest) run.note(split.rest);
+      // Short beats between tool rounds stay in the step. A full verdict
+      // written alongside tools is the answer — burying it as a note left
+      // the feed with tables and no written conclusion.
+      const rest = String(split.rest || '').trim();
+      if (rest && _aiIsNarration(rest)) {
+        run.note(rest);
+        if (run.answerEl) run.answerEl.innerHTML = '';
+      } else if (rest) {
+        heldAnswer = rest;
+        if (run.answerEl) {
+          run.answerEl.innerHTML = mdToHtml(rest) || `<p>${esc(rest)}</p>`;
+        }
+      } else if (run.answerEl && !heldAnswer) {
+        run.answerEl.innerHTML = '';
+      }
       acc = '';
-      if (run.answerEl) run.answerEl.innerHTML = '';
 
       // Replay the assistant turn, minus thinking: DeepSeek accepts the tool
       // round trip without it, so we never have to carry a block signature.
@@ -18820,22 +18886,57 @@ async function streamAssistantReply(loading, system, messages, opts = {}) {
       });
     }
 
-    const final = _aiSplitPlan(acc);
+    let final = _aiSplitPlan(acc);
+    let text = String(final.rest || '').trim();
+    let lanjut = final.lanjut || [];
+    if (!text && heldAnswer) text = heldAnswer;
+    if (!text && run.el) {
+      const notes = [...run.el.querySelectorAll('.agent-note')]
+        .map(el => String(el.textContent || '').trim())
+        .filter(s => s && !_aiIsNarration(s));
+      if (notes.length) text = notes[notes.length - 1];
+    }
+
+    // Last turn was tools-only or tags-only. One more prose-only call so the
+    // feed cannot finish without a written answer.
+    if (!text && !signal.aborted && useTools) {
+      turns.push({
+        role: 'user',
+        content: 'Tulis kesimpulannya sekarang dalam 2–4 paragraf. Jangan panggil alat. Jangan tulis <rencana>. Tutup dengan <lanjut> kalau ada pertanyaan lanjutan.',
+      });
+      const extra = await _mlsAIStream(system, turns, (_piece, full) => {
+        acc = full;
+        paint();
+      }, signal, {
+        ...opts,
+        thinking: false,
+        toolChoice: { type: 'none' },
+        maxTokens: AI_MAX_TOKENS_DEEP,
+        onThinking: (_p, full) => { thinkAcc = full; run.thinking(full); },
+      });
+      if (extra.text) acc = extra.text;
+      if (extra.stopReason) lastStop = extra.stopReason;
+      final = _aiSplitPlan(acc);
+      text = String(final.rest || '').trim();
+      if (final.lanjut?.length) lanjut = final.lanjut;
+    }
+
     run.finish();
     if (run.answerEl) {
-      run.answerEl.innerHTML = final.rest
-        ? (mdToHtml(final.rest) || `<p>${esc(final.rest)}</p>`)
+      run.answerEl.innerHTML = text
+        ? (mdToHtml(text) || `<p>${esc(text)}</p>`)
         : '';
     }
     scroll();
     // Callers persist and replay `text`, so the plan block must be gone from it.
     return {
-      text: final.rest,
+      text,
       thinking: thinkAcc,
       pasarKeys,
       run,
       stopReason: lastStop,
-      lanjut: final.lanjut || [],
+      lanjut,
+      aborted: signal.aborted,
     };
   } finally {
     setComposerStopping(false);
@@ -18852,7 +18953,8 @@ async function streamAssistantReply(loading, system, messages, opts = {}) {
 function _aiBubbleHtml(text, thinking) {
   const cleanThink = _aiStripToolMarkup(thinking);
   const body = mdToHtml(text) || (text ? `<p>${esc(text)}</p>` : '');
-  if (!cleanThink || !text) return body || `<p>${esc(text || '')}</p>`;
+  if (!text) return '';
+  if (!cleanThink) return body;
   return `<details class="ai-think"><summary>Proses berpikir</summary>`
     + `<div>${mdToHtml(cleanThink) || `<p>${esc(cleanThink)}</p>`}</div></details>${body}`;
 }

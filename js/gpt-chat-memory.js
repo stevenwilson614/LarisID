@@ -38,7 +38,7 @@
   const CREATOR_GMV_RE = /\b((video|creator|kreator)\s*gmv|gmv\s*(video|live|kreator|creator))\b/;
   const JOB_B_RE = /\b(jualan|jual sendiri|saingan|kompetitor|pesaing|sudah (banyak )?(yang )?(dorong|push|promosi)|sering di-?live|berapa (orang )?(yang )?(push|live|promosi))\b/;
   const PUBLIC_RE = /\b(supplier|grosir|pabrik|wholesale|aturan|regulasi|berita|undang[\s-]?undang|bea cukai|tiktok shop|kalodata)\b/;
-  const JUDGMENT_RE = /\b(kenapa|mengapa|why|bandingkan|banding|compare|mana yang|yang mana|which|sebaiknya|should i|worth|bedanya|beda|risiko|risk|strategi|strategy|prospek|peluang|jelaskan|explain|analisa|analisis|analyze|paling bagus|terbaik|best)\b/;
+  const JUDGMENT_RE = /\b(kenapa|mengapa|why|bandingkan|banding|compare|mana yang|yang mana|which|sebaiknya|should i|worth|bedanya|beda|risiko|risk|strategi|strategy|prospek|peluang|jelaskan|explain|analisa|analisis|analyze|paling bagus|terbaik|best|lebih baik|mending)\b/;
   const PROMO_JUDGMENT_RE = /\b(kenapa|mengapa|why|bandingkan|banding|compare|\bvs\b|sebaiknya|should i|worth|bedanya|beda|risiko|risk|strategi|strategy|prospek|peluang|jelaskan|explain|analisa|analisis|analyze)\b/;
   const PROMO_STRIP_RE = /\b(afiliasi|affiliate|affiliator|komisi|xtra|shopee|live|gmv|kreator|creator|konten|orang|berapa|untuk|produk|mana|yang|bagus|buat|tentang|apakah|gimana|bagaimana|ada|ini|itu|di|ke|dari|dong|gak|nggak|tidak|ya|kah|saya|aku|mau|cocok|layak|promosi|promote|push|jualan|jual|sendiri|sering|sudah|banyak|seller|toko|the|for|good|best|should|would|what|which|how|many|affiliator|commission)\b/g;
   const PROMO_DEMAND_FLOOR = 25;
@@ -455,16 +455,32 @@
       .slice(0, 3);
   }
 
+  /** Short numbered chips — not a verdict the model stuffed into the wrong tag. */
+  function looksLikeFollowupList(lines) {
+    if (!lines.length || lines.length > 3) return false;
+    return lines.every(l => l.split(/\s+/).length <= 12 && l.length <= 80);
+  }
+
   function extractLanjutBlock(text) {
     const s = String(text || '');
     const o = s.indexOf('<lanjut>');
     if (o < 0) return { lines: [], rest: s, open: false };
     const c = s.indexOf('</lanjut>', o);
-    if (c < 0) return { lines: [], rest: s.slice(0, o), open: true };
+    const open = c < 0;
+    const inner = open ? s.slice(o + 8) : s.slice(o + 8, c);
+    const before = s.slice(0, o);
+    const after = open ? '' : s.slice(c + 9);
+    const lines = parseLanjutLines(inner);
+    if (looksLikeFollowupList(lines)) {
+      return { lines, rest: (before + after).trim(), open };
+    }
+    // Model put the written answer inside <lanjut> (or never closed it). Keep
+    // that prose in `rest` so the feed does not finish with an empty bubble.
+    const prose = String(inner || '').trim();
     return {
-      lines: parseLanjutLines(s.slice(o + 8, c)),
-      rest: (s.slice(0, o) + s.slice(c + 9)).trim(),
-      open: false,
+      lines: [],
+      rest: [before, prose, after].filter(Boolean).join('\n\n').trim(),
+      open,
     };
   }
 
