@@ -194,7 +194,12 @@
       const { data: rows } = await client.from('cohorts').select('*').in('id', ids);
       (rows || []).forEach(c => { state.cohortMap[c.id] = c; });
     }
-    const stu = (mem || []).find(m => m.role === 'student');
+    const stuRows = (mem || []).filter(m => m.role === 'student');
+    const stuPrefer = stuRows.find(m => {
+      const row = state.cohortMap[m.cohort_id];
+      return row && (row.slug === 'kohort-pertama' || row.name === 'Kohort Pertama');
+    });
+    const stu = stuPrefer || stuRows[0];
     state.studentCohortId = stu ? stu.cohort_id : null;
     // Prefer Kohort Pertama when a mentor leads several cohorts.
     const prefer = (led || []).find(c => c.slug === 'kohort-pertama' || c.name === 'Kohort Pertama');
@@ -925,9 +930,21 @@
     if (!ul) return;
     const client = supabase();
     if (!cid || !client) { ul.innerHTML = '<li class="cohort-muted">—</li>'; return; }
-    const { data } = await client.from('cohort_announcements').select('title,body,created_at').eq('cohort_id', cid).order('created_at', { ascending: false }).limit(12);
+    const { data } = await client.from('cohort_announcements')
+      .select('title,body,created_at,author_id')
+      .eq('cohort_id', cid)
+      .order('created_at', { ascending: false })
+      .limit(12);
     if (!(data || []).length) { ul.innerHTML = '<li class="cohort-muted">Belum ada pengumuman.</li>'; return; }
-    ul.innerHTML = data.map(a => `<li style="display:block;"><div style="font-weight:700;">${esc(a.title)}</div><div class="cohort-muted">${esc((a.body || '').slice(0, 160))}</div></li>`).join('');
+    ul.innerHTML = data.map(a => {
+      const from = who(a.author_id, 'Mentor');
+      const body = String(a.body || '');
+      return `<li style="display:block;">
+        <div style="font-weight:700;">${esc(a.title)}</div>
+        <div class="cohort-muted" style="white-space:pre-wrap;">${esc(body)}</div>
+        <div class="cohort-muted" style="margin-top:4px;">Dari ${esc(from)}</div>
+      </li>`;
+    }).join('');
   }
 
   async function renderFeed(cid) {
@@ -1503,7 +1520,7 @@
     /** Cohorts this account may preview, for the Admin dashboard picker. */
     listCohorts: async function () {
       if (!Object.keys(state.cohortMap).length) await initMembership();
-      return previewCohorts().map(c => ({ id: c.id, name: c.name || 'Kohort' }));
+      return previewCohorts().map(c => ({ id: c.id, name: c.name || 'Kohort', slug: c.slug || '' }));
     },
     /** Open the cohort view straight into the student preview. Same path as
      *  open(), except previewCid survives — open() deliberately clears it.

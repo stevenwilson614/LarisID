@@ -20879,11 +20879,21 @@ async function enterViewAs(role) {
       // genuine mentor needs just as much as a stand-in.
       if (picked) await window.LarisCohort.mentorAs(picked.id, picked);
     } else {
-      picked = own;
-      if (!picked) {
-        picked = list[0] || null;
-        standIn = !!picked;
-        if (picked) await window.LarisCohort.previewAs(picked.id, picked);
+      // Ocean 11 is this account's real student row; Kohort Pertama is the
+      // class students actually join. Preview that one so Mode mahasiswa
+      // shows Afryan/Hendra, weekly jadwal, and the welcome note.
+      const prefer = (list || []).find(c => c.slug === 'kohort-pertama' || c.name === 'Kohort Pertama');
+      if (prefer && (!own || own.id !== prefer.id)) {
+        picked = prefer;
+        standIn = true;
+        await window.LarisCohort.previewAs(prefer.id, prefer);
+      } else {
+        picked = own || prefer || null;
+        if (!picked) {
+          picked = list[0] || null;
+          standIn = !!picked;
+          if (picked) await window.LarisCohort.previewAs(picked.id, picked);
+        }
       }
     }
   } catch (_) {}
