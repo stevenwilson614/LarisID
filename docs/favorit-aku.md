@@ -15,15 +15,20 @@ One favorite = one Shopee listing (`item_id` + `shop_id`) in `user_tracked_produ
 
 Writes to `user_tracked_products` → view `v_tracked_products` → `tracked_pass.py` in `daily_scrape.sh` (scraper repo). No scraper change needed to start.
 
-PDP sold is a **bucket floor** (`10RB+`). Day-to-day units are review-based estimates. UI labels `terukur` only when the point came from a search-result row; otherwise `perkiraan`. No % until ≥ 2 real weeks on the list. New favorites show “Data harian mulai besok”.
+PDP sold is a **bucket floor** (`10RB+`). Day-to-day units are review-based estimates. UI labels `terukur` only when the point came from a search-result row; otherwise `perkiraan`. No % until ≥ 2 real weeks on the list. New favorites pad the daily-update block with “Data harian mulai …”.
 
 ## List card
 
-Each favorite stays on the list (no click-to-detail). Photo / toko / harga / omset / one % sit beside a **3-month dated dual chart**: last 13 non-empty WIB weeks from the same `product_daily_series` → weekly bucket as Deep Dive Tren produk (not `listing_weekly`). Chart.js solid lines only — omset + units, independent Y-axes, tension `.35`, point radius 3, red omset fill, Rp ticks. Under that row, plain-text **updates this week** (omit the block if none):
+Each favorite stays on the list (no click-to-detail). Photo / toko / harga / omset / one % sit beside a **3-month dated dual chart**: last 13 non-empty WIB weeks from the same `product_daily_series` → weekly bucket as Deep Dive Tren produk (not `listing_weekly`). Chart.js solid lines only — omset + units, independent Y-axes, tension `.35`, point radius 3, red omset fill, Rp ticks.
 
-- Title change (`listings.product_name` this WIB week vs last name before Monday) — listing title, not scrape-slot keyword
-- Harga change (this week vs last `listing_weekly.price`; ignore under Rp 100 or 0.5%)
-- Omset up a lot (WoW `omset_wk` ≥ 25%)
+Under that row, always **3 scrape-harian lines** (newest first) from `listings` snapshots, preferring `search_rank = -100` (tracked PDP pass) per WIB day:
+
+- Day-over-day: harga (≥ Rp 100 or 0.5%), sold bucket (`sold_text` / `total_sold`, labelled bucket), new reviews, rating ≥ 0.1, judul
+- If nothing moved that day: `scrape oke · harga · rating · terjual`
+- Fewer than 3 scrape days: remaining rows wait for the next morning pass
+- No scrape in 3 days: first of the three rows is a warning, still showing the last seen snapshot
+
+Do not treat sold-bucket steps as exact units. Do not invent a daily omset %.
 
 Actions: Pantau toko, Deep Dive (opens analysis, does not expand the card), Hapus.
 

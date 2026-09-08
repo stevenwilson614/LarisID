@@ -1258,12 +1258,26 @@
 }
 .ltk-fav-links { display: inline-flex; align-items: center; gap: 14px; }
 .ltk-fav-updates {
-  margin-top: 12px; padding-top: 10px; border-top: 1px solid #E5E7EB;
-  display: flex; flex-direction: column; gap: 4px;
+  margin-top: 12px; padding: 10px 12px 8px;
+  border: 1px solid #E5E7EB; border-radius: 12px; background: #FAFAFA;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.ltk-fav-updates-lbl {
+  margin: 0 0 2px; font-size: .62rem; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase; color: #9CA3AF;
 }
 .ltk-fav-update {
   margin: 0; font-size: .74rem; color: #374151; line-height: 1.4;
+  display: grid; grid-template-columns: 5.6rem 1fr; gap: 8px; align-items: start;
 }
+.ltk-fav-update time {
+  color: #6B7280; font-weight: 700; font-size: .68rem;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.ltk-fav-update.is-wait,
+.ltk-fav-update.is-wait span { color: #6B7280; }
+.ltk-fav-update.is-warn time,
+.ltk-fav-update.is-warn span { color: #92400E; }
 .ltk-fav-card .ltk-card-stats {
   display: flex; flex-direction: column; gap: 2px;
 }

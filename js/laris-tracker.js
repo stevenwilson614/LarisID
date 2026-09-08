@@ -18,7 +18,9 @@
   var SCRAPE_HOUR_WIB = 7;
   var WIB_OFFSET_MIN = 7 * 60;
   var CHART_WEEKS = 13;
-  var OMSET_SPIKE_PCT = 25;
+  var DAILY_UPDATE_ROWS = 3;
+  var STALE_SCRAPE_DAYS = 3;
+  var TRACKED_RANK = -100;
   var MONS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul',
                     'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
@@ -45,7 +47,6 @@
     notifyAsked: false,
     notifyCadence: 'on_update',
     weeklyByKey: {},
-    listingWeeklyByKey: {},
     snapsByKey: {},
     addQ: '',
     addRows: [],
@@ -142,25 +143,31 @@
     return S.weeklyByKey[prodKey(p)] || [];
   }
 
-  function wibTodayISO() {
-    var w = wibNow();
-    var m = String(w.getMonth() + 1);
-    var d = String(w.getDate());
-    if (m.length < 2) m = '0' + m;
-    if (d.length < 2) d = '0' + d;
-    return w.getFullYear() + '-' + m + '-' + d;
+  function pad2(n) {
+    n = String(n);
+    return n.length < 2 ? '0' + n : n;
   }
 
-  function wibMondayISO() {
+  function wibTodayISO() {
     var w = wibNow();
-    var dow = w.getDay();
-    var off = dow === 0 ? 6 : dow - 1;
-    var m = new Date(w.getFullYear(), w.getMonth(), w.getDate() - off);
-    var mo = String(m.getMonth() + 1);
-    var d = String(m.getDate());
-    if (mo.length < 2) mo = '0' + mo;
-    if (d.length < 2) d = '0' + d;
-    return m.getFullYear() + '-' + mo + '-' + d;
+    return w.getFullYear() + '-' + pad2(w.getMonth() + 1) + '-' + pad2(w.getDate());
+  }
+
+  function wibDateISOFrom(iso) {
+    var t = Date.parse(iso);
+    if (isNaN(t)) {
+      var s = String(iso || '').slice(0, 10);
+      return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : '';
+    }
+    var w = new Date(t + (WIB_OFFSET_MIN + new Date().getTimezoneOffset()) * 60000);
+    return w.getFullYear() + '-' + pad2(w.getMonth() + 1) + '-' + pad2(w.getDate());
+  }
+
+  function addDaysISO(iso, n) {
+    var parts = String(iso || '').slice(0, 10).split('-');
+    if (parts.length < 3) return '';
+    var dt = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]) + n);
+    return dt.getFullYear() + '-' + pad2(dt.getMonth() + 1) + '-' + pad2(dt.getDate());
   }
 
   function weekLabel(iso) {
@@ -498,48 +505,152 @@
     }, 120);
   }
 
-  function productUpdates(p) {
-    var lines = [];
-    var monday = wibMondayISO();
-    var snaps = (S.snapsByKey[prodKey(p)] || []).slice().sort(function (a, b) {
-      return String(b.scraped_at || b.d || '').localeCompare(String(a.scraped_at || a.d || ''));
+  function scrapeDayLabel(iso) {
+    var today = wibTodayISO();
+    if (iso === today) return 'Hari ini';
+    if (iso === addDaysISO(today, -1)) return 'Kemarin';
+    var parts = String(iso || '').split('-');
+    if (parts.length < 3) return iso || '';
+    var day = Number(parts[2]);
+    var mon = Number(parts[1]) - 1;
+    if (!day || mon < 0 || mon > 11) return iso || '';
+    return day + ' ' + MONS_SHORT[mon];
+  }
+
+  function fmtRating(n) {
+    n = Number(n);
+    if (!isFinite(n) || n <= 0) return '';
+    return n.toFixed(1).replace('.', ',');
+  }
+
+  function soldBucket(s) {
+    if (!s) return '';
+    var t = String(s.sold_text || '').trim();
+    if (t) return t;
+    var n = Number(s.total_sold);
+    if (!n) return '';
+    return fmtUnits(n);
+  }
+
+  function betterSnap(a, b) {
+    if (!a) return b;
+    if (!b) return a;
+    var aTrk = Number(a.search_rank) === TRACKED_RANK;
+    var bTrk = Number(b.search_rank) === TRACKED_RANK;
+    if (aTrk !== bTrk) return aTrk ? a : b;
+    return String(a.scraped_at || '') >= String(b.scraped_at || '') ? a : b;
+  }
+
+  function uniqueScrapeDays(p) {
+    var byDay = {};
+    (S.snapsByKey[prodKey(p)] || []).forEach(function (s) {
+      var d = s.d || wibDateISOFrom(s.scraped_at);
+      if (!d) return;
+      var row = {
+        d: d,
+        product_name: s.product_name,
+        price: s.price,
+        scraped_at: s.scraped_at,
+        rating: s.rating,
+        reviews: s.reviews,
+        sold_text: s.sold_text,
+        total_sold: s.total_sold,
+        search_rank: s.search_rank,
+      };
+      byDay[d] = betterSnap(byDay[d], row);
     });
-    var latestThis = null, latestBefore = null;
-    snaps.forEach(function (s) {
-      if (s.d >= monday) {
-        if (!latestThis) latestThis = s;
-      } else if (!latestBefore) {
-        latestBefore = s;
+    return Object.keys(byDay).sort().reverse().map(function (d) { return byDay[d]; });
+  }
+
+  function dayUpdateText(cur, prev) {
+    var bits = [];
+    if (prev) {
+      var p0 = Number(prev.price) || 0;
+      var p1 = Number(cur.price) || 0;
+      if (p0 > 0 && p1 > 0 && Math.abs(p1 - p0) >= Math.max(100, p0 * 0.005)) {
+        bits.push('harga ' + (p1 > p0 ? 'naik' : 'turun') + ' ' + fmtRp(p0) + ' → ' + fmtRp(p1));
       }
-    });
-    if (latestThis && latestBefore && latestThis.product_name && latestBefore.product_name &&
-        normTitle(latestThis.product_name) !== normTitle(latestBefore.product_name)) {
-      lines.push('Judul berubah: "' + latestBefore.product_name + '" jadi "' + latestThis.product_name + '"');
+      var s0 = soldBucket(prev);
+      var s1 = soldBucket(cur);
+      if (s0 && s1 && s0 !== s1) {
+        bits.push('terjual ' + s0 + ' → ' + s1 + ' (bucket)');
+      }
+      var r0 = Number(prev.reviews) || 0;
+      var r1 = Number(cur.reviews) || 0;
+      if (r1 > r0) bits.push('+' + Math.round(r1 - r0) + ' ulasan');
+      else if (r0 > r1) bits.push('ulasan ' + Math.round(r0) + ' → ' + Math.round(r1));
+      var g0 = Number(prev.rating);
+      var g1 = Number(cur.rating);
+      if (isFinite(g0) && isFinite(g1) && g0 > 0 && g1 > 0 && Math.abs(g1 - g0) >= 0.1) {
+        bits.push('rating ' + fmtRating(g0) + ' → ' + fmtRating(g1));
+      }
+      if (cur.product_name && prev.product_name &&
+          normTitle(cur.product_name) !== normTitle(prev.product_name)) {
+        bits.push('judul berubah');
+      }
     }
-    var pair = weekPair(weeklyFor(p));
-    if (pair) {
-      var lw = weekPair(S.listingWeeklyByKey[prodKey(p)] || []);
-      if (lw) {
-        var p0 = Number(lw.prev.price) || 0;
-        var p1 = Number(lw.cur.price) || 0;
-        if (p0 > 0 && p1 > 0 && Math.abs(p1 - p0) >= Math.max(100, p0 * 0.005)) {
-          var dir = p1 > p0 ? 'naik' : 'turun';
-          lines.push('Harga ' + dir + ' ' + fmtRp(p0) + ' jadi ' + fmtRp(p1));
-        }
-      }
-      var omPct = pctChange(pair.cur.omset_wk, pair.prev.omset_wk);
-      if (omPct != null && isFinite(omPct) && omPct >= OMSET_SPIKE_PCT) {
-        lines.push('Omset naik ' + Math.round(omPct) + '% minggu ini');
-      }
+    if (bits.length) return bits.join(' · ');
+    var steady = [];
+    if (cur.price) steady.push('harga ' + fmtRp(cur.price));
+    var rating = fmtRating(cur.rating);
+    if (rating) steady.push('rating ' + rating);
+    var sold = soldBucket(cur);
+    if (sold) steady.push('terjual ' + sold);
+    return (steady.length ? 'scrape oke · ' : 'scrape oke') + steady.join(' · ');
+  }
+
+  function productUpdateRows(p) {
+    var days = uniqueScrapeDays(p);
+    var today = wibTodayISO();
+    var staleCut = addDaysISO(today, -STALE_SCRAPE_DAYS);
+    var rows = [];
+    var i;
+    for (i = 0; i < days.length && rows.length < DAILY_UPDATE_ROWS; i++) {
+      var cur = days[i];
+      var prev = days[i + 1] || null;
+      rows.push({
+        iso: cur.d,
+        when: scrapeDayLabel(cur.d),
+        text: dayUpdateText(cur, prev),
+        kind: 'ok',
+      });
     }
-    return lines;
+    if (days[0] && days[0].d < staleCut && rows[0]) {
+      rows[0].kind = 'warn';
+      rows[0].text = 'Belum ketemu 3 hari · ' + rows[0].text;
+    }
+    while (rows.length < DAILY_UPDATE_ROWS) {
+      var text;
+      if (!days.length) {
+        text = [
+          'Data harian mulai ' + nextUpdateLabel() + '.',
+          'Tiap pagi kami scrape PDP favorit kamu.',
+          'Nanti di sini: harga, rating, ulasan.',
+        ][rows.length];
+      } else if (!rows.some(function (r) { return r.kind === 'wait'; })) {
+        text = 'Scrape berikutnya ' + nextUpdateLabel() + '.';
+      } else {
+        text = 'Tiga baris ini terisi setelah beberapa scrape harian.';
+      }
+      rows.push({
+        iso: '',
+        when: '—',
+        text: text,
+        kind: 'wait',
+      });
+    }
+    return rows.slice(0, DAILY_UPDATE_ROWS);
   }
 
   function updatesHtml(p) {
-    var lines = productUpdates(p);
-    if (!lines.length) return '';
+    var rows = productUpdateRows(p);
     return '<div class="ltk-fav-updates">' +
-      lines.map(function (t) { return '<p class="ltk-fav-update">' + esc(t) + '</p>'; }).join('') +
+      '<p class="ltk-fav-updates-lbl">Scrape harian</p>' +
+      rows.map(function (r) {
+        return '<p class="ltk-fav-update is-' + r.kind + '">' +
+          '<time' + (r.iso ? ' datetime="' + attr(r.iso) + '"' : '') + '>' + esc(r.when) + '</time>' +
+          '<span>' + esc(r.text) + '</span></p>';
+      }).join('') +
       '</div>';
   }
 
@@ -642,10 +753,6 @@
     var omset = pair ? pair.cur.omset_wk : 0;
     var honesty = pair ? honestyLabel(trend.source) : '';
     var hasChart = chartSeries(weeks).length >= 2;
-    var fresh = p.scraped_at && (Date.now() - Date.parse(p.scraped_at) < 2 * 86400000);
-    var waitNote = (!weeks.length && !fresh)
-      ? '<p class="ltk-hint">Data harian mulai ' + esc(nextUpdateLabel()) + '.</p>'
-      : '';
     return '<article class="ltk-card ltk-fav-card">' +
       '<div class="ltk-card-row">' +
         '<div class="ltk-card-ident">' +
@@ -678,7 +785,6 @@
           : '') +
       '</div>' +
       updatesHtml(p) +
-      waitNote +
       '<div class="ltk-fav-actions">' +
         '<label class="ltk-switch">' +
           '<input type="checkbox" data-ltk-toko="' + attr(key) + '"' + (p.store_tracked ? ' checked' : '') + '>' +
@@ -806,38 +912,35 @@
   function loadWeekly() {
     if (!S.products.length) {
       S.weeklyByKey = {};
-      S.listingWeeklyByKey = {};
       S.snapsByKey = {};
       return Promise.resolve();
     }
     return Promise.all([
       callP('getFavoriteTrendWeeklies', S.products),
       callP('getFavoriteListingSnaps', S.products),
-      callP('getListingsWeeklyBatch', S.products),
-    ]).then(function (triple) {
+    ]).then(function (pair) {
       var map = {};
-      (triple[0] || []).forEach(function (w) {
+      (pair[0] || []).forEach(function (w) {
         var k = w.item_id + '|' + w.shop_id;
         (map[k] = map[k] || []).push(w);
       });
       S.weeklyByKey = map;
       var snaps = {};
-      (triple[1] || []).forEach(function (r) {
+      (pair[1] || []).forEach(function (r) {
         var k = r.item_id + '|' + r.shop_id;
         (snaps[k] = snaps[k] || []).push({
-          d: String(r.scraped_at || '').slice(0, 10),
+          d: wibDateISOFrom(r.scraped_at),
           product_name: r.product_name,
           price: r.price,
           scraped_at: r.scraped_at,
+          rating: r.rating,
+          reviews: r.reviews,
+          sold_text: r.sold_text,
+          total_sold: r.total_sold,
+          search_rank: r.search_rank,
         });
       });
       S.snapsByKey = snaps;
-      var lw = {};
-      (triple[2] || []).forEach(function (w) {
-        var k = w.item_id + '|' + w.shop_id;
-        (lw[k] = lw[k] || []).push(w);
-      });
-      S.listingWeeklyByKey = lw;
     });
   }
 
@@ -1201,6 +1304,6 @@
     summaryCardHtml: summaryCardHtml,
     bindSummary: bindSummary,
     destroy: destroy,
-    version: '3.1.2',
+    version: '3.2.0',
   };
 })(typeof window !== 'undefined' ? window : this);

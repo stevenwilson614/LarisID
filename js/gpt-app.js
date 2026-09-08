@@ -11950,25 +11950,39 @@ function gptTrackerAdapter() {
       ));
       return out;
     },
-    /** Recent listing snapshots for Favorit Aku "updates this week" lines. */
+    /** Last ~10 listing days for Favorit Aku daily scrape rows. */
     async getFavoriteListingSnaps(listings) {
       if (!_supabase || !listings || !listings.length) return [];
       const ids = [...new Set(listings.map(l => l.item_id).filter(id => id != null))];
       const shops = [...new Set(listings.map(l => l.shop_id).filter(id => id != null))];
       if (!ids.length) return [];
       try {
-        const since = new Date(Date.now() - 14 * 864e5).toISOString();
+        const since = new Date(Date.now() - 10 * 864e5).toISOString();
         let q = _supabase.from('listings')
-          .select('item_id,shop_id,product_name,price,scraped_at')
+          .select('item_id,shop_id,product_name,price,scraped_at,rating,reviews,sold_text,total_sold,search_rank')
           .in('item_id', ids)
           .gte('scraped_at', since)
           .order('scraped_at', { ascending: false })
-          .limit(2500);
+          .limit(4000);
         if (shops.length) q = q.in('shop_id', shops);
         const { data, error } = await q;
         if (error) throw error;
         return data || [];
-      } catch (_) { return []; }
+      } catch (_) {
+        try {
+          const since = new Date(Date.now() - 10 * 864e5).toISOString();
+          let q = _supabase.from('listings')
+            .select('item_id,shop_id,product_name,price,scraped_at,rating,reviews,total_sold')
+            .in('item_id', ids)
+            .gte('scraped_at', since)
+            .order('scraped_at', { ascending: false })
+            .limit(4000);
+          if (shops.length) q = q.in('shop_id', shops);
+          const { data, error } = await q;
+          if (error) throw error;
+          return data || [];
+        } catch (__) { return []; }
+      }
     },
     /** Price + title moves among top competitors — tracker card pulse rows. */
     async getCompetitorPulse(scope, entityId) {
@@ -12785,12 +12799,12 @@ function ensureTracker() {
       if (!document.getElementById('ltk-css')) {
         const l = document.createElement('link');
         l.id = 'ltk-css'; l.rel = 'stylesheet';
-        l.href = '/styles/laris-tracker.css?v=20260906a';
+        l.href = '/styles/laris-tracker.css?v=20260908a';
         document.head.appendChild(l);
       }
     } catch (_) {}
     _trkLoadPromise = (typeof larisLoadScript === 'function'
-      ? larisLoadScript('/js/laris-tracker.js?v=20260906a')
+      ? larisLoadScript('/js/laris-tracker.js?v=20260908a')
       : Promise.reject(new Error('no loader')))
       .then(() => window.LarisTracker || null)
       .catch(() => { _trkLoadPromise = null; return null; });
