@@ -57,6 +57,29 @@ const CALC_CSS = `<style>
   .calc-total.good .val{color:#047857}
   .calc-total.good{background:#ECFDF5;border-color:#A7F3D0}
   .calc-sub{font-size:.82rem;color:#6B7280;margin-top:4px}
+  /* .calc-row/.calc-check set display:flex, which outranks the [hidden]
+     attribute's UA display:none — without this every "hidden" row stays
+     on screen (that is why the SPayLater row never hid). */
+  .calc-row[hidden],.calc-check[hidden],.calc-field[hidden],.calc-out[hidden],.calc-total[hidden]{display:none!important}
+  .mp-pick{display:flex;gap:0;margin:0 0 16px;border:1px solid #E5E7EB;border-radius:12px;overflow-x:auto;background:#fff;scrollbar-width:none}
+  .mp-pick::-webkit-scrollbar{display:none}
+  .mp-btn{flex:1 0 auto;min-width:126px;display:flex;align-items:center;gap:8px;padding:11px 13px;background:#fff;border:0;border-right:1px solid #E5E7EB;font-family:inherit;text-align:left;cursor:pointer;transition:background .15s}
+  .mp-btn:last-child{border-right:0}
+  .mp-btn:hover{background:#F9FAFB}
+  .mp-btn[aria-checked=true]{background:#F9FAFB;box-shadow:inset 0 -3px 0 #C81E1E}
+  .mp-btn:focus-visible{outline:2px solid #C81E1E;outline-offset:-2px}
+  .mp-btn svg{width:22px;height:22px;flex-shrink:0}
+  .mp-nm{font-size:.82rem;font-weight:700;color:var(--navy,#0B1B3B);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+  .mp-pc{font-size:.86rem;font-weight:800;color:#374151;white-space:nowrap}
+  .mp-btn[aria-checked=true] .mp-pc{color:#C81E1E}
+  .cmp-wrap{overflow-x:auto;margin:18px 0}
+  .cmp{width:100%;border-collapse:collapse;font-size:.9rem;min-width:460px}
+  .cmp th,.cmp td{padding:9px 12px;border-bottom:1px solid #F3F4F6;text-align:right;white-space:nowrap}
+  .cmp th:first-child,.cmp td:first-child{text-align:left}
+  .cmp thead th{font-size:.78rem;text-transform:uppercase;letter-spacing:.03em;color:#6B7280;font-weight:700}
+  .cmp tbody tr.best{background:#ECFDF5}
+  .cmp tbody tr.best td:first-child::after{content:"termurah";margin-left:8px;font-size:.66rem;font-weight:800;color:#047857;text-transform:uppercase;letter-spacing:.03em}
+  .cmp td.net{font-weight:800;color:var(--navy,#0B1B3B)}
 </style>`;
 
 function toolPage(t) {
@@ -119,6 +142,7 @@ ${t.faqs.map((f) => `    <div class="faq-item">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles/seo-pages.css">
 ${CALC_CSS}
+${t.headExtra || ''}
 <script type="application/ld+json">
 ${JSON.stringify(ld, null, 2)}
 </script>
@@ -270,7 +294,7 @@ const TOOLS = [
       <li><strong>Markup (%)</strong> = (Laba kotor ÷ HPP) × 100</li>
       <li><strong>BEP (unit)</strong> = Biaya tetap bulanan ÷ Laba kotor per unit</li>
     </ul>
-    <p class="note">Kalkulator ini menghitung margin kotor. Biaya potongan Shopee (admin, gratis ongkir, dll.) belum termasuk — untuk itu pakai <a href="/kalkulator/biaya-shopee/">Kalkulator Biaya Shopee</a>. Penjelasan lengkap ada di panduan <a href="/panduan/cara-menghitung-margin-dan-hpp/">cara menghitung margin &amp; HPP</a>.</p>
+    <p class="note">Kalkulator ini menghitung margin kotor. Potongan marketplace (admin, gratis ongkir, dll.) belum termasuk — untuk itu pakai <a href="/kalkulator/biaya-marketplace/">Kalkulator Biaya Marketplace</a>. Penjelasan lengkap ada di panduan <a href="/panduan/cara-menghitung-margin-dan-hpp/">cara menghitung margin &amp; HPP</a>.</p>
 <script>
 (function(){
   var f=function(n){return 'Rp '+Math.round(n).toLocaleString('id-ID');};
@@ -296,8 +320,204 @@ const TOOLS = [
 </script>`,
     faqs: [
       { q: 'Apa bedanya margin dan markup?', a: 'Margin dihitung dari <strong>harga jual</strong> ((laba ÷ harga jual) × 100), sedangkan markup dihitung dari <strong>modal</strong> ((laba ÷ HPP) × 100). Untuk harga dan laba yang sama, angka markup selalu lebih besar dari margin. Pembeli dan laporan biasanya bicara margin.' },
-      { q: 'Apakah kalkulator ini sudah termasuk biaya admin Shopee?', a: 'Belum. Kalkulator ini menghitung margin kotor (harga jual dikurangi HPP). Untuk menghitung potongan Shopee dan dana bersih yang kamu terima, gunakan <a href="/kalkulator/biaya-shopee/">Kalkulator Biaya Shopee</a>.' },
+      { q: 'Apakah kalkulator ini sudah termasuk biaya admin Shopee?', a: 'Belum. Kalkulator ini menghitung margin kotor (harga jual dikurangi HPP). Untuk menghitung potongan marketplace dan dana bersih yang kamu terima, gunakan <a href="/kalkulator/biaya-marketplace/">Kalkulator Biaya Marketplace</a> (Shopee, TikTok Shop, Tokopedia, Lazada, Blibli).' },
       { q: 'Berapa margin yang sehat untuk jualan online?', a: 'Tidak ada angka tunggal — tergantung kategori, volume, dan biaya iklan. Yang penting margin masih positif <strong>setelah</strong> semua biaya (HPP, potongan Shopee, iklan, retur). Produk laku bermargin tipis bisa bikin sibuk tapi tidak untung.' },
+    ],
+  },
+  {
+    slug: 'biaya-marketplace',
+    title: 'Kalkulator Biaya Admin Marketplace 2026 — Shopee, TikTok, Tokopedia, Lazada, Blibli | LarisID',
+    desc: 'Bandingkan potongan biaya admin lima marketplace Indonesia per kategori produk. Pilih marketplace, pilih kategori, lihat dana bersih yang kamu terima — gratis, tanpa login.',
+    h1: 'Kalkulator Biaya Admin Marketplace 2026',
+    cardNote: 'Bandingkan potongan Shopee, TikTok Shop, Tokopedia, Lazada & Blibli',
+    lead: 'Produk yang sama kena potongan berbeda di tiap marketplace — dan berbeda lagi per kategori. Pilih marketplace dan kategori produkmu, kalkulator mengisi tarifnya sendiri dan menunjukkan dana bersih yang benar-benar kamu terima.',
+    headExtra: '<script src="/js/marketplace-fees.js?v=20260908a" defer></script>',
+    body: `    <div class="calc">
+      <div class="mp-pick" id="m-pick" role="radiogroup" aria-label="Pilih marketplace"></div>
+      <div class="calc-field">
+        <label for="m-harga">Harga jual per unit</label>
+        <input type="number" id="m-harga" inputmode="numeric" min="0" value="50000" placeholder="mis. 50000">
+      </div>
+      <div class="calc-field">
+        <label for="m-kat">Kategori produk <span class="hint">(menentukan tarif biaya admin)</span></label>
+        <select id="m-kat"></select>
+      </div>
+      <div class="calc-field" id="m-manual-wrap" hidden>
+        <label for="m-manual">Biaya admin manual (%)</label>
+        <input type="number" id="m-manual" inputmode="decimal" min="0" max="100" step="0.1" value="8" placeholder="mis. 8">
+      </div>
+      <label class="calc-check" id="m-prog-wrap"><input type="checkbox" id="m-prog" checked><span>Ikut program <strong id="m-prog-name">Gratis Ongkir XTRA</strong> (<span id="m-prog-pct">5,5%</span>)</span></label>
+      <label class="calc-check" id="m-flat-wrap"><input type="checkbox" id="m-flat" checked><span>Biaya proses pesanan (<span id="m-flat-rp">Rp 1.250</span> / pesanan)</span></label>
+      <div class="calc-field" style="margin-top:14px">
+        <label for="m-hpp">HPP / modal per unit <span class="hint">(opsional — untuk hitung laba bersih)</span></label>
+        <input type="number" id="m-hpp" inputmode="numeric" min="0" placeholder="mis. 25000">
+      </div>
+      <div class="calc-out" id="m-out">
+        <div class="calc-row neg"><span>Komisi kategori (<span id="m-commpct">–</span>)</span><span id="m-comm">–</span></div>
+        <div class="calc-row neg" id="m-adm-row"><span>Biaya administrasi (<span id="m-admpct">–</span>)</span><span id="m-adm">–</span></div>
+        <div class="calc-row neg" id="m-prog-row"><span>Program (<span id="m-progpct2">–</span>)</span><span id="m-progval">–</span></div>
+        <div class="calc-row neg" id="m-flat-row"><span>Biaya proses pesanan</span><span id="m-flatval">–</span></div>
+        <div class="calc-row neg"><span>Total potongan (<span id="m-totpct">–</span>)</span><span id="m-tot">–</span></div>
+        <div class="calc-total good" id="m-net-box"><span class="lbl">Dana diterima</span><span class="val" id="m-net">–</span></div>
+        <div class="calc-row" id="m-profit-row" hidden style="border-bottom:none;margin-top:8px"><span>Laba bersih per unit <span class="hint" id="m-marginbersih"></span></span><span id="m-profit">–</span></div>
+        <p class="calc-sub" id="m-note"></p>
+      </div>
+    </div>
+
+    <h2>Bandingkan semua marketplace</h2>
+    <p>Potongan yang sama dihitung ulang untuk kelima platform pada harga dan kategori di atas. Kolom persen adalah <strong>komisi kategori + biaya administrasi</strong> — dasar yang bisa dibandingkan apple-to-apple; program gratis ongkir dihitung terpisah karena hanya Shopee yang menerbitkan tarif resminya.</p>
+    <div class="cmp-wrap">
+      <table class="cmp">
+        <thead><tr><th>Marketplace</th><th>Biaya dasar</th><th>Potongan / unit</th><th>Dana diterima</th></tr></thead>
+        <tbody id="m-cmp"></tbody>
+      </table>
+    </div>
+
+    <div class="disclaimer">
+      <p><strong>Sumber &amp; kaveat.</strong> Tarif mengacu pada struktur biaya yang berlaku per <strong id="m-updated">September 2026</strong> untuk <strong>penjual Non-Star / non-Mall</strong>: Shopee 2,5%–10% per kategori (Januari 2026), TikTok Shop &amp; Tokopedia 2,5%–10% dengan batas komisi Rp 650.000 per item (18 Mei 2026), Lazada dengan batas Rp 20.000 per produk (Februari 2026), dan Blibli 2%–8% mengikuti kontrak merchant. <strong>Tiap platform dapat mengubah tarif sewaktu-waktu dan besarannya berbeda menurut status toko.</strong> Cek halaman resmi tiap platform sebelum menetapkan harga — tautan sumber muncul di bawah hasil. Kalkulator ini alat bantu, bukan angka resmi.</p>
+    </div>
+
+    <h2>Kenapa potongan tiap marketplace berbeda</h2>
+    <ul>
+      <li><strong>Kategori menentukan tarif.</strong> Senter yang kamu jual masuk Elektronik, bukan Fashion — dan selisihnya nyata. Salah menebak kategori berarti salah menghitung margin.</li>
+      <li><strong>Batas komisi (cap).</strong> Lazada membatasi komisi di Rp 20.000 per produk dan TikTok Shop / Tokopedia di Rp 650.000 per item. Untuk produk mahal, potongan efektifnya jauh di bawah persentase dasarnya.</li>
+      <li><strong>Biaya per pesanan.</strong> Rp 1.250 flat terasa kecil di produk Rp 200rb, tapi jadi 2,5% di produk Rp 50rb.</li>
+      <li><strong>Program gratis ongkir.</strong> Opsional, tapi hampir wajib untuk konversi. Di Shopee tarifnya sekitar 5,5%.</li>
+    </ul>
+    <p class="note">Jualan juga di TikTok Shop, Tokopedia, Lazada atau Blibli? Bandingkan potongan kelimanya di <a href="/kalkulator/biaya-marketplace/">Kalkulator Biaya Marketplace</a>. Setelah tahu dana bersih yang diterima, cek apakah masih untung setelah modal dengan <a href="/kalkulator/margin-hpp/">Kalkulator Margin &amp; HPP</a>, lalu validasi permintaan produknya di <a href="/riset/">riset pasar LarisID</a>.</p>
+<script>
+// Runs on DOMContentLoaded, not inline: /js/marketplace-fees.js is deferred, so
+// it has not executed yet while this script tag is being parsed.
+function initBiayaMarketplace(){
+  var M = window.LARIS_MP;
+  if (!M) {
+    document.getElementById('m-out').innerHTML =
+      '<p class="calc-sub">Tabel tarif gagal dimuat. Muat ulang halaman ini untuk memakai kalkulator.</p>';
+    return;
+  }
+  var f = function(n){ return 'Rp ' + Math.round(n).toLocaleString('id-ID'); };
+  var $ = function(id){ return document.getElementById(id); };
+  var sel = 'shopee';
+
+  var pick = $('m-pick'), kat = $('m-kat');
+  pick.innerHTML = M.KEYS.map(function(k){
+    return '<button type="button" class="mp-btn" role="radio" aria-checked="' + (k === sel) + '" tabindex="' + (k === sel ? 0 : -1) + '" data-mp="' + k + '">'
+      + M.logo(k) + '<span class="mp-nm">' + M.FEES[k].label + '</span><span class="mp-pc" data-pc="' + k + '">–</span></button>';
+  }).join('');
+  kat.innerHTML = M.CANON_CATS.map(function(c){
+    return '<option value="' + c + '"' + (c === 'Fashion' ? ' selected' : '') + '>' + c + '</option>';
+  }).join('') + '<option value="__manual">Lainnya / isi manual…</option>';
+  $('m-updated').textContent = M.UPDATED;
+
+  function opts(){
+    var manual = kat.value === '__manual';
+    return {
+      cat: manual ? '' : kat.value,
+      o: { commManual: manual ? (parseFloat($('m-manual').value) || 0) : null, programOn: $('m-prog').checked },
+      manual: manual,
+    };
+  }
+
+  function calc(){
+    var st = opts();
+    $('m-manual-wrap').hidden = !st.manual;
+    var price = parseFloat($('m-harga').value) || 0;
+    var plat = M.FEES[sel];
+    var r = M.feeRp(sel, st.cat, price, st.o);
+
+    // Tiles compare the baseline (komisi + biaya admin) so the numbers mean
+    // the same thing on every platform.
+    M.KEYS.forEach(function(k){
+      var b = M.rateFor(k, st.cat, { commManual: st.manual ? r.comm : null });
+      var el = pick.querySelector('[data-pc="' + k + '"]');
+      if (el) el.textContent = M.fmtPct(b.pctBase);
+    });
+
+    $('m-prog-wrap').hidden = !(plat.program > 0);
+    $('m-prog-name').textContent = plat.programLabel || 'Program promo';
+    $('m-prog-pct').textContent = M.fmtPct(plat.program || 0);
+    $('m-flat-wrap').hidden = !(plat.flat > 0);
+    $('m-flat-rp').textContent = f(plat.flat || 0);
+
+    var flat = (plat.flat > 0 && $('m-flat').checked) ? plat.flat : 0;
+    var capped = r.capRp != null && price * r.comm / 100 > r.capRp;
+    $('m-commpct').textContent = capped ? 'maks ' + f(r.capRp) : M.fmtPct(r.comm);
+    $('m-comm').textContent = '− ' + f(r.commRp);
+    $('m-adm-row').hidden = !(r.admin > 0);
+    $('m-admpct').textContent = M.fmtPct(r.admin);
+    $('m-adm').textContent = '− ' + f(r.adminRp);
+    $('m-prog-row').hidden = !(r.program > 0);
+    $('m-progpct2').textContent = M.fmtPct(r.program);
+    $('m-progval').textContent = '− ' + f(r.programRp);
+    $('m-flat-row').hidden = !flat;
+    $('m-flatval').textContent = '− ' + f(flat);
+
+    var total = r.pctRp + flat;
+    $('m-tot').textContent = '− ' + f(total);
+    $('m-totpct').textContent = price > 0 ? (total / price * 100).toFixed(1).replace('.', ',') + '%' : '–';
+    var received = price - total;
+    $('m-net').textContent = f(received);
+    var c = parseFloat($('m-hpp').value) || 0;
+    if (c > 0 && price > 0) {
+      $('m-profit-row').hidden = false;
+      var pr = received - c;
+      $('m-profit').textContent = f(pr);
+      $('m-marginbersih').textContent = '(' + (pr / price * 100).toFixed(1).replace('.', ',') + '% margin bersih)';
+      $('m-profit-row').style.color = pr < 0 ? '#B91C1C' : '';
+    } else { $('m-profit-row').hidden = true; }
+    $('m-note').innerHTML = (r.note ? r.note + ' ' : '')
+      + 'Tarif per ' + M.UPDATED + ' · sumber: <a href="' + r.srcUrl + '" rel="nofollow noopener" target="_blank">' + r.src + '</a>';
+
+    var rows = M.KEYS.map(function(k){
+      var kf = M.feeRp(k, st.cat, price, { commManual: st.manual ? r.comm : null, programOn: false });
+      var kflat = (M.FEES[k].flat > 0 && $('m-flat').checked) ? M.FEES[k].flat : 0;
+      return { k: k, base: kf.pctBaseEffective, cut: kf.pctRp + kflat, net: price - (kf.pctRp + kflat) };
+    }).sort(function(a, b){ return a.cut - b.cut; });
+    $('m-cmp').innerHTML = rows.map(function(x, i){
+      return '<tr class="' + (i === 0 && price > 0 ? 'best' : '') + '"><td>' + M.FEES[x.k].label + '</td>'
+        + '<td>' + M.fmtPct(x.base) + '</td>'
+        + '<td>' + (price > 0 ? '− ' + f(x.cut) : '–') + '</td>'
+        + '<td class="net">' + (price > 0 ? f(x.net) : '–') + '</td></tr>';
+    }).join('');
+  }
+
+  function select(k){
+    sel = k;
+    [].forEach.call(pick.querySelectorAll('[data-mp]'), function(b){
+      var on = b.dataset.mp === k;
+      b.setAttribute('aria-checked', on);
+      b.tabIndex = on ? 0 : -1;
+    });
+    var p = M.FEES[k];
+    $('m-prog').checked = !!p.programDefaultOn;
+    calc();
+  }
+
+  [].forEach.call(pick.querySelectorAll('[data-mp]'), function(b){
+    b.addEventListener('click', function(){ select(b.dataset.mp); });
+    b.addEventListener('keydown', function(e){
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault();
+      var i = M.KEYS.indexOf(b.dataset.mp);
+      var n = M.KEYS[(i + (e.key === 'ArrowRight' ? 1 : M.KEYS.length - 1)) % M.KEYS.length];
+      select(n);
+      pick.querySelector('[data-mp="' + n + '"]').focus();
+    });
+  });
+  ['m-harga','m-kat','m-manual','m-prog','m-flat','m-hpp'].forEach(function(id){
+    $(id).addEventListener('input', calc);
+    $(id).addEventListener('change', calc);
+  });
+  calc();
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initBiayaMarketplace);
+else initBiayaMarketplace();
+</script>`,
+    faqs: [
+      { q: 'Marketplace mana yang biaya adminnya paling murah?', a: 'Tergantung kategori dan harga produk, bukan platformnya saja. Untuk fashion, kelimanya berada di kisaran 8%–10%. Untuk elektronik high-end, Blibli dan Lazada biasanya paling rendah, dan batas komisi Lazada (Rp 20.000 per produk) membuat potongan efektifnya turun tajam pada produk mahal. Masukkan harga dan kategorimu di kalkulator — tabel perbandingan di atas menghitung kelimanya sekaligus.' },
+      { q: 'Kenapa biaya admin berbeda per kategori?', a: 'Setiap marketplace mengelompokkan produk ke beberapa tingkat tarif. Shopee misalnya menaruh fashion, FMCG, makanan, dan perlengkapan rumah di kategori tertinggi (10%), sementara elektronik high-end 5,25% dan logam mulia 4,25%. Karena itu <strong>salah menebak kategori berarti salah menghitung margin</strong> — senter masuk Elektronik, bukan Fashion.' },
+      { q: 'Apa itu batas komisi (cap) dan kenapa penting?', a: 'Beberapa platform membatasi komisi dalam Rupiah per item: Lazada Rp 20.000 per produk, dan TikTok Shop / Tokopedia Rp 650.000 per item sejak 18 Mei 2026. Untuk produk mahal, potongan yang benar-benar dipungut jauh di bawah persentase dasarnya — kalkulator ini sudah menerapkan batas tersebut.' },
+      { q: 'Apakah angka kalkulator ini resmi?', a: 'Bukan. Ini perkiraan untuk penjual Non-Star / non-Mall berdasarkan tarif publik yang berlaku per September 2026, dan setiap angka bisa kamu ubah manual. Tarif berubah sewaktu-waktu dan berbeda menurut status toko. Blibli bahkan tidak menerbitkan tarif per kategori — komisinya mengikuti kontrak merchant. Selalu verifikasi di Seller Center masing-masing platform.' },
     ],
   },
   {
@@ -307,6 +527,7 @@ const TOOLS = [
     h1: 'Kalkulator Biaya Admin Shopee 2026',
     cardNote: 'Hitung potongan admin, gratis ongkir & dana bersih diterima',
     lead: 'Berapa yang benar-benar kamu terima setelah dipotong Shopee? Masukkan harga jual, pilih kategori dan program yang aktif — kalkulator menghitung total potongan dan dana bersihmu.',
+    headExtra: '<script src="/js/marketplace-fees.js?v=20260908a" defer></script>',
     body: `    <div class="calc">
       <div class="calc-field">
         <label for="s-harga">Harga jual per unit</label>
@@ -314,15 +535,7 @@ const TOOLS = [
       </div>
       <div class="calc-field">
         <label for="s-kat">Kategori produk <span class="hint">(menentukan tarif biaya admin)</span></label>
-        <select id="s-kat">
-          <option value="10">Kategori A — Fashion, tas, sepatu, aksesoris, FMCG, makanan &amp; minuman, perlengkapan rumah, mainan (10%)</option>
-          <option value="9.5">Kategori B — Skincare, kosmetik, elektronik tertentu, olahraga (9,5%)</option>
-          <option value="6.75">Kategori C — Susu formula, suplemen, makanan bayi (6,75%)</option>
-          <option value="5.25">Kategori D — Elektronik high-end: laptop, HP, tablet (5,25%)</option>
-          <option value="4.25">Kategori E — Logam mulia, perhiasan, emas (4,25%)</option>
-          <option value="2.5">Kategori Khusus — E-money, voucher, tiket (2,5%)</option>
-          <option value="custom">Isi manual…</option>
-        </select>
+        <select id="s-kat"></select>
       </div>
       <div class="calc-field" id="s-custom-wrap" hidden>
         <label for="s-custom">Biaya admin manual (%)</label>
@@ -360,9 +573,26 @@ const TOOLS = [
     </ul>
     <p class="note">Setelah tahu dana bersih yang diterima, cek apakah masih untung setelah modal dengan <a href="/kalkulator/margin-hpp/">Kalkulator Margin &amp; HPP</a>, lalu validasi permintaan produknya di <a href="/riset/">riset pasar LarisID</a>.</p>
 <script>
-(function(){
+// Deferred /js/marketplace-fees.js has not run yet while this tag is parsed.
+function initBiayaShopee(){
+  var M=window.LARIS_MP;
   var f=function(n){return 'Rp '+Math.round(n).toLocaleString('id-ID');};
   var harga=document.getElementById('s-harga'),kat=document.getElementById('s-kat'),customWrap=document.getElementById('s-custom-wrap'),custom=document.getElementById('s-custom');
+  if(!M){document.getElementById('s-out').innerHTML='<p class="calc-sub">Tabel tarif gagal dimuat. Muat ulang halaman ini untuk memakai kalkulator.</p>';document.getElementById('s-out').hidden=false;return;}
+  // Tier labels are Shopee's own grouping; the percentages come from the shared
+  // table so this page can never drift from the app's kalkulator.
+  var TIERS=[
+    ['A','Fashion, tas, sepatu, aksesoris, FMCG, makanan &amp; minuman, perlengkapan rumah, mainan'],
+    ['B','Skincare, kosmetik, elektronik tertentu, olahraga'],
+    ['C','Susu formula, suplemen, makanan bayi'],
+    ['D','Elektronik high-end: laptop, HP, tablet'],
+    ['E','Logam mulia, perhiasan, emas'],
+  ];
+  var SH=M.FEES.shopee;
+  kat.innerHTML=TIERS.map(function(t){
+    return '<option value="'+SH.comm[t[0]]+'">Kategori '+t[0]+' — '+t[1]+' ('+M.fmtPct(SH.comm[t[0]])+')</option>';
+  }).join('')+'<option value="2.5">Kategori Khusus — E-money, voucher, tiket (2,5%)</option>'
+    +'<option value="custom">Isi manual…</option>';
   var go=document.getElementById('s-go'),proc=document.getElementById('s-proc'),spl=document.getElementById('s-spl'),hpp=document.getElementById('s-hpp');
   var out=document.getElementById('s-out');
   var adminPct=document.getElementById('s-adminpct'),admin=document.getElementById('s-admin');
@@ -371,7 +601,11 @@ const TOOLS = [
   var splRow=document.getElementById('s-spl-row'),splVal=document.getElementById('s-splval');
   var totPct=document.getElementById('s-totpct'),tot=document.getElementById('s-tot');
   var net=document.getElementById('s-net'),profitRow=document.getElementById('s-profit-row'),profit=document.getElementById('s-profit'),marginBersih=document.getElementById('s-marginbersih');
-  var PROC_FEE=1250, GO_PCT=5.5, SPL_PCT=2.5;
+  var PROC_FEE=SH.flat, GO_PCT=SH.program, SPL_PCT=2.5; // SPayLater is Shopee-only
+  document.querySelector('label[for="s-go"], #s-go')?.closest('.calc-check')
+    ?.querySelector('span')?.replaceChildren(
+      Object.assign(document.createElement('span'),{innerHTML:'Ikut program <strong>'+SH.programLabel+'</strong> ('+M.fmtPct(GO_PCT)+')'}));
+  document.getElementById('s-go-row').firstElementChild.textContent=SH.programLabel+' ('+M.fmtPct(GO_PCT)+')';
   function calc(){
     customWrap.hidden = kat.value!=='custom';
     var p=parseFloat(harga.value)||0;
@@ -394,7 +628,10 @@ const TOOLS = [
     else{profitRow.hidden=true;}
   }
   [harga,kat,custom,go,proc,spl,hpp].forEach(function(el){el.addEventListener('input',calc);el.addEventListener('change',calc);});
-})();
+  calc();
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initBiayaShopee);
+else initBiayaShopee();
 </script>`,
     faqs: [
       { q: 'Berapa biaya admin Shopee 2026?', a: 'Sejak Januari 2026, biaya admin Shopee berkisar <strong>2,5% hingga 10%</strong> dari harga jual tergantung kategori: Kategori A (fashion, FMCG, makanan, perlengkapan rumah) 10%; skincare/kosmetik/elektronik tertentu ~9,5%; susu formula/suplemen ~6,75%; elektronik high-end 5,25%; logam mulia 4,25%; e-money/voucher/tiket 2,5%. Besaran bisa berbeda menurut status toko dan sewaktu-waktu berubah — cek Pusat Edukasi Penjual Shopee untuk angka terbaru.' },

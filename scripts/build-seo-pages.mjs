@@ -42,6 +42,7 @@ const SNAPSHOT_HUMAN = '19 Juni 2026';
 // BEFORE the page existed, which suppresses recrawl priority and contradicts the page's
 // own Article schema. Give hand-authored pages their real publish date instead.
 const CONTENT_2026_07 = '2026-07-24';
+const TOOLS_2026_09 = '2026-09-08'; // kalkulator fee tables refreshed
 const OG_IMAGE = `${SITE}/images/Banner.jpg`;
 
 // Google Ads tag — lives on the /riset/ hub (parity with the committed hub; kept
@@ -502,9 +503,10 @@ function buildSitemap(entries) {
     { loc: `${SITE}/panduan/cara-cari-supplier-dan-tempat-kulakan/`, freq: 'monthly', pri: '0.7', mod: SNAPSHOT },
     { loc: `${SITE}/panduan/dropship-shopee-cara-kerja-dan-risiko/`, freq: 'monthly', pri: '0.7', mod: SNAPSHOT },
     { loc: `${SITE}/panduan/cara-meningkatkan-penjualan-di-shopee/`, freq: 'monthly', pri: '0.7', mod: SNAPSHOT },
-    { loc: `${SITE}/kalkulator/`, freq: 'monthly', pri: '0.8', mod: CONTENT_2026_07 },
+    { loc: `${SITE}/kalkulator/`, freq: 'monthly', pri: '0.8', mod: TOOLS_2026_09 },
     { loc: `${SITE}/kalkulator/margin-hpp/`, freq: 'monthly', pri: '0.75', mod: CONTENT_2026_07 },
-    { loc: `${SITE}/kalkulator/biaya-shopee/`, freq: 'monthly', pri: '0.75', mod: CONTENT_2026_07 },
+    { loc: `${SITE}/kalkulator/biaya-marketplace/`, freq: 'monthly', pri: '0.8', mod: TOOLS_2026_09 },
+    { loc: `${SITE}/kalkulator/biaya-shopee/`, freq: 'monthly', pri: '0.75', mod: TOOLS_2026_09 },
     { loc: `${SITE}/perbandingan/`, freq: 'monthly', pri: '0.9', mod: '2026-09-05' },
     { loc: `${SITE}/perbandingan/alat-riset-produk-shopee-terbaik/`, freq: 'monthly', pri: '0.8', mod: '2026-09-05' },
     { loc: `${SITE}/perbandingan/larisid-vs-datapinter/`, freq: 'monthly', pri: '0.8', mod: SNAPSHOT },

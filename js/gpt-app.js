@@ -6733,7 +6733,7 @@ function fillCalcContent(opts = {}) {
   const shouldRebuild = opts.force || opts.price != null || !_calcFilled || nextKey !== _calcProductKey;
 
   if (shouldRebuild) {
-    body.innerHTML = gptKalcHtml({ price, cogs });
+    body.innerHTML = gptKalcHtml({ price, cogs, category: ddFeeCategory(product), marketplace: opts.marketplace });
     _calcFilled = true;
     _calcProductKey = nextKey;
   }
@@ -6741,6 +6741,7 @@ function fillCalcContent(opts = {}) {
   const name = (opts.name || product.product_name || product.keyword || '').trim().slice(0, 80);
   setSideContext(name);
   bindGptKalc(body);
+  if (opts.marketplace) gptKalcSelectMp(body.querySelector('[data-kalc]'), opts.marketplace);
 }
 
 function wireKompPanelBody(body, peers, product) {
@@ -8924,68 +8925,123 @@ async function handleLowcompIntent(chat) {
   });
 }
 
-const MARKETPLACE_FEE = 0.08; // asumsi biaya marketplace, dilabel di UI
-
-// ── Kalkulator profit (sama rumus Mulai Berjualan) ────────────────────────
-const GPT_KALC_MPS = {
-  shopee_fashion:     { label: 'Shopee Fashion',    comm: 0.10,   svc: 0.02, tax: 0.005, freeship: 1,   ship: 9000 },
-  shopee_electronics: { label: 'Shopee Elektronik', comm: 0.095,  svc: 0.02, tax: 0.005, freeship: 0.5, ship: 12000 },
-  shopee_fmcg:        { label: 'Shopee FMCG',       comm: 0.0675, svc: 0.02, tax: 0.005, freeship: 1,   ship: 8000 },
-  tokopedia:          { label: 'Tokopedia',         comm: 0.02,   svc: 0.01, tax: 0.005, freeship: 0,   ship: 10000 },
-  tiktok:             { label: 'TikTok Shop',       comm: 0.028,  svc: 0.01, tax: 0.005, freeship: 0.5, ship: 9000 },
-};
+// ── Kalkulator profit ──────────────────────────────────────────────────────
+// Rates, brand marks and the category->tier map all live in
+// js/marketplace-fees.js (window.LARIS_MP), shared with the Deep Dive "Biaya"
+// strip and the static calculators under /kalkulator/. Do not add a local fee
+// table here — that is exactly the drift this file used to have.
+const KALC_TAX = 0.005;   // PPh final 0,5% — seller-side, not platform-side
+const KALC_RET = 0.01;    // cadangan retur/refund 1%
+const KALC_DEFAULT_CAT = 'Fashion';
 
 function gptKalcCompute(inp) {
-  const PROC_FEE = 1250;
-  const pctSum = inp.comm + inp.svc + inp.tax + inp.ret;
-  const commAmt = inp.price * inp.comm;
-  const svcAmt = inp.price * inp.svc;
+  const flat = inp.flat || 0;
+  const commRaw = inp.price * inp.comm;
+  // Lazada caps komisi at Rp 20.000/item and TikTok/Tokopedia at Rp 650.000.
+  // Once the cap binds the komisi stops being proportional to price, which the
+  // reverse solves below have to know about.
+  const capped = inp.capRp != null && commRaw > inp.capRp;
+  const commAmt = capped ? inp.capRp : commRaw;
+  const admAmt = inp.price * inp.admin;
+  const progAmt = inp.price * inp.program;
   const taxAmt = inp.price * inp.tax;
   const retAmt = inp.price * inp.ret;
-  const shipCost = inp.shipping * inp.freeship;
-  const fixedCost = inp.cogs + shipCost + inp.packing + inp.opex + inp.ads + PROC_FEE;
-  const totalCost = fixedCost + commAmt + svcAmt + taxAmt + retAmt;
+  // Ongkir subsidy is a plain Rupiah cost the seller controls, deliberately NOT
+  // gated on the program toggle: only Shopee publishes a program percentage, so
+  // gating it would silently zero the ongkir of every other platform's seller.
+  const shipCost = inp.shipping;
+  const rpCost = inp.cogs + shipCost + inp.packing + inp.opex + inp.ads + flat;
+  const pctSum = inp.comm + inp.admin + inp.program + inp.tax + inp.ret;
+  const totalCost = rpCost + commAmt + admAmt + progAmt + taxAmt + retAmt;
   const profit = inp.price - totalCost;
   const margin = inp.price > 0 ? (profit / inp.price * 100) : 0;
-  return { ...inp, PROC_FEE, pctSum, commAmt, svcAmt, taxAmt, retAmt, shipCost, fixedCost, totalCost, profit, margin };
+  return {
+    ...inp, PROC_FEE: flat, capped, pctSum,
+    commAmt, admAmt, progAmt, taxAmt, retAmt, shipCost,
+    rpCost, fixedCost: rpCost, totalCost, profit, margin,
+  };
 }
 
-function gptKalcPriceForMargin(targetMarginPct, fixedCost, pctSum) {
-  const denom = 1 - pctSum - targetMarginPct / 100;
-  return denom > 0 ? fixedCost / denom : fixedCost;
+// Price that yields `targetMarginPct`, honouring the komisi cap. Below the cap
+// komisi is proportional to price (linear solve); above it, it is a constant
+// Rp and belongs in the fixed side. Try the uncapped branch, then the capped
+// one, and only accept the answer that is self-consistent with its own branch.
+function gptKalcSolve(targetMarginPct, r) {
+  const m = targetMarginPct / 100;
+  const pctOther = r.admin + r.program + r.tax + r.ret;
+  const fixed = r.rpCost;
+  const dUncapped = 1 - pctOther - r.comm - m;
+  if (dUncapped > 0) {
+    const price = fixed / dUncapped;
+    if (r.capRp == null || price * r.comm <= r.capRp) return price;
+  }
+  if (r.capRp != null) {
+    const dCapped = 1 - pctOther - m;
+    if (dCapped > 0) {
+      const price = (fixed + r.capRp) / dCapped;
+      if (price * r.comm >= r.capRp) return price;
+    }
+  }
+  return fixed + (r.capRp || 0);
 }
 
-function gptKalcBepPrice(fixedCost, pctSum) {
-  return pctSum < 1 ? fixedCost / (1 - pctSum) : fixedCost;
+function gptKalcMpFor(key) {
+  return LARIS_MP.FEES[key] ? key : 'shopee';
 }
 
 function gptKalcDefaults(opts = {}) {
   const price = Math.round(Number(opts.price) || 0);
   const cogs = Math.round(Number(opts.cogs) || (price ? price * 0.33 : 0));
-  const mp = GPT_KALC_MPS.shopee_fashion;
+  const prefs = loadSidePrefs();
+  // Marketplace is a seller-level fact ("I sell on Shopee") — remembered.
+  const marketplace = gptKalcMpFor(opts.marketplace || prefs.kalcMp);
+  // Category is a product-level fact — always re-derived from the open product,
+  // never persisted, or opening a second product shows the first one's category.
+  const category = LARIS_MP.canonFor(opts.category)
+    || (LARIS_MP.canonFor(prefs.kalcCatFallback) || KALC_DEFAULT_CAT);
+  const f = LARIS_MP.FEES[marketplace];
   return {
     price: price || 50000,
     cogs: cogs || 20000,
-    shipping: mp.ship,
+    shipping: f.ship,
     packing: 2000,
     opex: 1000,
     ads: Math.max(750, Math.round((price || 50000) * 0.05)),
     adsOn: true,
-    marketplace: 'shopee_fashion',
+    marketplace,
+    category,
+    commManual: '',
+    programOn: !!f.programDefaultOn,
   };
+}
+
+function gptKalcStripHtml(selected, category) {
+  const items = LARIS_MP.KEYS.map(k => {
+    const r = LARIS_MP.rateFor(k, category);
+    const on = k === selected;
+    return `<button type="button" class="ddr-mp-item" role="radio" aria-checked="${on ? 'true' : 'false'}" tabindex="${on ? '0' : '-1'}" data-mp="${esc(k)}" title="Biaya platform ${esc(r.label)}">
+      <span class="ddr-mp-brand">${LARIS_MP.logo(k)}<span class="ddr-mp-name">${esc(r.label)}</span></span>
+      <span class="ddr-mp-pct" data-mp-pct="${esc(k)}">${LARIS_MP.fmtPct(r.pctBase)}</span>
+    </button>`;
+  }).join('');
+  return `<div class="ddr-mp gpt-kalc-mp" role="radiogroup" aria-label="Pilih marketplace">
+    <div class="ddr-mp-strip">${items}</div>
+  </div>`;
 }
 
 function gptKalcHtml(opts = {}) {
   const d = gptKalcDefaults(opts);
-  const mpOpts = Object.entries(GPT_KALC_MPS).map(([k, v]) =>
-    `<option value="${esc(k)}"${k === d.marketplace ? ' selected' : ''}>${esc(v.label)}</option>`
-  ).join('');
+  const f = LARIS_MP.FEES[d.marketplace];
+  const catOpts = LARIS_MP.CANON_CATS
+    .map(c => `<option value="${esc(c)}"${c === d.category ? ' selected' : ''}>${esc(c)}</option>`)
+    .join('') + '<option value="__manual">Lainnya / isi manual…</option>';
   return `
   <div class="gpt-kalc" data-kalc>
     <div class="gpt-kalc-head">
       <h4>Kalkulator Profit</h4>
-      <p>Sesuaikan angka di bawah — biaya marketplace, packing, dan iklan ikut terhitung otomatis.</p>
+      <p>Pilih marketplace dan kategori — biaya admin, packing, dan iklan ikut terhitung otomatis.</p>
     </div>
+    ${gptKalcStripHtml(d.marketplace, d.category)}
     <div class="gpt-kalc-grid">
       <div class="gpt-kalc-field">
         <label>Harga jual</label>
@@ -8998,10 +9054,16 @@ function gptKalcHtml(opts = {}) {
         <div class="hint">≈ 33% harga jual (bisa diubah)</div>
       </div>
       <div class="gpt-kalc-field">
-        <label>Marketplace</label>
-        <select data-k="marketplace">${mpOpts}</select>
-        <div class="hint">Biaya admin terisi otomatis</div>
+        <label>Kategori produk</label>
+        <select data-k="category">${catOpts}</select>
+        <div class="gpt-kalc-rp gpt-kalc-manual" data-kalc-manual hidden><span>%</span><input type="number" min="0" max="100" step="0.1" data-k="commManual" placeholder="mis. 8"></div>
+        <div class="hint">Menentukan tarif biaya admin</div>
       </div>
+    </div>
+    <div class="gpt-kalc-ads gpt-kalc-prog" data-kalc-prog${f.program > 0 ? '' : ' hidden'}>
+      <div class="meta"><strong data-out="prog-label">${esc(f.programLabel || 'Program promo')}</strong><span>Opsional — potongan tambahan</span></div>
+      <label class="gpt-kalc-tog" title="Ikut program"><input type="checkbox" data-k="programOn"${d.programOn ? ' checked' : ''}><i></i></label>
+      <div class="gpt-kalc-progpct" data-out="prog-pct">${LARIS_MP.fmtPct(f.program || 0)}</div>
     </div>
     <div class="gpt-kalc-ads">
       <div class="meta"><strong>Biaya iklan</strong><span>Opsional — per pesanan</span></div>
@@ -9047,15 +9109,22 @@ function gptKalcHtml(opts = {}) {
           <div class="gpt-kalc-rp"><span>Rp</span><input type="number" min="0" data-k="opex" value="${d.opex}"></div>
         </div>
       </div>
-      <p class="gpt-kalc-note">Estimasi saja — biaya bisa berubah sesuai kebijakan platform. Belum termasuk pajak pribadi.</p>
+      <p class="gpt-kalc-note" data-out="note">Estimasi saja — biaya bisa berubah sesuai kebijakan platform. Belum termasuk pajak pribadi.</p>
+      <p class="gpt-kalc-src" data-out="src"></p>
     </div>
   </div>`;
 }
 
 function _gptKalcRead(root) {
   const num = (k) => parseFloat(root.querySelector(`[data-k="${k}"]`)?.value) || 0;
-  const mpKey = root.querySelector('[data-k="marketplace"]')?.value || 'shopee_fashion';
-  const mp = GPT_KALC_MPS[mpKey] || GPT_KALC_MPS.shopee_fashion;
+  const mpKey = gptKalcMpFor(root.querySelector('.gpt-kalc-mp [aria-checked="true"]')?.dataset.mp);
+  const catSel = root.querySelector('[data-k="category"]')?.value || KALC_DEFAULT_CAT;
+  const manual = catSel === '__manual';
+  const programOn = root.querySelector('[data-k="programOn"]')?.checked === true;
+  const r = LARIS_MP.rateFor(mpKey, manual ? '' : catSel, {
+    commManual: manual ? num('commManual') : null,
+    programOn,
+  });
   const adsOn = root.querySelector('[data-k="adsOn"]')?.checked !== false;
   return {
     price: num('price'),
@@ -9066,11 +9135,16 @@ function _gptKalcRead(root) {
     ads: adsOn ? num('ads') : 0,
     adsOn,
     mpKey,
-    comm: mp.comm,
-    svc: mp.svc,
-    tax: mp.tax,
-    freeship: mp.freeship,
-    ret: 0.01,
+    category: manual ? '' : catSel,
+    manual,
+    rate: r,
+    comm: r.comm / 100,
+    admin: r.admin / 100,
+    program: r.program / 100,
+    flat: r.flat,
+    capRp: r.capRp,
+    tax: KALC_TAX,
+    ret: KALC_RET,
   };
 }
 
@@ -9078,7 +9152,27 @@ function gptKalcRefresh(root) {
   if (!root) return;
   const inp = _gptKalcRead(root);
   const r = gptKalcCompute(inp);
+  const rate = inp.rate;
+  const f = LARIS_MP.FEES[inp.mpKey];
   const set = (k, v) => { const el = root.querySelector(`[data-out="${k}"]`); if (el) el.textContent = v; };
+
+  // Every tile shows the baseline potongan (komisi + biaya admin) for the
+  // current category, so the strip stays a like-for-like comparison.
+  root.querySelectorAll('[data-mp-pct]').forEach(el => {
+    const other = LARIS_MP.rateFor(el.dataset.mpPct, inp.manual ? '' : inp.category,
+      { commManual: inp.manual ? rate.comm : null });
+    el.textContent = LARIS_MP.fmtPct(other.pctBase);
+  });
+
+  const manualWrap = root.querySelector('[data-kalc-manual]');
+  if (manualWrap) manualWrap.hidden = !inp.manual;
+  const progRow = root.querySelector('[data-kalc-prog]');
+  if (progRow) {
+    progRow.hidden = !(f.program > 0);
+    set('prog-label', f.programLabel || 'Program promo');
+    set('prog-pct', LARIS_MP.fmtPct(f.program || 0));
+  }
+
   const profitEl = root.querySelector('[data-out="profit"]');
   const pill = root.querySelector('[data-out="margin-pill"]');
   if (profitEl) {
@@ -9096,16 +9190,20 @@ function gptKalcRefresh(root) {
   set('cost', fmtRp(r.totalCost));
   set('profit2', fmtRp(r.profit));
   set('margin', `${r.margin.toFixed(1).replace('.', ',')}%`);
-  set('bep', fmtRp(gptKalcBepPrice(r.fixedCost, r.pctSum)));
-  set('good', fmtRp(gptKalcPriceForMargin(18, r.fixedCost, r.pctSum)));
-  set('healthy', fmtRp(gptKalcPriceForMargin(28, r.fixedCost, r.pctSum)));
+  set('bep', fmtRp(gptKalcSolve(0, r)));
+  set('good', fmtRp(gptKalcSolve(18, r)));
+  set('healthy', fmtRp(gptKalcSolve(28, r)));
 
-  const mp = GPT_KALC_MPS[inp.mpKey] || GPT_KALC_MPS.shopee_fashion;
-  set('detail-title', `Rincian biaya di ${mp.label}`);
-  const adminPct = ((r.comm + r.svc) * 100).toFixed(1).replace('.', ',');
+  const catLabel = inp.manual ? 'kategori manual' : inp.category;
+  set('detail-title', `Rincian biaya di ${rate.label} · ${catLabel}`);
+  const commLbl = r.capped
+    ? `Komisi kategori (maks ${fmtRp(rate.capRp)})`
+    : `Komisi kategori (${LARIS_MP.fmtPct(rate.comm)})`;
   const items = [
-    { lbl: `Admin & layanan (${adminPct}%)`, val: r.commAmt + r.svcAmt },
-    { lbl: 'Gratis ongkir (subsidi)', val: r.shipCost },
+    { lbl: commLbl, val: r.commAmt },
+    { lbl: `Biaya administrasi (${LARIS_MP.fmtPct(rate.admin)})`, val: r.admAmt },
+    { lbl: `${rate.programLabel} (${LARIS_MP.fmtPct(rate.program)})`, val: r.progAmt },
+    { lbl: 'Ongkir (subsidi)', val: r.shipCost },
     { lbl: 'Proses pesanan', val: r.PROC_FEE },
     { lbl: 'Pajak (PPh final)', val: r.taxAmt },
     { lbl: 'Return / refund', val: r.retAmt },
@@ -9118,8 +9216,35 @@ function gptKalcRefresh(root) {
       `<div class="gpt-kalc-item"><div class="lbl">${esc(d.lbl)}</div><div class="val">${fmtRp(d.val)}</div></div>`
     ).join('');
   }
+  set('note', rate.note
+    || 'Estimasi saja — biaya bisa berubah sesuai kebijakan platform. Belum termasuk pajak pribadi.');
+  const srcEl = root.querySelector('[data-out="src"]');
+  if (srcEl) {
+    srcEl.innerHTML = `Tarif penjual Non-Star / non-Mall per ${esc(LARIS_MP.UPDATED)} · sumber: <a href="${esc(rate.srcUrl)}" target="_blank" rel="nofollow noopener">${esc(rate.src)}</a>`;
+  }
   const adsInp = root.querySelector('[data-k="ads"]');
   if (adsInp) adsInp.disabled = !inp.adsOn;
+}
+
+// Select a marketplace on an already-rendered kalkulator. Module-level so the
+// Deep Dive fee strip can open the panel straight onto a platform without
+// re-rendering the whole calculator (fillCalcContent skips the rebuild when the
+// product has not changed).
+function gptKalcSelectMp(panel, key) {
+  if (!panel) return;
+  const mpKey = gptKalcMpFor(key);
+  panel.querySelectorAll('.gpt-kalc-mp [data-mp]').forEach(t => {
+    const on = t.dataset.mp === mpKey;
+    t.setAttribute('aria-checked', on ? 'true' : 'false');
+    t.tabIndex = on ? 0 : -1;
+  });
+  const mp = LARIS_MP.FEES[mpKey];
+  const ship = panel.querySelector('[data-k="shipping"]');
+  if (ship && !ship.dataset.touched) ship.value = String(mp.ship);
+  const prog = panel.querySelector('[data-k="programOn"]');
+  if (prog && !prog.dataset.touched) prog.checked = !!mp.programDefaultOn;
+  saveSidePrefs({ kalcMp: mpKey });
+  gptKalcRefresh(panel);
 }
 
 function bindGptKalc(root) {
@@ -9129,23 +9254,33 @@ function bindGptKalc(root) {
       return;
     }
     panel.dataset.bound = '1';
-    const onMp = () => {
-      const key = panel.querySelector('[data-k="marketplace"]')?.value || 'shopee_fashion';
-      const mp = GPT_KALC_MPS[key] || GPT_KALC_MPS.shopee_fashion;
-      const ship = panel.querySelector('[data-k="shipping"]');
-      if (ship && !ship.dataset.touched) ship.value = String(mp.ship);
-      gptKalcRefresh(panel);
-    };
+    const selectMp = (key) => gptKalcSelectMp(panel, key);
+    panel.querySelectorAll('.gpt-kalc-mp [data-mp]').forEach(tile => {
+      tile.addEventListener('click', () => selectMp(tile.dataset.mp));
+      tile.addEventListener('keydown', (e) => {
+        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+        e.preventDefault();
+        const keys = LARIS_MP.KEYS;
+        const i = keys.indexOf(tile.dataset.mp);
+        const next = keys[(i + (e.key === 'ArrowRight' ? 1 : keys.length - 1)) % keys.length];
+        selectMp(next);
+        panel.querySelector(`.gpt-kalc-mp [data-mp="${next}"]`)?.focus();
+      });
+    });
     panel.querySelectorAll('input, select').forEach(el => {
-      el.addEventListener('input', () => {
-        if (el.getAttribute('data-k') === 'shipping') el.dataset.touched = '1';
-        if (el.getAttribute('data-k') === 'marketplace') onMp();
-        else gptKalcRefresh(panel);
-      });
-      el.addEventListener('change', () => {
-        if (el.getAttribute('data-k') === 'marketplace') onMp();
-        else gptKalcRefresh(panel);
-      });
+      const onChange = () => {
+        const k = el.getAttribute('data-k');
+        if (k === 'shipping' || k === 'programOn') el.dataset.touched = '1';
+        if (k === 'category') {
+          // Remember a manual category only as a fallback for products that
+          // carry no category of their own.
+          const v = el.value;
+          if (v !== '__manual') saveSidePrefs({ kalcCatFallback: v });
+        }
+        gptKalcRefresh(panel);
+      };
+      el.addEventListener('input', onChange);
+      el.addEventListener('change', onChange);
     });
     panel.querySelector('[data-kalc-detail-tog]')?.addEventListener('click', () => {
       const body = panel.querySelector('[data-kalc-detail]');
@@ -9158,33 +9293,42 @@ function bindGptKalc(root) {
   });
 }
 
-function profitTableHtml(rows) {
+// Quick table above the calculator. Uses the real baseline rate for the
+// marketplace + category rather than the flat ~8% guess it used to assume.
+function profitTableHtml(rows, mpKey, category) {
+  const mp = gptKalcMpFor(mpKey);
+  const rate = LARIS_MP.rateFor(mp, category);
+  const pct = LARIS_MP.fmtPct(rate.pctBase);
+  const capNote = rate.capRp != null ? ` (maks ${fmtRp(rate.capRp)})` : '';
   return `<div class="ans-panel" style="margin-top:12px"><div class="ans-table-wrap"><table class="tr-table">
-    <thead><tr><th>Modal / unit</th><th>Harga jual</th><th>Biaya marketplace ~8%</th><th>Profit / unit</th><th>Margin</th></tr></thead>
+    <thead><tr><th>Modal / unit</th><th>Harga jual</th><th>Biaya ${esc(rate.label)} ${pct}</th><th>Profit / unit</th><th>Margin</th></tr></thead>
     <tbody>${rows.map(r => {
-      const fee = Math.round(r.jual * MARKETPLACE_FEE);
+      const raw = r.jual * rate.pctBase / 100;
+      const fee = Math.round(rate.capRp != null ? Math.min(raw, rate.capRp) : raw);
       const profit = r.jual - fee - r.modal;
       const mg = r.jual ? Math.round(profit / r.jual * 100) : 0;
       return `<tr><td>${fmtRp(r.modal)}</td><td>${fmtRp(r.jual)}</td><td>${fmtRp(fee)}</td><td><strong style="color:${profit >= 0 ? 'var(--green)' : 'var(--accent)'}">${fmtRp(profit)}</strong></td><td>${mg}%</td></tr>`;
     }).join('')}</tbody>
   </table></div></div>
-  <p class="dd-sub" style="margin-top:8px">Hitungan cepat: harga jual − biaya marketplace (asumsi 8%) − modal. Ongkir/packing belum termasuk — pakai kalkulator di bawah untuk angka yang lebih lengkap.</p>`;
+  <p class="dd-sub" style="margin-top:8px">Hitungan cepat: harga jual − biaya ${esc(rate.label)} ${pct}${capNote} − modal. Ongkir/packing/iklan belum termasuk — pakai kalkulator di bawah untuk angka yang lebih lengkap.</p>`;
 }
 
 async function handleProfitIntent(chat, text) {
   const product = state.deepdiveProduct || activeChat()?.context?.product;
   const nums = extractMoney(text).filter(n => n >= 500);
+  const cat = ddFeeCategory(product);
+  const mpKey = gptKalcMpFor(loadSidePrefs().kalcMp);
   let html;
-  let kalcOpts = {};
+  let kalcOpts = { category: cat };
   if (nums.length >= 2) {
     const [modal, jual] = nums[0] <= nums[1] ? [nums[0], nums[1]] : [nums[1], nums[0]];
-    html = `<p>Estimasi profit per unit:</p>${profitTableHtml([{ modal, jual }])}`;
-    kalcOpts = { price: jual, cogs: modal };
+    html = `<p>Estimasi profit per unit:</p>${profitTableHtml([{ modal, jual }], mpKey, cat)}`;
+    kalcOpts = { price: jual, cogs: modal, category: cat };
   } else if (product && Number(product.price) > 0) {
     const jual = Number(product.price);
     html = `<p>Skenario profit untuk <strong>${esc((product.product_name || '').slice(0, 48))}</strong> di harga jual ${fmtRp(jual)} — tiga asumsi modal (60/70/80% dari harga jual):</p>`
-      + profitTableHtml([0.6, 0.7, 0.8].map(f => ({ modal: Math.round(jual * f), jual })));
-    kalcOpts = { price: jual, cogs: Math.round(jual * 0.33) };
+      + profitTableHtml([0.6, 0.7, 0.8].map(f => ({ modal: Math.round(jual * f), jual })), mpKey, cat);
+    kalcOpts = { price: jual, cogs: Math.round(jual * 0.33), category: cat };
   } else {
     html = `<p>Isi kalkulator di bawah, atau sebutkan modal dan harga jual — contoh: <strong>“Hitung profit modal 20rb jual 35rb”</strong>.</p>`;
   }
@@ -13896,34 +14040,19 @@ function ddOmsetSummary(product, peers) {
   return { lo, hi, median, single };
 }
 
-// ── E-commerce platform fee estimates (mirrored from Site A) ───────────────
-// Researched Juni 2025. Perkiraan untuk penjual non-Star/reguler dengan
-// program gratis ongkir aktif — tarif berubah & bergantung kategori spesifik.
-const ECOM_FEE_UPDATED = 'Juni 2025';
-const FEE_TIER_BY_CAT = {
-  'Fashion':'A','Elektronik':'A','Motor & Mobil':'A',
-  'Kecantikan':'B','Kesehatan':'B','Rumah':'B','Dapur':'B','Bayi & Anak':'B',
-  'Olahraga':'B','Kamar Mandi':'B',
-  'Hobi & Kerajinan':'C','Alat Tulis':'C','Tanaman':'C','Taman':'C',
-  'Outdoor & Camping':'C','Sepeda':'C','Hewan Peliharaan':'C','Keamanan':'C',
-  'HP & Gadget':'D',
-};
-const ECOM_LOGO = {
-  shopee:    `<svg viewBox="0 0 32 32" width="26" height="26" style="display:block;flex-shrink:0"><rect width="32" height="32" rx="8" fill="#EE4D2D"/><path d="M11.4 12.3a4.6 4.6 0 0 1 9.2 0" fill="none" stroke="#fff" stroke-width="1.5"/><path d="M8.8 12h14.4l-1 11.2a1.6 1.6 0 0 1-1.6 1.45H11.4a1.6 1.6 0 0 1-1.6-1.45z" fill="#fff"/><path d="M16 15.8c-1.5 0-2.55.85-2.55 2.05 0 2.45 4.35 1.6 4.35 3.45 0 .85-.85 1.3-1.85 1.3-1 0-1.75-.4-2.2-1" fill="none" stroke="#EE4D2D" stroke-width="1.2" stroke-linecap="round"/></svg>`,
-  tiktok:    `<svg viewBox="0 0 32 32" width="26" height="26" style="display:block;flex-shrink:0"><rect width="32" height="32" rx="8" fill="#010101"/><path d="M19.3 7.4c.34 2.06 1.66 3.4 3.62 3.6v2.55c-1.18 0-2.36-.4-3.42-1.04v5.55a5.36 5.36 0 1 1-5.36-5.36c.3 0 .58.02.86.07v2.66a2.8 2.8 0 1 0 1.96 2.67V7.4z" fill="#25F4EE" transform="translate(-0.9,-0.6)"/><path d="M19.3 7.4c.34 2.06 1.66 3.4 3.62 3.6v2.55c-1.18 0-2.36-.4-3.42-1.04v5.55a5.36 5.36 0 1 1-5.36-5.36c.3 0 .58.02.86.07v2.66a2.8 2.8 0 1 0 1.96 2.67V7.4z" fill="#FE2C55" transform="translate(0.9,0.6)"/><path d="M19.3 7.4c.34 2.06 1.66 3.4 3.62 3.6v2.55c-1.18 0-2.36-.4-3.42-1.04v5.55a5.36 5.36 0 1 1-5.36-5.36c.3 0 .58.02.86.07v2.66a2.8 2.8 0 1 0 1.96 2.67V7.4z" fill="#fff"/></svg>`,
-  tokopedia: `<svg viewBox="0 0 32 32" width="26" height="26" style="display:block;flex-shrink:0"><rect width="32" height="32" rx="8" fill="#42B549"/><circle cx="12.6" cy="14" r="3.9" fill="#fff"/><circle cx="19.4" cy="14" r="3.9" fill="#fff"/><circle cx="12.6" cy="14" r="1.7" fill="#42B549"/><circle cx="19.4" cy="14" r="1.7" fill="#42B549"/><path d="M14.3 19.4h3.4L16 21.6z" fill="#fff"/></svg>`,
-  lazada:    `<svg viewBox="0 0 32 32" width="26" height="26" style="display:block;flex-shrink:0"><defs><linearGradient id="lzdg-b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF0F64"/><stop offset=".55" stop-color="#FF6A00"/><stop offset="1" stop-color="#2A1A8A"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="#0E1466"/><path d="M16 23.5s-6.2-3.6-6.2-8.1A3.55 3.55 0 0 1 16 12.6a3.55 3.55 0 0 1 6.2 2.8c0 4.5-6.2 8.1-6.2 8.1z" fill="url(#lzdg-b)"/></svg>`,
-  blibli:    `<svg viewBox="0 0 32 32" width="26" height="26" style="display:block;flex-shrink:0"><rect width="32" height="32" rx="8" fill="#0072BC"/><path d="M11.4 12.3a4.6 4.6 0 0 1 9.2 0" fill="none" stroke="#fff" stroke-width="1.5"/><path d="M8.8 12h14.4l-1 11.2a1.6 1.6 0 0 1-1.6 1.45H11.4a1.6 1.6 0 0 1-1.6-1.45z" fill="#fff"/><circle cx="16" cy="18.4" r="2.2" fill="#0072BC"/></svg>`,
-};
-const PLATFORM_FEES = {
-  shopee:    { label:'Shopee',      logo:ECOM_LOGO.shopee,    comm:{A:10,  B:8.5, C:6.5, D:5,    E:2.5},  program:4.0, flat:1250, src:'seller.shopee.co.id' },
-  tiktok:    { label:'TikTok Shop', logo:ECOM_LOGO.tiktok,    comm:{A:6,   B:5,   C:4,   D:3,    E:2.5},  program:2.0, flat:1250, src:'seller-id.tokopedia.com' },
-  tokopedia: { label:'Tokopedia',   logo:ECOM_LOGO.tokopedia, comm:{A:8,   B:6.5, C:5,   D:4,    E:3.5},  program:2.5, flat:1250, src:'tokopedia.com/help' },
-  lazada:    { label:'Lazada',      logo:ECOM_LOGO.lazada,    comm:{A:8.2, B:6,   C:4,   D:2.43, E:2.43}, program:4.0, admin:1.82, flat:1250, src:'sellercenter.lazada.co.id' },
-  blibli:    { label:'Blibli',      logo:ECOM_LOGO.blibli,    comm:{A:8,   B:7,   C:6,   D:5,    E:2.5},  program:0,   flat:0, note:'Hanya komisi kategori (2–8%, tergantung kategori). Tanpa biaya program gratis ongkir atau biaya proses pesanan — biaya pengiriman terpisah.', src:'seller.blibli.com' },
-};
-function feeTierForCat(cat){ return FEE_TIER_BY_CAT[cat] || 'B'; }
-function ecomFmtPct(n){ return (Math.round(n*10)/10).toFixed(1).replace('.', ',').replace(/,0$/, '') + '%'; }
+// ── E-commerce platform fees ───────────────────────────────────────────────
+// Rates, brand marks and the category->tier map come from
+// js/marketplace-fees.js (window.LARIS_MP), shared with the Kalkulator Profit
+// and the static calculators under /kalkulator/. The wrappers below keep the
+// old names and return shapes so the Deep Dive render code is unchanged.
+const ECOM_FEE_UPDATED = LARIS_MP.UPDATED;
+const ECOM_ICON_Q = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2" style="display:block"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+const ecomFmtPct = LARIS_MP.fmtPct;
+const feeTierForCat = LARIS_MP.tierFor;
+function ecomPlatformMeta(plat) {
+  const f = LARIS_MP.FEES[plat] || LARIS_MP.FEES.shopee;
+  return { label: f.label, src: f.src, srcUrl: f.srcUrl, note: f.note || '', logo: LARIS_MP.logo(plat) };
+}
 function ecomFmtRp(v){
   v = Math.round(v || 0);
   if (v >= 1e9) return 'Rp ' + (v/1e9).toFixed(1).replace('.', ',') + 'M';
@@ -13932,12 +14061,13 @@ function ecomFmtRp(v){
   return 'Rp ' + v.toLocaleString('id-ID');
 }
 function ddFeeCategory(product) {
-  return normalizeDdChipCat(product)
-    || product?.category
-    || product?.category_canonical
+  return LARIS_MP.canonFor(
+    product?.category_canonical
     || product?._ptype?.category_canonical
+    || product?.category
     || product?._ptype?.category
-    || 'Umum';
+    || normalizeDdChipCat(product)
+  ) || 'Umum';
 }
 function ddFeeVolume(product) {
   const price = Number(product?.price) || 0;
@@ -13945,22 +14075,33 @@ function ddFeeVolume(product) {
   return { price, sales, omset: sales * price };
 }
 function platformFeePerProduct(plat, cat, price){
-  const f = PLATFORM_FEES[plat], t = feeTierForCat(cat);
-  const pctOnly = +((f.comm[t]||0) + (f.program||0) + (f.admin||0)).toFixed(1);
-  const flat = f.flat || 0;
-  const pctRp = price > 0 ? price * pctOnly / 100 : 0;
-  return { pctOnly, flat, pctRp, totalRp: pctRp + flat };
+  const f = LARIS_MP.feeRp(plat, cat, price);
+  return {
+    // Cap-aware once a price is known; the plain rate before that.
+    pctOnly: price > 0 ? f.pctEffective : f.pctTotal,
+    // Baseline komisi + biaya admin, no opt-in program — the only figure that
+    // compares like for like across platforms (a program rate is published for
+    // Shopee and not for the rest, so folding in an unverified 0 would flatter
+    // them).
+    pctBase: price > 0 ? f.pctBaseEffective : f.pctBase,
+    flat: f.flat, pctRp: f.pctRp, totalRp: f.totalRp, capped: f.capRp != null && price * f.comm / 100 > f.capRp,
+  };
 }
 function platformFeeDetail(plat, cat, vol){
-  const f = PLATFORM_FEES[plat], t = feeTierForCat(cat);
   const { price } = vol;
-  const fee = platformFeePerProduct(plat, cat, price);
+  const f = LARIS_MP.feeRp(plat, cat, price, { programOn: true });
   const rows = [];
-  if (f.admin)   rows.push({ name:'Biaya administrasi', where:'Biaya tetap platform tiap transaksi', pct:f.admin, rpPer: price*f.admin/100 });
-  rows.push({ name:'Biaya platform (bukan komisi afiliasi)', where:'Potongan platform tiap produk terjual', pct:(f.comm[t]||0), rpPer: price*(f.comm[t]||0)/100 });
-  if (f.program) rows.push({ name:'Program Gratis Ongkir & promo', where:'Subsidi ongkir / voucher untuk pembeli', pct:f.program, rpPer: price*f.program/100 });
-  if (f.flat)    rows.push({ name:'Biaya proses pesanan', where:'Rp '+f.flat.toLocaleString('id-ID')+' / order (tetap, bukan %)', pct:null, rpPer: f.flat });
-  return { rows, pctOnly: fee.pctOnly, totalRp: fee.totalRp, note:f.note };
+  if (f.admin)   rows.push({ name:'Biaya administrasi', where:'Biaya tetap platform tiap transaksi', pct:f.admin, rpPer:f.adminRp });
+  rows.push({
+    name:'Biaya platform (bukan komisi afiliasi)',
+    where: f.capRp != null
+      ? `Potongan platform tiap produk terjual — maksimal ${ecomFmtRp(f.capRp)}/item`
+      : 'Potongan platform tiap produk terjual',
+    pct:f.comm, rpPer:f.commRp,
+  });
+  if (f.program) rows.push({ name:`Program ${f.programLabel}`, where:'Subsidi ongkir / voucher untuk pembeli (opsional)', pct:f.program, rpPer:f.programRp });
+  if (f.flat)    rows.push({ name:'Biaya proses pesanan', where:'Rp '+f.flat.toLocaleString('id-ID')+' / order (tetap, bukan %)', pct:null, rpPer:f.flat });
+  return { rows, pctOnly: price > 0 ? f.pctEffective : f.pctTotal, totalRp:f.totalRp, note:f.note };
 }
 
 function ddToolPillsHtml(product) {
@@ -13982,22 +14123,23 @@ function ddToolPillsHtml(product) {
 }
 
 function ddMarketplaceFeeForCategory(category) {
-  const cat = FEE_TIER_BY_CAT[category] ? category : (FEE_TIER_BY_CAT[String(category || '').trim()] ? String(category).trim() : 'Umum');
-  const fee = platformFeePerProduct('shopee', cat, 0);
-  return { label: PLATFORM_FEES.shopee.label, pct: ecomFmtPct(fee.pctOnly) };
+  const fee = platformFeePerProduct('shopee', category, 0);
+  return { label: LARIS_MP.FEES.shopee.label, pct: ecomFmtPct(fee.pctBase) };
 }
 
 function ddFeeStripHtml(product) {
   const cat = ddFeeCategory(product);
   const { price } = ddFeeVolume(product);
-  const order = Object.keys(PLATFORM_FEES)
+  const order = LARIS_MP.KEYS
     .map(plat => ({ plat, fee: platformFeePerProduct(plat, cat, price) }))
-    .sort((a, b) => price > 0 ? a.fee.totalRp - b.fee.totalRp : a.fee.pctOnly - b.fee.pctOnly);
+    .sort((a, b) => price > 0 ? a.fee.totalRp - b.fee.totalRp : a.fee.pctBase - b.fee.pctBase);
   const items = order.map(o => {
-    const f = PLATFORM_FEES[o.plat];
-    return `<button type="button" class="ddr-mp-item" data-ddr-tool="biaya" title="Lihat rincian biaya ${esc(f.label)}">
-      <span class="ddr-mp-brand">${f.logo}<span class="ddr-mp-name">${esc(f.label)}</span></span>
-      <span class="ddr-mp-pct">${ecomFmtPct(o.fee.pctOnly)}</span>
+    const m = ecomPlatformMeta(o.plat);
+    // Clicking a tile opens the kalkulator already set to that marketplace —
+    // one row, two panels, the same numbers.
+    return `<button type="button" class="ddr-mp-item" data-ddr-tool="kalkulator" data-mp="${esc(o.plat)}" title="Hitung profit di ${esc(m.label)}">
+      <span class="ddr-mp-brand">${m.logo}<span class="ddr-mp-name">${esc(m.label)}</span></span>
+      <span class="ddr-mp-pct">${ecomFmtPct(o.fee.pctBase)}</span>
     </button>`;
   }).join('');
   return `<div class="ddr-mp" data-dd-sec="biaya_strip" aria-label="Perbandingan biaya marketplace">
@@ -14009,12 +14151,12 @@ function ddFeesSectionHtml(product) {
   const cat = ddFeeCategory(product);
   const vol = ddFeeVolume(product);
   const { price } = vol;
-  const order = Object.keys(PLATFORM_FEES).sort((a, b) => {
+  const order = LARIS_MP.KEYS.slice().sort((a, b) => {
     const fa = platformFeePerProduct(a, cat, price), fb = platformFeePerProduct(b, cat, price);
-    return price > 0 ? fa.totalRp - fb.totalRp : fa.pctOnly - fb.pctOnly;
+    return price > 0 ? fa.totalRp - fb.totalRp : fa.pctBase - fb.pctBase;
   });
   const cards = order.map(plat => {
-    const f = PLATFORM_FEES[plat];
+    const f = ecomPlatformMeta(plat);
     const d = platformFeeDetail(plat, cat, vol);
     const rowsHtml = d.rows.map(r => `<div class="ddr-fee-row">
         <div class="ddr-fee-row-main"><div class="ddr-fee-row-name">${esc(r.name)}</div><div class="ddr-fee-row-where">${esc(r.where)}</div></div>
@@ -14032,7 +14174,7 @@ function ddFeesSectionHtml(product) {
         <div class="ddr-fee-total-amt"><div class="ddr-fee-total-val">${price > 0 ? ecomFmtRp(d.totalRp) : '—'}</div>${price > 0 ? `<div class="ddr-fee-row-rp">per unit terjual</div>` : ''}</div>
       </div>
       ${noteHtml}
-      <div class="ddr-fee-src">Sumber: ${esc(f.src)}</div>
+      <div class="ddr-fee-src">Sumber: <a href="${esc(f.srcUrl)}" target="_blank" rel="nofollow noopener">${esc(f.src)}</a></div>
     </div>`;
   }).join('');
   const basis = price > 0 ? ` · berdasarkan harga produk ${ecomFmtRp(price)}` : '';
@@ -14662,7 +14804,7 @@ function scrollDdrTo(sel) {
   return true;
 }
 
-function runDdrTool(tool, product, peers, via) {
+function runDdrTool(tool, product, peers, via, extra) {
   const p = product || state.deepdiveProduct || activeChat()?.context?.product || null;
   const peerList = peers || _dd?.peers || [];
   if (!p && tool !== 'analisa' && tool !== 'biaya') return;
@@ -14697,6 +14839,7 @@ function runDdrTool(tool, product, peers, via) {
       price,
       cogs: Math.round(price * 0.33),
       name: (p.product_name || p.keyword || '').slice(0, 80),
+      marketplace: extra?.marketplace || null,
       via: via || 'deepdive',
     });
     return;
@@ -14736,7 +14879,8 @@ function wireDdrToolPills(root, product, peers) {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      runDdrTool(btn.getAttribute('data-ddr-tool'), product, peers, 'deepdive_pill');
+      runDdrTool(btn.getAttribute('data-ddr-tool'), product, peers, 'deepdive_pill',
+        { marketplace: btn.dataset.mp || null });
     });
   });
 }
@@ -15073,7 +15217,6 @@ async function openDeepDive(product, ddOpts = {}) {
     ${ddToolPillsHtml(product)}
     ${ddFeeStripHtml(product)}
     ${ddHeroRowHtml(product, stats, peers, hasTrend)}
-    ${ddPromoCardHtml(product, peers)}
     ${isDesktopDeepDive ? kompCardHtml : ''}
     ${ddAksiCepatHtml(product)}
     ${ddAlertCardHtml(product)}
@@ -15126,6 +15269,7 @@ async function openDeepDive(product, ddOpts = {}) {
           : '<p class="dd-sub">Belum cukup listing untuk memetakan distribusi harga.</p>'}
       </div>
     </div>
+    ${ddPromoCardHtml(product, peers)}
     ${ddInsightSectionHtml(product, stats, share, series, scoreInfo, age, peers)}
     ${isDesktopDeepDive ? '' : kompCardHtml}
     ${ddFeesCollapsedHtml()}
