@@ -28,7 +28,7 @@
 
   const closeSVG = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
   const cameraSVG = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>';
-  const chevSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>';
+  const pencilSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>';
   const lockSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
   const ROW_ICONS = {
     name: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>',
@@ -37,11 +37,13 @@
     shopee: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l1 12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>',
     bio: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="14" y2="17"/></svg>',
   };
+  // Settings-style rows with real input chrome (border + bg + pencil), not
+  // borderless text that looks read-only. Whole row focuses the field.
   function rowHtml(icoKey, label, inputHtml) {
-    return '<div class="gpt-row">' +
-      '<span class="gpt-row-ico">' + ROW_ICONS[icoKey] + '</span>' +
+    return '<div class="gpt-row" role="group" aria-label="' + label + '">' +
+      '<span class="gpt-row-ico" aria-hidden="true">' + ROW_ICONS[icoKey] + '</span>' +
       '<span class="gpt-row-body"><span class="gpt-row-label">' + label + '</span>' + inputHtml + '</span>' +
-      '<span class="gpt-row-chev">' + chevSVG + '</span>' +
+      '<span class="gpt-row-edit" aria-hidden="true" title="Ketuk untuk mengubah">' + pencilSVG + '</span>' +
     '</div>';
   }
 
@@ -124,8 +126,8 @@
     font-size: 24px; font-weight: 700; color: #555; display: flex;
   }
   /* Bottom-sheet edit form: profile picture + camera badge, then icon-circle
-     rows (label + editable value + decorative chevron) instead of stacked
-     label/input pairs. */
+     rows with real input chrome so editability is obvious (Instagram /
+     Google Account pattern: bordered fields + pencil, not nav chevrons). */
   .gpt-sheet-avatar-wrap { position: relative; width: 96px; height: 96px; margin: 4px auto 22px; }
   .gpt-sheet-avatar-wrap .gpt-avatar-wrap { width: 96px; height: 96px; margin: 0; }
   .gpt-avatar-camera-badge {
@@ -135,24 +137,49 @@
     box-shadow: 0 2px 6px rgba(0,0,0,.12); color: #374151;
   }
   .gpt-avatar-camera-badge svg { width: 16px; height: 16px; }
-  .gpt-rows { margin: 4px 0 4px; }
-  .gpt-row { display: flex; align-items: center; gap: 14px; padding: 13px 0; border-bottom: 1px solid #F3F4F6; }
-  .gpt-row:last-child { border-bottom: 0; }
+  .gpt-rows { margin: 4px 0 4px; display: flex; flex-direction: column; gap: 10px; }
+  .gpt-row {
+    display: flex; align-items: flex-start; gap: 12px; padding: 12px;
+    border: 1px solid #E5E7EB; border-radius: 14px; background: #F9FAFB;
+    cursor: text; transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+  }
+  .gpt-row:hover { border-color: #D1D5DB; background: #F3F4F6; }
+  .gpt-row.is-editing {
+    border-color: #B5202A; background: #fff;
+    box-shadow: 0 0 0 3px rgba(181, 32, 42, 0.12);
+  }
   .gpt-row-ico {
     flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%;
-    background: #F3F4F6; color: #4B5563; display: flex; align-items: center; justify-content: center;
+    background: #fff; border: 1px solid #E5E7EB; color: #4B5563;
+    display: flex; align-items: center; justify-content: center; margin-top: 2px;
   }
+  .gpt-row.is-editing .gpt-row-ico { border-color: #F9EAE4; background: #F9EAE4; color: #B5202A; }
   .gpt-row-ico svg { width: 18px; height: 18px; }
   .gpt-row-body { flex: 1; min-width: 0; }
-  .gpt-row-label { font-size: 14px; font-weight: 700; color: #111; margin: 0 0 2px; }
-  .gpt-row-input {
-    display: block; width: 100%; border: 0; padding: 0; margin: 0; background: none;
-    font: inherit; font-size: 13px; color: #6B7280; resize: none;
+  .gpt-row-label {
+    display: block; font-size: 12px; font-weight: 700; color: #6B7280;
+    margin: 0 0 6px; letter-spacing: .01em;
   }
-  .gpt-row-input:focus { outline: none; color: #111; }
-  .gpt-row-input::placeholder { color: #9CA3AF; }
-  .gpt-row-chev { flex-shrink: 0; color: #D1D5DB; }
-  .gpt-row-chev svg { display: block; width: 18px; height: 18px; }
+  .gpt-row.is-editing .gpt-row-label { color: #B5202A; }
+  .gpt-row-input {
+    display: block; width: 100%; border: 1px solid #E5E7EB; border-radius: 10px;
+    padding: 10px 12px; margin: 0; background: #fff;
+    font: inherit; font-size: 15px; font-weight: 600; color: #111; resize: none;
+    line-height: 1.35; transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .gpt-row-input:focus {
+    outline: none; border-color: #B5202A;
+    box-shadow: 0 0 0 3px rgba(181, 32, 42, 0.15);
+  }
+  .gpt-row-input::placeholder { color: #9CA3AF; font-weight: 500; }
+  .gpt-row-edit {
+    flex-shrink: 0; color: #9CA3AF; margin-top: 8px;
+    width: 28px; height: 28px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    background: #fff; border: 1px solid #E5E7EB;
+  }
+  .gpt-row.is-editing .gpt-row-edit { color: #B5202A; border-color: #F9EAE4; background: #F9EAE4; }
+  .gpt-row-edit svg { display: block; width: 14px; height: 14px; }
   .gpt-disclaimer {
     display: flex; align-items: center; justify-content: center; gap: 6px;
     margin-top: 14px; font-size: 11.5px; color: #9CA3AF; text-align: center; line-height: 1.4;
@@ -526,7 +553,7 @@
       `<button class="gpt-close js-close-btn">${closeSVG}</button>` +
       '<div class="gpt-sheet-head">' +
         '<h2 class="gpt-sheet-title">Edit Profil</h2>' +
-        '<p class="gpt-sheet-sub">Kelola informasi yang akan ditampilkan di LarisID.</p>' +
+        '<p class="gpt-sheet-sub">Ketuk kolom di bawah untuk mengubah. Perubahan tersimpan setelah kamu tekan Simpan.</p>' +
       '</div>' +
       '<div class="gpt-sheet-avatar-wrap">' +
         '<div class="gpt-avatar-wrap">' +
@@ -537,10 +564,10 @@
         '<input type="file" id="gpt-file-input" accept="image/*" class="js-file-input" hidden />' +
       '</div>' +
       '<div class="gpt-rows">' +
-        rowHtml('name', 'Nama tampilan', '<input type="text" class="gpt-row-input js-display-name" maxlength="80" placeholder="Nama kamu">') +
-        rowHtml('whatsapp', 'WhatsApp (publik)', '<input type="text" class="gpt-row-input js-whatsapp" maxlength="32" placeholder="+62…">') +
-        rowHtml('email', 'Email (publik)', '<input type="email" class="gpt-row-input js-email" maxlength="120" placeholder="email@contoh.com">') +
-        rowHtml('bio', 'Bio', '<textarea class="gpt-row-input js-bio" rows="2" maxlength="280" placeholder="Ceritakan sedikit tentang kamu"></textarea>') +
+        rowHtml('name', 'Nama tampilan', '<input type="text" class="gpt-row-input js-display-name" maxlength="80" placeholder="Ketik nama kamu" aria-label="Nama tampilan">') +
+        rowHtml('whatsapp', 'WhatsApp (publik)', '<input type="text" class="gpt-row-input js-whatsapp" maxlength="32" placeholder="+62…" aria-label="WhatsApp publik">') +
+        rowHtml('email', 'Email (publik)', '<input type="email" class="gpt-row-input js-email" maxlength="120" placeholder="email@contoh.com" aria-label="Email publik">') +
+        rowHtml('bio', 'Bio', '<textarea class="gpt-row-input js-bio" rows="2" maxlength="280" placeholder="Ceritakan sedikit tentang kamu" aria-label="Bio"></textarea>') +
       '</div>' +
       storesEditorHtml() +
       '<div class="gpt-actions"><button type="button" class="gpt-btn js-save-btn">Simpan Perubahan</button></div>' +
@@ -560,7 +587,8 @@
     const closeBtn = root.querySelector('.js-close-btn');
     if (closeBtn) closeBtn.addEventListener('click', close);
 
-    root.querySelector('.js-display-name').value = currentRow.display_name || '';
+    const nameInput = root.querySelector('.js-display-name');
+    nameInput.value = currentRow.display_name || '';
     root.querySelector('.js-whatsapp').value = currentRow.public_whatsapp || '';
 
     let emailValue = currentRow.public_email;
@@ -568,6 +596,19 @@
     root.querySelector('.js-email').value = emailValue || '';
 
     root.querySelector('.js-bio').value = currentRow.bio || '';
+
+    // Whole row → focus field; focus/blur → red "editing" chrome so users
+    // always know which field they're changing (Google/Instagram edit UX).
+    root.querySelectorAll('.gpt-row').forEach((row) => {
+      const field = row.querySelector('.gpt-row-input');
+      if (!field) return;
+      row.addEventListener('click', (e) => {
+        if (e.target === field || field.contains(e.target)) return;
+        field.focus();
+      });
+      field.addEventListener('focus', () => row.classList.add('is-editing'));
+      field.addEventListener('blur', () => row.classList.remove('is-editing'));
+    });
 
     if (currentRow.headshot_url) {
       avatarImg.src = currentRow.headshot_url;
@@ -598,6 +639,15 @@
     if (signOutBtn && onSignOut) {
       signOutBtn.addEventListener('click', () => { close(); onSignOut(); });
     }
+
+    // Land cursor in name so edit mode is unmistakable on open.
+    requestAnimationFrame(() => {
+      try {
+        nameInput.focus();
+        const len = nameInput.value.length;
+        nameInput.setSelectionRange(len, len);
+      } catch (_) {}
+    });
   }
 
   /* ---------- public profile (read-only, someone else's) ---------- */
