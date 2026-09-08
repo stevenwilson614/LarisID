@@ -1587,10 +1587,18 @@ const CAT_SUBGROUPS = {
     { label: 'Tanaman Hias', match: ['artificial','hiasan','tanaman'] },
   ],
 };
-const NU_ONB_LOCATIONS = [
+// Cities with product_types_v / CITY_LOCATIONS hubs — answers query these.
+const CITY_DATA_BUCKETS = [
   'Jakarta', 'Bekasi', 'Depok', 'Tangerang', 'Bogor', 'Bandung',
   'Semarang', 'Yogyakarta', 'Surabaya', 'Sidoarjo', 'Medan',
   'Makassar', 'Palembang', 'Denpasar',
+];
+// Prefs / finder kota choices. May include thin markets (e.g. Bau Bau) that
+// keep the user's label but resolve answers to the nearest CITY_DATA_BUCKET.
+const NU_ONB_LOCATIONS = [
+  'Jakarta', 'Bekasi', 'Depok', 'Tangerang', 'Bogor', 'Bandung',
+  'Semarang', 'Yogyakarta', 'Surabaya', 'Sidoarjo', 'Medan',
+  'Makassar', 'Bau Bau', 'Palembang', 'Denpasar',
 ];
 // Directory Provinsi step: narrows the Kota select (flow: Provinsi → Kota →
 // Kategori → Tipe Produk). Keys ordered west→east like the city list.
@@ -1604,6 +1612,7 @@ const PROVINCE_CITIES = {
   'Sumatera Utara': ['Medan'],
   'Sumatera Selatan': ['Palembang'],
   'Sulawesi Selatan': ['Makassar'],
+  'Sulawesi Tenggara': ['Bau Bau'],
   'Bali': ['Denpasar'],
 };
 
@@ -5735,7 +5744,11 @@ function wireHomeFinder() {
     const commit = (name) => {
       const picked = String(name || cityInp.value || '').trim();
       const res = resolveNearestCityBucket(picked);
-      _finder.city = res.bucket || picked || '';
+      // Keep selectable labels (e.g. Bau Bau) even when data falls back to a hub.
+      const selectable = NU_ONB_LOCATIONS.find(b =>
+        b.toLowerCase() === normCityName(picked).toLowerCase()
+        || b.toLowerCase() === String(picked || '').trim().toLowerCase());
+      _finder.city = selectable || res.bucket || picked || '';
       _finder.cityTyped = picked;
       cityInp.value = picked;
       saveFinderState();
@@ -5949,7 +5962,7 @@ async function resolveCanonCats(rawCats) {
 function knownCityBucket(city) {
   const c = String(city || '').trim();
   if (!c) return '';
-  if (NU_ONB_LOCATIONS.includes(c)) return c;
+  if (CITY_DATA_BUCKETS.includes(c)) return c;
   return resolveNearestCityBucket(c).bucket || '';
 }
 
@@ -7321,10 +7334,19 @@ const ID_CITIES = [
   ["Banjarbaru",-3.4572,114.8112], ["Balikpapan",-1.2379,116.8529], ["Samarinda",-0.5022,117.1536], ["Bontang",0.1327,117.49],
   ["Tarakan",3.3273,117.5914], ["Palangkaraya",-2.2096,113.9108], ["Makassar",-5.1477,119.4327], ["Gowa",-5.3167,119.75],
   ["Maros",-5.0089,119.5722], ["Parepare",-4.0135,119.6255], ["Palopo",-2.9925,120.197], ["Kendari",-3.9985,122.5129],
+  ["Bau Bau",-5.4667,122.6167],
   ["Palu",-0.8917,119.8707], ["Gorontalo",0.5435,123.0568], ["Manado",1.4748,124.8421], ["Bitung",1.44,125.12],
   ["Tomohon",1.33,124.84], ["Ambon",-3.6954,128.1814], ["Ternate",0.79,127.3667], ["Sorong",-0.8762,131.2558],
   ["Manokwari",-0.8615,134.062], ["Jayapura",-2.533,140.718], ["Merauke",-8.4932,140.4018], ["Timika",-4.55,136.8833]
 ];
+
+/** Free-text / hyphenated names → selectable kota label. */
+const CITY_PICK_ALIASES = {
+  'bau-bau': 'Bau Bau',
+  'baubau': 'Bau Bau',
+  'kota bau-bau': 'Bau Bau',
+  'kota bau bau': 'Bau Bau',
+};
 
 const _toRad = d => d * Math.PI / 180;
 function haversineKm(aLat, aLng, bLat, bLng) {
@@ -7342,7 +7364,10 @@ function normCityName(s) {
 }
 
 function findCityCoords(name) {
-  const n = normCityName(name).toLowerCase();
+  const raw = String(name || '').trim();
+  const aliased = CITY_PICK_ALIASES[raw.toLowerCase()]
+    || CITY_PICK_ALIASES[normCityName(raw).toLowerCase()];
+  const n = normCityName(aliased || raw).toLowerCase();
   if (!n) return null;
   let hit = ID_CITIES.find(c => c[0].toLowerCase() === n);
   if (!hit) hit = ID_CITIES.find(c => c[0].toLowerCase().startsWith(n));
@@ -7351,22 +7376,21 @@ function findCityCoords(name) {
 }
 
 /**
- * Resolve any typed city to a bucket we actually hold data for.
+ * Resolve any typed city to a product_types hub we actually hold data for.
  * Returns { bucket, typed, nearest, distanceKm, exact } — `exact` false means
  * the caller should tell the user whose data they are looking at.
+ * Selectable thin markets (Bau Bau) stay labelled as typed but bucket → nearest hub.
  */
 function resolveNearestCityBucket(typed) {
-  const buckets = NU_ONB_LOCATIONS;
-  const n = normCityName(typed);
+  const buckets = CITY_DATA_BUCKETS;
+  let n = normCityName(typed);
   if (!n) return { bucket: '', typed: '', exact: true };
+  const pickAlias = CITY_PICK_ALIASES[n.toLowerCase()]
+    || CITY_PICK_ALIASES[String(typed || '').trim().toLowerCase()];
+  if (pickAlias) n = pickAlias;
   const direct = buckets.find(b => b.toLowerCase() === n.toLowerCase());
   if (direct) return { bucket: direct, typed: n, nearest: direct, distanceKm: 0, exact: true };
-  const alias = typeof REGION_ALIASES === 'object' && REGION_ALIASES
-    ? REGION_ALIASES[n.toLowerCase()] : null;
-  if (alias && buckets.includes(alias)) {
-    return { bucket: alias, typed: n, nearest: alias, distanceKm: 0, exact: true };
-  }
-  const src = findCityCoords(n);
+  const src = findCityCoords(n) || findCityCoords(String(typed || '').trim());
   if (!src) return { bucket: '', typed: n, exact: false };
   let best = null;
   buckets.forEach(b => {
@@ -7411,13 +7435,24 @@ const CITY_LOCATIONS = {
   Sidoarjo: ['Sidoarjo', 'Kab. Sidoarjo', 'Surabaya', 'Gresik', 'Kab. Gresik'],
   Medan: ['Medan', 'Kota Medan', 'Kab. Deli Serdang'],
   Makassar: ['Makassar', 'Kota Makassar'],
+  // Bau Bau itself is thin; listing answers also pull Kendari + Makassar
+  // (closest bigger Sulawesi markets we scrape). product_types still uses
+  // knownCityBucket → Makassar.
+  'Bau Bau': [
+    'Bau-Bau', 'Bau Bau', 'Kota Bau-Bau', 'Kota Bau Bau',
+    'Kendari', 'Kota Kendari',
+    'Makassar', 'Kota Makassar',
+  ],
   Palembang: ['Palembang', 'Kota Palembang'],
   Denpasar: ['Denpasar', 'Kota Denpasar', 'Badung', 'Kab. Badung'],
 };
 
 function expandCityLocations(city) {
   if (!city) return [];
-  return CITY_LOCATIONS[city] || [city];
+  const alias = CITY_PICK_ALIASES[normCityName(city).toLowerCase()]
+    || CITY_PICK_ALIASES[String(city || '').trim().toLowerCase()];
+  const key = alias || city;
+  return CITY_LOCATIONS[key] || [city];
 }
 
 // Province / English region → city buckets → exact Shopee location strings.
@@ -7435,6 +7470,7 @@ const REGION_ALIASES = {
   'north sumatra': { label: 'Sumatera Utara', cities: ['Medan'] },
   'sumatera selatan': { label: 'Sumatera Selatan', cities: ['Palembang'] },
   'sulawesi selatan': { label: 'Sulawesi Selatan', cities: ['Makassar'] },
+  'sulawesi tenggara': { label: 'Sulawesi Tenggara', cities: ['Bau Bau'] },
   'bali': { label: 'Bali', cities: ['Denpasar'] },
 };
 
@@ -19738,7 +19774,8 @@ async function typesForListings(rows, city, limit = 12) {
     if (k && !kws.includes(k)) kws.push(k);
   });
   if (!kws.length || !_supabase) return [];
-  const cityKey = city || 'ALL';
+  // Thin selectable cities (Bau Bau) resolve to the nearest product_types hub.
+  const cityKey = (city && city !== 'ALL' ? (knownCityBucket(city) || city) : city) || 'ALL';
   const missing = kws.filter(k => !_ptypeByKeyword.has(k));
   let fetched = [];
   if (missing.length) {

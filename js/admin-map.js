@@ -20,7 +20,8 @@
   'Jambi': [-1.6101, 103.6131], 'Palembang': [-2.9761, 104.7754], 'Bengkulu': [-3.8004, 102.2655],
   'Bandar Lampung': [-5.3971, 105.2668], 'Pangkalpinang': [-2.1316, 106.1169],
   'Pontianak': [-0.0263, 109.3425], 'Banjarmasin': [-3.3186, 114.5944], 'Samarinda': [-0.5022, 117.1536],
-  'Balikpapan': [-1.2379, 116.8529], 'Makassar': [-5.1477, 119.4327], 'Manado': [1.4748, 124.8421],
+  'Balikpapan': [-1.2379, 116.8529], 'Makassar': [-5.1477, 119.4327], 'Bau Bau': [-5.4667, 122.6167],
+  'Kendari': [-3.9985, 122.5129], 'Manado': [1.4748, 124.8421],
   'Ambon': [-3.6954, 128.1814], 'Jayapura': [-2.5337, 140.7181],
 },
     CITY_ALIASES: {
@@ -29,6 +30,7 @@
   'jogja': 'Yogyakarta', 'jogjakarta': 'Yogyakarta', 'yogya': 'Yogyakarta',
   'solo': 'Surakarta', 'tangsel': 'Tangerang Selatan', 'serpong': 'Tangerang Selatan',
   'bandung barat': 'Bandung', 'ujung pandang': 'Makassar', 'batu': 'Malang',
+  'bau-bau': 'Bau Bau', 'baubau': 'Bau Bau', 'kota bau-bau': 'Bau Bau', 'kota bau bau': 'Bau Bau',
   'duriangkang': 'Batam', 'mujur lor': 'Cilacap', 'kroya': 'Cilacap',
 },
     project: function (lat, lon) {
