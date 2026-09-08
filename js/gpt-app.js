@@ -23107,7 +23107,7 @@ function supCloseSurvey() {
 const EXPORT_ROW_LIMIT = 90;      // display only; public._export_row_limit() decides
 const EXPORT_WEEK_LIMIT = 12;     // display only; public._export_week_limit() decides
 const EXPORT_HISTORY_CAP = 10;    // display only; public._export_history_cap() decides
-const EXPORT_XLSX_V = '20260909b';
+const EXPORT_XLSX_V = '20260909c';
 
 let _exportQuota = null;          // { unlimited, used, limit, remaining, weeks_*, … }
 let _exportCtx = null;            // { source, rows, shape, weeks, count, lockRows }
@@ -23553,8 +23553,6 @@ const EXPORT_PRODUK_COLS = [
   ['Unit / bulan (est)',        (r) => (r.v_daily != null ? Math.round(r.v_daily * 30) : null), 'int'],
   ['Unit / hari (est)',         (r) => r.v_daily,                             'dec'],
   ['Total terjual',             (r) => r.total_sold,                          'int'],
-  ['Total terjual: tingkat',    (r) => (r.sold_tier === 6 ? '10RB+ (dibulatkan Shopee)'
-                                  : r.sold_tier != null ? `tingkat ${r.sold_tier}` : ''), 'text'],
   ['Tren 30 hari (%)',          (r) => r.momentum_pct,                        'dec'],
   ['Tren: kelas',               (r) => r.momentum_class || 'belum',           'text'],
   ['Tren: unit/mgg sekarang',   (r) => r.units_now_wk,                        'dec'],
@@ -23567,11 +23565,6 @@ const EXPORT_PRODUK_COLS = [
   ['Peringkat pencarian',       (r) => r.search_rank,                         'int'],
   ['Pertama terpantau',         (r) => exportDateStr(r.listing_date),         'text'],
   ['Usia listing (hari)',       (r) => exportDaysSince(r.listing_date),       'int'],
-  ['Data diperbarui',           (r) => exportDateStr(r.scraped_at),           'text'],
-  ['Metode omset',              (r) => r.omset_method || '',                  'text'],
-  ['Keyakinan omset',           (r) => r.omset_confidence || '',              'text'],
-  ['Observasi terakhir',        (r) => exportDateStr(r.last_obs_at),          'text'],
-  ['Jumlah observasi',          (r) => r.n_obs,                               'int'],
   ['item_id',                   (r) => String(r.item_id ?? ''),               'id'],
   ['shop_id',                   (r) => String(r.shop_id ?? ''),               'id'],
   ['Slug',                      (r) => exportSlugFromUrl(r.url),              'text'],
