@@ -8,7 +8,7 @@ whose real purpose is to measure demand before this becomes a paid feature.
 
 | Surface | Shape | Daily budget (WIB) | What you get |
 |---|---|---|---|
-| Cari Produk (`#dir-export`) | Snapshot | **90 product rows** | Monthly omset per product |
+| Cari Produk (`#dir-export`) | Snapshot only | **90 product rows** | Monthly omset per product (1 product = 1 row). No weekly option. |
 | Deep Dive (icon next to Tren) | History | **12 weeks** | Weekly omset for that one product |
 
 Modal copy at the top is the live remaining/limit:

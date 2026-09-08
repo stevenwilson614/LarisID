@@ -23107,7 +23107,7 @@ function supCloseSurvey() {
 const EXPORT_ROW_LIMIT = 90;      // display only; public._export_row_limit() decides
 const EXPORT_WEEK_LIMIT = 12;     // display only; public._export_week_limit() decides
 const EXPORT_HISTORY_CAP = 10;    // display only; public._export_history_cap() decides
-const EXPORT_XLSX_V = '20260909c';
+const EXPORT_XLSX_V = '20260909d';
 
 let _exportQuota = null;          // { unlimited, used, limit, remaining, weeks_*, … }
 let _exportCtx = null;            // { source, rows, shape, weeks, count, lockRows }
@@ -23217,9 +23217,6 @@ function exportSyncModalChrome() {
   const title = $('export-title');
   if (title) title.textContent = hist ? 'Unduh riwayat omset' : 'Unduh data produk';
 
-  const shapeField = $('export-shape-field');
-  if (shapeField) shapeField.hidden = true; // surfaces pick the shape; no toggle
-
   const countField = $('export-count-field');
   if (countField) countField.hidden = !!deep;
 
@@ -23244,10 +23241,6 @@ function exportSyncModalChrome() {
     weeksSel.value = String(pick);
     _exportCtx.weeks = Number(weeksSel.value) || 0;
   }
-
-  document.querySelectorAll('[data-export-shape]').forEach((b) => {
-    b.classList.toggle('on', b.getAttribute('data-export-shape') === (_exportCtx?.shape || 'snapshot'));
-  });
 }
 
 function exportRenderCost() {
@@ -23345,9 +23338,10 @@ function exportOpen(ctx = {}) {
     source,
     rows: ctx.rows || null,
     lockRows: !!ctx.lockRows || deep,
-    // Directory = monthly omset snapshot. Deep Dive = weekly history.
-    shape: deep ? 'history' : (ctx.shape || 'snapshot'),
-    weeks: ctx.weeks || EXPORT_WEEK_LIMIT,
+    // Cari Produk = monthly omset only (1 product = 1 row). Weekly history is
+    // Deep Dive only — never offered on multi-product downloads.
+    shape: deep ? 'history' : 'snapshot',
+    weeks: deep ? (ctx.weeks || EXPORT_WEEK_LIMIT) : 0,
     count: deep ? 1 : (ctx.count || 25),
   };
   exportFillCount();
@@ -23390,8 +23384,8 @@ async function exportRun(fmt) {
   if (_exportBusy) return;
   const sel = exportSelection();
   if (!sel.length) { showToast('Tidak ada produk untuk diunduh.'); return; }
-  const hist = exportIsHistory();
-  let weeks = Number(_exportCtx?.weeks) || 12;
+  const hist = exportIsHistory() && !!_exportCtx?.lockRows;
+  let weeks = hist ? (Number(_exportCtx?.weeks) || 12) : 0;
   if (hist) {
     const rem = exportRemainingWeeks();
     if (rem !== Infinity) weeks = Math.min(weeks, rem);
@@ -23636,7 +23630,7 @@ function exportInfoRows(payload, hist) {
                     + 'ke laju 7 hari, jadi jangan dibaca sebagai hitungan mentah.'],
     ['Pertama terpantau', 'Tanggal pertama kami melihat listing ini — batas bawah, bukan '
                         + 'tanggal toko membuatnya.'],
-    ['Total terjual', 'Shopee membulatkan angka besar (mis. "10RB+"). Kolom tingkat menandainya.'],
+    ['Total terjual', 'Shopee membulatkan angka besar (mis. "10RB+"), jadi angka ini bisa dibulatkan.'],
     ['Tidak kami kumpulkan', 'Merek, jumlah komentar, dan jumlah stok. Kolomnya sengaja tidak ada '
                            + 'daripada diisi angka karangan.'],
     ['Omset seumur hidup', 'Tidak kami hitung. Harga berubah dari waktu ke waktu dan total terjual '
@@ -23798,14 +23792,6 @@ function _exportWireDelegation() {
     if (!t || !t.closest) return;
     if (t.closest('#dir-export')) { exportOpen({ source: 'directory' }); return; }
     if (t.closest('[data-export-close]')) { exportClose(); return; }
-    const shape = t.closest('[data-export-shape]');
-    if (shape) {
-      if (!_exportCtx) return;
-      _exportCtx.shape = shape.getAttribute('data-export-shape');
-      exportFillCount();
-      exportRenderCost();
-      return;
-    }
     const fmt = t.closest('[data-export-fmt]');
     if (fmt) { void exportRun(fmt.getAttribute('data-export-fmt')); return; }
     if (t.closest('[data-export-more]')) { exportAskMore('button'); return; }

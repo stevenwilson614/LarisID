@@ -1810,8 +1810,13 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
 .modal.export-modal { max-width: 520px; text-align: left; }
 .modal.export-more-modal { max-width: 440px; }
 .export-field { display: block; margin: 0 0 12px; }
+.export-field[hidden],
+.export-cost[hidden],
+.export-warn[hidden],
+#export-scope[hidden] { display: none !important; }
 .export-row { display: flex; gap: 10px; }
 .export-row .export-field { flex: 1; }
+.export-row .export-field[hidden] { display: none !important; }
 .export-quota { margin: 0 0 14px; font-size: .86rem; font-weight: 600; color: var(--ink); }
 .export-label { display: block; margin: 0 0 5px; font-size: .74rem; font-weight: 600;
   color: var(--muted, #888); letter-spacing: .01em; }
@@ -9205,17 +9210,9 @@ body:has(.modal-overlay.open) .msg-steven-fab {
     <p class="nudge-sub export-quota" id="export-quota">&nbsp;</p>
     <p class="nudge-sub" id="export-scope" hidden>&nbsp;</p>
 
-    <div class="export-field" id="export-shape-field" hidden>
-      <span class="export-label">Isi file</span>
-      <div class="export-seg" role="group" aria-label="Isi file">
-        <button type="button" data-export-shape="snapshot" class="on">Ringkasan produk</button>
-        <button type="button" data-export-shape="history">Riwayat mingguan</button>
-      </div>
-    </div>
-
     <div class="export-row">
       <label class="export-field" for="export-count" id="export-count-field">
-        <span class="export-label">Jumlah produk</span>
+        <span class="export-label">Jumlah produk (omset / bulan)</span>
         <select id="export-count"></select>
       </label>
       <label class="export-field" for="export-weeks" id="export-weeks-field" hidden>
@@ -9380,6 +9377,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <script src="/js/peta-peluang.js?v=20260908a" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
-<script src="/js/gpt-app.js?v=20260909c" defer></script>
+<script src="/js/gpt-app.js?v=20260909d" defer></script>
 </body>
 </html>
