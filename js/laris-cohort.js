@@ -291,6 +291,7 @@
       void renderMentorDash(c.id);
       void renderWins(c.id);
       renderInviteShare(c);
+      renderRenameForm(c);
       void renderMentorSummaryNames(c.id, $('cohort-mentor-summary'));
     }
     if (tab === 'students') {
@@ -912,6 +913,72 @@
     box.dataset.url = url;
   }
 
+  /** Mentors (and admins) can rename the active mentor cohort. Students never see this card. */
+  function renderRenameForm(c) {
+    const card = $('cohort-rename-card');
+    const inp = $('cohort-rename-input');
+    const st = $('cohort-rename-status');
+    if (!card) return;
+    const can = !!(c && (isGenuineMentor() || isAdmin()));
+    card.style.display = can ? '' : 'none';
+    if (!can) return;
+    if (inp && document.activeElement !== inp) {
+      inp.value = (c && c.name) || '';
+    }
+    if (st && !st.dataset.busy) st.textContent = '';
+  }
+
+  async function saveCohortName() {
+    const c = state.mentorCohort;
+    const inp = $('cohort-rename-input');
+    const st = $('cohort-rename-status');
+    const btn = $('cohort-rename-save');
+    if (!c) {
+      if (st) st.textContent = 'Belum ada kohort.';
+      return;
+    }
+    if (!(isGenuineMentor() || isAdmin())) {
+      if (st) st.textContent = 'Hanya mentor kohort yang bisa mengubah nama.';
+      return;
+    }
+    const name = String((inp && inp.value) || '').trim();
+    if (name.length < 2) {
+      if (st) st.textContent = 'Nama minimal 2 karakter.';
+      return;
+    }
+    if (name === (c.name || '').trim()) {
+      if (st) st.textContent = 'Nama sudah sama.';
+      return;
+    }
+    if (st) { st.dataset.busy = '1'; st.textContent = 'Menyimpan…'; }
+    if (btn) btn.disabled = true;
+    try {
+      await rpc('cohort_leader_update_identity', { p_cohort: c.id, p_name: name });
+      const { data: fresh, error } = await supabase().from('cohorts').select('*').eq('id', c.id).maybeSingle();
+      if (error) throw error;
+      if (fresh) {
+        state.mentorCohort = fresh;
+        state.cohortMap[fresh.id] = fresh;
+      } else {
+        c.name = name.slice(0, 80);
+        state.cohortMap[c.id] = c;
+      }
+      if (st) { delete st.dataset.busy; st.textContent = 'Tersimpan.'; }
+      toast('Nama kohort diperbarui.');
+      const sum = $('cohort-mentor-summary');
+      if (sum && state.mentorCohort) {
+        sum.innerHTML = `<strong>${esc(state.mentorCohort.name || 'Kohort')}</strong>`;
+        void renderMentorSummaryNames(state.mentorCohort.id, sum);
+      }
+      renderRenameForm(state.mentorCohort);
+      renderPreviewPicker();
+    } catch (e) {
+      if (st) { delete st.dataset.busy; st.textContent = (e && e.message) || 'Gagal menyimpan nama.'; }
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
   function copyInviteUrl() {
     const box = $('cohort-invite-url');
     const st = $('cohort-invite-copy-status');
@@ -1400,6 +1467,7 @@
         void renderMentorSummaryNames(state.mentorCohort.id, sum);
       }
       renderInviteShare(state.mentorCohort);
+      renderRenameForm(state.mentorCohort);
       // The student-preview card is an admin affordance and a trap here: it calls
       // previewAs, which clears mentorOnly and would leave the mentor rail standing
       // over a student screen. Exit to the admin view to use it.
@@ -1441,6 +1509,7 @@
         void renderMentorSummaryNames(state.mentorCohort.id, sum);
       }
       renderInviteShare(state.mentorCohort);
+      renderRenameForm(state.mentorCohort);
       await renderRoster(state.mentorCohort.id);
     }
     if (!preview) renderPreviewPicker();
@@ -1463,6 +1532,10 @@
     $('cohort-preview-go')?.addEventListener('click', () => void enterPreview());
     $('cohort-preview-exit')?.addEventListener('click', () => void exitPreview());
     $('cses-add')?.addEventListener('click', () => void addSession());
+    $('cohort-rename-save')?.addEventListener('click', () => void saveCohortName());
+    $('cohort-rename-input')?.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') { ev.preventDefault(); void saveCohortName(); }
+    });
     $('cohort-post-send')?.addEventListener('click', () => void submitPost());
     $('cohort-ann-send')?.addEventListener('click', () => void postAnnouncement());
     $('mentor-siswa-close')?.addEventListener('click', closeRiseStudent);
