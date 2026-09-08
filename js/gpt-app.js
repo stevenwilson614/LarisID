@@ -6468,18 +6468,18 @@ function wirePrefsDrawer() {
   });
 }
 
-// ── Side panel (Cursor-style): Kalkulator | Kompetitor | Serupa ─────────────
+// ── Side panel (Cursor-style): Tanya AI | Kalkulator | Kompetitor | Keyword ─
 const SIDE_PREFS_KEY = 'gpt_side_panel_v1';
 const CALC_PREFS_KEY_LEGACY = 'gpt_calc_panel_v1';
-let _sideMode = 'kalkulator'; // 'kalkulator' | 'kompetitor' | 'serupa'
+let _sideMode = 'kalkulator'; // 'kalkulator' | 'kompetitor' | 'ai' | 'keyword'
 let _calcFilled = false;
 let _calcProductKey = null; // item_id|shop_id of last calc prefill
 let _kompFetchToken = 0;
-let _serupaFetchToken = 0;
 let _keywordFetchToken = 0;
 
 function normalizeSideMode(mode) {
-  if (mode === 'kompetitor' || mode === 'serupa' || mode === 'ai' || mode === 'keyword') return mode;
+  if (mode === 'serupa') return 'kompetitor';
+  if (mode === 'kompetitor' || mode === 'ai' || mode === 'keyword') return mode;
   // 'supplier' is gated — never restore into it once the probe is switched off,
   // or a saved pref could strand a normal user on a blank panel.
   if (mode === 'supplier' && supplierProbeVisible()) return 'supplier';
@@ -6490,7 +6490,6 @@ function sideModeLabel(mode) {
   const m = normalizeSideMode(mode);
   if (m === 'ai') return 'Tanya AI';
   if (m === 'kompetitor') return 'Kompetitor';
-  if (m === 'serupa') return 'Produk serupa';
   if (m === 'supplier') return 'Cari Supplier';
   if (m === 'keyword') return 'Keyword';
   return 'Kalkulator profit';
@@ -6625,19 +6624,16 @@ function setSideModeUi(mode) {
   $('ai-rail')?.setAttribute('aria-expanded', open && _sideMode === 'ai' ? 'true' : 'false');
   $('calc-rail')?.setAttribute('aria-expanded', open && _sideMode === 'kalkulator' ? 'true' : 'false');
   $('komp-rail')?.setAttribute('aria-expanded', open && _sideMode === 'kompetitor' ? 'true' : 'false');
-  $('serupa-rail')?.setAttribute('aria-expanded', open && _sideMode === 'serupa' ? 'true' : 'false');
   const panel = $('calc-panel');
   if (panel) panel.setAttribute('aria-label', sideModeLabel(_sideMode));
   const aiBody = $('side-body-ai');
   const kalcBody = $('side-body-kalc');
   const kompBody = $('side-body-komp');
-  const serupaBody = $('side-body-serupa');
   const supBody = $('side-body-supplier');
   const keywordBody = $('side-body-keyword');
   if (aiBody) aiBody.hidden = _sideMode !== 'ai';
   if (kalcBody) kalcBody.hidden = _sideMode !== 'kalkulator';
   if (kompBody) kompBody.hidden = _sideMode !== 'kompetitor';
-  if (serupaBody) serupaBody.hidden = _sideMode !== 'serupa';
   if (supBody) supBody.hidden = _sideMode !== 'supplier';
   if (keywordBody) keywordBody.hidden = _sideMode !== 'keyword';
   const supTab = $('side-tab-supplier');
@@ -6830,61 +6826,10 @@ async function fillKeywordContent(opts = {}) {
   });
 }
 
-function similarPeersForProduct(product, peers) {
-  const selfKey = sideProductKey(product);
-  const cat = (product?.category || '').trim().toLowerCase();
-  let list = (peers || [])
-    .map(p => asListingProduct(p))
-    .filter(p => sideProductKey(p) && sideProductKey(p) !== selfKey);
-  if (cat) {
-    const sameCat = list.filter(p => (p.category || '').trim().toLowerCase() === cat);
-    if (sameCat.length >= 4) list = sameCat;
-  }
-  return list
-    .sort((a, b) => (Number(b.total_sold) || 0) - (Number(a.total_sold) || 0))
-    .slice(0, 24);
-}
-
-async function fillSerupaContent(opts = {}) {
-  const body = $('side-body-serupa');
-  if (!body) return;
-  const product = opts.product || resolveSideProduct();
-  if (!product) {
-    setSideContext('');
-    body.innerHTML = '<p class="side-empty">Buka produk dulu untuk lihat item serupa.</p>';
-    return;
-  }
-  const label = (product.product_name || product.keyword || '').slice(0, 80);
-  setSideContext(label);
-
-  let peers = opts.peers || resolveSidePeers(product);
-  if (!peers?.length) {
-    const token = ++_serupaFetchToken;
-    body.innerHTML = '<p class="side-empty">Memuat produk serupa…</p>';
-    peers = await fetchSidePeers(product);
-    if (token !== _serupaFetchToken || _sideMode !== 'serupa') return;
-  }
-
-  const items = similarPeersForProduct(product, peers);
-  const kw = product.keyword || '—';
-  if (!items.length) {
-    body.innerHTML = `
-      <p class="side-komp-lead">Produk serupa di keyword “${esc(kw)}”.</p>
-      <p class="side-empty">Belum ada listing serupa untuk keyword ini.</p>
-    `;
-    return;
-  }
-  body.innerHTML = `
-    <p class="side-komp-lead">${items.length} produk serupa di keyword “${esc(kw)}” — urut terjual. Klik untuk Deep Dive produk.</p>
-    ${listingRowsHtml(items, { compact: true, keepChat: true, highlightKey: prodKey(product) })}
-  `;
-  bindListingRows(body);
-}
-
 /* ── Tanya AI side panel ───────────────────────────────────────────────────
    The AI used to live only in the docked composer, which on desktop competes
    with a very long scrolling Deep Dive report. Here it sits beside the report
-   as a peer of Kalkulator / Kompetitor / Serupa.
+   as a peer of Kalkulator / Kompetitor / Keyword.
 
    Everything shown is derived from `_dd` — the object openDeepDive() already
    builds ({ product, peers, niche, stats, history, series }) — so opening this
@@ -7036,7 +6981,6 @@ function refreshOpenSidePanel(opts = {}) {
   if (!document.body.classList.contains('calc-open')) return;
   if (_sideMode === 'ai') fillAiContent(opts);
   else if (_sideMode === 'kompetitor') void fillKompContent(opts);
-  else if (_sideMode === 'serupa') void fillSerupaContent(opts);
   else if (_sideMode === 'supplier') void fillSupplierContent(opts);
   else if (_sideMode === 'keyword') void fillKeywordContent(opts);
   else fillCalcContent({ ...opts, force: true });
@@ -7044,7 +6988,7 @@ function refreshOpenSidePanel(opts = {}) {
 
 function openSidePanel(mode, opts = {}) {
   const panel = $('calc-panel');
-  if (!panel || !$('side-body-kalc') || !$('side-body-komp') || !$('side-body-serupa') || !$('side-body-supplier') || !$('side-body-keyword')) return;
+  if (!panel || !$('side-body-kalc') || !$('side-body-komp') || !$('side-body-supplier') || !$('side-body-keyword')) return;
   const next = normalizeSideMode(mode);
   const wasOpen = document.body.classList.contains('calc-open');
   const switching = wasOpen && _sideMode !== next;
@@ -7063,7 +7007,6 @@ function openSidePanel(mode, opts = {}) {
 
   if (next === 'ai') fillAiContent(opts);
   else if (next === 'kalkulator') fillCalcContent(opts);
-  else if (next === 'serupa') void fillSerupaContent(opts);
   else if (next === 'supplier') void fillSupplierContent(opts);
   else if (next === 'keyword') void fillKeywordContent(opts);
   else void fillKompContent(opts);
@@ -7083,7 +7026,6 @@ function openSidePanel(mode, opts = {}) {
 function openAiPanel(opts = {}) { openSidePanel('ai', opts); }
 function openCalcPanel(opts = {}) { openSidePanel('kalkulator', opts); }
 function openKompPanel(opts = {}) { openSidePanel('kompetitor', opts); }
-function openSerupaPanel(opts = {}) { openSidePanel('serupa', opts); }
 function openKeywordPanel(opts = {}) { openSidePanel('keyword', opts); }
 
 function closeCalcPanel() {
@@ -7093,7 +7035,6 @@ function closeCalcPanel() {
   $('ai-rail')?.setAttribute('aria-expanded', 'false');
   $('calc-rail')?.setAttribute('aria-expanded', 'false');
   $('komp-rail')?.setAttribute('aria-expanded', 'false');
-  $('serupa-rail')?.setAttribute('aria-expanded', 'false');
   // `dismissed` records an explicit close, which is what stops the Deep Dive
   // from re-opening the panel on every product. Re-opening it clears the flag.
   saveSidePrefs({ open: false, dismissed: true, mode: _sideMode });
@@ -7111,7 +7052,6 @@ function wireCalcPanel() {
   $('ai-rail')?.addEventListener('click', () => openAiPanel({ via: 'rail' }));
   $('calc-rail')?.addEventListener('click', () => openCalcPanel({ via: 'rail' }));
   $('komp-rail')?.addEventListener('click', () => openKompPanel({ via: 'rail' }));
-  $('serupa-rail')?.addEventListener('click', () => openSerupaPanel({ via: 'rail' }));
   $('calc-close')?.addEventListener('click', closeCalcPanel);
 
   // Mobile bottom-sheet grab: pointer-drag to resize height; <10% viewport auto-collapses.
@@ -11165,9 +11105,7 @@ function listingRowsHtml(list, opts = {}) {
     const on = sort === key || (key === 'termurah' && (sort === 'termurah' || sort === 'termahal'));
     return `<th scope="col" data-lrow-sort="${key}" class="${on ? 'is-on' : ''}">${label}</th>`;
   };
-  return `<div class="lrow-wrap${opts.compact ? ' lrow-wrap--compact' : ''}${pick ? ' lrow-wrap--pick' : ''}${actions ? ' lrow-wrap--actions' : ''}"${opts.keepChat ? ' data-lrow-keepchat="1"' : ''}>
-    <table class="ddr-table lrow-table">
-      <thead><tr>
+  const head = opts.headless ? '' : `<thead><tr>
         ${actions || pick ? '<th class="lrow-pick"></th>' : ''}
         <th class="lrow-thumb"><span class="sr-only">Foto</span></th>
         <th class="lrow-col-prod">Produk</th>
@@ -11179,7 +11117,10 @@ function listingRowsHtml(list, opts = {}) {
         ${th('review', 'Review')}
         ${th('terbaru', 'Usia')}
         ${actions ? '<th class="lrow-act"><span class="sr-only">Aksi</span></th>' : ''}
-      </tr></thead>
+      </tr></thead>`;
+  return `<div class="lrow-wrap${opts.compact ? ' lrow-wrap--compact' : ''}${pick ? ' lrow-wrap--pick' : ''}${actions ? ' lrow-wrap--actions' : ''}"${opts.keepChat ? ' data-lrow-keepchat="1"' : ''}>
+    <table class="ddr-table lrow-table">
+      ${head}
       <tbody>${rows.map(p => listingRowHtml(p, opts)).join('')}</tbody>
     </table>
   </div>`;
@@ -14034,7 +13975,6 @@ function ddToolPillsHtml(product) {
     <button type="button" class="ddr-tool-pill" data-ddr-tool="analisa">Analisa</button>
     <button type="button" class="ddr-tool-pill" data-ddr-tool="kalkulator">Kalkulator</button>
     <button type="button" class="ddr-tool-pill" data-ddr-tool="kompetitor">Kompetitor</button>
-    <button type="button" class="ddr-tool-pill" data-ddr-tool="serupa">Serupa</button>
     <button type="button" class="ddr-tool-pill" data-ddr-tool="keyword">Keyword</button>
     <button type="button" class="ddr-tool-pill" data-ddr-tool="biaya">Biaya</button>
     ${supplier}
@@ -14434,13 +14374,22 @@ function ddKompetitorTableHtml(peers, opts = {}) {
   const list = (peers || []).map(asListingProduct);
   if (!list.length) return '<p class="dd-sub">Kompetitor belum tersedia untuk keyword ini.</p>';
   const highlightKey = opts.highlightKey || (_dd?.product ? prodKey(_dd.product) : '');
-  const initial = opts.initial == null ? 15 : opts.initial;
-  const shown = opts.expanded ? list : list.slice(0, initial);
+  const initial = opts.initial == null ? 5 : opts.initial;
+  const rowOpts = { highlightKey, compact: !!opts.compact, keepChat: true };
+  if (opts.expanded || list.length <= initial) {
+    return listingRowsHtml(list, rowOpts);
+  }
+  const shown = list.slice(0, initial);
+  const rest = list.slice(initial);
   const moreId = opts.moreId || 'ddr-komp-more';
-  return listingRowsHtml(shown, { highlightKey, compact: !!opts.compact, keepChat: true })
-    + (list.length > initial && !opts.expanded
-      ? `<button type="button" class="ans-cta" id="${esc(moreId)}">Lihat semua ${list.length} listing</button>`
-      : '');
+  return `${listingRowsHtml(shown, rowOpts)}
+    <details class="ddr-komp-more" id="${esc(moreId)}">
+      <summary>
+        <span class="ddr-komp-more-closed">Lihat semua ${list.length} kompetitor</span>
+        <span class="ddr-komp-more-open">Sembunyikan</span>
+      </summary>
+      ${listingRowsHtml(rest, { ...rowOpts, headless: true })}
+    </details>`;
 }
 
 /** 4-week omset sparkline per competitor row, cut from the keyword history.
@@ -14459,20 +14408,6 @@ function drawKompSparks(root, history) {
 
 function wireKompClicks(root, peers, opts = {}) {
   if (!root) return;
-  const more = root.querySelector('#ddr-komp-more, #side-komp-more');
-  more?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const card = more.closest('.ddr-card, #side-body-komp') || root;
-    more.remove();
-    const wrap = card.querySelector('.lrow-wrap');
-    if (wrap) {
-      wrap.outerHTML = listingRowsHtml((peers || []).map(asListingProduct), {
-        highlightKey: _dd?.product ? prodKey(_dd.product) : '',
-        keepChat: true,
-      });
-    }
-    bindListingRows(card);
-  });
   bindListingRows(root);
 }
 
@@ -14769,11 +14704,6 @@ function runDdrTool(tool, product, peers, via) {
   if (tool === 'kompetitor') {
     void logUserEvent('deepdive_section', { ui: 'gpt', section: 'kompetitor_panel', via: via || 'click', keyword: p.keyword || '' });
     openKompPanel({ product: p, peers: peerList, via: via || 'deepdive' });
-    return;
-  }
-  if (tool === 'serupa') {
-    void logUserEvent('deepdive_section', { ui: 'gpt', section: 'serupa_panel', via: via || 'click', keyword: p.keyword || '' });
-    openSerupaPanel({ product: p, peers: peerList, via: via || 'deepdive' });
     return;
   }
   if (tool === 'keyword') {
@@ -15103,7 +15033,7 @@ async function openDeepDive(product, ddOpts = {}) {
         <h3>Top Kompetitor</h3>
         <button type="button" class="ddr-panel-link" id="ddr-komp-panel">Lihat di panel</button>
       </div>
-      ${ddKompetitorTableHtml(peers, { highlightKey: prodKey(product) })}
+      ${ddKompetitorTableHtml(peers, { highlightKey: prodKey(product), initial: 5 })}
     </div>`;
 
   // Record this view (anon included) BEFORE reading the count back, so the
@@ -15250,8 +15180,10 @@ async function openDeepDive(product, ddOpts = {}) {
     })();
   });
   void wireDdAlertCard(root, product);
-  $('ddr-komp-more')?.addEventListener('click', () => {
-    void logUserEvent('deepdive_section', { ui: 'gpt', section: 'kompetitor', via: 'click', keyword: kw || '' });
+  $('ddr-komp-more')?.addEventListener('toggle', (e) => {
+    if (e.target?.open) {
+      void logUserEvent('deepdive_section', { ui: 'gpt', section: 'kompetitor', via: 'click', keyword: kw || '' });
+    }
   });
 
   // Scroll telemetry — keeps the old deepdive_section funnel signal alive.
@@ -21750,7 +21682,7 @@ function wireUi() {
     if (_sddvEnded) sddvClose('backdrop');
   });
 
-  // Pinned product bar tools (Analisa / Kalkulator / Kompetitor / Serupa).
+  // Pinned product bar tools (Analisa / Kalkulator / Kompetitor).
   $('product-pin-tools')?.addEventListener('click', (e) => {
     const btn = e.target?.closest?.('[data-pin-tool]');
     if (!btn) return;

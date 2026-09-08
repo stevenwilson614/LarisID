@@ -6935,16 +6935,47 @@ body.calc-resizing .calc-resize::before { background: var(--accent); }
   font-size: .68rem; color: var(--muted); line-height: 1.5;
   margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line);
 }
-.calc-body .side-serupa-grid {
-  margin-top: 0;
-  grid-template-columns: 1fr;
+.ddr-komp-more {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
 }
-@media (min-width: 400px) {
-  .calc-body .side-serupa-grid { grid-template-columns: 1fr 1fr; }
+.ddr-komp-more > summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 14px;
+  cursor: pointer;
+  font-size: .8rem;
+  font-weight: 650;
+  color: var(--ink);
+  user-select: none;
 }
-.calc-body .side-serupa-grid .prod-card { border-radius: 12px; }
-.calc-body .side-serupa-grid .prod-card-body { padding: 10px; }
-.calc-body .side-serupa-grid .prod-card-name { font-size: .75rem; min-height: 2.4em; }
+.ddr-komp-more > summary::-webkit-details-marker { display: none; }
+.ddr-komp-more > summary::after {
+  content: '';
+  width: 8px; height: 8px;
+  border-right: 2px solid var(--ink-soft);
+  border-bottom: 2px solid var(--ink-soft);
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform .15s ease;
+}
+.ddr-komp-more[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+.ddr-komp-more[open] > summary::after {
+  transform: rotate(-135deg) translateY(-1px);
+}
+.ddr-komp-more-open { display: none; }
+.ddr-komp-more[open] .ddr-komp-more-closed { display: none; }
+.ddr-komp-more[open] .ddr-komp-more-open { display: inline; }
+.ddr-komp-more .lrow-wrap { margin: 0; border: 0; border-radius: 0 0 12px 12px; }
+.ddr-komp-more .lrow-table { min-width: 0; }
 .ddr-sec-head {
   display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
   margin-bottom: 10px;
@@ -7309,7 +7340,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
           <button type="button" class="ddr-tool-pill" data-pin-tool="analisa">Analisa</button>
           <button type="button" class="ddr-tool-pill" data-pin-tool="kalkulator">Kalkulator</button>
           <button type="button" class="ddr-tool-pill" data-pin-tool="kompetitor">Kompetitor</button>
-          <button type="button" class="ddr-tool-pill" data-pin-tool="serupa">Serupa</button>
           <button type="button" class="ddr-tool-pill" data-pin-tool="biaya">Biaya</button>
         </div>
       </div>
@@ -8758,7 +8788,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
           <button type="button" class="side-tab" role="tab" id="side-tab-ai" data-side-mode="ai" aria-selected="false">Tanya AI</button>
           <button type="button" class="side-tab active" role="tab" id="side-tab-kalc" data-side-mode="kalkulator" aria-selected="true">Kalkulator</button>
           <button type="button" class="side-tab" role="tab" id="side-tab-komp" data-side-mode="kompetitor" aria-selected="false">Kompetitor</button>
-          <button type="button" class="side-tab" role="tab" id="side-tab-serupa" data-side-mode="serupa" aria-selected="false">Serupa</button>
           <button type="button" class="side-tab" role="tab" id="side-tab-keyword" data-side-mode="keyword" aria-selected="false">Keyword</button>
           <button type="button" class="side-tab" role="tab" id="side-tab-supplier" data-side-mode="supplier" aria-selected="false" hidden>Supplier</button>
         </div>
@@ -8771,7 +8800,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
     <div class="calc-body" id="side-body-ai" hidden></div>
     <div class="calc-body" id="side-body-kalc"></div>
     <div class="calc-body" id="side-body-komp" hidden></div>
-    <div class="calc-body" id="side-body-serupa" hidden></div>
     <div class="calc-body" id="side-body-keyword" hidden></div>
     <div class="calc-body" id="side-body-supplier" hidden></div>
   </aside>
@@ -8789,10 +8817,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
   <button type="button" class="side-rail-btn" id="komp-rail" aria-expanded="false" aria-controls="calc-panel" title="Buka Kompetitor">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
     <span class="side-rail-label">Kompetitor</span>
-  </button>
-  <button type="button" class="side-rail-btn" id="serupa-rail" aria-expanded="false" aria-controls="calc-panel" title="Buka produk serupa">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-    <span class="side-rail-label">Serupa</span>
   </button>
 </div>
 
@@ -9159,6 +9183,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
      larisLoadScript() when the admin view actually renders. -->
 <script src="/js/peta-peluang.js?v=20260906b" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
-<script src="/js/gpt-app.js?v=20260907m" defer></script>
+<script src="/js/gpt-app.js?v=20260908c" defer></script>
 </body>
 </html>
