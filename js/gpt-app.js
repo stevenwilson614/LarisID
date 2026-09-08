@@ -14310,6 +14310,7 @@ function ddToolPillsHtml(product) {
     <button type="button" class="ddr-tool-pill" data-ddr-tool="kompetitor">Kompetitor</button>
     <button type="button" class="ddr-tool-pill" data-ddr-tool="keyword">Keyword</button>
     <button type="button" class="ddr-tool-pill" data-ddr-tool="biaya">Biaya</button>
+    <button type="button" class="ddr-tool-pill" data-ddr-tool="unduh">Unduh</button>
     ${supplier}
   </div>`;
 }
@@ -15003,6 +15004,13 @@ function runDdrTool(tool, product, peers, via, extra) {
   if (tool === 'ai') {
     void logUserEvent('deepdive_section', { ui: 'gpt', section: 'ai_panel', via: via || 'click', keyword: p?.keyword || '' });
     openAiPanel({ product: p, peers: peerList, via: via || 'deepdive' });
+    return;
+  }
+  if (tool === 'unduh') {
+    void logUserEvent('deepdive_section', { ui: 'gpt', section: 'export', via: via || 'click', keyword: p?.keyword || '' });
+    // Riwayat by default: one product's weekly history is the thing the deep
+    // dive has that the list does not.
+    exportOpen({ source: 'deepdive', rows: [productSnapshot(p)], lockRows: true, shape: 'history', count: 1 });
     return;
   }
   if (tool === 'analisa') {
@@ -20366,6 +20374,10 @@ function updateDirCount(total, shown, nearby) {
   el.textContent = unsold > 0
     ? `${base} · ${unsold.toLocaleString('id-ID')} listing belum terjual tidak ditampilkan`
     : base;
+  // Runs on every repaint with `total` already in hand, which is why the export
+  // button hangs off here rather than off gpt-dir-filters.js (mounts once).
+  const xb = $('dir-export');
+  if (xb) xb.hidden = !(total > 0 && currentUser);
 }
 
 function updateDirHeading() {
@@ -22594,6 +22606,8 @@ async function boot() {
   if (typeof ensureSupabase === 'function') await ensureSupabase();
   await initSupabase();
   consumeKomunitasDeepLink();
+  consumeProductDeepLink();
+  _exportWireDelegation();
   if (currentUser && state.pendingKomunitas) {
     const pk = state.pendingKomunitas;
     state.pendingKomunitas = null;
@@ -23065,5 +23079,654 @@ function supCloseSurvey() {
   try { sessionStorage.removeItem('_lid_sup_pending'); } catch (_) {}
   $('sup-survey-modal')?.classList.remove('open');
 }
+
+/* ═══ Export ke spreadsheet ═════════════════════════════════════════════════
+   Two shapes, one shared daily budget:
+     ringkasan  — one row per product (DataPinter-style flat sheet)
+     riwayat    — one row per product-week, from the SAME estimator the
+                  deep-dive chart draws (product_daily_series bucketed to WIB
+                  Mondays), so the file and the chart always agree.
+
+   Budget: 90 rows/WIB day, but ONLY MEASURED ROWS COST. A snapshot row and a
+   `terukur` week cost 1; `perkiraan` and `proyeksi` weeks are free. The server
+   decides — EXPORT_ROW_LIMIT here is display-only.
+
+   The point of shipping it capped is the demand signal, not the cap: see
+   exportAskMore / export_more_response. */
+
+const EXPORT_ROW_LIMIT = 90;      // display only; public._export_row_limit() decides
+const EXPORT_HISTORY_CAP = 10;    // display only; public._export_history_cap() decides
+const EXPORT_XLSX_V = '20260909a';
+
+let _exportQuota = null;          // { unlimited, used, limit, remaining, reset_at }
+let _exportCtx = null;            // { source, rows, shape, weeks, count, lockRows }
+let _exportBusy = false;
+let _exportLast = null;           // { key, payload } — free re-download after a save fails
+let _exportListeners = false;
+let _exportReqId = null;          // survives a reload mid-request, so a retry replays
+
+function exportBrandLine(extra) {
+  const when = new Date().toLocaleString('id-ID', {
+    timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+  return `LarisID · larisid.com · Data diambil ${when} WIB${extra ? ` · ${extra}` : ''}`;
+}
+
+function exportFileStamp() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
+}
+
+function exportSlugify(s) {
+  return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '').slice(0, 40);
+}
+
+function exportProductLink(r) {
+  const item = r.item_id != null ? String(r.item_id) : '';
+  const shop = r.shop_id != null ? String(r.shop_id) : '';
+  if (!item || !shop) return 'https://larisid.com/?utm_source=export&utm_medium=xlsx';
+  return `https://larisid.com/?item=${encodeURIComponent(item)}&shop=${encodeURIComponent(shop)}`
+       + '&utm_source=export&utm_medium=xlsx';
+}
+
+async function exportLoadQuota() {
+  if (!currentUser) return null;
+  try {
+    const token = _authLoad()?.access_token || SUPA_KEY;
+    const res = await fetch(`${SUPA_URL}/rest/v1/rpc/get_my_export_quota`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPA_KEY, Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: '{}',
+    });
+    if (!res.ok) return null;
+    _exportQuota = await res.json();
+    return _exportQuota;
+  } catch (_) { return null; }
+}
+
+function exportRemaining() {
+  if (_exportQuota?.unlimited) return Infinity;
+  const r = Number(_exportQuota?.remaining);
+  return Number.isFinite(r) ? r : EXPORT_ROW_LIMIT;
+}
+
+/* The pool, not the painted page: state.dirRows already holds every filtered,
+   sorted row (PAGE_SIZE only governs what is drawn). */
+function exportPool() {
+  if (_exportCtx?.lockRows) return _exportCtx.rows || [];
+  return Array.isArray(state.dirRows) ? state.dirRows : [];
+}
+
+function exportSelection() {
+  const pool = exportPool();
+  const n = Math.max(1, Math.min(Number(_exportCtx?.count) || 25, pool.length));
+  const cap = _exportCtx?.shape === 'history'
+    ? Math.min(n, _exportQuota?.history_cap || EXPORT_HISTORY_CAP)
+    : n;
+  return pool.slice(0, cap);
+}
+
+function exportRenderCost() {
+  const costEl = $('export-cost');
+  const scopeEl = $('export-scope');
+  const warnEl = $('export-warn');
+  const sel = exportSelection();
+  const pool = exportPool();
+  const hist = _exportCtx?.shape === 'history';
+  const weeks = Number(_exportCtx?.weeks) || 12;
+  const remaining = exportRemaining();
+
+  if (scopeEl) {
+    // Read the live control rather than duplicating gpt-dir-filters.js's
+    // SORT_OPTIONS, which is a var inside its IIFE and not reachable here.
+    const sortSel = document.getElementById('dir-sort-select');
+    const sortLabel = sortSel?.selectedOptions?.[0]?.textContent?.trim() || '';
+    scopeEl.textContent = _exportCtx?.lockRows
+      ? `${sel.length} produk terpilih`
+      : `${sel.length} produk teratas dari ${pool.length} hasil${sortLabel ? ` · urut: ${sortLabel}` : ''}`;
+  }
+
+  if (costEl) {
+    // Ceiling, not a quote: how many weeks are `terukur` depends on scrape
+    // coverage, which the server works out. It errs pleasant — actual is
+    // almost always far lower.
+    const maxCost = hist ? sel.length * (1 + weeks) : sel.length;
+    const fileRows = hist ? sel.length * (weeks + 1) : sel.length;
+    const left = remaining === Infinity ? '∞' : remaining;
+    costEl.innerHTML = hist
+      ? `File berisi ± ${fileRows} baris. Biaya maks. <strong>${maxCost}</strong> baris terukur `
+        + `(perkiraan &amp; proyeksi gratis). Sisa hari ini: ${left}.`
+      : `Biaya <strong>${sel.length}</strong> dari ${left} baris tersisa hari ini.`;
+  }
+
+  if (warnEl) {
+    if (hist && sel.length) {
+      // ~19% of a 12-week window is actually measured across a typical
+      // selection, so say it before they spend anything.
+      warnEl.hidden = false;
+      warnEl.textContent = 'Sebagian besar minggu dalam riwayat adalah perkiraan model kami, '
+        + 'bukan hasil pengukuran. Kolom "Sumber" di file menandai setiap baris.';
+    } else {
+      warnEl.hidden = true;
+    }
+  }
+
+  const wf = $('export-weeks-field');
+  if (wf) wf.hidden = !hist;
+  document.querySelectorAll('[data-export-shape]').forEach((b) => {
+    b.classList.toggle('on', b.getAttribute('data-export-shape') === (_exportCtx?.shape || 'snapshot'));
+  });
+}
+
+function exportFillCount() {
+  const sel = $('export-count');
+  if (!sel) return;
+  const pool = exportPool();
+  const hist = _exportCtx?.shape === 'history';
+  const ceiling = hist ? (_exportQuota?.history_cap || EXPORT_HISTORY_CAP) : EXPORT_ROW_LIMIT;
+  const max = Math.min(pool.length, ceiling);
+  const opts = [];
+  [5, 10, 25, 50, 90].forEach((n) => { if (n < max) opts.push(n); });
+  opts.push(max);
+  sel.innerHTML = opts.map((n) => `<option value="${n}">${n} produk</option>`).join('');
+  const want = Math.min(Number(_exportCtx?.count) || max, max);
+  sel.value = String(opts.reduce((a, b) => (Math.abs(b - want) < Math.abs(a - want) ? b : a), opts[0]));
+  _exportCtx.count = Number(sel.value);
+}
+
+function exportOpen(ctx = {}) {
+  if (!currentUser) {
+    void logUserEvent('export_gate', { ui: 'gpt', source: ctx.source || 'directory' });
+    openAuthModal('signup', 'gpt_gate_export');
+    return;
+  }
+  _exportWireDelegation();
+  const modal = $('export-modal');
+  if (!modal) return;
+  // Never stack on another dialog — degrade to a toast, same as supAskRequest.
+  const other = document.querySelector('.modal-overlay.open');
+  if (other && other !== modal) { showToast('Tutup dulu jendela yang terbuka.'); return; }
+
+  _exportCtx = {
+    source: ctx.source || 'directory',
+    rows: ctx.rows || null,
+    lockRows: !!ctx.lockRows,
+    shape: ctx.shape || 'snapshot',
+    weeks: ctx.weeks || 12,
+    count: ctx.count || 25,
+  };
+  exportFillCount();
+  exportRenderCost();
+  modal.classList.add('open');
+
+  void logUserEvent('export_open', {
+    ui: 'gpt', source: _exportCtx.source,
+    results_total: exportPool().length,
+    remaining: _exportQuota?.remaining ?? null,
+  });
+
+  // Refresh the budget in the background; re-render when it lands.
+  void exportLoadQuota().then(() => {
+    if ($('export-modal')?.classList.contains('open')) { exportFillCount(); exportRenderCost(); }
+    const lim = $('export-more-limit');
+    if (lim && _exportQuota?.limit) lim.textContent = String(_exportQuota.limit);
+  });
+}
+
+function exportClose() {
+  $('export-modal')?.classList.remove('open');
+  _exportCtx = null;
+}
+
+async function exportRun(fmt) {
+  if (_exportBusy) return;
+  const sel = exportSelection();
+  if (!sel.length) { showToast('Tidak ada produk untuk diunduh.'); return; }
+  const hist = _exportCtx?.shape === 'history';
+  const weeks = Number(_exportCtx?.weeks) || 12;
+
+  _exportBusy = true;
+  try {
+    // Load SheetJS BEFORE the metered call. A script failure after the charge
+    // lands would burn budget for nothing.
+    if (fmt === 'xlsx' && typeof window.ensureXlsx === 'function') {
+      try { await window.ensureXlsx(); } catch (_) {
+        showToast('Gagal memuat modul .xlsx. Coba CSV.');
+        return;
+      }
+    }
+
+    // One request id per attempt, kept in sessionStorage so a reload mid-flight
+    // replays the same job instead of paying twice.
+    if (!_exportReqId) {
+      try { _exportReqId = sessionStorage.getItem('_lid_export_req') || null; } catch (_) {}
+      if (!_exportReqId) {
+        _exportReqId = (crypto?.randomUUID?.() || String(Date.now()));
+        try { sessionStorage.setItem('_lid_export_req', _exportReqId); } catch (_) {}
+      }
+    }
+
+    const token = _authLoad()?.access_token || SUPA_KEY;
+    const res = await fetch(`${SUPA_URL}/rest/v1/rpc/export_rows`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPA_KEY, Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        p_request_id: _exportReqId,
+        p_item_ids: sel.map((r) => Number(r.item_id)),
+        p_shop_ids: sel.map((r) => Number(r.shop_id)),
+        p_keywords: sel.map((r) => r.keyword || null),
+        p_history: hist,
+        p_weeks: weeks,
+        p_source: _exportCtx?.source || 'directory',
+      }),
+    });
+    if (!res.ok) { showToast('Gagal menyiapkan file. Coba lagi sebentar.'); return; }
+    const data = await res.json();
+
+    if (data?.allowed === false) {
+      void logUserEvent('export_blocked', {
+        ui: 'gpt', reason: data.reason || 'unknown',
+        need: data.need ?? null, remaining: data.remaining ?? null,
+        shape: hist ? 'history' : 'snapshot', weeks: hist ? weeks : 0,
+      });
+      _exportQuota = Object.assign({}, _exportQuota, {
+        used: data.used, limit: data.limit, remaining: data.remaining, reset_at: data.reset_at,
+      });
+      exportRenderCost();
+      if (data.reason === 'not_enough_rows') {
+        showToast(`Sisa ${data.remaining} baris — kurangi jumlah produk atau rentang minggunya.`);
+      } else {
+        showToast('Kuota unduhan hari ini sudah habis.');
+      }
+      exportAskMore(data.reason === 'limit_reached' ? 'exhausted' : 'truncated');
+      return;
+    }
+
+    // Charged — hold the payload so a failed save can be retried for free.
+    _exportReqId = null;
+    try { sessionStorage.removeItem('_lid_export_req'); } catch (_) {}
+    _exportQuota = Object.assign({}, _exportQuota, {
+      used: data.used, limit: data.limit, remaining: data.remaining, reset_at: data.reset_at,
+    });
+    _exportLast = { payload: data, fmt };
+
+    const kw = (state.dirSearch || sel[0]?.keyword || '').trim();
+    if (fmt === 'csv') exportBuildCsv(data, kw, hist);
+    else exportBuildWorkbook(data, kw, hist);
+
+    void logUserEvent('export_done', {
+      ui: 'gpt', source: _exportCtx?.source || 'directory',
+      shape: hist ? 'history' : 'snapshot', weeks: hist ? weeks : 0,
+      products: data.products, rows_total: data.rows_total,
+      rows_charged: data.charged, requested: data.requested,
+      truncated: !!data.truncated, fmt,
+      remaining_after: data.remaining ?? null,
+      wanted_rows: hist ? sel.length * (weeks + 1) : sel.length,
+      wanted_products: sel.length,
+    });
+
+    showToast(data.charged
+      ? `Terpakai ${data.charged} baris terukur (${data.rows_total} baris di file). Sisa ${data.remaining}.`
+      : `${data.rows_total} baris diunduh.`);
+    exportRenderCost();
+
+    // Truncated, or nearly out: this is the moment the demand signal is real.
+    if (data.truncated) exportAskMore('truncated');
+    else if (Number.isFinite(data.remaining) && data.limit
+             && data.remaining <= data.limit * 0.2) exportAskMore('exhausted');
+    else exportClose();
+  } catch (_) {
+    showToast('Gagal menyiapkan file. Coba lagi sebentar.');
+  } finally {
+    _exportBusy = false;
+  }
+}
+
+/* ── Sheet definitions ──────────────────────────────────────────────────────
+   Money and counts are written as NUMBERS with a format mask, never as
+   "Rp 1.234.000" strings — a seller opens a spreadsheet to SUM things.
+   item_id/shop_id go out as strings so Excel does not render 2.53E+10. */
+
+function exportOmsetLabel(r) {
+  const m = String(r.omset_method || '').toLowerCase();
+  return (m === 'latest' || m === 'blend') ? 'terukur' : 'perkiraan';
+}
+
+function exportSlugFromUrl(url) {
+  const u = String(url || '');
+  const m = u.match(/shopee\.co\.id\/([^?#]+)/i);
+  if (!m) return '';
+  return m[1].replace(/-i\.\d+\.\d+$/, '');
+}
+
+const EXPORT_PRODUK_COLS = [
+  ['No.',                       (r, i) => i + 1,                              'int'],
+  ['Nama Produk',               (r) => r.product_name || '',                  'text'],
+  ['Toko',                      (r) => r.store_name || '',                    'text'],
+  ['Lokasi',                    (r) => r.location || '',                      'text'],
+  ['Kategori',                  (r) => r.category || '',                      'text'],
+  ['Kata kunci',                (r) => r.keyword || '',                       'text'],
+  ['Harga (Rp)',                (r) => r.price,                               'money'],
+  ['Harga coret (Rp)',          (r) => r.original_price,                      'money'],
+  ['Diskon (%)',                (r) => (r.original_price > 0 && r.price > 0
+                                  ? Math.round((1 - r.price / r.original_price) * 100) : null), 'int'],
+  ['Omset / bulan (Rp)',        (r) => r.omset_monthly,                       'money'],
+  ['Omset: label',              (r) => exportOmsetLabel(r),                   'text'],
+  ['Unit / bulan (est)',        (r) => (r.v_daily != null ? Math.round(r.v_daily * 30) : null), 'int'],
+  ['Unit / hari (est)',         (r) => r.v_daily,                             'dec'],
+  ['Total terjual',             (r) => r.total_sold,                          'int'],
+  ['Total terjual: tingkat',    (r) => (r.sold_tier === 6 ? '10RB+ (dibulatkan Shopee)'
+                                  : r.sold_tier != null ? `tingkat ${r.sold_tier}` : ''), 'text'],
+  ['Tren 30 hari (%)',          (r) => r.momentum_pct,                        'dec'],
+  ['Tren: kelas',               (r) => r.momentum_class || 'belum',           'text'],
+  ['Tren: unit/mgg sekarang',   (r) => r.units_now_wk,                        'dec'],
+  ['Tren: unit/mgg sebelumnya', (r) => r.units_prev_wk,                       'dec'],
+  ['Rating',                    (r) => r.rating,                              'rating'],
+  ['Review',                    (r) => r.reviews,                             'int'],
+  ['Wishlist',                  (r) => r.wishlist,                            'int'],
+  ['Stok tersedia',             (r) => (r.in_stock === true ? 'Ya' : r.in_stock === false ? 'Tidak' : '—'), 'text'],
+  ['Iklan',                     (r) => (Number(r.is_ad) === 1 ? 'Ya' : 'Tidak'), 'text'],
+  ['Peringkat pencarian',       (r) => r.search_rank,                         'int'],
+  ['Pertama terpantau',         (r) => exportDateStr(r.listing_date),         'text'],
+  ['Usia listing (hari)',       (r) => exportDaysSince(r.listing_date),       'int'],
+  ['Data diperbarui',           (r) => exportDateStr(r.scraped_at),           'text'],
+  ['Metode omset',              (r) => r.omset_method || '',                  'text'],
+  ['Keyakinan omset',           (r) => r.omset_confidence || '',              'text'],
+  ['Observasi terakhir',        (r) => exportDateStr(r.last_obs_at),          'text'],
+  ['Jumlah observasi',          (r) => r.n_obs,                               'int'],
+  ['item_id',                   (r) => String(r.item_id ?? ''),               'id'],
+  ['shop_id',                   (r) => String(r.shop_id ?? ''),               'id'],
+  ['Slug',                      (r) => exportSlugFromUrl(r.url),              'text'],
+  ['URL Shopee',                (r) => r.url || '',                           'text'],
+  ['Gambar (URL)',              (r) => r.image_url || '',                     'text'],
+  ['Lihat di LarisID',          (r) => exportProductLink(r),                  'text'],
+];
+
+const EXPORT_RIWAYAT_COLS = [
+  ['No. produk',        (w, i, m) => m.no,                                   'int'],
+  ['Nama Produk',       (w, i, m) => m.product_name || '',                   'text'],
+  ['Toko',              (w, i, m) => m.store_name || '',                     'text'],
+  ['item_id',           (w) => String(w.item_id ?? ''),                      'id'],
+  ['shop_id',           (w) => String(w.shop_id ?? ''),                      'id'],
+  ['Minggu (Senin WIB)',(w) => w.week_start || '',                           'text'],
+  ['Unit / minggu',     (w) => w.units_wk,                                   'dec'],
+  ['Omset / minggu (Rp)',(w) => w.omset_wk,                                  'money'],
+  ['Unit / hari',       (w) => (w.units_wk != null ? w.units_wk / 7 : null),  'dec'],
+  ['Sumber',            (w) => w.sumber || '',                               'text'],
+  ['Label',             (w) => (w.sumber === 'terukur' ? 'terukur' : 'perkiraan'), 'text'],
+  ['Hari terukur',      (w) => w.hari_terukur,                               'int'],
+  ['Hari data',         (w) => w.hari_data,                                  'int'],
+  ['Dihitung?',         (w) => (w.billable ? 'Ya' : 'Gratis'),               'text'],
+];
+
+function exportDateStr(v) {
+  if (!v) return '';
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
+}
+
+function exportDaysSince(v) {
+  if (!v) return null;
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return null;
+  return Math.max(0, Math.round((Date.now() - d.getTime()) / 86400000));
+}
+
+const EXPORT_FMT = { money: '#,##0', int: '#,##0', dec: '#,##0.00', rating: '0.0' };
+
+function exportHistoryMeta(payload) {
+  const meta = new Map();
+  (payload.rows || []).forEach((r, i) => {
+    meta.set(`${r.item_id}|${r.shop_id}`, {
+      no: i + 1, product_name: r.product_name, store_name: r.store_name,
+    });
+  });
+  return meta;
+}
+
+function exportInfoRows(payload, hist) {
+  return [
+    ['LarisID — data produk Shopee'],
+    ['Situs', 'https://larisid.com'],
+    ['Dibuat', exportBrandLine('')],
+    ['Baris di file', payload.rows_total],
+    ['Baris terukur yang dihitung', payload.charged],
+    ['Sisa kuota hari ini', payload.remaining ?? '—'],
+    [],
+    ['Cara membaca angka'],
+    ['terukur', 'Diukur dari dua kali scrape yang mengapit periode ini. Delta dibagi rata '
+              + 'sepanjang jaraknya, bukan dianggap satu minggu.'],
+    ['perkiraan', 'Hasil model kecepatan LarisID — termasuk minggu sebelum produk ini mulai '
+                + 'kami pantau, yang memakai median produk sejenis.'],
+    ['proyeksi', 'Proyeksi ke depan dari scrape terakhir. Belum terjadi.'],
+    [],
+    ['Yang perlu kamu tahu'],
+    ['Jadwal scrape', 'Scrape kami turun setiap 12–17 hari. Angka mingguan sudah dinormalkan '
+                    + 'ke laju 7 hari, jadi jangan dibaca sebagai hitungan mentah.'],
+    ['Pertama terpantau', 'Tanggal pertama kami melihat listing ini — batas bawah, bukan '
+                        + 'tanggal toko membuatnya.'],
+    ['Total terjual', 'Shopee membulatkan angka besar (mis. "10RB+"). Kolom tingkat menandainya.'],
+    ['Tidak kami kumpulkan', 'Merek, jumlah komentar, dan jumlah stok. Kolomnya sengaja tidak ada '
+                           + 'daripada diisi angka karangan.'],
+    ['Omset seumur hidup', 'Tidak kami hitung. Harga berubah dari waktu ke waktu dan total terjual '
+                         + 'dibulatkan, jadi harga × total terjual akan menyesatkan.'],
+    [],
+    ['Pertanyaan atau butuh unduhan lebih besar?', 'https://larisid.com'],
+  ].concat(hist ? [[], ['Sheet Riwayat', 'Satu baris per produk per minggu (Senin WIB).']] : []);
+}
+
+function exportBuildWorkbook(payload, kw, hist) {
+  const XLSX = window.XLSX;
+  if (!XLSX) { showToast('Modul .xlsx belum siap.'); return; }
+  const wb = XLSX.utils.book_new();
+  wb.Props = {
+    Title: `LarisID — data produk${kw ? ` "${kw}"` : ''}`,
+    Author: 'LarisID', Company: 'LarisID',
+    Comments: 'https://larisid.com', CreatedDate: new Date(),
+  };
+
+  const brand = exportBrandLine(kw ? `kata kunci: "${kw}"` : '');
+  const rows = payload.rows || [];
+
+  const mkSheet = (cols, data, metaFor) => {
+    // Row 1 = brand line, row 2 = headers, data from row 3. The autofilter is
+    // set on the header range explicitly, otherwise Excel latches onto row 1.
+    const aoa = [[brand], cols.map((c) => c[0])];
+    data.forEach((d, i) => {
+      const meta = metaFor ? metaFor(d) : null;
+      aoa.push(cols.map((c) => {
+        const v = c[1](d, i, meta);
+        return v === undefined || v === null ? '' : v;
+      }));
+    });
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    for (let R = 2; R <= range.e.r; R++) {
+      cols.forEach((c, C) => {
+        const cell = ws[XLSX.utils.encode_cell({ r: R, c: C })];
+        if (!cell) return;
+        const kind = c[2];
+        if (kind === 'id') { cell.t = 's'; cell.z = '@'; return; }
+        if (EXPORT_FMT[kind] && typeof cell.v === 'number') cell.z = EXPORT_FMT[kind];
+      });
+    }
+    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: Math.max(0, cols.length - 1) } }];
+    // Explicit header range: without it Excel's filter auto-detection latches
+    // onto the merged brand row and the sheet becomes annoying to sort.
+    ws['!autofilter'] = { ref: XLSX.utils.encode_range(
+      { s: { r: 1, c: 0 }, e: { r: Math.max(1, range.e.r), c: cols.length - 1 } }) };
+    // No frozen header row: SheetJS Community's writer does not emit panes (Pro
+    // only), and the full build is 950KB for the same gap. Verified on 0.20.3.
+    ws['!cols'] = cols.map((c) => ({ wch: c[0] === 'Nama Produk' ? 46
+      : c[0] === 'Toko' ? 24 : Math.max(11, Math.min(30, c[0].length + 3)) }));
+    return ws;
+  };
+
+  XLSX.utils.book_append_sheet(wb, mkSheet(EXPORT_PRODUK_COLS, rows), 'Produk');
+
+  if (hist) {
+    const meta = exportHistoryMeta(payload);
+    const series = payload.history || [];
+    XLSX.utils.book_append_sheet(wb, mkSheet(EXPORT_RIWAYAT_COLS, series,
+      (w) => meta.get(`${w.item_id}|${w.shop_id}`) || {}), 'Riwayat');
+  }
+
+  const info = XLSX.utils.aoa_to_sheet(exportInfoRows(payload, hist));
+  info['!cols'] = [{ wch: 30 }, { wch: 92 }];
+  XLSX.utils.book_append_sheet(wb, info, 'Info');
+
+  const name = `larisid-${hist ? 'riwayat' : 'produk'}`
+    + `${kw ? `-${exportSlugify(kw)}` : ''}-${exportFileStamp()}.xlsx`;
+  const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  exportDownloadBlob(new Blob([out],
+    { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), name);
+}
+
+function exportCsvCell(v) {
+  return `"${String(v === null || v === undefined ? '' : v).replace(/"/g, '""')}"`;
+}
+
+function exportBuildCsv(payload, kw, hist) {
+  // No brand/title row: it would break every parser that is the reason someone
+  // chose CSV. Branding rides on the filename and the LarisID link column.
+  const rows = payload.rows || [];
+  let cols;
+  let data;
+  if (hist) {
+    // One flat file, product columns denormalised onto each week — what a CSV
+    // consumer wants. The two-sheet shape is xlsx-only.
+    const meta = exportHistoryMeta(payload);
+    cols = EXPORT_RIWAYAT_COLS;
+    data = (payload.history || []).map((w) => ({ w, m: meta.get(`${w.item_id}|${w.shop_id}`) || {} }));
+  } else {
+    cols = EXPORT_PRODUK_COLS;
+    data = rows;
+  }
+  const lines = [cols.map((c) => exportCsvCell(c[0])).join(',')];
+  data.forEach((d, i) => {
+    lines.push(cols.map((c) => exportCsvCell(
+      hist ? c[1](d.w, i, d.m) : c[1](d, i, null))).join(','));
+  });
+  const name = `larisid-${hist ? 'riwayat' : 'produk'}`
+    + `${kw ? `-${exportSlugify(kw)}` : ''}-${exportFileStamp()}.csv`;
+  exportDownloadBlob(
+    new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' }), name);
+}
+
+function exportDownloadBlob(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/* ── Interest gauge ─────────────────────────────────────────────────────────
+   The actual deliverable. Three-way for the same reason as the supplier probe:
+   folding "nanti saja" into "tidak" would overstate rejection on the signal
+   that decides whether this becomes a paid feature. */
+let _exportMoreCtx = null;
+
+function exportAskMore(trigger) {
+  const modal = $('export-more-modal');
+  if (!modal) return;
+  const sel = exportSelection();
+  const hist = _exportCtx?.shape === 'history';
+  const weeks = Number(_exportCtx?.weeks) || 12;
+  _exportMoreCtx = {
+    trigger: trigger || 'button',
+    wanted_rows: hist ? sel.length * (weeks + 1) : sel.length,
+    wanted_products: sel.length,
+    shape: hist ? 'history' : 'snapshot',
+    weeks: hist ? weeks : 0,
+  };
+  void logUserEvent('export_more_prompt', { ui: 'gpt', ..._exportMoreCtx });
+  const lim = $('export-more-limit');
+  if (lim && _exportQuota?.limit) lim.textContent = String(_exportQuota.limit);
+  exportClose();
+  modal.classList.add('open');
+}
+
+function exportMoreAnswer(answer) {
+  void logUserEvent('export_more_response', {
+    ui: 'gpt', answer, logged_in: !!currentUser, ...(_exportMoreCtx || {}),
+  });
+  if (answer === 'ya') showToast('Dicatat — ini yang menentukan apakah kami perbesar batasnya.');
+  exportCloseMore();
+}
+
+function exportCloseMore() {
+  _exportMoreCtx = null;
+  $('export-more-modal')?.classList.remove('open');
+}
+
+function _exportWireDelegation() {
+  if (_exportListeners) return;
+  _exportListeners = true;
+  document.addEventListener('click', (e) => {
+    const t = e.target;
+    if (!t || !t.closest) return;
+    if (t.closest('#dir-export')) { exportOpen({ source: 'directory' }); return; }
+    if (t.closest('[data-export-close]')) { exportClose(); return; }
+    const shape = t.closest('[data-export-shape]');
+    if (shape) {
+      if (!_exportCtx) return;
+      _exportCtx.shape = shape.getAttribute('data-export-shape');
+      exportFillCount();
+      exportRenderCost();
+      return;
+    }
+    const fmt = t.closest('[data-export-fmt]');
+    if (fmt) { void exportRun(fmt.getAttribute('data-export-fmt')); return; }
+    if (t.closest('[data-export-more]')) { exportAskMore('button'); return; }
+    const ans = t.closest('[data-export-more-ans]');
+    if (ans) { exportMoreAnswer(ans.getAttribute('data-export-more-ans')); return; }
+  });
+  document.addEventListener('change', (e) => {
+    const t = e.target;
+    if (!t || !_exportCtx) return;
+    if (t.id === 'export-count') { _exportCtx.count = Number(t.value) || 25; exportRenderCost(); }
+    else if (t.id === 'export-weeks') { _exportCtx.weeks = Number(t.value) || 12; exportRenderCost(); }
+  });
+}
+
+/* Deep link from a shared spreadsheet: ?item=..&shop=..&utm_source=export
+   opens that product's deep dive, so a file that gets forwarded is an entry
+   point rather than just a filename. */
+function consumeProductDeepLink() {
+  try {
+    const q = new URLSearchParams(location.search);
+    const item = q.get('item');
+    const shop = q.get('shop');
+    if (!item || !shop || !/^\d{1,20}$/.test(item) || !/^\d{1,20}$/.test(shop)) return false;
+    const via = q.get('utm_source') || 'link';
+    ['item', 'shop', 'utm_source', 'utm_medium'].forEach((k) => q.delete(k));
+    const qs = q.toString();
+    history.replaceState({}, '', location.pathname + (qs ? `?${qs}` : '') + location.hash);
+    void (async () => {
+      try {
+        const { data } = await _supabase.from('listings_deduped')
+          .select(listingCoreSelect())
+          .eq('item_id', item).eq('shop_id', shop).eq('is_offtopic', false)
+          .order('total_sold', { ascending: false }).limit(1);
+        const row = Array.isArray(data) && data[0];
+        if (!row) { showToast('Produk itu tidak ketemu lagi.'); return; }
+        void logUserEvent('deeplink_product', { ui: 'gpt', via, item_id: item });
+        await openDeepDive(asListingProduct(row), { via: `deeplink_${via}` });
+      } catch (_) {}
+    })();
+    return true;
+  } catch (_) { return false; }
+}
+
 boot();
 })();

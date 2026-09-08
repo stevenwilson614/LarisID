@@ -1,0 +1,15 @@
+SheetJS Community Edition (xlsx) — Apache License 2.0
+https://github.com/SheetJS/sheetjs  |  https://sheetjs.com
+
+Vendored build
+  file    : xlsx.mini.min.js
+  version : 0.20.3
+  source  : https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.mini.min.js
+  sha256  : 0cb353f830d7288385492c83d277b058ddeac664ca51cf1393aa1fd3e2b70939
+  fetched : 2026-09-08
+
+SheetJS is no longer published to npm. Re-fetch from cdn.sheetjs.com and update
+the hash above when upgrading. Never load it from a CDN at runtime: the export
+payload passes through it.
+
+Full Apache-2.0 text: https://www.apache.org/licenses/LICENSE-2.0

@@ -40,6 +40,13 @@
     return loadScript('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js');
   };
 
+  // Vendored locally, not a CDN: the export payload passes through this lib.
+  // See js/vendor/xlsx.LICENSE.txt for the pinned version + hash.
+  w.ensureXlsx = function () {
+    if (typeof w.XLSX !== 'undefined') return Promise.resolve();
+    return loadScript('/js/vendor/xlsx.mini.min.js?v=20260909a');
+  };
+
   w.larisIdle = function (fn, timeout) {
     if (typeof w.requestIdleCallback === 'function') {
       w.requestIdleCallback(fn, timeout != null ? { timeout: timeout } : undefined);

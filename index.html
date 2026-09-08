@@ -194,7 +194,7 @@
 </script>
 
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "c47631101f894583b52191104f6ef5ad"}'></script>
-<script src="/js/perf-loader.js?v=20260818b"></script>
+<script src="/js/perf-loader.js?v=20260909a"></script>
 <!-- Third-party origins the page always ends up hitting. Lighthouse
      mobile rated the missing handshakes at ~250ms. -->
 <link rel="preconnect" href="https://api.larisid.com" crossorigin>
@@ -1791,8 +1791,35 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
   .dh-cta:hover, .dh-tile:hover { transform: none; }
 }
 
-.dir-head { margin-bottom: 16px; }
+.dir-head { margin-bottom: 16px; display: flex; align-items: flex-start;
+  justify-content: space-between; gap: 12px; }
+.dir-head-text { min-width: 0; }
 .dir-head h2 { margin: 0 0 6px; font-size: 1.35rem; font-weight: 650; letter-spacing: -.02em; }
+.dir-export-btn { flex: none; display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 12px; font-size: .8rem; border-radius: 10px; }
+.dir-export-btn svg { flex: none; }
+@media (max-width: 560px) { .dir-export-btn span { display: none; } }
+
+/* Export modals. Double-classed (.modal.export-modal) so they beat the base
+   `.modal { max-width: 400px }` defined later in this file. */
+.modal.export-modal { max-width: 520px; text-align: left; }
+.modal.export-more-modal { max-width: 440px; }
+.export-field { display: block; margin: 0 0 12px; }
+.export-row { display: flex; gap: 10px; }
+.export-row .export-field { flex: 1; }
+.export-label { display: block; margin: 0 0 5px; font-size: .74rem; font-weight: 600;
+  color: var(--muted, #888); letter-spacing: .01em; }
+.export-field select { width: 100%; padding: 8px 10px; font: inherit; font-size: .84rem;
+  border: 1px solid var(--line); border-radius: 10px; background-color: #fff; color: var(--ink); }
+.export-seg { display: flex; gap: 6px; }
+.export-seg button { flex: 1; padding: 8px 10px; font: inherit; font-size: .82rem;
+  border: 1px solid var(--line); border-radius: 10px; background-color: #fff;
+  color: var(--ink); cursor: pointer; }
+.export-seg button.on { background-color: var(--ink); color: #fff; border-color: var(--ink); }
+.export-cost { margin: 4px 0 14px; font-size: .78rem; color: var(--muted, #888); }
+.export-warn { margin: 0 0 10px; padding: 9px 11px; border-radius: 10px;
+  font-size: .76rem; line-height: 1.45;
+  background-color: #FFF8E6; border: 1px solid #F0DFB0; color: #6B5518; }
 .dir-count { margin: 0; font-size: .78rem; color: var(--muted, #888); }
 .dir-compare-banner {
   margin: 0 0 14px; padding: 12px 14px;
@@ -8037,8 +8064,19 @@ body:has(.modal-overlay.open) .msg-steven-fab {
           <div class="dir-home-trending" id="dir-home-trending" hidden></div>
           <div class="dir-home-feature" id="dir-home-feature" hidden></div>
           <div class="dir-head">
-            <h2 id="dir-heading">Produk</h2>
-            <p class="dir-count" id="dir-count"></p>
+            <div class="dir-head-text">
+              <h2 id="dir-heading">Produk</h2>
+              <p class="dir-count" id="dir-count"></p>
+            </div>
+            <button type="button" class="btn-ghost dir-export-btn" id="dir-export" hidden
+                    aria-label="Unduh hasil ke spreadsheet">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>
+              </svg>
+              <span>Unduh</span>
+            </button>
           </div>
           <div class="dir-compare-banner" id="dir-compare-banner" hidden></div>
           <div id="dir-trending-now" class="trend-host"></div>
@@ -9140,6 +9178,65 @@ body:has(.modal-overlay.open) .msg-steven-fab {
      which categories to onboard suppliers for next. "Nanti saja" is recorded
      too: a dismiss is weaker than a no, and conflating them would overstate
      rejection. -->
+<!-- Export ke spreadsheet. NOTE: .modal.export-modal is double-classed on
+     purpose — the base `.modal { max-width: 400px }` is defined LATER in this
+     file and wins on source order against a single-class rule. -->
+<div class="modal-overlay export-overlay" id="export-modal">
+  <div class="modal export-modal" role="dialog" aria-modal="true" aria-labelledby="export-title">
+    <h3 id="export-title" class="nudge-title">Unduh data produk</h3>
+    <p class="nudge-sub" id="export-scope">&nbsp;</p>
+
+    <div class="export-field">
+      <span class="export-label">Isi file</span>
+      <div class="export-seg" role="group" aria-label="Isi file">
+        <button type="button" data-export-shape="snapshot" class="on">Ringkasan produk</button>
+        <button type="button" data-export-shape="history">Riwayat mingguan</button>
+      </div>
+    </div>
+
+    <div class="export-row">
+      <label class="export-field" for="export-count">
+        <span class="export-label">Jumlah produk</span>
+        <select id="export-count"></select>
+      </label>
+      <label class="export-field" for="export-weeks" id="export-weeks-field" hidden>
+        <span class="export-label">Rentang</span>
+        <select id="export-weeks">
+          <option value="4">4 minggu</option>
+          <option value="8">8 minggu</option>
+          <option value="12" selected>12 minggu</option>
+        </select>
+      </label>
+    </div>
+
+    <p class="export-warn" id="export-warn" hidden></p>
+    <p class="export-cost" id="export-cost">&nbsp;</p>
+
+    <div class="nudge-actions" style="flex-direction:column;">
+      <button type="button" class="btn-primary" style="width:100%;" data-export-fmt="xlsx">Unduh .xlsx</button>
+      <button type="button" class="btn-ghost" style="width:100%;" data-export-fmt="csv">Unduh CSV</button>
+      <button type="button" class="btn-ghost" style="width:100%;" data-export-more="button">Butuh lebih banyak?</button>
+      <button type="button" class="btn-ghost" style="width:100%;" data-export-close="1">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- Interest gauge. Three-way on purpose, same as #sup-request-modal: folding
+     "nanti saja" into "tidak" would overstate rejection on the one signal that
+     decides whether this becomes a paid feature. -->
+<div class="modal-overlay export-more-overlay" id="export-more-modal">
+  <div class="modal export-more-modal" role="dialog" aria-modal="true" aria-labelledby="export-more-title">
+    <h3 id="export-more-title" class="nudge-title">Butuh unduhan lebih besar?</h3>
+    <p class="nudge-sub">Sekarang batasnya <strong id="export-more-limit">90</strong> baris terukur per hari.
+      Kalau kamu butuh lebih banyak, kami mau tahu &mdash; ini yang menentukan apakah kami perbesar.</p>
+    <div class="nudge-actions" style="flex-direction:column;">
+      <button type="button" class="btn-primary" style="width:100%;" data-export-more-ans="ya">Ya, saya butuh lebih banyak</button>
+      <button type="button" class="btn-ghost" style="width:100%;" data-export-more-ans="tidak">Tidak, ini sudah cukup</button>
+      <button type="button" class="btn-ghost" style="width:100%;" data-export-more-ans="tutup">Nanti saja</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="sup-request-modal">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="sup-req-title">
     <h3 id="sup-req-title" class="nudge-title">Belum ada supplier untuk produk ini</h3>
@@ -9263,6 +9360,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <script src="/js/peta-peluang.js?v=20260908a" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
-<script src="/js/gpt-app.js?v=20260908j" defer></script>
+<script src="/js/gpt-app.js?v=20260909a" defer></script>
 </body>
 </html>
