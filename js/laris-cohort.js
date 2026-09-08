@@ -12,6 +12,13 @@
   // module only owns the tab, the form and the follow-up offer.
   let runRencana = null;
   let trackKeyword = null;
+  let fetchSimilarListings = null;
+  let favoriteProducts = null;
+
+  // Teaching demo for Toko Saya — never written to student_account / crawl.
+  const CONTOH_KEY = 'lid_toko_contoh_v1';
+  const CONTOH_URL = 'https://larisid.com/contoh/toko-saya';
+  const CONTOH_SIMILAR_KW = 'basreng pedas';
 
   const VERIFIED_BADGES = {
     first_listing: 1, first_sale_verified: 1, first_review: 1,
@@ -471,9 +478,124 @@
     return String(d).slice(0, 10);
   }
 
+  function hasContoh() {
+    try { return localStorage.getItem(CONTOH_KEY) === '1'; } catch (_) { return false; }
+  }
+  function setContoh(on) {
+    try {
+      if (on) localStorage.setItem(CONTOH_KEY, '1');
+      else localStorage.removeItem(CONTOH_KEY);
+    } catch (_) {}
+  }
+  function isContohUrl(raw) {
+    const u = String(raw || '').trim().toLowerCase();
+    if (!u) return false;
+    if (u === 'contoh' || u === 'contoh-toko' || u === 'larisid.contoh') return true;
+    return /larisid\.com\/contoh(?:\/toko-saya)?\/?$/.test(u.replace(/^https?:\/\//, '').replace(/^www\./, ''));
+  }
+
+  function bindTokoShopAdd(cid) {
+    const addBtn = $('cohort-shop-add');
+    if (addBtn) addBtn.addEventListener('click', () => void linkShop(cid));
+    const urlInp = $('cohort-shop-url');
+    if (urlInp) urlInp.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') { ev.preventDefault(); void linkShop(cid); }
+    });
+  }
+
+  async function renderTokoSayaContoh(cid) {
+    const root = $('cohort-toko-saya');
+    if (!root) return;
+    root.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <h3 style="margin:0;">Toko Saya</h3>
+        <span class="cohort-contoh-badge">contoh</span>
+      </div>
+      <p class="cohort-sensor warn">Bukan crawl toko kamu — angka di bawah untuk latihan sesi saja.</p>
+      <div class="cohort-stat-row">
+        <div class="cohort-stat"><b>1</b><span>Toko</span></div>
+        <div class="cohort-stat"><b>3</b><span>Produk</span></div>
+        <div class="cohort-stat"><b>5</b><span>Terjual</span></div>
+        <div class="cohort-stat"><b>1</b><span>Ulasan</span></div>
+      </div>
+      <p class="cohort-muted" style="margin:0 0 8px;">Listing aktif: 3 · Basreng 1kg (contoh) · Minggu ini: skenario latihan, bukan estimasi pasar.</p>
+      <div class="cohort-shop-row">
+        <span>shopee · larisid.contoh · latihan</span>
+        <button type="button" class="cohort-btn secondary sm" id="cohort-contoh-clear">Hapus contoh</button>
+      </div>
+      <div class="cohort-contoh-react" role="status">
+        <p class="cohort-contoh-react-lead">Gila.</p>
+        <p class="cohort-contoh-react-body">Toko baru, 3 listing — sudah 5 terjual dan 1 ulasan. Itu jarang di minggu pertama. Jangan anggap “sudah beres”; anggap sinyal buat belajar lebih cepat dari pasar.</p>
+      </div>
+      <div class="cohort-contoh-fav">
+        <p class="cohort-contoh-fav-h">Ikuti 5 listing mirip</p>
+        <p class="cohort-muted" style="margin:0 0 10px;">Simpan 5 basreng pedas terlaris ke Favorit Aku biar kamu pantau harga &amp; terjual mereka tiap hari scrape.</p>
+        <button type="button" class="cohort-btn" id="cohort-contoh-fav5">Favoritkan 5 listing mirip</button>
+        <p id="cohort-contoh-fav-status" class="cohort-muted" style="margin:8px 0 0;"></p>
+      </div>
+      <div class="cohort-contoh-tips">
+        <p class="cohort-contoh-tips-h">Saran untuk listing contohmu</p>
+        <ul class="cohort-contoh-tips-list">
+          <li><strong>Harga 1kg:</strong> kamu di Rp 15.000 — di bawah median pasar (~Rp 25.000 untuk basreng 1kg). Pertimbangkan naikkan pelan-pelan; jangan jual di bawah modal.</li>
+          <li><strong>Keyword judul:</strong> judul contohmu belum pakai <em>daun jeruk</em>. Listing yang laris di pasar ini hampir selalu menyertakannya — pertimbangkan menambahkannya.</li>
+        </ul>
+      </div>
+      <div class="cohort-shop-add">
+        <input type="url" id="cohort-shop-url" class="cohort-input" maxlength="400" placeholder="https://shopee.co.id/namatoko" enterkeyhint="done">
+        <button type="button" class="cohort-btn" id="cohort-shop-add">Tautkan</button>
+      </div>
+      <p id="cohort-shop-status" class="cohort-muted" style="margin:6px 0 0;">Toko Shopee asli tetap bisa ditautkan di atas — contoh tidak menggantikan crawl.</p>`;
+    $('cohort-contoh-clear')?.addEventListener('click', () => {
+      setContoh(false);
+      toast('Contoh ditutup.');
+      void renderTokoSaya(cid);
+    });
+    $('cohort-contoh-fav5')?.addEventListener('click', () => void favoriteContohSimilar());
+    bindTokoShopAdd(cid);
+  }
+
+  async function favoriteContohSimilar() {
+    const st = $('cohort-contoh-fav-status');
+    const btn = $('cohort-contoh-fav5');
+    if (!fetchSimilarListings || !favoriteProducts) {
+      if (st) st.textContent = 'Favorit belum siap — muat ulang halaman.';
+      return;
+    }
+    if (btn) btn.disabled = true;
+    if (st) st.textContent = 'Mengambil 5 listing mirip…';
+    try {
+      const rows = await fetchSimilarListings(CONTOH_SIMILAR_KW, 5);
+      if (!rows || !rows.length) {
+        if (st) st.textContent = 'Belum ketemu listing mirip. Coba lagi nanti.';
+        return;
+      }
+      if (st) st.textContent = `Menyimpan ${rows.length} ke Favorit Aku…`;
+      const res = await favoriteProducts(rows, { via: 'toko_contoh_similar' });
+      const n = (res && res.added) || 0;
+      const skipped = (res && res.skipped) || 0;
+      if (st) {
+        st.textContent = n
+          ? `${n} listing masuk Favorit Aku${skipped ? ` · ${skipped} sudah ada` : ''}. Buka Favorit Aku untuk pantau.`
+          : (skipped ? 'Kelima listing itu sudah di Favorit Aku.' : 'Tidak ada yang tersimpan.');
+      }
+      if (n) {
+        toast(`${n} listing ditambahkan ke Favorit Aku.`);
+        await tryCompleteMilestone('save_favorit');
+      }
+    } catch (e) {
+      if (st) st.textContent = (e && e.message) || 'Gagal menyimpan favorit.';
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
   async function renderTokoSaya(cid) {
     const root = $('cohort-toko-saya');
     if (!root) return;
+    if (hasContoh()) {
+      await renderTokoSayaContoh(cid);
+      return;
+    }
     root.innerHTML = '<p class="cohort-muted">Memuat toko…</p>';
     try {
       const stats = await rpc('cohort_my_shop_stats', { p_cohort: cid }) || {};
@@ -486,7 +608,7 @@
 
       let shopHtml;
       if (!shops.length) {
-        shopHtml = '<p class="cohort-muted">Belum ada toko tertaut. Tempel URL toko Shopee di bawah — angka terukur mulai setelah crawl harian.</p>';
+        shopHtml = '<p class="cohort-muted">Belum ada toko tertaut. Tempel URL toko Shopee di bawah — angka terukur mulai setelah crawl harian. Latihan: tempel <code class="cohort-code">' + esc(CONTOH_URL) + '</code>.</p>';
       } else {
         shopHtml = shops.map(s => {
           const shown = s.handle || s.url || '';
@@ -537,19 +659,14 @@
         ${shopHtml}
         ${noteHtml}
         <div class="cohort-shop-add">
-          <input type="url" id="cohort-shop-url" class="cohort-input" maxlength="400" placeholder="https://shopee.co.id/namatoko" enterkeyhint="done">
+          <input type="url" id="cohort-shop-url" class="cohort-input" maxlength="400" placeholder="${esc(CONTOH_URL)}" enterkeyhint="done">
           <button type="button" class="cohort-btn" id="cohort-shop-add">Tautkan</button>
         </div>
         <p id="cohort-shop-status" class="cohort-muted" style="margin:6px 0 0;"></p>
         ${dupeHtml}`;
       const gbtn = $('cohort-group-btn');
       if (gbtn) gbtn.addEventListener('click', () => void groupChecked(cid));
-      const addBtn = $('cohort-shop-add');
-      if (addBtn) addBtn.addEventListener('click', () => void linkShop(cid));
-      const urlInp = $('cohort-shop-url');
-      if (urlInp) urlInp.addEventListener('keydown', (ev) => {
-        if (ev.key === 'Enter') { ev.preventDefault(); void linkShop(cid); }
-      });
+      bindTokoShopAdd(cid);
       root.querySelectorAll('.cohort-shop-del').forEach(b => {
         b.addEventListener('click', () => void unlinkShop(cid, b.getAttribute('data-id')));
       });
@@ -563,6 +680,15 @@
     const st = $('cohort-shop-status');
     const url = (inp && inp.value || '').trim();
     if (!url) { if (st) st.textContent = 'Tempel tautan toko Shopee dulu.'; return; }
+    if (isContohUrl(url)) {
+      setContoh(true);
+      if (inp) inp.value = '';
+      toast('Mode contoh aktif — bukan data crawl.');
+      await tryCompleteMilestone('link_shop');
+      await renderTokoSaya(cid);
+      await renderMilestones(cid);
+      return;
+    }
     if (st) st.textContent = 'Menyimpan…';
     try {
       await rpc('ssis_link_shop', { p_url: url });
@@ -1341,6 +1467,8 @@
       if (opts.openProfile) openProfile = opts.openProfile;
       if (opts.runRencana) runRencana = opts.runRencana;
       if (opts.trackKeyword) trackKeyword = opts.trackKeyword;
+      if (opts.fetchSimilarListings) fetchSimilarListings = opts.fetchSimilarListings;
+      if (opts.favoriteProducts) favoriteProducts = opts.favoriteProducts;
       captureInviteFromUrl();
     },
   };

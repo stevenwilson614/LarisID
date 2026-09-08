@@ -12950,6 +12950,51 @@ function mountLarisCohort() {
       if (res?.error) throw res.error;
       return res?.data;
     },
+    fetchSimilarListings: async (kw, limit = 5) => {
+      if (!_supabase) return [];
+      const { data, error } = await _supabase.from('listings_deduped')
+        .select('item_id,shop_id,store_name,product_name,image_url,price,total_sold,keyword,category')
+        .eq('keyword', String(kw || '').trim().toLowerCase())
+        .eq('is_offtopic', false)
+        .order('total_sold', { ascending: false })
+        .limit(Math.max(1, Math.min(Number(limit) || 5, 10)));
+      if (error) throw error;
+      return data || [];
+    },
+    favoriteProducts: async (rows, opts = {}) => {
+      const list = Array.isArray(rows) ? rows : [];
+      let added = 0;
+      let skipped = 0;
+      if (!_supabase || !currentUser) return { added: 0, skipped: 0 };
+      await refreshTrackedKwSet();
+      for (const p of list) {
+        if (!p || p.item_id == null || p.shop_id == null) continue;
+        if (isFavTracked(p)) { skipped += 1; continue; }
+        const res = await _supabase.rpc('add_tracked_product', {
+          p_item_id: p.item_id,
+          p_shop_id: p.shop_id,
+          p_keyword: p.keyword || '',
+          p_product_name: p.product_name || '',
+          p_image_url: p.image_url || '',
+          p_price: p.price != null ? p.price : null,
+          p_category: p.category || p.category_canonical || '',
+          p_store_name: p.store_name || '',
+          p_total_sold: p.total_sold != null ? p.total_sold : null,
+        });
+        if (res?.error) throw res.error;
+        const data = res?.data;
+        if (data && data.ok === false) {
+          if (data.error === 'limit_reached') break;
+          skipped += 1;
+          continue;
+        }
+        _trackedFavSet.add(favKey(p));
+        added += 1;
+        void logUserEvent('favorite_added', { ui: 'gpt', via: opts.via || 'toko_contoh_similar' });
+      }
+      syncFavButtons();
+      return { added, skipped };
+    },
   });
 }
 
@@ -12983,7 +13028,7 @@ async function routeCohortHome() {
 async function refreshCohortNav() {
   mountLarisCohort();
   const btn = $('btn-cohort');
-    if (!window.LarisCohort) {
+  if (!window.LarisCohort) {
     if (btn) btn.style.display = 'none';
     applyMentorShell();
     return;
