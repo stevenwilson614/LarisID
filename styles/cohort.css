@@ -274,6 +274,35 @@
 .cohort-siswa-qa dd.is-empty { color: #9CA3AF; font-weight: 550; }
 .cohort-siswa-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; padding-top: 12px; border-top: 1px solid #F3F3F3; }
 .cohort-siswa-acts a { text-decoration: none; }
+.cohort-siswa-row.is-me { background: #FAFAFA; }
+
+/* ── Milestone checkboxes ─────────────────────────────────────────────────── */
+.cohort-list li.cohort-ms { display: block; padding: 8px 0; }
+.cohort-ms label {
+  display: flex; align-items: flex-start; gap: 10px;
+  cursor: default; margin: 0;
+}
+.cohort-ms input[type="checkbox"] {
+  margin-top: 3px; width: 16px; height: 16px; flex: 0 0 auto;
+  accent-color: var(--ink, #1A1A1A);
+}
+.cohort-ms-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cohort-ms-title { font-weight: 650; color: #1A1A1A; }
+.cohort-ms.is-done .cohort-ms-title { color: #6B7280; text-decoration: line-through; }
+.cohort-ms-desc { font-size: .74rem; color: #8A8A8A; font-weight: 550; line-height: 1.45; }
+.cohort-ms-tag {
+  flex: 0 0 auto; font-size: .62rem; font-weight: 700; font-style: normal;
+  letter-spacing: .03em; text-transform: uppercase; color: #9CA3AF;
+  background: #F3F4F6; border-radius: 999px; padding: 2px 7px; margin-top: 2px;
+}
+
+/* ── Invite share URL ─────────────────────────────────────────────────────── */
+.cohort-join-url-box {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: .78rem; line-height: 1.45; word-break: break-all;
+  background: #F6F6F7; border: 1px solid #E8E8E8; border-radius: 10px;
+  padding: 10px 12px; color: #1A1A1A;
+}
 
 /* ── "Lihat sebagai siswa" preview strip ──────────────────────────────────── */
 .cohort-preview-bar {

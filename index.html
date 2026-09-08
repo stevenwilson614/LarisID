@@ -207,7 +207,7 @@
 <link rel="stylesheet" href="/styles/pasar-compare.css?v=20260905b">
 <link rel="stylesheet" href="/styles/honesty.css?v=20260905a">
 <link rel="stylesheet" href="/styles/laris-merdeka.css?v=20260816b">
-<link rel="stylesheet" href="/styles/cohort.css?v=20260831d">
+<link rel="stylesheet" href="/styles/cohort.css?v=20260908a">
 
 <style>
 :root {
@@ -7070,19 +7070,47 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   .btn-studentmode { padding: 6px 9px; }
   .btn-studentmode #btn-viewas-label { display: none; }
 }
-/* Mentor shell. A mentor is not researching products, so the seller tools, the
-   chat history and the location card all leave; the rail becomes the three
-   mentor destinations. !important is needed on the hides because gpt-app and
-   laris-cohort write inline display on several of these; .mentor-nav needs none
-   because nothing toggles it individually. */
+/* Mentor shell. Primary rail is Dashboard / Siswa / Jadwal. Cari Produk,
+   Laris AI and Favorit Aku sit behind the Alat seller accordion so a mentor
+   can still demo the product without leaving the shell. Chat history and
+   the location card come back while that accordion is open. !important is
+   needed on the hides because gpt-app and laris-cohort write inline display
+   on several of these; .mentor-nav needs none because nothing toggles it
+   individually. */
 .mentor-nav { display: none; }
+.side-seller-toggle { display: none; }
+.side-seller-menu {
+  display: flex; flex-direction: column; gap: 2px;
+}
+.side-seller-chevron {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: transform .18s var(--ease);
+}
 body.mentor-shell .mentor-nav { display: flex; }
-body.mentor-shell #btn-produk,
-body.mentor-shell #btn-ask-laris,
-body.mentor-shell #btn-tracker,
+body.mentor-shell .side-seller-toggle { display: flex; }
+body.mentor-shell .side-seller:not(.open) .side-seller-menu { display: none; }
+body.mentor-shell .side-seller.open .side-seller-chevron { transform: rotate(180deg); }
+body.mentor-shell .side-seller.open .side-seller-toggle,
+body.mentor-shell .side-seller-toggle.is-child-active {
+  background: #fff; box-shadow: 0 0 0 1px var(--line);
+}
+body.mentor-shell .side-seller-menu .side-btn { padding-left: 22px; }
+body.mentor-shell #btn-home { order: 0; }
+body.mentor-shell #btn-mentor-dash { order: 1; }
+body.mentor-shell #btn-mentor-siswa { order: 2; }
+body.mentor-shell #btn-mentor-jadwal { order: 3; }
+body.mentor-shell .side-seller { order: 4; }
+body.mentor-shell #btn-community { order: 5; }
+body.mentor-shell .sidebar > .side-section { order: 6; }
+body.mentor-shell #btn-set-lokasi { order: 7; }
+body.mentor-shell .sidebar-foot { order: 8; }
 body.mentor-shell #btn-cohort,
 body.mentor-shell #btn-set-lokasi,
 body.mentor-shell .sidebar > .side-section { display: none !important; }
+body.mentor-shell .side-seller.open ~ #btn-set-lokasi { display: flex !important; }
+body.mentor-shell .side-seller.open ~ .side-section { display: flex !important; }
 
 /* Role menu. Same chrome as .adm-filter-pop, the site's existing popover. */
 .viewas { position: relative; display: inline-flex; }
@@ -7182,20 +7210,29 @@ body:has(.modal-overlay.open) .msg-steven-fab {
       <img class="brand-lockup" src="/images/brand/logo-horizontal-red.webp" alt="LARIS" height="36">
       <span class="brand-beta">Beta</span>
     </a>
-    <button type="button" class="side-btn" id="btn-produk" title="Cari Produk">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ic-a" d="M12 2.6 20.8 7 12 11.4 3.2 7z"/><path class="ic-a" d="M3.2 7v10L12 21.4V11.4"/><path class="ic-a" d="M20.8 7v10L12 21.4"/><path class="ic-a" d="m8.4 7.9 5.8-2.9"/><path class="ic-a" d="m11.83 4.65 2.37.35-1.14 2.11"/></svg>
-      Cari Produk
-    </button>
-    <button type="button" class="side-btn" id="btn-ask-laris" title="Laris AI">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ic-a" d="M17.8 4H6.2A2.2 2.2 0 0 0 4 6.2v8.6A2.2 2.2 0 0 0 6.2 17H7v3.2a.5.5 0 0 0 .85.36L11.4 17h6.4A2.2 2.2 0 0 0 20 14.8V6.2A2.2 2.2 0 0 0 17.8 4Z"/><path class="ic-a" stroke-width="1.5" d="M12 6.7c.44 2.5 1.16 3.22 3.66 3.66-2.5.44-3.22 1.16-3.66 3.66-.44-2.5-1.16-3.22-3.66-3.66 2.5-.44 3.22-1.16 3.66-3.66Z"/></svg>
-      Laris AI
-    </button>
-    <!-- Primary daily destination, so it sits with the action buttons rather
-         than in .sidebar-foot with the meta pages (Harga/FAQ). -->
-    <button type="button" class="side-btn" id="btn-tracker" title="Favorit Aku">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-      Favorit Aku
-    </button>
+    <div class="side-seller" id="side-seller">
+      <button type="button" class="side-btn side-seller-toggle" id="btn-side-seller" aria-expanded="false" aria-controls="side-seller-menu" title="Alat seller">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ic-a" d="M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17a2.1 2.1 0 1 0 3 3l5.3-5.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.8-2.8 2.5-2.5Z"/></svg>
+        Alat seller
+        <svg class="side-seller-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="side-seller-menu" id="side-seller-menu">
+        <button type="button" class="side-btn" id="btn-produk" title="Cari Produk">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ic-a" d="M12 2.6 20.8 7 12 11.4 3.2 7z"/><path class="ic-a" d="M3.2 7v10L12 21.4V11.4"/><path class="ic-a" d="M20.8 7v10L12 21.4"/><path class="ic-a" d="m8.4 7.9 5.8-2.9"/><path class="ic-a" d="m11.83 4.65 2.37.35-1.14 2.11"/></svg>
+          Cari Produk
+        </button>
+        <button type="button" class="side-btn" id="btn-ask-laris" title="Laris AI">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ic-a" d="M17.8 4H6.2A2.2 2.2 0 0 0 4 6.2v8.6A2.2 2.2 0 0 0 6.2 17H7v3.2a.5.5 0 0 0 .85.36L11.4 17h6.4A2.2 2.2 0 0 0 20 14.8V6.2A2.2 2.2 0 0 0 17.8 4Z"/><path class="ic-a" stroke-width="1.5" d="M12 6.7c.44 2.5 1.16 3.22 3.66 3.66-2.5.44-3.22 1.16-3.66 3.66-.44-2.5-1.16-3.22-3.66-3.66 2.5-.44 3.22-1.16 3.66-3.66Z"/></svg>
+          Laris AI
+        </button>
+        <!-- Primary daily destination, so it sits with the action buttons rather
+             than in .sidebar-foot with the meta pages (Harga/FAQ). -->
+        <button type="button" class="side-btn" id="btn-tracker" title="Favorit Aku">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+          Favorit Aku
+        </button>
+      </div>
+    </div>
     <button type="button" class="side-btn" id="btn-community" title="Komunitas">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 4H6.2A2.2 2.2 0 0 0 4 6.2v8.6A2.2 2.2 0 0 0 6.2 17H7v3.2a.5.5 0 0 0 .85.36L11.4 17h6.4A2.2 2.2 0 0 0 20 14.8V6.2A2.2 2.2 0 0 0 17.8 4Z"/><path class="ic-a" d="M12 7.8v5.4M9.3 10.5h5.4"/></svg>
       Komunitas
@@ -8337,61 +8374,9 @@ body:has(.modal-overlay.open) .msg-steven-fab {
             <div id="cohort-student-wrap">
               <div id="cohort-student-subtabs" class="cohort-subtabs" style="display:none;">
                 <button type="button" class="cohort-subtab active" data-cstab="ringkasan">Ringkasan</button>
-                <button type="button" class="cohort-subtab" data-cstab="rencana">Rencana Jualan</button>
+                <button type="button" class="cohort-subtab" data-cstab="siswa">Siswa</button>
                 <button type="button" class="cohort-subtab" data-cstab="feed">Feed</button>
-                <button type="button" class="cohort-subtab" data-cstab="rankings">Rankings</button>
-                <button type="button" class="cohort-subtab" data-cstab="chat">Chat</button>
                 <button type="button" class="cohort-subtab" data-cstab="jadwal">Jadwal</button>
-              </div>
-              <!-- Rencana Jualan. The student names a product; LARISgpt returns a
-                   starting plan grounded in what other NEW shops in that market did,
-                   then offers to put the market under daily watch. The run itself is
-                   the standard agent panel, rendered into #cohort-rencana-thread via
-                   the same appendBubble({root}) path the Tanya AI side panel uses. -->
-              <div id="cohort-student-panel-rencana" style="display:none;">
-                <div class="cohort-card">
-                  <h3>Mau jual apa?</h3>
-                  <div class="cohort-muted" style="margin-bottom:12px;">
-                    Sebut produknya. Laris akan baca data toko-toko baru di pasar itu —
-                    harga mereka, judul yang laku, dan apa yang membedakan yang jalan
-                    dari yang mandek.
-                  </div>
-                  <div class="rjl-form">
-                    <label class="rjl-field">
-                      <span>Produk</span>
-                      <input id="rjl-produk" type="text" autocomplete="off"
-                             placeholder="contoh: kacang mete" maxlength="60">
-                    </label>
-                    <label class="rjl-field">
-                      <span>Kotamu <em>(opsional)</em></span>
-                      <input id="rjl-kota" type="text" autocomplete="off"
-                             placeholder="contoh: Bau-Bau" maxlength="40">
-                    </label>
-                    <label class="rjl-field">
-                      <span>Modal per unit <em>(opsional)</em></span>
-                      <input id="rjl-modal" type="text" inputmode="numeric"
-                             placeholder="contoh: 15000" maxlength="12">
-                    </label>
-                  </div>
-                  <div class="rjl-actions">
-                    <button type="button" id="rjl-go" class="cohort-btn">Susun rencana</button>
-                    <span id="rjl-status" class="cohort-muted"></span>
-                  </div>
-                  <p class="rjl-note">
-                    Modal dipakai untuk mengecek saran harga tidak jatuh di bawah harga
-                    pokokmu. Kalau dikosongkan, Laris akan bilang bagian mana yang belum
-                    bisa dicek.
-                  </p>
-                </div>
-                <div id="cohort-rencana-thread" class="cohort-card rjl-thread" style="display:none;"></div>
-                <div id="cohort-rencana-after" class="cohort-card" style="display:none;">
-                  <h3>Pantau pasar ini</h3>
-                  <div class="cohort-muted" id="rjl-after-copy"></div>
-                  <div class="rjl-actions" style="margin-top:10px;">
-                    <button type="button" id="rjl-track" class="cohort-btn">Pantau pasar ini</button>
-                    <span id="rjl-track-status" class="cohort-muted"></span>
-                  </div>
-                </div>
               </div>
               <div id="cohort-student-panel-ringkasan">
                 <div class="cohort-grid">
@@ -8423,6 +8408,17 @@ body:has(.modal-overlay.open) .msg-steven-fab {
                   <div id="cohort-join-status" class="cohort-muted" style="margin-top:8px;"></div>
                 </div>
               </div>
+              <div id="cohort-student-panel-siswa" style="display:none;">
+                <div class="cohort-card" style="margin-bottom:12px;">
+                  <h3>Mentor</h3>
+                  <p class="cohort-muted" style="margin-bottom:10px;">Hubungi mentor kalau butuh bantuan — WhatsApp langsung dari baris mereka.</p>
+                  <div id="cohort-siswa-mentors"></div>
+                </div>
+                <div class="cohort-card">
+                  <h3>Siswa kohort</h3>
+                  <div id="cohort-siswa-list"></div>
+                </div>
+              </div>
               <div id="cohort-student-panel-feed" style="display:none;">
                 <div class="cohort-card">
                   <h3>Feed komunitas</h3>
@@ -8436,28 +8432,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
                   <textarea id="cohort-post-body" class="cohort-input" rows="3" placeholder="Tulis ke feed kohort…"></textarea>
                   <button type="button" class="cohort-btn" id="cohort-post-send">Kirim</button>
                   <div id="cohort-feed-list" style="margin-top:16px;"></div>
-                </div>
-              </div>
-              <div id="cohort-student-panel-rankings" style="display:none;">
-                <div class="cohort-card">
-                  <h3>Papan peringkat <span class="cohort-terukur">terukur</span></h3>
-                  <div id="cohort-rank-chips" class="cohort-subtabs">
-                    <button type="button" class="cohort-subtab" data-board="aktivitas">Aktivitas</button>
-                    <button type="button" class="cohort-subtab active" data-board="produk">Produk</button>
-                    <button type="button" class="cohort-subtab" data-board="terjual">Terjual</button>
-                    <button type="button" class="cohort-subtab" data-board="ulasan">Ulasan</button>
-                    <button type="button" class="cohort-subtab" data-board="konsistensi">Konsistensi</button>
-                  </div>
-                  <p id="cohort-rankings-summary" class="cohort-muted"></p>
-                  <div id="cohort-rankings-board"></div>
-                </div>
-              </div>
-              <div id="cohort-student-panel-chat" style="display:none;">
-                <div class="cohort-card">
-                  <h3>Chat</h3>
-                  <p class="cohort-muted" style="margin-bottom:10px;">Obrolan kelas tetap di WhatsApp — tidak diduplikasi di sini.</p>
-                  <a id="cohort-chat-wa" class="cohort-btn" href="#" target="_blank" rel="noopener" style="display:none;text-decoration:none;">Buka grup WhatsApp</a>
-                  <p id="cohort-chat-wa-missing" class="cohort-muted" style="display:none;">Mentor belum memasang tautan grup.</p>
                 </div>
               </div>
               <div id="cohort-student-panel-jadwal" style="display:none;">
@@ -8479,6 +8453,15 @@ body:has(.modal-overlay.open) .msg-steven-fab {
                   <h3>Ringkasan kohort</h3>
                   <div id="cohort-mentor-summary" class="cohort-muted">—</div>
                   <div id="cohort-mentor-stats"></div>
+                </div>
+                <div class="cohort-card" style="margin-bottom:12px;" id="cohort-invite-share-card">
+                  <h3>Undang siswa</h3>
+                  <p class="cohort-muted" style="margin-bottom:10px;">Kirim tautan ini ke siswa. Setelah login, mereka langsung gabung kohort.</p>
+                  <div class="cohort-join-url-box" id="cohort-invite-url">—</div>
+                  <div class="rjl-actions" style="margin-top:10px;">
+                    <button type="button" class="cohort-btn" id="cohort-invite-copy">Salin tautan</button>
+                    <span id="cohort-invite-copy-status" class="cohort-muted"></span>
+                  </div>
                 </div>
                 <div class="cohort-grid">
                   <div class="cohort-card">
@@ -9193,7 +9176,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <script defer src="/js/gpt-referral.js?v=20260821a"></script>
 <script defer src="/js/gpt-profile.js?v=20260907a"></script>
 <script defer src="/js/gpt-community-board.js?v=20260907b"></script>
-<script defer src="/js/laris-cohort.js?v=20260906a"></script>
+<script defer src="/js/laris-cohort.js?v=20260908a"></script>
 <script defer src="/js/laris-mascot-rigs.js?v=20260907k"></script>
 <script defer src="/js/laris-mascot.js?v=20260907k"></script>
 <script defer src="/js/gpt-chat-memory.js?v=20260906b"></script>
@@ -9206,6 +9189,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <script src="/js/peta-peluang.js?v=20260908a" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
-<script src="/js/gpt-app.js?v=20260908d" defer></script>
+<script src="/js/gpt-app.js?v=20260908e" defer></script>
 </body>
 </html>

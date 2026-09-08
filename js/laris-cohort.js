@@ -34,7 +34,6 @@
     memberNames: {},
     studentTab: 'ringkasan',
     mentorTab: 'overview',
-    rankBoard: 'produk',
     ready: false,
     riseApps: [],
     riseFilter: 'all',
@@ -47,6 +46,7 @@
     // than rendered and hidden — a mentor has no Toko Saya, and four queries for
     // a wrap nobody can see is just latency.
     mentorOnly: false,
+    pendingInvite: null,
   };
 
   function supabase() { return sb && sb(); }
@@ -60,10 +60,82 @@
   }
 
   /** True where a mentor gets mentor-shaped output. Preview drops it on purpose:
-   *  the rankings board shows mentors everyone and students only the top 10 plus
-   *  themselves, so leaving this true would show the wrong board in the preview. */
+   *  the student roster and invite share stay mentor-only outside preview. */
   function canMentor() {
     return !state.previewCid && !!(state.mentorCohort || isAdmin());
+  }
+
+  /** True when this account actually mentors state.mentorCohort (primary
+   *  mentor_user_id or active mentor member). Admins fill mentorCohort with the
+   *  first of every cohort, so myMentorCohort() alone is not this question. */
+  function isGenuineMentor() {
+    const u = user();
+    const c = state.mentorCohort;
+    if (!u || !c) return false;
+    if (c.mentor_user_id === u.id) return true;
+    // Secondary mentors (cohort_members.role = mentor) are also genuine.
+    return !!(state._mentorMemberIds && state._mentorMemberIds[c.id]);
+  }
+
+  const INVITE_KEY = 'larisid_pending_cohort_invite';
+
+  function captureInviteFromUrl() {
+    try {
+      const u = new URL(window.location.href);
+      const code = (u.searchParams.get('invite') || u.searchParams.get('cohort') || '').trim();
+      if (!code) return;
+      state.pendingInvite = code;
+      try { sessionStorage.setItem(INVITE_KEY, code); } catch (_) {}
+      u.searchParams.delete('invite');
+      u.searchParams.delete('cohort');
+      const clean = u.pathname + (u.search || '') + (u.hash || '');
+      window.history.replaceState({}, '', clean);
+    } catch (_) {}
+  }
+
+  function getPendingInvite() {
+    if (state.pendingInvite) return state.pendingInvite;
+    try {
+      const c = (sessionStorage.getItem(INVITE_KEY) || '').trim();
+      if (c) state.pendingInvite = c;
+      return c;
+    } catch (_) { return ''; }
+  }
+
+  function clearPendingInvite() {
+    state.pendingInvite = null;
+    try { sessionStorage.removeItem(INVITE_KEY); } catch (_) {}
+  }
+
+  async function tryCompleteMilestone(key) {
+    if (!key) return false;
+    let cid = state.studentCohortId;
+    if (!cid) {
+      const client = supabase();
+      const u = user();
+      if (!client || !u) return false;
+      try {
+        const { data } = await client.from('cohort_members')
+          .select('cohort_id')
+          .eq('user_id', u.id)
+          .eq('status', 'active')
+          .eq('role', 'student')
+          .limit(1);
+        cid = data && data[0] && data[0].cohort_id;
+        if (cid) state.studentCohortId = cid;
+      } catch (_) { return false; }
+    }
+    if (!cid) return false;
+    try {
+      await rpc('cohort_try_complete_system_milestone', { p_cohort: cid, p_key: String(key) });
+      return true;
+    } catch (_) { return false; }
+  }
+
+  function joinUrlFor(inviteCode) {
+    if (!inviteCode) return '';
+    const origin = (window.location && window.location.origin) || 'https://larisid.com';
+    return origin + '/?invite=' + encodeURIComponent(inviteCode);
   }
 
   async function rpc(name, args) {
@@ -81,6 +153,7 @@
     state.studentCohortId = null;
     state.mentorCohort = null;
     state.cohortMap = {};
+    state._mentorMemberIds = {};
     if (!client || !u) {
       if (btn) btn.style.display = 'none';
       return false;
@@ -90,6 +163,9 @@
       .select('cohort_id,role,status')
       .eq('user_id', u.id)
       .eq('status', 'active');
+    (mem || []).forEach(m => {
+      if (m.role === 'mentor' && m.cohort_id) state._mentorMemberIds[m.cohort_id] = true;
+    });
     const ids = [...new Set((mem || []).map(m => m.cohort_id).filter(Boolean))];
     let led = [];
     if (isAdmin()) {
@@ -98,6 +174,13 @@
     } else {
       const r = await client.from('cohorts').select('*').eq('mentor_user_id', u.id);
       led = r.data || [];
+      const mentorMemIds = (mem || []).filter(m => m.role === 'mentor').map(m => m.cohort_id);
+      if (mentorMemIds.length) {
+        const r2 = await client.from('cohorts').select('*').in('id', mentorMemIds);
+        (r2.data || []).forEach(c => {
+          if (!led.some(x => x.id === c.id)) led.push(c);
+        });
+      }
     }
     (led || []).forEach(c => { state.cohortMap[c.id] = c; });
     if (ids.length) {
@@ -106,7 +189,9 @@
     }
     const stu = (mem || []).find(m => m.role === 'student');
     state.studentCohortId = stu ? stu.cohort_id : null;
-    state.mentorCohort = (led && led[0]) || null;
+    // Prefer Kohort Pertama when a mentor leads several cohorts.
+    const prefer = (led || []).find(c => c.slug === 'kohort-pertama' || c.name === 'Kohort Pertama');
+    state.mentorCohort = prefer || (led && led[0]) || null;
     const show = !!(state.studentCohortId || state.mentorCohort || isAdmin());
     if (btn) btn.style.display = show ? '' : 'none';
     return show;
@@ -130,11 +215,12 @@
   async function join() {
     const inp = $('cohort-invite-input');
     const st = $('cohort-join-status');
-    const code = (inp && inp.value || '').trim();
+    const code = (inp && inp.value || '').trim() || getPendingInvite();
     if (!code) { if (st) st.textContent = 'Masukkan kode undangan kohort.'; return; }
     if (st) st.textContent = 'Menggabung…';
     try {
       await rpc('join_cohort', { p_invite: code });
+      clearPendingInvite();
       if (st) st.textContent = 'Berhasil gabung.';
       await initMembership();
       await render();
@@ -143,128 +229,16 @@
     }
   }
 
-  /* ── Rencana Jualan ──────────────────────────────────────────────────────
-   *
-   * Bound once, lazily, the first time the tab is opened -- render() runs on
-   * every tab switch and every roster refresh, so binding there would stack a
-   * fresh click handler on the button each time and fire one run per stacked
-   * listener.
-   */
-  let rencanaBound = false;
-  let rencanaBusy = false;
-  let rencanaPasar = '';
-
-  function mountRencana() {
-    if (rencanaBound) return;
-    rencanaBound = true;
-    const go = $('rjl-go');
-    const track = $('rjl-track');
-    if (go) go.addEventListener('click', function () { void runRencanaFlow(); });
-    if (track) track.addEventListener('click', function () { void trackRencanaPasar(); });
-    // Enter anywhere in the form submits, the way a one-field form should.
-    ['rjl-produk', 'rjl-kota', 'rjl-modal'].forEach(function (id) {
-      const el = $(id);
-      if (el) el.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') { e.preventDefault(); void runRencanaFlow(); }
-      });
-    });
-  }
-
-  /** "Rp 15.000" / "15,000" / "15rb" -> 15000. Returns 0 when unreadable. */
-  function parseModal(raw) {
-    let t = String(raw == null ? '' : raw).toLowerCase().trim();
-    if (!t) return 0;
-    const rb = /(\d+(?:[.,]\d+)?)\s*(rb|ribu|k)\b/.exec(t);
-    if (rb) return Math.round(parseFloat(rb[1].replace(',', '.')) * 1000);
-    const jt = /(\d+(?:[.,]\d+)?)\s*(jt|juta)\b/.exec(t);
-    if (jt) return Math.round(parseFloat(jt[1].replace(',', '.')) * 1e6);
-    const digits = t.replace(/[^0-9]/g, '');
-    return digits ? parseInt(digits, 10) : 0;
-  }
-
-  async function runRencanaFlow() {
-    if (rencanaBusy) return;
-    const status = $('rjl-status');
-    const thread = $('cohort-rencana-thread');
-    const after = $('cohort-rencana-after');
-    const produk = (($('rjl-produk') || {}).value || '').trim();
-    if (!produk) {
-      if (status) status.textContent = 'Sebut dulu produk yang mau kamu jual.';
-      return;
-    }
-    if (typeof runRencana !== 'function') {
-      if (status) status.textContent = 'Fitur ini belum siap di halaman ini. Muat ulang halaman.';
-      return;
-    }
-    rencanaBusy = true;
-    rencanaPasar = '';
-    const go = $('rjl-go');
-    if (go) go.disabled = true;
-    if (status) status.textContent = 'Membaca data pasar…';
-    if (after) after.style.display = 'none';
-    // A second run replaces the first rather than stacking under it: two plans
-    // for two different products in one scroll is how a student loses the thread.
-    if (thread) { thread.innerHTML = ''; thread.style.display = ''; }
-
+  /** Redeem ?invite= after login (or when already signed in on load). */
+  async function redeemPendingInvite() {
+    const code = getPendingInvite();
+    if (!code || !user()) return false;
     try {
-      const res = await runRencana({
-        produk: produk,
-        kota: (($('rjl-kota') || {}).value || '').trim(),
-        modal: parseModal(($('rjl-modal') || {}).value),
-      }, { root: thread });
-      if (status) status.textContent = '';
-      // res is null when the AI gate declined (logged out, or _useAi refused).
-      // The bubble already said so, so this must not overwrite it with success.
-      if (res && res.pasar) {
-        rencanaPasar = res.pasar;
-        const copy = $('rjl-after-copy');
-        if (copy) {
-          copy.textContent = 'Simpan produk teratas dari "' + rencanaPasar + '" ke Favorit Aku. '
-            + 'Kami scrape favorit itu tiap hari, dan kamu bisa pilih kabar WA atau email.';
-        }
-        if (after) after.style.display = '';
-        const ts = $('rjl-track-status');
-        if (ts) ts.textContent = '';
-        const tb = $('rjl-track');
-        if (tb) tb.disabled = false;
-      }
-    } catch (e) {
-      if (status) status.textContent = (e && e.message) || 'Gagal menyusun rencana.';
-    } finally {
-      rencanaBusy = false;
-      if (go) go.disabled = false;
-    }
-  }
-
-  async function trackRencanaPasar() {
-    const ts = $('rjl-track-status');
-    if (!rencanaPasar) { if (ts) ts.textContent = 'Belum ada pasar untuk dipantau.'; return; }
-    if (typeof trackKeyword !== 'function') {
-      if (ts) ts.textContent = 'Buka Favorit Aku untuk menambahkannya.';
-      return;
-    }
-    const btn = $('rjl-track');
-    if (btn) btn.disabled = true;
-    if (ts) ts.textContent = 'Menyimpan…';
-    try {
-      // add_tracked_keyword reports refusals as { ok:false, error } instead of
-      // throwing, so a refused add must not be reported back as success.
-      const d = await trackKeyword(rencanaPasar, '');
-      if (d && d.ok === false) {
-        if (ts) ts.textContent = ({
-          limit_reached: 'Favorit penuh. Buka Favorit Aku untuk mengatur.',
-          already_tracked: 'Produk ini sudah di Favorit Aku.',
-          no_listing: 'Belum ada listing untuk pasar ini.',
-          keyword_too_short: 'Keyword ini terlalu pendek.',
-        })[d.error] || 'Tidak bisa menambah favorit sekarang.';
-        if (btn) btn.disabled = false;
-        return;
-      }
-      if (ts) ts.textContent = 'Tersimpan di Favorit Aku. Data harian mulai besok pagi.';
-    } catch (e) {
-      if (ts) ts.textContent = (e && e.message) || 'Gagal menyimpan.';
-      if (btn) btn.disabled = false;
-    }
+      await rpc('join_cohort', { p_invite: code });
+      clearPendingInvite();
+      await initMembership();
+      return true;
+    } catch (_) { return false; }
   }
 
   function switchStudentTab(tab) {
@@ -272,14 +246,13 @@
     document.querySelectorAll('#cohort-student-subtabs .cohort-subtab').forEach(b => {
       b.classList.toggle('active', b.dataset.cstab === tab);
     });
-    ['ringkasan', 'rencana', 'feed', 'rankings', 'chat', 'jadwal'].forEach(t => {
+    ['ringkasan', 'siswa', 'feed', 'jadwal'].forEach(t => {
       const el = $('cohort-student-panel-' + t);
       if (el) el.style.display = t === tab ? '' : 'none';
     });
     const cid = studentCid();
-    if (tab === 'rencana') mountRencana();
     if (tab === 'feed' && cid) void renderFeed(cid);
-    if (tab === 'rankings' && cid) void renderRankings(cid);
+    if (tab === 'siswa' && cid) void renderSiswaTab(cid);
     if (tab === 'jadwal' && cid) void renderJadwal(cid, false);
     if (tab === 'ringkasan' && cid) void renderTokoSaya(cid);
   }
@@ -302,7 +275,11 @@
     const c = state.mentorCohort;
     if (tab === 'students') void renderRiseStudents();
     if (!c) return;
-    if (tab === 'overview') { void renderMentorDash(c.id); void renderWins(c.id); }
+    if (tab === 'overview') {
+      void renderMentorDash(c.id);
+      void renderWins(c.id);
+      renderInviteShare(c);
+    }
     if (tab === 'students') void renderRoster(c.id);
     if (tab === 'jadwal') void renderJadwal(c.id, true);
   }
@@ -591,7 +568,9 @@
       await rpc('ssis_link_shop', { p_url: url });
       if (inp) inp.value = '';
       toast('Toko tertaut.');
+      await tryCompleteMilestone('link_shop');
       await renderTokoSaya(cid);
+      await renderMilestones(cid);
     } catch (e) {
       if (st) st.textContent = e.message || 'Gagal menautkan.';
     }
@@ -615,10 +594,30 @@
       await rpc('ssis_group_listings', { p_listing_ids: ids });
       toast('Digabung jadi 1 produk.');
       await renderTokoSaya(cid);
-      if (state.studentTab === 'rankings') await renderRankings(cid);
     } catch (e) {
       toast(e.message || 'Gagal menggabung.');
     }
+  }
+
+  const MS_AUTO = {
+    first_deep_dive: 1,
+    open_kalkulator: 1,
+    ask_laris_ai: 1,
+    save_favorit: 1,
+    link_shop: 1,
+  };
+  const MS_TERUKUR = {
+    first_listing: 1,
+    first_review: 1,
+    first_sale: 1,
+  };
+
+  async function syncShopMilestones(stats) {
+    if (!state.studentCohortId || !stats) return;
+    if ((stats.shops || []).length) await tryCompleteMilestone('link_shop');
+    if ((stats.produk || 0) > 0) await tryCompleteMilestone('first_listing');
+    if ((stats.ulasan || 0) > 0) await tryCompleteMilestone('first_review');
+    if ((stats.terjual || 0) > 0) await tryCompleteMilestone('first_sale');
   }
 
   async function renderMilestones(cid) {
@@ -627,13 +626,115 @@
     const client = supabase();
     const u = user();
     if (!cid || !client || !u) { ul.innerHTML = '<li class="cohort-muted">—</li>'; return; }
-    const { data: ms } = await client.from('milestones').select('id,title,sort_order').eq('cohort_id', cid).order('sort_order');
-    const { data: done } = await client.from('user_milestone_progress').select('milestone_id').eq('user_id', u.id);
+    try {
+      const stats = await rpc('cohort_my_shop_stats', { p_cohort: cid });
+      await syncShopMilestones(stats || {});
+    } catch (_) {}
+    const { data: ms } = await client.from('milestones')
+      .select('id,title,description,milestone_key,sort_order')
+      .eq('cohort_id', cid).order('sort_order');
+    const { data: done } = await client.from('user_milestone_progress')
+      .select('milestone_id').eq('user_id', u.id);
     const doneSet = new Set((done || []).map(d => d.milestone_id));
     if (!(ms || []).length) { ul.innerHTML = '<li class="cohort-muted">Belum ada milestone.</li>'; return; }
-    ul.innerHTML = ms.map(m => `<li><span>${esc(m.title)}</span>${
-      doneSet.has(m.id) ? '<span class="cohort-pill ok">Selesai</span>' : ''
-    }</li>`).join('');
+    ul.innerHTML = ms.map(m => {
+      const ok = doneSet.has(m.id);
+      const key = m.milestone_key || '';
+      const tag = MS_AUTO[key] ? 'otomatis' : (MS_TERUKUR[key] ? 'terukur' : '');
+      return `<li class="cohort-ms${ok ? ' is-done' : ''}">
+        <label>
+          <input type="checkbox" disabled ${ok ? 'checked' : ''}>
+          <span class="cohort-ms-body">
+            <span class="cohort-ms-title">${esc(m.title)}</span>
+            ${m.description ? `<span class="cohort-ms-desc">${esc(m.description)}</span>` : ''}
+          </span>
+          ${tag ? `<em class="cohort-ms-tag">${tag}</em>` : ''}
+        </label>
+      </li>`;
+    }).join('');
+  }
+
+  function initials(name) {
+    const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return '?';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  function memberRowHtml(r) {
+    const mine = r.is_me ? ' is-me' : '';
+    const wa = r.wa
+      ? `<a class="cohort-btn secondary sm" href="${esc(waHref(r.wa))}" target="_blank" rel="noopener">${esc(fmtWa(r.wa))}</a>`
+      : (r.role === 'mentor' ? '<span class="cohort-muted">WA belum diisi</span>' : '');
+    const role = r.role === 'mentor' ? '<span class="cohort-pill ok">Mentor</span>' : '';
+    return `<div class="cohort-siswa-row${mine}" ${r.user_id && !r.is_me ? `data-uid="${esc(r.user_id)}"` : ''}>
+      <span class="cohort-siswa-av" aria-hidden="true">${esc(initials(r.display_name))}</span>
+      <span class="cohort-siswa-body">
+        <strong>${esc(r.display_name || 'Anggota')}${r.is_me ? ' (kamu)' : ''}</strong>
+        ${role}
+      </span>
+      ${wa}
+    </div>`;
+  }
+
+  async function renderSiswaTab(cid) {
+    const mentorsEl = $('cohort-siswa-mentors');
+    const listEl = $('cohort-siswa-list');
+    if (mentorsEl) mentorsEl.innerHTML = '<p class="cohort-muted">Memuat…</p>';
+    if (listEl) listEl.innerHTML = '<p class="cohort-muted">Memuat…</p>';
+    try {
+      const rows = await rpc('cohort_class_roster', { p_cohort: cid }) || [];
+      const mentors = rows.filter(r => r.role === 'mentor');
+      const students = rows.filter(r => r.role === 'student');
+      if (mentorsEl) {
+        mentorsEl.innerHTML = mentors.length
+          ? mentors.map(memberRowHtml).join('')
+          : '<p class="cohort-muted">Belum ada mentor di kohort ini.</p>';
+      }
+      if (listEl) {
+        listEl.innerHTML = students.length
+          ? students.map(memberRowHtml).join('')
+          : '<p class="cohort-muted">Belum ada siswa. Kirim tautan undangan dari mentor.</p>';
+        listEl.querySelectorAll('[data-uid]').forEach(el => {
+          el.style.cursor = 'pointer';
+          el.addEventListener('click', (e) => {
+            if (e.target && e.target.closest && e.target.closest('a')) return;
+            openProfile(el.getAttribute('data-uid'));
+          });
+        });
+      }
+    } catch (e) {
+      const msg = `<p class="cohort-muted">${esc(e.message || 'Gagal memuat daftar.')}</p>`;
+      if (mentorsEl) mentorsEl.innerHTML = msg;
+      if (listEl) listEl.innerHTML = msg;
+    }
+  }
+
+  function renderInviteShare(c) {
+    const box = $('cohort-invite-url');
+    const card = $('cohort-invite-share-card');
+    if (!box) return;
+    const url = joinUrlFor(c && c.invite_code);
+    if (!url) {
+      if (card) card.style.display = 'none';
+      return;
+    }
+    if (card) card.style.display = '';
+    box.textContent = url;
+    box.dataset.url = url;
+  }
+
+  function copyInviteUrl() {
+    const box = $('cohort-invite-url');
+    const st = $('cohort-invite-copy-status');
+    const url = (box && (box.dataset.url || box.textContent) || '').trim();
+    if (!url || url === '—') return;
+    navigator.clipboard.writeText(url).then(() => {
+      if (st) st.textContent = 'Tersalin.';
+      toast('Tautan undangan disalin.');
+    }).catch(() => {
+      if (st) st.textContent = 'Gagal salin — salin manual dari kotak.';
+    });
   }
 
   async function renderAnnouncements(cid) {
@@ -1080,6 +1181,7 @@
       if (sum && state.mentorCohort) {
         sum.innerHTML = `<strong>${esc(state.mentorCohort.name || 'Kohort')}</strong>`;
       }
+      renderInviteShare(state.mentorCohort);
       // The student-preview card is an admin affordance and a trap here: it calls
       // previewAs, which clears mentorOnly and would leave the mentor rail standing
       // over a student screen. Exit to the admin view to use it.
@@ -1100,7 +1202,7 @@
     if (!cid) {
       if (info) info.textContent = 'Kamu belum di kohort. Pakai kode undangan, atau minta mentor.';
     } else {
-      if (info) info.innerHTML = `<strong>${esc(c && c.name || 'Kohort')}</strong><div class="cohort-muted">Aktif · feed dan papan hanya terlihat anggota</div>`;
+      if (info) info.innerHTML = `<strong>${esc(c && c.name || 'Kohort')}</strong><div class="cohort-muted">Aktif · hanya terlihat anggota kohort</div>`;
       if (wa && c && c.whatsapp_invite_url) {
         wa.href = c.whatsapp_invite_url; wa.style.display = '';
       } else if (wa) wa.style.display = 'none';
@@ -1111,17 +1213,10 @@
       await renderFeed(cid);
     }
 
-    const chatA = $('cohort-chat-wa');
-    const miss = $('cohort-chat-wa-missing');
-    const url = c && c.whatsapp_invite_url;
-    if (chatA) {
-      if (url) { chatA.href = url; chatA.style.display = ''; } else chatA.style.display = 'none';
-    }
-    if (miss) miss.style.display = cid && !url ? '' : 'none';
-
     if (state.mentorCohort && !preview) {
       const sum = $('cohort-mentor-summary');
       if (sum) sum.innerHTML = `<strong>${esc(state.mentorCohort.name || 'Kohort')}</strong>`;
+      renderInviteShare(state.mentorCohort);
       await renderRoster(state.mentorCohort.id);
     }
     if (!preview) renderPreviewPicker();
@@ -1132,19 +1227,14 @@
   function bind() {
     if (state.ready) return;
     state.ready = true;
+    captureInviteFromUrl();
     $('cohort-join-btn')?.addEventListener('click', () => void join());
+    $('cohort-invite-copy')?.addEventListener('click', () => copyInviteUrl());
     document.querySelectorAll('#cohort-student-subtabs .cohort-subtab').forEach(b => {
       b.addEventListener('click', () => switchStudentTab(b.dataset.cstab));
     });
     document.querySelectorAll('#cohort-mentor-subtabs .cohort-subtab').forEach(b => {
       b.addEventListener('click', () => switchMentorTab(b.dataset.cmtab));
-    });
-    document.querySelectorAll('#cohort-rank-chips .cohort-subtab').forEach(b => {
-      b.addEventListener('click', () => {
-        state.rankBoard = b.dataset.board;
-        const cid = studentCid() || (state.mentorCohort && state.mentorCohort.id);
-        if (cid) void renderRankings(cid);
-      });
     });
     $('cohort-preview-go')?.addEventListener('click', () => void enterPreview());
     $('cohort-preview-exit')?.addEventListener('click', () => void exitPreview());
@@ -1162,11 +1252,16 @@
 
   async function open() {
     bind();
+    captureInviteFromUrl();
     await initMembership();
+    await redeemPendingInvite();
     // A stale preview from a previous visit would hide the mentor panel with no
     // obvious cause, so every fresh open lands on the real view.
     state.previewCid = null;
-    state.mentorOnly = false;
+    // Genuine mentors keep the mentor-only shell; open() used to always drop
+    // it, which stacked Toko Saya under Dashboard the first time they opened
+    // Kohort from the rail.
+    state.mentorOnly = isGenuineMentor();
     await render();
   }
 
@@ -1174,6 +1269,9 @@
     initMembership,
     open,
     renderOps,
+    tryCompleteMilestone,
+    redeemPendingInvite,
+    captureInviteFromUrl,
     hasAccess: function () { return !!(state.studentCohortId || state.mentorCohort || isAdmin()); },
     /** The cohort this account is genuinely a student in, or null. Student mode
      *  prefers it: a real membership needs no preview, so the screen is the
@@ -1191,6 +1289,7 @@
       if (!c) return null;
       return { id: c.id, name: c.name || 'Kohort' };
     },
+    isGenuineMentor,
     /** Stand in as the mentor of a cohort this account does not actually lead —
      *  the fallback for an admin who mentors nothing, so "Mode mentor" shows a
      *  real roster instead of an empty panel. Expects open() to have just run,
@@ -1201,6 +1300,7 @@
       if (cid && row && !state.cohortMap[cid]) state.cohortMap[cid] = row;
       const c = cid && state.cohortMap[cid];
       if (!c) return false;
+      if (state.mentorOnly && state.mentorCohort && state.mentorCohort.id === c.id) return true;
       state.previewCid = null;
       state.mentorCohort = c;
       state.mentorTab = 'overview';
@@ -1241,6 +1341,7 @@
       if (opts.openProfile) openProfile = opts.openProfile;
       if (opts.runRencana) runRencana = opts.runRencana;
       if (opts.trackKeyword) trackKeyword = opts.trackKeyword;
+      captureInviteFromUrl();
     },
   };
 })(window);

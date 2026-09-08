@@ -2987,6 +2987,7 @@ function setView(name, opts = {}) {
   // Mobile Tentang accordion: highlight the parent when a child page is current.
   const aboutChildActive = name === 'harga' || name === 'faq' || name === 'landing';
   $('btn-side-about')?.classList.toggle('is-child-active', aboutChildActive);
+  syncSellerToolsMenu();
   if (leaving === 'tracker' && name !== 'tracker' && window.LarisTracker) {
     try { window.LarisTracker.close(); } catch (_) {}
   }
@@ -3066,6 +3067,39 @@ function setSideAboutOpen(open) {
   if (!wrap || !btn) return;
   wrap.classList.toggle('open', !!open);
   btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+function sellerToolsViewActive(name) {
+  const v = name || state.view;
+  return v === 'home' || v === 'chat' || v === 'directory' || v === 'tracker' || v === 'deepdive';
+}
+
+function setSellerToolsOpen(open) {
+  const wrap = $('side-seller');
+  const btn = $('btn-side-seller');
+  if (!wrap || !btn) return;
+  wrap.classList.toggle('open', !!open);
+  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+function syncSellerToolsMenu() {
+  const childActive = sellerToolsViewActive();
+  $('btn-side-seller')?.classList.toggle('is-child-active', childActive);
+  if (!document.body.classList.contains('mentor-shell')) return;
+  // Keep the row visible while a seller tool is on screen; collapse again on
+  // Dashboard / Siswa / Jadwal so the mentor rail stays short.
+  setSellerToolsOpen(childActive);
+}
+
+/** Mentor rail (Dashboard / Siswa / Jadwal + Alat seller). Admins stay on the
+ *  seller rail unless they entered Mode mentor. Unmasked, initMembership fills
+ *  mentorCohort with the first of every cohort, which is not "this account
+ *  mentors it" — isGenuineMentor() is the check that survives that. */
+function applyMentorShell() {
+  const on = _viewAs?.role === 'mentor'
+    || (!_viewAs && !isPlatformAdmin() && !!(window.LarisCohort && window.LarisCohort.isGenuineMentor && window.LarisCohort.isGenuineMentor()));
+  document.body.classList.toggle('mentor-shell', on);
+  syncSellerToolsMenu();
 }
 function openSidebar() {
   $('sidebar')?.classList.add('open');
@@ -3976,6 +4010,15 @@ async function _authOnSignIn(session, opts) {
   await persistOnboardingPrefs();
   await migrateLocalChatsToDb();
   saveLocalState();
+
+  try {
+    mountLarisCohort();
+    if (window.LarisCohort) {
+      window.LarisCohort.captureInviteFromUrl();
+      const joined = await window.LarisCohort.redeemPendingInvite();
+      if (joined) void refreshCohortNav();
+    }
+  } catch (_) {}
 
   renderSidebarLocCard();
 
@@ -7021,6 +7064,12 @@ function openSidePanel(mode, opts = {}) {
       via: opts.via || 'rail',
       has_product: !!(opts.price != null || opts.product || resolveSideProduct()),
     });
+  }
+  if (opts.via !== 'restore' && next === 'kalkulator' && currentUser) {
+    try { void window.LarisCohort?.tryCompleteMilestone('open_kalkulator'); } catch (_) {}
+  }
+  if (opts.via !== 'restore' && next === 'ai' && currentUser) {
+    try { void window.LarisCohort?.tryCompleteMilestone('ask_laris_ai'); } catch (_) {}
   }
 }
 
@@ -12712,6 +12761,7 @@ async function trackProductFavorite(product, opts = {}) {
     _trackedFavSet.add(favKey(p));
     syncFavButtons();
     void logUserEvent('favorite_added', { ui: 'gpt', via: opts.via || 'aksi_cepat' });
+    try { void window.LarisCohort?.tryCompleteMilestone('save_favorit'); } catch (_) {}
 
     let notifyOn = false;
     let wa = String(opts.wa || '').trim();
@@ -12933,8 +12983,9 @@ async function routeCohortHome() {
 async function refreshCohortNav() {
   mountLarisCohort();
   const btn = $('btn-cohort');
-  if (!window.LarisCohort) {
+    if (!window.LarisCohort) {
     if (btn) btn.style.display = 'none';
+    applyMentorShell();
     return;
   }
   try {
@@ -12943,6 +12994,7 @@ async function refreshCohortNav() {
   } catch (_) {
     if (btn) btn.style.display = 'none';
   }
+  applyMentorShell();
 }
 
 function openCohortView() {
@@ -14930,6 +14982,9 @@ async function openDeepDive(product, ddOpts = {}) {
   // anon dives are real traffic (they get one free by design). The RPC never
   // refuses, so this can never wall a view.
   void logDeepDiveOpen(product);
+  if (currentUser) {
+    try { void window.LarisCohort?.tryCompleteMilestone('first_deep_dive'); } catch (_) {}
+  }
   if (state.pendingDeepdive) { state.pendingDeepdive = null; saveLocalState(); }
   const isFirstDeepDive = !state.everOpenedDeepdive;
   if (!state.everOpenedDeepdive) { state.everOpenedDeepdive = true; }
@@ -16642,6 +16697,9 @@ async function handleComposerSubmit(text, opts = {}) {
   text = (text || '').trim();
   if (!text) return;
   abortAssistantStream();
+  if (currentUser) {
+    try { void window.LarisCohort?.tryCompleteMilestone('ask_laris_ai'); } catch (_) {}
+  }
 
   const lower = text.toLowerCase();
   if (/tampilkan produk lain/.test(lower) || /^produk lain$/.test(lower) || /^rekomendasi baru$/.test(lower)) {
@@ -20695,9 +20753,7 @@ async function enterViewAs(role) {
 
 /** Everything the mask has to repaint by hand, in both directions. */
 function applyViewAsChrome() {
-  // The mentor rail replaces the seller tools, the chat history and the location
-  // card. One body class drives all of it; see the .mentor-shell block.
-  document.body.classList.toggle('mentor-shell', _viewAs?.role === 'mentor');
+  applyMentorShell();
   renderAdminSampleBanner();
   updateAccountUI();
   const admBtn = $('btn-admin');
@@ -22018,6 +22074,10 @@ function wireUi() {
     const wrap = $('side-about');
     setSideAboutOpen(!wrap?.classList.contains('open'));
   });
+  $('btn-side-seller')?.addEventListener('click', () => {
+    const wrap = $('side-seller');
+    setSellerToolsOpen(!wrap?.classList.contains('open'));
+  });
   // The Beta badge was decoration; it now opens the changelog on both the
   // desktop sidebar and the mobile topbar.
   document.querySelectorAll('.brand-beta').forEach(el => {
@@ -22026,15 +22086,19 @@ function wireUi() {
   $('changelog-close')?.addEventListener('click', () => closeChangelog());
   $('changelog-modal')?.addEventListener('click', e => { if (e.target.id === 'changelog-modal') closeChangelog(); });
   $('btn-admin')?.addEventListener('click', () => openAdminView());
-  function openMentorRail(tab) {
+  async function openMentorRail(tab) {
     mountLarisCohort();
+    const LC = window.LarisCohort;
+    const c = LC && LC.myMentorCohort && LC.myMentorCohort();
+    if (c) await LC.mentorAs(c.id, c);
     if (state.view !== 'cohort') setView('cohort');
     else closeSidebar();
-    window.LarisCohort?.mentorTab(tab);
+    LC?.mentorTab(tab);
+    setSellerToolsOpen(false);
   }
-  $('btn-mentor-dash')?.addEventListener('click', () => openMentorRail('overview'));
-  $('btn-mentor-siswa')?.addEventListener('click', () => openMentorRail('students'));
-  $('btn-mentor-jadwal')?.addEventListener('click', () => openMentorRail('jadwal'));
+  $('btn-mentor-dash')?.addEventListener('click', () => void openMentorRail('overview'));
+  $('btn-mentor-siswa')?.addEventListener('click', () => void openMentorRail('students'));
+  $('btn-mentor-jadwal')?.addEventListener('click', () => void openMentorRail('jadwal'));
   $('adm-cohort-preview-go')?.addEventListener('click', () => void openAdminCohortPreview());
   $('adm-komunitas-refresh')?.addEventListener('click', () => { void loadAdminKomunitasOps(); });
   $('adm-komunitas-digest')?.addEventListener('click', () => { void sendAdminKomunitasDigest(); });
