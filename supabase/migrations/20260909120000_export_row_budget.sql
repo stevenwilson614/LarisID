@@ -27,13 +27,13 @@
 --   comes back true.
 --
 -- WHY product_daily_series AND NOT listing_weekly:
---   listing_weekly writes a gap week at the time it is missed and never
---   revises it (backfill_listing_weekly_estimates has WHERE NOT EXISTS), so a
---   product scraped 2026-07-27 then 2026-08-29 keeps 'peer'/'estimated' weeks
---   even though listing_deltas holds an exact 337-unit / 33.1-day delta.
---   product_daily_series spreads that delta correctly (10.17 units/day,
---   labelled 'measured') and is what the deep-dive chart already draws, so
---   building the export on it keeps the file and the chart in agreement.
+--   The deep-dive chart already draws product_daily_series. Building the
+--   export on the same estimator keeps the file and the chart in agreement.
+--   listing_weekly used to freeze gap weeks (WHERE NOT EXISTS) and invent
+--   pre-first-scrape weeks; that is fixed in
+--   20260909160000_listing_weekly_revise.sql (revise_listing_weekly_measured
+--   + source=prior). Do not switch the export over — a third surface would
+--   just be a second chance to disagree.
 --
 -- Apply: bash scripts/apply-selfhost.sh supabase/migrations/20260909120000_export_row_budget.sql
 -- ============================================================================

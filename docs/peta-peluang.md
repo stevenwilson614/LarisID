@@ -14,7 +14,8 @@ One listing = `(item_id, shop_id)`.
 - SQL: [`supabase/migrations/20260906150000_listing_momentum_measured.sql`](../supabase/migrations/20260906150000_listing_momentum_measured.sql)
   then held fallback [`20260906183000_listing_momentum_held.sql`](../supabase/migrations/20260906183000_listing_momentum_held.sql)
   (positions / Jejak still from [`20260904120000_peta_peluang.sql`](../supabase/migrations/20260904120000_peta_peluang.sql))
-- Weekly backfill: `~/shopee_scraper/listing_weekly.sql` (`backfill_listing_weekly_estimates`)
+- Weekly backfill + revise: `~/shopee_scraper/listing_weekly.sql`
+  (`backfill_listing_weekly_estimates`, then `revise_listing_weekly_measured`)
 - Hosts:
   - Cari Produk (`#dir-trending-now`) — top 3 rank rows, then Urutkan, then
     `listingRowsHtml` (`actions: true`). Keyword chips filter both.
@@ -113,6 +114,7 @@ scatter, zones, sibling list). Do not remount it on `#dir-trending-now` or
 
 ```
 SELECT backfill_listing_weekly_estimates(10);
+SELECT * FROM revise_listing_weekly_measured(12);
 REFRESH MATERIALIZED VIEW CONCURRENTLY mv_listing_week_positions;
 ```
 

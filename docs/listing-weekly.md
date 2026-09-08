@@ -30,7 +30,14 @@ ssh -i "${LARISID_SSH_KEY:-$HOME/.ssh/larisid_hetzner}" \
     -o ConnectTimeout=20 root@84.247.147.205 \
     "docker exec -i supabase-db psql -U postgres -v ON_ERROR_STOP=1" \
     < product_daily_series.sql   # p_to clamp = current_date + 7 (forecast tail)
-bash refresh_listing_weekly.sh   # fill this week + next week
+bash refresh_listing_weekly.sh   # this week + next + backfill + revise + matviews
+```
+
+Also apply once from this repo (adds `prior` + `revise_listing_weekly_measured`
+and the one-time pre-first-scrape relabel):
+
+```bash
+bash scripts/apply-selfhost.sh supabase/migrations/20260909160000_listing_weekly_revise.sql
 ```
 
 Do **not** use `supabase db push`. Live Postgres is Contabo (`api.larisid.com`).
@@ -63,8 +70,16 @@ apart; the rate is span-normalised first. Same rule as
 
 `listing_weekly` PK `(item_id, shop_id, week_start)` — `week_start` is the WIB
 Monday. Columns include `units_wk`, `omset_wk`, `source`
-(`measured` \| `nowcast` \| `forecast` \| `peer` \| `zero`), `confidence`,
-`peer_n`, and for measured weeks the audit pair `delta_units` + `span_days`.
+(`measured` \| `nowcast` \| `forecast` \| `peer` \| `zero` \| `estimated` \|
+`prior`), `confidence`, `peer_n`, and for measured weeks the audit pair
+`delta_units` + `span_days`.
+
+`source=measured` on a **past** week means every day of that week sits inside
+an `estimation_method='exact'` `listing_deltas` interval — not only “a scrape
+landed this WIB Monday”. `revise_listing_weekly_measured()` upgrades
+peer/estimated/nowcast/forecast/prior rows to that label once a later scrape
+covers them. It never rewrites an already-measured week, and never touches
+`zero`.
 
 `keyword_weekly` PK `(keyword, week_start)` is the sum over the keyword's
 **distinct** `(item_id, shop_id)` set, so an ad slot and an organic slot of the
@@ -84,6 +99,7 @@ listings push
   → refresh_velocity (cohorts + products)
   → refresh_listing_weekly(day)     ← this file
   → backfill_listing_weekly_estimates(10)
+  → revise_listing_weekly_measured(12)
   → refresh mv_listing_week_positions
   → refresh_breakout_matviews()   ← also rebuilds mv_listing_momentum from listings
   → next morning: scrape-digest cron (03:00 UTC / 10:00 WIB) emails Deep Dive users
@@ -104,12 +120,12 @@ if velocity lags. The `scrape-digest` job (see
 `larisid-infra/cron/recreate_cron_jobs.sql`) no-ops until the measured
 watermark advances; it does not invent daily deltas.
 
-| Event | Current week | Next week | Past measured weeks |
+| Event | Current week | Next week | Past gap weeks |
 |---|---|---|---|
-| Scrape #1 (~92%, no history) | peer median × 7, `source=peer`, confidence low | same | — |
-| Scrape #2+ (delta lands this WIB week) | overwrite to `measured`: `v_latest * 7`, store delta + span | recompute `forecast` | untouched |
-| No scrape | `nowcast`, decaying toward (category, scale-band) peers | `forecast`, same decay | untouched |
-| Lifetime sold = 0 | `zero` (0 units, never a peer prior) | `zero` | — |
+| Scrape #1 (~92%, no history) | peer median × 7, `source=peer`, confidence low | same | weeks before first scrape: `prior` at the peer rate |
+| Scrape #2+ (delta lands this WIB week) | overwrite to `measured`: `v_latest * 7`, store delta + span | recompute `forecast` | fully-covered Mondays upgraded by `revise_listing_weekly_measured` to `measured` (exact) or re-rated `estimated` (non-exact). Already-`measured` and `zero` stay put. Partial weeks left alone. |
+| No scrape | `nowcast`, decaying toward (category, scale-band) peers | `forecast`, same decay | unchanged unless a later delta now covers them |
+| Lifetime sold = 0 | `zero` (0 units, never a peer prior) | `zero` | `zero` |
 
 Never `total_sold / 6` on 10k+ buckets. Never rewrite a measured week into a
 forecast. On a day with no scrape, still run `refresh_listing_weekly.sh` so the
@@ -118,9 +134,13 @@ closed-form decay (`W(t') = W(t)·exp(−Δ/τ)`) revises this week and next wee
 ## Honesty
 
 - `source=measured` → **terukur**, solid line, plain number.
-- `nowcast` / `forecast` / `peer` / `estimated` → **perkiraan**, dashed/dimmed, with confidence.
-  `estimated` is a backfilled missed week (`backfill_listing_weekly_estimates`), used by
-  [Peta Peluang](./peta-peluang.md) Jejak Waktu so every WIB Monday has a row.
+- `nowcast` / `forecast` / `peer` / `estimated` / `prior` → **perkiraan**, dashed/dimmed, with confidence.
+  `estimated` is a backfilled missed week (`backfill_listing_weekly_estimates`), or a
+  week fully covered by a non-exact delta. `prior` is a week that ended before
+  this listing was first scraped (peer rate — not a claim about this product).
+  Both are used by [Peta Peluang](./peta-peluang.md) Jejak Waktu so every WIB
+  Monday has a row; `js/peta-peluang.js` `REAL_SRC` excludes `prior`, so those
+  weeks draw faded and cannot claim a trend.
   A week with no scrape shows a labelled estimate — never "0 terjual", and never
   an unlabelled number.
 - UI sequence: last 6 WIB weeks through today (this week = nowcast, perkiraan
