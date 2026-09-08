@@ -1791,10 +1791,12 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
   .dh-cta:hover, .dh-tile:hover { transform: none; }
 }
 
-.dir-head { margin-bottom: 16px; display: flex; align-items: flex-start;
-  justify-content: space-between; gap: 12px; }
+.dir-head { margin-bottom: 16px; }
 .dir-head-text { min-width: 0; }
 .dir-head h2 { margin: 0 0 6px; font-size: 1.35rem; font-weight: 650; letter-spacing: -.02em; }
+.dir-list-bar { display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; margin: 0 0 12px; }
+.dir-list-bar #dir-filters-range { flex: 1; min-width: 0; }
 .dir-export-btn { flex: none; display: inline-flex; align-items: center; gap: 6px;
   padding: 7px 12px; font-size: .8rem; border-radius: 10px; }
 /* A class rule beats the UA's `[hidden] { display: none }`, so the attribute
@@ -1810,6 +1812,7 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
 .export-field { display: block; margin: 0 0 12px; }
 .export-row { display: flex; gap: 10px; }
 .export-row .export-field { flex: 1; }
+.export-quota { margin: 0 0 14px; font-size: .86rem; font-weight: 600; color: var(--ink); }
 .export-label { display: block; margin: 0 0 5px; font-size: .74rem; font-weight: 600;
   color: var(--muted, #888); letter-spacing: .01em; }
 .export-field select { width: 100%; padding: 8px 10px; font: inherit; font-size: .84rem;
@@ -5383,7 +5386,16 @@ body.home-finder-done .home-hero {
   flex-wrap: wrap; gap: 8px; margin-bottom: 12px;
 }
 .ddr-trend-head h3 { margin: 0; }
-.ddr-trend-toggles { display: flex; flex-wrap: wrap; gap: 8px; }
+.ddr-trend-toggles { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ddr-trend-export {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; padding: 0; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--bg-user); color: var(--ink-soft);
+  cursor: pointer; flex: none;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.ddr-trend-export:hover { color: var(--ink); border-color: var(--ink-soft); background: #fff; }
+.ddr-trend-export svg { display: block; }
 .ddr-seg {
   display: inline-flex; padding: 2px; gap: 2px;
   border: 1px solid var(--line); border-radius: 999px; background: var(--bg-user);
@@ -8071,6 +8083,13 @@ body:has(.modal-overlay.open) .msg-steven-fab {
               <h2 id="dir-heading">Produk</h2>
               <p class="dir-count" id="dir-count"></p>
             </div>
+          </div>
+          <div class="dir-compare-banner" id="dir-compare-banner" hidden></div>
+          <div id="dir-trending-now" class="trend-host"></div>
+          <div id="dir-ask-sellers" class="dir-ask-sellers" hidden></div>
+          <!-- Unduh sits with Urutkan — above product rows, below Trending. -->
+          <div class="dir-list-bar" id="dir-list-bar">
+            <div id="dir-filters-range"></div>
             <button type="button" class="btn-ghost dir-export-btn" id="dir-export" hidden
                     aria-label="Unduh hasil ke spreadsheet">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -8081,10 +8100,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
               <span>Unduh</span>
             </button>
           </div>
-          <div class="dir-compare-banner" id="dir-compare-banner" hidden></div>
-          <div id="dir-trending-now" class="trend-host"></div>
-          <div id="dir-ask-sellers" class="dir-ask-sellers" hidden></div>
-          <div id="dir-filters-range"></div>
           <div class="dir-grid" id="dir-grid"></div>
           <div class="dir-pager" id="dir-pager"></div>
         </div>
@@ -9187,9 +9202,10 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <div class="modal-overlay export-overlay" id="export-modal">
   <div class="modal export-modal" role="dialog" aria-modal="true" aria-labelledby="export-title">
     <h3 id="export-title" class="nudge-title">Unduh data produk</h3>
-    <p class="nudge-sub" id="export-scope">&nbsp;</p>
+    <p class="nudge-sub export-quota" id="export-quota">&nbsp;</p>
+    <p class="nudge-sub" id="export-scope" hidden>&nbsp;</p>
 
-    <div class="export-field">
+    <div class="export-field" id="export-shape-field" hidden>
       <span class="export-label">Isi file</span>
       <div class="export-seg" role="group" aria-label="Isi file">
         <button type="button" data-export-shape="snapshot" class="on">Ringkasan produk</button>
@@ -9198,7 +9214,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
     </div>
 
     <div class="export-row">
-      <label class="export-field" for="export-count">
+      <label class="export-field" for="export-count" id="export-count-field">
         <span class="export-label">Jumlah produk</span>
         <select id="export-count"></select>
       </label>
@@ -9213,7 +9229,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
     </div>
 
     <p class="export-warn" id="export-warn" hidden></p>
-    <p class="export-cost" id="export-cost">&nbsp;</p>
+    <p class="export-cost" id="export-cost" hidden>&nbsp;</p>
 
     <div class="nudge-actions" style="flex-direction:column;">
       <button type="button" class="btn-primary" style="width:100%;" data-export-fmt="xlsx">Unduh .xlsx</button>
@@ -9230,7 +9246,8 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <div class="modal-overlay export-more-overlay" id="export-more-modal">
   <div class="modal export-more-modal" role="dialog" aria-modal="true" aria-labelledby="export-more-title">
     <h3 id="export-more-title" class="nudge-title">Butuh unduhan lebih besar?</h3>
-    <p class="nudge-sub">Sekarang batasnya <strong id="export-more-limit">90</strong> baris terukur per hari.
+    <p class="nudge-sub">Sekarang batasnya <strong id="export-more-limit">90</strong>
+      <span id="export-more-unit">baris produk</span> per hari.
       Kalau kamu butuh lebih banyak, kami mau tahu &mdash; ini yang menentukan apakah kami perbesar.</p>
     <div class="nudge-actions" style="flex-direction:column;">
       <button type="button" class="btn-primary" style="width:100%;" data-export-more-ans="ya">Ya, saya butuh lebih banyak</button>
@@ -9363,6 +9380,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <script src="/js/peta-peluang.js?v=20260908a" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
-<script src="/js/gpt-app.js?v=20260909a" defer></script>
+<script src="/js/gpt-app.js?v=20260909b" defer></script>
 </body>
 </html>

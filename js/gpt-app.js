@@ -14310,7 +14310,6 @@ function ddToolPillsHtml(product) {
     <button type="button" class="ddr-tool-pill" data-ddr-tool="kompetitor">Kompetitor</button>
     <button type="button" class="ddr-tool-pill" data-ddr-tool="keyword">Keyword</button>
     <button type="button" class="ddr-tool-pill" data-ddr-tool="biaya">Biaya</button>
-    <button type="button" class="ddr-tool-pill" data-ddr-tool="unduh">Unduh</button>
     ${supplier}
   </div>`;
 }
@@ -14438,11 +14437,25 @@ function ddHeroNumsHtml(product, peers) {
   </div>`;
 }
 
+function ddTrendExportBtnHtml() {
+  return `<button type="button" class="ddr-trend-export" data-ddr-tool="unduh"
+      aria-label="Unduh riwayat omset mingguan" title="Unduh riwayat omset">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>
+    </svg>
+  </button>`;
+}
+
 function ddHeroChartHtml(hasTrend) {
   if (!hasTrend) {
     return `<div class="ddr-card ddr-hero-chart" data-dd-sec="tren">
-      <h3>Tren Produk</h3>
-      <p class="dd-sub">Belum cukup riwayat scrape untuk tren omset listing ini — butuh beberapa gelombang panel. Bagian lain tetap dari data asli.</p>
+      <div class="ddr-trend-head">
+        <h3>Tren Produk</h3>
+        <div class="ddr-trend-toggles">${ddTrendExportBtnHtml()}</div>
+      </div>
+      <p class="dd-sub">Belum cukup riwayat scrape untuk tren omset listing ini — butuh beberapa gelombang panel. Bagian lain tetap dari data asli. Kamu tetap bisa unduh riwayat omset yang kami punya.</p>
     </div>`;
   }
   return `<div class="ddr-card ddr-hero-chart" data-dd-sec="tren">
@@ -14453,6 +14466,7 @@ function ddHeroChartHtml(hasTrend) {
           <button type="button" class="ddr-seg-btn is-on" data-dd-view="produk">Produk</button>
           <button type="button" class="ddr-seg-btn" data-dd-view="top10">Top 10 Toko</button>
         </div>
+        ${ddTrendExportBtnHtml()}
       </div>
     </div>
     <div class="ddr-chart-wrap"><canvas id="ddr-trend-canvas"></canvas></div>
@@ -15079,7 +15093,8 @@ function wireDdrToolPills(root, product, peers) {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      runDdrTool(btn.getAttribute('data-ddr-tool'), product, peers, 'deepdive_pill',
+      runDdrTool(btn.getAttribute('data-ddr-tool'), product, peers,
+        btn.classList.contains('ddr-trend-export') ? 'trend_export' : 'deepdive_pill',
         { marketplace: btn.dataset.mp || null });
     });
   });
@@ -23081,24 +23096,20 @@ function supCloseSurvey() {
 }
 
 /* ═══ Export ke spreadsheet ═════════════════════════════════════════════════
-   Two shapes, one shared daily budget:
-     ringkasan  — one row per product (DataPinter-style flat sheet)
-     riwayat    — one row per product-week, from the SAME estimator the
-                  deep-dive chart draws (product_daily_series bucketed to WIB
-                  Mondays), so the file and the chart always agree.
+   Two daily budgets (WIB), independent of dives/AI:
 
-   Budget: 90 rows/WIB day, but ONLY MEASURED ROWS COST. A snapshot row and a
-   `terukur` week cost 1; `perkiraan` and `proyeksi` weeks are free. The server
-   decides — EXPORT_ROW_LIMIT here is display-only.
+   - Cari Produk (snapshot): 90 product rows / day. Each row is monthly omset.
+   - Deep Dive (history):    12 weeks / day. Omset history for one product.
 
-   The point of shipping it capped is the demand signal, not the cap: see
+   The point of shipping them capped is the demand signal, not the cap: see
    exportAskMore / export_more_response. */
 
 const EXPORT_ROW_LIMIT = 90;      // display only; public._export_row_limit() decides
+const EXPORT_WEEK_LIMIT = 12;     // display only; public._export_week_limit() decides
 const EXPORT_HISTORY_CAP = 10;    // display only; public._export_history_cap() decides
-const EXPORT_XLSX_V = '20260909a';
+const EXPORT_XLSX_V = '20260909b';
 
-let _exportQuota = null;          // { unlimited, used, limit, remaining, reset_at }
+let _exportQuota = null;          // { unlimited, used, limit, remaining, weeks_*, … }
 let _exportCtx = null;            // { source, rows, shape, weeks, count, lockRows }
 let _exportBusy = false;
 let _exportLast = null;           // { key, payload } — free re-download after a save fails
@@ -23150,10 +23161,20 @@ async function exportLoadQuota() {
   } catch (_) { return null; }
 }
 
-function exportRemaining() {
+function exportIsHistory() {
+  return _exportCtx?.shape === 'history';
+}
+
+function exportRemainingRows() {
   if (_exportQuota?.unlimited) return Infinity;
   const r = Number(_exportQuota?.remaining);
   return Number.isFinite(r) ? r : EXPORT_ROW_LIMIT;
+}
+
+function exportRemainingWeeks() {
+  if (_exportQuota?.unlimited) return Infinity;
+  const r = Number(_exportQuota?.weeks_remaining);
+  return Number.isFinite(r) ? r : EXPORT_WEEK_LIMIT;
 }
 
 /* The pool, not the painted page: state.dirRows already holds every filtered,
@@ -23166,71 +23187,136 @@ function exportPool() {
 function exportSelection() {
   const pool = exportPool();
   const n = Math.max(1, Math.min(Number(_exportCtx?.count) || 25, pool.length));
-  const cap = _exportCtx?.shape === 'history'
+  const cap = exportIsHistory()
     ? Math.min(n, _exportQuota?.history_cap || EXPORT_HISTORY_CAP)
     : n;
   return pool.slice(0, cap);
 }
 
+function exportQuotaLineHtml() {
+  if (_exportQuota?.unlimited) {
+    return exportIsHistory()
+      ? '∞/∞ minggu tersisa hari ini'
+      : '∞/∞ baris produk tersisa hari ini';
+  }
+  if (exportIsHistory()) {
+    const rem = exportRemainingWeeks();
+    const lim = Number(_exportQuota?.weeks_limit) || EXPORT_WEEK_LIMIT;
+    const left = rem === Infinity ? lim : rem;
+    return `${left}/${lim} minggu tersisa hari ini`;
+  }
+  const rem = exportRemainingRows();
+  const lim = Number(_exportQuota?.limit) || EXPORT_ROW_LIMIT;
+  const left = rem === Infinity ? lim : rem;
+  return `${left}/${lim} baris produk tersisa hari ini`;
+}
+
+function exportSyncModalChrome() {
+  const hist = exportIsHistory();
+  const deep = !!_exportCtx?.lockRows;
+  const title = $('export-title');
+  if (title) title.textContent = hist ? 'Unduh riwayat omset' : 'Unduh data produk';
+
+  const shapeField = $('export-shape-field');
+  if (shapeField) shapeField.hidden = true; // surfaces pick the shape; no toggle
+
+  const countField = $('export-count-field');
+  if (countField) countField.hidden = !!deep;
+
+  const weeksField = $('export-weeks-field');
+  if (weeksField) weeksField.hidden = !hist;
+
+  const weeksSel = $('export-weeks');
+  if (weeksSel && hist) {
+    const rem = exportRemainingWeeks();
+    const ceiling = rem === Infinity ? EXPORT_WEEK_LIMIT
+      : Math.max(0, Math.min(EXPORT_WEEK_LIMIT, rem));
+    const opts = [4, 8, 12].filter((n) => n <= ceiling);
+    if (ceiling > 0 && !opts.includes(ceiling) && ![4, 8, 12].includes(ceiling)) {
+      opts.push(ceiling);
+    }
+    if (!opts.length && ceiling > 0) opts.push(ceiling);
+    weeksSel.innerHTML = opts.length
+      ? opts.map((n) => `<option value="${n}">${n} minggu</option>`).join('')
+      : '<option value="0">Kuota minggu habis</option>';
+    const want = Math.min(Number(_exportCtx?.weeks) || EXPORT_WEEK_LIMIT, ceiling || 0);
+    const pick = opts.includes(want) ? want : (opts[opts.length - 1] || 0);
+    weeksSel.value = String(pick);
+    _exportCtx.weeks = Number(weeksSel.value) || 0;
+  }
+
+  document.querySelectorAll('[data-export-shape]').forEach((b) => {
+    b.classList.toggle('on', b.getAttribute('data-export-shape') === (_exportCtx?.shape || 'snapshot'));
+  });
+}
+
 function exportRenderCost() {
-  const costEl = $('export-cost');
+  const quotaEl = $('export-quota');
   const scopeEl = $('export-scope');
   const warnEl = $('export-warn');
+  const costEl = $('export-cost');
   const sel = exportSelection();
   const pool = exportPool();
-  const hist = _exportCtx?.shape === 'history';
-  const weeks = Number(_exportCtx?.weeks) || 12;
-  const remaining = exportRemaining();
+  const hist = exportIsHistory();
+
+  exportSyncModalChrome();
+
+  if (quotaEl) quotaEl.textContent = exportQuotaLineHtml();
 
   if (scopeEl) {
-    // Read the live control rather than duplicating gpt-dir-filters.js's
-    // SORT_OPTIONS, which is a var inside its IIFE and not reachable here.
-    const sortSel = document.getElementById('dir-sort-select');
-    const sortLabel = sortSel?.selectedOptions?.[0]?.textContent?.trim() || '';
-    scopeEl.textContent = _exportCtx?.lockRows
-      ? `${sel.length} produk terpilih`
-      : `${sel.length} produk teratas dari ${pool.length} hasil${sortLabel ? ` · urut: ${sortLabel}` : ''}`;
+    if (hist) {
+      scopeEl.hidden = false;
+      scopeEl.textContent = sel[0]?.product_name
+        ? `Omset mingguan · ${sel[0].product_name}`
+        : 'Omset mingguan untuk produk ini';
+    } else {
+      const sortSel = document.getElementById('dir-sort-select');
+      const sortLabel = sortSel?.selectedOptions?.[0]?.textContent?.trim() || '';
+      scopeEl.hidden = false;
+      scopeEl.textContent = `${sel.length} produk teratas dari ${pool.length} hasil`
+        + `${sortLabel ? ` · urut: ${sortLabel}` : ''} · omset / bulan`;
+    }
   }
 
-  if (costEl) {
-    // Ceiling, not a quote: how many weeks are `terukur` depends on scrape
-    // coverage, which the server works out. It errs pleasant — actual is
-    // almost always far lower.
-    const maxCost = hist ? sel.length * (1 + weeks) : sel.length;
-    const fileRows = hist ? sel.length * (weeks + 1) : sel.length;
-    const left = remaining === Infinity ? '∞' : remaining;
-    costEl.innerHTML = hist
-      ? `File berisi ± ${fileRows} baris. Biaya maks. <strong>${maxCost}</strong> baris terukur `
-        + `(perkiraan &amp; proyeksi gratis). Sisa hari ini: ${left}.`
-      : `Biaya <strong>${sel.length}</strong> dari ${left} baris tersisa hari ini.`;
-  }
+  if (costEl) costEl.hidden = true;
 
   if (warnEl) {
     if (hist && sel.length) {
-      // ~19% of a 12-week window is actually measured across a typical
-      // selection, so say it before they spend anything.
       warnEl.hidden = false;
-      warnEl.textContent = 'Sebagian besar minggu dalam riwayat adalah perkiraan model kami, '
-        + 'bukan hasil pengukuran. Kolom "Sumber" di file menandai setiap baris.';
+      warnEl.textContent = 'Sebagian minggu bisa perkiraan model kami, bukan hasil pengukuran. '
+        + 'Kolom "Sumber" di file menandai setiap baris.';
     } else {
       warnEl.hidden = true;
     }
   }
 
-  const wf = $('export-weeks-field');
-  if (wf) wf.hidden = !hist;
-  document.querySelectorAll('[data-export-shape]').forEach((b) => {
-    b.classList.toggle('on', b.getAttribute('data-export-shape') === (_exportCtx?.shape || 'snapshot'));
+  const weeks = Number(_exportCtx?.weeks) || 12;
+  const blocked = hist
+    ? (exportRemainingWeeks() <= 0 || weeks <= 0)
+    : (exportRemainingRows() <= 0 || !sel.length);
+  document.querySelectorAll('[data-export-fmt]').forEach((b) => {
+    b.disabled = blocked;
   });
 }
 
 function exportFillCount() {
   const sel = $('export-count');
   if (!sel) return;
+  if (exportIsHistory()) {
+    _exportCtx.count = 1;
+    return;
+  }
   const pool = exportPool();
-  const hist = _exportCtx?.shape === 'history';
-  const ceiling = hist ? (_exportQuota?.history_cap || EXPORT_HISTORY_CAP) : EXPORT_ROW_LIMIT;
-  const max = Math.min(pool.length, ceiling);
+  const rem = exportRemainingRows();
+  const ceiling = rem === Infinity
+    ? EXPORT_ROW_LIMIT
+    : Math.max(0, Math.min(EXPORT_ROW_LIMIT, rem));
+  const max = Math.min(pool.length, ceiling || pool.length);
+  if (max <= 0) {
+    sel.innerHTML = '<option value="0">Kuota habis</option>';
+    _exportCtx.count = 0;
+    return;
+  }
   const opts = [];
   [5, 10, 25, 50, 90].forEach((n) => { if (n < max) opts.push(n); });
   opts.push(max);
@@ -23253,13 +23339,16 @@ function exportOpen(ctx = {}) {
   const other = document.querySelector('.modal-overlay.open');
   if (other && other !== modal) { showToast('Tutup dulu jendela yang terbuka.'); return; }
 
+  const source = ctx.source || 'directory';
+  const deep = source === 'deepdive' || !!ctx.lockRows;
   _exportCtx = {
-    source: ctx.source || 'directory',
+    source,
     rows: ctx.rows || null,
-    lockRows: !!ctx.lockRows,
-    shape: ctx.shape || 'snapshot',
-    weeks: ctx.weeks || 12,
-    count: ctx.count || 25,
+    lockRows: !!ctx.lockRows || deep,
+    // Directory = monthly omset snapshot. Deep Dive = weekly history.
+    shape: deep ? 'history' : (ctx.shape || 'snapshot'),
+    weeks: ctx.weeks || EXPORT_WEEK_LIMIT,
+    count: deep ? 1 : (ctx.count || 25),
   };
   exportFillCount();
   exportRenderCost();
@@ -23267,16 +23356,29 @@ function exportOpen(ctx = {}) {
 
   void logUserEvent('export_open', {
     ui: 'gpt', source: _exportCtx.source,
+    shape: _exportCtx.shape,
     results_total: exportPool().length,
     remaining: _exportQuota?.remaining ?? null,
+    weeks_remaining: _exportQuota?.weeks_remaining ?? null,
   });
 
   // Refresh the budget in the background; re-render when it lands.
   void exportLoadQuota().then(() => {
     if ($('export-modal')?.classList.contains('open')) { exportFillCount(); exportRenderCost(); }
-    const lim = $('export-more-limit');
-    if (lim && _exportQuota?.limit) lim.textContent = String(_exportQuota.limit);
+    exportSyncMoreLimit();
   });
+}
+
+function exportSyncMoreLimit() {
+  const lim = $('export-more-limit');
+  const unit = $('export-more-unit');
+  if (exportIsHistory()) {
+    if (lim) lim.textContent = String(_exportQuota?.weeks_limit || EXPORT_WEEK_LIMIT);
+    if (unit) unit.textContent = 'minggu riwayat';
+  } else {
+    if (lim) lim.textContent = String(_exportQuota?.limit || EXPORT_ROW_LIMIT);
+    if (unit) unit.textContent = 'baris produk';
+  }
 }
 
 function exportClose() {
@@ -23288,8 +23390,21 @@ async function exportRun(fmt) {
   if (_exportBusy) return;
   const sel = exportSelection();
   if (!sel.length) { showToast('Tidak ada produk untuk diunduh.'); return; }
-  const hist = _exportCtx?.shape === 'history';
-  const weeks = Number(_exportCtx?.weeks) || 12;
+  const hist = exportIsHistory();
+  let weeks = Number(_exportCtx?.weeks) || 12;
+  if (hist) {
+    const rem = exportRemainingWeeks();
+    if (rem !== Infinity) weeks = Math.min(weeks, rem);
+    if (weeks <= 0) {
+      showToast('Kuota minggu hari ini sudah habis.');
+      exportAskMore('exhausted');
+      return;
+    }
+  } else if (exportRemainingRows() <= 0) {
+    showToast('Kuota unduhan hari ini sudah habis.');
+    exportAskMore('exhausted');
+    return;
+  }
 
   _exportBusy = true;
   try {
@@ -23336,14 +23451,19 @@ async function exportRun(fmt) {
       void logUserEvent('export_blocked', {
         ui: 'gpt', reason: data.reason || 'unknown',
         need: data.need ?? null, remaining: data.remaining ?? null,
+        weeks_remaining: data.weeks_remaining ?? null,
         shape: hist ? 'history' : 'snapshot', weeks: hist ? weeks : 0,
       });
       _exportQuota = Object.assign({}, _exportQuota, {
-        used: data.used, limit: data.limit, remaining: data.remaining, reset_at: data.reset_at,
+        used: data.used, limit: data.limit, remaining: data.remaining,
+        weeks_used: data.weeks_used, weeks_limit: data.weeks_limit,
+        weeks_remaining: data.weeks_remaining, reset_at: data.reset_at,
       });
       exportRenderCost();
-      if (data.reason === 'not_enough_rows') {
-        showToast(`Sisa ${data.remaining} baris — kurangi jumlah produk atau rentang minggunya.`);
+      if (data.reason === 'not_enough_rows' || data.reason === 'not_enough_weeks') {
+        showToast(hist
+          ? `Sisa ${data.weeks_remaining ?? 0} minggu — kurangi rentangnya.`
+          : `Sisa ${data.remaining} baris — kurangi jumlah produk.`);
       } else {
         showToast('Kuota unduhan hari ini sudah habis.');
       }
@@ -23355,7 +23475,9 @@ async function exportRun(fmt) {
     _exportReqId = null;
     try { sessionStorage.removeItem('_lid_export_req'); } catch (_) {}
     _exportQuota = Object.assign({}, _exportQuota, {
-      used: data.used, limit: data.limit, remaining: data.remaining, reset_at: data.reset_at,
+      used: data.used, limit: data.limit, remaining: data.remaining,
+      weeks_used: data.weeks_used, weeks_limit: data.weeks_limit,
+      weeks_remaining: data.weeks_remaining, reset_at: data.reset_at,
     });
     _exportLast = { payload: data, fmt };
 
@@ -23367,22 +23489,29 @@ async function exportRun(fmt) {
       ui: 'gpt', source: _exportCtx?.source || 'directory',
       shape: hist ? 'history' : 'snapshot', weeks: hist ? weeks : 0,
       products: data.products, rows_total: data.rows_total,
-      rows_charged: data.charged, requested: data.requested,
-      truncated: !!data.truncated, fmt,
+      rows_charged: data.charged, weeks_charged: data.weeks_charged ?? null,
+      requested: data.requested, truncated: !!data.truncated, fmt,
       remaining_after: data.remaining ?? null,
+      weeks_remaining_after: data.weeks_remaining ?? null,
       wanted_rows: hist ? sel.length * (weeks + 1) : sel.length,
       wanted_products: sel.length,
     });
 
-    showToast(data.charged
-      ? `Terpakai ${data.charged} baris terukur (${data.rows_total} baris di file). Sisa ${data.remaining}.`
-      : `${data.rows_total} baris diunduh.`);
+    showToast(hist
+      ? `Riwayat ${data.weeks || weeks} minggu diunduh. Sisa ${data.weeks_remaining ?? '—'} minggu hari ini.`
+      : (data.charged
+        ? `${data.products} produk diunduh (omset / bulan). Sisa ${data.remaining} baris.`
+        : `${data.products} produk diunduh.`));
     exportRenderCost();
 
     // Truncated, or nearly out: this is the moment the demand signal is real.
     if (data.truncated) exportAskMore('truncated');
-    else if (Number.isFinite(data.remaining) && data.limit
-             && data.remaining <= data.limit * 0.2) exportAskMore('exhausted');
+    else if (hist
+      && Number.isFinite(data.weeks_remaining) && data.weeks_limit
+      && data.weeks_remaining <= data.weeks_limit * 0.2) exportAskMore('exhausted');
+    else if (!hist
+      && Number.isFinite(data.remaining) && data.limit
+      && data.remaining <= data.limit * 0.2) exportAskMore('exhausted');
     else exportClose();
   } catch (_) {
     showToast('Gagal menyiapkan file. Coba lagi sebentar.');
@@ -23640,7 +23769,7 @@ function exportAskMore(trigger) {
   const modal = $('export-more-modal');
   if (!modal) return;
   const sel = exportSelection();
-  const hist = _exportCtx?.shape === 'history';
+  const hist = exportIsHistory();
   const weeks = Number(_exportCtx?.weeks) || 12;
   _exportMoreCtx = {
     trigger: trigger || 'button',
@@ -23650,8 +23779,7 @@ function exportAskMore(trigger) {
     weeks: hist ? weeks : 0,
   };
   void logUserEvent('export_more_prompt', { ui: 'gpt', ..._exportMoreCtx });
-  const lim = $('export-more-limit');
-  if (lim && _exportQuota?.limit) lim.textContent = String(_exportQuota.limit);
+  exportSyncMoreLimit();
   exportClose();
   modal.classList.add('open');
 }

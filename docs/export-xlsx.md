@@ -1,26 +1,38 @@
 # Export produk ke XLSX/CSV
 
-Shipped 2026-09-08. Lets a signed-in user download search results as a spreadsheet,
-optionally with weekly history. Capped by a daily row budget whose real purpose is to
-measure demand before this becomes a paid feature.
+Shipped 2026-09-08; budgets split 2026-09-08 evening. Lets a signed-in user download
+search results or a Deep Dive's weekly omset as a spreadsheet. Capped by daily budgets
+whose real purpose is to measure demand before this becomes a paid feature.
 
-## The cost rule
+## Two budgets
 
-**Only measured rows cost.** 90 rows per user per WIB day.
+| Surface | Shape | Daily budget (WIB) | What you get |
+|---|---|---|---|
+| Cari Produk (`#dir-export`) | Snapshot | **90 product rows** | Monthly omset per product |
+| Deep Dive (icon next to Tren) | History | **12 weeks** | Weekly omset for that one product |
 
-| Row | Cost |
+Modal copy at the top is the live remaining/limit:
+
+- Cari Produk: `90/90 baris produk tersisa hari ini`
+- Deep Dive: `12/12 minggu tersisa hari ini`
+
+The Unduh button sits on the **list bar with Urutkan** — above product rows, below
+Trending Sekarang. Deep Dive history is only on the trend-graph download icon (not a
+tool pill).
+
+## Cost rule
+
+| Export | Cost |
 |---|---|
-| Snapshot row (1 per product) | 1 |
-| History week, `Sumber = terukur` | 1 |
-| History week, `Sumber = perkiraan` | 0 |
-| History week, `Sumber = proyeksi` | 0 |
+| Snapshot product row | 1 toward the 90-row budget |
+| History week (any `Sumber`) | 1 toward the 12-week budget |
 
-Verified example: `item 57355613815 / shop 1474463822` returns 13 weekly rows and charges
-**4** (1 snapshot + 3 measured weeks). Only ~19% of a 12-week window is measured across a
-typical selection, so the budget stretches much further than 90/13 suggests.
+History no longer rides the measured-row budget. Charging requested weeks keeps the
+`12/12 minggu` line honest — perkiraan/proyeksi weeks still appear in the file with
+their `Sumber` label, they just cost the same as terukur against the weeks cap.
 
-History exports are additionally capped at **10 products** (`_export_history_cap()`),
-because free rows mean the budget no longer bounds the payload or the query time.
+History exports are still product-capped at **10** (`_export_history_cap()`); Deep Dive
+always sends 1.
 
 ## Why `product_daily_series` and not `listing_weekly`
 
@@ -77,14 +89,17 @@ row-2 header range so sorting still works under the merged brand row.
 
 ## Files
 
-- `supabase/migrations/20260909120000_export_row_budget.sql` — `export_rows`,
+- `supabase/migrations/20260909120000_export_row_budget.sql` — initial `export_rows`,
   `get_my_export_quota`, `_product_weeks_batch`, `daily_usage.export_rows_used`, `export_jobs`
-- `js/gpt-app.js` — export section near the supplier probe; `updateDirCount` shows the button;
-  `ddToolPillsHtml` / `runDdrTool` add the deep-dive `Unduh` pill; `consumeProductDeepLink()`
-- `index.html` — `#dir-export`, `#export-modal`, `#export-more-modal`
+- `supabase/migrations/20260909140000_export_weeks_budget.sql` — `export_weeks_used`,
+  `_export_week_limit`, dual-budget `export_rows` / `get_my_export_quota`
+- `js/gpt-app.js` — export section; `updateDirCount` shows `#dir-export` on `#dir-list-bar`;
+  `ddTrendExportBtnHtml` next to Tren; `consumeProductDeepLink()`
+- `index.html` — `#dir-list-bar` / `#dir-export`, `#export-modal`, `#export-more-modal`
 
 ## The events that are the actual point
 
-`export_open`, `export_done` (carries **both** `rows_total` and `rows_charged`, plus
-`wanted_rows` on every export — that distribution says whether 90 is right), `export_blocked`,
-`export_more_prompt`, `export_more_response` (`ya`/`tidak`/`tutup`, three-way on purpose).
+`export_open`, `export_done` (carries **both** `rows_total` / `rows_charged` and
+`weeks_charged` / `weeks_remaining_after`, plus `wanted_rows` on every export — that
+distribution says whether 90 / 12 are right), `export_blocked`, `export_more_prompt`,
+`export_more_response` (`ya`/`tidak`/`tutup`, three-way on purpose).
