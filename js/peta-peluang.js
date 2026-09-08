@@ -975,7 +975,13 @@
         ping();
         resolve(list);
       }
-      sb.rpc('peta_batch', { p_keys: keys, p_weeks: 8 }).then(function (res) {
+      // This path reads only `momentum` (see attachTrends). The full peta_batch
+      // also builds `positions` — 281 KB of the 317 KB response — and a
+      // DISTINCT over raw listings for `scrapes`, neither of which is used
+      // here, and it carries no statement_timeout, so anon's 3s cap turned it
+      // into an HTTP 500 on cold runs. peta_batch_momentum returns the same
+      // {momentum: [...]} shape. The canvas keeps the full peta_batch.
+      sb.rpc('peta_batch_momentum', { p_keys: keys }).then(function (res) {
         if (settled) return;
         if (res.error) { fail(res.error, false); return; }
         settled = true;

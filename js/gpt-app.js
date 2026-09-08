@@ -7927,22 +7927,16 @@ async function fetchNaikDaunGlobal(limit = 60) {
   return data || [];
 }
 
-// ── Instant Produk-page open: a small pre-warmed assortment so the default
-// directory view never has to sit on a bare "Memuat…" state. Warmed once at
-// boot() (fire-and-forget) so it's usually ready before the user ever opens
-// Produk; renderDirectory() falls back to the old loading text if it isn't.
-let _dirInstantPool = [];
-let _dirInstantPoolPromise = null;
+// ── Instant Produk-page open: warm the pool the directory actually reads, so
+// clicking Produk does not start from a cold cache.
+//
+// This used to build a separate `_dirInstantPool` that nothing ever read — the
+// only references to it were its declaration and its write — while costing two
+// boot-time queries (mv_naik_daun, then typesForListings, which itself ran the
+// old quartiles aggregate) that competed with the real load for connections.
+// loadDirHomePool() memoizes the pool renderDirectory() genuinely uses.
 function warmDirInstantPool() {
-  if (_dirInstantPool.length || _dirInstantPoolPromise) return _dirInstantPoolPromise;
-  _dirInstantPoolPromise = (async () => {
-    try {
-      const pool = await fetchNaikDaunGlobal(60);
-      const types = await typesForListings(pool, '', 12);
-      if (types.length) _dirInstantPool = types;
-    } catch (_) { /* falls back to the normal loading path */ }
-  })();
-  return _dirInstantPoolPromise;
+  return loadDirHomePool();
 }
 
 // ── Trending (mv_trending: real WoW sold deltas from listings history) ───
@@ -8322,20 +8316,30 @@ async function handleTrendingIntent(chat) {
 async function fetchTerlarisMinggu(cat, limit = 9) {
   if (!_supabase || !_ptypeHasWeekly) return [];
   try {
-    // Over-fetch: pct > 0 is a client filter on wk_units vs wk_units_prev.
-    // Top-N by volume alone is often cooling down, so a tight LIMIT then
-    // filter can wipe the home pool (and Trending Sekarang with it).
-    const fetchN = Math.min(Math.max(limit * 5, 80), 400);
-    let q = _supabase.from('product_types_v')
-      .select(ptypeCols())
-      .eq('city', 'ALL')
-      .gte('n_listings', 3)
-      .gte('wk_units', TERLARIS_MIN_UNITS)
-      .gte('wk_items', TERLARIS_MIN_ITEMS)
-      .order('wk_units', { ascending: false, nullsFirst: false })
-      .limit(fetchN);
-    if (cat) q = q.eq('category_canonical', cat);
-    const { data, error } = await q;
+    // wk_pct is the server-side form of the weeklyStats() "pct > 0" test, so
+    // nothing is discarded client-side any more and fetchN can sit just above
+    // `limit`. Without it (a DB predating 20260908120000) fall back to the old
+    // shape: over-fetch 5x, because top-N by volume alone is often cooling down
+    // and a tight LIMIT then filter can wipe the home pool (and Trending
+    // Sekarang with it).
+    const build = () => {
+      const fetchN = _ptypeHasPct
+        ? Math.min(Math.max(limit + 40, 60), 400)
+        : Math.min(Math.max(limit * 5, 80), 400);
+      let q = _supabase.from('product_types_v')
+        .select(ptypeCols())
+        .eq('city', 'ALL')
+        .gte('n_listings', 3)
+        .gte('wk_units', TERLARIS_MIN_UNITS)
+        .gte('wk_items', TERLARIS_MIN_ITEMS)
+        .order('wk_units', { ascending: false, nullsFirst: false })
+        .limit(fetchN);
+      if (_ptypeHasPct) q = q.gt('wk_pct', 0);
+      if (cat) q = q.eq('category_canonical', cat);
+      return q;
+    };
+    let { data, error } = await build();
+    if (ptypePctMissing(error)) ({ data, error } = await build());
     if (ptypeWeeklyMissing(error)) return [];
     if (error) throw error;
     const rows = (data || [])
@@ -8346,7 +8350,7 @@ async function fetchTerlarisMinggu(cat, limit = 9) {
           || ((wb?.pct || 0) - (wa?.pct || 0));
       })
       .slice(0, limit);
-    await attachTypeQuartiles(rows);
+    if (!_ptypeHasPct) await attachTypeQuartiles(rows);
     return rows;
   } catch (e) {
     console.warn('[terlarisMinggu]', e?.message || e);
@@ -18839,8 +18843,29 @@ const PTYPE_COLS = 'keyword,city,category,category_canonical,subgroup,n_listings
 const PTYPE_WEEKLY_COLS = 'wk_units,wk_base,wk_items,wk_span_days,wk_anchor_at,wk_units_prev,wk_items_prev';
 let _ptypeHasWeekly = true;
 
+// Migration 20260908120000 moved the price/omset percentiles out of the
+// per-request product_type_quartiles() aggregate into mv_product_type_quartiles,
+// and added wk_pct so the "naik minggu ini" test can run server-side. Same
+// optimism as the weekly columns above, and for the same reason: static deploys
+// and DB migrations do not land atomically here.
+const PTYPE_PCT_COLS = 'wk_pct,price_p25,price_p75,omset_p60,omset_p100';
+let _ptypeHasPct = true;
+
 function ptypeCols() {
-  return _ptypeHasWeekly ? `${PTYPE_COLS},${PTYPE_WEEKLY_COLS}` : PTYPE_COLS;
+  let cols = PTYPE_COLS;
+  if (_ptypeHasWeekly) cols += `,${PTYPE_WEEKLY_COLS}`;
+  if (_ptypeHasPct) cols += `,${PTYPE_PCT_COLS}`;
+  return cols;
+}
+
+/** True once, for the error that means "this DB predates the quartile matview". */
+function ptypePctMissing(error) {
+  if (!_ptypeHasPct || !error) return false;
+  const s = `${error.code || ''} ${error.message || ''}`;
+  if (!/42703/.test(s) && !/wk_pct|price_p25|price_p75|omset_p60|omset_p100/.test(s)) return false;
+  console.warn('[ptype] quartile columns missing — falling back to product_type_quartiles until the DB is migrated');
+  _ptypeHasPct = false;
+  return true;
 }
 
 /** True once, for the error that means "this DB predates the weekly matview". */
@@ -18860,7 +18885,7 @@ async function fetchProductTypes(cities, cats, limit = 1000, sub = null) {
   const catList = Array.isArray(cats) ? cats.filter(Boolean) : (cats ? [cats] : []);
   const catKey = catList.slice().sort().join(',');
   const cityKey = buckets.slice().sort().join(',');
-  const key = `${cityKey}|${catKey}|${sub || ''}`;
+  const key = `${cityKey}|${catKey}|${sub || ''}|${limit}`;
   if (_ptypeCache[key]) return _ptypeCache[key];
   try {
     const build = () => {
@@ -18894,7 +18919,15 @@ async function fetchProductTypes(cities, cats, limit = 1000, sub = null) {
         .sort((a, b) => (Number(b.omset_top15) || 0) - (Number(a.omset_top15) || 0))
         .slice(0, limit);
     }
-    await attachTypeQuartiles(rows);
+    // Migrated DBs deliver the quartiles as columns on the row above. On an
+    // unmigrated one, do NOT await: this call is passed every keyword in the
+    // grid, and at the category-browse limit of 1000 it takes 15s and then
+    // fails. Let it decorate the rows in place and repaint if it lands.
+    if (!_ptypeHasPct) {
+      attachTypeQuartiles(rows)
+        .then(() => { if (_ptypeCache[key] === rows) paintDirectoryTable({ remountPeta: false }); })
+        .catch(() => {});
+    }
     _ptypeCache[key] = rows;
     return rows;
   } catch (_) { return []; }
