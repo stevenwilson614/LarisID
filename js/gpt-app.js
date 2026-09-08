@@ -22184,8 +22184,8 @@ async function boot() {
   // Keep the promise: routeCohortHome needs the answer, and calling
   // refreshCohortNav a second time would just re-run the membership query.
   try { mountLarisCohort(); _bootCohortNav = refreshCohortNav(); } catch (_) {}
-  // Fire-and-forget: warms the Produk page's instant-open assortment so it's
-  // usually ready before the user ever clicks Produk (see warmDirInstantPool).
+  // Fire-and-forget: warms the home pool renderDirectory() reads, so opening
+  // Produk hits a memo instead of a cold fetch (see warmDirInstantPool).
   void warmDirInstantPool();
   const idle = window.larisIdle || ((fn) => setTimeout(fn, 800));
   idle(preloadGarudaLoaders, 1500);
