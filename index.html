@@ -3054,13 +3054,20 @@ body.view-harga .panel-inner { max-width: 1180px; }
   touch-action: none; cursor: grab; user-select: none; background: #FAFBFC;
 }
 .adm-map-stage.is-panning { cursor: grabbing; }
-.adm-map-svg { width: 100%; height: auto; display: block; max-height: 280px; }
+/* The province map is much taller than the old city pin map — labels fan out
+   above and below the coastline — so the 280px ceiling would squash it. */
+.adm-map-svg { width: 100%; height: auto; display: block; max-height: 460px; }
 .adm-map-hint { margin: 6px 0 0; font-size: .68rem; color: #9CA3AF; }
+.adm-map-coverage { margin: 6px 0 0; font-size: .68rem; color: #9CA3AF; }
 .adm-map-legend {
-  display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: .68rem; color: #9CA3AF;
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  margin-top: 10px; padding-top: 10px; border-top: 1px solid #F0F0F2;
 }
-.adm-map-scale { display: flex; height: 8px; width: 88px; border-radius: 99px; overflow: hidden; }
-.adm-map-scale span { flex: 1; }
+.adm-map-key-title { font-size: .72rem; color: #6B7280; font-weight: 600; }
+.adm-map-keys { display: flex; align-items: flex-end; gap: 13px; }
+.adm-map-key { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.adm-map-key i { display: block; border-radius: 50%; }
+.adm-map-key em { font-style: normal; font-size: .64rem; color: #9AA0AA; }
 .adm-users-card { padding: 16px 18px 12px; margin-bottom: 14px; }
 .adm-users-toolbar {
   display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;
@@ -8741,28 +8748,20 @@ body:has(.modal-overlay.open) .msg-steven-fab {
               </section>
               <section class="adm-card adm-card-pad adm-map-card">
                 <div class="adm-map-head">
-                  <h3 class="adm-card-title">Sebaran Sign Ups per Lokasi</h3>
+                  <h3 class="adm-card-title">Sebaran Pengguna di Indonesia</h3>
                   <select class="adm-map-select" id="adm-map-range" aria-label="Filter peta">
                     <option value="all">Tampilkan berdasarkan Semua Sign Ups</option>
                     <option value="30">30 hari terakhir</option>
                   </select>
                 </div>
                 <div class="adm-map-stage">
-                  <svg class="adm-map-svg" id="adm-map-svg" viewBox="0 0 800 306" role="img" aria-label="Peta sebaran sign up Indonesia"></svg>
+                  <svg class="adm-map-svg" id="adm-map-svg" viewBox="0 0 800 306" role="img" aria-label="Peta sebaran pengguna Indonesia"></svg>
                 </div>
                 <p class="adm-map-hint">Scroll atau cubit untuk zoom · seret untuk geser</p>
-                <div class="adm-map-legend">
-                  <span>Jumlah sign ups</span>
-                  <div class="adm-map-scale" aria-hidden="true">
-                    <span style="background:#FECACA"></span>
-                    <span style="background:#F87171"></span>
-                    <span style="background:#EF4444"></span>
-                    <span style="background:#B5202A"></span>
-                    <span style="background:#7F1D1D"></span>
-                  </div>
-                  <span>1–5</span>
-                  <span>31+</span>
-                </div>
+                <!-- Filled by LarisAdminMap.legendHtml() so the colour ramp has
+                     one definition instead of drifting between JS and markup. -->
+                <div class="adm-map-legend" id="adm-map-legend"></div>
+                <p class="adm-map-coverage" id="adm-map-coverage"></p>
               </section>
             </div>
 
@@ -9372,7 +9371,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <script defer src="/js/gpt-photo-analyze.js?v=20260824a"></script>
 <script defer src="/js/gpt-referral.js?v=20260821a"></script>
 <script defer src="/js/gpt-profile.js?v=20260908a"></script>
-<script defer src="/js/gpt-community-board.js?v=20260907b"></script>
+<script defer src="/js/gpt-community-board.js?v=20260909a"></script>
 <script defer src="/js/laris-cohort.js?v=20260908j"></script>
 <script defer src="/js/laris-mascot-rigs.js?v=20260907k"></script>
 <script defer src="/js/laris-mascot.js?v=20260907k"></script>
@@ -9386,6 +9385,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <script src="/js/peta-peluang.js?v=20260908a" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
-<script src="/js/gpt-app.js?v=20260909e" defer></script>
+<script src="/js/gpt-app.js?v=20260909f" defer></script>
 </body>
 </html>

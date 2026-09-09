@@ -21557,14 +21557,6 @@ async function renderAdminCategories(users) {
   });
 }
 
-function admMapFill(n) {
-  if (n >= 31) return '#7F1D1D';
-  if (n >= 21) return '#B5202A';
-  if (n >= 11) return '#EF4444';
-  if (n >= 6) return '#F87171';
-  return '#FECACA';
-}
-
 const ADM_MAP_VB = { w: 800, h: 306 };
 const ADM_MAP_ZOOM_MIN = 1;
 const ADM_MAP_ZOOM_MAX = 8;
@@ -21690,7 +21682,9 @@ function admBindMapPanZoom() {
   stage.addEventListener('lostpointercapture', endPointer);
 }
 
-function renderAdminMap(users) {
+let _admMapData = null;
+
+async function renderAdminMap() {
   const svg = $('adm-map-svg');
   const map = window.LarisAdminMap;
   // Admin-only bundle, no longer in the eager <script> list. Fetch it once and
@@ -21698,57 +21692,45 @@ function renderAdminMap(users) {
   if (!map) {
     if (svg && typeof larisLoadScript === 'function' && !_admMapLoading) {
       _admMapLoading = true;
-      larisLoadScript('/js/admin-map.js?v=20260812a')
-        .then(() => { _admMapLoading = false; renderAdminMap(users); },
+      larisLoadScript('/js/admin-map.js?v=20260909a')
+        .then(() => { _admMapLoading = false; renderAdminMap(); },
               () => { _admMapLoading = false; });
     }
     return;
   }
   if (!svg) return;
-  const cutoff = _adminMapRange === '30' ? Date.now() - 30 * 864e5 : 0;
-  const counts = {};
-  (users || []).forEach(u => {
-    if (cutoff && (!u.created_at || new Date(u.created_at).getTime() < cutoff)) return;
-    const raw = (u.region || u.city || '').trim();
-    if (!raw) return;
-    const canon = map.canonical(raw) || raw;
-    counts[canon] = (counts[canon] || 0) + 1;
-  });
-  const pinned = Object.entries(counts)
-    .map(([city, n]) => {
-      const coords = map.CITY_COORDS[city];
-      if (!coords) return null;
-      const [x, y] = map.project(coords[0], coords[1]);
-      return { city, n, x, y };
-    })
-    .filter(Boolean)
-    .sort((a, b) => b.n - a.n);
 
-  svg.setAttribute('viewBox', `0 0 ${ADM_MAP_VB.w} ${ADM_MAP_VB.h}`);
+  // The counts come from user_map_distribution(), not from _adminUsers. That
+  // list only knows about signed-up accounts with a location typed at
+  // onboarding — a few dozen pins — and says nothing about the ~2.3k people
+  // who have visited.
+  const days = _adminMapRange === '30' ? 30 : null;
+  try {
+    const { data, error } = await _supabase.rpc('user_map_distribution', { p_days: days });
+    if (error) throw error;
+    _admMapData = data || null;
+  } catch (err) {
+    console.warn('[admin-map]', err);
+    return;
+  }
+  if (!_admMapData) return;
 
-  const bubbles = pinned.map((p, i) => {
-    const r = Math.max(7, Math.round(4 * Math.sqrt(p.n) + 4));
-    const lw = Math.max(52, p.city.length * 5.2 + 22);
-    const lx = p.x + r + 4 > ADM_MAP_VB.w - lw ? -(r + 4 + lw) : r + 4;
-    const label = i < 8
-      ? `<g>
-          <rect x="${lx.toFixed(1)}" y="-9" width="${lw}" height="16" rx="4" fill="#fff" stroke="#E8E8E8"/>
-          <text x="${(lx + 4).toFixed(1)}" y="2.5" font-size="9" font-weight="700" fill="#1A1A1A" font-family="Plus Jakarta Sans, system-ui, sans-serif">${esc(p.city)} ${p.n}</text>
-        </g>`
-      : '';
-    return `<g class="adm-map-pin" data-x="${p.x.toFixed(1)}" data-y="${p.y.toFixed(1)}">
-      <circle cx="0" cy="0" r="${r}" fill="${admMapFill(p.n)}" fill-opacity=".85" stroke="#B5202A" stroke-width="1">
-        <title>${esc(p.city)}: ${p.n} pendaftar</title>
-      </circle>
-      ${label}
-    </g>`;
-  }).join('');
-
-  svg.innerHTML = `<g id="adm-map-world">
-    <path d="${map.OUTLINE}" fill="#EEF2F6" stroke="#D1D5DB" stroke-width="1" vector-effect="non-scaling-stroke"/>
-    ${bubbles}
-  </g>`;
+  map.renderUserMap(svg, _admMapData, {});
   admMapApplyView();
+
+  const legend = $('adm-map-legend');
+  if (legend) legend.innerHTML = map.legendHtml();
+
+  // Admin-only: how much of that map is observed and how much is allocated.
+  // The komunitas map deliberately shows one undifferentiated picture, so this
+  // is the only place the split is visible.
+  const note = $('adm-map-coverage');
+  if (note) {
+    const t = _admMapData.total || 0;
+    const m = _admMapData.measured || 0;
+    const pct = t ? Math.round((m / t) * 100) : 0;
+    note.textContent = `${t.toLocaleString('id-ID')} pengunjung · ${m.toLocaleString('id-ID')} lokasi terukur (${pct}%) · sisanya dialokasikan proporsional dari sebaran yang terukur`;
+  }
 }
 
 function admFmtWa(wa) {
@@ -22034,7 +22016,7 @@ function adminBindUi() {
   });
   $('adm-map-range')?.addEventListener('change', e => {
     _adminMapRange = e.target.value === '30' ? '30' : 'all';
-    renderAdminMap(_adminUsers);
+    void renderAdminMap();
   });
   admBindMapPanZoom();
   $('adm-cat-more')?.addEventListener('click', () => {
@@ -22126,7 +22108,7 @@ async function loadAdminDirectory() {
     if (dirRes.error) throw dirRes.error;
     _adminUsers = Array.isArray(dirRes.data) ? dirRes.data : [];
     _adminUserPage = 1;
-    renderAdminMap(_adminUsers);
+    void renderAdminMap();
     admFillCatFilter(_adminUsers);
     renderAdminUsers();
     renderAdminKpis(_adminUsers);

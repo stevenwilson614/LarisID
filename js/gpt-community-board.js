@@ -11,6 +11,8 @@
   let _commentsCache = {};
   let _focusPostId = '';
   let _likePromptIds = new Set();
+  let _mapData = null;
+  let _mapResizeBound = false;
 
   const TOPICS = [
     'Foto & Deskripsi',
@@ -771,6 +773,36 @@
         border: 1px solid var(--msb-line); border-radius: 22px;
         padding: 18px 20px 22px; box-shadow: 0 1px 2px rgba(0,0,0,.03);
       }
+      .msb-map-card {
+        position: relative; z-index: 1; background: #fff;
+        border: 1px solid var(--msb-line); border-radius: 22px;
+        padding: 18px 20px 16px; box-shadow: 0 1px 2px rgba(0,0,0,.03);
+        margin-bottom: 14px;
+      }
+      .msb-map-title { margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--msb-ink); }
+      .msb-map-sub { margin: 3px 0 10px; font-size: .86rem; color: var(--msb-muted); }
+      .msb-map-stage { position: relative; }
+      .msb-map-svg { width: 100%; height: auto; display: block; }
+      .msb-map-legend {
+        display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+        margin-top: 10px; padding-top: 12px; border-top: 1px solid #F1F2F4;
+      }
+      .adm-map-key-title { font-size: .74rem; color: var(--msb-muted); font-weight: 650; }
+      .adm-map-keys { display: flex; align-items: flex-end; gap: 13px; }
+      .adm-map-key { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+      .adm-map-key i { display: block; border-radius: 50%; }
+      .adm-map-key em { font-style: normal; font-size: .66rem; color: #9AA0AA; }
+      /* Shown only in compact mode, where the map drops its labels. */
+      .msb-map-list {
+        list-style: none; margin: 12px 0 0; padding: 12px 0 0;
+        border-top: 1px solid #F1F2F4;
+        columns: 2; column-gap: 18px; font-size: .82rem;
+      }
+      .msb-map-list li {
+        display: flex; justify-content: space-between; gap: 10px;
+        padding: 3px 0; break-inside: avoid; color: var(--msb-muted);
+      }
+      .msb-map-list b { color: var(--msb-red); font-weight: 800; }
       .msb-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
       .msb-tab {
         border: 1px solid #D1D5DB; background: #fff; color: #374151;
@@ -915,6 +947,8 @@
         .msb-hero-mascot { align-self: center; margin: 0 0 4px; order: -1; }
         .msb-hero-mascot img { width: 200px; }
         .msb-panel { padding: 14px 14px 18px; border-radius: 18px; }
+        .msb-map-card { padding: 14px 14px 12px; border-radius: 18px; }
+        .msb-map-title { font-size: 1.02rem; }
         .msb-card { grid-template-columns: 70px 1fr; padding: 12px 10px; }
         .msb-status { font-size: .68rem; padding: 3px 8px; }
         .msb-cta { padding: 14px; }
@@ -923,17 +957,84 @@
     document.head.appendChild(style);
   }
 
+  // ── Sebaran pengguna ────────────────────────────────────────────────────
+  // Same user_map_distribution() the admin map draws, so the two can never
+  // disagree. admin-map.js is lazy-loaded: it is 12 KB of geometry that no
+  // other view needs, and this page is the only public place it renders.
+  let _mapLoading = false;
+
+  function mapCompact(card) {
+    // 34 leader-line labels are illegible on a phone, so below this width the
+    // bubbles keep their tooltips and a ranked list carries the numbers.
+    // Measured on the card, not the viewport: the app's 288px sidebar means a
+    // wide window can still leave the map a narrow column.
+    const w = card?.clientWidth || window.innerWidth || 1024;
+    return w < 620;
+  }
+
+  function paintUserMap(data) {
+    const M = window.LarisAdminMap;
+    const card = _container?.querySelector('#msb-map-card');
+    const svg = _container?.querySelector('#msb-map-svg');
+    if (!M || !card || !svg || !data) return;
+    const compact = mapCompact(card);
+    M.renderUserMap(svg, data, { compact: compact, groupId: 'msb-map-world' });
+
+    const legend = _container.querySelector('#msb-map-legend');
+    if (legend) legend.innerHTML = M.legendHtml();
+
+    const list = _container.querySelector('#msb-map-list');
+    if (list) {
+      list.hidden = !compact;
+      list.innerHTML = compact
+        ? (data.provinces || []).map((p) => `<li><span>${_opts.esc(p.province)}</span><b>${(p.n || 0).toLocaleString('id-ID')}</b></li>`).join('')
+        : '';
+    }
+    card.hidden = false;
+  }
+
+  async function renderUserMap() {
+    if (!_container) return;
+    try {
+      if (!window.LarisAdminMap) {
+        if (_mapLoading || typeof window.larisLoadScript !== 'function') return;
+        _mapLoading = true;
+        await window.larisLoadScript('/js/admin-map.js?v=20260909a');
+        _mapLoading = false;
+      }
+      const { data, error } = await _opts.supabase.rpc('user_map_distribution', { p_days: null });
+      if (error) throw error;
+      if (!data) return;
+      _mapData = data;
+      paintUserMap(data);
+      if (!_mapResizeBound) {
+        _mapResizeBound = true;
+        // Crossing the compact threshold swaps labels for the list, so the map
+        // has to be redrawn rather than merely rescaled by CSS.
+        let t = null;
+        window.addEventListener('resize', () => {
+          clearTimeout(t);
+          t = setTimeout(() => { if (_mapData) paintUserMap(_mapData); }, 180);
+        });
+      }
+    } catch (err) {
+      _mapLoading = false;
+      _opts?.onError?.(err);
+    }
+  }
+
   function mount(container, options) {
     _opts = options;
     _container = container;
 
-    if (container.dataset.communityBoardMounted === 'msb-v7') {
+    if (container.dataset.communityBoardMounted === 'msb-v8') {
       _listEl = container.querySelector('#msb-list');
       applyLaunchOpts();
       fetchPosts();
+      renderUserMap();
       return;
     }
-    container.dataset.communityBoardMounted = 'msb-v7';
+    container.dataset.communityBoardMounted = 'msb-v8';
     injectStyles();
 
     container.innerHTML = `
@@ -948,6 +1049,16 @@
             <img src="/images/brand/mascot-fitur.webp" width="280" height="235" alt="" loading="lazy" decoding="async">
           </div>
         </header>
+
+        <section class="msb-map-card" id="msb-map-card" hidden>
+          <h3 class="msb-map-title">Sebaran Pengguna di Indonesia</h3>
+          <p class="msb-map-sub">Lihat dari mana saja teman-teman kita bergabung di komunitas.</p>
+          <div class="msb-map-stage">
+            <svg class="msb-map-svg" id="msb-map-svg" role="img" aria-label="Peta sebaran pengguna LarisID di Indonesia"></svg>
+          </div>
+          <div class="msb-map-legend" id="msb-map-legend"></div>
+          <ol class="msb-map-list" id="msb-map-list" hidden></ol>
+        </section>
 
         <div class="msb-panel">
           <div class="msb-tabs" role="tablist" aria-label="Komunitas">
@@ -996,6 +1107,7 @@
 
     _listEl = container.querySelector('#msb-list');
     applyLaunchOpts();
+    renderUserMap();
 
     container.querySelectorAll('.msb-tab').forEach((btn) => {
       btn.addEventListener('click', () => switchTab(btn.dataset.tab));
