@@ -21587,11 +21587,10 @@ function admMapApplyView() {
   if (world) {
     world.setAttribute('transform', `translate(${_adminMapPan.x} ${_adminMapPan.y}) scale(${k})`);
   }
-  svg.querySelectorAll('.adm-map-pin').forEach(g => {
-    const x = Number(g.getAttribute('data-x')) || 0;
-    const y = Number(g.getAttribute('data-y')) || 0;
-    g.setAttribute('transform', `translate(${x} ${y}) scale(${1 / k})`);
-  });
+  // The old city map counter-scaled each pin so it stayed a constant screen
+  // size. The province map carries labels, and a label that refuses to grow
+  // while its map does is unreadable at any zoom — so the whole world group
+  // scales together now.
 }
 
 function admMapZoomAt(svg, clientX, clientY, nextK) {

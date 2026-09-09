@@ -272,7 +272,10 @@
         // DKI's own bubble stays on the map as the anchor the inset points at,
         // but its number lives in the inset where the five kota are readable.
         const r = M.radiusFor(p.n);
-        return '<g class="adm-map-pin" data-x="' + p.x.toFixed(1) + '" data-y="' + p.y.toFixed(1) + '">' +
+        // Absolute cx/cy, and deliberately not the old .adm-map-pin class: that
+        // class means "circle sits at the origin, translate me into place", and
+        // the admin pan/zoom rig would move these a second time.
+        return '<g>' +
                '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + r.toFixed(1) +
                '" fill="' + M.fillFor(p.n) + '" fill-opacity=".9" stroke="#fff" stroke-width="1">' +
                '<title>' + esc(p.name) + ': ' + p.n.toLocaleString('id-ID') + ' pengguna</title>' +
