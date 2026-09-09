@@ -63,25 +63,31 @@ function _lidWriteGeoCache(geo) {
   } catch (_) {}
 }
 
+// Resolved by the geo-locate edge function, not in the browser. ipwho.is used
+// to be called from here and returned the ISLAND in `region` ("Java"), which
+// the province map cannot use; going through our own server also means an
+// ad-blocker cannot quietly erase a share of the map.
 async function _lidResolveVisitorGeo() {
   const cached = _lidReadGeoCache();
   if (cached !== undefined) return cached;
   try {
     const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timer = ctrl ? setTimeout(() => { try { ctrl.abort(); } catch (_) {} }, 2500) : null;
-    const res = await fetch(
-      'https://ipwho.is/?fields=success,city,region,country_code,latitude,longitude',
-      ctrl ? { signal: ctrl.signal } : undefined
-    );
+    const res = await fetch(`${SUPA_URL}/functions/v1/geo-locate`, {
+      method: 'POST',
+      headers: { apikey: SUPA_ANON, Authorization: 'Bearer ' + SUPA_ANON, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visitor_id: _lidVisitorId(), user_id: currentUser?.id || null }),
+      signal: ctrl ? ctrl.signal : undefined,
+    });
     if (timer) clearTimeout(timer);
     const j = await res.json();
     // Failures are not cached — retry next session. Only successful places stick.
-    if (!j || j.success === false) return null;
+    if (!j || j.ok !== true) return null;
     const city = String(j.city || '').trim().slice(0, 80) || null;
     const region = String(j.region || '').trim().slice(0, 80) || null;
-    const country = String(j.country_code || '').trim().toUpperCase().slice(0, 2) || null;
-    const lat = Number.isFinite(Number(j.latitude)) ? Number(j.latitude) : null;
-    const lon = Number.isFinite(Number(j.longitude)) ? Number(j.longitude) : null;
+    const country = String(j.country || '').trim().toUpperCase().slice(0, 2) || null;
+    const lat = Number.isFinite(Number(j.lat)) ? Number(j.lat) : null;
+    const lon = Number.isFinite(Number(j.lon)) ? Number(j.lon) : null;
     if (!city && !region && !country && (lat == null || lon == null)) return null;
     const geo = { city, region, country, lat, lon };
     _lidWriteGeoCache(geo);
@@ -5252,15 +5258,15 @@ function resolveRegionFromGeo(city, regionName) {
   return null;
 }
 
+// Shares _lidResolveVisitorGeo's cache and its edge-function lookup, so the
+// onboarding city chip and the user map can never disagree about where a
+// visitor is. The foreign-country gate now lives in the edge function, which
+// returns a null place for anything outside Indonesia.
 async function fetchRegionFromIp() {
   try {
-    const res = await fetch('https://ipwho.is/?fields=success,city,region,country_code');
-    const j = await res.json();
-    if (!j || j.success === false) return null;
-    // Same gate as arm A: country_code was requested but never read, so foreign
-    // visitors got their city written into user_onboarding_prefs.region.
-    if (j.country_code && j.country_code !== 'ID') return null;
-    return resolveRegionFromGeo(j.city, j.region);
+    const geo = await _lidResolveVisitorGeo();
+    if (!geo || (geo.country && geo.country !== 'ID')) return null;
+    return resolveRegionFromGeo(geo.city, geo.region);
   } catch (_) {
     return null;
   }

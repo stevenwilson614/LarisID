@@ -128,11 +128,13 @@ footer{text-align:center;padding:24px;font-size:.78rem;color:var(--tm);}
         server kami sendiri, bukan pihak ketiga.
       </li>
       <li>
-        <strong>Perkiraan lokasi (kota)</strong> — saat Anda membuka aplikasi, peramban Anda meminta perkiraan
-        kota/wilayah/negara dari alamat IP melalui layanan geolokasi (<a href="https://ipwho.is/" rel="nofollow noopener" target="_blank">ipwho.is</a>).
-        Kami menyimpan <strong>kota, wilayah, kode negara, dan koordinat kasar</strong> bersama penanda pengunjung
-        agar kami bisa melihat sebaran pengguna di peta. Kami <strong>tidak menyimpan alamat IP</strong> di
-        database kami.
+        <strong>Perkiraan lokasi (kota)</strong> — saat Anda membuka aplikasi, <strong>server kami</strong> (bukan
+        peramban Anda) menukar alamat IP kunjungan itu dengan perkiraan kota/provinsi/negara lewat layanan
+        geolokasi (<a href="https://ipinfo.io/" rel="nofollow noopener" target="_blank">ipinfo.io</a>).
+        Kami menyimpan <strong>kota, provinsi, kode negara, dan koordinat kasar</strong> bersama penanda pengunjung
+        agar kami bisa melihat sebaran pengguna di peta. Alamat IP itu hanya dibaca sesaat lalu dibuang: kami
+        <strong>tidak menyimpan alamat IP</strong> di database kami, dan peramban Anda tidak menghubungi
+        layanan geolokasi mana pun secara langsung.
       </li>
     </ul>
     <p>
