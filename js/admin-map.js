@@ -45,6 +45,343 @@
       if (aliases[k]) return aliases[k];
       const coords = w.LarisAdminMap.CITY_COORDS;
       return Object.keys(coords).find(function (c) { return c.toLowerCase() === k; }) || null;
+    },
+
+    // ── Province layer ──────────────────────────────────────────────────────
+    // CITY_ALIASES above deliberately folds all five Jakarta kota onto
+    // 'Jakarta'. The province map needs the opposite, so it never goes through
+    // canonical() — it keys on the province names user_map_distribution()
+    // returns and looks them up here directly.
+    //
+    // `side` places the label relative to the bubble: l/r/t/b. dx/dy nudge it
+    // where neighbours would collide, which on Java they always do.
+    PROVINCES: {
+      'Aceh':                      { lat:  4.7,  lon:  96.7, side: 't' },
+      'Sumatera Utara':            { lat:  2.5,  lon:  99.0, side: 'l' },
+      'Sumatera Barat':            { lat: -0.8,  lon: 100.6, side: 'l' },
+      'Riau':                      { lat:  0.5,  lon: 101.7, side: 'r' },
+      'Kepulauan Riau':            { lat:  0.9,  lon: 104.5, side: 't', short: 'Kep. Riau' },
+      'Jambi':                     { lat: -1.7,  lon: 102.8, side: 'r', dy: -4 },
+      'Sumatera Selatan':          { lat: -3.2,  lon: 104.0, side: 'r', dy: 4 },
+      'Bengkulu':                  { lat: -3.6,  lon: 102.3, side: 'l' },
+      'Lampung':                   { lat: -4.8,  lon: 105.2, side: 'l', dy: 10 },
+      'Kepulauan Bangka Belitung': { lat: -2.5,  lon: 106.5, side: 't', dy: -4, short: 'Kep. Bangka Belitung' },
+      'DKI Jakarta':               { lat: -6.2,  lon: 106.85, inset: true },
+      'Banten':                    { lat: -6.4,  lon: 106.05, side: 'l', dy: 22 },
+      'Jawa Barat':                { lat: -6.95, lon: 107.5, side: 'b', dy: 16 },
+      'Jawa Tengah':               { lat: -7.2,  lon: 110.1, side: 't', dy: -4 },
+      'DI Yogyakarta':             { lat: -7.9,  lon: 110.4, side: 'b', dy: 34 },
+      'Jawa Timur':                { lat: -7.7,  lon: 112.6, side: 'r', dy: 18 },
+      'Bali':                      { lat: -8.4,  lon: 115.1, side: 't', dy: -2 },
+      'Nusa Tenggara Barat':       { lat: -8.6,  lon: 117.4, side: 'b', dy: 14 },
+      'Nusa Tenggara Timur':       { lat: -8.9,  lon: 121.0, side: 'b', dy: 32 },
+      'Kalimantan Barat':          { lat:  0.0,  lon: 110.5, side: 'l' },
+      'Kalimantan Tengah':         { lat: -1.7,  lon: 113.5, side: 'l', dy: 10 },
+      'Kalimantan Selatan':        { lat: -3.1,  lon: 115.3, side: 'l', dy: 22 },
+      'Kalimantan Timur':          { lat:  0.5,  lon: 116.5, side: 't' },
+      'Kalimantan Utara':          { lat:  3.1,  lon: 116.5, side: 'r' },
+      'Sulawesi Barat':            { lat: -2.7,  lon: 119.2, side: 'l', dy: -8 },
+      'Sulawesi Tengah':           { lat: -1.4,  lon: 121.0, side: 't' },
+      'Gorontalo':                 { lat:  0.7,  lon: 122.5, side: 't', dy: -10 },
+      'Sulawesi Utara':            { lat:  1.0,  lon: 124.5, side: 'r', dy: -6 },
+      'Sulawesi Selatan':          { lat: -4.3,  lon: 120.0, side: 'b', dy: 6 },
+      'Sulawesi Tenggara':         { lat: -4.2,  lon: 122.2, side: 'r', dy: 12 },
+      'Maluku Utara':              { lat:  0.8,  lon: 127.8, side: 't' },
+      'Maluku':                    { lat: -3.4,  lon: 129.5, side: 'b' },
+      'Papua Barat':               { lat: -1.5,  lon: 133.0, side: 't' },
+      'Papua':                     { lat: -4.2,  lon: 138.5, side: 'b' }
+    },
+
+    // The five kota sit inside 2.4 map units of each other at national scale —
+    // unreadable, which is the whole reason for the inset. Coordinates here are
+    // inset-local (0..100 square), not lat/lon.
+    DKI_KOTA: {
+      'Jakarta Utara':   { x: 52, y: 22, side: 'r' },
+      'Jakarta Barat':   { x: 28, y: 45, side: 'l' },
+      'Jakarta Pusat':   { x: 54, y: 46, side: 'r' },
+      'Jakarta Timur':   { x: 76, y: 56, side: 'r' },
+      'Jakarta Selatan': { x: 47, y: 74, side: 'l' }
+    },
+
+    // Simplified DKI kota outlines in the same inset-local 0..100 square.
+    // Traced to read as Jakarta at a glance, not to survey it.
+    DKI_SHAPES: {
+      'Jakarta Utara':   'M14 34 L30 26 44 12 62 10 78 18 86 30 74 36 60 32 44 38 28 40Z',
+      'Jakarta Barat':   'M14 34 L28 40 44 38 42 58 36 70 22 66 12 52Z',
+      'Jakarta Pusat':   'M44 38 L60 32 66 40 64 54 52 58 42 58Z',
+      'Jakarta Timur':   'M60 32 L74 36 86 30 92 46 88 66 74 78 62 72 64 54 66 40Z',
+      'Jakarta Selatan': 'M36 70 L42 58 52 58 64 54 62 72 74 78 62 90 44 92 34 84Z'
+    },
+
+    // Six bands, matching the legend exactly — fillFor is the only definition
+    // of the ramp, and the legend is generated from BANDS below.
+    BANDS: [
+      { max: 5,    fill: '#FBBFC3', label: '1–5' },
+      { max: 10,   fill: '#F79AA0', label: '6–10' },
+      { max: 50,   fill: '#F26C76', label: '11–50' },
+      { max: 200,  fill: '#E8434F', label: '51–200' },
+      { max: 500,  fill: '#C62835', label: '201–500' },
+      { max: Infinity, fill: '#8E1620', label: '501+' }
+    ],
+
+    fillFor: function (n) {
+      const bands = w.LarisAdminMap.BANDS;
+      for (let i = 0; i < bands.length; i++) if (n <= bands[i].max) return bands[i].fill;
+      return bands[bands.length - 1].fill;
+    },
+
+    radiusFor: function (n) {
+      return Math.max(3.5, 3 + 0.75 * Math.sqrt(Math.max(n, 0)));
+    },
+
+    // ── renderUserMap ───────────────────────────────────────────────────────
+    // Draws the whole thing into `svg` from a user_map_distribution() payload.
+    // Takes its element and holds no module state, because the komunitas page
+    // and the admin page render one each and would otherwise fight over the
+    // same globals.
+    //
+    // opts.compact drops the labels and the inset for narrow screens — 34
+    // leader-line labels are illegible at 375px, so the caller pairs compact
+    // mode with a ranked list underneath.
+    renderUserMap: function (svg, data, opts) {
+      if (!svg) return;
+      const M = w.LarisAdminMap;
+      const o = opts || {};
+      const compact = !!o.compact;
+      const esc = function (t) {
+        return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+        });
+      };
+      const provinces = (data && data.provinces) || [];
+      const dki = (data && data.dki) || [];
+      const FONT = 'Plus Jakarta Sans, system-ui, sans-serif';
+
+      const pins = provinces.map(function (row) {
+        const meta = M.PROVINCES[row.province];
+        if (!meta) return null;
+        const xy = M.project(meta.lat, meta.lon);
+        return { name: row.province, label: meta.short || row.province,
+                 n: row.n || 0, x: xy[0], y: xy[1], meta: meta };
+      }).filter(Boolean);
+
+      // Label placement is solved at render time, not baked into PROVINCES as
+      // fixed offsets. Counts move, radii move with them, and a static offset
+      // that reads well at 759 collides with its neighbour at 2,400. The solver
+      // walks the provinces largest-first so the ones that matter keep their
+      // preferred side, and each later label takes the first candidate slot
+      // that hits nothing already placed.
+      const TEXT_W = function (name, n) {
+        return Math.max(String(name).length * 5.6, String(n.toLocaleString('id-ID')).length * 8.2);
+      };
+      const SIDES = ['r', 'l', 't', 'b'];
+      // Slide along the side, and push away from the bubble. Crowded seas —
+      // Bangka Belitung wedged between Sumatra and Borneo — need the push;
+      // sliding alone cannot find room there.
+      const NUDGES = [0, 14, -14, 28, -28, 44, -44, 62, -62];
+      const PUSHES = [0, 16, 34, 56];
+
+      function slotFor(p, side, extra, push) {
+        const r = M.radiusFor(p.n);
+        const gap = r + 9 + (push || 0);
+        const dx = p.meta.dx || 0;
+        const dy = (p.meta.dy || 0) + (side === 'r' || side === 'l' ? extra : 0);
+        let lx = p.x + dx, ly = p.y + dy, anchor = 'middle';
+        if (side === 'r') { lx = p.x + gap + dx; ly = p.y + dy - 3; anchor = 'start'; }
+        else if (side === 'l') { lx = p.x - gap + dx; ly = p.y + dy - 3; anchor = 'end'; }
+        else if (side === 't') { lx = p.x + dx + extra; ly = p.y - gap + dy - 10; }
+        else { lx = p.x + dx + extra; ly = p.y + gap + dy + 4; }
+        const wpx = TEXT_W(p.label, p.n);
+        const x1 = anchor === 'start' ? lx : anchor === 'end' ? lx - wpx : lx - wpx / 2;
+        return { lx: lx, ly: ly, anchor: anchor, r: r,
+                 x1: x1 - 2, x2: x1 + wpx + 2, y1: ly - 10, y2: ly + 19 };
+      }
+
+      const overlaps = function (a, b) {
+        return a.x1 < b.x2 && b.x1 < a.x2 && a.y1 < b.y2 && b.y1 < a.y2;
+      };
+      const overlapArea = function (a, b) {
+        const ox = Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1);
+        const oy = Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1);
+        return ox > 0 && oy > 0 ? ox * oy : 0;
+      };
+
+      // Bubbles are obstacles too — a number sitting on a dark circle is
+      // unreadable, which no amount of label-vs-label tidying would fix.
+      const obstacles = pins.map(function (p) {
+        const r = M.radiusFor(p.n);
+        return { x1: p.x - r, x2: p.x + r, y1: p.y - r, y2: p.y + r };
+      });
+      // The inset panel is drawn later but has to be an obstacle now, or
+      // Kalimantan Utara's label lands underneath it.
+      const INSET = { x1: 136, y1: -108, x2: 400, y2: 68 };
+      if (!compact && dki.length) obstacles.push(INSET);
+
+      const placed = [];
+      const order = pins.slice().sort(function (a, b) { return b.n - a.n; });
+      order.forEach(function (p) {
+        if (p.meta.inset) return;
+        const pref = p.meta.side || 'r';
+        const sides = [pref].concat(SIDES.filter(function (x) { return x !== pref; }));
+        let best = null, bestCost = Infinity;
+        search: for (let i = 0; i < sides.length; i++) {
+          for (let q = 0; q < PUSHES.length; q++) {
+            for (let j = 0; j < NUDGES.length; j++) {
+              const slot = slotFor(p, sides[i], NUDGES[j], PUSHES[q]);
+              // Preferring the configured side and the smallest move is what
+              // keeps the map looking hand-placed rather than merely
+              // non-overlapping.
+              const preference = i * 40 + Math.abs(NUDGES[j]) + PUSHES[q] * 3;
+              let cost = preference;
+              for (let k = 0; k < placed.length; k++) cost += overlapArea(slot, placed[k].box) * 12;
+              for (let k = 0; k < obstacles.length; k++) cost += overlapArea(slot, obstacles[k]) * 12;
+              if (cost < bestCost) { bestCost = cost; best = slot; }
+              if (cost === preference) break search;   // clean slot, stop looking
+            }
+          }
+        }
+        p.slot = best;
+        placed.push({ name: p.name, box: best });
+      });
+
+      // A two-line label (name over count) plus the hairline that ties it to
+      // its bubble.
+      function labelFor(p) {
+        if (compact || p.meta.inset || !p.slot) return '';
+        const sl = p.slot;
+        // Anchor the leader on the bubble rim, not its centre, so the line
+        // never shows through a light fill.
+        const tx = sl.anchor === 'start' ? sl.lx : sl.anchor === 'end' ? sl.lx : sl.lx;
+        const ty = sl.ly + 4;
+        const vx = tx - p.x, vy = ty - p.y;
+        const len = Math.sqrt(vx * vx + vy * vy) || 1;
+        const line = len > sl.r + 6
+          ? '<line x1="' + (p.x + (vx / len) * sl.r).toFixed(1) + '" y1="' + (p.y + (vy / len) * sl.r).toFixed(1) +
+            '" x2="' + (p.x + (vx / len) * (len - 4)).toFixed(1) + '" y2="' + (p.y + (vy / len) * (len - 4)).toFixed(1) +
+            '" stroke="#E8434F" stroke-width="0.9" opacity=".7"/>'
+          : '';
+        return line +
+               '<text x="' + sl.lx.toFixed(1) + '" y="' + sl.ly.toFixed(1) + '" text-anchor="' + sl.anchor +
+               '" font-size="10.5" font-family="' + FONT + '" fill="#5B6371">' + esc(p.label) + '</text>' +
+               '<text x="' + sl.lx.toFixed(1) + '" y="' + (sl.ly + 14).toFixed(1) + '" text-anchor="' + sl.anchor +
+               '" font-size="13.5" font-weight="800" font-family="' + FONT + '" fill="#D62430">' +
+               p.n.toLocaleString('id-ID') + '</text>';
+      }
+
+      const bubbles = pins.map(function (p) {
+        // DKI's own bubble stays on the map as the anchor the inset points at,
+        // but its number lives in the inset where the five kota are readable.
+        const r = M.radiusFor(p.n);
+        return '<g class="adm-map-pin" data-x="' + p.x.toFixed(1) + '" data-y="' + p.y.toFixed(1) + '">' +
+               '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + r.toFixed(1) +
+               '" fill="' + M.fillFor(p.n) + '" fill-opacity=".9" stroke="#fff" stroke-width="1">' +
+               '<title>' + esc(p.name) + ': ' + p.n.toLocaleString('id-ID') + ' pengguna</title>' +
+               '</circle></g>';
+      }).join('');
+
+      const labels = pins.map(labelFor).join('');
+
+      // ── DKI inset ──
+      let inset = '';
+      let insetBox = null;
+      if (!compact && dki.length) {
+        // Parked in the empty sea north-west of Java. The five kota sit within
+        // 2.4 map units of each other at national scale, which is the whole
+        // reason this panel exists.
+        const IX = INSET.x1, IY = INSET.y1, IW = INSET.x2 - INSET.x1, IH = INSET.y2 - INSET.y1;
+        const SX = IX + 78, SY = IY + 44, SS = 1.0;   // where the 0..100 shape square lands
+        insetBox = { x1: IX, y1: IY, x2: IX + IW, y2: IY + IH };
+        const jak = M.project(M.PROVINCES['DKI Jakarta'].lat, M.PROVINCES['DKI Jakarta'].lon);
+        const byKota = {};
+        dki.forEach(function (d) { byKota[d.kota] = d.n || 0; });
+
+        // Fixed label rows, not positions derived from the dots: the dots are
+        // only ~20px apart here and any dot-relative placement collides.
+        const ROWS = {
+          'Jakarta Utara':   { lx: IX + 192, ly: SY + 10, side: 'r' },
+          'Jakarta Pusat':   { lx: IX + 192, ly: SY + 46, side: 'r' },
+          'Jakarta Timur':   { lx: IX + 192, ly: SY + 82, side: 'r' },
+          'Jakarta Barat':   { lx: IX + 70,  ly: SY + 26, side: 'l' },
+          'Jakarta Selatan': { lx: IX + 70,  ly: SY + 68, side: 'l' }
+        };
+
+        const shapes = Object.keys(M.DKI_SHAPES).map(function (k) {
+          const n = byKota[k] || 0;
+          return '<path d="' + M.DKI_SHAPES[k] + '" fill="' + M.fillFor(n) +
+                 '" fill-opacity=".9" stroke="#fff" stroke-width="1.6" vector-effect="non-scaling-stroke">' +
+                 '<title>' + esc(k) + ': ' + n.toLocaleString('id-ID') + ' pengguna</title></path>';
+        }).join('');
+
+        const kotaPins = Object.keys(M.DKI_KOTA).map(function (k) {
+          const d = M.DKI_KOTA[k];
+          const row = ROWS[k];
+          const n = byKota[k] || 0;
+          const cx = SX + d.x * SS, cy = SY + d.y * SS;
+          const right = row.side === 'r';
+          const anchor = right ? 'start' : 'end';
+          const ex = right ? row.lx - 4 : row.lx + 4;
+          return '<line x1="' + cx.toFixed(1) + '" y1="' + cy.toFixed(1) +
+                 '" x2="' + ex.toFixed(1) + '" y2="' + (row.ly - 1).toFixed(1) +
+                 '" stroke="#E8434F" stroke-width="0.8" opacity=".6"/>' +
+                 '<circle cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) +
+                 '" r="3" fill="#B5202A" stroke="#fff" stroke-width="1.2"/>' +
+                 '<text x="' + row.lx.toFixed(1) + '" y="' + row.ly.toFixed(1) + '" text-anchor="' + anchor +
+                 '" font-size="9.5" font-family="' + FONT + '" fill="#5B6371">' + esc(k) + '</text>' +
+                 '<text x="' + row.lx.toFixed(1) + '" y="' + (row.ly + 13).toFixed(1) + '" text-anchor="' + anchor +
+                 '" font-size="12.5" font-weight="800" font-family="' + FONT + '" fill="#D62430">' +
+                 n.toLocaleString('id-ID') + '</text>';
+        }).join('');
+
+        inset =
+          '<g class="adm-map-inset">' +
+          '<path d="M' + (IX + 76) + ' ' + (IY + IH) + ' L' + jak[0].toFixed(0) + ' ' + (jak[1] - 12).toFixed(0) +
+            '" stroke="#E8434F" stroke-width="0.9" stroke-dasharray="3 3" fill="none" opacity=".6"/>' +
+          '<rect x="' + (jak[0] - 10).toFixed(0) + '" y="' + (jak[1] - 10).toFixed(0) +
+            '" width="20" height="20" rx="4" fill="none" stroke="#E8434F" stroke-width="0.9" stroke-dasharray="2.5 2.5"/>' +
+          '<rect x="' + IX + '" y="' + IY + '" width="' + IW + '" height="' + IH +
+            '" rx="14" fill="#FFF7F7" stroke="#F2D6D9" stroke-width="1"/>' +
+          '<text x="' + (IX + 16) + '" y="' + (IY + 26) + '" font-size="12.5" font-weight="800" font-family="' +
+            FONT + '" fill="#12141A">DKI Jakarta</text>' +
+          '<g transform="translate(' + SX + ' ' + SY + ') scale(' + SS + ')">' + shapes + '</g>' +
+          kotaPins +
+          '</g>';
+      }
+
+      // Fit the viewBox to what was actually drawn rather than to fixed
+      // margins: label positions move with the counts, and a fixed box either
+      // clips them or leaves dead space around the map.
+      const pad = compact ? 6 : 14;
+      let bx1 = 0, by1 = 0, bx2 = 800, by2 = 306;
+      pins.forEach(function (p) {
+        if (!p.slot) return;
+        bx1 = Math.min(bx1, p.slot.x1); bx2 = Math.max(bx2, p.slot.x2);
+        by1 = Math.min(by1, p.slot.y1); by2 = Math.max(by2, p.slot.y2);
+      });
+      if (insetBox) {
+        bx1 = Math.min(bx1, insetBox.x1); bx2 = Math.max(bx2, insetBox.x2);
+        by1 = Math.min(by1, insetBox.y1); by2 = Math.max(by2, insetBox.y2);
+      }
+      svg.setAttribute('viewBox',
+        (bx1 - pad).toFixed(0) + ' ' + (by1 - pad).toFixed(0) + ' ' +
+        (bx2 - bx1 + pad * 2).toFixed(0) + ' ' + (by2 - by1 + pad * 2).toFixed(0));
+
+      svg.innerHTML =
+        '<g id="' + (o.groupId || 'adm-map-world') + '">' +
+        '<path d="' + M.OUTLINE + '" fill="#E3E6EC" stroke="none"/>' +
+        bubbles + labels + inset +
+        '</g>';
+    },
+
+    // The legend is generated from BANDS so the ramp has exactly one
+    // definition — it used to live in three places and drift.
+    legendHtml: function () {
+      const bands = w.LarisAdminMap.BANDS;
+      const dots = bands.map(function (b, i) {
+        const d = 8 + i * 3.4;
+        return '<span class="adm-map-key"><i style="width:' + d.toFixed(0) + 'px;height:' + d.toFixed(0) +
+               'px;background:' + b.fill + '"></i><em>' + b.label + '</em></span>';
+      }).join('');
+      return '<span class="adm-map-key-title">Jumlah pengguna</span><span class="adm-map-keys">' + dots + '</span>';
     }
   };
 })(window);
