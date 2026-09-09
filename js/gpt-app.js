@@ -39,6 +39,58 @@ function _lidVisitorId() {
   } catch (_) { return null; }
 }
 
+// IP → city/region/country/lat/lon for visitor maps. Caches the place only
+// (never the IP). Shared cache key with laris-app.js so A/B arms do not double-hit.
+const _LID_GEO_CACHE_KEY = '_lid_geo';
+const _LID_GEO_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+function _lidReadGeoCache() {
+  try {
+    const raw = localStorage.getItem(_LID_GEO_CACHE_KEY);
+    if (!raw) return undefined;
+    const o = JSON.parse(raw);
+    if (!o || typeof o.ts !== 'number') return undefined;
+    if (Date.now() - o.ts > _LID_GEO_TTL_MS) return undefined;
+    return o.geo === undefined ? undefined : o.geo;
+  } catch (_) {
+    return undefined;
+  }
+}
+
+function _lidWriteGeoCache(geo) {
+  try {
+    localStorage.setItem(_LID_GEO_CACHE_KEY, JSON.stringify({ ts: Date.now(), geo: geo || null }));
+  } catch (_) {}
+}
+
+async function _lidResolveVisitorGeo() {
+  const cached = _lidReadGeoCache();
+  if (cached !== undefined) return cached;
+  try {
+    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => { try { ctrl.abort(); } catch (_) {} }, 2500) : null;
+    const res = await fetch(
+      'https://ipwho.is/?fields=success,city,region,country_code,latitude,longitude',
+      ctrl ? { signal: ctrl.signal } : undefined
+    );
+    if (timer) clearTimeout(timer);
+    const j = await res.json();
+    // Failures are not cached — retry next session. Only successful places stick.
+    if (!j || j.success === false) return null;
+    const city = String(j.city || '').trim().slice(0, 80) || null;
+    const region = String(j.region || '').trim().slice(0, 80) || null;
+    const country = String(j.country_code || '').trim().toUpperCase().slice(0, 2) || null;
+    const lat = Number.isFinite(Number(j.latitude)) ? Number(j.latitude) : null;
+    const lon = Number.isFinite(Number(j.longitude)) ? Number(j.longitude) : null;
+    if (!city && !region && !country && (lat == null || lon == null)) return null;
+    const geo = { city, region, country, lat, lon };
+    _lidWriteGeoCache(geo);
+    return geo;
+  } catch (_) {
+    return null;
+  }
+}
+
 function _lidLogPageView() {
   try {
     if (!_supabase) return;
@@ -57,23 +109,40 @@ function _lidLogPageView() {
     // visits excluded from the cohort. Reuses the same _lid_ab_v1 read that
     // tags activity_events, so page_views and events agree on the arm.
     const ab = _lidAbStamp({});
-    _supabase.rpc('log_page_view', {
-      p_visitor_id: vid,
-      p_session_id: sid,
-      p_path: location.pathname,
-      p_referrer: (document.referrer || '(direct)').slice(0, 300),
-      p_utm_source: q.get('utm_source') || '',
-      p_is_new_session: isNewSession,
-      p_ab_variant: ab.ab_variant || null,
-      p_ab_via: ab.ab_via || null,
-    }).then((res) => {
-      // Require ok:true from log_page_view (jsonb). Void/204-with-no-row used to
-      // look like success and permanently suppress retries via _lid_pv_sent.
-      if (res?.error) return;
-      const body = res?.data;
-      if (!(body && typeof body === 'object' && body.ok === true)) return;
-      try { sessionStorage.setItem('_lid_pv_sent', '1'); } catch (_) {}
-    }, () => {});
+    const send = (geo) => {
+      const payload = {
+        p_visitor_id: vid,
+        p_session_id: sid,
+        p_path: location.pathname,
+        p_referrer: (document.referrer || '(direct)').slice(0, 300),
+        p_utm_source: q.get('utm_source') || '',
+        p_is_new_session: isNewSession,
+        p_ab_variant: ab.ab_variant || null,
+        p_ab_via: ab.ab_via || null,
+      };
+      if (geo) {
+        if (geo.city) payload.p_geo_city = geo.city;
+        if (geo.region) payload.p_geo_region = geo.region;
+        if (geo.country) payload.p_geo_country = geo.country;
+        if (geo.lat != null) payload.p_geo_lat = geo.lat;
+        if (geo.lon != null) payload.p_geo_lon = geo.lon;
+      }
+      _supabase.rpc('log_page_view', payload).then((res) => {
+        // Require ok:true from log_page_view (jsonb). Void/204-with-no-row used to
+        // look like success and permanently suppress retries via _lid_pv_sent.
+        if (res?.error) return;
+        const body = res?.data;
+        if (!(body && typeof body === 'object' && body.ok === true)) return;
+        try { sessionStorage.setItem('_lid_pv_sent', '1'); } catch (_) {}
+      }, () => {});
+    };
+    // Await geo (lookup aborts ~2.5s); still log the visit if lookup fails.
+    const cached = _lidReadGeoCache();
+    if (cached !== undefined) {
+      send(cached);
+      return;
+    }
+    _lidResolveVisitorGeo().then(send, () => send(null));
   } catch (_) {}
 }
 
