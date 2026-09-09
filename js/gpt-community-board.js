@@ -792,10 +792,21 @@
       .adm-map-key { display: flex; flex-direction: column; align-items: center; gap: 5px; }
       .adm-map-key i { display: block; border-radius: 50%; }
       .adm-map-key em { font-style: normal; font-size: .66rem; color: #9AA0AA; }
-      /* Shown only in compact mode, where the map drops its labels. */
+      /* Shown only in compact mode, where the map drops its labels. Collapsed
+         by default -- a full ranked list ate real vertical space just to load
+         the page -- and native <details> gives keyboard/reader semantics free. */
+      .msb-map-list-wrap { margin-top: 12px; padding-top: 12px; border-top: 1px solid #F1F2F4; }
+      .msb-map-list-toggle {
+        display: flex; align-items: center; justify-content: space-between; gap: 8px;
+        cursor: pointer; list-style: none; user-select: none;
+        font-size: .84rem; font-weight: 700; color: var(--msb-red);
+      }
+      .msb-map-list-toggle::-webkit-details-marker,
+      .msb-map-list-toggle::marker { display: none; content: ''; }
+      .msb-map-chevron { flex-shrink: 0; transition: transform .15s ease; }
+      .msb-map-list-wrap[open] .msb-map-chevron { transform: rotate(180deg); }
       .msb-map-list {
-        list-style: none; margin: 12px 0 0; padding: 12px 0 0;
-        border-top: 1px solid #F1F2F4;
+        list-style: none; margin: 10px 0 0; padding: 0;
         columns: 2; column-gap: 18px; font-size: .82rem;
       }
       .msb-map-list li {
@@ -983,12 +994,20 @@
     const legend = _container.querySelector('#msb-map-legend');
     if (legend) legend.innerHTML = M.legendHtml();
 
+    const wrap = _container.querySelector('#msb-map-list-wrap');
     const list = _container.querySelector('#msb-map-list');
-    if (list) {
-      list.hidden = !compact;
+    const label = _container.querySelector('#msb-map-list-label');
+    if (wrap && list) {
+      wrap.hidden = !compact;
+      // Collapse again on every repaint (a resize crossing the threshold, or a
+      // fresh mount) rather than trying to preserve open/closed across a
+      // redraw — the list content underneath is being replaced anyway.
+      if (compact) wrap.open = false;
+      const provinces = data.provinces || [];
       list.innerHTML = compact
-        ? (data.provinces || []).map((p) => `<li><span>${_opts.esc(p.province)}</span><b>${(p.n || 0).toLocaleString('id-ID')}</b></li>`).join('')
+        ? provinces.map((p) => `<li><span>${_opts.esc(p.province)}</span><b>${(p.n || 0).toLocaleString('id-ID')}</b></li>`).join('')
         : '';
+      if (label) label.textContent = `Lihat sebaran per provinsi (${provinces.length})`;
     }
     card.hidden = false;
   }
@@ -1057,7 +1076,16 @@
             <svg class="msb-map-svg" id="msb-map-svg" role="img" aria-label="Peta sebaran pengguna LarisID di Indonesia"></svg>
           </div>
           <div class="msb-map-legend" id="msb-map-legend"></div>
-          <ol class="msb-map-list" id="msb-map-list" hidden></ol>
+          <!-- Collapsed by default on mobile: a 34-row list of provinces ate too
+               much vertical space just to load the page. Native <details> gives
+               keyboard/screen-reader semantics for free. -->
+          <details class="msb-map-list-wrap" id="msb-map-list-wrap" hidden>
+            <summary class="msb-map-list-toggle">
+              <span id="msb-map-list-label">Lihat sebaran per provinsi</span>
+              <svg class="msb-map-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+            </summary>
+            <ol class="msb-map-list" id="msb-map-list"></ol>
+          </details>
         </section>
 
         <div class="msb-panel">
