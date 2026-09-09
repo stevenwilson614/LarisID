@@ -11,11 +11,16 @@
 // header, exchanged for a place name, and dropped -- nothing writes it to a
 // column, a log line, or the response.
 //
-// Place names are stored exactly as ipinfo returns them. public.geo_resolve()
-// already knows the English spellings, so name normalisation stays in one
-// place instead of being half here and half in SQL.
+// This function only resolves a place and hands it back; it writes nothing.
+// log_page_view() owns public.visitor_locations — its own header says so — and
+// the client passes what it gets here straight into that call. Writing from
+// both ends double-counted hit_count on every visit, and needing no
+// service-role key here is the better shape anyway.
+//
+// Place names are returned exactly as ipinfo spells them. public.geo_resolve()
+// already knows the English forms, so name normalisation stays in one place
+// instead of being half here and half in SQL.
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { CORS, JSON_HEADERS, corsOk } from '../_shared/cors.ts'
 
 // Reserved ranges, plus anything that is not a plain IPv4/IPv6 literal. Behind
@@ -46,10 +51,6 @@ serve(async (req) => {
     new Response(JSON.stringify({ ok: false, reason }), { status: 200, headers: JSON_HEADERS })
 
   try {
-    const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {}
-    const visitorId = clip(body?.visitor_id, 64)
-    if (!visitorId) return fail('no_visitor_id')
-
     const ip = (req.headers.get('X-Forwarded-For') ?? '').split(',')[0]?.trim() ?? ''
     if (!isPublicIp(ip)) return fail('no_public_ip')
 
@@ -78,36 +79,6 @@ serve(async (req) => {
     const lat = Number.isFinite(Number(latRaw)) ? Number(latRaw) : null
     const lon = Number.isFinite(Number(lonRaw)) ? Number(lonRaw) : null
     if (!city && !region) return fail('no_place')
-
-    const admin = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    )
-
-    // hit_count is bumped by hand because upsert cannot read the old row.
-    const { data: prior } = await admin
-      .from('visitor_locations')
-      .select('hit_count')
-      .eq('visitor_id', visitorId)
-      .maybeSingle()
-
-    const row: Record<string, unknown> = {
-      visitor_id: visitorId,
-      city,
-      region,
-      country_code: country,
-      lat,
-      lon,
-      last_seen_at: new Date().toISOString(),
-      hit_count: (prior?.hit_count ?? 0) + 1,
-    }
-    // Only ever set user_id, never clear it: an upsert from a later signed-out
-    // session on the same device would otherwise erase the link.
-    const userId = clip(body?.user_id, 36)
-    if (userId) row.user_id = userId
-
-    const { error } = await admin.from('visitor_locations').upsert(row, { onConflict: 'visitor_id' })
-    if (error) console.error('geo-locate upsert error:', error.message)
 
     return new Response(JSON.stringify({ ok: true, city, region, country, lat, lon }), { headers: JSON_HEADERS })
   } catch (err) {

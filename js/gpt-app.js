@@ -76,7 +76,9 @@ async function _lidResolveVisitorGeo() {
     const res = await fetch(`${SUPA_URL}/functions/v1/geo-locate`, {
       method: 'POST',
       headers: { apikey: SUPA_ANON, Authorization: 'Bearer ' + SUPA_ANON, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ visitor_id: _lidVisitorId(), user_id: currentUser?.id || null }),
+      // No body: the function only resolves the caller's own IP and writes
+      // nothing. log_page_view() below is what records the pin.
+      body: '{}',
       signal: ctrl ? ctrl.signal : undefined,
     });
     if (timer) clearTimeout(timer);
