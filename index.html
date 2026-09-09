@@ -3010,9 +3010,7 @@ body.view-harga .panel-inner { max-width: 1180px; }
 .adm-kpi--keywords .adm-kpi-ico { background: #ECFDF3; color: #16A34A; }
 .adm-kpi--stores .adm-kpi-ico { background: #E0F7FA; color: #0891B2; }
 .adm-kpi--dives .adm-kpi-ico { background: #F3E8FF; color: #7C3AED; }
-/* Archive tile: greyed so a permanently flat line reads as "closed", not broken. */
-.adm-kpi--tracked .adm-kpi-ico { background: #F3F4F6; color: #9CA3AF; }
-.adm-kpi--tracked .adm-kpi-val { color: #6B7280; }
+.adm-kpi--downloads .adm-kpi-ico { background: #EEF2FF; color: #4F46E5; }
 .adm-trend-card { padding: 16px 18px 14px; margin-bottom: 14px; }
 .adm-trend-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .adm-trend-head .adm-card-title { margin: 0; }
@@ -8663,29 +8661,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
             </div>
             <div id="admin-sample-banner" class="admin-banner" hidden></div>
 
-            <section class="adm-card adm-komunitas-card" id="adm-komunitas">
-              <div class="adm-users-toolbar">
-                <h3>Komunitas — staf</h3>
-                <button type="button" class="adm-tb-btn" id="adm-komunitas-refresh">Muat ulang</button>
-                <button type="button" class="adm-tb-btn" id="adm-komunitas-digest">Kirim digest ke tim</button>
-              </div>
-              <p class="dd-sub" id="adm-komunitas-metrics">Memuat metrik…</p>
-              <div class="adm-komunitas-grid">
-                <div>
-                  <h4>Belum terjawab 48 jam</h4>
-                  <div id="adm-komunitas-unanswered" class="adm-komunitas-list">—</div>
-                </div>
-                <div>
-                  <h4>Draft thread data (perkiraan)</h4>
-                  <div id="adm-komunitas-draft" class="adm-komunitas-list">—</div>
-                </div>
-                <div>
-                  <h4>Calon diundang</h4>
-                  <div id="adm-komunitas-invites" class="adm-komunitas-list">—</div>
-                </div>
-              </div>
-            </section>
-
             <div class="adm-kpis" id="admin-stats">
               <article class="adm-card adm-kpi adm-kpi--signups">
                 <div class="adm-kpi-top">
@@ -8723,14 +8698,14 @@ body:has(.modal-overlay.open) .msg-steven-fab {
                 <div class="adm-kpi-sub" id="adm-kpi-stores-sub">Semua waktu</div>
                 <div class="adm-kpi-spark" id="adm-kpi-stores-spark"></div>
               </article>
-              <article class="adm-card adm-kpi adm-kpi--tracked">
+              <article class="adm-card adm-kpi adm-kpi--downloads">
                 <div class="adm-kpi-top">
-                  <span class="adm-kpi-lbl">Favorit (unik vs 200)</span>
-                  <span class="adm-kpi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96 12 12.01l8.73-5.05"/><path d="M12 22.08V12"/></svg></span>
+                  <span class="adm-kpi-lbl">Total Downloads</span>
+                  <span class="adm-kpi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg></span>
                 </div>
-                <div class="adm-kpi-val" id="adm-kpi-tracked">—</div>
-                <div class="adm-kpi-sub" id="adm-kpi-tracked-sub">Semua waktu</div>
-                <div class="adm-kpi-spark" id="adm-kpi-tracked-spark"></div>
+                <div class="adm-kpi-val" id="adm-kpi-downloads">—</div>
+                <div class="adm-kpi-sub" id="adm-kpi-downloads-sub">Semua waktu</div>
+                <div class="adm-kpi-spark" id="adm-kpi-downloads-spark"></div>
               </article>
               <article class="adm-card adm-kpi adm-kpi--dives">
                 <div class="adm-kpi-top">
@@ -8877,6 +8852,29 @@ body:has(.modal-overlay.open) .msg-steven-fab {
             <section class="adm-card adm-winback-wrap">
               <h3>Win-back</h3>
               <div id="adm-winback-card"></div>
+            </section>
+
+            <section class="adm-card adm-komunitas-card" id="adm-komunitas">
+              <div class="adm-users-toolbar">
+                <h3>Komunitas — staf</h3>
+                <button type="button" class="adm-tb-btn" id="adm-komunitas-refresh">Muat ulang</button>
+                <button type="button" class="adm-tb-btn" id="adm-komunitas-digest">Kirim digest ke tim</button>
+              </div>
+              <p class="dd-sub" id="adm-komunitas-metrics">Memuat metrik…</p>
+              <div class="adm-komunitas-grid">
+                <div>
+                  <h4>Belum terjawab 48 jam</h4>
+                  <div id="adm-komunitas-unanswered" class="adm-komunitas-list">—</div>
+                </div>
+                <div>
+                  <h4>Draft thread data (perkiraan)</h4>
+                  <div id="adm-komunitas-draft" class="adm-komunitas-list">—</div>
+                </div>
+                <div>
+                  <h4>Calon diundang</h4>
+                  <div id="adm-komunitas-invites" class="adm-komunitas-list">—</div>
+                </div>
+              </div>
             </section>
           </div>
         </div>

@@ -21212,11 +21212,8 @@ function renderAdminKpis(users) {
     : (users || []).reduce((n, u) => n + (Number(u.tracked_count) || 0), 0);
   const favAddedDaily = admSeriesFromDaily(k.tracked_daily, 'n', days);
 
-  const trackedTotal = k.favorited_products_distinct != null
-    ? k.favorited_products_distinct
-    : favAddedTotal;
-  const trackedDaily = favAddedDaily;
-  const scraperCeiling = k.scraper_ceiling || 200;
+  const downloadsTotal = k.downloads_total;
+  const downloadsDaily = admSeriesFromDaily(k.downloads_daily, 'n', days);
 
   const storesTotal = k.stores_total;
   const storesDaily = admSeriesFromDaily(k.stores_daily, 'n', days);
@@ -21245,9 +21242,9 @@ function renderAdminKpis(users) {
   set('adm-kpi-stores-sub', storesTotal == null ? 'Belum tersedia' : 'Semua waktu');
   spark('adm-kpi-stores-spark', storesDaily, '#0891B2');
 
-  set('adm-kpi-tracked', admFmtNum(trackedTotal));
-  set('adm-kpi-tracked-sub', `${admFmtNum(trackedTotal)} / ${scraperCeiling} ceiling scrape harian`);
-  spark('adm-kpi-tracked-spark', trackedDaily, '#16A34A');
+  set('adm-kpi-downloads', admFmtNum(downloadsTotal));
+  set('adm-kpi-downloads-sub', downloadsTotal == null ? 'Belum tersedia' : 'File .xlsx/CSV dari situs');
+  spark('adm-kpi-downloads-spark', downloadsDaily, '#4F46E5');
 
   set('adm-kpi-dives', admFmtNum(divesTotal));
   set('adm-kpi-dives-sub', 'Semua waktu, termasuk anonim');
