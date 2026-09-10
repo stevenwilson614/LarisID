@@ -22,6 +22,10 @@ window.LARIS_CHANGELOG = [
         text: 'Lingkaran jatah di header sekarang menampilkan dua cincin progres (Deep Dive dan unduhan) saat diketuk. Di profil, cincin yang sama tampil di samping angka jatah.',
         tech: 'usage-pop-rings + gptUsageQuotaView offsets; GptProfile quota rings next to avatar; get_my_export_quota painted into the usage pop and #gpt-profile-modal.',
       },
+      {
+        text: 'Kalau kamu sudah sering masuk dan pernah buka Deep Dive, Steven kadang kirim pesan kecil di pojok kanan — tanya apa yang masih kurang. Balas, dan akun dapat tambahan 1.000 baris unduhan yang tidak kedaluwarsa.',
+        tech: '#sfb-card slide-up from Pesan Steven FAB; my_feedback_prompt_status (≥2 sessions + 1 deepdive_open); mark_feedback_prompt + claim_feedback_export_grant; user_export_grants bank on top of the daily 90; page=superuser_prompt; admin inbox at #adm-feedback.',
+      },
     ],
   },
   {

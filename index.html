@@ -5651,6 +5651,27 @@ body.home-finder-done .home-hero {
 }
 .adm-komunitas-grid h4 { margin: 0 0 6px; font-size: .78rem; font-weight: 750; }
 .adm-komunitas-list { font-size: .8rem; line-height: 1.45; color: #374151; }
+.adm-feedback-list { display: flex; flex-direction: column; gap: 10px; }
+.adm-fb-row {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #fff;
+}
+.adm-fb-row.is-done { opacity: .55; }
+.adm-fb-meta {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  margin-bottom: 5px;
+  font-size: .7rem; color: var(--muted);
+}
+.adm-fb-tag {
+  border-radius: 999px; padding: 2px 8px;
+  background: #F6F6F7; color: #374151; font-weight: 650;
+}
+.adm-fb-tag.is-prompt { background: var(--ink); color: #fff; }
+.adm-fb-tag.is-high   { background: #FDE7E9; color: #B5202A; }
+.adm-fb-msg { margin: 0 0 8px; font-size: .82rem; line-height: 1.5; color: var(--ink); white-space: pre-wrap; }
+.adm-fb-acts { display: flex; gap: 6px; flex-wrap: wrap; }
 .adm-komunitas-list ul { margin: 0; padding-left: 18px; }
 @media (max-width: 900px) {
   .adm-komunitas-grid { grid-template-columns: 1fr; }
@@ -7336,6 +7357,7 @@ body.view-directory.dir-compare-picking .msg-steven-fab {
   bottom: calc(96px + env(safe-area-inset-bottom, 0px));
 }
 body:has(#gpt-feedback-modal.open) .msg-steven-fab,
+body:has(.sfb-card.open) .msg-steven-fab,
 body:has(.modal-overlay.open) .msg-steven-fab {
   opacity: 0;
   pointer-events: none;
@@ -7343,6 +7365,137 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 @media (prefers-reduced-motion: reduce) {
   .msg-steven-fab { transition: none; }
   .msg-steven-fab:hover { transform: none; }
+}
+
+/* ── Super-user feedback card ("pesan dari Steven") ───────────────────────────
+   A WhatsApp-shaped note from the founder, shown once to people who actually
+   use the product. Deliberately NOT a .modal-overlay: AGENTS.md forbids
+   blocking popups, and this fires on people mid-research. Own layer at z-index
+   90 — above the FAB (40), below .modal-overlay (100) — so any real dialog
+   still wins. Everything is namespaced .sfb-* so the late `.modal` rule at the
+   top of this file can never reach it. */
+.sfb-card {
+  position: fixed;
+  right: max(14px, env(safe-area-inset-right, 0px));
+  bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  z-index: 90;
+  width: min(360px, calc(100vw - 28px));
+  display: none;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: 0 18px 48px rgba(16, 24, 40, .18);
+  overflow: hidden;
+}
+.sfb-card.open { display: flex; animation: sfbIn .3s var(--ease); }
+@keyframes sfbIn {
+  from { opacity: 0; transform: translateY(14px) scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+body.view-chat .sfb-card {
+  bottom: calc(var(--composer-h) + 12px + env(safe-area-inset-bottom, 0px));
+}
+.sfb-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--line);
+  background: #F6F6F7;
+}
+.sfb-avatar {
+  width: 36px; height: 36px; flex-shrink: 0;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center top;
+  background: var(--bg-user);
+}
+.sfb-from { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.sfb-from strong { font-size: .85rem; font-weight: 700; letter-spacing: -.01em; color: var(--ink); }
+.sfb-from span  { font-size: .7rem; color: var(--muted); }
+.sfb-close {
+  flex-shrink: 0;
+  width: 28px; height: 28px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; background: none; border-radius: 50%;
+  color: var(--muted); cursor: pointer;
+}
+.sfb-close:hover { background: rgba(16, 24, 40, .07); color: var(--ink); }
+.sfb-close svg { width: 15px; height: 15px; }
+.sfb-body { padding: 14px 12px 12px; display: flex; flex-direction: column; gap: 10px; }
+.sfb-bubble {
+  position: relative;
+  align-self: flex-start;
+  max-width: 100%;
+  background: var(--bg-user);
+  color: var(--ink);
+  border-radius: 4px 14px 14px 14px;
+  padding: 10px 13px;
+  font-size: .84rem;
+  line-height: 1.5;
+}
+.sfb-bubble + .sfb-bubble { margin-top: -2px; }
+.sfb-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.sfb-chip {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 6px 11px;
+  font: inherit;
+  font-size: .74rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+.sfb-chip:hover { background: var(--bg-user); border-color: #d8d8d8; }
+.sfb-chip:focus-visible { outline: 2px solid var(--accent, #B5202A); outline-offset: 1px; }
+.sfb-chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+.sfb-reply { display: flex; align-items: flex-end; gap: 7px; }
+.sfb-input {
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 9px 11px;
+  font: inherit;
+  font-size: .84rem;
+  line-height: 1.45;
+  color: var(--ink);
+  resize: none;
+  max-height: 120px;
+  min-height: 38px;
+}
+.sfb-input:focus { outline: none; border-color: #c9c9c9; }
+.sfb-send {
+  flex-shrink: 0;
+  width: 38px; height: 38px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; border-radius: 50%;
+  background: var(--ink); color: #fff;
+  cursor: pointer;
+  transition: opacity .12s;
+}
+.sfb-send:disabled { opacity: .4; cursor: default; }
+.sfb-send svg { width: 16px; height: 16px; }
+.sfb-status { font-size: .74rem; color: var(--muted); min-height: 1.1em; margin: 0; }
+.sfb-status.is-err { color: var(--accent, #B5202A); }
+.sfb-status.is-ok  { color: #16A34A; }
+
+@media (max-width: 860px) {
+  /* Bottom sheet on phones, matching .calc-panel's treatment. */
+  .sfb-card {
+    right: 0; left: 0; bottom: 0;
+    width: auto;
+    border-radius: 18px 18px 0 0;
+    border-left: none; border-right: none; border-bottom: none;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-shadow: 0 -12px 40px rgba(16, 24, 40, .18);
+  }
+  body.view-chat .sfb-card { bottom: 0; }
+  /* 16px minimum — anything smaller makes iOS zoom the page on focus. */
+  .sfb-input { font-size: 16px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sfb-card.open { animation: none; }
 }
 </style>
 </head>
@@ -8995,6 +9148,18 @@ body:has(.modal-overlay.open) .msg-steven-fab {
                 </div>
               </div>
             </section>
+
+            <!-- Masukan Pengguna. Every notify-feedback / daily-feedback-report
+                 email links here, but the list itself only ever existed in the
+                 retired Site A bundle, so those links pointed at nothing. -->
+            <section class="adm-card adm-feedback-card" id="adm-feedback">
+              <div class="adm-users-toolbar">
+                <h3>Masukan pengguna</h3>
+                <button type="button" class="adm-tb-btn" id="adm-feedback-refresh">Muat ulang</button>
+              </div>
+              <p class="dd-sub" id="adm-feedback-summary">Memuat masukan&hellip;</p>
+              <div id="adm-feedback-list" class="adm-feedback-list">&mdash;</div>
+            </section>
           </div>
         </div>
       </div>
@@ -9433,6 +9598,47 @@ body:has(.modal-overlay.open) .msg-steven-fab {
   <span class="msg-steven-fab-label">Pesan Steven</span>
 </button>
 
+<!-- Super-user feedback card. Shown once, to people with 2+ sign-ins and at
+     least one Deep Dive — the same bar feedback_repeat_audience() uses for the
+     email version of this ask. Eligibility comes from my_feedback_prompt_status()
+     because user_sessions is admin-read-only; js/gpt-app.js (sfb*) drives it. -->
+<aside class="sfb-card" id="sfb-card" role="complementary"
+       aria-labelledby="sfb-name" aria-hidden="true">
+  <div class="sfb-head">
+    <img class="sfb-avatar" src="/images/steven-avatar.webp" width="36" height="36"
+         alt="" loading="lazy" decoding="async">
+    <div class="sfb-from">
+      <strong id="sfb-name">Steven Wilson</strong>
+      <span>founder LarisID</span>
+    </div>
+    <button type="button" class="sfb-close" id="sfb-close" aria-label="Tutup pesan">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+  <div class="sfb-body" id="sfb-body">
+    <p class="sfb-bubble" id="sfb-msg">Halo! Aku lihat kamu cukup sering pakai LarisID.
+      Boleh tanya &mdash; menurut kamu apa yang masih kurang di sini?</p>
+    <div class="sfb-chips" id="sfb-chips">
+      <button type="button" class="sfb-chip" aria-pressed="false"
+              data-sfb-chip="Datanya kurang lengkap, terutama ">Datanya kurang lengkap</button>
+      <button type="button" class="sfb-chip" aria-pressed="false"
+              data-sfb-chip="Aku masih bingung cara pakai ">Bingung cara pakainya</button>
+      <button type="button" class="sfb-chip" aria-pressed="false"
+              data-sfb-chip="Ada fitur yang belum ada: ">Ada fitur yang kurang</button>
+    </div>
+    <div class="sfb-reply" id="sfb-reply">
+      <textarea class="sfb-input" id="sfb-input" rows="1"
+                placeholder="Tulis balasan&hellip;" aria-label="Balasan untuk Steven"></textarea>
+      <button type="button" class="sfb-send" id="sfb-send" aria-label="Kirim balasan" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+    <p class="sfb-status" id="sfb-status"></p>
+  </div>
+</aside>
+
 <div class="modal-overlay" id="mentor-siswa-overlay" role="dialog" aria-modal="true" aria-labelledby="mentor-siswa-name" aria-hidden="true">
   <div class="modal mentor-siswa-modal">
     <button type="button" class="modal-close" id="mentor-siswa-close" aria-label="Tutup">
@@ -9504,7 +9710,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 </aside>
 
 <script src="/js/laris-merdeka.js?v=20260816b" defer></script>
-<script src="/js/changelog.js?v=20260910d" defer></script>
+<script src="/js/changelog.js?v=20260910e" defer></script>
 <script defer src="/js/gpt-dir-filters.js?v=20260906b"></script>
 <script defer src="/js/gpt-dir-hero.js?v=20260824a"></script>
 <script defer src="/js/gpt-dir-home.js?v=20260824d"></script>
@@ -9525,6 +9731,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <script src="/js/peta-peluang.js?v=20260908a" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
-<script src="/js/gpt-app.js?v=20260910d" defer></script>
+<script src="/js/gpt-app.js?v=20260910e" defer></script>
 </body>
 </html>

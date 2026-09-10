@@ -3087,6 +3087,258 @@ function scheduleExportXlsxNotice(opts = {}) {
 function scheduleReturningFeatureNotices(opts = {}) {
   scheduleProductRowsNotice(opts);
   scheduleExportXlsxNotice(opts);
+  scheduleSuperuserFeedback(opts);
+}
+
+// ── Super-user feedback card ("pesan dari Steven") ─────────────────────────
+// A one-time, WhatsApp-shaped ask from the founder, aimed at people who
+// actually use the product. Outbound email did not work for this: the
+// feedback_repeat_2026_09 campaign reached 115 people and returned five short
+// replies, so the same question now arrives in-app instead.
+//
+// Eligibility is decided by the server, not here — user_sessions is
+// admin-read-only, so the client genuinely cannot count its own sign-ins.
+// my_feedback_prompt_status() answers for the caller only, and the
+// asked/answered/dismissed state lives in feedback_prompts so this fires once
+// per PERSON rather than once per browser. localStorage is only a fast path
+// that saves the round trip on later loads.
+const SFB_KEY   = 'lid_superuser_fb_v1';
+const SFB_DELAY = 6000;
+let _sfbTimer   = null;
+let _sfbBound   = false;
+let _sfbBusy    = false;
+let _sfbStatus  = null;   // cached my_feedback_prompt_status() for this page load
+let _sfbAnswered = false;
+let _sfbChip    = null;
+
+function sfbSeen() {
+  // Fails closed, like every other notice flag: a private-mode browser that
+  // cannot read storage is treated as already-seen rather than spammed.
+  try { return localStorage.getItem(SFB_KEY) === '1'; } catch { return true; }
+}
+
+function sfbMarkSeen() {
+  try { localStorage.setItem(SFB_KEY, '1'); } catch (_) {}
+}
+
+function sfbMark(action, feedbackId) {
+  if (!_supabase) return Promise.resolve();
+  return _supabase
+    .rpc('mark_feedback_prompt', { p_action: action, p_feedback_id: feedbackId || null })
+    .then(({ error }) => { if (error) console.warn('mark_feedback_prompt:', error.message); })
+    .catch(() => {});
+}
+
+async function scheduleSuperuserFeedback(opts = {}) {
+  if (!currentUser || !_supabase || sfbSeen()) return;
+  // Raw role on purpose: "view as" must not turn the prompt back on for Steven,
+  // who would otherwise be messaged by himself. The RPC guards this too.
+  if (isPlatformAdminRaw() || adminIsPreviewing()) return;
+  if (opts.isNewSignup || _lidIsNewSignup(currentUser)) return;
+  if ($('sfb-card')?.classList.contains('open')) return;
+
+  if (!_sfbStatus) {
+    try {
+      const { data, error } = await _supabase.rpc('my_feedback_prompt_status');
+      if (error) throw error;
+      _sfbStatus = data || null;
+    } catch (err) {
+      console.warn('my_feedback_prompt_status:', err?.message || err);
+      return;
+    }
+  }
+  if (!_sfbStatus || !_sfbStatus.eligible) {
+    // Already asked on another device, or not a frequent user yet. Remember the
+    // "already asked" case so later loads skip the round trip entirely.
+    if (_sfbStatus && (_sfbStatus.answered_at || _sfbStatus.dismissed_at)) sfbMarkSeen();
+    return;
+  }
+
+  clearTimeout(_sfbTimer);
+  const tryOpen = (attempt) => {
+    _sfbTimer = setTimeout(() => {
+      if (!currentUser || sfbSeen()) return;
+      // Never talk over a real dialog, and never interrupt someone mid-sentence.
+      const busy = document.querySelector('.modal-overlay.open')
+        || document.activeElement?.tagName === 'TEXTAREA'
+        || document.activeElement?.tagName === 'INPUT';
+      if (busy) {
+        if (attempt < 3) tryOpen(attempt + 1);
+        return;
+      }
+      sfbFire();
+    }, attempt === 0 ? SFB_DELAY : 2400);
+  };
+  tryOpen(0);
+}
+
+function sfbFire() {
+  if (sfbSeen() || !currentUser) return;
+  if (isPlatformAdminRaw() || adminIsPreviewing()) return;
+  const card = $('sfb-card');
+  if (!card) return;
+
+  sfbBind();
+  sfbMarkSeen();
+  card.classList.add('open');
+  card.setAttribute('aria-hidden', 'false');
+  void sfbMark('asked');
+  void logUserEvent('superuser_feedback_prompt', { ui: 'gpt', action: 'show',
+    sessions: _sfbStatus?.sessions, dives: _sfbStatus?.dives });
+  clarityEvt('superuser_feedback_prompt', { action: 'show' });
+}
+
+function sfbClose(reason) {
+  const card = $('sfb-card');
+  if (!card || !card.classList.contains('open')) return;
+  card.classList.remove('open');
+  card.setAttribute('aria-hidden', 'true');
+  clearTimeout(_sfbTimer);
+  // Only record a dismissal if they never answered — otherwise the answer is
+  // the outcome and dismissed_at would just muddy the funnel.
+  if (!_sfbAnswered) {
+    void sfbMark('dismissed');
+    void logUserEvent('superuser_feedback_prompt', { ui: 'gpt', action: reason || 'dismiss' });
+  }
+}
+
+function sfbAutosize(el) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function sfbBind() {
+  if (_sfbBound) return;
+  _sfbBound = true;
+  const input = $('sfb-input');
+  const send  = $('sfb-send');
+
+  $('sfb-close')?.addEventListener('click', () => sfbClose('close'));
+
+  $('sfb-chips')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-sfb-chip]');
+    if (!btn || !input) return;
+    // The chip is an on-ramp, not an answer: it prefills and hands over the
+    // cursor so the person finishes the sentence in their own words.
+    const seed = btn.getAttribute('data-sfb-chip') || '';
+    _sfbChip = btn.textContent.trim();
+    document.querySelectorAll('#sfb-chips .sfb-chip')
+      .forEach(c => c.setAttribute('aria-pressed', String(c === btn)));
+    input.value = seed;
+    sfbAutosize(input);
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+    if (send) send.disabled = false;
+    clarityEvt('superuser_feedback_prompt', { action: 'chip' });
+  });
+
+  input?.addEventListener('input', () => {
+    sfbAutosize(input);
+    if (send) send.disabled = !input.value.trim();
+  });
+  input?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sfbSubmit(); }
+  });
+  send?.addEventListener('click', () => void sfbSubmit());
+  if (send) send.disabled = true;
+
+  $('sfb-card')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { e.stopPropagation(); sfbClose('escape'); }
+  });
+}
+
+async function sfbSubmit() {
+  if (_sfbBusy || !_supabase || !currentUser) return;
+  const input = $('sfb-input');
+  const st    = $('sfb-status');
+  const send  = $('sfb-send');
+  const msg   = (input?.value || '').trim();
+
+  if (msg.length < 10) {
+    if (st) { st.textContent = 'Tulis sedikit lagi ya, minimal 10 karakter.'; st.className = 'sfb-status is-err'; }
+    input?.focus();
+    return;
+  }
+
+  _sfbBusy = true;
+  if (send) send.disabled = true;
+  if (st) { st.textContent = 'Mengirim...'; st.className = 'sfb-status'; }
+
+  try {
+    const record = {
+      user_id:    currentUser?.id    || null,
+      user_email: currentUser?.email || null,
+      // MUST be one of the live feedback_type_check values:
+      //   bug | feature | other | wrong_data | not_working | request_edit
+      // ('product' and 'idea' exist only in an unapplied migration — using one
+      // fails every insert with 23514.) The prompt is identified by `page`.
+      type:       'other',
+      message:    msg,
+      page:       'superuser_prompt',
+      element_context: {
+        sessions: _sfbStatus?.sessions ?? null,
+        dives:    _sfbStatus?.dives ?? null,
+        chip:     _sfbChip,
+        view:     state.view,
+      },
+    };
+    const { data: inserted, error } = await _supabase
+      .from('feedback').insert(record).select('id').single();
+    if (error) throw error;
+
+    _sfbAnswered = true;
+    void sfbMark('answered', inserted?.id);
+    // Fire-and-forget: the founder email must never block the thank-you.
+    // analyze-feedback is deliberately NOT called — it rejects any non
+    // service_role JWT, and cron triages these five times a day anyway.
+    _supabase.functions.invoke('notify-feedback', { body: { record: { ...record, id: inserted?.id } } })
+      .then(({ error: e }) => { if (e) console.warn('notify-feedback:', e.message); });
+    void logUserEvent('superuser_feedback_prompt', { ui: 'gpt', action: 'answered',
+      chars: msg.length, chip: _sfbChip });
+    clarityEvt('superuser_feedback_prompt', { action: 'answered' });
+
+    let granted = 0;
+    if (inserted?.id) granted = await sfbClaimGrant(inserted.id);
+    sfbThankYou(granted);
+  } catch (err) {
+    console.error('superuser feedback submit failed:', err?.code || '', err?.message || err);
+    if (st) { st.textContent = 'Gagal mengirim. Coba lagi.'; st.className = 'sfb-status is-err'; }
+    if (send) send.disabled = false;
+  } finally {
+    _sfbBusy = false;
+  }
+}
+
+/** Returns the number of export rows actually granted (0 if refused). */
+async function sfbClaimGrant(feedbackId) {
+  if (!_supabase || !feedbackId) return 0;
+  try {
+    const { data, error } = await _supabase.rpc('claim_feedback_export_grant', { p_feedback_id: feedbackId });
+    if (error) throw error;
+    if (data && data.granted) {
+      // The export modal reads its numbers from get_my_export_quota() on open,
+      // so drop the cached copy and it picks the raised cap up by itself.
+      _exportQuota = null;
+      void logUserEvent('superuser_feedback_grant', { ui: 'gpt', rows: data.rows });
+      return data.rows || 0;
+    }
+  } catch (err) {
+    console.warn('claim_feedback_export_grant:', err?.message || err);
+  }
+  return 0;
+}
+
+function sfbThankYou(granted) {
+  const body = $('sfb-body');
+  if (!body) return;
+  const thanks = granted
+    ? `Makasih, aku baca semua. Aku tambahin <strong>${granted.toLocaleString('id-ID')} baris unduhan</strong> ke akun kamu ya \u2014 dipakai kapan saja.`
+    : 'Makasih, aku baca semua pesan yang masuk.';
+  body.innerHTML =
+    '<p class="sfb-bubble">Terkirim.</p>' +
+    `<p class="sfb-bubble">${thanks}</p>`;
+  setTimeout(() => sfbClose('done'), 7000);
 }
 
 function formatIdDate(iso) {
@@ -4287,6 +4539,7 @@ async function _authOnSignIn(session, opts) {
     fromRestore: !!(opts && opts.fromRestore),
     isNewSignup,
   });
+  consumeAdminDeepLink();
 }
 
 /** Re-run the landing finder search the user set up before signing in. */
@@ -22231,6 +22484,93 @@ function gptMountWinback() {
   } catch (_) {}
 }
 
+// The inbox every feedback notification email links to. It existed only in the
+// retired Site A bundle, so `larisid.com/#admin → Masukan Pengguna` has been a
+// dead link on the live app; the admin RLS policies for read + status update
+// were already in place.
+const ADM_FB_STATUS = { new: 'Baru', reviewing: 'Ditinjau', done: 'Selesai', dismissed: 'Diabaikan' };
+
+async function loadAdminFeedback() {
+  const listEl = $('adm-feedback-list');
+  const sumEl  = $('adm-feedback-summary');
+  if (!listEl || !_supabase) return;
+  listEl.textContent = 'Memuat…';
+  try {
+    const { data, error } = await _supabase
+      .from('feedback')
+      .select('id,created_at,user_email,type,message,page,status,ai_priority')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    const rows = Array.isArray(data) ? data : [];
+    const fresh = rows.filter(r => (r.status || 'new') === 'new').length;
+    const fromPrompt = rows.filter(r => r.page === 'superuser_prompt').length;
+    if (sumEl) sumEl.textContent = `${rows.length} terbaru · ${fresh} belum ditangani · ${fromPrompt} dari pesan Steven`;
+    if (!rows.length) { listEl.textContent = 'Belum ada masukan.'; return; }
+
+    listEl.innerHTML = rows.map((r) => {
+      const when = new Date(r.created_at).toLocaleString('id-ID',
+        { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      const prompt = r.page === 'superuser_prompt';
+      const high = String(r.ai_priority || '').toLowerCase() === 'high'
+        || String(r.ai_priority || '').toLowerCase() === 'critical';
+      const st = r.status || 'new';
+      return `<div class="adm-fb-row${st === 'done' || st === 'dismissed' ? ' is-done' : ''}" data-adm-fb="${esc(r.id)}">
+        <div class="adm-fb-meta">
+          <span>${esc(when)}</span>
+          <span class="adm-fb-tag${prompt ? ' is-prompt' : ''}">${esc(prompt ? 'pesan Steven' : (r.page || r.type || '—'))}</span>
+          ${high ? '<span class="adm-fb-tag is-high">prioritas tinggi</span>' : ''}
+          <span>${esc(ADM_FB_STATUS[st] || st)}</span>
+          <span>${esc(r.user_email || 'anon')}</span>
+        </div>
+        <p class="adm-fb-msg">${esc(r.message || '')}</p>
+        <div class="adm-fb-acts">
+          ${st !== 'reviewing' ? '<button type="button" class="adm-tb-btn" data-adm-fb-set="reviewing">Tinjau</button>' : ''}
+          ${st !== 'done' ? '<button type="button" class="adm-tb-btn" data-adm-fb-set="done">Selesai</button>' : ''}
+          ${st !== 'dismissed' ? '<button type="button" class="adm-tb-btn" data-adm-fb-set="dismissed">Abaikan</button>' : ''}
+        </div>
+      </div>`;
+    }).join('');
+
+    listEl.querySelectorAll('[data-adm-fb-set]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const row = btn.closest('[data-adm-fb]');
+        const id = row?.getAttribute('data-adm-fb');
+        if (!id) return;
+        btn.disabled = true;
+        try {
+          const { error: upErr } = await _supabase.from('feedback')
+            .update({ status: btn.getAttribute('data-adm-fb-set') }).eq('id', id);
+          if (upErr) throw upErr;
+          void loadAdminFeedback();
+        } catch (err) {
+          console.warn('feedback status update:', err?.message || err);
+          showToast('Gagal ubah status.');
+          btn.disabled = false;
+        }
+      });
+    });
+  } catch (err) {
+    console.warn('loadAdminFeedback:', err?.message || err);
+    listEl.textContent = 'Gagal memuat masukan.';
+  }
+}
+
+function consumeAdminDeepLink() {
+  try {
+    const hash = (location.hash || '').replace(/^#/, '');
+    if (hash !== 'admin' && hash !== 'adm-feedback') return false;
+    if (!isPlatformAdmin()) return false;
+    openAdminView();
+    requestAnimationFrame(() => {
+      $('adm-feedback')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    });
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 async function loadAdminKomunitasOps() {
   const metricsEl = $('adm-komunitas-metrics');
   const unansweredEl = $('adm-komunitas-unanswered');
@@ -22296,6 +22636,7 @@ function openAdminView() {
   setView('admin');
   void loadAdminDirectory();
   void loadAdminKomunitasOps();
+  void loadAdminFeedback();
   gptMountWinback();
   try { if (window.LarisCohort) void window.LarisCohort.renderOps(); } catch (_) {}
   void fillAdminCohortPreview();
@@ -22678,6 +23019,7 @@ function wireUi() {
   $('btn-mentor-jadwal')?.addEventListener('click', () => void openMentorRail('jadwal'));
   $('adm-cohort-preview-go')?.addEventListener('click', () => void openAdminCohortPreview());
   $('adm-komunitas-refresh')?.addEventListener('click', () => { void loadAdminKomunitasOps(); });
+  $('adm-feedback-refresh')?.addEventListener('click', () => { void loadAdminFeedback(); });
   $('adm-komunitas-digest')?.addEventListener('click', () => { void sendAdminKomunitasDigest(); });
   $('admin-sample-new')?.addEventListener('click', () => adminSampleNewUser());
   $('admin-sample-exit')?.addEventListener('click', () => adminExitSample());
@@ -22874,6 +23216,7 @@ async function boot() {
   renderChatList();
   renderSidebarLocCard();
   void routeCohortHome();
+  consumeAdminDeepLink();
 }
 
 
