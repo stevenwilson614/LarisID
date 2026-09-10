@@ -60,18 +60,46 @@
     try { return getUsage() || null; } catch (_) { return null; }
   }
 
+  function quotaRingHtml(kind, num) {
+    return '<span class="usage-ring-wrap gpt-quota-ring js-quota-' + kind + '-ring" data-tone="ok">' +
+      '<svg class="usage-ring" viewBox="0 0 36 36" aria-hidden="true">' +
+        '<circle class="track" cx="18" cy="18" r="15"></circle>' +
+        '<circle class="prog" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="0"></circle>' +
+      '</svg>' +
+      '<span class="usage-ring-num">' + (num || '') + '</span>' +
+    '</span>';
+  }
+
   function quotaHtml() {
     const u = readUsage() || {};
     return '<div class="gpt-quota" aria-label="Jatah harian">' +
       '<div class="gpt-quota-item">' +
-        '<span class="gpt-quota-lbl">Deep Dive</span>' +
-        '<span class="gpt-quota-val js-quota-dives">' + (u.divesText || '—') + '</span>' +
+        quotaRingHtml('dive', u.diveNum || '∞') +
+        '<span class="gpt-quota-copy">' +
+          '<span class="gpt-quota-lbl">Deep Dive</span>' +
+          '<span class="gpt-quota-val js-quota-dives">' + (u.divesText || '—') + '</span>' +
+        '</span>' +
       '</div>' +
       '<div class="gpt-quota-item">' +
-        '<span class="gpt-quota-lbl">Unduhan</span>' +
-        '<span class="gpt-quota-val js-quota-downloads">' + (u.downloadsText || '90/90') + '</span>' +
+        quotaRingHtml('dl', u.dlNum || '90') +
+        '<span class="gpt-quota-copy">' +
+          '<span class="gpt-quota-lbl">Unduhan</span>' +
+          '<span class="gpt-quota-val js-quota-downloads">' + (u.downloadsText || '90/90') + '</span>' +
+        '</span>' +
       '</div>' +
     '</div>';
+  }
+
+  function paintQuotaRing(wrap, num, tone, offset) {
+    if (!wrap) return;
+    if (tone) wrap.dataset.tone = tone;
+    const prog = wrap.querySelector('.prog');
+    const numEl = wrap.querySelector('.usage-ring-num');
+    if (numEl && num != null) numEl.textContent = num;
+    if (prog && offset != null) {
+      prog.setAttribute('stroke-dasharray', '94.2');
+      prog.setAttribute('stroke-dashoffset', String(offset));
+    }
   }
 
   function refreshUsage() {
@@ -82,6 +110,8 @@
     const dlEl = modalRoot.querySelector('.js-quota-downloads');
     if (diveEl && u.divesText) diveEl.textContent = u.divesText;
     if (dlEl && u.downloadsText) dlEl.textContent = u.downloadsText;
+    paintQuotaRing(modalRoot.querySelector('.js-quota-dive-ring'), u.diveNum, u.diveTone, u.diveOffset);
+    paintQuotaRing(modalRoot.querySelector('.js-quota-dl-ring'), u.dlNum, u.dlTone, u.dlOffset);
   }
 
   function handleKey(e) {
@@ -165,11 +195,14 @@
   .gpt-sheet-hero .gpt-sheet-avatar-wrap { margin: 0; flex-shrink: 0; }
   .gpt-sheet-avatar-wrap { position: relative; width: 96px; height: 96px; margin: 4px auto 22px; }
   .gpt-sheet-avatar-wrap .gpt-avatar-wrap { width: 96px; height: 96px; margin: 0; }
-  .gpt-quota { display: flex; flex-direction: column; gap: 8px; min-width: 132px; }
+  .gpt-quota { display: flex; flex-direction: column; gap: 8px; min-width: 168px; }
   .gpt-quota-item {
-    display: flex; flex-direction: column; gap: 2px;
-    padding: 8px 12px; background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 12px;
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px 8px 8px; background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 12px;
   }
+  .gpt-quota-ring { width: 36px; height: 36px; flex-shrink: 0; }
+  .gpt-quota-ring .usage-ring-num { font-size: 10px; font-weight: 750; }
+  .gpt-quota-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
   .gpt-quota-lbl {
     font-size: 10px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: #6B7280;
   }
@@ -686,6 +719,8 @@
     if (signOutBtn && onSignOut) {
       signOutBtn.addEventListener('click', () => { close(); onSignOut(); });
     }
+
+    refreshUsage();
 
     // Land cursor in name so edit mode is unmistakable on open.
     requestAnimationFrame(() => {

@@ -779,22 +779,24 @@ body.view-directory .panel {
 .usage-pop {
   display: none;
   position: fixed;
-  width: min(240px, calc(100vw - 32px));
-  padding: 11px 13px; border-radius: 12px;
+  width: min(220px, calc(100vw - 32px));
+  padding: 12px 14px; border-radius: 12px;
   background: #fff; border: 1px solid var(--line);
   box-shadow: 0 12px 32px rgba(0,0,0,.14);
   text-align: left; z-index: 80;
 }
 .usage-pop.is-open { display: block; }
-.usage-pop-title {
-  margin: 0 0 4px; font-size: .78rem; font-weight: 700;
+.usage-pop-rings {
+  display: flex; align-items: center; justify-content: space-around; gap: 10px;
 }
-.usage-pop-dl {
-  margin: 0 0 6px; font-size: .74rem; font-weight: 650;
-  color: var(--ink); line-height: 1.35;
+.usage-stat {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
 }
-.usage-pop-sub {
-  margin: 0; font-size: .7rem; color: var(--muted); line-height: 1.45;
+.usage-stat .usage-ring-wrap { width: 40px; height: 40px; }
+.usage-stat .usage-ring-num { font-size: .62rem; font-weight: 750; color: var(--ink); }
+.usage-stat-lbl {
+  font-size: .6rem; font-weight: 750; color: var(--muted);
+  letter-spacing: .03em; text-transform: uppercase;
 }
 
 .topbar-mobile-brand { display: none; align-items: center; gap: 8px; }
@@ -7504,9 +7506,28 @@ body:has(.modal-overlay.open) .msg-steven-fab {
             </span>
           </button>
           <div class="usage-pop" data-usage-pop role="dialog" aria-label="Jatah harian">
-            <p class="usage-pop-title">0 dari 3 produk hari ini</p>
-            <p class="usage-pop-dl">90/90 unduhan tersisa</p>
-            <p class="usage-pop-sub">Batas harian reset dalam —.</p>
+            <div class="usage-pop-rings">
+              <div class="usage-stat" data-usage-stat="dive">
+                <span class="usage-ring-wrap" data-tone="ok">
+                  <svg class="usage-ring" viewBox="0 0 36 36" aria-hidden="true">
+                    <circle class="track" cx="18" cy="18" r="15"></circle>
+                    <circle class="prog" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="0"></circle>
+                  </svg>
+                  <span class="usage-ring-num">∞</span>
+                </span>
+                <span class="usage-stat-lbl">Deep Dive</span>
+              </div>
+              <div class="usage-stat" data-usage-stat="dl">
+                <span class="usage-ring-wrap" data-tone="ok">
+                  <svg class="usage-ring" viewBox="0 0 36 36" aria-hidden="true">
+                    <circle class="track" cx="18" cy="18" r="15"></circle>
+                    <circle class="prog" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="0"></circle>
+                  </svg>
+                  <span class="usage-ring-num">90</span>
+                </span>
+                <span class="usage-stat-lbl">Unduhan</span>
+              </div>
+            </div>
           </div>
         </div>
         <div class="viewas" id="viewas" hidden>
@@ -8096,9 +8117,28 @@ body:has(.modal-overlay.open) .msg-steven-fab {
                     </span>
                   </button>
                   <div class="usage-pop" data-usage-pop role="dialog" aria-label="Jatah harian">
-                    <p class="usage-pop-title">0 dari 3 produk hari ini</p>
-                    <p class="usage-pop-dl">90/90 unduhan tersisa</p>
-                    <p class="usage-pop-sub">Batas harian reset dalam —.</p>
+                    <div class="usage-pop-rings">
+                      <div class="usage-stat" data-usage-stat="dive">
+                        <span class="usage-ring-wrap" data-tone="ok">
+                          <svg class="usage-ring" viewBox="0 0 36 36" aria-hidden="true">
+                            <circle class="track" cx="18" cy="18" r="15"></circle>
+                            <circle class="prog" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="0"></circle>
+                          </svg>
+                          <span class="usage-ring-num">∞</span>
+                        </span>
+                        <span class="usage-stat-lbl">Deep Dive</span>
+                      </div>
+                      <div class="usage-stat" data-usage-stat="dl">
+                        <span class="usage-ring-wrap" data-tone="ok">
+                          <svg class="usage-ring" viewBox="0 0 36 36" aria-hidden="true">
+                            <circle class="track" cx="18" cy="18" r="15"></circle>
+                            <circle class="prog" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="0"></circle>
+                          </svg>
+                          <span class="usage-ring-num">90</span>
+                        </span>
+                        <span class="usage-stat-lbl">Unduhan</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -8986,9 +9026,28 @@ body:has(.modal-overlay.open) .msg-steven-fab {
             </span>
           </button>
           <div class="usage-pop" data-usage-pop role="dialog" aria-label="Jatah harian">
-            <p class="usage-pop-title">0 dari 3 produk hari ini</p>
-            <p class="usage-pop-dl">90/90 unduhan tersisa</p>
-            <p class="usage-pop-sub">Batas harian reset dalam —.</p>
+            <div class="usage-pop-rings">
+              <div class="usage-stat" data-usage-stat="dive">
+                <span class="usage-ring-wrap" data-tone="ok">
+                  <svg class="usage-ring" viewBox="0 0 36 36" aria-hidden="true">
+                    <circle class="track" cx="18" cy="18" r="15"></circle>
+                    <circle class="prog" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="0"></circle>
+                  </svg>
+                  <span class="usage-ring-num">∞</span>
+                </span>
+                <span class="usage-stat-lbl">Deep Dive</span>
+              </div>
+              <div class="usage-stat" data-usage-stat="dl">
+                <span class="usage-ring-wrap" data-tone="ok">
+                  <svg class="usage-ring" viewBox="0 0 36 36" aria-hidden="true">
+                    <circle class="track" cx="18" cy="18" r="15"></circle>
+                    <circle class="prog" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="0"></circle>
+                  </svg>
+                  <span class="usage-ring-num">90</span>
+                </span>
+                <span class="usage-stat-lbl">Unduhan</span>
+              </div>
+            </div>
           </div>
         </div>
         <button type="submit" class="composer-send" id="composer-send" aria-label="Kirim">
@@ -9445,13 +9504,13 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 </aside>
 
 <script src="/js/laris-merdeka.js?v=20260816b" defer></script>
-<script src="/js/changelog.js?v=20260910b" defer></script>
+<script src="/js/changelog.js?v=20260910d" defer></script>
 <script defer src="/js/gpt-dir-filters.js?v=20260906b"></script>
 <script defer src="/js/gpt-dir-hero.js?v=20260824a"></script>
 <script defer src="/js/gpt-dir-home.js?v=20260824d"></script>
 <script defer src="/js/gpt-photo-analyze.js?v=20260824a"></script>
 <script defer src="/js/gpt-referral.js?v=20260821a"></script>
-<script defer src="/js/gpt-profile.js?v=20260910a"></script>
+<script defer src="/js/gpt-profile.js?v=20260910d"></script>
 <script defer src="/js/gpt-community-board.js?v=20260909b"></script>
 <script defer src="/js/laris-cohort.js?v=20260908j"></script>
 <script defer src="/js/laris-mascot-rigs.js?v=20260907k"></script>
@@ -9466,6 +9525,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <script src="/js/peta-peluang.js?v=20260908a" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
-<script src="/js/gpt-app.js?v=20260910a" defer></script>
+<script src="/js/gpt-app.js?v=20260910d" defer></script>
 </body>
 </html>

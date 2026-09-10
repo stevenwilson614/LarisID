@@ -2705,6 +2705,31 @@ async function gptClaimFeedbackBonus(feedbackId) {
   return 0;
 }
 
+function usageRingTone(left, unlimited) {
+  if (unlimited) return 'inf';
+  if (left <= 0) return 'bad';
+  if (left === 1) return 'warn';
+  return 'ok';
+}
+
+function usageRingOffset(left, limit, unlimited) {
+  if (unlimited) return 0;
+  const frac = limit > 0 ? Math.max(0, Math.min(1, left / limit)) : 0;
+  return USAGE_RING_C * (1 - frac);
+}
+
+function paintUsageRing(wrap, num, tone, offset) {
+  if (!wrap) return;
+  wrap.dataset.tone = tone || 'ok';
+  const prog = wrap.querySelector('.prog');
+  const numEl = wrap.querySelector('.usage-ring-num');
+  if (numEl && num != null) numEl.textContent = num;
+  if (prog) {
+    prog.setAttribute('stroke-dasharray', String(USAGE_RING_C));
+    prog.setAttribute('stroke-dashoffset', String(offset));
+  }
+}
+
 function gptUsageQuotaView() {
   const diveUnlim = !!_gptUsage.unlimited || isPlatformAdmin();
   const diveLimit = diveUnlim ? GPT_DAILY_LIMIT : (_gptUsage.limit || GPT_DAILY_LIMIT);
@@ -2720,77 +2745,35 @@ function gptUsageQuotaView() {
   return {
     divesText: diveUnlim ? '∞' : `${diveLeft}/${diveLimit}`,
     downloadsText: dlUnlim ? '∞/∞' : `${dlLeft}/${dlLimit}`,
-    downloadsLine: dlUnlim ? '∞/∞ unduhan tersisa' : `${dlLeft}/${dlLimit} unduhan tersisa`,
+    diveNum: diveUnlim ? '∞' : String(diveLeft),
+    dlNum: dlUnlim ? '∞' : String(dlLeft),
+    diveTone: usageRingTone(diveLeft, diveUnlim),
+    dlTone: usageRingTone(dlLeft, dlUnlim),
+    diveOffset: usageRingOffset(diveLeft, diveLimit, diveUnlim),
+    dlOffset: usageRingOffset(dlLeft, dlLimit, dlUnlim),
+    title: diveUnlim
+      ? `Deep Dive ∞ · ${dlUnlim ? '∞' : `${dlLeft}/${dlLimit}`} unduhan`
+      : `${diveLeft}/${diveLimit} Deep Dive · ${dlUnlim ? '∞' : `${dlLeft}/${dlLimit}`} unduhan`,
   };
 }
 
 function renderGptUsage() {
   const pills = document.querySelectorAll('[data-usage-pill]');
   if (!pills.length) return;
-  const unlimited = !!_gptUsage.unlimited || isPlatformAdmin();
-  const limit = unlimited ? GPT_DAILY_LIMIT : (_gptUsage.limit || GPT_DAILY_LIMIT);
-  const used = unlimited ? 0 : Math.min(limit, Math.max(0, _gptUsage.used || 0));
-  const left = unlimited ? limit : Math.max(0, limit - used);
-  const resetAt = _gptUsage.resetAt || wibMidnightReset();
-  const resetLabel = formatCountdown(resetAt);
   const quota = gptUsageQuotaView();
-
-  let title;
-  let popTitle;
-  let popSub;
-  let tone;
-  let numText;
-  let dashOffset;
-
-  if (unlimited) {
-    numText = '∞';
-    // Beta is checked before merdeka: while it is on it is the reason almost
-    // every account sees ∞, and it is the one the seller can act on.
-    if (_gptUsage.beta || betaUnlimitedNow()) {
-      title = 'Pencarian tanpa batas selama Beta';
-      popTitle = title;
-      popSub = 'Selama masa Beta jatah harian tidak dibatasi. LarisID gratis selamanya, tanpa paket berbayar.';
-    } else if (_gptUsage.merdeka || merdekaUnlimitedNow()) {
-      title = 'Deep Dive Search tanpa batas sampai 17 Agustus 23.59 WIB';
-      popTitle = title;
-      popSub = 'Jatah 10 per hari dilonggarkan untuk HUT RI ke-81. Tanya AI tidak pernah dibatasi.';
-    } else {
-      title = 'Akses tanpa batas';
-      popTitle = title;
-      popSub = 'Akun admin/leader tidak dibatasi jatah harian.';
-    }
-    tone = 'inf';
-    dashOffset = 0;
-  } else {
-    numText = String(left);
-    title = `${used}/${limit} produk · reset dalam ${resetLabel}`;
-    popTitle = `${used} dari ${limit} produk hari ini`;
-    popSub = left > 0
-      ? `${left} tersisa. Batas harian reset dalam ${resetLabel}.`
-      : `Batas tercapai. Reset dalam ${resetLabel}.`;
-    tone = left <= 0 ? 'bad' : left === 1 ? 'warn' : 'ok';
-    const remainingFrac = limit > 0 ? left / limit : 0;
-    dashOffset = USAGE_RING_C * (1 - remainingFrac);
-  }
+  const title = quota.title;
+  const tone = quota.diveTone;
+  const numText = quota.diveNum;
+  const dashOffset = quota.diveOffset;
 
   pills.forEach(pill => {
     pill.title = title;
     const scope = pill.closest('[data-usage-wrap]') || pill;
-    const wrap = pill.querySelector('.usage-ring-wrap');
-    const prog = pill.querySelector('.prog');
-    const numEl = pill.querySelector('.usage-ring-num');
-    const popTitleEl = scope.querySelector('.usage-pop-title');
-    const popDlEl = scope.querySelector('.usage-pop-dl');
-    const popSubEl = scope.querySelector('.usage-pop-sub');
-    if (numEl) numEl.textContent = numText;
-    if (wrap) wrap.dataset.tone = tone;
-    if (prog) {
-      prog.setAttribute('stroke-dasharray', String(USAGE_RING_C));
-      prog.setAttribute('stroke-dashoffset', String(dashOffset));
-    }
-    if (popTitleEl) popTitleEl.textContent = popTitle;
-    if (popDlEl) popDlEl.textContent = quota.downloadsLine;
-    if (popSubEl) popSubEl.textContent = popSub;
+    paintUsageRing(pill.querySelector('.usage-ring-wrap'), numText, tone, dashOffset);
+    const diveWrap = scope.querySelector('[data-usage-stat="dive"] .usage-ring-wrap');
+    const dlWrap = scope.querySelector('[data-usage-stat="dl"] .usage-ring-wrap');
+    paintUsageRing(diveWrap, quota.diveNum, quota.diveTone, quota.diveOffset);
+    paintUsageRing(dlWrap, quota.dlNum, quota.dlTone, quota.dlOffset);
   });
 
   try { window.GptProfile && window.GptProfile.refreshUsage && window.GptProfile.refreshUsage(); } catch (_) {}
@@ -2825,7 +2808,7 @@ function setUsagePopOpen(pill, open) {
   const r = pill.getBoundingClientRect();
   const margin = 16;
   const gap = 10;
-  const width = Math.min(240, window.innerWidth - margin * 2);
+  const width = Math.min(220, window.innerWidth - margin * 2);
   let left = Math.round(r.right - width);
   left = Math.max(margin, Math.min(left, window.innerWidth - width - margin));
 
@@ -22876,8 +22859,9 @@ async function boot() {
   const pendingResume = !!(state.pendingDeepdive || state.pendingCompare || state.pendingTracker || state.pendingKomunitas || state.pendingFinder || _finderResumeInFlight);
   const alreadyDeepdive = state.view === 'deepdive' && !!state.deepdiveProduct;
   const alreadyCommunity = state.view === 'community';
+  const alreadyAdmin = state.view === 'admin';
   const finderResultsUp = !!$('chat-thread')?.querySelector('[data-lrow-block]');
-  if (!_offerActive && !pendingResume && !alreadyDeepdive && !alreadyCommunity && !finderResultsUp) {
+  if (!_offerActive && !pendingResume && !alreadyDeepdive && !alreadyCommunity && !alreadyAdmin && !finderResultsUp) {
     if (state.activeChatId && activeChat()) {
       setView('chat');
       renderChatThread();

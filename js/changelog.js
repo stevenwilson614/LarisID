@@ -19,8 +19,8 @@ window.LARIS_CHANGELOG = [
         tech: 'listingRowsHtml opts.export + data-lrow-export; exportOpen source=chat lockRows snapshot; LROW_EXPORT_MIN=5.',
       },
       {
-        text: 'Lingkaran jatah di header sekarang juga menampilkan sisa unduhan (90/90) saat diketuk. Di profil, sisa Deep Dive dan unduhan tampil di samping foto.',
-        tech: 'usage-pop-dl + gptUsageQuotaView; GptProfile quota chips next to avatar; get_my_export_quota painted into the usage pop and #gpt-profile-modal.',
+        text: 'Lingkaran jatah di header sekarang menampilkan dua cincin progres (Deep Dive dan unduhan) saat diketuk. Di profil, cincin yang sama tampil di samping angka jatah.',
+        tech: 'usage-pop-rings + gptUsageQuotaView offsets; GptProfile quota rings next to avatar; get_my_export_quota painted into the usage pop and #gpt-profile-modal.',
       },
     ],
   },
