@@ -11,6 +11,16 @@
 // A plain string is still accepted and renders with no tech line.
 window.LARIS_CHANGELOG = [
   {
+    date: '2026-09-10',
+    title: 'Unduh daftar produk dari Laris AI',
+    items: [
+      {
+        text: 'Kalau Laris AI menampilkan daftar produk yang cukup panjang (5+), tombol Unduh muncul di atas tabel — sama seperti di Cari Produk. File .xlsx/CSV memakai kuota harian yang sama (90 baris produk).',
+        tech: 'listingRowsHtml opts.export + data-lrow-export; exportOpen source=chat lockRows snapshot; LROW_EXPORT_MIN=5.',
+      },
+    ],
+  },
+  {
     date: '2026-09-08',
     title: 'Unduh listing produk dan riwayat omset ke Excel',
     items: [

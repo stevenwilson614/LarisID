@@ -8687,7 +8687,7 @@ function defaultLookupFollowups(listings) {
 async function revealListingRows(loading, chat, leadHtml, listings, meta, followups) {
   const rows = (listings || []).slice(0, 12);
   rememberProducts(rows.map(asListingProduct));
-  const tail = listingRowsHtml(rows, { compact: true }) + followupChipsHtml(followups);
+  const tail = listingRowsHtml(rows, { compact: true, export: true }) + followupChipsHtml(followups);
   const html = `${leadHtml}${tail}`;
   await revealAssistant(loading, html);
   pushMessage(chat, 'assistant', {
@@ -8769,7 +8769,7 @@ async function handleFilterFollowup(chat, text) {
     ? `<p>${rows.length} produk ini dijual dari toko di <strong>${esc(label)}</strong>. Lokasi di data kami adalah kota seller, bukan pembeli.</p>`
     : `<p>Dari yang barusan, tidak ada yang lokasi sellernya di <strong>${esc(label)}</strong>.</p>`;
   const loading = appendBubble('assistant', lead);
-  const html = lead + (rows.length ? listingRowsHtml(rows, { compact: true }) : '');
+  const html = lead + (rows.length ? listingRowsHtml(rows, { compact: true, export: true }) : '');
   await revealAssistant(loading, html);
   pushMessage(chat, 'assistant', { text: `Filter ${label}`, types: last.types || [] }, html);
   bindListingRows(loading);
@@ -9033,7 +9033,7 @@ async function handlePromoIntent(chat, text) {
     : (!q ? (en ? '<p class="dd-sub">You did not name a product — these are measured weekly markets, not an affiliate ranking.</p>' : '<p class="dd-sub">Belum disebut produk tertentu — ini pasar yang penjualan mingguannya terukur, bukan ranking afiliasi.</p>') : '');
   const first = rows[0];
   const span = first?._petaTrend?.spanNow;
-  const html = `${lead}${fallbackNote}${promoRowReadHtml(first, rows, mem)}${promoChecklistHtml(first, rows, mem)}${listingRowsHtml(rows, { compact: true })}${promoCalcHtml(rows, en)}${promoNotesHtml(span)}`;
+  const html = `${lead}${fallbackNote}${promoRowReadHtml(first, rows, mem)}${promoChecklistHtml(first, rows, mem)}${listingRowsHtml(rows, { compact: true, export: true })}${promoCalcHtml(rows, en)}${promoNotesHtml(span)}`;
   await revealAssistant(loading, html);
   pushMessage(chat, 'assistant', { text: 'Sinyal promosi', q: usedQuery || text }, html);
   bindListingRows(loading);
@@ -9085,7 +9085,7 @@ async function handleTerlarisMingguIntent(chat, text) {
   rememberProducts(rows.map(asListingProduct));
   const followups = defaultLookupFollowups(rows);
   const answerHtml = lead
-    + (rows.length ? listingRowsHtml(rows, { compact: true }) : '')
+    + (rows.length ? listingRowsHtml(rows, { compact: true, export: true }) : '')
     + followupChipsHtml(followups);
   if (run.answerEl) run.answerEl.innerHTML = answerHtml;
   bindListingRows(loading);
@@ -9626,7 +9626,7 @@ async function handleBandingkanIntent(chat, text) {
   const side = (label, s, rows) => s
     ? `<div class="ans-panel" style="margin-top:12px"><h4>${esc(label)}</h4>
        <p class="dd-sub" style="margin:0 0 10px">${s.n} listing terpantau · median harga ${fmtRp(s.median)} · total ${fmtSold(s.sold)} terjual</p>
-       ${rows.length ? listingRowsHtml(rows.slice(0, 12), { compact: true }) : '<p class="dd-sub">Belum ada listing untuk keyword ini.</p>'}</div>`
+       ${rows.length ? listingRowsHtml(rows.slice(0, 12), { compact: true, export: true }) : '<p class="dd-sub">Belum ada listing untuk keyword ini.</p>'}</div>`
     : `<div class="ans-panel" style="margin-top:12px"><h4>${esc(label)}</h4><p class="dd-sub">Tidak ketemu di data.</p></div>`;
   let verdict = '';
   if (sa && sb) {
@@ -11498,6 +11498,55 @@ function listingRowHtml(p, opts = {}) {
   </tr>`;
 }
 
+/** Ask Laris / chat listing tables — same Unduh affordance as Cari Produk when
+ *  the painted set is big enough to be worth a spreadsheet. */
+const LROW_EXPORT_MIN = 5;
+
+function listingExportBarHtml(n) {
+  if (!currentUser || !(Number(n) >= LROW_EXPORT_MIN)) return '';
+  return `<div class="lrow-list-bar">
+    <button type="button" class="btn-ghost dir-export-btn" data-lrow-export
+            aria-label="Unduh hasil ke spreadsheet">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>
+      </svg>
+      <span>Unduh</span>
+    </button>
+  </div>`;
+}
+
+/** Prefer encoded data-product on each row; fall back to productByKey memory. */
+function listingExportRowsFrom(btn) {
+  const host = btn?.closest?.('.lrow-export-host')
+    || btn?.closest?.('.lrow-host')
+    || btn?.closest?.('[data-lrow-block]')
+    || btn?.closest?.('.msg-bubble');
+  if (!host) return [];
+  const rows = [];
+  const seen = new Set();
+  host.querySelectorAll('tr.lrow[data-prod]').forEach((tr) => {
+    const key = tr.getAttribute('data-prod');
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    const raw = tr.getAttribute('data-product');
+    if (raw) {
+      try {
+        const decoded = JSON.parse(decodeURIComponent(raw));
+        if (decoded?.item_id != null && decoded?.shop_id != null) {
+          rows.push(decoded);
+          return;
+        }
+      } catch (_) {}
+    }
+    const [item_id, shop_id] = key.split('|');
+    const p = findProduct(item_id, shop_id);
+    if (p) rows.push(productSnapshot(p) || p);
+  });
+  return rows;
+}
+
 function listingRowsHtml(list, opts = {}) {
   const rows = list || [];
   if (!rows.length) return '';
@@ -11521,12 +11570,19 @@ function listingRowsHtml(list, opts = {}) {
         ${th('terbaru', 'Usia')}
         ${actions ? '<th class="lrow-act"><span class="sr-only">Aksi</span></th>' : ''}
       </tr></thead>`;
-  return `<div class="lrow-wrap${opts.compact ? ' lrow-wrap--compact' : ''}${pick ? ' lrow-wrap--pick' : ''}${actions ? ' lrow-wrap--actions' : ''}"${opts.keepChat ? ' data-lrow-keepchat="1"' : ''}>
+  const table = `<div class="lrow-wrap${opts.compact ? ' lrow-wrap--compact' : ''}${pick ? ' lrow-wrap--pick' : ''}${actions ? ' lrow-wrap--actions' : ''}"${opts.keepChat ? ' data-lrow-keepchat="1"' : ''}>
     <table class="ddr-table lrow-table">
       ${head}
       <tbody>${rows.map(p => listingRowHtml(p, opts)).join('')}</tbody>
     </table>
   </div>`;
+  // Unduh sits above the table (same spot as Cari Produk's list bar). Skip on
+  // headless continuations and Deep Dive competitor chrome.
+  if (opts.export && !opts.headless) {
+    const bar = listingExportBarHtml(rows.length);
+    if (bar) return `<div class="lrow-export-host">${bar}${table}</div>`;
+  }
+  return table;
 }
 
 function listingUnsoldNote(n) {
@@ -11824,8 +11880,9 @@ function bindListingBlock(root, pool, opts = {}) {
     const sort = opts.sort || 'omset';
     const painted = listingRowsForChip(pool, chipKw, { sort, limit: opts.limit });
     if (host) {
-      host.innerHTML = listingRowsHtml(painted.rows, { compact: opts.compact !== false, sort, actions: true })
-        + listingUnsoldNote(painted.chip ? 0 : pool.unsold);
+      host.innerHTML = listingRowsHtml(painted.rows, {
+        compact: opts.compact !== false, sort, actions: true, export: true,
+      }) + listingUnsoldNote(painted.chip ? 0 : pool.unsold);
     }
     block.querySelectorAll('.lrow-chip').forEach(b => {
       b.classList.toggle('is-on', (b.getAttribute('data-lrow-kw') || '') === painted.chip);
@@ -11895,7 +11952,9 @@ function listingBlockHtml(pool, opts = {}) {
   const unsold = painted.chip ? 0 : pool.unsold;
   return `${nearbyLead}${keywordChipsHtml(pool.keywords, painted.chip, { showSemua: true, maxChips: opts.maxChips })}
     ${trendId ? `<div class="trend-host" id="${esc(trendId)}"></div>` : ''}
-    <div class="lrow-host">${listingRowsHtml(painted.rows, { compact: opts.compact !== false, sort, actions: true })}${listingUnsoldNote(unsold)}</div>`;
+    <div class="lrow-host">${listingRowsHtml(painted.rows, {
+      compact: opts.compact !== false, sort, actions: true, export: true,
+    })}${listingUnsoldNote(unsold)}</div>`;
 }
 
 /** Compact Deep Dive summary kept in the chat thread so scrolling history still reaches it. */
@@ -17815,7 +17874,7 @@ async function paintAgentMarketReply(chat, loading, replyObj, fallbackTypes) {
   if (fresh.length) {
     const listings = await fetchListingsForKeywords(fresh.map(t => t.keyword), 12, 80);
     tail += listings.length
-      ? listingRowsHtml(listings, { compact: true })
+      ? listingRowsHtml(listings, { compact: true, export: true })
       : `<div class="card-grid">${marketCardsHtml(fresh)}</div>`;
   }
 
@@ -18905,7 +18964,7 @@ function _agentListingViewHtml(view) {
       + `${r.lokasi_teratas && r.lokasi_teratas[0] ? ` · terbanyak dari ${esc(r.lokasi_teratas[0].lokasi)}` : ''}</div>`
     : '';
   const cap = view.n && view.n > rows.length ? `<div class="agent-tool-more">${esc(fmtIdCompact(view.n))} listing cocok, ${rows.length} teratas ditampilkan.</div>` : '';
-  return `${sum}${listingRowsHtml(rows, { compact: true })}${cap}`;
+  return `${sum}${listingRowsHtml(rows, { compact: true, export: true })}${cap}`;
 }
 
 function _agentStatHtml(label, value) {
@@ -23348,12 +23407,13 @@ function exportQuotaLineHtml() {
 
 function exportSyncModalChrome() {
   const hist = exportIsHistory();
-  const deep = !!_exportCtx?.lockRows;
   const title = $('export-title');
   if (title) title.textContent = hist ? 'Unduh riwayat omset' : 'Unduh data produk';
 
+  // Count picker is for multi-product snapshots (Cari Produk + Ask Laris).
+  // Deep Dive history is always 1 product — hide the field.
   const countField = $('export-count-field');
-  if (countField) countField.hidden = !!deep;
+  if (countField) countField.hidden = !!hist;
 
   const weeksField = $('export-weeks-field');
   if (weeksField) weeksField.hidden = !hist;
@@ -23398,11 +23458,13 @@ function exportRenderCost() {
       scopeEl.textContent = `1 produk · omset mingguan · ${name}. Kuota 12 minggu/hari `
         + `(mis. 3×4 minggu atau 1×12).`;
     } else {
-      const sortSel = document.getElementById('dir-sort-select');
+      const fromChat = _exportCtx?.source === 'chat';
+      const sortSel = fromChat ? null : document.getElementById('dir-sort-select');
       const sortLabel = sortSel?.selectedOptions?.[0]?.textContent?.trim() || '';
       scopeEl.hidden = false;
       scopeEl.textContent = `${sel.length} produk teratas dari ${pool.length} hasil`
-        + `${sortLabel ? ` · urut: ${sortLabel}` : ''} · omset / bulan · 1 produk = 1 baris`;
+        + `${sortLabel ? ` · urut: ${sortLabel}` : ''}`
+        + `${fromChat ? ' · dari Laris AI' : ''} · omset / bulan · 1 produk = 1 baris`;
     }
   }
 
@@ -23468,16 +23530,20 @@ function exportOpen(ctx = {}) {
   if (other && other !== modal) { showToast('Tutup dulu jendela yang terbuka.'); return; }
 
   const source = ctx.source || 'directory';
-  const deep = source === 'deepdive' || !!ctx.lockRows;
+  // History is Deep Dive only. lockRows alone must NOT force history — Ask Laris
+  // multi-product downloads lock the painted rows as a snapshot (same budget as
+  // Cari Produk).
+  const hist = source === 'deepdive' || ctx.shape === 'history';
+  const locked = hist || !!ctx.lockRows || Array.isArray(ctx.rows);
   _exportCtx = {
     source,
-    rows: ctx.rows || null,
-    lockRows: !!ctx.lockRows || deep,
-    // Cari Produk = monthly omset only (1 product = 1 row). Weekly history is
-    // Deep Dive only — never offered on multi-product downloads.
-    shape: deep ? 'history' : 'snapshot',
-    weeks: deep ? (ctx.weeks || EXPORT_WEEK_LIMIT) : 0,
-    count: deep ? 1 : (ctx.count || 25),
+    rows: Array.isArray(ctx.rows) ? ctx.rows : null,
+    lockRows: locked,
+    // Cari Produk / Ask Laris = monthly omset only (1 product = 1 row). Weekly
+    // history is Deep Dive only — never offered on multi-product downloads.
+    shape: hist ? 'history' : 'snapshot',
+    weeks: hist ? (ctx.weeks || EXPORT_WEEK_LIMIT) : 0,
+    count: hist ? 1 : (ctx.count || 25),
   };
   exportFillCount();
   exportRenderCost();
@@ -23970,6 +24036,19 @@ function _exportWireDelegation() {
     const t = e.target;
     if (!t || !t.closest) return;
     if (t.closest('#dir-export')) { exportOpen({ source: 'directory' }); return; }
+    const chatExport = t.closest('[data-lrow-export]');
+    if (chatExport) {
+      const rows = listingExportRowsFrom(chatExport);
+      if (!rows.length) { showToast('Tidak ada produk untuk diunduh.'); return; }
+      exportOpen({
+        source: 'chat',
+        rows,
+        lockRows: true,
+        shape: 'snapshot',
+        count: Math.min(25, rows.length),
+      });
+      return;
+    }
     if (t.closest('[data-export-close]')) { exportClose(); return; }
     const fmt = t.closest('[data-export-fmt]');
     if (fmt) { void exportRun(fmt.getAttribute('data-export-fmt')); return; }

@@ -39,7 +39,7 @@ Logged-out visitors never hit the agent or `cari_web`.
 
 `lastShown` is stored on `chat.context` whenever rows are painted. “Crocs Bandung” with no demonstrative is LOOKUP-with-city, not FILTER. `Lanjutkan jawaban` / `Ya, lanjut` are never FILTER.
 
-LOOKUP is `handleLookupIntent` → `resolveListingPool` + `tightenLookupPool` (2+ token queries keep only keywords that contain the full phrase / both pivots) → `lookupOverviewHtml` + compact listing rows. It does **not** call `replyWithPasarTypes` (that dump of head-token chips is what made “botol minyak” return baby-bottle soap). No Peta / Trending Sekarang in the LOOKUP bubble. Default chip is **Semua**.
+LOOKUP is `handleLookupIntent` → `resolveListingPool` + `tightenLookupPool` (2+ token queries keep only keywords that contain the full phrase / both pivots) → `lookupOverviewHtml` + compact listing rows. It does **not** call `replyWithPasarTypes` (that dump of head-token chips is what made “botol minyak” return baby-bottle soap). No Peta / Trending Sekarang in the LOOKUP bubble. Default chip is **Semua**. Signed-in users with ≥5 painted listing rows get an **Unduh** button above the table (same Excel/CSV snapshot flow and 90-row/day budget as Cari Produk — see [export-xlsx.md](./export-xlsx.md)).
 
 ---
 

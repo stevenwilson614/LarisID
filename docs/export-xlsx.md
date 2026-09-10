@@ -19,6 +19,7 @@ Use these sentences on public pages. Do **not** write “Belum ada”, “Rencan
 | Surface | Shape | Daily budget (WIB) | What you get |
 |---|---|---|---|
 | Cari Produk (`#dir-export`) | Snapshot only | **90 product rows** | Monthly omset per product (1 product = 1 row). No weekly option. |
+| Ask Laris / chat (`data-lrow-export`) | Snapshot only | **Same 90-row budget** | Painted listing rows in the bubble (≥5 to show the button). |
 | Deep Dive (icon next to Tren) | History | **12 weeks** shared | One product per download, choose 4 / 8 / 12 weeks. Budget is weeks total (3×4 or 1×12). Sheet: row 1 = product info, following rows = week omset only (no repeated name/toko). |
 
 Modal copy at the top is the live remaining/limit:
@@ -27,7 +28,9 @@ Modal copy at the top is the live remaining/limit:
 - Deep Dive: `12/12 minggu tersisa hari ini`
 
 The Unduh button sits on the **list bar with Urutkan** — above product rows, below
-Trending Sekarang. Deep Dive history is only on the trend-graph download icon (not a
+Trending Sekarang. Ask Laris / chat listing tables (≥5 products, signed-in) show the
+same Unduh control above the table (`data-lrow-export`, source `chat`, same 90-row
+snapshot budget). Deep Dive history is only on the trend-graph download icon (not a
 tool pill).
 
 ## Cost rule
