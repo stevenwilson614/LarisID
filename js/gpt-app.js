@@ -3094,6 +3094,124 @@ function scheduleReturningFeatureNotices(opts = {}) {
   scheduleProductRowsNotice(opts);
   scheduleExportXlsxNotice(opts);
   scheduleSuperuserFeedback(opts);
+  // Deliberately last and unconditional: a founder notice is a direct reply to
+  // something the person told us, so it outranks the generic feature nudges
+  // and is not gated on the returning-user heuristics above.
+  void lnoticeCheck();
+}
+
+// ── Founder notices that stay put until dismissed ────────────────────────────
+// Two things arrive through this card, both as a message from Steven:
+//   1. user_notices rows — announcements, dismissed server-side via
+//      dismiss_notice() so they do not come back on another device.
+//   2. a fulfilled keyword request — "the data you asked for is ready", with a
+//      button that runs that search.
+// The ready case is checked client-side rather than waiting on the notify
+// cron, so a Fonnte or cron outage still cannot swallow the in-app message.
+// Unlike sfb-card there is no auto-minimize ladder: the whole point is that it
+// survives a reload.
+let _lnoticeCur = null;   // { kind:'notice'|'ready', id, keyword }
+let _lnoticeBound = false;
+
+function lnoticeHide() {
+  const card = $('lnotice-card');
+  if (!card) return;
+  card.classList.remove('open');
+  card.setAttribute('aria-hidden', 'true');
+}
+
+function lnoticeShow(bodyHtml, cur) {
+  const card = $('lnotice-card');
+  const body = $('lnotice-body');
+  if (!card || !body) return;
+  _lnoticeCur = cur;
+  body.innerHTML = bodyHtml;
+  card.classList.add('open');
+  card.setAttribute('aria-hidden', 'false');
+  lnoticeBind();
+  void logUserEvent('founder_notice', { ui: 'gpt', kind: cur?.kind, id: cur?.id || null });
+}
+
+async function lnoticeDismiss() {
+  const cur = _lnoticeCur;
+  lnoticeHide();
+  _lnoticeCur = null;
+  if (!cur || !_supabase) return;
+  try {
+    if (cur.kind === 'notice') {
+      await _supabase.rpc('dismiss_notice', { p_id: cur.id });
+    } else if (cur.kind === 'ready') {
+      await _supabase.from('keyword_scrape_requests')
+        .update({ card_shown_at: new Date().toISOString(), status: 'notified' })
+        .eq('id', cur.id).eq('user_id', currentUser.id);
+    }
+  } catch (e) { console.warn('lnoticeDismiss:', e?.message || e); }
+  void logUserEvent('founder_notice', { ui: 'gpt', kind: cur.kind, action: 'dismiss' });
+}
+
+function lnoticeBind() {
+  if (_lnoticeBound) return;
+  _lnoticeBound = true;
+  $('lnotice-close')?.addEventListener('click', () => { void lnoticeDismiss(); });
+  $('lnotice-body')?.addEventListener('click', (e) => {
+    if (e.target.closest('.lnotice-ok')) { void lnoticeDismiss(); return; }
+    const go = e.target.closest('[data-lnotice-go]');
+    if (!go) return;
+    const kw = go.getAttribute('data-lnotice-go');
+    void logUserEvent('founder_notice', { ui: 'gpt', kind: _lnoticeCur?.kind, action: 'open_search' });
+    void lnoticeDismiss();
+    if (kw) void handleComposerSubmit(kw);
+  });
+}
+
+function lnoticeBodyHtml(payload) {
+  const kws = Array.isArray(payload?.keywords) ? payload.keywords.filter(Boolean) : [];
+  const first = kws[0] || '';
+  const lead = payload?.lead || '';
+  const howto = payload?.howto || '';
+  return `${lead ? `<p class="sfb-bubble">${lead}</p>` : ''}
+    ${kws.length ? `<p class="lnotice-kws"><strong>Yang sudah aku ukur buat kamu:</strong><br>${kws.map(esc).join(', ')}.</p>` : ''}
+    ${howto ? `<p class="lnotice-kws">${howto}</p>` : ''}
+    <div class="lnotice-acts">
+      ${first ? `<button type="button" class="lnotice-go" data-lnotice-go="${esc(first)}">Lihat pasar ${esc(first)}</button>` : ''}
+      <button type="button" class="lnotice-ok">Oke, mengerti</button>
+    </div>`;
+}
+
+async function lnoticeCheck() {
+  if (!_supabase || !currentUser?.id) return;
+  if (isPlatformAdminRaw() || adminIsPreviewing()) return;   // never message Steven from Steven
+  try {
+    const { data: notices } = await _supabase
+      .from('user_notices')
+      .select('id,kind,payload')
+      .is('dismissed_at', null)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    const n = (notices || [])[0];
+    if (n) {
+      lnoticeShow(lnoticeBodyHtml(n.payload || {}), { kind: 'notice', id: n.id });
+      return;
+    }
+  } catch (e) { console.warn('lnoticeCheck notices:', e?.message || e); }
+
+  try {
+    const { data: ready } = await _supabase
+      .from('keyword_scrape_requests')
+      .select('id,keyword')
+      .eq('user_id', currentUser.id)
+      .eq('status', 'ready')
+      .is('card_shown_at', null)
+      .order('fulfilled_at', { ascending: false })
+      .limit(1);
+    const r = (ready || [])[0];
+    if (!r) return;
+    lnoticeShow(`<p class="sfb-bubble">Kamu minta data untuk <strong>${esc(r.keyword)}</strong> — sudah aku ukur, datanya siap sekarang.</p>
+      <div class="lnotice-acts">
+        <button type="button" class="lnotice-go" data-lnotice-go="${esc(r.keyword)}">Lihat pasar ${esc(r.keyword)}</button>
+        <button type="button" class="lnotice-ok">Nanti saja</button>
+      </div>`, { kind: 'ready', id: r.id, keyword: r.keyword });
+  } catch (e) { console.warn('lnoticeCheck ready:', e?.message || e); }
 }
 
 // ── Super-user feedback card ("pesan dari Steven") ─────────────────────────
@@ -9111,9 +9229,12 @@ async function handleLookupIntent(chat, text) {
     rememberProducts(pool.listings);
   }
   if (!pool.listings.length) {
-    const html = `<p>Belum ketemu listing untuk “${esc(q)}” di data kami.</p>`;
+    const html = `<p>Belum ketemu listing untuk “${esc(q)}” di data kami.</p>${kwReqHtml(q, 'chat')}`;
     await revealAssistant(loading, html);
     pushMessage(chat, 'assistant', { text: 'Hasil pasar', q }, html);
+    // This dead end logged nothing at all before — part of why corpus gaps
+    // stayed invisible even when the search plainly failed.
+    void logUncoveredSearch(q, { via: 'lookup', match_quality: 'none' });
     return;
   }
   const gate = await ensureIntentChat(chat, q.slice(0, 60), { kind: 'lookup', q });
@@ -9123,7 +9244,7 @@ async function handleLookupIntent(chat, text) {
   const followups = defaultLookupFollowups(pool.listings);
   const html = `${lookupOverviewHtml(type, q, placeLabel)}<div data-lrow-block>${listingBlockHtml(pool, {
     query: q, chipKw: '', compact: true, skipLead: true, sort: 'sesuai', limit: 12, maxChips: 8,
-  })}</div>${followupChipsHtml(followups)}`;
+  })}</div>${followupChipsHtml(followups)}${kwReqHtml(q, 'chat')}`;
   await revealAssistant(loading, html);
   pushMessage(chat, 'assistant', {
     text: 'Hasil produk', q, level: 'listing',
@@ -11184,7 +11305,7 @@ function searchClarifyHtml(text, domain) {
     <p>${ask}</p>
     <div class="chips" style="margin-top:10px">${suggestions.map(s =>
       `<button type="button" class="chip" data-suggest-q="${esc(s.q)}">${esc(s.label)}</button>`
-    ).join('')}</div>`;
+    ).join('')}</div>${kwReqHtml(text, 'chat')}`;
 }
 
 // Best-effort telemetry for the true "belum ketemu" dead end — see
@@ -11199,6 +11320,10 @@ async function logUncoveredSearch(rawText, opts = {}) {
       query_raw,
       brand: opts.brand || null,
       category: opts.category || null,
+      // 'none' is the historical meaning of every row in this table; 'fuzzy'
+      // and 'loose' are the cases it used to miss entirely.
+      match_quality: opts.match_quality || 'none',
+      via: opts.via || 'search',
       user_id: currentUser?.id || null,
     });
   } catch (_) { /* best-effort only */ }
@@ -11212,6 +11337,184 @@ function bindSearchSuggests(root) {
       const q = btn.getAttribute('data-suggest-q');
       if (q) void handleComposerSubmit(q);
     });
+  });
+}
+
+// ── "Minta Produk": ask us to measure a keyword ──────────────────────────────
+// Shipped after a hijab seller reported that specific searches came back
+// general. They had searched "Hijab Dinas" five times; we carry 29 hijab
+// keywords and none for the uniform-hijab niche, so searchProductTypes scored
+// `hijab instan` as a strong match and every answer analysed the wrong market.
+// Nothing let them tell us, and because the match was partial rather than
+// empty, logUncoveredSearch never fired either.
+//
+// So this sits under results whenever products SHOW UP, not only on a dead
+// end — the dead end is exactly the state their query never reached.
+//
+// The markup is emitted as part of the assistant message HTML, which gets
+// persisted to gpt_messages and replayed later as inert HTML. Binding is
+// therefore a single delegated document listener, never per-render
+// addEventListener — same reason the agent run's step toggles are delegated.
+const KWREQ_MAX_ROWS = 5;
+let _kwReqWa = null;      // cached user_profiles.wa_number, '' once looked up
+let _kwReqBound = false;
+
+function kwReqHtml(query, source) {
+  const q = String(query || '').trim().slice(0, 60);
+  return `<div class="kwreq" data-kwreq data-kwreq-src="${esc(source || 'chat')}">
+    <button type="button" class="kwreq-open" data-kwreq-open>Produk yang kamu cari belum ada di sini? <strong>Minta kami ukur</strong></button>
+    <div class="kwreq-form" data-kwreq-form hidden>
+      <p class="kwreq-lead">Tulis kata kunci produknya persis seperti kamu mencarinya di Shopee. Yang belum ada di data kami, kami ukur malam ini juga.</p>
+      <div class="kwreq-rows" data-kwreq-rows>
+        <input class="kwreq-input" type="text" maxlength="60" value="${esc(q)}" placeholder="mis. hijab dinas polwan" aria-label="Kata kunci produk">
+      </div>
+      <button type="button" class="kwreq-add" data-kwreq-add>Tambah kata kunci</button>
+      <label class="kwreq-wa">
+        <span>Nomor WhatsApp — kami kabari begitu datanya siap, biasanya besok. Boleh dikosongkan.</span>
+        <input class="kwreq-wanum" type="tel" inputmode="tel" maxlength="20" placeholder="08xxxxxxxxxx" aria-label="Nomor WhatsApp">
+      </label>
+      <div class="kwreq-actions">
+        <button type="button" class="kwreq-send" data-kwreq-send>Kirim permintaan</button>
+      </div>
+      <div class="kwreq-result" data-kwreq-result></div>
+    </div>
+  </div>`;
+}
+
+/** Prefill the WhatsApp field from the profile we already have. Never writes
+ *  back to user_profiles — a request is not consent to change their contact. */
+async function kwReqFillWa(root) {
+  const input = root?.querySelector('.kwreq-wanum');
+  if (!input || input.value) return;
+  if (_kwReqWa === null) {
+    _kwReqWa = '';
+    if (_supabase && currentUser?.id) {
+      try {
+        const { data } = await _supabase.from('user_profiles')
+          .select('wa_number').eq('user_id', currentUser.id).limit(1).maybeSingle();
+        _kwReqWa = data?.wa_number || '';
+      } catch (_) { _kwReqWa = ''; }
+    }
+  }
+  if (_kwReqWa && !input.value) input.value = _kwReqWa;
+}
+
+const KWREQ_VERDICT = {
+  queued:          kw => `<strong>${esc(kw)}</strong> — dicatat. Kami ukur malam ini, hasilnya siap besok.`,
+  already_queued:  kw => `<strong>${esc(kw)}</strong> — sudah masuk antrean. Kami kabari begitu datanya siap.`,
+  already_live:    kw => `<strong>${esc(kw)}</strong> — ternyata sudah ada di data kami. <button type="button" class="kwreq-go" data-kwreq-go="${esc(kw)}">Lihat pasarnya</button>`,
+  rejected_brand:  kw => `<strong>${esc(kw)}</strong> — ini terbaca sebagai merek, bukan jenis produk. Tambahkan kata produknya, mis. “${esc(kw)} kacamata hitam”.`,
+  rejected_length: kw => `<strong>${esc(kw)}</strong> — terlalu pendek atau terlalu panjang (3–60 huruf).`,
+  rate_limited:    kw => `<strong>${esc(kw)}</strong> — batas 3 kata kunci baru per hari sudah tercapai. Sisanya bisa besok.`,
+};
+
+async function kwReqSubmit(root) {
+  const resultEl = root.querySelector('[data-kwreq-result]');
+  const btn = root.querySelector('[data-kwreq-send]');
+  const source = root.getAttribute('data-kwreq-src') || 'chat';
+  const seen = new Set();
+  const keywords = [...root.querySelectorAll('.kwreq-input')]
+    .map(i => i.value.trim())
+    .filter(v => {
+      const k = v.toLowerCase();
+      if (!v || seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  if (!keywords.length) {
+    if (resultEl) resultEl.innerHTML = '<p class="kwreq-err">Tulis dulu kata kunci produknya.</p>';
+    return;
+  }
+  if (!currentUser?.id) { openAuthModal('signup', 'kwreq'); return; }
+  if (!_supabase) return;
+
+  const wa = (root.querySelector('.kwreq-wanum')?.value || '').trim();
+  if (btn) { btn.disabled = true; btn.textContent = 'Mengirim…'; }
+  if (resultEl) resultEl.innerHTML = '';
+  _supLog('kwreq_submit', { n: keywords.length, source, wa: wa ? 1 : 0 });
+
+  let rows = null;
+  try {
+    const { data, error } = await _supabase.rpc('request_scrape_keywords', {
+      p_keywords: keywords, p_wa: wa || null, p_source: source, p_category: '',
+    });
+    if (error) throw error;
+    rows = data || [];
+  } catch (e) {
+    console.warn('request_scrape_keywords:', e?.message || e);
+    if (resultEl) resultEl.innerHTML = '<p class="kwreq-err">Gagal mengirim. Coba lagi sebentar lagi.</p>';
+    if (btn) { btn.disabled = false; btn.textContent = 'Kirim permintaan'; }
+    return;
+  }
+
+  const list = Array.isArray(rows) ? rows : [];
+  const ok = list.some(r => r.verdict === 'queued' || r.verdict === 'already_queued');
+  if (resultEl) {
+    resultEl.innerHTML = list.map(r => {
+      const fn = KWREQ_VERDICT[r.verdict];
+      const cls = r.verdict === 'queued' || r.verdict === 'already_queued' ? 'ok'
+        : r.verdict === 'already_live' ? 'live' : 'warn';
+      return `<p class="kwreq-line ${cls}">${fn ? fn(r.keyword || '') : esc(r.keyword || '')}</p>`;
+    }).join('');
+  }
+  list.forEach(r => _supLog('kwreq_verdict', { verdict: r.verdict, source }));
+  if (btn) { btn.disabled = false; btn.textContent = 'Kirim lagi'; }
+  if (ok) showToast(wa ? 'Dicatat — kami kabari lewat WhatsApp begitu siap.' : 'Dicatat — kami ukur malam ini.');
+}
+
+function bindKwReqDelegation() {
+  if (_kwReqBound) return;
+  _kwReqBound = true;
+  document.addEventListener('click', (e) => {
+    const root = e.target.closest?.('[data-kwreq]');
+    if (!root) return;
+
+    if (e.target.closest('[data-kwreq-open]')) {
+      const form = root.querySelector('[data-kwreq-form]');
+      const opener = root.querySelector('[data-kwreq-open]');
+      if (!form) return;
+      form.hidden = !form.hidden;
+      if (opener) opener.setAttribute('aria-expanded', String(!form.hidden));
+      if (!form.hidden) {
+        _supLog('kwreq_open', { source: root.getAttribute('data-kwreq-src') || 'chat' });
+        void kwReqFillWa(root);
+        root.querySelector('.kwreq-input')?.focus();
+      }
+      return;
+    }
+
+    if (e.target.closest('[data-kwreq-add]')) {
+      const rows = root.querySelector('[data-kwreq-rows]');
+      if (!rows) return;
+      const n = rows.querySelectorAll('.kwreq-input').length;
+      if (n >= KWREQ_MAX_ROWS) {
+        const add = root.querySelector('[data-kwreq-add]');
+        if (add) { add.disabled = true; add.textContent = `Maksimal ${KWREQ_MAX_ROWS} kata kunci`; }
+        return;
+      }
+      const input = document.createElement('input');
+      input.className = 'kwreq-input';
+      input.type = 'text';
+      input.maxLength = 60;
+      input.placeholder = 'kata kunci lain';
+      input.setAttribute('aria-label', 'Kata kunci produk');
+      rows.appendChild(input);
+      input.focus();
+      if (n + 1 >= KWREQ_MAX_ROWS) {
+        const add = root.querySelector('[data-kwreq-add]');
+        if (add) { add.disabled = true; add.textContent = `Maksimal ${KWREQ_MAX_ROWS} kata kunci`; }
+      }
+      return;
+    }
+
+    const go = e.target.closest('[data-kwreq-go]');
+    if (go) {
+      const kw = go.getAttribute('data-kwreq-go');
+      if (kw) void handleComposerSubmit(kw);
+      return;
+    }
+
+    if (e.target.closest('[data-kwreq-send]')) void kwReqSubmit(root);
   });
 }
 
@@ -11289,7 +11592,7 @@ async function replyWithPasarTypes(chat, text, types, opts = {}) {
   const html = `${brandNote}${intro}<div data-lrow-block>${listingBlockHtml(pool, {
     petaId: trendId, query: opts.label || text, chipKw: '',
     compact: true, skipLead: true, sort: lifted ? 'sesuai' : 'omset',
-  })}</div>`;
+  })}</div>${kwReqHtml(opts.label || text, 'chat')}`;
   if (loading) await revealAssistant(loading, html);
   else await appendAssistantStream(html);
   pushMessage(chat, 'assistant', {
@@ -16847,6 +17150,10 @@ produk_dibuka, pemain_baru, pola_toko_baru, judul_menang) dan satu alat publik (
   Jangan bilang kolom tanggal listing tidak ada.
 - Kalau alat mengembalikan nol baris, katakan terus terang dan coba sudut lain —
   jangan mengarang isinya.
+- Kalau kata kunci persis yang user sebut tidak ada di data dan kamu memakai
+  pasar yang lebih luas atau mirip, SEBUTKAN di kalimat pertama: "X belum kami
+  ukur, yang terdekat Y". Jawaban yang membahas Y seolah-olah itu X adalah
+  jawaban gagal — ini keluhan nyata dari user, bukan aturan gaya.
 - pasar_kota: begitu user menyebut kotanya, itu alat pertamamu — bukan kategori
   minatnya. Alat ini membaca apa yang benar-benar dikirim DARI kota itu.
   Aturannya mengikat: (a) catatan yang ikut di hasilnya WAJIB kamu sampaikan
@@ -17767,7 +18074,7 @@ async function handleComposerSubmit(text, opts = {}) {
     }
     const domain = detectSearchDomain(cleaned.toLowerCase());
     const html = searchClarifyHtml(text, domain);
-    void logUncoveredSearch(text, { category: domain?.id || null });
+    void logUncoveredSearch(text, { category: domain?.id || null, via: 'search', match_quality: 'none' });
     if (loading) await revealAssistant(loading, html);
     else await appendAssistantStream(html);
     pushMessage(chat, 'assistant', {
@@ -18604,10 +18911,32 @@ async function _aiToolCariPasar({ query, kota, limit }) {
   const want = Math.min(limit || 12, 20);
   // The prefetch always fetched 12; a larger ask has to go to the DB itself
   // rather than being quietly short-changed.
+  const meta = {};
   const rows = (want <= 12 ? await aiPrefetchGet(query, kota) : null)
-    || await searchProductTypes(String(query || ''), kota || '', want, { skipLog: true });
-  if (!rows?.length) return { n: 0, pasar: [], hint: 'Tidak ketemu. Coba kata kunci produk yang lebih umum, atau pasar_kategori.' };
+    || await searchProductTypes(String(query || ''), kota || '', want, { skipLog: true, meta });
+  if (!rows?.length) {
+    // AI_AGENT_ALL routes most typed text through this tool, and it passes
+    // skipLog:true, so before this line an agent miss left no trace anywhere.
+    // That is why a user who searched an uncovered niche five times had zero
+    // rows in uncovered_searches. History logging stays off (the prefetch
+    // calls this too); only the miss is recorded.
+    void logUncoveredSearch(String(query || ''), { via: 'agent', match_quality: 'none' });
+    return {
+      n: 0, pasar: [],
+      hint: `LarisID belum punya data untuk "${String(query || '')}". Kamu boleh melebarkan ke `
+        + 'kata kunci yang lebih umum atau pasar_kategori, TAPI kalau kamu melakukannya, WAJIB '
+        + 'sebut di kalimat pertama: apa yang user minta, bahwa itu belum kami ukur, dan pasar '
+        + 'apa yang kamu pakai sebagai gantinya. Menyajikan pasar pengganti seolah-olah itu '
+        + 'yang diminta = jawaban gagal.',
+    };
+  }
   registerTypes(rows);
+  // A loose or fuzzy hit is the case that produced the "jawabannya masih umum"
+  // report: rows come back, the model answers confidently, and nobody — user
+  // or us — is told the phrase itself was never in the corpus.
+  if (meta.quality === 'fuzzy' || meta.quality === 'loose') {
+    void logUncoveredSearch(String(query || ''), { via: 'agent', match_quality: meta.quality });
+  }
   return {
     n: rows.length,
     pasar: rows.slice(0, 15).map(_aiPackType),
@@ -19841,6 +20170,15 @@ async function fetchProductTypes(cities, cats, limit = 1000, sub = null) {
  * Reuses planSearch() so the EN/ID synonym expansion built for listing search
  * applies here too ("cross stitch" -> kristik) rather than being duplicated.
  */
+/** Report how well the result actually matched, without changing the return
+ *  type — searchProductTypes hands a bare array to many callers, so the signal
+ *  rides on an optional out-param instead: pass `{ meta: {} }` and read
+ *  `meta.quality` afterwards. exact = the phrase is a real keyword; loose =
+ *  only a shared token matched; fuzzy = the typo/rescue path answered. */
+function _ptypeSetMeta(opts, quality) {
+  if (opts?.meta && !opts.meta.quality) opts.meta.quality = quality;
+}
+
 async function searchProductTypes(text, cities, limit = 12, opts) {
   if (!_supabase) return [];
   const raw = String(text || '').trim();
@@ -19988,6 +20326,13 @@ async function searchProductTypes(text, cities, limit = 12, opts) {
         ...headOnly.sort(byScore),
         ...rareOnly.sort(byScore).slice(0, 3),
       ].slice(0, limit);
+      // The tiering already knows whether the phrase itself matched or only a
+      // shared head noun did; it used to discard that. A "loose" answer is
+      // what made "Hijab Dinas Instan" come back as the hijab-instan market.
+      _ptypeSetMeta(opts, strong.some(h => {
+        const kw = String(h.keyword || '').toLowerCase();
+        return kw === q || kw.includes(q);
+      }) ? 'exact' : 'loose');
     }
     // Weak shared-token hits ("elektrik" alone) used to set skipFuzzy and
     // return empty — that blocked typo rescue for "choper elektrik". Leave
@@ -20001,6 +20346,7 @@ async function searchProductTypes(text, cities, limit = 12, opts) {
     // fuzzy pool only carries a lean column subset).
     const fuzzy = await _rbFuzzyMatch(raw, limit);
     const fuzzyKws = fuzzy.map(r => r.keyword).filter(Boolean);
+    if (fuzzyKws.length) _ptypeSetMeta(opts, 'fuzzy');
     if (fuzzyKws.length) {
       try {
         let fq = _supabase.from('product_types_v')
@@ -21272,6 +21618,22 @@ function paintDirAskSellers(q, keywords) {
   });
 }
 
+/** Cari Produk's copy of the request form. Mirrors paintDirAskSellers: the
+ *  host is static markup, so this only swaps innerHTML — clicks are handled by
+ *  the same delegated listener the chat copies use. */
+function paintDirKwReq(q) {
+  const host = $('dir-kwreq');
+  if (!host) return;
+  const label = String(q || '').trim();
+  if (!label || isDirHomeBrowse()) {
+    host.hidden = true;
+    host.innerHTML = '';
+    return;
+  }
+  host.hidden = false;
+  host.innerHTML = kwReqHtml(label, 'directory');
+}
+
 function paintDirectoryTable(opts = {}) {
   const grid = $('dir-grid');
   const pager = $('dir-pager');
@@ -21298,6 +21660,7 @@ function paintDirectoryTable(opts = {}) {
     brandMissing: state.dirBrandMissing,
   });
   paintDirAskSellers(q, state.dirTypes);
+  paintDirKwReq(q);
   grid.innerHTML = slice.length
     ? nearbyLead + listingRowsHtml(slice, {
         actions: true,
@@ -22615,6 +22978,108 @@ function gptMountWinback() {
 // were already in place.
 const ADM_FB_STATUS = { new: 'Baru', reviewing: 'Ditinjau', done: 'Selesai', dismissed: 'Diabaikan' };
 
+// Two lists in one card: what people asked for, and what they searched and
+// did not find. The second one is the input to the first — most gaps arrive
+// as a failed search, not as a request, so both belong in the same place.
+async function loadAdminKeywordRequests() {
+  const listEl = $('adm-kwreq-list');
+  const sumEl  = $('adm-kwreq-summary');
+  const uncEl  = $('adm-unc-list');
+  const uncSum = $('adm-unc-summary');
+  if (!listEl || !_supabase) return;
+  listEl.textContent = 'Memuat…';
+
+  try {
+    const { data, error } = await _supabase
+      .from('keyword_scrape_requests')
+      .select('id,keyword,status,source,notify_wa,created_at,fulfilled_at')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    const rows = Array.isArray(data) ? data : [];
+    const pending = rows.filter(r => r.status === 'pending').length;
+    const ready = rows.filter(r => r.status === 'ready').length;
+    if (sumEl) sumEl.textContent = `${rows.length} permintaan · ${pending} menunggu data · ${ready} siap dikabari`;
+    listEl.innerHTML = rows.length ? rows.map(r => {
+      const when = new Date(r.created_at).toLocaleString('id-ID',
+        { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      return `<div class="adm-fb-row${r.status === 'notified' ? ' is-done' : ''}">
+        <div class="adm-fb-meta">
+          <span>${esc(when)}</span>
+          <span class="adm-fb-tag">${esc(r.status || '')}</span>
+          <span>${esc(r.source || '—')}</span>
+          ${r.notify_wa ? '<span class="adm-fb-tag">WA</span>' : ''}
+        </div>
+        <p class="adm-fb-msg adm-kwreq-kw">${esc(r.keyword || '')}</p>
+      </div>`;
+    }).join('') : 'Belum ada permintaan.';
+  } catch (err) {
+    console.warn('loadAdminKeywordRequests:', err?.message || err);
+    listEl.textContent = 'Gagal memuat permintaan.';
+  }
+
+  if (!uncEl) return;
+  uncEl.textContent = 'Memuat…';
+  try {
+    // Grouped client-side: query_norm has an index but PostgREST cannot
+    // group, and the table is small enough that pulling 400 rows is cheaper
+    // than adding an RPC for it.
+    const { data, error } = await _supabase
+      .from('uncovered_searches')
+      .select('query_norm,brand,match_quality,via,created_at')
+      .order('created_at', { ascending: false })
+      .limit(400);
+    if (error) throw error;
+    const byKw = new Map();
+    (data || []).forEach(r => {
+      const k = (r.query_norm || '').trim();
+      if (!k) return;
+      const cur = byKw.get(k) || { kw: k, n: 0, brand: r.brand, quality: r.match_quality, last: r.created_at };
+      cur.n += 1;
+      if (r.created_at > cur.last) cur.last = r.created_at;
+      byKw.set(k, cur);
+    });
+    const grouped = [...byKw.values()].sort((a, b) => b.n - a.n || (a.last < b.last ? 1 : -1)).slice(0, 40);
+    if (uncSum) uncSum.textContent = `${byKw.size} kata kunci unik dari ${(data || []).length} pencarian terakhir`;
+    uncEl.innerHTML = grouped.length ? grouped.map(g => `
+      <div class="adm-fb-row" data-adm-unc="${esc(g.kw)}">
+        <div class="adm-fb-meta">
+          <span class="adm-kwreq-n">${g.n}x</span>
+          ${g.quality ? `<span class="adm-fb-tag">${esc(g.quality)}</span>` : ''}
+          ${g.brand ? `<span class="adm-fb-tag">merek: ${esc(g.brand)}</span>` : ''}
+        </div>
+        <p class="adm-fb-msg adm-kwreq-kw">${esc(g.kw)}</p>
+        <div class="adm-fb-acts">
+          <button type="button" class="adm-tb-btn" data-adm-unc-add>Tambah ke antrean</button>
+          <button type="button" class="adm-tb-btn" data-adm-unc-drop>Abaikan</button>
+        </div>
+      </div>`).join('') : 'Belum ada pencarian kosong.';
+
+    uncEl.querySelectorAll('[data-adm-unc-add],[data-adm-unc-drop]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const kw = btn.closest('[data-adm-unc]')?.getAttribute('data-adm-unc');
+        if (!kw) return;
+        const add = btn.hasAttribute('data-adm-unc-add');
+        btn.disabled = true;
+        try {
+          const { error: rpcErr } = await _supabase.rpc(
+            add ? 'admin_queue_keyword' : 'admin_retire_keyword',
+            add ? { p_keyword: kw, p_category: '' } : { p_keyword: kw });
+          if (rpcErr) throw rpcErr;
+          showToast(add ? `"${kw}" masuk antrean scrape malam ini.` : `"${kw}" ditandai tidak dipakai.`);
+        } catch (err) {
+          console.warn('admin keyword action:', err?.message || err);
+          showToast('Gagal. Coba lagi.');
+          btn.disabled = false;
+        }
+      });
+    });
+  } catch (err) {
+    console.warn('loadAdminUncovered:', err?.message || err);
+    uncEl.textContent = 'Gagal memuat pencarian kosong.';
+  }
+}
+
 async function loadAdminFeedback() {
   const listEl = $('adm-feedback-list');
   const sumEl  = $('adm-feedback-summary');
@@ -22762,6 +23227,7 @@ function openAdminView() {
   void loadAdminDirectory();
   void loadAdminKomunitasOps();
   void loadAdminFeedback();
+  void loadAdminKeywordRequests();
   gptMountWinback();
   try { if (window.LarisCohort) void window.LarisCohort.renderOps(); } catch (_) {}
   void fillAdminCohortPreview();
@@ -23145,6 +23611,7 @@ function wireUi() {
   $('adm-cohort-preview-go')?.addEventListener('click', () => void openAdminCohortPreview());
   $('adm-komunitas-refresh')?.addEventListener('click', () => { void loadAdminKomunitasOps(); });
   $('adm-feedback-refresh')?.addEventListener('click', () => { void loadAdminFeedback(); });
+  $('adm-kwreq-refresh')?.addEventListener('click', () => { void loadAdminKeywordRequests(); });
   $('adm-komunitas-digest')?.addEventListener('click', () => { void sendAdminKomunitasDigest(); });
   $('admin-sample-new')?.addEventListener('click', () => adminSampleNewUser());
   $('admin-sample-exit')?.addEventListener('click', () => adminExitSample());
@@ -23312,6 +23779,7 @@ async function boot() {
   consumeKomunitasDeepLink();
   consumeProductDeepLink();
   _exportWireDelegation();
+  bindKwReqDelegation();
   if (currentUser && state.pendingKomunitas) {
     const pk = state.pendingKomunitas;
     state.pendingKomunitas = null;

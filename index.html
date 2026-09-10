@@ -5657,6 +5657,66 @@ body.home-finder-done .home-hero {
   border: 0; background: var(--accent); color: #fff;
   padding: 8px 12px; border-radius: 10px; font: inherit; font-weight: 700; font-size: .82rem; cursor: pointer;
 }
+/* "Minta Produk" request form — rendered inside chat messages (which get
+   persisted and replayed as inert HTML) and in the Cari Produk sidebar.
+   [hidden] is spelled out because .kwreq-form would otherwise inherit a
+   display from a later rule and stay on screen, the same trap the SEO
+   calculators hit. Buttons use background-color, not the shorthand. */
+.kwreq { margin: 12px 0 0; }
+.kwreq-host { margin: 0 0 12px; }
+.kwreq [hidden] { display: none !important; }
+.kwreq-open {
+  border: 1px dashed var(--line); background-color: #fff; color: var(--ink);
+  padding: 9px 12px; border-radius: 12px; font: inherit; font-size: .84rem;
+  cursor: pointer; text-align: left; width: 100%; line-height: 1.4;
+}
+.kwreq-open:hover { border-color: var(--ink); }
+.kwreq-open strong { color: var(--accent); }
+.kwreq-form {
+  margin-top: 8px; padding: 12px 14px;
+  background-color: #fff; border: 1px solid var(--line); border-radius: 14px;
+}
+.kwreq-lead { margin: 0 0 10px; font-size: .82rem; color: #4b5563; line-height: 1.5; }
+.kwreq-rows { display: flex; flex-direction: column; gap: 8px; }
+.kwreq-input, .kwreq-wanum {
+  width: 100%; box-sizing: border-box;
+  border: 1px solid var(--line); border-radius: 10px;
+  padding: 9px 11px; font: inherit; font-size: .86rem; color: var(--ink);
+  background-color: #fff;
+}
+.kwreq-input:focus, .kwreq-wanum:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.kwreq-add {
+  margin-top: 8px; border: 0; background-color: transparent; color: var(--accent);
+  padding: 4px 0; font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer;
+}
+.kwreq-add:disabled { color: #9ca3af; cursor: default; }
+.kwreq-wa { display: block; margin-top: 12px; }
+.kwreq-wa span { display: block; margin-bottom: 6px; font-size: .78rem; color: #6b7280; line-height: 1.45; }
+.kwreq-actions { margin-top: 12px; }
+.kwreq-send {
+  border: 0; background-color: var(--accent); color: #fff;
+  padding: 9px 14px; border-radius: 10px; font: inherit; font-weight: 700;
+  font-size: .84rem; cursor: pointer;
+}
+.kwreq-send:disabled { opacity: .6; cursor: default; }
+.kwreq-result { margin-top: 10px; }
+.kwreq-line {
+  margin: 0 0 6px; font-size: .82rem; line-height: 1.5;
+  padding-left: 10px; border-left: 3px solid var(--line);
+}
+.kwreq-line.ok { border-left-color: #16a34a; }
+.kwreq-line.live { border-left-color: var(--accent); }
+.kwreq-line.warn { border-left-color: #d97706; color: #4b5563; }
+.kwreq-err { margin: 0; font-size: .82rem; color: #b91c1c; }
+.kwreq-go {
+  margin-left: 4px; border: 0; background-color: var(--accent); color: #fff;
+  padding: 4px 9px; border-radius: 8px; font: inherit; font-size: .76rem;
+  font-weight: 700; cursor: pointer;
+}
+@media (max-width: 560px) {
+  .kwreq-form { padding: 11px 12px; }
+  .kwreq-open { font-size: .82rem; }
+}
 .adm-komunitas-card { padding: 16px 18px; margin-bottom: 14px; }
 .adm-komunitas-grid {
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px;
@@ -5664,6 +5724,9 @@ body.home-finder-done .home-hero {
 .adm-komunitas-grid h4 { margin: 0 0 6px; font-size: .78rem; font-weight: 750; }
 .adm-komunitas-list { font-size: .8rem; line-height: 1.45; color: #374151; }
 .adm-feedback-list { display: flex; flex-direction: column; gap: 10px; }
+.adm-kwreq-h4 { margin: 18px 0 4px; font-size: .82rem; font-weight: 750; }
+.adm-kwreq-kw { font-weight: 750; }
+.adm-kwreq-n { color: #6b7280; }
 .adm-fb-row {
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -7420,6 +7483,18 @@ body:has(.modal-overlay.open) .msg-steven-fab {
   overflow: hidden;
 }
 .sfb-card.open { display: flex; animation: sfbIn .3s var(--ease); }
+/* The notice scrolls if a long keyword list makes it tall, rather than
+   running off the top of a phone screen. */
+.lnotice-card .sfb-body { max-height: min(62vh, 460px); overflow-y: auto; }
+.lnotice-kws { margin: 0 0 10px; font-size: .82rem; line-height: 1.6; color: #4b5563; }
+.lnotice-kws strong { color: var(--ink); }
+.lnotice-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.lnotice-go, .lnotice-ok {
+  border: 0; padding: 8px 13px; border-radius: 10px;
+  font: inherit; font-weight: 700; font-size: .82rem; cursor: pointer;
+}
+.lnotice-go { background-color: var(--accent); color: #fff; }
+.lnotice-ok { background-color: rgba(16, 24, 40, .07); color: var(--ink); }
 @keyframes sfbIn {
   from { opacity: 0; transform: translateY(14px) scale(.985); }
   to   { opacity: 1; transform: none; }
@@ -8402,6 +8477,7 @@ body.view-chat .sfb-card {
           <div class="dir-compare-banner" id="dir-compare-banner" hidden></div>
           <div id="dir-trending-now" class="trend-host"></div>
           <div id="dir-ask-sellers" class="dir-ask-sellers" hidden></div>
+          <div id="dir-kwreq" class="kwreq-host" hidden></div>
           <!-- Unduh sits with Urutkan — above product rows, below Trending. -->
           <div class="dir-list-bar" id="dir-list-bar">
             <div id="dir-filters-range"></div>
@@ -9183,6 +9259,17 @@ body.view-chat .sfb-card {
             <!-- Masukan Pengguna. Every notify-feedback / daily-feedback-report
                  email links here, but the list itself only ever existed in the
                  retired Site A bundle, so those links pointed at nothing. -->
+            <section class="adm-card adm-feedback-card" id="adm-kwreq-admin">
+              <div class="adm-users-toolbar">
+                <h3>Permintaan produk &amp; pencarian kosong</h3>
+                <button type="button" class="adm-tb-btn" id="adm-kwreq-refresh">Muat ulang</button>
+              </div>
+              <p class="dd-sub" id="adm-kwreq-summary">Memuat permintaan&hellip;</p>
+              <div id="adm-kwreq-list" class="adm-feedback-list">&mdash;</div>
+              <h4 class="adm-kwreq-h4">Pencarian yang tidak ketemu</h4>
+              <p class="dd-sub" id="adm-unc-summary">&mdash;</p>
+              <div id="adm-unc-list" class="adm-feedback-list">&mdash;</div>
+            </section>
             <section class="adm-card adm-feedback-card" id="adm-feedback">
               <div class="adm-users-toolbar">
                 <h3>Masukan pengguna</h3>
@@ -9633,6 +9720,28 @@ body.view-chat .sfb-card {
      least one Deep Dive. Close/refresh minimizes to Chat +1 on the Pesan
      Steven FAB until they answer. Eligibility comes from
      my_feedback_prompt_status(); js/gpt-app.js (sfb*) drives it. -->
+<!-- Founder notice. Same shell as sfb-card, deliberately a SEPARATE element:
+     the feedback prompt owns its own body and lifecycle, and a notice that has
+     to persist until dismissed must not be entangled with one that minimizes
+     itself on a timer. Dismissal is server-side (dismiss_notice), so it stays
+     dismissed on every device. -->
+<aside class="sfb-card lnotice-card" id="lnotice-card" role="complementary"
+       aria-labelledby="lnotice-name" aria-hidden="true">
+  <div class="sfb-head">
+    <img class="sfb-avatar" src="/images/steven-avatar.webp" width="36" height="36"
+         alt="" loading="lazy" decoding="async">
+    <div class="sfb-from">
+      <strong id="lnotice-name">Steven Wilson</strong>
+      <span>founder LarisID</span>
+    </div>
+    <button type="button" class="sfb-close" id="lnotice-close" aria-label="Tutup pesan">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+  <div class="sfb-body" id="lnotice-body"></div>
+</aside>
+
 <aside class="sfb-card" id="sfb-card" role="complementary"
        aria-labelledby="sfb-name" aria-hidden="true">
   <div class="sfb-head">
@@ -9762,6 +9871,6 @@ body.view-chat .sfb-card {
 <script src="/js/peta-peluang.js?v=20260908a" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
-<script src="/js/gpt-app.js?v=20260910f" defer></script>
+<script src="/js/gpt-app.js?v=20260911a" defer></script>
 </body>
 </html>
