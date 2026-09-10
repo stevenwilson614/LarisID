@@ -2141,6 +2141,7 @@ let _gptUsage = {
   unlimited: false,
 };
 let _usageTicker = null;
+let _sfbSlamLock = false;
 
 // While the Beta is on there is no daily search cap for signed-in accounts, so
 // the usage ring renders the same ∞ admins already get. Mirrors
@@ -2747,6 +2748,10 @@ function gptUsageQuotaView() {
     downloadsText: dlUnlim ? '∞/∞' : `${dlLeft}/${dlLimit}`,
     diveNum: diveUnlim ? '∞' : String(diveLeft),
     dlNum: dlUnlim ? '∞' : String(dlLeft),
+    diveLeft,
+    dlLeft,
+    diveLimit,
+    dlLimit,
     diveTone: usageRingTone(diveLeft, diveUnlim),
     dlTone: usageRingTone(dlLeft, dlUnlim),
     diveOffset: usageRingOffset(diveLeft, diveLimit, diveUnlim),
@@ -2758,6 +2763,7 @@ function gptUsageQuotaView() {
 }
 
 function renderGptUsage() {
+  if (_sfbSlamLock) return;
   const pills = document.querySelectorAll('[data-usage-pill]');
   if (!pills.length) return;
   const quota = gptUsageQuotaView();
@@ -3099,10 +3105,10 @@ function scheduleReturningFeatureNotices(opts = {}) {
 // Eligibility is decided by the server, not here — user_sessions is
 // admin-read-only, so the client genuinely cannot count its own sign-ins.
 // my_feedback_prompt_status() answers for the caller only, and the
-// asked/answered/dismissed state lives in feedback_prompts so this fires once
-// per PERSON rather than once per browser. localStorage is only a fast path
-// that saves the round trip on later loads.
-const SFB_KEY   = 'lid_superuser_fb_v1';
+// asked/answered state lives in feedback_prompts so this fires once per
+// PERSON rather than once per browser. Close is a minimize, not a dismiss —
+// localStorage only remembers open | minimized | answered for this device.
+const SFB_KEY   = 'lid_superuser_fb_v2';
 const SFB_DELAY = 6000;
 let _sfbTimer   = null;
 let _sfbBound   = false;
@@ -3111,14 +3117,16 @@ let _sfbStatus  = null;   // cached my_feedback_prompt_status() for this page lo
 let _sfbAnswered = false;
 let _sfbChip    = null;
 
-function sfbSeen() {
-  // Fails closed, like every other notice flag: a private-mode browser that
-  // cannot read storage is treated as already-seen rather than spammed.
-  try { return localStorage.getItem(SFB_KEY) === '1'; } catch { return true; }
+function sfbState() {
+  try {
+    const v = localStorage.getItem(SFB_KEY);
+    if (v === 'open' || v === 'minimized' || v === 'answered') return v;
+  } catch (_) {}
+  return '';
 }
 
-function sfbMarkSeen() {
-  try { localStorage.setItem(SFB_KEY, '1'); } catch (_) {}
+function sfbSetState(v) {
+  try { localStorage.setItem(SFB_KEY, v); } catch (_) {}
 }
 
 function sfbMark(action, feedbackId) {
@@ -3129,12 +3137,43 @@ function sfbMark(action, feedbackId) {
     .catch(() => {});
 }
 
+function sfbPaintFab() {
+  const fab = $('msg-steven-fab');
+  if (!fab) return;
+  const pending = !_sfbAnswered && sfbState() === 'minimized';
+  const label = fab.querySelector('.msg-steven-fab-label');
+  fab.classList.toggle('msg-steven-fab--pending', pending);
+  if (label) label.textContent = pending ? 'Chat +1' : 'Pesan Steven';
+  fab.title = pending ? 'Pesan dari Steven' : 'Pesan ke Steven';
+  fab.setAttribute('aria-label', pending ? 'Buka pesan dari Steven' : 'Pesan ke Steven');
+}
+
+function sfbBusySurface() {
+  return !!(document.querySelector('.modal-overlay.open')
+    || document.activeElement?.tagName === 'TEXTAREA'
+    || document.activeElement?.tagName === 'INPUT');
+}
+
+function sfbTryWhenQuiet(fn, delay, attempt) {
+  clearTimeout(_sfbTimer);
+  _sfbTimer = setTimeout(() => {
+    if (!currentUser || _sfbAnswered || sfbState() === 'answered') return;
+    if (sfbBusySurface()) {
+      if (attempt < 3) sfbTryWhenQuiet(fn, 2200, attempt + 1);
+      else { sfbSetState('minimized'); sfbPaintFab(); }
+      return;
+    }
+    fn();
+  }, delay);
+}
+
 async function scheduleSuperuserFeedback(opts = {}) {
-  if (!currentUser || !_supabase || sfbSeen()) return;
+  if (!currentUser || !_supabase) return;
   // Raw role on purpose: "view as" must not turn the prompt back on for Steven,
   // who would otherwise be messaged by himself. The RPC guards this too.
   if (isPlatformAdminRaw() || adminIsPreviewing()) return;
   if (opts.isNewSignup || _lidIsNewSignup(currentUser)) return;
+  if (_sfbAnswered || sfbState() === 'answered') return;
   if ($('sfb-card')?.classList.contains('open')) return;
 
   if (!_sfbStatus) {
@@ -3148,58 +3187,76 @@ async function scheduleSuperuserFeedback(opts = {}) {
     }
   }
   if (!_sfbStatus || !_sfbStatus.eligible) {
-    // Already asked on another device, or not a frequent user yet. Remember the
-    // "already asked" case so later loads skip the round trip entirely.
-    if (_sfbStatus && (_sfbStatus.answered_at || _sfbStatus.dismissed_at)) sfbMarkSeen();
+    if (_sfbStatus && _sfbStatus.answered_at) {
+      _sfbAnswered = true;
+      sfbSetState('answered');
+      sfbPaintFab();
+    }
     return;
   }
 
-  clearTimeout(_sfbTimer);
-  const tryOpen = (attempt) => {
-    _sfbTimer = setTimeout(() => {
-      if (!currentUser || sfbSeen()) return;
-      // Never talk over a real dialog, and never interrupt someone mid-sentence.
-      const busy = document.querySelector('.modal-overlay.open')
-        || document.activeElement?.tagName === 'TEXTAREA'
-        || document.activeElement?.tagName === 'INPUT';
-      if (busy) {
-        if (attempt < 3) tryOpen(attempt + 1);
-        return;
-      }
-      sfbFire();
-    }, attempt === 0 ? SFB_DELAY : 2400);
-  };
-  tryOpen(0);
+  const last = sfbState();
+  if (last === 'minimized') {
+    sfbBind();
+    sfbPaintFab();
+    return;
+  }
+  if (last === 'open') {
+    sfbTryWhenQuiet(() => sfbFire({ restore: true }), 400, 0);
+    return;
+  }
+  sfbTryWhenQuiet(() => sfbFire(), SFB_DELAY, 0);
 }
 
-function sfbFire() {
-  if (sfbSeen() || !currentUser) return;
+function sfbFire(opts = {}) {
+  if (!currentUser || _sfbAnswered || sfbState() === 'answered') return;
   if (isPlatformAdminRaw() || adminIsPreviewing()) return;
   const card = $('sfb-card');
   if (!card) return;
 
   sfbBind();
-  sfbMarkSeen();
+  sfbSetState('open');
   card.classList.add('open');
   card.setAttribute('aria-hidden', 'false');
+  sfbPaintFab();
   void sfbMark('asked');
-  void logUserEvent('superuser_feedback_prompt', { ui: 'gpt', action: 'show',
-    sessions: _sfbStatus?.sessions, dives: _sfbStatus?.dives });
-  clarityEvt('superuser_feedback_prompt', { action: 'show' });
+  void logUserEvent('superuser_feedback_prompt', {
+    ui: 'gpt',
+    action: opts.restore ? 'reopen' : 'show',
+    sessions: _sfbStatus?.sessions, dives: _sfbStatus?.dives,
+  });
+  clarityEvt('superuser_feedback_prompt', { action: opts.restore ? 'reopen' : 'show' });
+}
+
+function sfbHideCard() {
+  const card = $('sfb-card');
+  if (!card) return;
+  card.classList.remove('open');
+  card.setAttribute('aria-hidden', 'true');
+}
+
+function sfbMinimize(reason) {
+  if (_sfbAnswered || sfbState() === 'answered') {
+    sfbHideCard();
+    sfbPaintFab();
+    return;
+  }
+  if (!$('sfb-card')?.classList.contains('open') && sfbState() === 'minimized') return;
+  sfbHideCard();
+  clearTimeout(_sfbTimer);
+  sfbSetState('minimized');
+  sfbPaintFab();
+  void logUserEvent('superuser_feedback_prompt', { ui: 'gpt', action: reason || 'minimize' });
 }
 
 function sfbClose(reason) {
-  const card = $('sfb-card');
-  if (!card || !card.classList.contains('open')) return;
-  card.classList.remove('open');
-  card.setAttribute('aria-hidden', 'true');
-  clearTimeout(_sfbTimer);
-  // Only record a dismissal if they never answered — otherwise the answer is
-  // the outcome and dismissed_at would just muddy the funnel.
-  if (!_sfbAnswered) {
-    void sfbMark('dismissed');
-    void logUserEvent('superuser_feedback_prompt', { ui: 'gpt', action: reason || 'dismiss' });
+  if (_sfbAnswered || reason === 'done') {
+    sfbHideCard();
+    sfbSetState('answered');
+    sfbPaintFab();
+    return;
   }
+  sfbMinimize(reason || 'close');
 }
 
 function sfbAutosize(el) {
@@ -3214,7 +3271,7 @@ function sfbBind() {
   const input = $('sfb-input');
   const send  = $('sfb-send');
 
-  $('sfb-close')?.addEventListener('click', () => sfbClose('close'));
+  $('sfb-close')?.addEventListener('click', () => sfbMinimize('close'));
 
   $('sfb-chips')?.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-sfb-chip]');
@@ -3244,7 +3301,14 @@ function sfbBind() {
   if (send) send.disabled = true;
 
   $('sfb-card')?.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') { e.stopPropagation(); sfbClose('escape'); }
+    if (e.key === 'Escape') { e.stopPropagation(); sfbMinimize('escape'); }
+  });
+  document.addEventListener('pointerdown', (e) => {
+    const card = $('sfb-card');
+    if (!card?.classList.contains('open')) return;
+    if (card.contains(e.target)) return;
+    if (e.target.closest?.('#msg-steven-fab')) return;
+    sfbMinimize('outside');
   });
 }
 
@@ -3298,9 +3362,10 @@ async function sfbSubmit() {
       chars: msg.length, chip: _sfbChip });
     clarityEvt('superuser_feedback_prompt', { action: 'answered' });
 
+    const fromLeft = gptUsageQuotaView().dlLeft;
     let granted = 0;
     if (inserted?.id) granted = await sfbClaimGrant(inserted.id);
-    sfbThankYou(granted);
+    sfbThankYou(granted, fromLeft);
   } catch (err) {
     console.error('superuser feedback submit failed:', err?.code || '', err?.message || err);
     if (st) { st.textContent = 'Gagal mengirim. Coba lagi.'; st.className = 'sfb-status is-err'; }
@@ -3329,16 +3394,76 @@ async function sfbClaimGrant(feedbackId) {
   return 0;
 }
 
-function sfbThankYou(granted) {
+function sfbThankYou(granted, fromLeft) {
   const body = $('sfb-body');
   if (!body) return;
+  _sfbAnswered = true;
+  sfbSetState('answered');
   const thanks = granted
     ? `Makasih, aku baca semua. Aku tambahin <strong>${granted.toLocaleString('id-ID')} baris unduhan</strong> ke akun kamu ya \u2014 dipakai kapan saja.`
     : 'Makasih, aku baca semua pesan yang masuk.';
   body.innerHTML =
     '<p class="sfb-bubble">Terkirim.</p>' +
     `<p class="sfb-bubble">${thanks}</p>`;
-  setTimeout(() => sfbClose('done'), 7000);
+  setTimeout(() => {
+    sfbHideCard();
+    sfbPaintFab();
+    if (granted > 0) sfbPlayGrantSlam(granted, fromLeft);
+  }, granted > 0 ? 1600 : 4000);
+}
+
+function sfbTweenDownloadRing(from, to, limit, done) {
+  const wrap = document.querySelector('.usage-wrap--header [data-usage-stat="dl"] .usage-ring-wrap');
+  if (!wrap) { done(); return; }
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+  wrap.classList.add('is-tweening');
+  const paint = (val) => paintUsageRing(wrap, String(val), 'ok', usageRingOffset(val, limit, false));
+  const finish = () => {
+    wrap.classList.remove('is-tweening');
+    paint(to);
+    done();
+  };
+  if (reduce) { finish(); return; }
+  const dur = 1200;
+  const t0 = performance.now();
+  const ease = (t) => 1 - Math.pow(1 - t, 3);
+  const step = (now) => {
+    const p = Math.min(1, (now - t0) / dur);
+    paint(Math.round(from + (to - from) * ease(p)));
+    if (p < 1) requestAnimationFrame(step);
+    else finish();
+  };
+  requestAnimationFrame(step);
+}
+
+function sfbPlayGrantSlam(granted, fromLeft) {
+  const pill = document.querySelector('.usage-pill--header');
+  const finish = () => {
+    _sfbSlamLock = false;
+    void exportLoadQuota().then(() => renderGptUsage());
+  };
+  if (!pill) { finish(); return; }
+  _sfbSlamLock = true;
+  void exportLoadQuota().then((q) => {
+    const after = gptUsageQuotaView();
+    const start = Number.isFinite(fromLeft) ? fromLeft : 90;
+    const end = q && Number.isFinite(after.dlLeft) ? after.dlLeft : start + granted;
+    const limit = q && Number.isFinite(after.dlLimit)
+      ? Math.max(after.dlLimit, end)
+      : Math.max(end, start + granted);
+    setUsagePopOpen(pill, true);
+    sfbTweenDownloadRing(start, end, limit, () => {
+      const stat = document.querySelector('.usage-wrap--header [data-usage-stat="dl"]');
+      stat?.classList.add('usage-stat--slam');
+      pill.classList.add('usage-pill--glow');
+      _sfbSlamLock = false;
+      renderGptUsage();
+      setTimeout(() => {
+        stat?.classList.remove('usage-stat--slam');
+        pill.classList.remove('usage-pill--glow');
+      }, 900);
+    });
+  }).catch(() => finish());
 }
 
 function formatIdDate(iso) {
@@ -23164,7 +23289,17 @@ async function boot() {
   document.getElementById('gpt-limit-close')?.addEventListener('click', gptLimitClose);
   document.getElementById('gpt-limit-feedback')?.addEventListener('click', gptOpenFeedbackForBonus);
   document.getElementById('faq-feedback-cta')?.addEventListener('click', gptOpenFeedback);
-  document.getElementById('msg-steven-fab')?.addEventListener('click', gptOpenFeedback);
+  document.getElementById('msg-steven-fab')?.addEventListener('click', () => {
+    const fab = document.getElementById('msg-steven-fab');
+    const pending = !_sfbAnswered && (
+      sfbState() === 'minimized' || fab?.classList.contains('msg-steven-fab--pending')
+    );
+    if (pending) {
+      sfbFire({ restore: true });
+      return;
+    }
+    gptOpenFeedback();
+  });
   document.getElementById('gpt-limit-ext')?.addEventListener('click', gptLimitClose);
   document.getElementById('gpt-fb-submit')?.addEventListener('click', () => { void gptSubmitFeedback(); });
   document.getElementById('gpt-fb-close')?.addEventListener('click', gptFeedbackClose);

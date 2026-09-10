@@ -23,8 +23,8 @@ window.LARIS_CHANGELOG = [
         tech: 'usage-pop-rings + gptUsageQuotaView offsets; GptProfile quota rings next to avatar; get_my_export_quota painted into the usage pop and #gpt-profile-modal.',
       },
       {
-        text: 'Kalau kamu sudah sering masuk dan pernah buka Deep Dive, Steven kadang kirim pesan kecil di pojok kanan — tanya apa yang masih kurang. Balas, dan akun dapat tambahan 1.000 baris unduhan yang tidak kedaluwarsa.',
-        tech: '#sfb-card slide-up from Pesan Steven FAB; my_feedback_prompt_status (≥2 sessions + 1 deepdive_open); mark_feedback_prompt + claim_feedback_export_grant; user_export_grants bank on top of the daily 90; page=superuser_prompt; admin inbox at #adm-feedback.',
+        text: 'Kalau kamu sudah sering masuk dan pernah buka Deep Dive, Steven kadang kirim pesan kecil di pojok kanan — tanya apa yang masih kurang. Tutup atau refresh tidak menghilangkan pesan: tombol Pesan Steven jadi Chat +1 sampai kamu balas. Balas cukup panjang, dan lingkaran unduhan di header naik +1.000 baris.',
+        tech: '#sfb-card persist via lid_superuser_fb_v2 open|minimized|answered (close = minimize, never dismissed); FAB .msg-steven-fab--pending Chat +1 pulse; after claim_feedback_export_grant setUsagePopOpen + ring tween + usage-stat--slam; admin inbox at #adm-feedback.',
       },
     ],
   },

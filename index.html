@@ -770,6 +770,10 @@ body.view-directory .panel {
   0%, 100% { box-shadow: 0 0 0 2px rgba(181,32,42,.12), 0 0 10px rgba(181,32,42,.2); }
   50% { box-shadow: 0 0 0 4px rgba(181,32,42,.22), 0 0 22px rgba(181,32,42,.45); }
 }
+@media (prefers-reduced-motion: reduce) {
+  .usage-pill--glow .usage-ring-wrap { animation: none; }
+  .usage-stat--slam { animation: none; }
+}
 .usage-meta { display: none; }
 .usage-wrap {
   position: relative;
@@ -791,6 +795,14 @@ body.view-directory .panel {
 }
 .usage-stat {
   display: flex; flex-direction: column; align-items: center; gap: 5px;
+  transform-origin: 50% 40%;
+}
+.usage-ring-wrap.is-tweening .prog { transition: none; }
+.usage-stat--slam { animation: usageSlam .42s var(--ease); }
+@keyframes usageSlam {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.22); }
+  100% { transform: scale(1); }
 }
 .usage-stat .usage-ring-wrap { width: 40px; height: 40px; }
 .usage-stat .usage-ring-num { font-size: .62rem; font-weight: 750; color: var(--ink); }
@@ -7350,6 +7362,24 @@ body.mentor-shell .side-seller.open ~ .side-section { display: flex !important; 
   color: var(--accent, #B5202A);
   flex-shrink: 0;
 }
+.msg-steven-fab--pending {
+  background: var(--accent, #B5202A);
+  border-color: var(--accent, #B5202A);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(181, 32, 42, .28);
+  animation: sfbFabPulse 1.4s var(--ease) infinite;
+}
+.msg-steven-fab--pending svg { color: #fff; }
+.msg-steven-fab--pending:hover {
+  background: #9c1b24;
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(181, 32, 42, .35);
+  transform: translateY(-1px);
+}
+@keyframes sfbFabPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(181, 32, 42, 0.35); }
+  50% { box-shadow: 0 0 0 6px rgba(181, 32, 42, 0); }
+}
 body.view-chat .msg-steven-fab {
   bottom: calc(var(--composer-h) + 12px + env(safe-area-inset-bottom, 0px));
 }
@@ -7365,6 +7395,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 @media (prefers-reduced-motion: reduce) {
   .msg-steven-fab { transition: none; }
   .msg-steven-fab:hover { transform: none; }
+  .msg-steven-fab--pending { animation: none; }
 }
 
 /* ── Super-user feedback card ("pesan dari Steven") ───────────────────────────
@@ -9598,10 +9629,10 @@ body.view-chat .sfb-card {
   <span class="msg-steven-fab-label">Pesan Steven</span>
 </button>
 
-<!-- Super-user feedback card. Shown once, to people with 2+ sign-ins and at
-     least one Deep Dive — the same bar feedback_repeat_audience() uses for the
-     email version of this ask. Eligibility comes from my_feedback_prompt_status()
-     because user_sessions is admin-read-only; js/gpt-app.js (sfb*) drives it. -->
+<!-- Super-user feedback card. Shown to people with 2+ sign-ins and at
+     least one Deep Dive. Close/refresh minimizes to Chat +1 on the Pesan
+     Steven FAB until they answer. Eligibility comes from
+     my_feedback_prompt_status(); js/gpt-app.js (sfb*) drives it. -->
 <aside class="sfb-card" id="sfb-card" role="complementary"
        aria-labelledby="sfb-name" aria-hidden="true">
   <div class="sfb-head">
@@ -9710,7 +9741,7 @@ body.view-chat .sfb-card {
 </aside>
 
 <script src="/js/laris-merdeka.js?v=20260816b" defer></script>
-<script src="/js/changelog.js?v=20260910e" defer></script>
+<script src="/js/changelog.js?v=20260910f" defer></script>
 <script defer src="/js/gpt-dir-filters.js?v=20260906b"></script>
 <script defer src="/js/gpt-dir-hero.js?v=20260824a"></script>
 <script defer src="/js/gpt-dir-home.js?v=20260824d"></script>
@@ -9731,6 +9762,6 @@ body.view-chat .sfb-card {
 <script src="/js/peta-peluang.js?v=20260908a" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
-<script src="/js/gpt-app.js?v=20260910e" defer></script>
+<script src="/js/gpt-app.js?v=20260910f" defer></script>
 </body>
 </html>
