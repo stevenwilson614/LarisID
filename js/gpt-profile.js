@@ -16,6 +16,7 @@
   let statusEl = null;
   let onSignOut = null;
   let onProfileChanged = null;
+  let getUsage = null;
   let storeLinks = [];
 
   const STORE_PLATFORMS = {
@@ -52,6 +53,35 @@
   function getInitials(name) {
     const parts = name.trim().split(/\s+/).slice(0, 2);
     return parts.map(p => p.charAt(0).toUpperCase()).join('');
+  }
+
+  function readUsage() {
+    if (typeof getUsage !== 'function') return null;
+    try { return getUsage() || null; } catch (_) { return null; }
+  }
+
+  function quotaHtml() {
+    const u = readUsage() || {};
+    return '<div class="gpt-quota" aria-label="Jatah harian">' +
+      '<div class="gpt-quota-item">' +
+        '<span class="gpt-quota-lbl">Deep Dive</span>' +
+        '<span class="gpt-quota-val js-quota-dives">' + (u.divesText || '—') + '</span>' +
+      '</div>' +
+      '<div class="gpt-quota-item">' +
+        '<span class="gpt-quota-lbl">Unduhan</span>' +
+        '<span class="gpt-quota-val js-quota-downloads">' + (u.downloadsText || '90/90') + '</span>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function refreshUsage() {
+    if (!isOpen || !modalRoot) return;
+    const u = readUsage();
+    if (!u) return;
+    const diveEl = modalRoot.querySelector('.js-quota-dives');
+    const dlEl = modalRoot.querySelector('.js-quota-downloads');
+    if (diveEl && u.divesText) diveEl.textContent = u.divesText;
+    if (dlEl && u.downloadsText) dlEl.textContent = u.downloadsText;
   }
 
   function handleKey(e) {
@@ -128,8 +158,22 @@
   /* Bottom-sheet edit form: profile picture + camera badge, then icon-circle
      rows with real input chrome so editability is obvious (Instagram /
      Google Account pattern: bordered fields + pencil, not nav chevrons). */
+  .gpt-sheet-hero {
+    display: flex; align-items: center; justify-content: center; gap: 16px;
+    margin: 4px 0 22px; flex-wrap: wrap;
+  }
+  .gpt-sheet-hero .gpt-sheet-avatar-wrap { margin: 0; flex-shrink: 0; }
   .gpt-sheet-avatar-wrap { position: relative; width: 96px; height: 96px; margin: 4px auto 22px; }
   .gpt-sheet-avatar-wrap .gpt-avatar-wrap { width: 96px; height: 96px; margin: 0; }
+  .gpt-quota { display: flex; flex-direction: column; gap: 8px; min-width: 132px; }
+  .gpt-quota-item {
+    display: flex; flex-direction: column; gap: 2px;
+    padding: 8px 12px; background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 12px;
+  }
+  .gpt-quota-lbl {
+    font-size: 10px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: #6B7280;
+  }
+  .gpt-quota-val { font-size: 16px; font-weight: 800; color: #111; letter-spacing: -.02em; line-height: 1.15; }
   .gpt-avatar-camera-badge {
     position: absolute; right: -2px; bottom: -2px; width: 32px; height: 32px; border-radius: 50%;
     background: #fff; border: 1px solid #E5E7EB; cursor: pointer;
@@ -555,13 +599,16 @@
         '<h2 class="gpt-sheet-title">Edit Profil</h2>' +
         '<p class="gpt-sheet-sub">Ketuk kolom di bawah untuk mengubah. Perubahan tersimpan setelah kamu tekan Simpan.</p>' +
       '</div>' +
-      '<div class="gpt-sheet-avatar-wrap">' +
-        '<div class="gpt-avatar-wrap">' +
-          '<img class="gpt-avatar-img js-avatar-img" alt="" />' +
-          '<div class="gpt-avatar-fallback js-avatar-fallback"></div>' +
+      '<div class="gpt-sheet-hero">' +
+        '<div class="gpt-sheet-avatar-wrap">' +
+          '<div class="gpt-avatar-wrap">' +
+            '<img class="gpt-avatar-img js-avatar-img" alt="" />' +
+            '<div class="gpt-avatar-fallback js-avatar-fallback"></div>' +
+          '</div>' +
+          `<label for="gpt-file-input" class="gpt-avatar-camera-badge">${cameraSVG.replace('width="24" height="24"', '')}</label>` +
+          '<input type="file" id="gpt-file-input" accept="image/*" class="js-file-input" hidden />' +
         '</div>' +
-        `<label for="gpt-file-input" class="gpt-avatar-camera-badge">${cameraSVG.replace('width="24" height="24"', '')}</label>` +
-        '<input type="file" id="gpt-file-input" accept="image/*" class="js-file-input" hidden />' +
+        quotaHtml() +
       '</div>' +
       '<div class="gpt-rows">' +
         rowHtml('name', 'Nama tampilan', '<input type="text" class="gpt-row-input js-display-name" maxlength="80" placeholder="Ketik nama kamu" aria-label="Nama tampilan">') +
@@ -773,6 +820,7 @@
     toast = opts.toast;
     onSignOut = opts.onSignOut || null;
     onProfileChanged = opts.onProfileChanged || null;
+    getUsage = typeof opts.getUsage === 'function' ? opts.getUsage : null;
 
     if (!supabase || !userId) {
       renderLoginRequired();
@@ -783,5 +831,5 @@
     loadProfile();
   }
 
-  global.GptProfile = { open, close, viewPublic };
+  global.GptProfile = { open, close, viewPublic, refreshUsage };
 })(window);

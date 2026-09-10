@@ -2705,6 +2705,25 @@ async function gptClaimFeedbackBonus(feedbackId) {
   return 0;
 }
 
+function gptUsageQuotaView() {
+  const diveUnlim = !!_gptUsage.unlimited || isPlatformAdmin();
+  const diveLimit = diveUnlim ? GPT_DAILY_LIMIT : (_gptUsage.limit || GPT_DAILY_LIMIT);
+  const diveUsed = diveUnlim ? 0 : Math.min(diveLimit, Math.max(0, _gptUsage.used || 0));
+  const diveLeft = diveUnlim ? diveLimit : Math.max(0, diveLimit - diveUsed);
+
+  const dlUnlim = !!(_exportQuota && _exportQuota.unlimited) || isPlatformAdmin();
+  const dlLimit = dlUnlim ? 90 : (Number(_exportQuota && _exportQuota.limit) || 90);
+  const rawRem = _exportQuota && _exportQuota.remaining;
+  const dlRem = rawRem == null ? NaN : Number(rawRem);
+  const dlLeft = dlUnlim ? dlLimit : (Number.isFinite(dlRem) ? dlRem : dlLimit);
+
+  return {
+    divesText: diveUnlim ? '∞' : `${diveLeft}/${diveLimit}`,
+    downloadsText: dlUnlim ? '∞/∞' : `${dlLeft}/${dlLimit}`,
+    downloadsLine: dlUnlim ? '∞/∞ unduhan tersisa' : `${dlLeft}/${dlLimit} unduhan tersisa`,
+  };
+}
+
 function renderGptUsage() {
   const pills = document.querySelectorAll('[data-usage-pill]');
   if (!pills.length) return;
@@ -2714,6 +2733,7 @@ function renderGptUsage() {
   const left = unlimited ? limit : Math.max(0, limit - used);
   const resetAt = _gptUsage.resetAt || wibMidnightReset();
   const resetLabel = formatCountdown(resetAt);
+  const quota = gptUsageQuotaView();
 
   let title;
   let popTitle;
@@ -2760,6 +2780,7 @@ function renderGptUsage() {
     const prog = pill.querySelector('.prog');
     const numEl = pill.querySelector('.usage-ring-num');
     const popTitleEl = scope.querySelector('.usage-pop-title');
+    const popDlEl = scope.querySelector('.usage-pop-dl');
     const popSubEl = scope.querySelector('.usage-pop-sub');
     if (numEl) numEl.textContent = numText;
     if (wrap) wrap.dataset.tone = tone;
@@ -2768,8 +2789,11 @@ function renderGptUsage() {
       prog.setAttribute('stroke-dashoffset', String(dashOffset));
     }
     if (popTitleEl) popTitleEl.textContent = popTitle;
+    if (popDlEl) popDlEl.textContent = quota.downloadsLine;
     if (popSubEl) popSubEl.textContent = popSub;
   });
+
+  try { window.GptProfile && window.GptProfile.refreshUsage && window.GptProfile.refreshUsage(); } catch (_) {}
 
   if (!_usageTicker && !betaUnlimitedNow()) {
     _usageTicker = setInterval(() => {
@@ -2847,6 +2871,9 @@ function wireUsagePill() {
       e.stopPropagation();
       const open = pill.getAttribute('aria-expanded') === 'true';
       setUsagePopOpen(pill, !open);
+      if (!open && currentUser) {
+        void exportLoadQuota().then(() => renderGptUsage());
+      }
     });
   });
   if (!wireUsagePill._doc) {
@@ -2871,6 +2898,7 @@ async function refreshGptUsage() {
       unlimited: true,
       merdeka: true,
     });
+    if (currentUser) void exportLoadQuota();
     return;
   }
   if (!currentUser || !_supabase) {
@@ -2885,10 +2913,12 @@ async function refreshGptUsage() {
   // runs from five call sites and would otherwise reset unlimited to false.
   if (betaUnlimitedNow()) {
     noteGptUsage({ used: 0, limit: GPT_DAILY_LIMIT, reset_at: resetAt, unlimited: true, merdeka: false, beta: true });
+    void exportLoadQuota();
     return;
   }
   if (isPlatformAdmin()) {
     noteGptUsage({ used: 0, limit: GPT_DAILY_LIMIT, reset_at: resetAt, unlimited: true, merdeka: false, beta: false });
+    void exportLoadQuota();
     return;
   }
   try {
@@ -2915,6 +2945,7 @@ async function refreshGptUsage() {
       merdeka: false,
     });
   }
+  void exportLoadQuota();
 }
 
 // ── Views / UI shell ─────────────────────────────────────────────────────
@@ -13170,6 +13201,7 @@ function openUserProfile(userId, extra) {
     selfOpenOptions: {
       supabase: _supabase, userId: currentUser.id, userEmail: currentUser.email || '',
       esc, toast: showToast,
+      getUsage: gptUsageQuotaView,
       onSignOut: () => { if (confirm('Keluar dari akun?')) void signOut(); },
       onProfileChanged: (row) => {
         _accountHeadshotUrl = row?.headshot_url || null;
@@ -22689,6 +22721,9 @@ function wireUi() {
     if (!currentUser) return;
     if (window.GptProfile) {
       openUserProfile(currentUser.id);
+      void exportLoadQuota().then(() => {
+        try { window.GptProfile && window.GptProfile.refreshUsage && window.GptProfile.refreshUsage(); } catch (_) {}
+      });
     } else if (confirm('Keluar dari akun?')) {
       void signOut();
     }
@@ -23351,6 +23386,7 @@ async function exportLoadQuota() {
     });
     if (!res.ok) return null;
     _exportQuota = await res.json();
+    renderGptUsage();
     return _exportQuota;
   } catch (_) { return null; }
 }
