@@ -26,6 +26,6 @@ Use this before changing Beranda, onboarding, Cari Produk, Deep Dive, or Favorit
     - `gelang manik`: keyword-level, `gelang manik` rows first, `kalung manik` still present, no lead.
     - `tumbler`: unchanged single-keyword grid — not treated as a brand, no sibling dump into `botol minum`.
     - `cross stitch` still reaches `kristik`; `dress wanita` unchanged.
-    - `hijab` / `jilbab anak`: if not an exact `product_types_v` keyword, show a chooser of substring matches (never a blank page, never a mixed dump of unrelated listings). `masker n95` / `crocs classic` still never blank.
+    - `hijab` / `jilbab anak`: if not an exact `product_types_v` keyword, show listings from every containing keyword plus a chooser of those more specific pasars. Picking a chooser card reloads that keyword. Never a blank page, never unrelated listings. `masker n95` / `crocs classic` still never blank.
 
 If a check mentions `laris-app.js`, `larisid_journey_v1`, or `lid_ddtrack_promo_v1` as a live modal, the doc is stale — update this file instead of the code.

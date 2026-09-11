@@ -8491,27 +8491,24 @@ async function resolveListingPool({ q, cats, sub, home } = {}) {
     }
 
     let types = exactKw ? [exactKw] : [];
+    let chooser = false;
     if (!exactKw) {
       const containing = await fetchContainingProductTypes(query, 24);
       if (containing.length >= 2) {
-        out.matchLevel = 'chooser';
-        out.keywords = containing;
-        out.primaryKw = '';
-        out.listings = [];
-        rememberProducts(out.listings);
-        registerTypes(out.keywords);
-        return out;
-      }
-      if (containing.length === 1) types = containing;
+        chooser = true;
+        types = containing;
+      } else if (containing.length === 1) types = containing;
       else types = await searchProductTypes(query, [], 24);
     }
     if (types.length) {
-      out.matchLevel = 'keyword';
+      out.matchLevel = chooser ? 'chooser' : 'keyword';
       out.keywords = types.some(t => t._nearby) ? types : markTerlarisMinggu(types.slice());
-      out.primaryKw = types[0].keyword || '';
+      out.primaryKw = chooser ? '' : (types[0].keyword || '');
       const kws = types.map(t => t.keyword).filter(Boolean).slice(0, 15);
       if (kws.length === 1) {
         out.listings = await fetchListingsForKeyword(kws[0], 120);
+      } else if (chooser) {
+        out.listings = await fetchListingsForKeywords(kws, 20, 300);
       } else {
         const rest = kws.filter(k => k !== out.primaryKw);
         const [primary, extra] = await Promise.all([
@@ -8520,7 +8517,7 @@ async function resolveListingPool({ q, cats, sub, home } = {}) {
         ]);
         out.listings = dedupeListings(primary.concat(extra));
       }
-      out.unsold = await countKeywordUnsold(out.primaryKw);
+      out.unsold = out.primaryKw ? await countKeywordUnsold(out.primaryKw) : 0;
       const terms = _searchTerms(query);
       const phrase = query.toLowerCase();
       const synonyms = _planSynonymTerms(terms, plan?.queries || []);
@@ -8629,7 +8626,15 @@ function keywordChipsHtml(types, activeKw, opts = {}) {
 function petaScoreFor(listing, listings) {
   if (!window.PetaPeluang || typeof PetaPeluang.calcListingScore !== 'function') return null;
   const peers = (listings || []).filter(x => x.keyword && x.keyword === listing.keyword);
-  return PetaPeluang.calcListingScore(listing, peers.length > 5 ? peers : listings);
+  const out = PetaPeluang.calcListingScore(listing, peers.length > 5 ? peers : listings);
+  // #region agent log
+  if (!petaScoreFor._dbgN) petaScoreFor._dbgN = 0;
+  if (petaScoreFor._dbgN < 3) {
+    petaScoreFor._dbgN += 1;
+    fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fa7dbd'},body:JSON.stringify({sessionId:'fa7dbd',runId:'pre-fix',hypothesisId:'B',location:'gpt-app.js:petaScoreFor',message:'petaScoreFor return',data:{type:out == null ? 'null' : typeof out,keys:out && typeof out === 'object' ? Object.keys(out) : [],total:out && typeof out === 'object' ? out.total : out,peerN:peers.length,poolN:(listings || []).length},timestamp:Date.now()})}).catch(()=>{});
+  }
+  // #endregion
+  return out;
 }
 
 async function fetchPetaListings(q, types) {
@@ -10891,7 +10896,7 @@ function searchMatchLeadHtml(q, pool) {
     return `<p class="dd-sub dir-nearby-lead">Produk ${esc(brand)} dan ${esc(typeLabel)} sejenis — merek dulu, lalu produk mirip${pasar}.</p>`;
   }
   if (level === 'chooser') {
-    return `<p class="dd-sub dir-nearby-lead">“<strong>${esc(query)}</strong>” cocok beberapa pasar. Pilih yang kamu maksud.</p>`;
+    return `<p class="dd-sub dir-nearby-lead">Semua listing untuk “<strong>${esc(query)}</strong>”. Pilih pasar lebih spesifik di bawah untuk mempersempit.</p>`;
   }
   if (level === 'nearby') {
     return `<p class="dd-sub dir-nearby-lead">Belum ketemu produk untuk “<strong>${esc(query)}</strong>”. Ini produk dari pasar terdekat:</p>`;
@@ -21754,6 +21759,18 @@ function dirChooserHtml(q, types) {
   </div>`;
 }
 
+function bindDirChooser(root) {
+  root?.querySelectorAll('[data-dir-choose]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const kw = btn.getAttribute('data-dir-choose') || '';
+      if (!kw) return;
+      const inp = $('results-bar-input');
+      if (inp) inp.value = kw;
+      void runResultsBarSearch(kw);
+    });
+  });
+}
+
 function paintDirectoryTable(opts = {}) {
   const grid = $('dir-grid');
   const pager = $('dir-pager');
@@ -21784,31 +21801,23 @@ function paintDirectoryTable(opts = {}) {
   });
   paintDirAskSellers(q, state.dirTypes);
   paintDirKwReq(q);
-  if (state.dirMatchLevel === 'chooser') {
-    grid.innerHTML = nearbyLead + dirChooserHtml(q, state.dirTypes);
-    grid.querySelectorAll('[data-dir-choose]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const kw = btn.getAttribute('data-dir-choose') || '';
-        if (kw) {
-          const inp = $('results-bar-input');
-          if (inp) inp.value = kw;
-          void runResultsBarSearch(kw);
-        }
-      });
-    });
+  const chooser = state.dirMatchLevel === 'chooser' ? dirChooserHtml(q, state.dirTypes) : '';
+  const sum = slice.length && window.LarisDirWorkbench ? LarisDirWorkbench.rangkumanHtml(filtered) : '';
+  const rowsHtml = slice.length
+    ? listingRowsHtml(slice, {
+        actions: true,
+        highlightKey: '',
+        sort: state.dirSort || 'omset',
+      }) + listingUnsoldNote(state.dirUnsold)
+    : (chooser ? '' : emptyMsg);
+  grid.innerHTML = sum + nearbyLead + chooser + rowsHtml;
+  bindDirChooser(grid);
+  if (!slice.length) {
     renderDirPager(pager, 0);
     updateDirCount(0, 0, false);
     updateDirHeading();
     return;
   }
-  const sum = window.LarisDirWorkbench ? LarisDirWorkbench.rangkumanHtml(filtered) : '';
-  grid.innerHTML = slice.length
-    ? sum + nearbyLead + listingRowsHtml(slice, {
-        actions: true,
-        highlightKey: '',
-        sort: state.dirSort || 'omset',
-      }) + listingUnsoldNote(state.dirUnsold)
-    : (nearbyLead + emptyMsg);
   try { window.LarisDirWorkbench?.applyViewClass(grid); } catch (_) {}
   bindListingRows(grid, {
     onSort: (mode) => {
@@ -24829,7 +24838,17 @@ function initRetentionSurfaces() {
       user: () => currentUser,
       getState: () => state,
       log: (n, m) => logUserEvent(n, m),
-      skorOf: (p) => petaScoreFor(p, state.dirPoolListings || []),
+      skorOf: (p) => {
+        const s = petaScoreFor(p, state.dirPoolListings || []);
+        // #region agent log
+        if (!window.__dbgSkorOfN) window.__dbgSkorOfN = 0;
+        if (window.__dbgSkorOfN < 3) {
+          window.__dbgSkorOfN += 1;
+          fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fa7dbd'},body:JSON.stringify({sessionId:'fa7dbd',runId:'pre-fix',hypothesisId:'C',location:'gpt-app.js:initRetentionSurfaces:skorOf',message:'workbench skorOf wrapper',data:{type:s == null ? 'null' : typeof s,keys:s && typeof s === 'object' ? Object.keys(s) : [],total:s && typeof s === 'object' ? s.total : s,poolN:(state.dirPoolListings || []).length},timestamp:Date.now()})}).catch(()=>{});
+        }
+        // #endregion
+        return s;
+      },
       finderBudget: () => finderBudgetCfg(_finder.budget || state.onboarding?.budget),
       onRepaint: () => paintDirectoryTable({ remountPeta: false }),
       onSaveCriteria: () => { void saveCurrentSearchCriteria(); },
