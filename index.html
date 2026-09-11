@@ -700,6 +700,9 @@ body.view-directory .panel {
 }
 .hdr-ext-link:hover { text-decoration: underline; }
 @media (max-width: 720px) { .hdr-ext-link { display: none; } }
+.hdr-ext-link[hidden],
+#ext-hint-install[hidden],
+#gpt-limit-ext[hidden] { display: none !important; }
 .btn-user-av {
   width: 28px; height: 28px; border-radius: 50%;
   background: var(--bg-side); display: grid; place-items: center;
@@ -7917,7 +7920,7 @@ body.view-chat .sfb-card {
           <span class="btn-user-av" id="user-av">?</span>
           <span id="user-name">Akun</span>
         </button>
-        <a class="hdr-ext-link" id="hdr-ext-link" href="https://chromewebstore.google.com/detail/ldgcjbnecfnpbgenechgfbdagecnloae" target="_blank" rel="noopener">Pasang ekstensi</a>
+        <a class="hdr-ext-link" id="hdr-ext-link" hidden target="_blank" rel="noopener">Pasang ekstensi</a>
         <div class="notif-wrap" id="notif-wrap">
           <button type="button" class="notif-bell" id="notif-bell" aria-label="Pemberitahuan" title="Pemberitahuan">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -7930,7 +7933,7 @@ body.view-chat .sfb-card {
     <div class="ext-install-hint" id="ext-install-hint" hidden>
       <span>Pasang ekstensi Chrome supaya omset LarisID tampil di halaman Shopee.</span>
       <span>
-        <a href="https://chromewebstore.google.com/detail/ldgcjbnecfnpbgenechgfbdagecnloae" target="_blank" rel="noopener">Pasang</a>
+        <a id="ext-hint-install" hidden target="_blank" rel="noopener">Pasang</a>
         · <button type="button" class="btn-ghost" id="ext-hint-skip">Nanti</button>
       </span>
     </div>
@@ -9747,7 +9750,7 @@ body.view-chat .sfb-card {
     <h3 id="gpt-limit-title" class="nudge-title">Batas pencarian hari ini tercapai</h3>
     <p class="nudge-sub" id="gpt-limit-sub">Jatah baru tersedia besok.</p>
     <div class="nudge-actions" style="flex-direction:column;">
-      <a class="btn-primary" id="gpt-limit-ext" href="https://chromewebstore.google.com/detail/ldgcjbnecfnpbgenechgfbdagecnloae" target="_blank" rel="noopener" style="text-decoration:none;text-align:center;">Pasang Extension Chrome · tambah 3 per hari</a>
+      <a class="btn-primary" id="gpt-limit-ext" hidden target="_blank" rel="noopener" style="text-decoration:none;text-align:center;">Pasang Extension Chrome · tambah 3 per hari</a>
       <div id="gpt-limit-referral" style="display:none;"></div>
       <button type="button" class="btn-ghost" id="gpt-limit-feedback" style="width:100%;">Kasih masukan ke Steven · +3 hari ini</button>
       <button type="button" class="btn-ghost" id="gpt-limit-close" style="width:100%;">Tutup</button>
@@ -9987,7 +9990,7 @@ body.view-chat .sfb-card {
 <script defer src="/js/gpt-dir-home.js?v=20260824d"></script>
 <script defer src="/js/gpt-photo-analyze.js?v=20260824a"></script>
 <script defer src="/js/gpt-referral.js?v=20260821a"></script>
-<script defer src="/js/gpt-profile.js?v=20260911e"></script>
+<script defer src="/js/gpt-profile.js?v=20260911g"></script>
 <script defer src="/js/gpt-community-board.js?v=20260909b"></script>
 <script defer src="/js/laris-cohort.js?v=20260908j"></script>
 <script defer src="/js/laris-mascot-rigs.js?v=20260907k"></script>
@@ -10002,6 +10005,6 @@ body.view-chat .sfb-card {
 <script src="/js/peta-peluang.js?v=20260908a" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
-<script src="/js/gpt-app.js?v=20260911f" defer></script>
+<script src="/js/gpt-app.js?v=20260911g" defer></script>
 </body>
 </html>

@@ -371,7 +371,11 @@ async function larisEnsureChart() {
 const SUPA_URL = 'https://api.larisid.com';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzg0MzM2Njc5LCJleHAiOjI0MTUwNTY2Nzl9.IuuxcLjM-ljEyrn2lInAqzESImYfMXlBBTZI2i671Ec';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzg0MzM2Njc5LCJleHAiOjI0MTUwNTY2Nzl9.IuuxcLjM-ljEyrn2lInAqzESImYfMXlBBTZI2i671Ec';
-const CWS_EXT_URL = 'https://chromewebstore.google.com/detail/ldgcjbnecfnpbgenechgfbdagecnloae';
+// Chrome Web Store listing `ldgcjbnecfnpbgenechgfbdagecnloae` is unpublished
+// (empty-title, no CRX — store shows "Item not available"). Put the live
+// install URL back here when a listing is public or unlisted-and-installable.
+const CWS_EXT_URL = '';
+window.CWS_EXT_URL = CWS_EXT_URL;
 
 const _AUTH_SK = 'laris_auth_v1';
 let _supabase = null;
@@ -24784,7 +24788,28 @@ async function saveCurrentSearchCriteria() {
   void logUserEvent('criteria_save', { ui: 'gpt', query: q, category: cat });
 }
 
+function cwsExtLive() {
+  return typeof CWS_EXT_URL === 'string' && /^https:\/\/chromewebstore\.google\.com\//.test(CWS_EXT_URL);
+}
+
+function wireCwsExtLinks() {
+  const live = cwsExtLive();
+  window.CWS_EXT_URL = live ? CWS_EXT_URL : '';
+  ['hdr-ext-link', 'ext-hint-install', 'gpt-limit-ext'].forEach((id) => {
+    const el = $(id);
+    if (!el) return;
+    if (live) {
+      el.href = CWS_EXT_URL;
+      el.hidden = false;
+    } else {
+      el.removeAttribute('href');
+      el.hidden = true;
+    }
+  });
+}
+
 function maybeShowExtHint() {
+  if (!cwsExtLive()) return;
   try {
     if (localStorage.getItem('lid_ext_hint_v1')) return;
   } catch (_) { return; }
@@ -24794,6 +24819,7 @@ function maybeShowExtHint() {
 }
 
 function initRetentionSurfaces() {
+  wireCwsExtLinks();
   try {
     window.LarisDirWorkbench?.init({
       esc,

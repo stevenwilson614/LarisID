@@ -655,7 +655,9 @@
       '<div class="gpt-actions"><button type="button" class="gpt-btn js-save-btn">Simpan Perubahan</button></div>' +
       '<div class="gpt-status js-status"></div>' +
       `<p class="gpt-disclaimer">${lockSVG}Informasi Anda aman dan hanya digunakan sesuai pengaturan profil.</p>` +
-      '<p class="gpt-ext-install"><a href="https://chromewebstore.google.com/detail/ldgcjbnecfnpbgenechgfbdagecnloae" target="_blank" rel="noopener">Pasang Extension Chrome</a> — omset &amp; tren tampil di halaman Shopee.</p>' +
+      (global.CWS_EXT_URL
+        ? '<p class="gpt-ext-install"><a href="' + global.CWS_EXT_URL + '" target="_blank" rel="noopener">Pasang Extension Chrome</a> — omset &amp; tren tampil di halaman Shopee.</p>'
+        : '') +
       '<div class="gpt-inbox" id="gpt-inbox-root"><div class="gpt-inbox-title">Pesan masuk</div><div class="gpt-inbox-empty">Memuat…</div></div>' +
       (onSignOut ? '<div class="gpt-signout"><button type="button" class="js-signout-btn">Keluar dari akun</button></div>' : '')
     );
