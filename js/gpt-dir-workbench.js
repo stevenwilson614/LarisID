@@ -140,7 +140,11 @@
       }
     } else if (id === 'skor') {
       var score = api.skorOf ? api.skorOf(p) : null;
-      inner = score == null ? dash() : String(score);
+      if (score == null) inner = dash();
+      else {
+        var total = typeof score === 'object' ? Number(score.total) : Number(score);
+        inner = Number.isFinite(total) ? String(Math.round(total)) : dash();
+      }
     } else if (id === 'url') {
       if (p.url) {
         inner = '<a class="lrow-ext-url" href="' + esc(p.url) + '" target="_blank" rel="noopener noreferrer" data-lrow-stop="1">Shopee</a>';
