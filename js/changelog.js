@@ -11,6 +11,16 @@
 // A plain string is still accepted and renders with no tech line.
 window.LARIS_CHANGELOG = [
   {
+    date: '2026-09-11',
+    title: 'Pesan Steven sampai ke yang sering pakai',
+    items: [
+      {
+        text: 'Kalau kamu sudah beberapa kali masuk dan pernah buka Deep Dive, pesan dari Steven di pojok kanan sekarang muncul. Tombol jadi Chat +1 dan terus berdenyut sampai kamu membalas — sudah baca atau tutup tidak menghilangkan tanda itu.',
+        tech: 'scheduleSuperuserFeedback no longer skips _lidIsNewSignup (frozen last_sign_in_at on session restore); sfbIsPending stays true while eligible/asked/open/minimized until a reply.',
+      },
+    ],
+  },
+  {
     date: '2026-09-10',
     title: 'Unduh daftar produk dari Laris AI',
     items: [

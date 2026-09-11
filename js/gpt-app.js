@@ -3226,6 +3226,7 @@ async function lnoticeCheck() {
 // asked/answered state lives in feedback_prompts so this fires once per
 // PERSON rather than once per browser. Close is a minimize, not a dismiss —
 // localStorage only remembers open | minimized | answered for this device.
+// Reading or closing must NOT clear Chat +1; only a reply does.
 const SFB_KEY   = 'lid_superuser_fb_v2';
 const SFB_DELAY = 6000;
 let _sfbTimer   = null;
@@ -3247,6 +3248,21 @@ function sfbSetState(v) {
   try { localStorage.setItem(SFB_KEY, v); } catch (_) {}
 }
 
+function sfbHasReply() {
+  return _sfbAnswered || sfbState() === 'answered' || !!_sfbStatus?.answered_at;
+}
+
+function sfbIsPending() {
+  if (sfbHasReply()) return false;
+  const s = sfbState();
+  if (s === 'open' || s === 'minimized') return true;
+  if (_sfbStatus?.asked_at) return true;
+  // Eligible people get Chat +1 as soon as we know, not only after they
+  // close the card. _lidIsNewSignup is the wrong gate: last_sign_in_at is
+  // often still equal to created_at for session-restore users.
+  return !!_sfbStatus?.eligible;
+}
+
 function sfbMark(action, feedbackId) {
   if (!_supabase) return Promise.resolve();
   return _supabase
@@ -3258,7 +3274,7 @@ function sfbMark(action, feedbackId) {
 function sfbPaintFab() {
   const fab = $('msg-steven-fab');
   if (!fab) return;
-  const pending = !_sfbAnswered && sfbState() === 'minimized';
+  const pending = sfbIsPending();
   const label = fab.querySelector('.msg-steven-fab-label');
   fab.classList.toggle('msg-steven-fab--pending', pending);
   if (label) label.textContent = pending ? 'Chat +1' : 'Pesan Steven';
@@ -3275,24 +3291,30 @@ function sfbBusySurface() {
 function sfbTryWhenQuiet(fn, delay, attempt) {
   clearTimeout(_sfbTimer);
   _sfbTimer = setTimeout(() => {
-    if (!currentUser || _sfbAnswered || sfbState() === 'answered') return;
+    if (!currentUser || sfbHasReply()) return;
     if (sfbBusySurface()) {
       if (attempt < 3) sfbTryWhenQuiet(fn, 2200, attempt + 1);
-      else { sfbSetState('minimized'); sfbPaintFab(); }
+      else { sfbSetState('minimized'); sfbPaintFab(); void sfbMark('asked'); }
       return;
     }
     fn();
   }, delay);
 }
 
-async function scheduleSuperuserFeedback(opts = {}) {
+async function scheduleSuperuserFeedback(_opts) {
   if (!currentUser || !_supabase) return;
   // Raw role on purpose: "view as" must not turn the prompt back on for Steven,
   // who would otherwise be messaged by himself. The RPC guards this too.
   if (isPlatformAdminRaw() || adminIsPreviewing()) return;
-  if (opts.isNewSignup || _lidIsNewSignup(currentUser)) return;
-  if (_sfbAnswered || sfbState() === 'answered') return;
-  if ($('sfb-card')?.classList.contains('open')) return;
+  // Never skip on _lidIsNewSignup / opts.isNewSignup. That helper compares
+  // created_at to last_sign_in_at, which stays stuck at signup for people who
+  // restore a session instead of a fresh GoTrue login — most of the intended
+  // audience. The server bar (2+ sessions, ≥1 Deep Dive) is the criteria.
+  if (sfbHasReply()) return;
+  if ($('sfb-card')?.classList.contains('open')) {
+    sfbPaintFab();
+    return;
+  }
 
   if (!_sfbStatus) {
     try {
@@ -3308,17 +3330,16 @@ async function scheduleSuperuserFeedback(opts = {}) {
     if (_sfbStatus && _sfbStatus.answered_at) {
       _sfbAnswered = true;
       sfbSetState('answered');
-      sfbPaintFab();
     }
-    return;
-  }
-
-  const last = sfbState();
-  if (last === 'minimized') {
-    sfbBind();
     sfbPaintFab();
     return;
   }
+
+  sfbBind();
+  sfbPaintFab();
+
+  const last = sfbState();
+  if (last === 'minimized') return;
   if (last === 'open') {
     sfbTryWhenQuiet(() => sfbFire({ restore: true }), 400, 0);
     return;
@@ -3327,7 +3348,7 @@ async function scheduleSuperuserFeedback(opts = {}) {
 }
 
 function sfbFire(opts = {}) {
-  if (!currentUser || _sfbAnswered || sfbState() === 'answered') return;
+  if (!currentUser || sfbHasReply()) return;
   if (isPlatformAdminRaw() || adminIsPreviewing()) return;
   const card = $('sfb-card');
   if (!card) return;
@@ -3354,7 +3375,7 @@ function sfbHideCard() {
 }
 
 function sfbMinimize(reason) {
-  if (_sfbAnswered || sfbState() === 'answered') {
+  if (sfbHasReply()) {
     sfbHideCard();
     sfbPaintFab();
     return;
@@ -3368,7 +3389,7 @@ function sfbMinimize(reason) {
 }
 
 function sfbClose(reason) {
-  if (_sfbAnswered || reason === 'done') {
+  if (sfbHasReply() || reason === 'done') {
     sfbHideCard();
     sfbSetState('answered');
     sfbPaintFab();
@@ -23758,9 +23779,7 @@ async function boot() {
   document.getElementById('faq-feedback-cta')?.addEventListener('click', gptOpenFeedback);
   document.getElementById('msg-steven-fab')?.addEventListener('click', () => {
     const fab = document.getElementById('msg-steven-fab');
-    const pending = !_sfbAnswered && (
-      sfbState() === 'minimized' || fab?.classList.contains('msg-steven-fab--pending')
-    );
+    const pending = sfbIsPending() || fab?.classList.contains('msg-steven-fab--pending');
     if (pending) {
       sfbFire({ restore: true });
       return;
