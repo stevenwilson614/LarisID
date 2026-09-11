@@ -18,6 +18,10 @@ window.LARIS_CHANGELOG = [
         text: 'Kalau kamu sudah beberapa kali masuk dan pernah buka Deep Dive, pesan dari Steven di pojok kanan sekarang muncul. Tombol jadi Chat +1 dan terus berdenyut sampai kamu membalas — sudah baca atau tutup tidak menghilangkan tanda itu.',
         tech: 'scheduleSuperuserFeedback no longer skips _lidIsNewSignup (frozen last_sign_in_at on session restore); sfbIsPending stays true while eligible/asked/open/minimized until a reply.',
       },
+      {
+        text: 'Kalau kamu sudah dapat hadiah 1.000 baris unduhan, lonceng pemberitahuan di header mengingatkan — ketuk untuk buka Cari Produk dan pakai kuotanya.',
+        tech: 'user_notices kind=export_grant (20260911190000); backfill from user_export_grants; claim_feedback_export_grant writes the notice; LarisActivity bell lead + data-go=directory. Founder card can show the same row.',
+      },
     ],
   },
   {

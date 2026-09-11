@@ -108,6 +108,7 @@ row-2 header range so sorting still works under the merged brand row.
   `get_my_export_quota`, `_product_weeks_batch`, `daily_usage.export_rows_used`, `export_jobs`
 - `supabase/migrations/20260909140000_export_weeks_budget.sql` — `export_weeks_used`,
   `_export_week_limit`, dual-budget `export_rows` / `get_my_export_quota`
+- `supabase/migrations/20260911190000_export_grant_notices.sql` — bell notice for the 1000-row gift
 - `supabase/migrations/20260911180000_teardown_retention.sql` — weekly snap extras
   (`snap_reviews` / `snap_rating` / `snap_sold` / `snap_harga_asli` / `snap_at`),
   `export_jobs.payload` for Arsip Unduhan
@@ -121,6 +122,12 @@ One-time skippable popup `#export-xlsx-notice` (`lid_export_xlsx_notice_v1`) for
 returning signed-in users only — not new signups, not an onboarding gate. Same
 pattern as `#product-rows-notice`. CTA opens Cari Produk. Event:
 `export_xlsx_notice` (`shown` / `close` / `go_directory` / `backdrop` / `esc`).
+
+The 1000-row thank-you bank (`user_export_grants`, source `superuser_feedback`)
+also writes a header-bell notice (`user_notices.kind = export_grant`). Existing
+grants were backfilled in `20260911190000_export_grant_notices.sql`. The header
+bell lists it; the founder card can show the same row. Click on the bell opens
+Cari Produk.
 
 ## The events that are the actual point
 

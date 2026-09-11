@@ -3529,6 +3529,7 @@ async function sfbClaimGrant(feedbackId) {
       // so drop the cached copy and it picks the raised cap up by itself.
       _exportQuota = null;
       void logUserEvent('superuser_feedback_grant', { ui: 'gpt', rows: data.rows });
+      try { window.LarisActivity?.refreshBell(); } catch (_) {}
       return data.rows || 0;
     }
   } catch (err) {
@@ -8626,15 +8627,7 @@ function keywordChipsHtml(types, activeKw, opts = {}) {
 function petaScoreFor(listing, listings) {
   if (!window.PetaPeluang || typeof PetaPeluang.calcListingScore !== 'function') return null;
   const peers = (listings || []).filter(x => x.keyword && x.keyword === listing.keyword);
-  const out = PetaPeluang.calcListingScore(listing, peers.length > 5 ? peers : listings);
-  // #region agent log
-  if (!petaScoreFor._dbgN) petaScoreFor._dbgN = 0;
-  if (petaScoreFor._dbgN < 3) {
-    petaScoreFor._dbgN += 1;
-    fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fa7dbd'},body:JSON.stringify({sessionId:'fa7dbd',runId:'pre-fix',hypothesisId:'B',location:'gpt-app.js:petaScoreFor',message:'petaScoreFor return',data:{type:out == null ? 'null' : typeof out,keys:out && typeof out === 'object' ? Object.keys(out) : [],total:out && typeof out === 'object' ? out.total : out,peerN:peers.length,poolN:(listings || []).length},timestamp:Date.now()})}).catch(()=>{});
-  }
-  // #endregion
-  return out;
+  return PetaPeluang.calcListingScore(listing, peers.length > 5 ? peers : listings);
 }
 
 async function fetchPetaListings(q, types) {
@@ -24838,17 +24831,7 @@ function initRetentionSurfaces() {
       user: () => currentUser,
       getState: () => state,
       log: (n, m) => logUserEvent(n, m),
-      skorOf: (p) => {
-        const s = petaScoreFor(p, state.dirPoolListings || []);
-        // #region agent log
-        if (!window.__dbgSkorOfN) window.__dbgSkorOfN = 0;
-        if (window.__dbgSkorOfN < 3) {
-          window.__dbgSkorOfN += 1;
-          fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fa7dbd'},body:JSON.stringify({sessionId:'fa7dbd',runId:'pre-fix',hypothesisId:'C',location:'gpt-app.js:initRetentionSurfaces:skorOf',message:'workbench skorOf wrapper',data:{type:s == null ? 'null' : typeof s,keys:s && typeof s === 'object' ? Object.keys(s) : [],total:s && typeof s === 'object' ? s.total : s,poolN:(state.dirPoolListings || []).length},timestamp:Date.now()})}).catch(()=>{});
-        }
-        // #endregion
-        return s;
-      },
+      skorOf: (p) => petaScoreFor(p, state.dirPoolListings || []),
       finderBudget: () => finderBudgetCfg(_finder.budget || state.onboarding?.budget),
       onRepaint: () => paintDirectoryTable({ remountPeta: false }),
       onSaveCriteria: () => { void saveCurrentSearchCriteria(); },
@@ -24880,6 +24863,7 @@ function initRetentionSurfaces() {
         }
       },
       redownload: exportRedownload,
+      openDirectory: () => setView('directory'),
     });
   } catch (_) {}
   document.addEventListener('click', (e) => {

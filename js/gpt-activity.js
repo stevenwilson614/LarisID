@@ -186,6 +186,7 @@
     if (n.kind === 'keyword_ready') return 'Kata kunci “' + (p.keyword || '') + '” sudah siap';
     if (n.kind === 'criteria_hit') return (p.n || '') + ' produk baru cocok kriteriamu';
     if (n.kind === 'export_done') return 'Unduhan selesai';
+    if (n.kind === 'export_grant') return '1.000 baris unduhan sudah masuk ke akun kamu';
     if (n.kind === 'tracker_change') return p.lead || 'Favorit Aku berubah';
     return 'Pemberitahuan';
   }
@@ -209,7 +210,9 @@
       return;
     }
     panel.innerHTML = _notices.map(function (x) {
-      return '<button type="button" class="notif-item" data-notice="' + esc(x.id) + '" data-kind="' + esc(x.kind) + '">'
+      var go = (x.payload && x.payload.go) || (x.kind === 'export_grant' ? 'directory' : '');
+      return '<button type="button" class="notif-item" data-notice="' + esc(x.id) + '" data-kind="' + esc(x.kind) + '"'
+        + (go ? ' data-go="' + esc(go) + '"' : '') + '>'
         + esc(noticeLead(x)) + '</button>';
     }).join('');
   }
@@ -289,7 +292,10 @@
       if (notice) {
         var n = _notices.find(function (x) { return x.id === notice.getAttribute('data-notice'); });
         var p = (n && n.payload) || {};
-        if (p.keyword && api.rerunSearch) api.rerunSearch(p.keyword);
+        var go = notice.getAttribute('data-go') || p.go || '';
+        var kind = notice.getAttribute('data-kind') || (n && n.kind) || '';
+        if ((kind === 'export_grant' || go === 'directory') && api.openDirectory) api.openDirectory();
+        else if (p.keyword && api.rerunSearch) api.rerunSearch(p.keyword);
         else if (p.query && api.rerunSearch) api.rerunSearch(p.query);
         _bellOpen = false;
         paintBell();
