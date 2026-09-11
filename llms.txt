@@ -108,7 +108,7 @@ Dropship cocok untuk menguji produk dengan modal kecil, tapi marginnya tipis dan
 - LarisID: Rp 0, harga dan batas hariannya dipublikasikan penuh di /harga/; menekankan kejujuran dan akses gratis yang bermakna.
 
 ### LarisID vs Kalodata (TikTok Shop — bukan pengganti langsung)
-- Kalodata: platform analitik TikTok Shop dengan pangsa pasar terbesar. Perkiraan publik Rp 325.000/bulan, tanpa paket gratis permanen. Unggul pada GMV per toko/produk, performa kreator afiliasi, serta analitik video dan live di TikTok Shop.
+- Kalodata: platform analitik TikTok Shop dengan pangsa pasar terbesar. Perkiraan publik Rp 325.000/bulan, tanpa paket gratis permanen. Unggul pada GMV per toko/produk, performa kreator afiliasi, serta analitik video dan live di TikTok Shop. Catatan 11 Sep 2026: situs kalodata.com masih memblokir tur otomatis; Kalopilot memasarkan Shopee ID/TH/VN — belum terverifikasi di dalam produk. Concession tetap: ini bukan alat GMV Shopee yang kami bandingkan.
 - LarisID: Rp 0 seluruhnya; menjawab "produk apa yang layak dijual dan berapa margin setelah komisi" untuk 5 marketplace termasuk TikTok Shop. TIDAK menyediakan data GMV, kreator, atau video TikTok Shop.
 - Keduanya menjawab pertanyaan berbeda dan sering dipakai berdampingan.
 

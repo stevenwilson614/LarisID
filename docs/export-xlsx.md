@@ -31,7 +31,14 @@ The Unduh button sits on the **list bar with Urutkan** — above product rows, b
 Trending Sekarang. Ask Laris / chat listing tables (≥5 products, signed-in) show the
 same Unduh control above the table (`data-lrow-export`, source `chat`, same 90-row
 snapshot budget). Deep Dive history is only on the trend-graph download icon (not a
-tool pill).
+tool pill). Weekly rows include **harga**, unit, and omset, plus review / rating /
+total terjual / harga asli **only when a listings scrape fell in that WIB week**.
+Missing scrape → em dash, never interpolated. `Sumber` stays terukur / perkiraan /
+proyeksi.
+
+`export_jobs` was 0 as of 11 Sep 2026 (button likely unseen). Log `export_shown`
+when `#dir-export` first unhides, plus `ddr_alert_shown` / `ddr_fav` at end of dive.
+Do not add a save modal.
 
 ## Cost rule
 
@@ -101,6 +108,9 @@ row-2 header range so sorting still works under the merged brand row.
   `get_my_export_quota`, `_product_weeks_batch`, `daily_usage.export_rows_used`, `export_jobs`
 - `supabase/migrations/20260909140000_export_weeks_budget.sql` — `export_weeks_used`,
   `_export_week_limit`, dual-budget `export_rows` / `get_my_export_quota`
+- `supabase/migrations/20260911180000_teardown_retention.sql` — weekly snap extras
+  (`snap_reviews` / `snap_rating` / `snap_sold` / `snap_harga_asli` / `snap_at`),
+  `export_jobs.payload` for Arsip Unduhan
 - `js/gpt-app.js` — export section; `updateDirCount` shows `#dir-export` on `#dir-list-bar`;
   `ddTrendExportBtnHtml` next to Tren; `consumeProductDeepLink()`
 - `index.html` — `#dir-list-bar` / `#dir-export`, `#export-modal`, `#export-more-modal`
@@ -114,7 +124,8 @@ pattern as `#product-rows-notice`. CTA opens Cari Produk. Event:
 
 ## The events that are the actual point
 
-`export_open`, `export_done` (carries **both** `rows_total` / `rows_charged` and
+`export_open`, `export_shown` (`#dir-export` unhidden), `export_done` (carries **both** `rows_total` / `rows_charged` and
 `weeks_charged` / `weeks_remaining_after`, plus `wanted_rows` on every export — that
 distribution says whether 90 / 12 are right), `export_blocked`, `export_more_prompt`,
-`export_more_response` (`ya`/`tidak`/`tutup`, three-way on purpose).
+`export_more_response` (`ya`/`tidak`/`tutup`, three-way on purpose). Deep Dive also
+logs `ddr_alert_shown` and `ddr_fav`.

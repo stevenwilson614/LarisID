@@ -275,6 +275,8 @@
   .gpt-status.info { color: #555; }
   .gpt-signout { text-align: center; margin-top: 20px; padding-top: 16px; border-top: 1px solid #eee; }
   .gpt-signout button { background: none; border: none; color: #c62828; font-size: 13px; cursor: pointer; padding: 4px; }
+  .gpt-ext-install { text-align: center; margin: 12px 0 0; font-size: 13px; }
+  .gpt-ext-install a { color: #B5202A; font-weight: 700; }
   .gpt-pv-name { font-size: 18px; font-weight: 700; color: #111; margin-top: 4px; }
   .gpt-pv-role {
     display: inline-flex; align-items: center; margin-left: 6px; vertical-align: middle;
@@ -653,6 +655,7 @@
       '<div class="gpt-actions"><button type="button" class="gpt-btn js-save-btn">Simpan Perubahan</button></div>' +
       '<div class="gpt-status js-status"></div>' +
       `<p class="gpt-disclaimer">${lockSVG}Informasi Anda aman dan hanya digunakan sesuai pengaturan profil.</p>` +
+      '<p class="gpt-ext-install"><a href="https://chromewebstore.google.com/detail/ldgcjbnecfnpbgenechgfbdagecnloae" target="_blank" rel="noopener">Pasang Extension Chrome</a> — omset &amp; tren tampil di halaman Shopee.</p>' +
       '<div class="gpt-inbox" id="gpt-inbox-root"><div class="gpt-inbox-title">Pesan masuk</div><div class="gpt-inbox-empty">Memuat…</div></div>' +
       (onSignOut ? '<div class="gpt-signout"><button type="button" class="js-signout-btn">Keluar dari akun</button></div>' : '')
     );

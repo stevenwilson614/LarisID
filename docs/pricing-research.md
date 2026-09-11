@@ -61,6 +61,10 @@ And read §A itself as *what June 2026 looked like* — credits are gone, AI is 
 **Published figure (5 Sep 2026):** Rp 325.000/bulan. That is what comparison pages, `/harga/`, and
 `llms.txt` quote. Re-verify before changing it.
 
+**Tour 11 Sep 2026:** `kalodata.com` still serves a Cloudflare bot-check (no in-product walkthrough).
+Kalopilot **markets** Shopee ID/TH/VN on public pages — **unverified in-product**. Do not claim they
+replaced Datapinter on Shopee. Keep the TikTok-vs-Shopee concession until a human can sign in.
+
 Earlier Aug 2026 notes (USD Starter/Professional from third-party reviews) are superseded for
 public copy. Keep the TikTok-vs-Shopee concession.
 

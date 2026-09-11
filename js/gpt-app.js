@@ -371,6 +371,7 @@ async function larisEnsureChart() {
 const SUPA_URL = 'https://api.larisid.com';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzg0MzM2Njc5LCJleHAiOjI0MTUwNTY2Nzl9.IuuxcLjM-ljEyrn2lInAqzESImYfMXlBBTZI2i671Ec';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzg0MzM2Njc5LCJleHAiOjI0MTUwNTY2Nzl9.IuuxcLjM-ljEyrn2lInAqzESImYfMXlBBTZI2i671Ec';
+const CWS_EXT_URL = 'https://chromewebstore.google.com/detail/ldgcjbnecfnpbgenechgfbdagecnloae';
 
 const _AUTH_SK = 'laris_auth_v1';
 let _supabase = null;
@@ -1790,7 +1791,7 @@ const state = {
   dirCities: [],   // multi-select city filter (empty = ALL / nasional)
   dirSearch: '',   // sticky Produk search query (filters the directory grid)
   dirNearby: false, // current dirTypes came from listing-title nearby lift
-  dirMatchLevel: '', // keyword | title | brand | nearby
+  dirMatchLevel: '', // keyword | title | brand | nearby | chooser
   dirBrand: '',
   dirBrandMissing: false,
   dirSub: null,    // selected sub-group within a single selected category
@@ -3186,11 +3187,13 @@ async function lnoticeCheck() {
       .from('user_notices')
       .select('id,kind,payload')
       .is('dismissed_at', null)
+      .not('kind', 'in', '(keyword_ready,criteria_hit,export_done,quota_reset,tracker_change)')
       .order('created_at', { ascending: false })
       .limit(1);
     const n = (notices || [])[0];
     if (n) {
       lnoticeShow(lnoticeBodyHtml(n.payload || {}), { kind: 'notice', id: n.id });
+      try { window.LarisActivity?.refreshBell(); } catch (_) {}
       return;
     }
   } catch (e) { console.warn('lnoticeCheck notices:', e?.message || e); }
@@ -3941,6 +3944,8 @@ function updateAccountUI() {
     setHeaderName(short);
     setHeaderAvatar(short);
     void refreshAccountHeadshot();
+    try { window.LarisActivity?.refreshBell(); } catch (_) {}
+    try { void window.LarisDirWorkbench?.hydrate?.(); } catch (_) {}
   } else {
     _accountHeadshotUrl = null;
     if (authH) authH.hidden = false;
@@ -4030,6 +4035,10 @@ function closeChatSearch() {
 }
 
 function renderChatList() {
+  if (window.LarisActivity && typeof LarisActivity.render === 'function') {
+    void LarisActivity.render();
+    return;
+  }
   const list = $('chat-list');
   if (!list) return;
   const q = String($('chat-search-input')?.value || '').trim();
@@ -4065,7 +4074,8 @@ function renderChatList() {
 
 function beginChatRename(id) {
   const chat = state.chats.find(c => (c.id || c.localId) === id);
-  const row = document.querySelector(`[data-chat-row="${CSS.escape(id)}"]`);
+  const row = document.querySelector(`[data-chat-row="${CSS.escape(id)}"]`)
+    || document.querySelector(`[data-act-row="${CSS.escape(id)}"]`);
   if (!chat || !row) return;
   const prev = chat.title || 'Chat';
   row.innerHTML = `<input class="chat-rename-input" type="text" maxlength="60" value="${esc(prev)}" aria-label="Nama chat">`;
@@ -6116,7 +6126,7 @@ function wireResultsBar() {
       let qy = _supabase.from('product_types_v')
         .select('keyword, category_canonical, category, omset_top15')
         .gte('n_listings', 3)
-        .or(`keyword.ilike.${tok}%,keyword.ilike.% ${tok}%`)
+        .or(ptypeKeywordOrFilter(tok))
         .order('omset_top15', { ascending: false, nullsFirst: false })
         .limit(40);
       if (cities.length === 1) qy = qy.eq('city', cities[0]);
@@ -8325,12 +8335,14 @@ function asListingProduct(r) {
 
 let _listingHasIsAd = true;
 let _listingHasPromoCols = true;
+let _listingHasExtraCols = true;
 // shop_tier lives on listings, not listings_deduped — attachShopTiers() fills it.
 function listingCoreSelect() {
   const core = 'item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,url,keyword,category,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method';
   const extras = [];
   if (_listingHasIsAd) extras.push('is_ad');
   if (_listingHasPromoCols) extras.push('search_rank', 'in_stock');
+  if (_listingHasExtraCols) extras.push('original_price', 'wishlist');
   return extras.length ? `${core},${extras.join(',')}` : core;
 }
 function listingIsAdMissing(error) {
@@ -8346,6 +8358,11 @@ function listingIsAdMissing(error) {
   if (_listingHasPromoCols && (/\bsearch_rank\b/.test(s) || /\bin_stock\b/.test(s))) {
     console.warn('[listings] search_rank/in_stock missing — promo signals degrade');
     _listingHasPromoCols = false;
+    changed = true;
+  }
+  if (_listingHasExtraCols && (/\boriginal_price\b/.test(s) || /\bwishlist\b/.test(s))) {
+    console.warn('[listings] original_price/wishlist missing — extra columns degrade');
+    _listingHasExtraCols = false;
     changed = true;
   }
   return changed;
@@ -8472,7 +8489,21 @@ async function resolveListingPool({ q, cats, sub, home } = {}) {
       }
     }
 
-    let types = exactKw ? [exactKw] : await searchProductTypes(query, [], 24);
+    let types = exactKw ? [exactKw] : [];
+    if (!exactKw) {
+      const containing = await fetchContainingProductTypes(query, 24);
+      if (containing.length >= 2) {
+        out.matchLevel = 'chooser';
+        out.keywords = containing;
+        out.primaryKw = '';
+        out.listings = [];
+        rememberProducts(out.listings);
+        registerTypes(out.keywords);
+        return out;
+      }
+      if (containing.length === 1) types = containing;
+      else types = await searchProductTypes(query, [], 24);
+    }
     if (types.length) {
       out.matchLevel = 'keyword';
       out.keywords = types.some(t => t._nearby) ? types : markTerlarisMinggu(types.slice());
@@ -8555,6 +8586,9 @@ function filterListingPool(listings, chipKw, zoneKeys) {
   let rows = listings || [];
   if (chipKw) rows = rows.filter(r => (r.keyword || '') === chipKw);
   if (zoneKeys && zoneKeys.size) rows = rows.filter(r => zoneKeys.has(prodKey(r)));
+  if (window.LarisDirWorkbench && typeof LarisDirWorkbench.filterRows === 'function') {
+    rows = LarisDirWorkbench.filterRows(rows);
+  }
   return rows;
 }
 
@@ -10538,6 +10572,44 @@ function _sanitizeSearchToken(q) {
   return String(q || '').replace(/[,()%]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+/** Quoted PostgREST .or() so a space in `% hijab%` is not parsed as two values. */
+function ptypeKeywordOrFilter(needle) {
+  const n = _sanitizeSearchToken(needle).replace(/"/g, '').slice(0, 40);
+  if (!n) return '';
+  if (n.includes(' ')) return `keyword.ilike."%${n}%"`;
+  return `keyword.ilike."${n}%",keyword.ilike."% ${n}%"`;
+}
+
+async function fetchContainingProductTypes(text, limit = 24) {
+  if (!_supabase) return [];
+  const needle = _sanitizeSearchToken(text).replace(/"/g, '').slice(0, 40);
+  if (needle.length < 2) return [];
+  const orFilter = ptypeKeywordOrFilter(needle);
+  if (!orFilter) return [];
+  try {
+    const build = () => {
+      let q = _supabase.from('product_types_v')
+        .select(ptypeCols())
+        .gte('n_listings', 3)
+        .eq('city', 'ALL')
+        .or(orFilter)
+        .order('omset_top15', { ascending: false, nullsFirst: false })
+        .limit(Math.min(40, Math.max(limit, 12)));
+      return q;
+    };
+    let { data, error } = await build();
+    if (ptypeWeeklyMissing(error)) ({ data } = await build());
+    const want = needle.toLowerCase();
+    const rows = (data || []).filter(r => {
+      const kw = String(r.keyword || '').toLowerCase();
+      return kw === want || kw.includes(want) || (` ${kw}`).includes(` ${want}`);
+    });
+    return markTerlarisMinggu(rows.slice(0, limit));
+  } catch (_) {
+    return [];
+  }
+}
+
 /** Split multi-intent queries ("kemeja denim, jeans pria") into independent clauses. */
 function _splitSearchIntents(text) {
   const raw = String(text || '').replace(/\s+/g, ' ').trim();
@@ -10816,6 +10888,9 @@ function searchMatchLeadHtml(q, pool) {
       return `<p class="dd-sub dir-nearby-lead">Brand <strong>${esc(brand)}</strong> belum ada di data kami — menampilkan tipe produk yang paling mirip${typeKw ? ` (${esc(typeKw)})` : ''}.</p>`;
     }
     return `<p class="dd-sub dir-nearby-lead">Produk ${esc(brand)} dan ${esc(typeLabel)} sejenis — merek dulu, lalu produk mirip${pasar}.</p>`;
+  }
+  if (level === 'chooser') {
+    return `<p class="dd-sub dir-nearby-lead">“<strong>${esc(query)}</strong>” cocok beberapa pasar. Pilih yang kamu maksud.</p>`;
   }
   if (level === 'nearby') {
     return `<p class="dd-sub dir-nearby-lead">Belum ketemu produk untuk “<strong>${esc(query)}</strong>”. Ini produk dari pasar terdekat:</p>`;
@@ -12210,6 +12285,7 @@ function listingRowHtml(p, opts = {}) {
     <td class="lrow-num lrow-sold"><span class="lrow-metric-lbl">Terjual</span><span class="lrow-metric-val">${sold ? fmtSold(sold) : '0'}</span></td>
     <td class="lrow-num lrow-wide lrow-reviews"><span class="lrow-metric-lbl">Review</span><span class="lrow-metric-val">${reviews ? fmtSold(reviews) : '0'}</span></td>
     <td class="lrow-num lrow-wide lrow-usia" title="${esc(usia.title)}"><span class="lrow-metric-lbl">Usia</span><span class="lrow-metric-val">${esc(usia.text)}</span></td>
+    ${window.LarisDirWorkbench ? LarisDirWorkbench.extraCellsHtml(p) : ''}
     ${actCell}
   </tr>`;
 }
@@ -12284,6 +12360,7 @@ function listingRowsHtml(list, opts = {}) {
         ${th('terlaris', 'Unit jual')}
         ${th('review', 'Review')}
         ${th('terbaru', 'Usia')}
+        ${window.LarisDirWorkbench ? LarisDirWorkbench.extraHeadsHtml() : ''}
         ${actions ? '<th class="lrow-act"><span class="sr-only">Aksi</span></th>' : ''}
       </tr></thead>`;
   const table = `<div class="lrow-wrap${opts.compact ? ' lrow-wrap--compact' : ''}${pick ? ' lrow-wrap--pick' : ''}${actions ? ' lrow-wrap--actions' : ''}"${opts.keepChat ? ' data-lrow-keepchat="1"' : ''}>
@@ -15470,6 +15547,7 @@ async function wireDdAlertCard(root, product) {
   if (await ddtpUserHasTracked()) { card.remove(); return; }
   card.hidden = false;
   void logUserEvent('dd_alert_card', { ui: 'gpt', action: 'shown', keyword: product?.keyword || '' });
+  void logUserEvent('ddr_alert_shown', { ui: 'gpt', keyword: product?.keyword || '' });
   const wa = await loadProfileWaNumber();
   const input = card.querySelector('#ddr-alert-wa');
   if (input && wa) input.value = wa;
@@ -16252,6 +16330,7 @@ async function openDeepDive(product, ddOpts = {}) {
   clarityEvt('deepdive_open', { keyword: kw });
   void gptJourneyNoteDeepDive();
   funnelStep(_gptDiveSeen++ === 0 ? 'first_dive' : 'second_dive');
+  if (_gptDiveSeen === 1) maybeShowExtHint();
 
   try { await attachShopTiers([product, ...(peers || [])]); } catch (_) {}
   try { await attachTypeQuartiles([product, ...(peers || []).slice(0, 12)]); } catch (_) {}
@@ -16445,6 +16524,7 @@ async function openDeepDive(product, ddOpts = {}) {
   root.querySelector('[data-ddr-fav]')?.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
+    void logUserEvent('ddr_fav', { ui: 'gpt', action: 'click', keyword: kw || '' });
     void (async () => {
       const ok = await trackProductFavorite(product, { via: 'dd_header' });
       if (ok) {
@@ -20253,11 +20333,9 @@ async function searchProductTypes(text, cities, limit = 12, opts) {
           .gte('n_listings', 3);
         // Single tokens: word-prefix / space-prefix (same as autosuggest),
         // so "gelang" does not pull "pergelangan". Phrases stay substring.
-        if (!needle.includes(' ')) {
-          q = q.or(`keyword.ilike.${needle}%,keyword.ilike.% ${needle}%`);
-        } else {
-          q = q.ilike('keyword', `%${needle}%`);
-        }
+        const orFilter = ptypeKeywordOrFilter(needle);
+        if (orFilter) q = q.or(orFilter);
+        else q = q.ilike('keyword', `%${needle}%`);
         q = q.order('omset_top15', { ascending: false, nullsFirst: false })
           .limit(limit * 2);
         if (buckets.length === 1) q = q.eq('city', buckets[0]);
@@ -21353,7 +21431,14 @@ function updateDirCount(total, shown, nearby) {
   // Runs on every repaint with `total` already in hand, which is why the export
   // button hangs off here rather than off gpt-dir-filters.js (mounts once).
   const xb = $('dir-export');
-  if (xb) xb.hidden = !(total > 0 && currentUser);
+  if (xb) {
+    const show = !!(total > 0 && currentUser);
+    const wasHidden = xb.hidden;
+    xb.hidden = !show;
+    if (show && wasHidden) {
+      void logUserEvent('export_shown', { ui: 'gpt', total, view: 'directory' });
+    }
+  }
 }
 
 function updateDirHeading() {
@@ -21655,10 +21740,26 @@ function paintDirKwReq(q) {
   host.innerHTML = kwReqHtml(label, 'directory');
 }
 
+function dirChooserHtml(q, types) {
+  const list = (types || []).slice(0, 12);
+  if (!list.length) return '';
+  const more = (types || []).length > 12
+    ? `<p class="dd-sub">${(types || []).length} pasar cocok. Ketik lebih spesifik, atau minta produk baru di bawah.</p>`
+    : '';
+  return `<div class="dir-chooser" id="dir-chooser">
+    <div class="dir-chooser-list">${list.map(t =>
+      `<button type="button" class="dir-chooser-btn" data-dir-choose="${esc(t.keyword)}">${esc(t.keyword)}</button>`
+    ).join('')}</div>${more}
+  </div>`;
+}
+
 function paintDirectoryTable(opts = {}) {
   const grid = $('dir-grid');
   const pager = $('dir-pager');
   if (!grid) return;
+  if (window.LarisDirWorkbench) {
+    try { LarisDirWorkbench.mount(); } catch (_) {}
+  }
   const filtered = sortDirRows(
     filterListingPool(state.dirPoolListings, state.dirChipKw || '', state.dirZoneKeys),
     state.dirSort || 'omset',
@@ -21682,13 +21783,32 @@ function paintDirectoryTable(opts = {}) {
   });
   paintDirAskSellers(q, state.dirTypes);
   paintDirKwReq(q);
+  if (state.dirMatchLevel === 'chooser') {
+    grid.innerHTML = nearbyLead + dirChooserHtml(q, state.dirTypes);
+    grid.querySelectorAll('[data-dir-choose]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const kw = btn.getAttribute('data-dir-choose') || '';
+        if (kw) {
+          const inp = $('results-bar-input');
+          if (inp) inp.value = kw;
+          void runResultsBarSearch(kw);
+        }
+      });
+    });
+    renderDirPager(pager, 0);
+    updateDirCount(0, 0, false);
+    updateDirHeading();
+    return;
+  }
+  const sum = window.LarisDirWorkbench ? LarisDirWorkbench.rangkumanHtml(filtered) : '';
   grid.innerHTML = slice.length
-    ? nearbyLead + listingRowsHtml(slice, {
+    ? sum + nearbyLead + listingRowsHtml(slice, {
         actions: true,
         highlightKey: '',
         sort: state.dirSort || 'omset',
       }) + listingUnsoldNote(state.dirUnsold)
     : (nearbyLead + emptyMsg);
+  try { window.LarisDirWorkbench?.applyViewClass(grid); } catch (_) {}
   bindListingRows(grid, {
     onSort: (mode) => {
       state.dirSort = mode;
@@ -21761,7 +21881,7 @@ async function renderDirectory() {
   if (state._dirSkipScroll) state._dirSkipScroll = false;
   else scrollPanelToTop();
   paintDirectoryTable({ remountPeta: true });
-  if (q && (pool.matchLevel !== 'keyword' || !pool.listings.length)) {
+  if (q && pool.matchLevel !== 'chooser' && (pool.matchLevel !== 'keyword' || !pool.listings.length)) {
     void logUncoveredSearch(q, {
       category: detectSearchDomain(q.toLowerCase())?.id || null,
       brand: pool.brand || null,
@@ -23772,6 +23892,7 @@ async function boot() {
   // default arm anywhere.
 
   wireUi();
+  initRetentionSurfaces();
   resumePantauNavPulse();
   initLandingAiDemo();
   document.getElementById('gpt-limit-close')?.addEventListener('click', gptLimitClose);
@@ -23882,9 +24003,38 @@ function supLoadData() {
   if (_supLoadPromise) return _supLoadPromise;
   _supLoadPromise = fetch(SUPPLIER_DATA_URL, { cache: 'no-cache' })
     .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-    .then(j => {
+    .then(async (j) => {
       if (!j || !Array.isArray(j.suppliers)) throw new Error('bad shape');
-      _supData = j; _supLoadError = false; return j;
+      _supData = j;
+      _supLoadError = false;
+      if (_supabase) {
+        try {
+          const { data } = await _supabase.from('supplier_listings')
+            .select('id,source,name,shop_id,city,url,category,jenis,contact,contact_consent,published')
+            .eq('published', true)
+            .limit(120);
+          (data || []).forEach((r) => {
+            const row = {
+              id: 'db_' + r.id,
+              shop_id: r.shop_id,
+              name: r.name,
+              city: r.city,
+              url: r.url,
+              categories: r.category ? [r.category] : [],
+              keywords: r.category ? [r.category] : [],
+              tier: (r.jenis === 'Penjual Grosir' || r.jenis === 'grosir') ? 'grosir' : 'grosir',
+              published: true,
+              badges: r.source === 'grosir_seed' ? ['Grosir Shopee'] : ['Seller'],
+              contact: r.contact_consent ? (r.contact || '') : '',
+              generated: false,
+            };
+            if (!_supData.suppliers.some(s => s.id === row.id || (row.shop_id && s.shop_id === row.shop_id))) {
+              _supData.suppliers.push(row);
+            }
+          });
+        } catch (_) {}
+      }
+      return _supData;
     })
     .catch(err => { _supLoadError = true; _supLoadPromise = null; throw err; });
   return _supLoadPromise;
@@ -23969,7 +24119,10 @@ function _supSelect() {
   const cat = _supNorm(catRaw);
 
   if (kw) {
-    const hit = all.filter(s => (s.keywords || []).some(k => _supNorm(k) === kw));
+    const hit = all.filter(s =>
+      (s.keywords || []).some(k => _supNorm(k) === kw)
+      || _supNorm(s.name).includes(kw)
+      || (s.categories || []).some(c => _supNorm(c).includes(kw)));
     if (hit.length) return { rows: hit, mode: 'keyword' };
     return { rows: _supSearchFallbacks(kwRaw), mode: 'search' };
   }
@@ -24079,6 +24232,62 @@ function _supWireDelegation() {
   window.addEventListener('focus', supMaybeShowSurvey);
 }
 
+function _supSelfFormHtml() {
+  if (!currentUser) {
+    return `<p class="sup-source">Masuk untuk mendaftarkan tokomu. Kami tidak menyalin katalog supplier orang lain — hanya toko yang kami scrape sendiri dan listing yang seller kirim sendiri.</p>`;
+  }
+  return `<form class="sup-self" id="sup-self-form">
+    <h3 class="sup-self-h">Daftarkan toko kamu</h3>
+    <p class="sup-source">Kontak hanya nomor yang kamu ketik dan setujui.</p>
+    <input name="name" required placeholder="Nama toko" maxlength="80" autocomplete="organization">
+    <input name="city" placeholder="Kota" maxlength="40">
+    <input name="url" placeholder="URL Shopee / web" maxlength="200">
+    <input name="category" placeholder="Kategori" maxlength="40">
+    <select name="jenis">
+      <option value="Penjual Grosir">Penjual Grosir</option>
+      <option value="Manufaktur">Manufaktur</option>
+      <option value="Agen">Agen</option>
+      <option value="Distributor">Distributor</option>
+      <option value="Pemilik Merek">Pemilik Merek</option>
+      <option value="Lainnya">Lainnya</option>
+    </select>
+    <input name="contact" placeholder="Nomor WA (opsional)" maxlength="32">
+    <label class="sup-self-consent"><input type="checkbox" name="consent"> Saya setuju nomor ini tampil ke seller lain</label>
+    <button type="submit" class="sup-btn">Simpan listing</button>
+  </form>`;
+}
+
+function _supBindSelfForm(root) {
+  const form = root?.querySelector('#sup-self-form');
+  if (!form || form.dataset.bound) return;
+  form.dataset.bound = '1';
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!_supabase || !currentUser) return;
+    const fd = new FormData(form);
+    const consent = !!form.querySelector('[name="consent"]')?.checked;
+    const contact = String(fd.get('contact') || '').trim();
+    if (contact && !consent) { showToast('Centang dulu persetujuan nomor WA.'); return; }
+    const { error } = await _supabase.from('supplier_listings').insert({
+      user_id: currentUser.id,
+      source: 'self',
+      name: String(fd.get('name') || '').trim(),
+      city: String(fd.get('city') || '').trim(),
+      url: String(fd.get('url') || '').trim(),
+      category: String(fd.get('category') || '').trim(),
+      jenis: String(fd.get('jenis') || 'Penjual Grosir'),
+      contact: consent ? contact : '',
+      contact_consent: consent,
+      published: true,
+    });
+    if (error) { showToast('Gagal menyimpan listing.'); return; }
+    showToast('Toko kamu sudah terdaftar.');
+    _supData = null;
+    _supLoadPromise = null;
+    void fillSupplierContent();
+  });
+}
+
 async function fillSupplierContent(opts = {}) {
   const body = $('side-body-supplier');
   if (!body) return;
@@ -24110,7 +24319,8 @@ async function fillSupplierContent(opts = {}) {
 
   if (!rows.length) {
     setSideContext('');
-    body.innerHTML = `<p class="side-empty">Belum ada supplier untuk filter ini.</p>`;
+    body.innerHTML = `<p class="side-empty">Belum ada supplier untuk filter ini.</p>` + _supSelfFormHtml();
+    _supBindSelfForm(body);
     return;
   }
 
@@ -24143,7 +24353,9 @@ async function fillSupplierContent(opts = {}) {
     html += `<button type="button" class="sup-more" data-sup-act="more">Lihat semua ${sorted.length} supplier</button>`;
   }
   if (_supData?.sourceNote) html += `<div class="sup-source">${esc(_supData.sourceNote)}</div>`;
+  html += _supSelfFormHtml();
   body.innerHTML = html;
+  _supBindSelfForm(body);
 
   _supLog('supplier_tab_open', {
     keyword: _supFilterKeyword || null,
@@ -24501,6 +24713,125 @@ function exportFillCount() {
   _exportCtx.count = Number(sel.value);
 }
 
+function exportRedownload(job) {
+  const p = (job && job.payload) || {};
+  const ids = p.item_ids || [];
+  const shops = p.shop_ids || [];
+  if (!job?.request_id || !ids.length) {
+    showToast('File ini belum bisa diunduh ulang. Unduh lagi dari hasil pencarian.');
+    return;
+  }
+  _exportReqId = job.request_id;
+  try { sessionStorage.setItem('_lid_export_req', job.request_id); } catch (_) {}
+  const rows = ids.map((id, i) => ({
+    item_id: id,
+    shop_id: shops[i],
+    keyword: (p.keywords || [])[i] || null,
+  }));
+  exportOpen({
+    source: job.source || p.source || 'directory',
+    rows,
+    lockRows: true,
+    shape: job.shape || p.shape || 'snapshot',
+    weeks: job.weeks || p.weeks || 0,
+    count: rows.length,
+  });
+}
+
+async function saveCurrentSearchCriteria() {
+  if (!currentUser || !_supabase) {
+    openAuthModal('signup', 'gpt_gate_criteria');
+    return;
+  }
+  const q = (state.dirSearch || '').trim();
+  const range = state.dirRangeFilters || {};
+  const cat = primaryDirCat() || '';
+  const name = q || cat || 'Pencarian';
+  const { error } = await _supabase.from('user_saved_criteria').insert({
+    user_id: currentUser.id,
+    name,
+    query: q,
+    category: cat,
+    city: state.onboarding?.city || '',
+    budget_min: range.priceMin ?? null,
+    budget_max: range.priceMax ?? null,
+    omset_min: range.omsetMin ?? null,
+    trend_min: range.trendMin ?? null,
+  });
+  if (error) {
+    showToast('Gagal menyimpan kriteria.');
+    return;
+  }
+  showToast('Kriteria disimpan. Kami kabari lewat lonceng — email Senin, tanpa WhatsApp dulu.');
+  void logUserEvent('criteria_save', { ui: 'gpt', query: q, category: cat });
+}
+
+function maybeShowExtHint() {
+  try {
+    if (localStorage.getItem('lid_ext_hint_v1')) return;
+  } catch (_) { return; }
+  const el = $('ext-install-hint');
+  if (!el) return;
+  el.hidden = false;
+}
+
+function initRetentionSurfaces() {
+  try {
+    window.LarisDirWorkbench?.init({
+      esc,
+      fmtRp,
+      fmtOmset,
+      fmtSold,
+      estOmsetBulan,
+      omsetHonesty,
+      supabase: () => _supabase,
+      user: () => currentUser,
+      getState: () => state,
+      log: (n, m) => logUserEvent(n, m),
+      skorOf: (p) => petaScoreFor(p, state.dirPoolListings || []),
+      finderBudget: () => finderBudgetCfg(_finder.budget || state.onboarding?.budget),
+      onRepaint: () => paintDirectoryTable({ remountPeta: false }),
+      onSaveCriteria: () => { void saveCurrentSearchCriteria(); },
+    });
+  } catch (_) {}
+  try {
+    window.LarisActivity?.init({
+      esc,
+      supabase: () => _supabase,
+      user: () => currentUser,
+      chats: () => state.chats,
+      activeChatId: () => state.activeChatId,
+      openChat,
+      renameChat: beginChatRename,
+      rerunSearch: (q) => {
+        const inp = $('results-bar-input');
+        if (inp) inp.value = q;
+        void runResultsBarSearch(q);
+      },
+      openDive: async (it) => {
+        if (it.item_id != null && it.shop_id != null) {
+          const p = await resolveProduct(it.item_id, it.shop_id);
+          if (p) { await openDeepDive(p, { via: 'riwayat' }); return; }
+        }
+        if (it.keyword) {
+          const inp = $('results-bar-input');
+          if (inp) inp.value = it.keyword;
+          void runResultsBarSearch(it.keyword);
+        }
+      },
+      redownload: exportRedownload,
+    });
+  } catch (_) {}
+  document.addEventListener('click', (e) => {
+    if (e.target?.closest?.('[data-lrow-stop]')) e.stopPropagation();
+    if (e.target?.closest?.('#ext-hint-skip')) {
+      try { localStorage.setItem('lid_ext_hint_v1', '1'); } catch (_) {}
+      const el = $('ext-install-hint');
+      if (el) el.hidden = true;
+    }
+  }, true);
+}
+
 function exportOpen(ctx = {}) {
   if (!currentUser) {
     void logUserEvent('export_gate', { ui: 'gpt', source: ctx.source || 'directory' });
@@ -24652,6 +24983,7 @@ async function exportRun(fmt) {
     }
 
     // Charged — hold the payload so a failed save can be retried for free.
+    const stampReqId = _exportReqId;
     _exportReqId = null;
     try { sessionStorage.removeItem('_lid_export_req'); } catch (_) {}
     _exportQuota = Object.assign({}, _exportQuota, {
@@ -24676,6 +25008,25 @@ async function exportRun(fmt) {
       wanted_rows: hist ? sel.length * (weeks + 1) : sel.length,
       wanted_products: sel.length,
     });
+    try {
+      const reqId = stampReqId;
+      const payload = {
+        query: kw,
+        source: _exportCtx?.source || 'directory',
+        shape: hist ? 'history' : 'snapshot',
+        weeks: hist ? weeks : 0,
+        item_ids: sel.map((r) => Number(r.item_id)),
+        shop_ids: sel.map((r) => Number(r.shop_id)),
+        keywords: sel.map((r) => r.keyword || null),
+      };
+      if (_supabase && reqId) {
+        void _supabase.rpc('export_stamp_payload', { p_request_id: reqId, p_payload: payload });
+        void _supabase.rpc('notice_self', {
+          p_kind: 'export_done',
+          p_payload: { lead: 'Unduhan siap', query: kw, request_id: reqId },
+        }).then(() => { try { window.LarisActivity?.refreshBell(); } catch (_) {} });
+      }
+    } catch (_) {}
 
     showToast(hist
       ? `Riwayat ${data.weeks || weeks} minggu diunduh. Sisa ${data.weeks_remaining ?? '—'} minggu hari ini.`
@@ -24756,8 +25107,14 @@ const EXPORT_PRODUK_COLS = [
 const EXPORT_RIWAYAT_COLS = [
   ['Minggu ke-',          (w, i) => i + 1,                                          'int'],
   ['Minggu (Senin WIB)',  (w) => w.week_start || '',                                'text'],
+  ['Harga (Rp)',          (w) => w.price,                                           'money'],
   ['Omset / minggu (Rp)', (w) => w.omset_wk,                                        'money'],
   ['Unit / minggu',       (w) => w.units_wk,                                        'dec'],
+  ['Review',              (w) => (w.snap_reviews == null || w.snap_reviews === '' ? '—' : w.snap_reviews), 'text'],
+  ['Rating',              (w) => (w.snap_rating == null || w.snap_rating === '' ? '—' : w.snap_rating), 'text'],
+  ['Total terjual',       (w) => (w.snap_sold == null || w.snap_sold === '' ? '—' : w.snap_sold), 'text'],
+  ['Harga asli (Rp)',     (w) => (w.snap_harga_asli == null || w.snap_harga_asli === '' ? '—' : w.snap_harga_asli), 'text'],
+  ['Tanggal scrape',      (w) => exportDateStr(w.snap_at) || '—',                    'text'],
   ['Sumber',              (w) => w.sumber || '',                                    'text'],
 ];
 

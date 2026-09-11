@@ -289,6 +289,14 @@ serve(async (req) => {
         if (ok) sent++
         else errors.push(`${u.user_id}/${channel}: ${detail}`)
 
+        if (ok && channel === 'email') {
+          await db.from('user_notices').insert({
+            user_id: u.user_id,
+            kind: 'tracker_change',
+            payload: { lead: title, task },
+          })
+        }
+
         await db.rpc('tracker_notify_mark', {
           p_user_id: u.user_id, p_scope: scope, p_entity_key: claimKey,
           p_channel: channel, p_data_day: claimDay,

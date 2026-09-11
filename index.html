@@ -694,6 +694,12 @@ body.view-directory .panel {
   font-size: .8125rem; font-weight: 550; color: var(--ink);
 }
 .btn-user:hover { background: var(--bg-user); }
+.hdr-ext-link {
+  font-size: .72rem; font-weight: 800; color: var(--accent, #B5202A);
+  text-decoration: none; white-space: nowrap;
+}
+.hdr-ext-link:hover { text-decoration: underline; }
+@media (max-width: 720px) { .hdr-ext-link { display: none; } }
 .btn-user-av {
   width: 28px; height: 28px; border-radius: 50%;
   background: var(--bg-side); display: grid; place-items: center;
@@ -1828,6 +1834,111 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
 .dir-export-btn[hidden] { display: none !important; }
 .dir-export-btn svg { flex: none; }
 @media (max-width: 560px) { .dir-export-btn span { display: none; } }
+
+.dir-workbench {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  flex: 1 1 100%;
+}
+.dir-rangkuman {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px; margin: 0 0 12px; padding: 10px 12px;
+  background-color: #fff; border: 1px solid var(--line); border-radius: 12px;
+}
+.dir-sum-bit { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.dir-sum-k { font-size: .68rem; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .04em; }
+.dir-sum-v { font-size: .86rem; font-weight: 800; color: var(--ink); }
+.dir-range, .dir-cols {
+  background-color: #fff; border: 1px solid var(--line); border-radius: 10px;
+  padding: 6px 10px; font-size: .8rem;
+}
+.dir-range summary, .dir-cols summary { cursor: pointer; font-weight: 700; }
+.dir-range-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px;
+}
+.dir-range-grid label { display: flex; flex-direction: column; gap: 4px; font-size: .72rem; color: var(--ink-soft); }
+.dir-range-grid input, .dir-cols input { accent-color: var(--accent, #B5202A); }
+.dir-range-grid input[type="number"] {
+  border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font-size: .8rem;
+}
+.dir-range-acts { display: flex; gap: 8px; margin-top: 8px; }
+.dir-cols-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+.dir-col-opt { display: flex; align-items: center; gap: 6px; font-size: .78rem; }
+.dir-cols-note { margin: 6px 0 0; font-size: .72rem; color: var(--ink-soft); }
+.dir-view-toggle { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.dir-view-btn { border: 0; background-color: #fff; padding: 7px 10px; font-size: .78rem; font-weight: 700; cursor: pointer; color: var(--ink); }
+.dir-view-btn.is-on { background-color: var(--bg-user); }
+.dir-chooser-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px; }
+.dir-chooser-btn {
+  border: 1px solid var(--line); background-color: #fff; border-radius: 999px;
+  padding: 8px 12px; font-size: .82rem; font-weight: 700; cursor: pointer;
+}
+.dir-chooser-btn:hover { border-color: #F5D0A9; background-color: #FFF7ED; }
+#dir-grid .lrow-wrap.is-cards { container-type: inline-size; }
+@media (min-width: 560px) {
+  #dir-grid .lrow-wrap.is-cards .lrow-table thead { display: none; }
+  #dir-grid .lrow-wrap.is-cards tbody { display: flex; flex-direction: column; gap: 10px; }
+  #dir-grid .lrow-wrap.is-cards .lrow {
+    display: grid;
+    grid-template-columns: 30px 78px minmax(7rem, 1fr) max-content 18px;
+    gap: 8px; padding: 12px; border: 1px solid #ECEFF3; border-radius: 16px;
+    background-color: #fff;
+  }
+  #dir-grid .lrow-wrap.is-cards .lrow-extra {
+    grid-column: 3 / 5;
+    min-width: 0;
+  }
+}
+.lrow-disc { color: var(--accent, #B5202A); font-size: .78em; font-weight: 800; }
+.lrow-ext-url { color: var(--accent, #B5202A); font-weight: 700; }
+.riwayat-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 8px; }
+.riwayat-chip {
+  border: 1px solid var(--line); background-color: #fff; border-radius: 999px;
+  padding: 4px 10px; font-size: .72rem; font-weight: 700; cursor: pointer; color: var(--ink);
+}
+.riwayat-chip.is-on { background-color: var(--bg-user); border-color: #F5D0A9; }
+.riwayat-kind { font-size: .64rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-soft); margin-right: 4px; }
+.riwayat-when { display: block; font-size: .64rem; color: var(--muted); font-weight: 600; }
+.arsip-list { display: flex; flex-direction: column; gap: 8px; padding: 4px 8px 12px; }
+.arsip-card { border: 1px solid var(--line); border-radius: 12px; padding: 10px; background-color: #fff; }
+.arsip-name { font-weight: 800; font-size: .82rem; }
+.arsip-meta { font-size: .72rem; color: var(--ink-soft); margin: 4px 0 8px; }
+.notif-wrap { position: relative; }
+.notif-bell {
+  position: relative; width: 36px; height: 36px; border: 0; border-radius: 50%;
+  background-color: transparent; color: var(--ink); cursor: pointer;
+  display: grid; place-items: center;
+}
+.notif-bell:hover { background-color: var(--bg-user); }
+.notif-badge {
+  position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px;
+  border-radius: 999px; background-color: var(--accent, #B5202A); color: #fff;
+  font-size: .62rem; font-weight: 800; line-height: 16px; text-align: center;
+}
+.notif-badge[hidden] { display: none !important; }
+.notif-panel {
+  position: absolute; right: 0; top: calc(100% + 6px); width: min(320px, 80vw);
+  background-color: #fff; border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(16,24,40,.12); padding: 8px; z-index: 40;
+}
+.notif-item {
+  display: block; width: 100%; text-align: left; border: 0; background-color: transparent;
+  padding: 8px; border-radius: 8px; font-size: .8rem; cursor: pointer;
+}
+.notif-item:hover { background-color: var(--bg-user); }
+.notif-empty { margin: 8px; font-size: .8rem; color: var(--ink-soft); }
+.ext-install-hint {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin: 0 16px 8px; padding: 8px 12px; border-radius: 12px;
+  background-color: #FFF7ED; border: 1px solid #F5D0A9; font-size: .8rem;
+}
+.ext-install-hint[hidden] { display: none !important; }
+.ext-install-hint a { font-weight: 800; color: var(--accent, #B5202A); }
+.sup-self { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+.sup-self-h { margin: 0; font-size: .9rem; }
+.sup-self input, .sup-self select {
+  border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: .8rem;
+}
+.sup-self-consent { font-size: .75rem; display: flex; gap: 6px; align-items: center; }
 
 /* Export modals. Double-classed (.modal.export-modal) so they beat the base
    `.modal { max-width: 400px }` defined later in this file. */
@@ -6632,7 +6743,8 @@ body.home-finder-done .home-hero {
   #dir-grid .lrow-spark,
   #dir-grid .lrow-sold,
   #dir-grid .lrow-reviews,
-  #dir-grid .lrow-usia {
+  #dir-grid .lrow-usia,
+  #dir-grid .lrow-extra {
     display: flex !important;
     flex-direction: column;
     justify-content: center;
@@ -6663,6 +6775,7 @@ body.home-finder-done .home-hero {
   #dir-grid .lrow-sold { grid-column: 8; grid-row: 1 / span 2; min-width: 72px; padding: 0 12px !important; }
   #dir-grid .lrow-reviews { grid-column: 9; grid-row: 1 / span 2; min-width: 68px; padding: 0 12px !important; }
   #dir-grid .lrow-usia { grid-column: 10; grid-row: 1 / span 2; min-width: 58px; padding: 0 12px !important; }
+  #dir-grid .lrow-extra { grid-row: 1 / span 2; min-width: 88px; padding: 0 12px !important; }
   #dir-grid .lrow-metric-lbl {
     display: block;
     font-size: .62rem;
@@ -7677,7 +7790,7 @@ body.view-chat .sfb-card {
     <div class="side-section">
       <div class="side-label">Riwayat</div>
       <div class="chat-search" id="chat-search" role="search">
-        <input type="search" id="chat-search-input" placeholder="Cari chat…" autocomplete="off" enterkeyhint="search" aria-label="Cari chat">
+        <input type="search" id="chat-search-input" placeholder="Cari aktivitas…" autocomplete="off" enterkeyhint="search" aria-label="Cari aktivitas">
         <button type="button" class="chat-search-clear" id="chat-search-clear" title="Tutup" aria-label="Tutup pencarian">×</button>
       </div>
       <div class="chat-list" id="chat-list"><div class="chat-empty">Belum ada pencarian</div></div>
@@ -7804,8 +7917,23 @@ body.view-chat .sfb-card {
           <span class="btn-user-av" id="user-av">?</span>
           <span id="user-name">Akun</span>
         </button>
+        <a class="hdr-ext-link" id="hdr-ext-link" href="https://chromewebstore.google.com/detail/ldgcjbnecfnpbgenechgfbdagecnloae" target="_blank" rel="noopener">Pasang ekstensi</a>
+        <div class="notif-wrap" id="notif-wrap">
+          <button type="button" class="notif-bell" id="notif-bell" aria-label="Pemberitahuan" title="Pemberitahuan">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <span class="notif-badge" id="notif-bell-badge" hidden>0</span>
+          </button>
+          <div class="notif-panel" id="notif-panel" hidden></div>
+        </div>
       </div>
     </header>
+    <div class="ext-install-hint" id="ext-install-hint" hidden>
+      <span>Pasang ekstensi Chrome supaya omset LarisID tampil di halaman Shopee.</span>
+      <span>
+        <a href="https://chromewebstore.google.com/detail/ldgcjbnecfnpbgenechgfbdagecnloae" target="_blank" rel="noopener">Pasang</a>
+        · <button type="button" class="btn-ghost" id="ext-hint-skip">Nanti</button>
+      </span>
+    </div>
 
     <!-- Sticky Produk search strip — sits between header and body panel.
          Kategori mega-menu + autocomplete search (Tokopedia-inspired layout). -->
@@ -8481,6 +8609,7 @@ body.view-chat .sfb-card {
           <!-- Unduh sits with Urutkan — above product rows, below Trending. -->
           <div class="dir-list-bar" id="dir-list-bar">
             <div id="dir-filters-range"></div>
+            <div id="dir-workbench-host"></div>
             <button type="button" class="btn-ghost dir-export-btn" id="dir-export" hidden
                     aria-label="Unduh hasil ke spreadsheet">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -9851,12 +9980,14 @@ body.view-chat .sfb-card {
 
 <script src="/js/laris-merdeka.js?v=20260816b" defer></script>
 <script src="/js/changelog.js?v=20260911a" defer></script>
-<script defer src="/js/gpt-dir-filters.js?v=20260906b"></script>
+<script defer src="/js/gpt-dir-filters.js?v=20260911c"></script>
+<script defer src="/js/gpt-dir-workbench.js?v=20260911b"></script>
+<script defer src="/js/gpt-activity.js?v=20260911b"></script>
 <script defer src="/js/gpt-dir-hero.js?v=20260824a"></script>
 <script defer src="/js/gpt-dir-home.js?v=20260824d"></script>
 <script defer src="/js/gpt-photo-analyze.js?v=20260824a"></script>
 <script defer src="/js/gpt-referral.js?v=20260821a"></script>
-<script defer src="/js/gpt-profile.js?v=20260910d"></script>
+<script defer src="/js/gpt-profile.js?v=20260911e"></script>
 <script defer src="/js/gpt-community-board.js?v=20260909b"></script>
 <script defer src="/js/laris-cohort.js?v=20260908j"></script>
 <script defer src="/js/laris-mascot-rigs.js?v=20260907k"></script>
@@ -9871,6 +10002,6 @@ body.view-chat .sfb-card {
 <script src="/js/peta-peluang.js?v=20260908a" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
-<script src="/js/gpt-app.js?v=20260911b" defer></script>
+<script src="/js/gpt-app.js?v=20260911d" defer></script>
 </body>
 </html>
