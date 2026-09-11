@@ -23916,6 +23916,12 @@ async function boot() {
 
   if (typeof ensureSupabase === 'function') await ensureSupabase();
   await initSupabase();
+  try {
+    if (_supData) {
+      await mergePublishedSupplierListings();
+      if (_sideMode === 'supplier') void fillSupplierContent();
+    }
+  } catch (_) {}
   consumeKomunitasDeepLink();
   consumeProductDeepLink();
   _exportWireDelegation();
@@ -23998,8 +24004,44 @@ function _supLog(eventType, props) {
   try { clarityEvt(eventType); } catch (_) {}
 }
 
+let _supDbMerged = false;
+
+async function mergePublishedSupplierListings() {
+  if (!_supabase || !_supData || !Array.isArray(_supData.suppliers)) return;
+  try {
+    const { data, error } = await _supabase.from('supplier_listings')
+      .select('id,source,name,shop_id,city,url,category,jenis,contact,contact_consent,published')
+      .eq('published', true)
+      .limit(120);
+    if (error) return;
+    (data || []).forEach((r) => {
+      const row = {
+        id: 'db_' + r.id,
+        shop_id: r.shop_id,
+        name: r.name,
+        city: r.city,
+        url: r.url,
+        categories: r.category ? [r.category] : [],
+        keywords: r.category ? [r.category] : [],
+        tier: 'grosir',
+        published: true,
+        badges: r.source === 'grosir_seed' ? ['Grosir Shopee'] : ['Seller'],
+        contact: r.contact_consent ? (r.contact || '') : '',
+        generated: false,
+      };
+      if (!_supData.suppliers.some(s => s.id === row.id || (row.shop_id && String(s.shop_id) === String(row.shop_id)))) {
+        _supData.suppliers.push(row);
+      }
+    });
+    _supDbMerged = true;
+  } catch (_) {}
+}
+
 function supLoadData() {
-  if (_supData) return Promise.resolve(_supData);
+  if (_supData && (_supDbMerged || !_supabase)) return Promise.resolve(_supData);
+  if (_supData && _supabase && !_supDbMerged) {
+    return mergePublishedSupplierListings().then(() => _supData);
+  }
   if (_supLoadPromise) return _supLoadPromise;
   _supLoadPromise = fetch(SUPPLIER_DATA_URL, { cache: 'no-cache' })
     .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
@@ -24007,33 +24049,7 @@ function supLoadData() {
       if (!j || !Array.isArray(j.suppliers)) throw new Error('bad shape');
       _supData = j;
       _supLoadError = false;
-      if (_supabase) {
-        try {
-          const { data } = await _supabase.from('supplier_listings')
-            .select('id,source,name,shop_id,city,url,category,jenis,contact,contact_consent,published')
-            .eq('published', true)
-            .limit(120);
-          (data || []).forEach((r) => {
-            const row = {
-              id: 'db_' + r.id,
-              shop_id: r.shop_id,
-              name: r.name,
-              city: r.city,
-              url: r.url,
-              categories: r.category ? [r.category] : [],
-              keywords: r.category ? [r.category] : [],
-              tier: (r.jenis === 'Penjual Grosir' || r.jenis === 'grosir') ? 'grosir' : 'grosir',
-              published: true,
-              badges: r.source === 'grosir_seed' ? ['Grosir Shopee'] : ['Seller'],
-              contact: r.contact_consent ? (r.contact || '') : '',
-              generated: false,
-            };
-            if (!_supData.suppliers.some(s => s.id === row.id || (row.shop_id && s.shop_id === row.shop_id))) {
-              _supData.suppliers.push(row);
-            }
-          });
-        } catch (_) {}
-      }
+      await mergePublishedSupplierListings();
       return _supData;
     })
     .catch(err => { _supLoadError = true; _supLoadPromise = null; throw err; });
@@ -24304,6 +24320,8 @@ async function fillSupplierContent(opts = {}) {
     body.innerHTML = '<p class="side-empty">Memuat supplier…</p>';
     try { await supLoadData(); } catch (_) { /* rendered as error below */ }
     if (_sideMode !== 'supplier') return;
+  } else if (_supData && _supabase && !_supDbMerged) {
+    try { await mergePublishedSupplierListings(); } catch (_) {}
   }
 
   if (_supLoadError) {
