@@ -380,7 +380,7 @@ let currentUser = null;
 let _authMode = 'signup';
 let _gateSource = '';
 let _dd = null; // current deep dive: { product, peers, niche, stats, history, series }
-const _ddCache = new Map(); // key -> { peers, niche, history }
+const _ddCache = new Map(); // key -> { peers, niche, history, detail }
 const DD_CACHE_MAX = 8;
 
 function ddCacheKey(product) {
@@ -8370,6 +8370,39 @@ function listingIsAdMissing(error) {
   return changed;
 }
 
+/* ── product_details (PDP pass) ──────────────────────────────────────────
+ * One row per item_id, overwritten each scrape, written daily by the
+ * scraper's tracked/queue PDP pass. Coverage is partial by design, so every
+ * consumer renders an honest empty state rather than a zero.
+ * Shopee's PDP payload carries NO per-variant sold and NO per-variant stock
+ * count (NULL in every model we have ever fetched) — never display either.
+ */
+const PDETAIL_COLS = 'item_id,shop_id,detail_scraped_at,brand,condition,preorder_days,'
+  + 'tier_variations_json,models_json,rating_breakdown_json,liked_count,comment_count,shop_location';
+let _pdetailAvail = true;
+async function fetchProductDetail(product) {
+  const id = product?.item_id;
+  if (!_pdetailAvail || id == null || product?._ptype) return null;
+  try {
+    // item_id is the primary key on its own and shop_id is nullable, so
+    // adding .eq('shop_id') would silently return nothing for rows missing it.
+    const { data, error } = await _supabase.from('product_details')
+      .select(PDETAIL_COLS)
+      .eq('item_id', id)
+      .limit(1)
+      .maybeSingle();
+    if (error) {
+      const s = `${error.code || ''} ${error.message || ''}`;
+      if (/42P01|42501|PGRST(106|205)/.test(s)) {
+        console.warn('[varian] product_details unreadable — varian/ulasan detail disabled');
+        _pdetailAvail = false;
+      }
+      return null;
+    }
+    return data || null;
+  } catch (_) { return null; }
+}
+
 function dedupeListings(rows) {
   const seen = new Set();
   const out = [];
@@ -9532,6 +9565,220 @@ function ddPromoCardHtml(product, peers) {
     ${promoCalcHtml([row], false)}
     ${promoNotesHtml(demand.span)}
   </div>`;
+}
+
+/* ── Varian & ulasan cards (product_details) ─────────────────────────────
+ * Everything here is measured PDP data or an honest blank. The one rule:
+ * Shopee publishes no per-variant sales, so we never show, imply or infer
+ * "varian terlaris" — not from price, not from an empty variant.
+ */
+function pdModels(detail) {
+  const m = detail?.models_json;
+  return Array.isArray(m) ? m.filter(x => x && typeof x === 'object') : [];
+}
+function pdTiers(detail) {
+  const t = detail?.tier_variations_json;
+  if (!Array.isArray(t)) return [];
+  return t.map(x => ({
+    name: String(x?.name || '').trim(),
+    options: (Array.isArray(x?.options) ? x.options : []).filter(o => String(o ?? '').trim()),
+  })).filter(x => x.options.length);
+}
+function pdVariantStats(detail) {
+  const models = pdModels(detail);
+  const prices = models.map(m => Number(m.price)).filter(p => p > 0);
+  const lo = prices.length ? Math.min(...prices) : 0;
+  const hi = prices.length ? Math.max(...prices) : 0;
+  // has_stock arrived later than the first rows: absent means "belum terdata",
+  // which is NOT "tersedia". Keep the three states apart everywhere.
+  const known = models.filter(m => typeof m.has_stock === 'boolean');
+  const oos = known.filter(m => m.has_stock === false)
+    .map(m => String(m.name ?? '').trim()).filter(Boolean);
+  return {
+    models, tiers: pdTiers(detail), prices, lo, hi,
+    flat: prices.length > 1 && hi === lo,
+    stockKnown: known.length > 0, oos,
+  };
+}
+function pdStars(detail) {
+  const rb = detail?.rating_breakdown_json;
+  if (!Array.isArray(rb) || rb.length < 6) return null;
+  // Shopee's shape is [total, 1★, 2★, 3★, 4★, 5★].
+  const stars = [1, 2, 3, 4, 5].map(i => Math.max(0, Number(rb[i]) || 0));
+  const sum = stars.reduce((a, b) => a + b, 0);
+  const total = Math.max(Number(rb[0]) || 0, sum);
+  if (!total) return null;
+  const bad = stars[0] + stars[1];
+  return { stars, total, bad, badPct: bad / total * 100, max: Math.max(...stars) };
+}
+function pdBrand(detail) {
+  const b = String(detail?.brand || '').trim();
+  if (!b || /^no\s*brand$/i.test(b) || /^tidak ada merek$/i.test(b)) return '';
+  return b;
+}
+function ddDetailAgeDays(detail) {
+  const t = Date.parse(detail?.detail_scraped_at || '');
+  return t ? Math.max(0, Math.floor((Date.now() - t) / 864e5)) : null;
+}
+function ddDetailStaleNote(detail) {
+  const days = ddDetailAgeDays(detail);
+  if (days == null) return '';
+  const when = fmtAnchorDate(detail.detail_scraped_at);
+  if (days <= 0) return '<p class="dd-sub">Diambil hari ini dari halaman produk Shopee.</p>';
+  if (days < 7) {
+    return `<p class="dd-sub">Diambil ${days} hari lalu (${esc(when)}). Harga dan stok varian bisa sudah berubah.</p>`;
+  }
+  return `<p class="dd-sub">Terakhir diambil ${esc(when)} — sudah ${days} hari. Anggap sebagai gambaran, bukan harga hari ini.</p>`;
+}
+function ddBrandChipHtml(detail) {
+  const b = pdBrand(detail);
+  if (!b) return '';
+  return ` <span class="ddr-brand" title="Merek dari halaman produk Shopee. Kami tidak mengarang merek dari nama produk.">Merek: ${esc(b)}</span>`;
+}
+function pdPctId(n) {
+  return `${(Number(n) || 0).toFixed(1).replace('.', ',')}%`;
+}
+
+function ddVarianCardHtml(product, detail) {
+  const head = `<div class="ddr-sec-head"><h3>Varian &amp; Harga</h3>${detail
+    ? '<span class="omset-chip omset-chip--terukur" title="Diambil langsung dari halaman produk Shopee.">terukur</span>'
+    : ''}</div>`;
+  if (!detail) {
+    return `<div class="ddr-card" data-dd-sec="varian">${head}
+      <p class="dd-sub">Data varian produk ini belum kami ambil. Kami buka halaman produknya satu per satu, dan belum sampai ke yang ini.</p>
+      <button type="button" class="ddr-varian-req" data-dd-varian-req="1">Minta data varian</button>
+      <p class="dd-sub">${currentUser
+        ? 'Biasanya siap besok pagi, nanti kami kabari di sini.'
+        : 'Masuk dulu supaya kami bisa mengabari kamu kalau datanya sudah siap.'}</p>
+    </div>`;
+  }
+  const v = pdVariantStats(detail);
+  // Shopee's tier names come in as the seller typed them ("ukuran", "WARNA").
+  const tierName = t => {
+    const n = String(t.name || 'Varian').trim();
+    return esc(n.charAt(0).toUpperCase() + n.slice(1).toLowerCase());
+  };
+  const structure = v.tiers.map(t => `${t.options.length} ${tierName(t)}`).join(' × ');
+  const count = v.models.length;
+  let headline;
+  if (!count) headline = structure || 'Produk ini tidak punya varian.';
+  else if (!structure) headline = `${count.toLocaleString('id-ID')} varian terdaftar`;
+  else if (v.tiers.length === 1 && v.tiers[0].options.length === count) {
+    // One tier that covers every model — "15 Ukuran · 15 varian" says it twice.
+    headline = `${count.toLocaleString('id-ID')} varian ${tierName(v.tiers[0])}`;
+  } else headline = `${structure} · ${count.toLocaleString('id-ID')} varian terdaftar`;
+  let priceLine;
+  if (!v.prices.length) priceLine = 'Harga per varian belum terdata.';
+  else if (count <= 1) priceLine = `Harga ${fmtRp(v.lo)}.`;
+  else if (v.flat) priceLine = `Semua ${count} varian harganya sama: ${fmtRp(v.lo)}.`;
+  else priceLine = `Termurah ${fmtRp(v.lo)} · termahal ${fmtRp(v.hi)}.`;
+  const CAP = 60;
+  const rows = v.models.slice(0, CAP).map(m => {
+    const nm = String(m.name ?? '').trim() || '—';
+    const pr = Number(m.price) > 0 ? fmtRp(m.price) : '—';
+    const kosong = m.has_stock === false ? '<i>kosong</i>' : '';
+    return `<li><span>${esc(nm)}</span><b>${esc(pr)}</b>${kosong}</li>`;
+  }).join('');
+  const tail = count > CAP ? `<li class="ddr-varian-tail">…dan ${count - CAP} varian lain</li>` : '';
+  const list = count > 1 ? `<details class="ddr-komp-more ddr-varian-more" id="ddr-varian-more">
+      <summary>
+        <span class="ddr-komp-more-closed">Lihat semua ${count} varian</span>
+        <span class="ddr-komp-more-open">Sembunyikan</span>
+      </summary>
+      <ul class="ddr-varian-list">${rows}${tail}</ul>
+    </details>` : '';
+  let stockLine;
+  if (!v.stockKnown) stockLine = 'Status stok per varian belum terdata untuk produk ini.';
+  else if (v.oos.length) {
+    const shown = v.oos.slice(0, 6).map(esc).join(', ');
+    const more = v.oos.length > 6 ? `, +${v.oos.length - 6} lagi` : '';
+    stockLine = `Varian yang sekarang kosong: ${shown}${more}. Kosong bisa berarti laris, bisa juga memang tidak distok lagi — Shopee tidak memberi tahu yang mana.`;
+  } else stockLine = 'Semua varian masih tersedia saat data ini diambil.';
+  return `<div class="ddr-card" data-dd-sec="varian">${head}
+    <p class="ddr-varian-head">${headline}</p>
+    <p class="ddr-varian-price">${esc(priceLine)}</p>
+    ${list}
+    <p class="dd-sub">${esc(stockLine)}</p>
+    <p class="dd-sub">Shopee tidak mempublikasikan jumlah terjual per varian — jadi kami tidak menampilkannya. Yang ada di sini: struktur varian, harga tiap varian, dan varian yang stoknya kosong.</p>
+    ${ddDetailStaleNote(detail)}
+  </div>`;
+}
+
+function pdPeerMedianRating(peers) {
+  const rs = (peers || []).map(p => Number(p.rating)).filter(r => r > 0).sort((a, b) => a - b);
+  return rs.length ? rs[Math.floor(rs.length / 2)] : null;
+}
+
+function ddUlasanCardHtml(product, detail, peers, niche) {
+  const stars = pdStars(detail);
+  const reviews = Number(product?.reviews) || 0;
+  const rating = Number(product?.rating) || 0;
+  const med = pdPeerMedianRating(peers);
+  const wall = calcReviewWall(reviews, niche);
+  const one = n => (Number(n) || 0).toFixed(1).replace('.', ',');
+  const ratingLine = rating > 0
+    ? (med != null
+      ? `Rating ${one(rating)} — median kompetitor di keyword ini ${one(med)}.`
+      : `Rating ${one(rating)}.`)
+    : 'Rating belum ada di data kami.';
+  // Bar widths normalise to the biggest bucket, not the total: a 2% 1★ bar
+  // against 27k 5★ would otherwise render as nothing and read as zero.
+  const histo = stars ? `<div class="ddr-stars">${[5, 4, 3, 2, 1].map(s => {
+    const n = stars.stars[s - 1];
+    const w = stars.max ? Math.max(n > 0 ? 2 : 0, Math.round(n / stars.max * 100)) : 0;
+    return `<div class="dist-bar${s <= 2 ? ' is-bad' : ''}"><span class="ddr-star-lbl">${s}★</span><div class="track"><div class="fill" style="width:${w}%"></div></div><span class="ddr-star-num">${n.toLocaleString('id-ID')}</span></div>`;
+  }).join('')}</div>` : '';
+  const pills = `<div class="review-wall">
+    <span class="review-pill">${fmtSold(wall.reviews)} ulasan</span>
+    <span class="review-pill">dinding niche ±${fmtSold(wall.wall)}</span>
+    ${stars ? `<span class="review-pill review-pill--bad">ulasan buruk ${pdPctId(stars.badPct)}</span>` : ''}
+  </div>`;
+  const badLine = stars
+    ? `Bintang 1 dan 2 berjumlah ${stars.bad.toLocaleString('id-ID')} dari ${stars.total.toLocaleString('id-ID')} ulasan (${pdPctId(stars.badPct)}). Baca beberapa di Shopee — di situ keluhan yang bisa kamu perbaiki.`
+    : 'Rincian per bintang baru ada setelah kami buka halaman produknya.';
+  const liked = Number(detail?.liked_count) || 0;
+  const likedLine = liked > 0
+    ? `<p class="dd-sub">Disimpan ke wishlist ${liked.toLocaleString('id-ID')} orang.</p>`
+    : '';
+  const scope = stars
+    ? '<p class="dd-sub">Rincian bintang ini dari halaman produk Shopee, khusus listing ini. Kompetitor belum kami buka satu per satu, jadi belum ada pembanding per bintang di keyword ini.</p>'
+    : '';
+  return `<div class="ddr-card" data-dd-sec="ulasan">
+    <div class="ddr-sec-head"><h3>Kualitas Ulasan</h3>${stars
+      ? '<span class="omset-chip omset-chip--terukur" title="Rincian bintang diambil langsung dari halaman produk Shopee.">terukur</span>'
+      : ''}</div>
+    <p class="ddr-varian-head">${esc(ratingLine)}</p>
+    ${pills}
+    ${histo}
+    <p class="dd-sub">${esc(badLine)}</p>
+    ${likedLine}
+    ${scope}
+    ${stars ? ddDetailStaleNote(detail) : ''}
+  </div>`;
+}
+
+function wireDdVarianRequest(root, product) {
+  root?.querySelectorAll?.('[data-dd-varian-req]')?.forEach((btn) => {
+    if (btn.dataset.boundVarianReq) return;
+    btn.dataset.boundVarianReq = '1';
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!currentUser) {
+        stashPendingDeepdive(product);
+        openAuthModal('signup', 'gpt_gate_varian');
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = 'Sudah dicatat';
+      showToast('Aku catat permintaanmu. Kami ambil di scrape berikutnya.');
+      void logUserEvent('dd_varian_request', {
+        ui: 'gpt',
+        item_id: String(product?.item_id ?? ''),
+        keyword: product?.keyword || '',
+      });
+    });
+  });
 }
 
 async function handlePromoIntent(chat, text) {
@@ -15529,7 +15776,7 @@ function ddAlertCardHtml(product) {
   return `<div class="ddr-alert" id="ddr-alert" data-dd-sec="alert_optin" hidden>
     <div class="ddr-alert-copy">
       <h3>Simpan ke Favorit &amp; kabari kalau <em>${esc(name)}</em> berubah</h3>
-      <p>Kami scrape favorit ini tiap hari. Pilih saluran — kami hanya kirim saat ada perubahan, atau sekali seminggu kalau kamu atur begitu di Favorit Aku.</p>
+      <p>Kami scrape favorit ini tiap hari — termasuk halaman produknya, jadi varian, harga per varian dan rincian bintangnya ikut terbarui. Pilih saluran — kami hanya kirim saat ada perubahan, atau sekali seminggu kalau kamu atur begitu di Favorit Aku.</p>
     </div>
     <div class="ddr-alert-actions">
       ${emailOk ? `<button type="button" class="ddr-alert-btn primary" data-dd-alert="email">Email ke ${esc(email)}</button>` : ''}
@@ -16161,6 +16408,12 @@ async function openDeepDive(product, ddOpts = {}) {
   const kw = product.keyword || '';
   const cacheKey = ddCacheKey(product);
   const cached = ddCacheGet(cacheKey);
+  // Fired now, awaited just before the template: the three fetches below are
+  // sequential (the history one pages 5x1000), so a fourth await would add
+  // latency for a single primary-key lookup.
+  const detailP = (cached && 'detail' in cached)
+    ? Promise.resolve(cached.detail)
+    : fetchProductDetail(product);
   let peers = [];
   let niche = product._niche || null;
   let history = [];
@@ -16385,6 +16638,9 @@ async function openDeepDive(product, ddOpts = {}) {
   const segLeft = stats.max > stats.min ? Math.round((bandLo - stats.min) / (stats.max - stats.min) * 100) : 0;
   const segWidth = stats.max > stats.min ? Math.max(4, Math.round((bandHi - bandLo) / (stats.max - stats.min) * 100)) : 100;
   const agePct = k => age.total ? Math.round(age[k] / age.total * 100) : 0;
+  const detail = await detailP;
+  // ddCacheSet deletes-then-reinserts, so re-calling it is LRU-safe.
+  ddCacheSet(cacheKey, { ...(ddCacheGet(cacheKey) || {}), peers, niche, history, detail });
   const isDesktopDeepDive = window.innerWidth > 860;
   const kompCardHtml = `<div class="ddr-card" data-dd-sec="kompetitor" style="margin-bottom:12px">
       <div class="ddr-sec-head">
@@ -16417,7 +16673,7 @@ async function openDeepDive(product, ddOpts = {}) {
           <span class="badge ${scoreInfo.cls}">${scoreInfo.label}</span>
           <button type="button" class="lrow-fav ddr-fav${isFavTracked(product) ? ' is-on' : ''}" data-ddr-fav="1" aria-pressed="${isFavTracked(product) ? 'true' : 'false'}" title="${isFavTracked(product) ? 'Hapus dari Favorit Aku' : 'Simpan ke Favorit Aku'}" aria-label="${isFavTracked(product) ? 'Hapus dari Favorit Aku' : 'Simpan ke Favorit Aku'}">${ico('bookmark', 18)}</button>
         </div>
-        <p class="ddr-cat">${esc(ddKotaLabel(product, peers))}</p>
+        <p class="ddr-cat">${esc(ddKotaLabel(product, peers))}${ddBrandChipHtml(detail)}</p>
         ${ddMarketNoteHtml(product, peers)}
       </div>
       <div class="ddr-score-stack">
@@ -16434,6 +16690,10 @@ async function openDeepDive(product, ddOpts = {}) {
     ${isDesktopDeepDive ? kompCardHtml : ''}
     ${ddAksiCepatHtml(product)}
     ${ddAlertCardHtml(product)}
+    <div class="ddr-hscroll ddr-hscroll--graphs2">
+      ${ddVarianCardHtml(product, detail)}
+      ${ddUlasanCardHtml(product, detail, peers, niche)}
+    </div>
     <h2 class="ddr-konteks-head">Konteks pasar: ${esc(kw || 'keyword ini')}</h2>
     <div class="ddr-hscroll ddr-hscroll--graphs2">
       <div class="ddr-card" data-dd-sec="pangsa">
@@ -16539,6 +16799,12 @@ async function openDeepDive(product, ddOpts = {}) {
     })();
   });
   void wireDdAlertCard(root, product);
+  wireDdVarianRequest(root, product);
+  $('ddr-varian-more')?.addEventListener('toggle', (e) => {
+    if (e.target?.open) {
+      void logUserEvent('deepdive_section', { ui: 'gpt', section: 'varian_all', via: 'click', keyword: kw || '' });
+    }
+  });
   $('ddr-komp-more')?.addEventListener('toggle', (e) => {
     if (e.target?.open) {
       void logUserEvent('deepdive_section', { ui: 'gpt', section: 'kompetitor', via: 'click', keyword: kw || '' });
@@ -25202,8 +25468,12 @@ function exportInfoRows(payload, hist) {
     ['Pertama terpantau', 'Tanggal pertama kami melihat listing ini — batas bawah, bukan '
                         + 'tanggal toko membuatnya.'],
     ['Total terjual', 'Shopee membulatkan angka besar (mis. "10RB+"), jadi angka ini bisa dibulatkan.'],
-    ['Tidak kami kumpulkan', 'Merek, jumlah komentar, dan jumlah stok. Kolomnya sengaja tidak ada '
-                           + 'daripada diisi angka karangan.'],
+    ['Tidak ada di file ini', 'Merek, jumlah komentar, dan jumlah stok. Merek hanya ada untuk '
+                            + 'produk yang halaman produknya sudah kami buka (mis. isi Favorit Aku), '
+                            + 'jadi kolomnya akan kosong untuk hampir semua baris — kami memilih '
+                            + 'tidak memuatnya daripada memuat kolom setengah kosong.'],
+    ['Penjualan per varian', 'Tidak ada. Shopee tidak mempublikasikannya, jadi tidak kami karang. '
+                           + 'Struktur varian dan harga per varian bisa kamu lihat di Deep Dive.'],
     ['Omset seumur hidup', 'Tidak kami hitung. Harga berubah dari waktu ke waktu dan total terjual '
                          + 'dibulatkan, jadi harga × total terjual akan menyesatkan.'],
     [],

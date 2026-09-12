@@ -5364,6 +5364,47 @@ body.home-finder-done .home-hero {
 .badge-sedang { background: var(--amber-bg); color: var(--amber); }
 .badge-rendah { background: var(--red-bg); color: var(--accent); }
 .ddr-cat { font-size: .72rem; color: var(--muted); margin: 6px 0 0; }
+/* Merek, from product_details.brand. Never .ddr-level — its 800-weight
+   letter-spacing mangles mixed-case brand names. */
+.ddr-brand {
+  display: inline-block; margin-left: 6px; padding: 1px 6px;
+  border: 1px solid var(--line); border-radius: 5px;
+  font-size: .68rem; color: var(--ink-soft); background: #fff;
+}
+/* Varian & Ulasan cards (js/gpt-app.js ddVarianCardHtml / ddUlasanCardHtml) */
+.ddr-varian-head { margin: 0 0 4px; font-size: .86rem; font-weight: 650; color: var(--ink); }
+.ddr-varian-price { margin: 0 0 10px; font-size: .78rem; color: var(--ink-soft); }
+.ddr-varian-more { margin-bottom: 10px; }
+.ddr-varian-list { list-style: none; margin: 0; padding: 8px 0 0; max-height: 260px; overflow-y: auto; }
+.ddr-varian-list li {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 5px 0; border-bottom: 1px solid var(--line); font-size: .74rem;
+}
+.ddr-varian-list li:last-child { border-bottom: 0; }
+.ddr-varian-list li span { flex: 1; color: var(--ink-soft); overflow-wrap: anywhere; }
+.ddr-varian-list li b { font-weight: 650; white-space: nowrap; }
+.ddr-varian-list li i {
+  flex: none; font-style: normal; font-size: .64rem; font-weight: 650;
+  color: var(--accent); background: var(--red-bg); border-radius: 4px; padding: 1px 5px;
+}
+.ddr-varian-list .ddr-varian-tail { color: var(--muted); justify-content: center; }
+.ddr-varian-req {
+  display: inline-block; margin: 2px 0 8px; padding: 8px 14px;
+  border: 1px solid var(--ink); border-radius: 999px;
+  background-color: var(--ink); color: #fff;
+  font-size: .76rem; font-weight: 650; cursor: pointer;
+}
+.ddr-varian-req:disabled { background-color: var(--bg-user); color: var(--muted); border-color: var(--line); cursor: default; }
+.ddr-stars { margin: 10px 0 8px; }
+.ddr-stars .ddr-star-lbl { flex: none; width: 24px; font-variant-numeric: tabular-nums; }
+.ddr-stars .ddr-star-num { flex: none; min-width: 52px; text-align: right; font-variant-numeric: tabular-nums; }
+/* 1-2 star bars carry the accent: this is the number a seller should read. */
+.ddr-stars .dist-bar.is-bad .fill { background: var(--accent); }
+.review-pill--bad { color: var(--accent); background: var(--red-bg); }
+/* Stacked honesty lines in these cards read as one wall without a gap. */
+[data-dd-sec="varian"] .dd-sub + .dd-sub,
+[data-dd-sec="ulasan"] .dd-sub + .dd-sub { margin-top: 8px; }
+[data-dd-sec="ulasan"] .review-wall { margin-bottom: 4px; }
 .ddr-tool-pills {
   display: flex; flex-wrap: nowrap; gap: 8px;
   margin: 0 0 12px;
@@ -10005,6 +10046,6 @@ body.view-chat .sfb-card {
 <script src="/js/peta-peluang.js?v=20260908a" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
-<script src="/js/gpt-app.js?v=20260911i" defer></script>
+<script src="/js/gpt-app.js?v=20260912a" defer></script>
 </body>
 </html>
