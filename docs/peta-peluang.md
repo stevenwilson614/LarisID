@@ -30,7 +30,21 @@ held, belum, pending }` from `mv_listing_momentum`. It does not draw SVG.
 
 The Cari Produk listing pool uses `listings_for_keywords` (LATERAL per-keyword
 lookup — do not `btrim()` the `listings_deduped.keyword` column). Home
-keywords/listings are prefetched at boot.
+keywords/listings are prefetched at boot (`warmDirInstantPool` →
+`resolveListingPool({ home: true })` on idle). Category browse fetches 40
+`product_types_v` rows (not 1000) — only the top 15 keywords feed listings.
+
+`renderDirectory` still waits on `resolveListingPool` before painting rows.
+That resolve is memoized per home / category / query, races DeepSeek
+`search_plan` at 700 ms (static EN/ID seed on miss, AI plan cached in
+background), skips `product_type_quartiles` when matview columns are on
+the view, and defers `countKeywordUnsold` until after first paint.
+
+Measured on api.larisid.com (2026-09-12, ~200 ms RTT): category 1000-row
+type fetch 1.07–4.8 s / 274 KB gzip → 40-row 0.36 s / 14 KB;
+`product_type_quartiles` n=24 0.77 s (now skipped); DeepSeek planner
+1.66 s (raced); single-keyword `ilike` 0.55 s → `eq` 0.19 s;
+`listings_for_keywords` 15×20 already 0.42–0.52 s.
 
 ## Ranking
 

@@ -159,8 +159,10 @@ returns `setof listings_deduped`: top-N sold listings per keyword via
 `security invoker`; granted to `anon` and `authenticated`. Uses
 `listings_deduped_kw_sold_ontopic_idx`. Do not wrap the column in `btrim()` —
 that forced a 400k-row scan (~2.5s) and left the Peta Peluang skeleton up.
+Canonical body: `migrations/20260912180000_listings_for_keywords_lateral.sql`
+(the 20260905180000 file still has the old `btrim` WHERE; do not re-apply it).
 
 The SPA (`js/gpt-app.js` `fetchListingsForKeywords`) calls this for category /
 home / multi-keyword pools. On `42883` / missing RPC it falls back to at most
-6 parallel per-keyword `.in()` queries. Single-keyword search still uses
-`listings_deduped` `ilike keyword` directly.
+6 parallel per-keyword `.in()` queries. Single-keyword search uses
+`listings_deduped` `.eq('keyword')` first, then `ilike` if empty.

@@ -8492,18 +8492,29 @@ function listingUsiaLabel(p) {
 
 async function fetchListingsForKeyword(kw, limit = 120) {
   if (!_supabase || !kw) return [];
-  const build = () => _supabase.from('listings_deduped')
-    .select(listingCoreSelect())
-    .gt('total_sold', 0)
-    .eq('is_offtopic', false)
-    .ilike('keyword', kw)
-    .order('nowcast_omset_monthly', { ascending: false, nullsFirst: false })
-    .limit(limit);
-  try {
-    let { data, error } = await build();
-    if (listingIsAdMissing(error)) ({ data, error } = await build());
+  const needle = String(kw || '').trim();
+  if (!needle) return [];
+  const build = (exact) => {
+    let q = _supabase.from('listings_deduped')
+      .select(listingCoreSelect())
+      .gt('total_sold', 0)
+      .eq('is_offtopic', false)
+      .limit(limit);
+    if (exact) q = q.eq('keyword', needle).order('total_sold', { ascending: false, nullsFirst: false });
+    else q = q.ilike('keyword', needle).order('nowcast_omset_monthly', { ascending: false, nullsFirst: false });
+    return q;
+  };
+  const run = async (exact) => {
+    let { data, error } = await build(exact);
+    if (listingIsAdMissing(error)) ({ data, error } = await build(exact));
     if (error) throw error;
-    return dedupeListings(data || []);
+    return data || [];
+  };
+  try {
+    let rows = await run(true);
+    if (!rows.length) rows = await run(false);
+    rows.sort((a, b) => (Number(b.nowcast_omset_monthly) || 0) - (Number(a.nowcast_omset_monthly) || 0));
+    return dedupeListings(rows);
   } catch (_) {
     return [];
   }
@@ -8556,13 +8567,132 @@ async function countKeywordUnsold(kw) {
   }
 }
 
-async function resolveListingPool({ q, cats, sub, home } = {}) {
+const _dirPoolMemo = Object.create(null);
+const _dirPoolInflight = Object.create(null);
+const DIR_POOL_MEMO_MAX = 20;
+const PLAN_RACE_MS = 700;
+
+function dirPoolMemoKey({ q, cats, sub, home } = {}) {
+  if (home) return 'home';
+  const query = String(q || '').trim().toLowerCase();
+  if (query) return `q:${query}`;
+  return `c:${(cats || []).join(',')}|${sub || ''}`;
+}
+
+function dirPoolClone(p) {
+  return {
+    ...p,
+    keywords: (p.keywords || []).slice(),
+    listings: (p.listings || []).slice(),
+  };
+}
+
+function dirPoolMemoSet(key, pool) {
+  _dirPoolMemo[key] = pool;
+  const keys = Object.keys(_dirPoolMemo);
+  if (keys.length > DIR_POOL_MEMO_MAX) delete _dirPoolMemo[keys[0]];
+}
+
+function _dirMark(stages, name) {
+  stages[name] = Math.round(performance.now() - stages._t0);
+}
+
+function _dirTimingLog(key, stages, extra) {
+  const ms = {};
+  Object.keys(stages).forEach(k => {
+    if (k.charAt(0) === '_') return;
+    ms[k] = stages[k];
+  });
+  const payload = { key, ...ms, ...(extra || {}) };
+  console.debug('[dir-timing]', payload);
+  void logUserEvent('search_timing', {
+    ui: 'gpt',
+    key,
+    q: extra?.q || '',
+    home: !!extra?.home,
+    listings: extra?.listings ?? 0,
+    match: extra?.match || '',
+    ...ms,
+  });
+}
+
+function _deferUnsold(kw, query) {
+  if (!kw) return;
+  const seq = _dirRenderSeq;
+  void countKeywordUnsold(kw).then(n => {
+    if (seq !== _dirRenderSeq) return;
+    if ((state.dirSearch || '').trim() !== query) return;
+    if ((state.dirUnsold || 0) === n) return;
+    state.dirUnsold = n;
+    paintDirectoryTable({ remountPeta: false });
+  }).catch(() => {});
+}
+
+function _rankPoolListings(out, query, plan) {
+  const terms = _searchTerms(query);
+  const phrase = query.toLowerCase();
+  const synonyms = _planSynonymTerms(terms, plan?.queries || []);
+  const rankOpts = { synonyms };
+  out.listings.forEach(r => attachRelScore(r, terms, phrase, rankOpts, 1));
+  if (terms.length >= 2) {
+    const filtered = filterRelevantHits(out.listings, terms, phrase, rankOpts);
+    if (filtered.length) out.listings = filtered;
+  }
+}
+
+async function _fetchPoolListings(out, types, chooser) {
+  const kws = types.map(t => t.keyword).filter(Boolean).slice(0, 15);
+  if (kws.length === 1) {
+    out.listings = await fetchListingsForKeyword(kws[0], 120);
+  } else if (chooser) {
+    out.listings = await fetchListingsForKeywords(kws, 20, 300);
+  } else {
+    const rest = kws.filter(k => k !== out.primaryKw);
+    const [primary, extra] = await Promise.all([
+      fetchListingsForKeyword(out.primaryKw, 120),
+      fetchListingsForKeywords(rest, 20, 240),
+    ]);
+    out.listings = dedupeListings(primary.concat(extra));
+  }
+}
+
+async function resolveListingPool(opts = {}) {
+  const key = dirPoolMemoKey(opts);
+  const hit = _dirPoolMemo[key];
+  if (hit) {
+    console.debug('[dir-timing]', { key, memo: 1, listings: (hit.listings || []).length });
+    const clone = dirPoolClone(hit);
+    if (clone.primaryKw) _deferUnsold(clone.primaryKw, String(opts.q || '').trim());
+    return clone;
+  }
+  if (_dirPoolInflight[key]) return _dirPoolInflight[key].then(dirPoolClone);
+  const p = _resolveListingPoolUncached(opts, key).then(out => {
+    dirPoolMemoSet(key, out);
+    return out;
+  }).finally(() => { delete _dirPoolInflight[key]; });
+  _dirPoolInflight[key] = p;
+  return p.then(dirPoolClone);
+}
+
+async function _resolveListingPoolUncached({ q, cats, sub, home } = {}, memoKey) {
   const query = (q || '').trim();
   const out = emptyListingPool();
+  const stages = { _t0: performance.now() };
   if (query) {
-    const plan = await planSearch(query).catch(() => ({ queries: [], brand: null }));
+    const planP = planSearch(query, { timeoutMs: PLAN_RACE_MS }).catch(() => ({ queries: [], brand: null }));
+    const exactP = productTypeExactKeyword(query);
+    const containingP = fetchContainingProductTypes(query, 24);
+    const exactKw = await exactP;
+    _dirMark(stages, 'exact');
+    let plan;
+    let containing = [];
+    if (exactKw) {
+      plan = await planP;
+    } else {
+      [plan, containing] = await Promise.all([planP, containingP]);
+    }
+    _dirMark(stages, 'types');
     out.brand = plan?.brand || '';
-    const exactKw = await productTypeExactKeyword(query);
     const brandPrimary = !exactKw && isBrandPrimaryQuery(query, plan);
     if (brandPrimary) {
       const brandPool = await resolveBrandListingPool(query, plan);
@@ -8572,6 +8702,11 @@ async function resolveListingPool({ q, cats, sub, home } = {}) {
         out.listings = dedupeListings(out.listings);
         rememberProducts(out.listings);
         registerTypes(out.keywords);
+        _dirMark(stages, 'listings');
+        _dirMark(stages, 'total');
+        _dirTimingLog(memoKey, stages, {
+          q: query, listings: out.listings.length, match: out.matchLevel || 'brand',
+        });
         return out;
       }
     }
@@ -8579,40 +8714,20 @@ async function resolveListingPool({ q, cats, sub, home } = {}) {
     let types = exactKw ? [exactKw] : [];
     let chooser = false;
     if (!exactKw) {
-      const containing = await fetchContainingProductTypes(query, 24);
       if (containing.length >= 2) {
         chooser = true;
         types = containing;
       } else if (containing.length === 1) types = containing;
-      else types = await searchProductTypes(query, [], 24);
+      else types = await searchProductTypes(query, [], 24, { plan });
     }
     if (types.length) {
       out.matchLevel = chooser ? 'chooser' : 'keyword';
       out.keywords = types.some(t => t._nearby) ? types : markTerlarisMinggu(types.slice());
       out.primaryKw = chooser ? '' : (types[0].keyword || '');
-      const kws = types.map(t => t.keyword).filter(Boolean).slice(0, 15);
-      if (kws.length === 1) {
-        out.listings = await fetchListingsForKeyword(kws[0], 120);
-      } else if (chooser) {
-        out.listings = await fetchListingsForKeywords(kws, 20, 300);
-      } else {
-        const rest = kws.filter(k => k !== out.primaryKw);
-        const [primary, extra] = await Promise.all([
-          fetchListingsForKeyword(out.primaryKw, 120),
-          fetchListingsForKeywords(rest, 20, 240),
-        ]);
-        out.listings = dedupeListings(primary.concat(extra));
-      }
-      out.unsold = out.primaryKw ? await countKeywordUnsold(out.primaryKw) : 0;
-      const terms = _searchTerms(query);
-      const phrase = query.toLowerCase();
-      const synonyms = _planSynonymTerms(terms, plan?.queries || []);
-      const rankOpts = { synonyms };
-      out.listings.forEach(r => attachRelScore(r, terms, phrase, rankOpts, 1));
-      if (terms.length >= 2) {
-        const filtered = filterRelevantHits(out.listings, terms, phrase, rankOpts);
-        if (filtered.length) out.listings = filtered;
-      }
+      await _fetchPoolListings(out, types, chooser);
+      _dirMark(stages, 'listings');
+      if (out.primaryKw) _deferUnsold(out.primaryKw, query);
+      _rankPoolListings(out, query, plan);
     }
     if (!out.listings.length) {
       const titlePool = await resolveTitleListingPool(query);
@@ -8630,28 +8745,24 @@ async function resolveListingPool({ q, cats, sub, home } = {}) {
         out.primaryKw = '';
         const kws = types.map(t => t.keyword).filter(Boolean).slice(0, 15);
         out.listings = await fetchListingsForKeywords(kws, 20, 240);
-        const terms = _searchTerms(query);
-        const phrase = query.toLowerCase();
-        out.listings.forEach(r => attachRelScore(r, terms, phrase, {}, 1));
-        if (terms.length >= 2) {
-          const filtered = filterRelevantHits(out.listings, terms, phrase);
-          if (filtered.length) out.listings = filtered;
-        }
+        _rankPoolListings(out, query, plan);
       }
     }
     if (!out.listings.length) {
       out.listings = (await searchListings(query, [], 80)).map(asListingProduct);
       if (out.listings.length && !out.matchLevel) out.matchLevel = 'title';
     }
+    if (stages.listings == null) _dirMark(stages, 'listings');
   } else {
     let types = [];
     if (home) types = await loadDirHomePool();
     else {
-      types = await fetchProductTypes([], cats || [], 1000, sub);
+      types = await fetchProductTypes([], cats || [], 40, sub);
       if (!types.length && !sub) {
         types = await typesForListings(mergePool([], await fetchNaikDaunGlobal(200)), '', 60);
       }
     }
+    _dirMark(stages, 'types');
     types = sortTypeRows(types, 'sesuai', false);
     types = markTerlarisMinggu(types);
     out.matchLevel = 'keyword';
@@ -8659,10 +8770,15 @@ async function resolveListingPool({ q, cats, sub, home } = {}) {
     out.primaryKw = '';
     out.listings = await fetchListingsForKeywords(
       types.slice(0, 15).map(t => t.keyword).filter(Boolean), 20, 300);
+    _dirMark(stages, 'listings');
   }
   out.listings = dedupeListings(out.listings);
   rememberProducts(out.listings);
   registerTypes(out.keywords);
+  _dirMark(stages, 'total');
+  _dirTimingLog(memoKey, stages, {
+    q: query, home: !!home, listings: out.listings.length, match: out.matchLevel || '',
+  });
   return out;
 }
 
@@ -8830,7 +8946,11 @@ async function fetchNaikDaunGlobal(limit = 60) {
 // old quartiles aggregate) that competed with the real load for connections.
 // loadDirHomePool() memoizes the pool renderDirectory() genuinely uses.
 function warmDirInstantPool() {
-  return loadDirHomePool();
+  return loadDirHomePool().then(rows => {
+    const idle = window.larisIdle || ((fn) => setTimeout(fn, 800));
+    idle(() => { void resolveListingPool({ home: true }); }, 400);
+    return rows;
+  });
 }
 
 // ── Trending (mv_trending: real WoW sold deltas from listings history) ───
@@ -11582,24 +11702,43 @@ async function _deepseekPlan(query) {
 
 // Combine static seed + DeepSeek plan, cached per normalized query. On AI failure
 // return the static seed WITHOUT caching so a later search can still reach the model.
-async function planSearch(text) {
+// Cari Produk races this at PLAN_RACE_MS so a cold DeepSeek call cannot hold
+// the listing paint; the AI plan still writes the cache in the background.
+const _planSearchInflight = Object.create(null);
+
+async function planSearch(text, opts) {
   const cleaned = String(text || '').replace(/\s+/g, ' ').trim();
   const key = cleaned.toLowerCase();
   if (!key) return { queries: [], exclude: [], category: null, brand: null };
   const cached = _synCacheGet(key);
   if (cached) return cached;
-  const seed = _staticPlan(cleaned);
-  const ai = await _deepseekPlan(cleaned);
-  if (!ai) return { ...seed, brand: null };
-  const uniq = (arr, n) => Array.from(new Set(arr.filter(Boolean))).slice(0, n);
-  const plan = {
-    queries: uniq([...ai.queries, ...seed.queries], 10),
-    exclude: uniq([...ai.exclude, ...seed.exclude], 12),
-    category: seed.category,
-    brand: ai.brand || null,
-  };
-  _synCacheSet(key, plan);
-  return plan;
+  if (!_planSearchInflight[key]) {
+    _planSearchInflight[key] = (async () => {
+      const seed = _staticPlan(cleaned);
+      const ai = await _deepseekPlan(cleaned);
+      if (!ai) return { ...seed, brand: null };
+      const uniq = (arr, n) => Array.from(new Set(arr.filter(Boolean))).slice(0, n);
+      const plan = {
+        queries: uniq([...ai.queries, ...seed.queries], 10),
+        exclude: uniq([...ai.exclude, ...seed.exclude], 12),
+        category: seed.category,
+        brand: ai.brand || null,
+      };
+      _synCacheSet(key, plan);
+      return plan;
+    })().finally(() => { delete _planSearchInflight[key]; });
+  }
+  const inflight = _planSearchInflight[key];
+  const timeoutMs = opts && opts.timeoutMs;
+  if (!timeoutMs) return inflight;
+  const seed = { ..._staticPlan(cleaned), brand: null };
+  let timer;
+  const raced = await Promise.race([
+    inflight,
+    new Promise(resolve => { timer = setTimeout(() => resolve(null), timeoutMs); }),
+  ]);
+  clearTimeout(timer);
+  return raced || seed;
 }
 
 // Expansion term set used for RANKING so synonym-fetched niche products survive.
@@ -20683,7 +20822,7 @@ async function searchProductTypes(text, cities, limit = 12, opts) {
   let terms = [raw];
   let plan = null;
   try {
-    plan = await planSearch(raw);
+    plan = (opts && opts.plan) || await planSearch(raw);
     const extra = (plan?.queries || []).filter(Boolean);
     const tokens = _searchTerms(raw);
     // Brand-primary queries must not ILIKE planner extras (that dumps
@@ -20838,7 +20977,9 @@ async function searchProductTypes(text, cities, limit = 12, opts) {
       } catch (_) {}
     }
   }
-  if (ranked.length) await attachTypeQuartiles(ranked);
+  if (ranked.length && !_ptypeHasPct) {
+    attachTypeQuartiles(ranked).catch(() => {});
+  }
   return ranked;
 }
 
@@ -21271,7 +21412,9 @@ async function typesForListings(rows, city, limit = 12) {
     const t = _ptypeByKeyword.get(k);
     if (t && out.length < limit && !out.includes(t)) out.push(t);
   });
-  if (out.length) await attachTypeQuartiles(out);
+  if (out.length && !_ptypeHasPct) {
+    attachTypeQuartiles(out).catch(() => {});
+  }
   return out;
 }
 
