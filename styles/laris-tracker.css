@@ -1287,6 +1287,9 @@
 }
 .ltk-switch { display: inline-flex; align-items: center; gap: 8px; font-size: .74rem; font-weight: 600; color: #374151; cursor: pointer; }
 .ltk-honesty { font-size: .62rem; font-weight: 700; color: #6B7280; text-transform: uppercase; letter-spacing: .03em; }
+/* PDP detail line (varian / ulasan buruk / merek) — favorites are the only
+   products whose product page we reopen daily, so it is always populated here. */
+.ltk-detail-line { margin: 6px 0 0; font-size: .72rem; color: #6B7280; }
 .ltk-cadence { display: flex; flex-direction: column; gap: 6px; }
 .ltk-cadence-opt { font-size: .78rem; font-weight: 600; color: #374151; display: flex; align-items: center; gap: 8px; }
 .ltk-detail-toggles { display: flex; gap: 8px; margin: 12px 0; }

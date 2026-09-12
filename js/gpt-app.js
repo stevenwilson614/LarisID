@@ -3146,6 +3146,10 @@ async function lnoticeDismiss() {
       await _supabase.from('keyword_scrape_requests')
         .update({ card_shown_at: new Date().toISOString(), status: 'notified' })
         .eq('id', cur.id).eq('user_id', currentUser.id);
+    } else if (cur.kind === 'varian_ready') {
+      await _supabase.from('item_detail_requests')
+        .update({ card_shown_at: new Date().toISOString(), status: 'notified' })
+        .eq('id', cur.id).eq('user_id', currentUser.id);
     }
   } catch (e) { console.warn('lnoticeDismiss:', e?.message || e); }
   void logUserEvent('founder_notice', { ui: 'gpt', kind: cur.kind, action: 'dismiss' });
@@ -3157,6 +3161,14 @@ function lnoticeBind() {
   $('lnotice-close')?.addEventListener('click', () => { void lnoticeDismiss(); });
   $('lnotice-body')?.addEventListener('click', (e) => {
     if (e.target.closest('.lnotice-ok')) { void lnoticeDismiss(); return; }
+    const dd = e.target.closest('[data-lnotice-dd]');
+    if (dd) {
+      const [itemId, shopId] = String(dd.getAttribute('data-lnotice-dd') || '').split('|');
+      void logUserEvent('founder_notice', { ui: 'gpt', kind: _lnoticeCur?.kind, action: 'open_dive' });
+      void lnoticeDismiss();
+      void openDeepDiveByIds(itemId, shopId);
+      return;
+    }
     const go = e.target.closest('[data-lnotice-go]');
     if (!go) return;
     const kw = go.getAttribute('data-lnotice-go');
@@ -3209,13 +3221,53 @@ async function lnoticeCheck() {
       .order('fulfilled_at', { ascending: false })
       .limit(1);
     const r = (ready || [])[0];
-    if (!r) return;
-    lnoticeShow(`<p class="sfb-bubble">Kamu minta data untuk <strong>${esc(r.keyword)}</strong> — sudah aku ukur, datanya siap sekarang.</p>
+    // No keyword card? Fall through to the varian card below rather than
+    // returning — the two queues are independent.
+    if (r) lnoticeShow(`<p class="sfb-bubble">Kamu minta data untuk <strong>${esc(r.keyword)}</strong> — sudah aku ukur, datanya siap sekarang.</p>
       <div class="lnotice-acts">
         <button type="button" class="lnotice-go" data-lnotice-go="${esc(r.keyword)}">Lihat pasar ${esc(r.keyword)}</button>
         <button type="button" class="lnotice-ok">Nanti saja</button>
       </div>`, { kind: 'ready', id: r.id, keyword: r.keyword });
+    if (r) return;
   } catch (e) { console.warn('lnoticeCheck ready:', e?.message || e); }
+
+  try {
+    const { data: varian } = await _supabase
+      .from('item_detail_requests')
+      .select('id,item_id,shop_id,product_name,keyword')
+      .eq('user_id', currentUser.id)
+      .eq('status', 'ready')
+      .is('card_shown_at', null)
+      .order('fulfilled_at', { ascending: false })
+      .limit(1);
+    const v = (varian || [])[0];
+    if (!v) return;
+    const nama = String(v.product_name || '').trim() || 'produk yang kamu minta';
+    lnoticeShow(`<p class="sfb-bubble">Halaman produk <strong>${esc(nama.slice(0, 70))}</strong> sudah kami buka — varian, harga tiap varian dan rincian bintangnya sekarang ada di Deep Dive.</p>
+      <div class="lnotice-acts">
+        <button type="button" class="lnotice-go" data-lnotice-dd="${esc(String(v.item_id))}|${esc(String(v.shop_id ?? ''))}">Lihat data varian</button>
+        <button type="button" class="lnotice-ok">Nanti saja</button>
+      </div>`, { kind: 'varian_ready', id: v.id });
+  } catch (e) { console.warn('lnoticeCheck varian:', e?.message || e); }
+}
+
+/** Reopen a dive from ids alone (notice card, notification centre).
+ *  listings_deduped is one row per (item, shop, KEYWORD) since 2026-08-15, so
+ *  this needs .limit(1) — .maybeSingle() alone throws on a multi-keyword item. */
+async function openDeepDiveByIds(itemId, shopId) {
+  if (!itemId) return;
+  try {
+    let q = _supabase.from('listings_deduped')
+      .select(listingCoreSelect())
+      .eq('item_id', itemId);
+    if (shopId) q = q.eq('shop_id', shopId);
+    const { data } = await q.order('total_sold', { ascending: false }).limit(1);
+    const row = (data || [])[0];
+    if (!row) { showToast('Produk ini sudah tidak ada di data kami.'); return; }
+    await openDeepDive(asListingProduct(row));
+  } catch (e) {
+    console.warn('openDeepDiveByIds:', e?.message || e);
+  }
 }
 
 // ── Super-user feedback card ("pesan dari Steven") ─────────────────────────
@@ -9640,6 +9692,8 @@ function pdPctId(n) {
 }
 
 function ddVarianCardHtml(product, detail) {
+  // A pasar row is a market, not a listing: it has no variants and no stars.
+  if (product?._ptype) return '';
   const head = `<div class="ddr-sec-head"><h3>Varian &amp; Harga</h3>${detail
     ? '<span class="omset-chip omset-chip--terukur" title="Diambil langsung dari halaman produk Shopee.">terukur</span>'
     : ''}</div>`;
@@ -9710,6 +9764,7 @@ function pdPeerMedianRating(peers) {
 }
 
 function ddUlasanCardHtml(product, detail, peers, niche) {
+  if (product?._ptype) return '';
   const stars = pdStars(detail);
   const reviews = Number(product?.reviews) || 0;
   const rating = Number(product?.rating) || 0;
@@ -9757,6 +9812,14 @@ function ddUlasanCardHtml(product, detail, peers, niche) {
   </div>`;
 }
 
+const VARIAN_REQ_TOAST = {
+  queued: 'Sudah masuk antrean. Kami buka halaman produknya di scrape berikutnya dan kabari kamu di sini.',
+  queued_refresh: 'Sudah masuk antrean untuk diperbarui. Kami kabari kalau data barunya sudah masuk.',
+  already_live: 'Datanya ternyata sudah ada — aku muat ulang halamannya sekarang.',
+  rate_limited: 'Hari ini sudah 5 permintaan. Besok bisa minta lagi — satu permintaan butuh waktu scrape yang nyata, bukan sekadar klik.',
+  rejected_input: 'Produk ini tidak punya ID yang bisa kami antre.',
+};
+
 function wireDdVarianRequest(root, product) {
   root?.querySelectorAll?.('[data-dd-varian-req]')?.forEach((btn) => {
     if (btn.dataset.boundVarianReq) return;
@@ -9770,13 +9833,40 @@ function wireDdVarianRequest(root, product) {
         return;
       }
       btn.disabled = true;
-      btn.textContent = 'Sudah dicatat';
-      showToast('Aku catat permintaanmu. Kami ambil di scrape berikutnya.');
-      void logUserEvent('dd_varian_request', {
-        ui: 'gpt',
-        item_id: String(product?.item_id ?? ''),
-        keyword: product?.keyword || '',
-      });
+      btn.textContent = 'Mencatat…';
+      void (async () => {
+        let verdict = 'queued';
+        try {
+          const { data, error } = await _supabase.rpc('request_item_detail', {
+            p_item_id: Number(product.item_id),
+            p_shop_id: product.shop_id != null ? Number(product.shop_id) : null,
+            p_keyword: product.keyword || null,
+            p_product_name: product.product_name || null,
+            p_source: 'deepdive',
+          });
+          if (error) throw error;
+          verdict = String(data?.verdict || 'queued');
+        } catch (e) {
+          console.warn('request_item_detail:', e?.message || e);
+          btn.disabled = false;
+          btn.textContent = 'Minta data varian';
+          showToast('Belum berhasil mencatat permintaanmu. Coba lagi sebentar lagi.');
+          return;
+        }
+        btn.textContent = verdict === 'rate_limited' ? 'Besok lagi ya' : 'Sudah dicatat';
+        showToast(VARIAN_REQ_TOAST[verdict] || VARIAN_REQ_TOAST.queued);
+        // already_live means the row landed since this dive was painted: the
+        // honest move is to show it, not to promise it for tomorrow.
+        if (verdict === 'already_live' && state.deepdiveProduct) {
+          void openDeepDive(state.deepdiveProduct);
+        }
+        void logUserEvent('dd_varian_request', {
+          ui: 'gpt',
+          item_id: String(product?.item_id ?? ''),
+          keyword: product?.keyword || '',
+          verdict,
+        });
+      })();
     });
   });
 }
@@ -13265,6 +13355,30 @@ function gptTrackerAdapter() {
         return data || [];
       } catch (_) { return []; }
     },
+    /** PDP detail per favorite — varian count + the 1-2 star share.
+     *  Tracked items are the one surface where product_details is ~100%
+     *  covered, because tracked_pass.py rewrites their PDP row every day. */
+    async getProductDetailsBatch(listings) {
+      if (!_supabase || !listings || !listings.length) return [];
+      const ids = [...new Set(listings.map(l => l.item_id).filter(id => id != null))];
+      if (!ids.length) return [];
+      try {
+        const { data, error } = await _supabase.from('product_details')
+          .select('item_id,detail_scraped_at,models_json,rating_breakdown_json,brand')
+          .in('item_id', ids);
+        if (error) throw error;
+        return (data || []).map(d => {
+          const stars = pdStars(d);
+          return {
+            item_id: d.item_id,
+            detail_scraped_at: d.detail_scraped_at,
+            brand: pdBrand(d),
+            variants: pdModels(d).length,
+            bad_pct: stars ? stars.badPct : null,
+          };
+        });
+      } catch (_) { return []; }
+    },
     /** Deep Dive Tren weekly series per favorite (product_daily_series → weeks). */
     async getFavoriteTrendWeeklies(listings) {
       if (!_supabase || !listings || !listings.length) return [];
@@ -14153,12 +14267,12 @@ function ensureTracker() {
       if (!document.getElementById('ltk-css')) {
         const l = document.createElement('link');
         l.id = 'ltk-css'; l.rel = 'stylesheet';
-        l.href = '/styles/laris-tracker.css?v=20260908a';
+        l.href = '/styles/laris-tracker.css?v=20260912a';
         document.head.appendChild(l);
       }
     } catch (_) {}
     _trkLoadPromise = (typeof larisLoadScript === 'function'
-      ? larisLoadScript('/js/laris-tracker.js?v=20260908a')
+      ? larisLoadScript('/js/laris-tracker.js?v=20260912a')
       : Promise.reject(new Error('no loader')))
       .then(() => window.LarisTracker || null)
       .catch(() => { _trkLoadPromise = null; return null; });
@@ -16690,10 +16804,10 @@ async function openDeepDive(product, ddOpts = {}) {
     ${isDesktopDeepDive ? kompCardHtml : ''}
     ${ddAksiCepatHtml(product)}
     ${ddAlertCardHtml(product)}
-    <div class="ddr-hscroll ddr-hscroll--graphs2">
+    ${product._ptype ? '' : `<div class="ddr-hscroll ddr-hscroll--graphs2">
       ${ddVarianCardHtml(product, detail)}
       ${ddUlasanCardHtml(product, detail, peers, niche)}
-    </div>
+    </div>`}
     <h2 class="ddr-konteks-head">Konteks pasar: ${esc(kw || 'keyword ini')}</h2>
     <div class="ddr-hscroll ddr-hscroll--graphs2">
       <div class="ddr-card" data-dd-sec="pangsa">
@@ -23426,6 +23540,49 @@ async function loadAdminKeywordRequests() {
   } catch (err) {
     console.warn('loadAdminKeywordRequests:', err?.message || err);
     listEl.textContent = 'Gagal memuat permintaan.';
+  }
+
+  // The PDP queue. Without a window onto it, a queue that stops draining
+  // (a blocked scraper, a lane that never ran) is invisible until someone
+  // complains that their "Minta data varian" never arrived.
+  const dqEl = $('adm-detailq-list');
+  const dqSum = $('adm-detailq-summary');
+  if (dqEl) {
+    dqEl.textContent = 'Memuat…';
+    try {
+      const { data, error } = await _supabase
+        .from('item_detail_queue')
+        .select('item_id,keyword,status,priority,reason,open_count,attempts,last_queued_at')
+        .order('priority', { ascending: true })
+        .order('open_count', { ascending: false })
+        .limit(40);
+      if (error) throw error;
+      const rows = Array.isArray(data) ? data : [];
+      const pending = rows.filter(r => r.status === 'pending').length;
+      const asked = rows.filter(r => r.reason === 'request').length;
+      if (dqSum) {
+        dqSum.textContent = rows.length
+          ? `${rows.length} item teratas · ${pending} menunggu dibuka · ${asked} diminta langsung`
+          : 'Antrean kosong.';
+      }
+      dqEl.innerHTML = rows.length ? rows.map(r => {
+        const when = new Date(r.last_queued_at).toLocaleString('id-ID',
+          { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        return `<div class="adm-fb-row${r.status === 'done' ? ' is-done' : ''}">
+          <div class="adm-fb-meta">
+            <span>${esc(when)}</span>
+            <span class="adm-fb-tag">${esc(r.status || '')}</span>
+            <span>${esc(r.reason || '')} · p${Number(r.priority) || 0}</span>
+            <span>${Number(r.open_count) || 0}x dibuka</span>
+            ${Number(r.attempts) ? `<span class="adm-fb-tag">${Number(r.attempts)} gagal</span>` : ''}
+          </div>
+          <p class="adm-fb-msg adm-kwreq-kw">${esc(String(r.item_id))}${r.keyword ? ` · ${esc(r.keyword)}` : ''}</p>
+        </div>`;
+      }).join('') : 'Antrean kosong.';
+    } catch (err) {
+      console.warn('loadAdminKeywordRequests detail queue:', err?.message || err);
+      dqEl.textContent = 'Gagal memuat antrean.';
+    }
   }
 
   if (!uncEl) return;

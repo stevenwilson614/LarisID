@@ -48,6 +48,7 @@
     notifyCadence: 'on_update',
     weeklyByKey: {},
     snapsByKey: {},
+    detailById: {},
     addQ: '',
     addRows: [],
     addBusy: false,
@@ -745,6 +746,24 @@
     '</div>';
   }
 
+  /** One line of PDP detail. Favorites are the only products whose product
+   *  page we reopen every day, so this is the surface where it is always
+   *  there — and the reason tracking is worth doing. Never a per-variant
+   *  sales figure: Shopee does not publish one. */
+  function detailLineHtml(p) {
+    var d = S.detailById[String(p.item_id)];
+    if (!d) return '';
+    var bits = [];
+    if (d.variants > 1) bits.push(d.variants + ' varian');
+    if (d.bad_pct != null) {
+      bits.push('ulasan buruk ' + d.bad_pct.toFixed(1).replace('.', ',') + '%');
+    }
+    if (d.brand) bits.push('merek ' + d.brand);
+    if (!bits.length) return '';
+    return '<p class="ltk-detail-line" title="Dari halaman produk Shopee, diambil di scrape harian">' +
+      esc(bits.join(' · ')) + '</p>';
+  }
+
   function favCardHtml(p) {
     var key = prodKey(p);
     var weeks = weeklyFor(p);
@@ -771,6 +790,7 @@
               deltaHtml(trend.pct, trend.enough) +
             '</div>' +
           '</div>' +
+          detailLineHtml(p) +
         '</div>' +
         (hasChart
           ? '<div class="ltk-card-chart">' +
@@ -913,12 +933,17 @@
     if (!S.products.length) {
       S.weeklyByKey = {};
       S.snapsByKey = {};
+      S.detailById = {};
       return Promise.resolve();
     }
     return Promise.all([
       callP('getFavoriteTrendWeeklies', S.products),
       callP('getFavoriteListingSnaps', S.products),
+      callP('getProductDetailsBatch', S.products),
     ]).then(function (pair) {
+      var det = {};
+      (pair[2] || []).forEach(function (d) { det[String(d.item_id)] = d; });
+      S.detailById = det;
       var map = {};
       (pair[0] || []).forEach(function (w) {
         var k = w.item_id + '|' + w.shop_id;
