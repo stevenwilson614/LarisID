@@ -1975,6 +1975,19 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
 .export-warn { margin: 0 0 10px; padding: 9px 11px; border-radius: 10px;
   font-size: .76rem; line-height: 1.45;
   background-color: #FFF8E6; border: 1px solid #F0DFB0; color: #6B5518; }
+.export-spin {
+  width: 16px; height: 16px; flex: none;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  animation: spin .7s linear infinite;
+}
+[data-export-fmt].is-busy,
+[data-export-fmt].is-busy:disabled {
+  opacity: 1;
+  cursor: wait;
+  justify-content: center;
+}
 .dir-count { margin: 0; font-size: .78rem; color: var(--muted, #888); }
 .dir-compare-banner {
   margin: 0 0 14px; padding: 12px 14px;
@@ -10167,6 +10180,6 @@ body.view-chat .sfb-card {
 <script src="/js/peta-peluang.js?v=20260908a" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
-<script src="/js/gpt-app.js?v=20260913c" defer></script>
+<script src="/js/gpt-app.js?v=20260913d" defer></script>
 </body>
 </html>

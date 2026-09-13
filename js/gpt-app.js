@@ -25355,13 +25355,50 @@ function exportRenderCost() {
     }
   }
 
+  exportSyncFmtButtons();
+}
+
+function exportFmtBlocked() {
+  if (!_exportCtx) return false;
+  const hist = exportIsHistory();
+  const sel = exportSelection();
   const weeks = Number(_exportCtx?.weeks) || 12;
-  const blocked = hist
+  return hist
     ? (exportRemainingWeeks() <= 0 || weeks <= 0)
     : (exportRemainingRows() <= 0 || !sel.length);
+}
+
+function exportSyncFmtButtons() {
+  const freeze = !!_exportBusy;
+  const blocked = exportFmtBlocked();
   document.querySelectorAll('[data-export-fmt]').forEach((b) => {
-    b.disabled = blocked;
+    b.disabled = freeze || blocked;
   });
+  const countSel = $('export-count');
+  const weeksSel = $('export-weeks');
+  if (countSel) countSel.disabled = freeze;
+  if (weeksSel) weeksSel.disabled = freeze;
+  document.querySelectorAll('[data-export-more], [data-export-close]').forEach((b) => {
+    b.disabled = freeze;
+  });
+}
+
+function exportSetBusy(busy, fmt) {
+  _exportBusy = !!busy;
+  document.querySelectorAll('[data-export-fmt]').forEach((b) => {
+    const on = busy && b.getAttribute('data-export-fmt') === fmt;
+    if (on) {
+      if (!b.dataset.exportLabel) b.dataset.exportLabel = b.textContent.trim();
+      b.innerHTML = '<span class="export-spin" aria-hidden="true"></span>Mengunduh…';
+      b.classList.add('is-busy');
+      b.setAttribute('aria-busy', 'true');
+    } else if (b.classList.contains('is-busy') || b.dataset.exportLabel) {
+      if (b.dataset.exportLabel) b.textContent = b.dataset.exportLabel;
+      b.classList.remove('is-busy');
+      b.removeAttribute('aria-busy');
+    }
+  });
+  exportSyncFmtButtons();
 }
 
 function exportFillCount() {
@@ -25630,7 +25667,7 @@ async function exportRun(fmt) {
     return;
   }
 
-  _exportBusy = true;
+  exportSetBusy(true, fmt);
   try {
     // Load SheetJS BEFORE the metered call. A script failure after the charge
     // lands would burn budget for nothing.
@@ -25760,7 +25797,7 @@ async function exportRun(fmt) {
   } catch (_) {
     showToast('Gagal menyiapkan file. Coba lagi sebentar.');
   } finally {
-    _exportBusy = false;
+    exportSetBusy(false);
   }
 }
 
