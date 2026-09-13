@@ -2858,6 +2858,9 @@ function setUsagePopOpen(pill, open) {
     pop.style.bottom = '';
     pop.style.visibility = '';
   });
+  const topbar = document.querySelector('.main-top');
+  const headerPop = !!(pill && open && pill.closest('.usage-wrap--header'));
+  if (topbar) topbar.classList.toggle('is-pop-open', headerPop);
   if (!pill || !open) return;
   const wrap = pill.closest('[data-usage-wrap]') || pill.parentElement;
   const pop = wrap?.querySelector?.('[data-usage-pop]');
@@ -2878,7 +2881,7 @@ function setUsagePopOpen(pill, open) {
   pop.style.top = '0';
   pop.style.bottom = 'auto';
   pop.style.visibility = 'hidden';
-  pop.style.zIndex = '80';
+  pop.style.zIndex = '90';
 
   const popH = Math.max(pop.offsetHeight || 72, 56);
   const spaceAbove = r.top - margin;

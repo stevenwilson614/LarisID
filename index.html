@@ -441,10 +441,10 @@ html.session-restoring body::after {
   min-height: 52px;
   z-index: 5;
 }
-/* Bell panel is position:fixed; lift the header so it still wins if a
-   transformed ancestor turns that fixed into a local overlay. Above
-   .results-bar (20), below .modal-overlay (100). */
-.main-top.is-notif-open { z-index: 80; }
+/* Header pops (bell, jatah rings, view-as) are position:fixed but live
+   inside this stacking context. Lift above .results-bar (20) while open. */
+.main-top.is-notif-open,
+.main-top.is-pop-open { z-index: 80; }
 .main-top-left {
   display: flex; align-items: center; gap: 8px; min-width: 0;
 }
@@ -806,7 +806,7 @@ body.view-directory .panel {
   padding: 12px 14px; border-radius: 12px;
   background: #fff; border: 1px solid var(--line);
   box-shadow: 0 12px 32px rgba(0,0,0,.14);
-  text-align: left; z-index: 80;
+  text-align: left; z-index: 90;
 }
 .usage-pop.is-open { display: block; }
 .usage-pop-rings {
@@ -10182,7 +10182,7 @@ body.view-chat .sfb-card {
 </aside>
 
 <script src="/js/laris-merdeka.js?v=20260816b" defer></script>
-<script src="/js/changelog.js?v=20260911b" defer></script>
+<script src="/js/changelog.js?v=20260913a" defer></script>
 <script defer src="/js/gpt-dir-filters.js?v=20260911c"></script>
 <script defer src="/js/gpt-dir-workbench.js?v=20260913b"></script>
 <script defer src="/js/gpt-activity.js?v=20260913a"></script>
@@ -10205,6 +10205,6 @@ body.view-chat .sfb-card {
 <script src="/js/peta-peluang.js?v=20260908a" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
-<script src="/js/gpt-app.js?v=20260913e" defer></script>
+<script src="/js/gpt-app.js?v=20260913f" defer></script>
 </body>
 </html>

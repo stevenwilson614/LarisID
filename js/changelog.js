@@ -18,6 +18,10 @@ window.LARIS_CHANGELOG = [
         text: 'Daftar pemberitahuan di lonceng sekarang muncul di depan kolom cari produk, menandai yang baru, dan tetap menampilkan kabar lama — sampai 20 item. Menutup lonceng tidak menghapus isinya.',
         tech: 'user_notices.read_at + mark_notices_read (20260913210000); LarisActivity loads last 20 without dismissed_at wipe; #notif-panel position:fixed z-index 90 above .results-bar.',
       },
+      {
+        text: 'Lingkaran jatah Deep Dive dan unduhan di header juga muncul di depan kolom cari produk, bukan di belakangnya.',
+        tech: '.main-top.is-pop-open z-index 80 while the header usage-pop is open; .usage-pop z-index 90.',
+      },
     ],
   },
   {
