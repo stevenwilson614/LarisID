@@ -25894,16 +25894,12 @@ function exportInfoRows(payload, hist) {
     ['Sisa minggu riwayat hari ini', payload.weeks_remaining ?? '—'],
     [],
     ['Cara membaca angka'],
-    ['terukur', 'Diukur dari dua kali scrape yang mengapit periode ini. Delta dibagi rata '
-              + 'sepanjang jaraknya, bukan dianggap satu minggu.'],
     ['perkiraan', 'Hasil model kecepatan LarisID — termasuk minggu sebelum produk ini mulai '
                 + 'kami pantau, yang memakai median produk sejenis.'],
     ['proyeksi', 'Proyeksi ke depan dari scrape terakhir. Belum terjadi.'],
     [],
     ['Yang perlu kamu tahu'],
-    ['Jadwal scrape', 'Scrape kami turun setiap 12–17 hari. Angka mingguan sudah dinormalkan '
-                    + 'ke laju 7 hari, jadi jangan dibaca sebagai hitungan mentah.'],
-    ['Omset / bulan', 'Dari kecepatan terukur/perkiraan kami (bukan jumlah mentah 4 scrape). '
+    ['Omset / bulan', 'Dari kecepatan kami (bukan jumlah mentah 4 scrape). '
                     + 'Kalau ada beberapa scrape dalam ~sebulan, itu yang membentuk omset bulanan.'],
     ['Pertama terpantau', 'Tanggal pertama kami melihat listing ini — batas bawah, bukan '
                         + 'tanggal toko membuatnya.'],
