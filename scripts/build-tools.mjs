@@ -10,6 +10,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ANALYTICS } from './lib/analytics-head.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -117,6 +118,7 @@ ${t.faqs.map((f) => `    <div class="faq-item">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+${ANALYTICS}
 <title>${esc(t.title)}</title>
 <meta name="description" content="${esc(t.desc)}">
 <meta name="robots" content="index, follow">
@@ -202,6 +204,7 @@ function hubPage(tools) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+${ANALYTICS}
 <title>Kalkulator Gratis Seller Shopee, TikTok Shop, Tokopedia, Lazada &amp; Blibli | LarisID</title>
 <meta name="description" content="Kumpulan kalkulator gratis untuk seller Indonesia: hitung margin &amp; HPP dan biaya admin per marketplace — Shopee, TikTok Shop, Tokopedia, Lazada, Blibli. Langsung di browser, tanpa login.">
 <meta name="robots" content="index, follow">
