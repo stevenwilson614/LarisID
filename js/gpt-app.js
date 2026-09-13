@@ -25365,8 +25365,18 @@ function cwsExtLive() {
   return typeof CWS_EXT_URL === 'string' && /^https:\/\/chromewebstore\.google\.com\//.test(CWS_EXT_URL);
 }
 
+/** Chrome Web Store installs are desktop-only — hide all “Pasang ekstensi” CTAs on mobile. */
+function cwsExtOfferable() {
+  if (!cwsExtLive()) return false;
+  try {
+    if (window.matchMedia('(max-width: 860px)').matches) return false;
+  } catch (_) {}
+  return true;
+}
+window.cwsExtOfferable = cwsExtOfferable;
+
 function wireCwsExtLinks() {
-  const live = cwsExtLive();
+  const live = cwsExtOfferable();
   window.CWS_EXT_URL = live ? CWS_EXT_URL : '';
   ['hdr-ext-link', 'ext-hint-install', 'gpt-limit-ext'].forEach((id) => {
     const el = $(id);
@@ -25379,10 +25389,12 @@ function wireCwsExtLinks() {
       el.hidden = true;
     }
   });
+  const hint = $('ext-install-hint');
+  if (hint && !live) hint.hidden = true;
 }
 
 function maybeShowExtHint() {
-  if (!cwsExtLive()) return;
+  if (!cwsExtOfferable()) return;
   try {
     if (localStorage.getItem('lid_ext_hint_v1')) return;
   } catch (_) { return; }
