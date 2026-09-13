@@ -34,13 +34,14 @@ const ROOT = path.resolve(__dirname, '..');
 const OUT_DIR = path.join(ROOT, 'riset');
 
 const SITE = 'https://larisid.com';
+// First-publication date of the /riset/ corpus. Kept fixed: it is the datePublished
+// of pages that have existed since then, and the lastmod of the hand-authored
+// /panduan/ pages below. It is NOT the data date — see DATA_SNAPSHOT.
 const SNAPSHOT = '2026-06-19';
-const SNAPSHOT_HUMAN = '19 Juni 2026';
-// Publish date of the beginner-products guide + free calculators. Distinct from SNAPSHOT:
-// SNAPSHOT is "when the Shopee data was scraped" and only belongs on data-driven pages
-// (/riset/, /kota/). Using it as <lastmod> for pages authored later reports a change date
-// BEFORE the page existed, which suppresses recrawl priority and contradicts the page's
-// own Article schema. Give hand-authored pages their real publish date instead.
+// Publish date of the beginner-products guide + free calculators. Distinct from the
+// dates above: a <lastmod> that predates the page itself reports a change date BEFORE
+// the page existed, which suppresses recrawl priority and contradicts the page's own
+// Article schema. Give hand-authored pages their real publish date instead.
 const CONTENT_2026_07 = '2026-07-24';
 const TOOLS_2026_09 = '2026-09-08'; // kalkulator fee tables refreshed
 const COPY_2026_09 = '2026-09-08'; // Excel/CSV listing + history copy on harga/perbandingan
@@ -58,6 +59,23 @@ const COVERAGE_SNAPSHOT = (() => {
 // Google Ads tag — lives on the /riset/ hub (parity with the committed hub; kept
 // here so regenerating the hub does not strip conversion tracking). Leaf pages stay gtag-free.
 const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'seo-keywords.json'), 'utf8'));
+
+// The date the numbers on the /riset/ pages were pulled, owned by the data file
+// (fetch-riset-batch.mjs and refresh-riset-stats.mjs both stamp it). This drives
+// dateModified, article:modified_time, the visible "Snapshot data" line and the
+// sitemap <lastmod> of every data-driven page. It was previously frozen at the
+// corpus's first publication date, so a refreshed page still told crawlers it had
+// not changed since June — a recrawl signal we were throwing away on 748 URLs.
+const DATA_SNAPSHOT = (() => {
+  const d = data && data._meta && data._meta.snapshot_date;
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(d)) ? String(d) : SNAPSHOT;
+})();
+const ID_MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
+  'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+const DATA_SNAPSHOT_HUMAN = (() => {
+  const [y, m, d] = DATA_SNAPSHOT.split('-');
+  return `${Number(d)} ${ID_MONTHS[Number(m) - 1]} ${y}`;
+})();
 const KEYWORDS = data.keywords;
 // Per-keyword detail (top products, regions, price buckets, store counts) precomputed
 // in SQL over ALL listings per keyword — see scripts/seo-detail.json (regenerate via the
@@ -236,7 +254,7 @@ ${related.map((r) => `      <a class="riset-card" href="/riset/${slugify(r.keywo
       },
       {
         '@type': 'Dataset',
-        name: jsonText(`Data pasar ${k} di Shopee (${SNAPSHOT_HUMAN})`),
+        name: jsonText(`Data pasar ${k} di Shopee (${DATA_SNAPSHOT_HUMAN})`),
         description: jsonText(`Dataset riset pasar untuk "${k}" di Shopee Indonesia: harga median ${rp(kw.medPrice)} (rentang ${rp(kw.minPrice)}\u2013${rp(kw.p90Price)}), ${num(kw.n)} listing dari ${num(d.stores)} toko, rating rata-rata ${kw.rating}, dan estimasi penjualan. Angka harga, rating, dan ulasan adalah data nyata Shopee; "terjual" adalah estimasi.`),
         url,
         identifier: url,
@@ -245,8 +263,8 @@ ${related.map((r) => `      <a class="riset-card" href="/riset/${slugify(r.keywo
         isAccessibleForFree: true,
         license: `${SITE}/cara-kerja/`,
         datePublished: SNAPSHOT,
-        dateModified: SNAPSHOT,
-        temporalCoverage: SNAPSHOT,
+        dateModified: DATA_SNAPSHOT,
+        temporalCoverage: DATA_SNAPSHOT,
         creator: { '@type': 'Organization', name: 'LarisID', url: `${SITE}/` },
         publisher: { '@type': 'Organization', name: 'LarisID', url: `${SITE}/` },
         variableMeasured: [
@@ -281,7 +299,7 @@ ${ANALYTICS}
 <meta property="og:image:height" content="630">
 <meta property="og:locale" content="id_ID">
 <meta property="og:site_name" content="LarisID">
-<meta property="article:modified_time" content="${SNAPSHOT}">
+<meta property="article:modified_time" content="${DATA_SNAPSHOT}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${esc(kTitle)} di Shopee \u2014 Data Harga & Penjualan">
 <meta name="twitter:description" content="${esc(`Harga median ${rp(kw.medPrice)}, ${num(kw.n)} listing, rating ${kw.rating}. Riset pasar ${k}.`)}">
@@ -305,7 +323,7 @@ ${JSON.stringify(ld, null, 2)}
   <p class="cat-pill">${esc(kw.category)} \u00b7 Riset Pasar Shopee</p>
   <h1>Riset Pasar: ${esc(kTitle)} di Shopee</h1>
   <p class="lead">Gambaran nyata pasar <strong>${esc(k)}</strong> di Shopee \u2014 harga, rating, jumlah ulasan, dan sebaran penjual \u2014 dari ${num(kw.n)} listing yang dipantau LarisID.</p>
-  <p class="updated">Snapshot data: ${SNAPSHOT_HUMAN} \u00b7 <a href="/cara-kerja/">metodologi &amp; batasan data</a> \u00b7 <a href="/llms.txt">llms.txt</a></p>
+  <p class="updated">Snapshot data: ${DATA_SNAPSHOT_HUMAN} \u00b7 <a href="/cara-kerja/">metodologi &amp; batasan data</a> \u00b7 <a href="/llms.txt">llms.txt</a></p>
 
   <div class="summary-box">
     <h2>Ringkasan untuk penjual (dan asisten AI)</h2>
@@ -464,7 +482,7 @@ ${JSON.stringify(ld, null, 2)}
 <main class="wide">
   <h1>Riset Pasar Produk Shopee</h1>
   <p class="lead">Data harga, rating, dan penjualan nyata untuk ${entries.length} keyword produk populer di Shopee Indonesia. Gratis \u2014 supaya kamu riset dulu sebelum kulakan, mau jualan di Shopee, TikTok Shop, Tokopedia, Lazada, maupun Blibli.</p>
-  <p class="updated">Snapshot data: ${SNAPSHOT_HUMAN} \u00b7 estimasi total ${kfmt(totalSold)}+ unit terjual pada produk yang dipantau \u00b7 <a href="/cara-kerja/">metodologi</a></p>
+  <p class="updated">Snapshot data: ${DATA_SNAPSHOT_HUMAN} \u00b7 estimasi total ${kfmt(totalSold)}+ unit terjual pada produk yang dipantau \u00b7 <a href="/cara-kerja/">metodologi</a></p>
 
   <div class="summary-box">
     <h2>Buat apa halaman ini?</h2>
@@ -500,7 +518,7 @@ function buildSitemap(entries) {
   } catch (_) {}
   const staticUrls = [
     { loc: `${SITE}/`, freq: 'weekly', pri: '1.0', mod: COPY_2026_09 },
-    { loc: `${SITE}/riset/`, freq: 'weekly', pri: '0.9', mod: SNAPSHOT },
+    { loc: `${SITE}/riset/`, freq: 'weekly', pri: '0.9', mod: DATA_SNAPSHOT },
     // /data/ carries its own snapshot: it is rebuilt weekly from scripts/coverage.json,
     // on a different cadence from the /riset/ batch, so SNAPSHOT would understate it.
     { loc: `${SITE}/data/`, freq: 'weekly', pri: '0.85', mod: COVERAGE_SNAPSHOT },
@@ -539,7 +557,7 @@ function buildSitemap(entries) {
   ];
   const all = [
     ...staticUrls,
-    ...entries.map((e) => ({ loc: `${SITE}/riset/${slugify(e.keyword)}/`, freq: 'weekly', pri: '0.7', mod: SNAPSHOT })),
+    ...entries.map((e) => ({ loc: `${SITE}/riset/${slugify(e.keyword)}/`, freq: 'weekly', pri: '0.7', mod: DATA_SNAPSHOT })),
   ];
   const body = all.map((u) => `  <url>
     <loc>${u.loc}</loc>
