@@ -8,7 +8,9 @@
   var _cache = { chats: [], searches: [], dives: [], downloads: [] };
   var _notices = [];
   var _bellOpen = false;
+  var _highlightIds = {};
   var _wired = false;
+  var BELL_LIMIT = 20;
 
   function esc(s) { return api.esc ? api.esc(s) : String(s == null ? '' : s); }
   function $(id) { return document.getElementById(id); }
@@ -188,7 +190,62 @@
     if (n.kind === 'export_done') return 'Unduhan selesai';
     if (n.kind === 'export_grant') return '1.000 baris unduhan sudah masuk ke akun kamu';
     if (n.kind === 'tracker_change') return p.lead || 'Favorit Aku berubah';
+    if (n.kind === 'quota_reset') return 'Jatah unduhan sudah diisi ulang';
     return 'Pemberitahuan';
+  }
+
+  function noticeKindLabel(kind) {
+    return {
+      keyword_ready: 'Kata kunci',
+      criteria_hit: 'Kriteria',
+      export_done: 'Unduhan',
+      export_grant: 'Hadiah',
+      tracker_change: 'Favorit',
+      quota_reset: 'Jatah',
+    }[kind] || 'Kabar';
+  }
+
+  function noticeWhen(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    var mins = Math.round((Date.now() - d.getTime()) / 60000);
+    if (mins < 1) return 'Baru saja';
+    if (mins < 60) return mins + ' menit lalu';
+    var hours = Math.round(mins / 60);
+    if (hours < 24) return hours + ' jam lalu';
+    var days = Math.round(hours / 24);
+    if (days < 7) return days + ' hari lalu';
+    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  }
+
+  function unreadCount() {
+    return _notices.filter(function (x) { return !x.read_at; }).length;
+  }
+
+  function placePanel() {
+    var btn = $('notif-bell');
+    var panel = $('notif-panel');
+    if (!btn || !panel || !_bellOpen) return;
+    var r = btn.getBoundingClientRect();
+    var width = Math.min(340, window.innerWidth - 24);
+    var right = Math.max(12, window.innerWidth - r.right);
+    if (right + width > window.innerWidth - 12) right = 12;
+    panel.style.width = width + 'px';
+    panel.style.top = Math.round(r.bottom + 6) + 'px';
+    panel.style.right = Math.round(right) + 'px';
+    panel.style.left = 'auto';
+  }
+
+  function setBellOpen(open) {
+    _bellOpen = !!open;
+    var top = document.querySelector('.main-top');
+    var wrap = $('notif-wrap');
+    var btn = $('notif-bell');
+    if (top) top.classList.toggle('is-notif-open', _bellOpen);
+    if (wrap) wrap.classList.toggle('is-open', _bellOpen);
+    if (btn) btn.setAttribute('aria-expanded', _bellOpen ? 'true' : 'false');
+    if (!_bellOpen) _highlightIds = {};
   }
 
   function paintBell() {
@@ -196,25 +253,39 @@
     var badge = $('notif-bell-badge');
     var panel = $('notif-panel');
     if (!btn) return;
-    var n = _notices.length;
+    var fresh = unreadCount();
     if (badge) {
-      badge.hidden = n === 0;
-      badge.textContent = n > 9 ? '9+' : String(n);
+      badge.hidden = fresh === 0;
+      badge.textContent = fresh > 9 ? '9+' : String(fresh);
     }
-    btn.setAttribute('aria-label', n ? ('Pemberitahuan, ' + n + ' belum dibaca') : 'Pemberitahuan');
+    btn.setAttribute('aria-label', fresh
+      ? ('Pemberitahuan, ' + fresh + ' belum dibaca')
+      : 'Pemberitahuan');
+    btn.setAttribute('aria-expanded', _bellOpen ? 'true' : 'false');
     if (!panel) return;
     if (!_bellOpen) { panel.hidden = true; return; }
     panel.hidden = false;
-    if (!n) {
-      panel.innerHTML = '<p class="notif-empty">Belum ada kabar baru.</p>';
+    var rows = _notices.slice(0, BELL_LIMIT);
+    if (!rows.length) {
+      panel.innerHTML = '<div class="notif-head">Pemberitahuan</div>'
+        + '<p class="notif-empty">Belum ada pemberitahuan.</p>';
+      placePanel();
       return;
     }
-    panel.innerHTML = _notices.map(function (x) {
+    panel.innerHTML = '<div class="notif-head">Pemberitahuan</div>' + rows.map(function (x) {
       var go = (x.payload && x.payload.go) || (x.kind === 'export_grant' ? 'directory' : '');
-      return '<button type="button" class="notif-item" data-notice="' + esc(x.id) + '" data-kind="' + esc(x.kind) + '"'
+      var isNew = !!_highlightIds[x.id] || !x.read_at;
+      return '<button type="button" class="notif-item' + (isNew ? ' is-new' : '') + '" data-notice="'
+        + esc(x.id) + '" data-kind="' + esc(x.kind) + '"'
         + (go ? ' data-go="' + esc(go) + '"' : '') + '>'
-        + esc(noticeLead(x)) + '</button>';
+        + '<span class="notif-item-lead">' + esc(noticeLead(x)) + '</span>'
+        + '<span class="notif-item-meta">'
+        + (isNew ? '<span class="notif-dot-new" aria-hidden="true"></span><span>Baru</span>' : '')
+        + '<span>' + esc(noticeKindLabel(x.kind)) + '</span>'
+        + '<span>' + esc(noticeWhen(x.created_at)) + '</span>'
+        + '</span></button>';
     }).join('');
+    placePanel();
   }
 
   async function loadNotices() {
@@ -222,19 +293,28 @@
     var user = api.user && api.user();
     if (!sb || !user) { _notices = []; paintBell(); return; }
     try {
-      var { data } = await sb.from('user_notices').select('id,kind,payload,created_at')
-        .is('dismissed_at', null).order('created_at', { ascending: false }).limit(20);
+      var { data } = await sb.from('user_notices')
+        .select('id,kind,payload,created_at,read_at')
+        .order('created_at', { ascending: false })
+        .limit(BELL_LIMIT);
       _notices = data || [];
     } catch (_) { _notices = []; }
     paintBell();
   }
 
   async function markRead() {
+    var unread = _notices.filter(function (x) { return !x.read_at; });
+    if (!unread.length) return;
     var sb = api.supabase && api.supabase();
     if (!sb) return;
-    try { await sb.rpc('dismiss_notices_open'); } catch (_) {}
-    _notices = [];
-    paintBell();
+    try { await sb.rpc('mark_notices_read'); } catch (_) {
+      try { await sb.rpc('dismiss_notices_open'); } catch (__) {}
+    }
+    unread.forEach(function (x) { x.read_at = x.read_at || new Date().toISOString(); });
+    var badge = $('notif-bell-badge');
+    if (badge) badge.hidden = true;
+    var btn = $('notif-bell');
+    if (btn) btn.setAttribute('aria-label', 'Pemberitahuan');
   }
 
   function openItem(it) {
@@ -283,9 +363,16 @@
         return;
       }
       if (t.closest('#notif-bell')) {
-        _bellOpen = !_bellOpen;
+        if (_bellOpen) {
+          setBellOpen(false);
+          paintBell();
+          return;
+        }
+        _highlightIds = {};
+        _notices.forEach(function (x) { if (!x.read_at) _highlightIds[x.id] = 1; });
+        setBellOpen(true);
         paintBell();
-        if (_bellOpen) void markRead();
+        void markRead();
         return;
       }
       var notice = t.closest('[data-notice]');
@@ -297,15 +384,17 @@
         if ((kind === 'export_grant' || go === 'directory') && api.openDirectory) api.openDirectory();
         else if (p.keyword && api.rerunSearch) api.rerunSearch(p.keyword);
         else if (p.query && api.rerunSearch) api.rerunSearch(p.query);
-        _bellOpen = false;
+        setBellOpen(false);
         paintBell();
         return;
       }
-      if (_bellOpen && !t.closest('#notif-wrap')) {
-        _bellOpen = false;
+      if (_bellOpen && !t.closest('#notif-wrap') && !t.closest('#notif-panel')) {
+        setBellOpen(false);
         paintBell();
       }
     });
+    window.addEventListener('resize', placePanel);
+    window.addEventListener('scroll', placePanel, true);
   }
 
   function init(next) {

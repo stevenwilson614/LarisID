@@ -441,6 +441,10 @@ html.session-restoring body::after {
   min-height: 52px;
   z-index: 5;
 }
+/* Bell panel is position:fixed; lift the header so it still wins if a
+   transformed ancestor turns that fixed into a local overlay. Above
+   .results-bar (20), below .modal-overlay (100). */
+.main-top.is-notif-open { z-index: 80; }
 .main-top-left {
   display: flex; align-items: center; gap: 8px; min-width: 0;
 }
@@ -1925,16 +1929,37 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
 }
 .notif-badge[hidden] { display: none !important; }
 .notif-panel {
-  position: absolute; right: 0; top: calc(100% + 6px); width: min(320px, 80vw);
+  position: fixed; width: min(340px, calc(100vw - 24px));
   background-color: #fff; border: 1px solid var(--line); border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(16,24,40,.12); padding: 8px; z-index: 40;
+  box-shadow: 0 12px 36px rgba(16,24,40,.18); padding: 0; z-index: 90;
+  max-height: min(70vh, 520px); overflow: auto;
+}
+.notif-head {
+  position: sticky; top: 0; z-index: 1;
+  padding: 10px 12px 8px; font-size: .72rem; font-weight: 800;
+  letter-spacing: .04em; text-transform: uppercase; color: var(--ink-soft);
+  background-color: #fff; border-bottom: 1px solid var(--line);
 }
 .notif-item {
   display: block; width: 100%; text-align: left; border: 0; background-color: transparent;
-  padding: 8px; border-radius: 8px; font-size: .8rem; cursor: pointer;
+  padding: 10px 12px; font-size: .8rem; cursor: pointer;
+  border-bottom: 1px solid #F3F1EE;
 }
+.notif-item:last-child { border-bottom: 0; }
 .notif-item:hover { background-color: var(--bg-user); }
-.notif-empty { margin: 8px; font-size: .8rem; color: var(--ink-soft); }
+.notif-item.is-new { background-color: #FFF7ED; }
+.notif-item.is-new:hover { background-color: #FFEDD5; }
+.notif-item-lead { display: block; font-weight: 650; color: var(--ink); }
+.notif-item.is-new .notif-item-lead { font-weight: 800; }
+.notif-item-meta {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 4px; font-size: .64rem; font-weight: 650; color: var(--muted);
+}
+.notif-dot-new {
+  display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  background-color: var(--accent, #B5202A); flex-shrink: 0;
+}
+.notif-empty { margin: 12px; font-size: .8rem; color: var(--ink-soft); }
 .ext-install-hint {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   margin: 0 16px 8px; padding: 8px 12px; border-radius: 12px;
@@ -8070,7 +8095,7 @@ body.view-chat .sfb-card {
         </button>
         <a class="hdr-ext-link" id="hdr-ext-link" hidden target="_blank" rel="noopener">Pasang ekstensi</a>
         <div class="notif-wrap" id="notif-wrap">
-          <button type="button" class="notif-bell" id="notif-bell" aria-label="Pemberitahuan" title="Pemberitahuan">
+          <button type="button" class="notif-bell" id="notif-bell" aria-label="Pemberitahuan" title="Pemberitahuan" aria-haspopup="true" aria-expanded="false" aria-controls="notif-panel">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
             <span class="notif-badge" id="notif-bell-badge" hidden>0</span>
           </button>
@@ -10160,7 +10185,7 @@ body.view-chat .sfb-card {
 <script src="/js/changelog.js?v=20260911b" defer></script>
 <script defer src="/js/gpt-dir-filters.js?v=20260911c"></script>
 <script defer src="/js/gpt-dir-workbench.js?v=20260913b"></script>
-<script defer src="/js/gpt-activity.js?v=20260911c"></script>
+<script defer src="/js/gpt-activity.js?v=20260913a"></script>
 <script defer src="/js/gpt-dir-hero.js?v=20260824a"></script>
 <script defer src="/js/gpt-dir-home.js?v=20260824d"></script>
 <script defer src="/js/gpt-photo-analyze.js?v=20260824a"></script>

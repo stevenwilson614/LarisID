@@ -11,6 +11,16 @@
 // A plain string is still accepted and renders with no tech line.
 window.LARIS_CHANGELOG = [
   {
+    date: '2026-09-13',
+    title: 'Lonceng pemberitahuan tetap terbuka di depan',
+    items: [
+      {
+        text: 'Daftar pemberitahuan di lonceng sekarang muncul di depan kolom cari produk, menandai yang baru, dan tetap menampilkan kabar lama — sampai 20 item. Menutup lonceng tidak menghapus isinya.',
+        tech: 'user_notices.read_at + mark_notices_read (20260913210000); LarisActivity loads last 20 without dismissed_at wipe; #notif-panel position:fixed z-index 90 above .results-bar.',
+      },
+    ],
+  },
+  {
     date: '2026-09-11',
     title: 'Pesan Steven sampai ke yang sering pakai',
     items: [

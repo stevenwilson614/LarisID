@@ -126,8 +126,9 @@ pattern as `#product-rows-notice`. CTA opens Cari Produk. Event:
 The 1000-row thank-you bank (`user_export_grants`, source `superuser_feedback`)
 also writes a header-bell notice (`user_notices.kind = export_grant`). Existing
 grants were backfilled in `20260911190000_export_grant_notices.sql`. The header
-bell lists it; the founder card can show the same row. Click on the bell opens
-Cari Produk.
+bell lists the last 20 `user_notices` (unread highlighted via `read_at`); the
+founder card can show the same row. Opening the bell marks notices read and
+does not remove them. Click on the export-grant row opens Cari Produk.
 
 ## The events that are the actual point
 
