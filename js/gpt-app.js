@@ -12952,6 +12952,14 @@ function bindListingRows(root, extra = {}) {
     });
   });
   (root || document).querySelectorAll('.lrow-wrap').forEach(w => {
+    if (!w.dataset.boundLrowScroll) {
+      w.dataset.boundLrowScroll = '1';
+      const syncScrolled = () => {
+        w.classList.toggle('is-scrolled', w.scrollLeft > 4);
+      };
+      w.addEventListener('scroll', syncScrolled, { passive: true });
+      syncScrolled();
+    }
     if (w.dataset.boundLrowSort) return;
     w.dataset.boundLrowSort = '1';
     w.addEventListener('click', (e) => {

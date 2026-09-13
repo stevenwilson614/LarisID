@@ -6558,23 +6558,28 @@ body.home-finder-done .home-hero {
 #dir-grid .lrow-img,
 #dir-grid .lrow-img--ph { width: 84px; height: 84px; border-radius: 14px; }
 @media (max-width: 559px) {
-  /* Mobile Cari Produk: match the card mock (photo + title/cat/meta + stacked
-     Harga/Omset) on the first screen; swipe for tren / grafik / terjual / review / usia.
-     Checkbox + photo stay sticky. */
+  /* Mobile Cari Produk: one shared horizontal scroller (rows move together),
+     connected like desktop; checkbox + compact photo stay sticky on the left. */
   #dir-grid {
     --lrow-sticky-pick-w: 30px;
-    --lrow-sticky-thumb-w: 78px;
+    --lrow-sticky-thumb-w: 56px;
+    --lrow-title-w: max(7.25rem, calc(100cqi - var(--lrow-sticky-pick-w) - var(--lrow-sticky-thumb-w) - 7.75rem));
   }
   #dir-grid .lrow-wrap {
-    overflow: visible;
+    overflow-x: auto;
+    overflow-y: clip;
     margin: 0;
-    -webkit-overflow-scrolling: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
     container-type: inline-size;
+    border: 1px solid #ECEFF3;
+    border-radius: 14px;
+    background: #fff;
   }
   #dir-grid .lrow-table {
     display: block;
-    min-width: 0;
-    width: 100%;
+    min-width: 100%;
+    width: max-content;
     border-collapse: separate;
     border-spacing: 0;
     font-size: .86rem;
@@ -6583,7 +6588,7 @@ body.home-finder-done .home-hero {
   #dir-grid .lrow-table tbody {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 0;
   }
   #dir-grid .lrow-table td {
     border-bottom: none;
@@ -6593,63 +6598,48 @@ body.home-finder-done .home-hero {
   #dir-grid .lrow {
     --lrow-gap: 8px;
     display: grid;
-    /* Fallback if 100cqi is unavailable: keep at least 7.25rem for the name. */
+    /* Fixed title width (not 1fr) so every row shares the same column track
+       and side-scroll stays aligned across the list. */
     grid-template-columns:
       var(--lrow-sticky-pick-w)
       var(--lrow-sticky-thumb-w)
-      minmax(7.25rem, 1fr)
-      max-content
+      var(--lrow-title-w)
+      5.75rem
       18px
-      max-content max-content max-content max-content max-content;
-    /* overflow-x:auto zeroes the 1fr minimum, so minmax(0,1fr) hid the title.
-       max() keeps a floor when 100cqi is 0; 1fr as the max stays valid. */
-    grid-template-columns:
-      var(--lrow-sticky-pick-w)
-      var(--lrow-sticky-thumb-w)
-      minmax(max(7.25rem, calc(100cqi - var(--lrow-sticky-pick-w) - var(--lrow-sticky-thumb-w) - 7.75rem)), 1fr)
-      max-content
-      18px
-      max-content max-content max-content max-content max-content;
+      5.5rem 5.25rem 5.5rem 5.25rem 4.5rem;
     grid-template-rows: auto auto;
     column-gap: var(--lrow-gap);
     row-gap: 0;
     align-items: center;
-    width: 100%;
+    width: max-content;
+    min-width: 100%;
     box-sizing: border-box;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-x: contain;
-    scroll-snap-type: x proximity;
-    padding: 12px 10px 12px 8px;
+    overflow: visible;
+    padding: 10px 10px 10px 6px;
     background: #fff;
-    border: 1px solid #ECEFF3;
-    border-radius: 16px;
-    box-shadow: 0 1px 2px rgba(16, 24, 40, .04);
+    border: 0;
+    border-bottom: 1px solid #ECEFF3;
+    border-radius: 0;
+    box-shadow: none;
     outline: none;
   }
+  #dir-grid .lrow:last-child { border-bottom: 0; }
   #dir-grid .lrow-table .lrow:hover,
   #dir-grid .lrow-table .lrow.is-hl {
     background: #FFF8F0;
-    border-color: #F3E0C8;
   }
   #dir-grid .lrow-table .lrow.is-sel {
     background: #FEF2F2;
-    border-color: rgba(181, 32, 42, .28);
     outline: none;
   }
   #dir-grid .lrow-table .lrow.is-picked {
     background: #ECFDF5;
-    border-color: rgba(22, 163, 74, .28);
   }
-  /* Only checkbox + photo stick. Title scrolls with metrics and must stay
-     under the photo (same z-index + later DOM used to paint the name on top). */
+  /* Only checkbox + photo stick. Title scrolls with metrics. */
   #dir-grid .lrow-table .lrow-pick,
   #dir-grid .lrow-table .lrow-thumb {
     position: sticky;
     box-shadow: none;
-    width: auto;
-    max-width: none;
   }
   #dir-grid .lrow-table .lrow-col-prod,
   #dir-grid .lrow-table .lrow-prod {
@@ -6669,33 +6659,63 @@ body.home-finder-done .home-hero {
     place-items: center;
     align-self: stretch;
     padding: 0;
+    width: var(--lrow-sticky-pick-w);
+    min-width: var(--lrow-sticky-pick-w);
+    max-width: var(--lrow-sticky-pick-w);
     background: #fff;
+    /* Fill the 8px grid gap so scrolled metrics never flash between pick + thumb. */
+    box-shadow: 8px 0 0 #fff;
   }
   #dir-grid .lrow-table .lrow-thumb {
     grid-column: 2;
     grid-row: 1 / span 2;
-    left: var(--lrow-sticky-pick-w);
+    left: calc(var(--lrow-sticky-pick-w) + var(--lrow-gap));
     z-index: 5;
     padding: 0;
+    width: var(--lrow-sticky-thumb-w);
+    min-width: var(--lrow-sticky-thumb-w);
+    max-width: var(--lrow-sticky-thumb-w);
+    align-self: stretch;
+    display: grid;
+    place-items: center;
     background: #fff;
   }
   #dir-grid .lrow-thumb .lrow-img,
   #dir-grid .lrow-thumb .lrow-img--ph {
-    width: 72px;
-    height: 72px;
-    border-radius: 14px;
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    transform-origin: center center;
+    transition: transform .15s ease;
+  }
+  /* Compact pin while side-scrolling — scale only, no column jump. */
+  #dir-grid .lrow-wrap.is-scrolled .lrow-thumb .lrow-img,
+  #dir-grid .lrow-wrap.is-scrolled .lrow-thumb .lrow-img--ph {
+    transform: scale(0.78);
+  }
+  #dir-grid .lrow-wrap.is-scrolled .lrow-thumb {
+    box-shadow: 6px 0 10px -8px rgba(16, 24, 40, .35);
   }
   #dir-grid .lrow-table .lrow:hover .lrow-pick,
+  #dir-grid .lrow-table .lrow.is-hl .lrow-pick {
+    background: #FFF8F0;
+    box-shadow: 8px 0 0 #FFF8F0;
+  }
   #dir-grid .lrow-table .lrow:hover .lrow-thumb,
-  #dir-grid .lrow-table .lrow.is-hl .lrow-pick,
   #dir-grid .lrow-table .lrow.is-hl .lrow-thumb {
     background: #FFF8F0;
   }
-  #dir-grid .lrow-table .lrow.is-sel .lrow-pick,
+  #dir-grid .lrow-table .lrow.is-sel .lrow-pick {
+    background: #FEF2F2;
+    box-shadow: 8px 0 0 #FEF2F2;
+  }
   #dir-grid .lrow-table .lrow.is-sel .lrow-thumb {
     background: #FEF2F2;
   }
-  #dir-grid .lrow-table .lrow.is-picked .lrow-pick,
+  #dir-grid .lrow-table .lrow.is-picked .lrow-pick {
+    background: #ECFDF5;
+    box-shadow: 8px 0 0 #ECFDF5;
+  }
   #dir-grid .lrow-table .lrow.is-picked .lrow-thumb {
     background: #ECFDF5;
   }
@@ -6717,9 +6737,9 @@ body.home-finder-done .home-hero {
     position: relative;
     left: auto;
     z-index: 1;
-    min-width: max(7.25rem, calc(100cqi - var(--lrow-sticky-pick-w) - var(--lrow-sticky-thumb-w) - 7.75rem));
-    width: auto;
-    max-width: 100%;
+    min-width: 0;
+    width: var(--lrow-title-w);
+    max-width: var(--lrow-title-w);
     overflow: hidden;
     padding: 0 2px 0 0;
     box-shadow: none;
@@ -6798,7 +6818,6 @@ body.home-finder-done .home-hero {
     border-left: 1px solid #EAECF0;
     text-align: left;
     white-space: nowrap;
-    scroll-snap-align: start;
     background: transparent !important;
   }
   /* Harga above Omset — same column as the mock. */
@@ -10049,6 +10068,6 @@ body.view-chat .sfb-card {
 <script src="/js/peta-peluang.js?v=20260908a" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
-<script src="/js/gpt-app.js?v=20260912c" defer></script>
+<script src="/js/gpt-app.js?v=20260913a" defer></script>
 </body>
 </html>
