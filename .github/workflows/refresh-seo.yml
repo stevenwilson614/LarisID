@@ -1,0 +1,125 @@
+# Weekly SEO refresh: pull fresh corpus stats, publish the next batch of /riset/
+# pages, rebuild /data/, and open a PR.
+#
+# Opens a PR rather than pushing to main on purpose. Everything this job touches is
+# a public claim about our data, so a human merge gate stays in the loop. Merging
+# triggers deploy-pages.yml, which ships to Contabo + Cloudflare and pings IndexNow.
+#
+# Batching is deliberate: ~3,600 keywords qualify for a /riset/ page beyond the ones
+# already published, and shipping them in one push is a programmatic-SEO spam signal.
+# BATCH_LIMIT per week lets indexation keep up.
+#
+# Secrets used: CONTABO_SSH_KEY (already present for deploy-pages.yml). No new
+# credential is needed — the stats come over ssh+psql, not PostgREST.
+
+name: Weekly SEO refresh
+
+on:
+  schedule:
+    # Mondays 03:00 UTC (10:00 WIB) — after the overnight scrape has landed.
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+    inputs:
+      batch_limit:
+        description: 'How many new /riset/ keywords to publish this run'
+        required: false
+        default: '500'
+      skip_riset:
+        description: 'Only refresh /data/, publish no new /riset/ pages'
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  group: seo-refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    env:
+      BATCH_LIMIT: ${{ github.event.inputs.batch_limit || '500' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up SSH to Contabo
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.CONTABO_SSH_KEY }}" > ~/.ssh/contabo_key
+          chmod 600 ~/.ssh/contabo_key
+
+      - name: Pull coverage stats
+        env:
+          SSH_KEY: ~/.ssh/contabo_key
+        run: bash scripts/fetch-coverage.sh
+
+      - name: Publish next /riset/ batch
+        if: ${{ github.event.inputs.skip_riset != 'true' }}
+        env:
+          SSH_KEY: ~/.ssh/contabo_key
+        run: node scripts/fetch-riset-batch.mjs --limit "$BATCH_LIMIT"
+
+      - name: Rebuild pages
+        run: |
+          node scripts/build-coverage-page.mjs
+          node scripts/build-seo-pages.mjs
+
+      - name: Static checks
+        # Includes the fail-closed staleness guard: a stalled scrape blocks the PR
+        # instead of publishing a fresh dateModified over old numbers.
+        run: bash scripts/ci-static-checks.sh
+
+      - name: Open PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$(git status --porcelain)" ]]; then
+            echo "No changes to publish."
+            exit 0
+          fi
+          SNAPSHOT=$(node -e "console.log(require('./scripts/coverage.json').snapshot)")
+          PAGES=$(node -e "console.log(require('./scripts/seo-keywords.json').keywords.length)")
+          BRANCH="seo-refresh/${SNAPSHOT}-${GITHUB_RUN_ID}"
+
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git checkout -b "$BRANCH"
+          # Explicit paths — never `git add -A`, so an unrelated stray file in the
+          # runner's tree can't ride along into a published commit.
+          git add scripts/coverage.json scripts/seo-keywords.json scripts/seo-detail.json \
+                  data riset sitemap.xml index.html
+          git commit -m "SEO refresh ${SNAPSHOT}: coverage + ${PAGES} riset pages"
+          git push origin "$BRANCH"
+
+          # YAML strips this block's base indentation, so bash sees these lines flush
+          # left — the heredoc terminator resolves and the body carries no leading
+          # spaces. Keep every line at this exact indent; deepening one would leave it
+          # indented in the PR body, which markdown renders as a code block.
+          BODY=$(cat <<EOF
+          Automated weekly refresh.
+
+          - Coverage snapshot: \`${SNAPSHOT}\`
+          - /riset/ pages after this batch: **${PAGES}**
+          - Landing stat tiles re-sourced from \`scripts/coverage.json\`
+
+          Static checks passed, including the fail-closed staleness guard.
+          Merging deploys via \`deploy-pages.yml\`.
+
+          🤖 Generated with [Claude Code](https://claude.com/claude-code)
+          EOF
+          )
+          gh pr create \
+            --title "SEO refresh ${SNAPSHOT}" \
+            --body "$BODY" \
+            --base main --head "$BRANCH"

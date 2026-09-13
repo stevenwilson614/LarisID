@@ -207,7 +207,9 @@ table.compare .note { font-size: .75rem; color: var(--tm); display: block; margi
 .bar-row { display: flex; align-items: center; gap: 10px; margin: 6px 0; font-size: .82rem; }
 .bar-label { flex: 0 0 132px; color: var(--navy); font-weight: 600; }
 .bar-track { flex: 1; background: #F3F4F6; border-radius: 6px; height: 16px; overflow: hidden; }
-.bar-fill { height: 100%; background: var(--orange); border-radius: 6px; }
+/* display:block is load-bearing: the markup uses a <span>, and width/height never
+   apply to an inline box — every bar rendered as an empty track until 2026-09-13. */
+.bar-fill { display: block; height: 100%; background: var(--orange); border-radius: 6px; }
 .bar-val { flex: 0 0 64px; text-align: right; color: var(--tm); }
 
 .prod-name { font-weight: 600; color: var(--navy); }

@@ -3,9 +3,9 @@
     "source": "Supabase listings (project bzmvlraziqevqdyotvgy), deduped to latest row per item_id",
     "generated_query": "see scripts/build-seo-pages.mjs header; stats computed over ALL listings per keyword",
     "filters": "price>0, >=100 distinct items, category present, est_sold>200000, keyword has >=3 words",
-    "snapshot_date": "2026-06-18",
+    "snapshot_date": "2026-09-13",
     "note": "Prices, ratings, reviews are real Shopee values. est_sold (terjual) is an ESTIMATE — label as such on every page.",
-    "scaled_note": "Batch expanded 2026-07-19: +313 new = 745 keywords (relaxed filter: >=100 items, >=3 words, category present, dropped est_sold>200k gate; new rows computed from current DB)."
+    "scaled_note": "Batch 2026-09-13: 745 existing + 3 new = 748. 3587 qualifying keywords still unpublished."
   },
   "keywords": [
     {
@@ -8947,6 +8947,42 @@
       "estSold": 17765,
       "reviews": 3811,
       "rating": 4.82
+    },
+    {
+      "keyword": "bedak padat two way cake",
+      "category": "Makeup",
+      "n": 294,
+      "avgPrice": 73029,
+      "medPrice": 55000,
+      "minPrice": 11624,
+      "p90Price": 145569,
+      "estSold": 3801860,
+      "reviews": 2452404,
+      "rating": 4.88
+    },
+    {
+      "keyword": "susu formula 1 tahun",
+      "category": "Ibu & Bayi",
+      "n": 281,
+      "avgPrice": 354906,
+      "medPrice": 171000,
+      "minPrice": 8000,
+      "p90Price": 702500,
+      "estSold": 3741566,
+      "reviews": 1686841,
+      "rating": 4.92
+    },
+    {
+      "keyword": "celana cargo wanita",
+      "category": "Fashion Wanita",
+      "n": 256,
+      "avgPrice": 99487,
+      "medPrice": 81298,
+      "minPrice": 10000,
+      "p90Price": 172475,
+      "estSold": 3458283,
+      "reviews": 1147990,
+      "rating": 4.72
     }
   ]
 }

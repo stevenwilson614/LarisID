@@ -27,6 +27,7 @@ GitHub Pages is **retired** (not allowed for commercial SaaS).
 | `harga/` | Pricing (Rp 0 forever; daily new-search quota) |
 | `cara-kerja/` | Data methodology, Viability Score, AI limits |
 | `riset/` | **Programmatic SEO** — per-keyword Shopee market pages + hub (generated; see below) |
+| `data/` | Public corpus-coverage page (generated weekly; Dataset schema, source for the landing stats) |
 | `styles/seo-pages.css` | Shared CSS for static SEO pages |
 | `llms.txt` | Plain-text fact sheet for AI crawlers |
 | `sitemap.xml` | Submit in Google Search Console |
@@ -156,9 +157,34 @@ seller-region breakdown — plus an honest "what this means for you" read and FA
 Shared styles for these pages live in `styles/seo-pages.css` (stat grid, bars, riset cards).
 Internal links: nav + footer on every static page and the landing point to `/riset/`.
 
-Current batch: **432 keywords** (filters: ≥100 distinct items, category present, est_sold > 200k,
-≥3-word keyword) — the full qualifying set as of the June 2026 snapshot. Re-run the queries as the
-scrape DB grows to add more.
+### Refresh pipeline — AUTOMATED 13 Sep 2026
+
+`.github/workflows/refresh-seo.yml` runs weekly (Mon 03:00 UTC) and opens a PR; merging deploys via
+`deploy-pages.yml`. It needs no new secret — stats come over ssh+psql using the existing
+`CONTABO_SSH_KEY`. Steps, all runnable by hand:
+
+| Script | Does |
+|---|---|
+| `scripts/fetch-coverage.sh` → `scripts/sql/coverage.sql` | Corpus stats → `scripts/coverage.json` |
+| `scripts/build-coverage-page.mjs` | Writes `/data/` **and** rewrites the four landing `.hl-stats` tiles |
+| `scripts/fetch-riset-batch.mjs --limit N` | Appends the next N qualifying keywords to `seo-keywords.json` + `seo-detail.json` |
+| `scripts/build-seo-pages.mjs` | Rebuilds `/riset/` + the whole sitemap |
+
+**The old `scripts/fetch-seo-raw.sh` is dead** — `build-seo-pages.mjs` reads the committed JSON, so
+nothing consumes `scripts/_seo_raw/`. `refresh-seo.sh` still calls it; that call does nothing.
+
+**Batch, do not dump.** As of 13 Sep 2026: **4,335 keywords qualify, 748 published, ~3,587 pending.**
+Publishing the remainder in one push is a programmatic-SEO spam signal — ship ~400–600/week and watch
+indexation. `seo-keywords.json` is **append-only** (array index = page order); `ci-static-checks.sh`
+enforces that against `HEAD` and will fail the build on a reorder.
+
+**Fail-closed freshness.** `ci-static-checks.sh` refuses to publish when the coverage snapshot is more
+than 10 days old, so a stalled scrape blocks the PR instead of shipping a fresh `dateModified` over
+stale numbers. Snapshot date is the last day clearing 10k rows, not `max(scraped_at)` — the daily
+tracked pass writes a few hundred rows and would otherwise masquerade as a full refresh.
+
+Old batch note: the June 2026 set was 432 keywords under a stricter filter (which also gated on
+est_sold > 200k). That gate was dropped in the July 2026 expansion.
 
 ## GEO / AEO additions (shipped June 2026)
 

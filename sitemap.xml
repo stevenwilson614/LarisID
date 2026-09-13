@@ -13,6 +13,12 @@
     <lastmod>2026-06-19</lastmod>
   </url>
   <url>
+    <loc>https://larisid.com/data/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+    <lastmod>2026-09-11</lastmod>
+  </url>
+  <url>
     <loc>https://larisid.com/panduan/</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -4670,6 +4676,24 @@
   </url>
   <url>
     <loc>https://larisid.com/riset/tempat-pulpen-putar/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <lastmod>2026-06-19</lastmod>
+  </url>
+  <url>
+    <loc>https://larisid.com/riset/bedak-padat-two-way-cake/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <lastmod>2026-06-19</lastmod>
+  </url>
+  <url>
+    <loc>https://larisid.com/riset/susu-formula-1-tahun/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <lastmod>2026-06-19</lastmod>
+  </url>
+  <url>
+    <loc>https://larisid.com/riset/celana-cargo-wanita/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <lastmod>2026-06-19</lastmod>

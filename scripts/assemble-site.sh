@@ -14,7 +14,7 @@ fi
 cp -r "$ROOT"/images "$ROOT"/styles "$ROOT"/fonts \
       "$ROOT"/privacy "$ROOT"/perbandingan "$ROOT"/harga "$ROOT"/tentang \
       "$ROOT"/cara-kerja "$ROOT"/riset "$ROOT"/panduan "$ROOT"/kota \
-      "$ROOT"/kalkulator "$ROOT"/rise "$OUT/"
+      "$ROOT"/kalkulator "$ROOT"/rise "$ROOT"/data "$OUT/"
 mkdir -p "$OUT/js"
 # Live JS only — do not ship laris-app.js, pre-cutover backups, or unused vendors.
 rsync -a --exclude '*.bak' --exclude 'laris-app.js' \

@@ -46,6 +46,15 @@ const TOOLS_2026_09 = '2026-09-08'; // kalkulator fee tables refreshed
 const COPY_2026_09 = '2026-09-08'; // Excel/CSV listing + history copy on harga/perbandingan
 const OG_IMAGE = `${SITE}/images/Banner.jpg`;
 
+// /data/ is owned by build-coverage-page.mjs but its sitemap entry lives here (this
+// file owns the whole sitemap). Fall back to SNAPSHOT if the coverage pull has never
+// run, so a fresh checkout still builds.
+const COVERAGE_SNAPSHOT = (() => {
+  try {
+    return String(JSON.parse(fs.readFileSync(path.join(__dirname, 'coverage.json'), 'utf8')).snapshot).slice(0, 10);
+  } catch (_) { return SNAPSHOT; }
+})();
+
 // Google Ads tag — lives on the /riset/ hub (parity with the committed hub; kept
 // here so regenerating the hub does not strip conversion tracking). Leaf pages stay gtag-free.
 const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'seo-keywords.json'), 'utf8'));
@@ -492,6 +501,9 @@ function buildSitemap(entries) {
   const staticUrls = [
     { loc: `${SITE}/`, freq: 'weekly', pri: '1.0', mod: COPY_2026_09 },
     { loc: `${SITE}/riset/`, freq: 'weekly', pri: '0.9', mod: SNAPSHOT },
+    // /data/ carries its own snapshot: it is rebuilt weekly from scripts/coverage.json,
+    // on a different cadence from the /riset/ batch, so SNAPSHOT would understate it.
+    { loc: `${SITE}/data/`, freq: 'weekly', pri: '0.85', mod: COVERAGE_SNAPSHOT },
     { loc: `${SITE}/panduan/`, freq: 'monthly', pri: '0.8', mod: CONTENT_2026_07 },
     { loc: `${SITE}/panduan/produk-terlaris-untuk-pemula-2026/`, freq: 'monthly', pri: '0.8', mod: CONTENT_2026_07 },
     { loc: `${SITE}/panduan/cara-riset-produk-shopee-untuk-pemula/`, freq: 'monthly', pri: '0.7', mod: SNAPSHOT },
