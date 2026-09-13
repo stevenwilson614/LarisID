@@ -1,6 +1,6 @@
 # SEO & GEO (AI discoverability) — LarisID
 
-*Context for humans and AI assistants working in this repo. Last updated: 8 Sep 2026.*
+*Context for humans and AI assistants working in this repo. Last updated: 13 Sep 2026.*
 
 ## Goal
 
@@ -183,6 +183,29 @@ than 10 days old, so a stalled scrape blocks the PR instead of shipping a fresh 
 stale numbers. Snapshot date is the last day clearing 10k rows, not `max(scraped_at)` — the daily
 tracked pass writes a few hundred rows and would otherwise masquerade as a full refresh.
 
+### Laptop weekly agent — local Cursor CLI (not Cloud Agents)
+
+The GitHub Action only **opens** the Monday PR. Review, merge, the monthly `/kota/` pass, and
+competitor price re-verify run on this Mac via `scripts/weekly-seo-agent.sh` so nothing bills
+Cursor cloud compute.
+
+| Piece | When |
+|---|---|
+| `launchd` `com.larisid.seo-weekly` | Mondays 13:00 local (after the 10:00 WIB Action) |
+| First Monday of the month | also `/kota/` + Datapinter / Tokpee / Shoptik / Kalodata prices |
+| Prompt | `scripts/weekly-seo-agent.prompt.md` |
+| Logs | `logs/seo-weekly-YYYY-MM-DD.log` (gitignored) |
+
+```bash
+bash scripts/install-seo-weekly-agent.sh   # once
+agent login                                # once — browser login, uses the desktop plan
+bash scripts/weekly-seo-agent.sh           # manual run
+```
+
+If the CLI is not logged in, the Monday job opens the prompt in Cursor instead of failing silently.
+Do **not** create a Cursor Automation / Cloud Agent for this — that is the paid extra path.
+Uninstall: `bash scripts/install-seo-weekly-agent.sh --uninstall`.
+
 Old batch note: the June 2026 set was 432 keywords under a stricter filter (which also gated on
 est_sold > 200k). That gate was dropped in the July 2026 expansion.
 
@@ -265,6 +288,7 @@ in `build-seo-pages.mjs` writing `riset/<slug>/og.png`, then point `og:image` at
 - `docs/score-review.md` — Viability Score methodology notes
 - `docs/landing-analytics.md` — Clarity event spec
 - `docs/ai-chat-decision.md` — no standalone chatbot; product-scoped AI only
+- `scripts/weekly-seo-agent.prompt.md` — laptop Monday review/merge prompt (local CLI)
 
 ## Post-deploy checklist
 
