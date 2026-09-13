@@ -2606,13 +2606,34 @@ function gptOpenFeedbackForBonus() {
 }
 
 function gptOpenFeedbackModal() {
+  const thread = document.getElementById('gpt-fb-thread');
+  if (thread) {
+    thread.innerHTML =
+      '<div class="wa-row wa-row--in">' +
+        '<img class="wa-face" src="/images/steven-avatar.webp" width="28" height="28" alt="" decoding="async">' +
+        '<p class="sfb-bubble">Halo! Minta produk, ide, fitur, atau kasih masukan — langsung ketik saja. Aku baca setiap pesan.</p>' +
+      '</div>';
+  }
   const msg = document.getElementById('gpt-fb-message');
-  if (msg) msg.value = '';
+  if (msg) {
+    msg.value = '';
+    msg.disabled = false;
+    msg.style.height = 'auto';
+  }
   const st = document.getElementById('gpt-fb-status');
-  if (st) { st.textContent = ''; st.style.color = ''; }
+  if (st) { st.textContent = ''; st.className = 'sfb-status'; }
   const btn = document.getElementById('gpt-fb-submit');
-  if (btn) { btn.disabled = false; btn.textContent = 'Kirim ke Steven'; }
-  document.getElementById('gpt-feedback-modal')?.classList.add('open');
+  if (btn) btn.disabled = true;
+  const composer = document.getElementById('gpt-fb-composer');
+  if (composer) composer.hidden = false;
+  const card = document.getElementById('gpt-feedback-modal');
+  if (card) {
+    card.classList.add('open');
+    card.setAttribute('aria-hidden', 'false');
+  }
+  // Don't stack on the superuser prompt.
+  sfbHideCard();
+  setTimeout(() => msg?.focus(), 40);
 }
 
 function gptOpenFeedback() {
@@ -2621,8 +2642,29 @@ function gptOpenFeedback() {
 }
 
 function gptFeedbackClose() {
-  document.getElementById('gpt-feedback-modal')?.classList.remove('open');
+  const card = document.getElementById('gpt-feedback-modal');
+  if (card) {
+    card.classList.remove('open');
+    card.setAttribute('aria-hidden', 'true');
+  }
   _fbBonusPending = false;
+}
+
+function gptFbAppendBubble(kind, html) {
+  const thread = document.getElementById('gpt-fb-thread');
+  if (!thread) return;
+  const row = document.createElement('div');
+  row.className = 'wa-row ' + (kind === 'out' ? 'wa-row--out' : 'wa-row--in');
+  if (kind === 'in') {
+    row.innerHTML =
+      '<img class="wa-face" src="/images/steven-avatar.webp" width="28" height="28" alt="" decoding="async">' +
+      '<p class="sfb-bubble">' + html + '</p>';
+  } else {
+    row.innerHTML = '<p class="sfb-bubble sfb-bubble--out">' + html + '</p>';
+  }
+  thread.appendChild(row);
+  const scroll = thread.closest('.sfb-scroll');
+  if (scroll) scroll.scrollTop = scroll.scrollHeight;
 }
 
 async function gptSubmitFeedback() {
@@ -2630,13 +2672,17 @@ async function gptSubmitFeedback() {
   const msg = (document.getElementById('gpt-fb-message')?.value || '').trim();
   const st = document.getElementById('gpt-fb-status');
   const btn = document.getElementById('gpt-fb-submit');
+  const input = document.getElementById('gpt-fb-message');
   if (msg.length < 10) {
-    if (st) { st.textContent = 'Tulis minimal 10 karakter ya.'; st.style.color = '#B5202A'; }
+    if (st) { st.textContent = 'Tulis minimal 10 karakter ya.'; st.className = 'sfb-status is-err'; }
+    input?.focus();
     return;
   }
   _fbBusy = true;
-  if (btn) { btn.disabled = true; btn.textContent = 'Mengirim...'; }
-  if (st) { st.textContent = ''; st.style.color = ''; }
+  if (btn) btn.disabled = true;
+  if (st) { st.textContent = 'Mengirim…'; st.className = 'sfb-status'; }
+  gptFbAppendBubble('out', esc(msg));
+  if (input) { input.value = ''; input.style.height = 'auto'; input.disabled = true; }
   try {
     const record = {
       user_id:    currentUser?.id    || null,
@@ -2668,21 +2714,22 @@ async function gptSubmitFeedback() {
       _fbBonusPending = false;
       awarded = await gptClaimFeedbackBonus(inserted.id);
     }
-    if (st) {
-      st.textContent = awarded
-        ? `Terkirim! +${awarded} pencarian buat hari ini.`
-        : 'Terkirim! Steven akan baca pesanmu.';
-      st.style.color = '#16A34A';
-    }
-    if (btn) btn.textContent = 'Terkirim';
-    setTimeout(gptFeedbackClose, 1800);
+    const thanks = awarded
+      ? `Makasih! Aku baca pesanmu. +${awarded} pencarian buat hari ini ya.`
+      : 'Makasih! Aku baca setiap pesan yang masuk.';
+    gptFbAppendBubble('in', thanks);
+    if (st) { st.textContent = ''; st.className = 'sfb-status is-ok'; }
+    const composer = document.getElementById('gpt-fb-composer');
+    if (composer) composer.hidden = true;
+    setTimeout(gptFeedbackClose, awarded ? 2200 : 2800);
   } catch (err) {
     // Log the cause. `catch (_)` here is why a hard 23514 constraint violation
     // sat in production silently rejecting every message — the user saw a
     // generic retry prompt and we saw nothing at all.
     console.error('feedback submit failed:', err?.code || '', err?.message || err);
-    if (st) { st.textContent = 'Gagal mengirim. Coba lagi.'; st.style.color = '#B5202A'; }
-    if (btn) { btn.disabled = false; btn.textContent = 'Kirim ke Steven'; }
+    if (st) { st.textContent = 'Gagal mengirim. Coba lagi.'; st.className = 'sfb-status is-err'; }
+    if (btn) btn.disabled = false;
+    if (input) input.disabled = false;
   } finally {
     _fbBusy = false;
   }
@@ -3340,6 +3387,7 @@ function sfbPaintFab() {
 
 function sfbBusySurface() {
   return !!(document.querySelector('.modal-overlay.open')
+    || document.getElementById('gpt-feedback-modal')?.classList.contains('open')
     || document.activeElement?.tagName === 'TEXTAREA'
     || document.activeElement?.tagName === 'INPUT');
 }
@@ -3598,9 +3646,23 @@ function sfbThankYou(granted, fromLeft) {
   const thanks = granted
     ? `Makasih, aku baca semua. Aku tambahin <strong>${granted.toLocaleString('id-ID')} baris unduhan</strong> ke akun kamu ya \u2014 dipakai kapan saja.`
     : 'Makasih, aku baca semua pesan yang masuk.';
-  body.innerHTML =
-    '<p class="sfb-bubble">Terkirim.</p>' +
+  const thread = $('sfb-thread');
+  const chips = $('sfb-chips');
+  const composer = $('sfb-card')?.querySelector('.sfb-composer');
+  if (chips) chips.hidden = true;
+  if (composer) composer.hidden = true;
+  const host = thread || body;
+  const out = document.createElement('div');
+  out.className = 'wa-row wa-row--out';
+  out.innerHTML = '<p class="sfb-bubble sfb-bubble--out">Terkirim.</p>';
+  host.appendChild(out);
+  const inn = document.createElement('div');
+  inn.className = 'wa-row wa-row--in';
+  inn.innerHTML =
+    '<img class="wa-face" src="/images/steven-avatar.webp" width="28" height="28" alt="" decoding="async">' +
     `<p class="sfb-bubble">${thanks}</p>`;
+  host.appendChild(inn);
+  body.scrollTop = body.scrollHeight;
   setTimeout(() => {
     sfbHideCard();
     sfbPaintFab();
@@ -24487,6 +24549,25 @@ async function boot() {
   document.getElementById('gpt-limit-ext')?.addEventListener('click', gptLimitClose);
   document.getElementById('gpt-fb-submit')?.addEventListener('click', () => { void gptSubmitFeedback(); });
   document.getElementById('gpt-fb-close')?.addEventListener('click', gptFeedbackClose);
+  const gptFbInput = document.getElementById('gpt-fb-message');
+  const gptFbSend = document.getElementById('gpt-fb-submit');
+  gptFbInput?.addEventListener('input', () => {
+    sfbAutosize(gptFbInput);
+    if (gptFbSend) gptFbSend.disabled = !gptFbInput.value.trim();
+  });
+  gptFbInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void gptSubmitFeedback(); }
+  });
+  document.getElementById('gpt-feedback-modal')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { e.stopPropagation(); gptFeedbackClose(); }
+  });
+  document.addEventListener('pointerdown', (e) => {
+    const card = document.getElementById('gpt-feedback-modal');
+    if (!card?.classList.contains('open')) return;
+    if (card.contains(e.target)) return;
+    if (e.target.closest?.('#msg-steven-fab')) return;
+    gptFeedbackClose();
+  });
   _lidInitScrollDepth();
   updateAccountUI();
   renderGptUsage();

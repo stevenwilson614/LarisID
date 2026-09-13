@@ -7607,6 +7607,13 @@ body.mentor-shell .side-seller.open ~ .side-section { display: flex !important; 
   color: var(--accent, #B5202A);
   flex-shrink: 0;
 }
+.msg-steven-fab-face {
+  width: 22px; height: 22px; flex-shrink: 0;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center top;
+  background: var(--bg-user);
+}
 .msg-steven-fab--pending {
   background: var(--accent, #B5202A);
   border-color: var(--accent, #B5202A);
@@ -7615,6 +7622,9 @@ body.mentor-shell .side-seller.open ~ .side-section { display: flex !important; 
   animation: sfbFabPulse 1.4s var(--ease) infinite;
 }
 .msg-steven-fab--pending svg { color: #fff; }
+.msg-steven-fab--pending .msg-steven-fab-face {
+  border: 1.5px solid rgba(255, 255, 255, .55);
+}
 .msg-steven-fab--pending:hover {
   background: #9c1b24;
   color: #fff;
@@ -7644,24 +7654,22 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 }
 
 /* ── Super-user feedback card ("pesan dari Steven") ───────────────────────────
-   A WhatsApp-shaped note from the founder, shown once to people who actually
-   use the product. Deliberately NOT a .modal-overlay: AGENTS.md forbids
-   blocking popups, and this fires on people mid-research. Own layer at z-index
-   90 — above the FAB (40), below .modal-overlay (100) — so any real dialog
-   still wins. Everything is namespaced .sfb-* so the late `.modal` rule at the
-   top of this file can never reach it. */
+   WhatsApp-shaped chat from the founder (avatar + bubbles + composer).
+   Deliberately NOT a .modal-overlay: AGENTS.md forbids blocking popups.
+   Own layer at z-index 90 — above the FAB (40), below .modal-overlay (100).
+   Namespaced .sfb-* / .wa-* so the late `.modal` rule never reaches it. */
 .sfb-card {
   position: fixed;
   right: max(14px, env(safe-area-inset-right, 0px));
   bottom: max(16px, env(safe-area-inset-bottom, 0px));
   z-index: 90;
-  width: min(360px, calc(100vw - 28px));
+  width: min(380px, calc(100vw - 28px));
   display: none;
   flex-direction: column;
-  background: #fff;
-  border: 1px solid var(--line);
+  background: #EFEAE2;
+  border: 1px solid rgba(0, 0, 0, .08);
   border-radius: 18px;
-  box-shadow: 0 18px 48px rgba(16, 24, 40, .18);
+  box-shadow: 0 18px 48px rgba(16, 24, 40, .22);
   overflow: hidden;
 }
 .sfb-card.open { display: flex; animation: sfbIn .3s var(--ease); }
@@ -7686,45 +7694,93 @@ body.view-chat .sfb-card {
 }
 .sfb-head {
   display: flex; align-items: center; gap: 10px;
-  padding: 11px 12px;
-  border-bottom: 1px solid var(--line);
-  background: #F6F6F7;
+  padding: 10px 12px;
+  border-bottom: none;
+  background: #075E54;
+  color: #fff;
 }
 .sfb-avatar {
-  width: 36px; height: 36px; flex-shrink: 0;
+  width: 42px; height: 42px; flex-shrink: 0;
   border-radius: 50%;
   object-fit: cover;
   object-position: center top;
-  background: var(--bg-user);
+  background: rgba(255, 255, 255, .2);
+  border: 2px solid rgba(255, 255, 255, .35);
 }
 .sfb-from { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
-.sfb-from strong { font-size: .85rem; font-weight: 700; letter-spacing: -.01em; color: var(--ink); }
-.sfb-from span  { font-size: .7rem; color: var(--muted); }
+.sfb-from strong { font-size: .9rem; font-weight: 700; letter-spacing: -.01em; color: #fff; }
+.sfb-from span  { font-size: .7rem; color: rgba(255, 255, 255, .78); }
 .sfb-close {
   flex-shrink: 0;
-  width: 28px; height: 28px;
+  width: 32px; height: 32px;
   display: inline-flex; align-items: center; justify-content: center;
   border: none; background: none; border-radius: 50%;
-  color: var(--muted); cursor: pointer;
+  color: rgba(255, 255, 255, .88); cursor: pointer;
 }
-.sfb-close:hover { background: rgba(16, 24, 40, .07); color: var(--ink); }
+.sfb-close:hover { background: rgba(255, 255, 255, .12); color: #fff; }
 .sfb-close svg { width: 15px; height: 15px; }
-.sfb-body { padding: 14px 12px 12px; display: flex; flex-direction: column; gap: 10px; }
+.sfb-scroll {
+  padding: 12px 10px;
+  display: flex; flex-direction: column; gap: 10px;
+  background-color: #EFEAE2;
+  background-image:
+    radial-gradient(rgba(0, 0, 0, .035) 1px, transparent 1px);
+  background-size: 14px 14px;
+  max-height: min(58vh, 420px);
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+.sfb-body {
+  padding: 12px 10px 10px;
+  display: flex; flex-direction: column; gap: 10px;
+  background-color: #EFEAE2;
+  background-image:
+    radial-gradient(rgba(0, 0, 0, .035) 1px, transparent 1px);
+  background-size: 14px 14px;
+  max-height: min(58vh, 420px);
+  overflow-y: auto;
+}
+.wa-thread {
+  display: flex; flex-direction: column; gap: 8px;
+  min-height: 0;
+}
+.wa-row {
+  display: flex; align-items: flex-end; gap: 8px;
+  max-width: 100%;
+}
+.wa-row--in { align-self: flex-start; }
+.wa-row--out {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+.wa-face {
+  width: 28px; height: 28px; flex-shrink: 0;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center top;
+  background: #ddd;
+}
 .sfb-bubble {
   position: relative;
-  align-self: flex-start;
-  max-width: 100%;
-  background: var(--bg-user);
+  max-width: min(280px, calc(100% - 36px));
+  margin: 0;
+  background: #fff;
   color: var(--ink);
-  border-radius: 4px 14px 14px 14px;
-  padding: 10px 13px;
+  border-radius: 0 14px 14px 14px;
+  padding: 8px 12px 10px;
   font-size: .84rem;
   line-height: 1.5;
+  box-shadow: 0 1px 1.5px rgba(16, 24, 40, .1);
+}
+.sfb-bubble--out {
+  background: #D9FDD3;
+  border-radius: 14px 0 14px 14px;
 }
 .sfb-bubble + .sfb-bubble { margin-top: -2px; }
 .sfb-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .sfb-chip {
-  border: 1px solid var(--line);
+  border: 1px solid rgba(0, 0, 0, .1);
   background: #fff;
   color: var(--ink);
   border-radius: 999px;
@@ -7734,37 +7790,49 @@ body.view-chat .sfb-card {
   font-weight: 600;
   cursor: pointer;
   transition: background .12s, border-color .12s;
+  box-shadow: 0 1px 1px rgba(16, 24, 40, .06);
 }
-.sfb-chip:hover { background: var(--bg-user); border-color: #d8d8d8; }
+.sfb-chip:hover { background: #f7f7f7; border-color: #d8d8d8; }
 .sfb-chip:focus-visible { outline: 2px solid var(--accent, #B5202A); outline-offset: 1px; }
-.sfb-chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+.sfb-chip[aria-pressed="true"] { background: #075E54; border-color: #075E54; color: #fff; }
+.sfb-composer {
+  display: flex; flex-direction: column; gap: 6px;
+  margin: 0;
+  padding: 8px 10px 10px;
+  background: #F0F2F5;
+  border-top: 1px solid rgba(0, 0, 0, .06);
+  flex-shrink: 0;
+}
 .sfb-reply { display: flex; align-items: flex-end; gap: 7px; }
 .sfb-input {
   flex: 1;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 9px 11px;
+  border: 0;
+  border-radius: 22px;
+  padding: 10px 14px;
   font: inherit;
   font-size: .84rem;
   line-height: 1.45;
   color: var(--ink);
+  background: #fff;
   resize: none;
   max-height: 120px;
-  min-height: 38px;
+  min-height: 42px;
+  box-shadow: 0 1px 1px rgba(16, 24, 40, .06);
 }
-.sfb-input:focus { outline: none; border-color: #c9c9c9; }
+.sfb-input:focus { outline: none; }
 .sfb-send {
   flex-shrink: 0;
-  width: 38px; height: 38px;
+  width: 42px; height: 42px;
   display: inline-flex; align-items: center; justify-content: center;
   border: none; border-radius: 50%;
-  background: var(--ink); color: #fff;
+  background: #00A884; color: #fff;
   cursor: pointer;
-  transition: opacity .12s;
+  transition: opacity .12s, background .12s;
 }
+.sfb-send:hover { background: #029B78; }
 .sfb-send:disabled { opacity: .4; cursor: default; }
-.sfb-send svg { width: 16px; height: 16px; }
-.sfb-status { font-size: .74rem; color: var(--muted); min-height: 1.1em; margin: 0; }
+.sfb-send svg { width: 18px; height: 18px; }
+.sfb-status { font-size: .74rem; color: var(--muted); min-height: 1.1em; margin: 0; padding: 0 4px; }
 .sfb-status.is-err { color: var(--accent, #B5202A); }
 .sfb-status.is-ok  { color: #16A34A; }
 
@@ -7779,6 +7847,7 @@ body.view-chat .sfb-card {
     box-shadow: 0 -12px 40px rgba(16, 24, 40, .18);
   }
   body.view-chat .sfb-card { bottom: 0; }
+  .sfb-scroll, .sfb-body { max-height: min(52vh, 380px); }
   /* 16px minimum — anything smaller makes iOS zoom the page on focus. */
   .sfb-input { font-size: 16px !important; }
 }
@@ -9913,7 +9982,7 @@ body.view-chat .sfb-card {
 </div>
 
 <button type="button" class="msg-steven-fab" id="msg-steven-fab" title="Pesan ke Steven" aria-label="Pesan ke Steven">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  <img class="msg-steven-fab-face" src="/images/steven-avatar.webp" width="22" height="22" alt="" decoding="async">
   <span class="msg-steven-fab-label">Pesan Steven</span>
 </button>
 
@@ -9929,7 +9998,7 @@ body.view-chat .sfb-card {
 <aside class="sfb-card lnotice-card" id="lnotice-card" role="complementary"
        aria-labelledby="lnotice-name" aria-hidden="true">
   <div class="sfb-head">
-    <img class="sfb-avatar" src="/images/steven-avatar.webp" width="36" height="36"
+    <img class="sfb-avatar" src="/images/steven-avatar.webp" width="42" height="42"
          alt="" loading="lazy" decoding="async">
     <div class="sfb-from">
       <strong id="lnotice-name">Steven Wilson</strong>
@@ -9946,20 +10015,25 @@ body.view-chat .sfb-card {
 <aside class="sfb-card" id="sfb-card" role="complementary"
        aria-labelledby="sfb-name" aria-hidden="true">
   <div class="sfb-head">
-    <img class="sfb-avatar" src="/images/steven-avatar.webp" width="36" height="36"
+    <img class="sfb-avatar" src="/images/steven-avatar.webp" width="42" height="42"
          alt="" loading="lazy" decoding="async">
     <div class="sfb-from">
       <strong id="sfb-name">Steven Wilson</strong>
-      <span>founder LarisID</span>
+      <span>online</span>
     </div>
     <button type="button" class="sfb-close" id="sfb-close" aria-label="Tutup pesan">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
            stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
   </div>
-  <div class="sfb-body" id="sfb-body">
-    <p class="sfb-bubble" id="sfb-msg">Halo! Aku lihat kamu cukup sering pakai LarisID.
-      Boleh tanya &mdash; menurut kamu apa yang masih kurang di sini?</p>
+  <div class="sfb-scroll" id="sfb-body">
+    <div class="wa-thread" id="sfb-thread">
+      <div class="wa-row wa-row--in">
+        <img class="wa-face" src="/images/steven-avatar.webp" width="28" height="28" alt="" decoding="async">
+        <p class="sfb-bubble" id="sfb-msg">Halo! Aku lihat kamu cukup sering pakai LarisID.
+          Boleh tanya &mdash; menurut kamu apa yang masih kurang di sini?</p>
+      </div>
+    </div>
     <div class="sfb-chips" id="sfb-chips">
       <button type="button" class="sfb-chip" aria-pressed="false"
               data-sfb-chip="Datanya kurang lengkap, terutama ">Datanya kurang lengkap</button>
@@ -9968,9 +10042,11 @@ body.view-chat .sfb-card {
       <button type="button" class="sfb-chip" aria-pressed="false"
               data-sfb-chip="Ada fitur yang belum ada: ">Ada fitur yang kurang</button>
     </div>
+  </div>
+  <div class="sfb-composer">
     <div class="sfb-reply" id="sfb-reply">
       <textarea class="sfb-input" id="sfb-input" rows="1"
-                placeholder="Tulis balasan&hellip;" aria-label="Balasan untuk Steven"></textarea>
+                placeholder="Ketik pesan&hellip;" aria-label="Balasan untuk Steven"></textarea>
       <button type="button" class="sfb-send" id="sfb-send" aria-label="Kirim balasan" disabled>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
@@ -9992,20 +10068,37 @@ body.view-chat .sfb-card {
   </div>
 </div>
 
-<div class="modal-overlay" id="gpt-feedback-modal">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="gpt-fb-title">
-    <h3 id="gpt-fb-title" class="nudge-title">Pesan ke Steven</h3>
-    <p class="nudge-sub">Steven (founder LarisID) baca setiap pesan. Minta produk, ide, fitur, atau kasih masukan — langsung ketik saja.</p>
-    <div class="field">
-      <textarea id="gpt-fb-message" rows="4" placeholder="Tulis pesanmu untuk Steven…" style="width:100%;border:1px solid var(--line);border-radius:12px;padding:10px 12px;resize:vertical;"></textarea>
+<!-- Always-available chat with Steven (FAB / FAQ / limit bonus). Same WhatsApp
+     shell as #sfb-card — not a blocking .modal-overlay form. -->
+<aside class="sfb-card" id="gpt-feedback-modal" role="dialog"
+       aria-labelledby="gpt-fb-title" aria-hidden="true">
+  <div class="sfb-head">
+    <img class="sfb-avatar" src="/images/steven-avatar.webp" width="42" height="42"
+         alt="" loading="lazy" decoding="async">
+    <div class="sfb-from">
+      <strong id="gpt-fb-title">Steven Wilson</strong>
+      <span>online</span>
     </div>
-    <p class="nudge-sub" id="gpt-fb-status" style="margin:0 0 12px;min-height:1.2em;"></p>
-    <div class="nudge-actions">
-      <button type="button" class="btn-primary" id="gpt-fb-submit">Kirim ke Steven</button>
-      <button type="button" class="btn-ghost" id="gpt-fb-close">Tutup</button>
-    </div>
+    <button type="button" class="sfb-close" id="gpt-fb-close" aria-label="Tutup chat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
   </div>
-</div>
+  <div class="sfb-scroll">
+    <div class="wa-thread" id="gpt-fb-thread"></div>
+  </div>
+  <div class="sfb-composer" id="gpt-fb-composer">
+    <div class="sfb-reply">
+      <textarea class="sfb-input" id="gpt-fb-message" rows="1"
+                placeholder="Ketik pesan&hellip;" aria-label="Pesan untuk Steven"></textarea>
+      <button type="button" class="sfb-send" id="gpt-fb-submit" aria-label="Kirim pesan" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+    <p class="sfb-status" id="gpt-fb-status"></p>
+  </div>
+</aside>
 
 <aside class="prefs-drawer" id="prefs-drawer" hidden aria-hidden="true" aria-labelledby="prefs-title">
   <div class="prefs-head">
@@ -10074,6 +10167,6 @@ body.view-chat .sfb-card {
 <script src="/js/peta-peluang.js?v=20260908a" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
-<script src="/js/gpt-app.js?v=20260913b" defer></script>
+<script src="/js/gpt-app.js?v=20260913c" defer></script>
 </body>
 </html>
