@@ -271,18 +271,44 @@ as $$
                'c', category, 'b', band, 'v', round(v_daily::numeric, 4), 'n', n)), '[]'::json)
         from public.velocity_cohort where include_zero = false
     ),
-    -- reviews -> sold, for the rare card with no sold figure at all.
+    -- reviews -> sold, for the card that shows no sold figure at all (5-20% of
+    -- logged-in rows per sold_audit.py). scale_band -1 means "any band" and is
+    -- the strongest cell in the table (524 cells, 3.1M samples).
+    --
+    -- n_samples >= 5 costs almost nothing (3,309 of 3,476 cells survive) and
+    -- keeps the n=1 cells out. Note category '' here means UNKNOWN category,
+    -- not a global aggregate -- those cells carry n of 1-23 -- which is the
+    -- opposite of velocity_cohort, where '' really is the band-only global
+    -- cell with ~1.0M samples. So the client's ladder stays anchored on a
+    -- mapped category and gives up rather than reaching for ''.
     'review_mult', (
       select coalesce(json_agg(json_build_object(
                'c', category, 'p', price_band, 'b', scale_band,
                'm', round(multiplier::numeric, 4), 'n', n_samples)), '[]'::json)
-        from public.review_multipliers where n_samples >= 3
+        from public.review_multipliers where n_samples >= 5
     ),
     -- Today's scrape taxonomy -> the peer set's older taxonomy.
     'crosswalk', (
       select coalesce(json_agg(json_build_object('s', src, 'd', dst)), '[]'::json)
         from public.omset_category_crosswalk
+    ),
+    -- Subcategory -> parent, step 3 of calibration.py::_get_multiplier's ladder.
+    'parent', (
+      select coalesce(json_agg(json_build_object('s', category, 'd', parent)), '[]'::json)
+        from public._lid_category_parent where parent is not null and parent <> ''
     )
+    --
+    -- DELIBERATELY NOT SHIPPED: category_map. velocity_cohort.category uses the
+    -- same 87-value vocabulary as listings.category (87 of 87 match), whereas
+    -- category_map.canonical is a coarser, different vocabulary -- it maps
+    -- 'Rumah' to 'Rumah & Dekorasi', which is not a cohort key at all. Sending
+    -- it would invite the client to translate a good category into a miss.
+    --
+    -- The client gets a category for an unknown product from the DB rows of the
+    -- OTHER cards on the same Shopee page (the modal category of the page),
+    -- which is already in the right vocabulary, and falls back to the
+    -- band-only global cell (category '', ~1.0M samples) when a page has no
+    -- known products at all.
   )
 $$;
 
