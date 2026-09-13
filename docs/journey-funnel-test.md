@@ -27,5 +27,6 @@ Use this before changing Beranda, onboarding, Cari Produk, Deep Dive, or Favorit
     - `tumbler`: unchanged single-keyword grid — not treated as a brand, no sibling dump into `botol minum`.
     - `cross stitch` still reaches `kristik`; `dress wanita` unchanged.
     - `hijab` / `jilbab anak`: if not an exact `product_types_v` keyword, show listings from every containing keyword plus a chooser of those more specific pasars. Picking a chooser card reloads that keyword. Never a blank page, never unrelated listings. `masker n95` / `crocs classic` still never blank.
+    - Filter rentang (harga / omset / tren) applied on one query must clear when the next search, category pick, or empty-bar reset loads a different product set. Re-submitting the same query may keep the cut.
 
 If a check mentions `laris-app.js`, `larisid_journey_v1`, or `lid_ddtrack_promo_v1` as a live modal, the doc is stale — update this file instead of the code.

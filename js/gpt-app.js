@@ -5974,6 +5974,7 @@ async function applyDirectoryCategory(cat, sub) {
   state.dirSearch = '';
   state.dirPage = 1;
   resetDirSearchMeta();
+  resetDirRangeFilters();
   // An explicit pick (rail, mega-menu, hero CTA) — not the onboarding
   // auto-filter below — so the hero should stay hidden after this one.
   state.dirCatsFromOnboarding = false;
@@ -6421,6 +6422,7 @@ function wireResultsBar() {
       state.dirSearch = '';
       state.dirPage = 1;
       resetDirSearchMeta();
+      resetDirRangeFilters();
       updateDirHeading();
       if (state.view === 'directory') void renderDirectory();
     }
@@ -6478,9 +6480,17 @@ function wireResultsBar() {
   });
 }
 
+function resetDirRangeFilters() {
+  state.dirRangeFilters = null;
+  try { window.LarisDirWorkbench?.resetRange?.(); } catch (_) {}
+}
+
 /** Free-text search from the Produk sticky bar — stays on the directory grid. */
 async function runResultsBarSearch(q) {
   const query = String(q || '').trim();
+  const prev = (state.dirSearch || '').trim();
+  // A new product query must not keep harga/omset/tren cuts from the last one.
+  if (prev !== query) resetDirRangeFilters();
   // Last action wins: typing a search overrides any category/subgroup browse state.
   state.dirCats = [];
   state.dirSub = null;
@@ -22103,6 +22113,7 @@ function resetDirectoryToHome() {
   state.dirMatchLevel = '';
   state.dirBrand = '';
   state.dirBrandMissing = false;
+  resetDirRangeFilters();
   const searchInp = $('results-bar-input');
   if (searchInp) searchInp.value = '';
   const host = $('dir-filters-range');

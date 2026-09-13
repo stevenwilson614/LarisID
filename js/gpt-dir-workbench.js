@@ -27,6 +27,7 @@
   var _view = 'tabel';
   var _draft = null;
   var _wired = false;
+  var _bareRange = false;
 
   function esc(s) { return api.esc ? api.esc(s) : String(s == null ? '' : s); }
   function $(id) { return document.getElementById(id); }
@@ -239,7 +240,7 @@
   }
 
   function rangePanelHtml() {
-    var r = honorBudget(currentRange());
+    var r = _bareRange ? Object.assign({}, emptyRange(), currentRange()) : honorBudget(currentRange());
     function val(n) { return n == null ? '' : String(n); }
     return '<details class="dir-range" id="dir-range">'
       + '<summary>Filter rentang</summary>'
@@ -338,13 +339,13 @@
       if (t.closest('#dir-rf-apply')) {
         var st = api.getState && api.getState();
         if (st) st.dirRangeFilters = readDraftRange();
+        _bareRange = false;
         if (api.log) api.log('dir_filter', { ui: 'gpt', kind: 'range' });
         if (api.onRepaint) api.onRepaint();
         return;
       }
       if (t.closest('#dir-rf-reset')) {
-        var st2 = api.getState && api.getState();
-        if (st2) st2.dirRangeFilters = null;
+        resetRange();
         if (api.onRepaint) api.onRepaint();
         return;
       }
@@ -368,6 +369,13 @@
     document.querySelectorAll('[data-dir-view]').forEach(function (btn) {
       btn.classList.toggle('is-on', btn.getAttribute('data-dir-view') === _view);
     });
+  }
+
+  function resetRange() {
+    var st = api.getState && api.getState();
+    if (st) st.dirRangeFilters = null;
+    _bareRange = true;
+    mount(true);
   }
 
   function mount(force) {
@@ -400,6 +408,7 @@
     filterRows: filterRows,
     applyViewClass: applyViewClass,
     hydrate: hydrateRemote,
+    resetRange: resetRange,
     viewMode: function () { return _view; },
     honorBudget: honorBudget,
   };
