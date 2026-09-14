@@ -194,6 +194,18 @@ ${PROBE_OPTIONS.map(([v, l]) => `        <option value="${v}">${esc(l)}</option>
 const PROBE_JS = `<script src="/js/laris-auth.js?v=20260914a" defer></script>
 <script defer src="/js/expor-probe.js?v=20260914a"></script>`;
 
+const HUB_JS = `<script src="/js/laris-auth.js?v=20260914a" defer></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  try {
+    if (window.LARIS_AUTH && typeof LARIS_AUTH.isSignedIn === 'function' && LARIS_AUTH.isSignedIn()) {
+      location.replace('/?pasar=expor');
+    }
+  } catch (_) {}
+});
+</script>
+<script defer src="/js/expor-probe.js?v=20260914a"></script>`;
+
 // ---------- product page ----------
 
 function regChips(p) {
@@ -268,6 +280,13 @@ ${destinationBars(t)}
   </div>`;
 }
 
+function amazonOmset(x) {
+  const price = Number(x && x.price);
+  const bought = x && x.bought_past_month;
+  if (!Number.isFinite(price) || bought == null || !Number.isFinite(Number(bought))) return null;
+  return price * Number(bought);
+}
+
 function amazonSection(p, a) {
   if (!a) {
     return `  <div class="sec">
@@ -278,18 +297,27 @@ function amazonSection(p, a) {
     </div>
   </div>`;
   }
+  const withBought = Number(a.listings_with_bought) || (a.top_asins || []).filter((x) => x.bought_past_month != null).length;
   const stats = [
     a.search_volume ? [Number(a.search_volume).toLocaleString('id-ID'), 'Pencarian / bulan', 'di Amazon US'] : null,
     a.price_median ? [`$${num(a.price_median, 2)}`, 'Harga tengah', a.price_min && a.price_max ? `kisaran $${num(a.price_min, 2)}&ndash;$${num(a.price_max, 2)}` : ''] : null,
-    a.reviews_median != null ? [Number(a.reviews_median).toLocaleString('id-ID'), 'Median ulasan', 'indikator persaingan'] : null,
+    a.reviews_median != null ? [Number(a.reviews_median).toLocaleString('id-ID'), 'Median ulasan', 'indikator persaingan, bukan penjualan'] : null,
+    withBought ? [String(withBought), 'Listing dengan badge terjual/bln', 'Amazon sering menyembunyikan badge'] : null,
     a.results_count ? [Number(a.results_count).toLocaleString('id-ID'), 'Produk bersaing', 'di hasil pencarian'] : null,
   ].filter(Boolean);
 
   const asins = (a.top_asins || []).length ? `      <div class="tbl-wrap">
         <table class="expor-tbl">
-          <thead><tr><th>Produk teratas di Amazon</th><th>Harga</th><th>Rating</th><th>Ulasan</th></tr></thead>
+          <thead><tr><th>Produk teratas di Amazon</th><th>Harga</th><th>Terjual/bln</th><th>Omset/bln</th><th>Rating</th><th>Ulasan</th></tr></thead>
           <tbody>
-${a.top_asins.slice(0, 5).map((x) => `            <tr><td>${esc(String(x.title || '').slice(0, 70))}</td><td class="num">${x.price ? '$' + num(x.price, 2) : '-'}</td><td class="num">${x.rating ? num(x.rating, 1) : '-'}</td><td class="num">${x.reviews != null ? Number(x.reviews).toLocaleString('id-ID') : '-'}</td></tr>`).join('\n')}
+${a.top_asins.slice(0, 5).map((x) => {
+    const omset = amazonOmset(x);
+    const bought = x.bought_past_month;
+    const omsetTxt = omset != null
+      ? ('$' + Math.round(omset).toLocaleString('id-ID') + ' <span class="muted">perkiraan</span>')
+      : '—';
+    return `            <tr><td>${esc(String(x.title || '').slice(0, 70))}</td><td class="num">${x.price ? '$' + num(x.price, 2) : '-'}</td><td class="num">${bought != null ? Number(bought).toLocaleString('id-ID') + '+' : '—'}</td><td class="num">${omsetTxt}</td><td class="num">${x.rating ? num(x.rating, 1) : '-'}</td><td class="num">${x.reviews != null ? Number(x.reviews).toLocaleString('id-ID') : '-'}</td></tr>`;
+  }).join('\n')}
           </tbody>
         </table>
       </div>` : '';
@@ -302,7 +330,7 @@ ${a.top_asins.slice(0, 5).map((x) => `            <tr><td>${esc(String(x.title |
 ${stats.map(([n, l, s]) => `        <div class="stat"><div class="stat-num">${n}</div><div class="stat-label">${l}</div>${s ? `<div class="stat-sub">${s}</div>` : ''}</div>`).join('\n')}
       </div>
 ${asins}
-      <p class="src-line">Sumber: sampel Amazon US via DataForSEO, diambil ${esc(a.fetched_at || TODAY)}. Jumlah ulasan adalah <b>indikator persaingan, bukan angka penjualan</b> &mdash; Amazon tidak mempublikasikan unit terjual, dan kami tidak menebaknya.</p>
+      <p class="src-line">Sumber: sampel Amazon US${a.fetched_at ? `, diambil ${esc(a.fetched_at)}` : ''}. Amazon tidak mempublikasikan unit terjual. Kolom terjual/bln memakai badge Amazon &ldquo;bought in past month&rdquo; (lantai kisaran, misalnya 100+ jadi 100). Omset/bulan = harga &times; badge itu, <b>selalu perkiraan</b>. Amazon tidak punya field negara asal &mdash; ini listing AS untuk kata kunci ekspor Indonesia, bukan bukti dibuat di Indonesia. Jumlah ulasan adalah indikator persaingan, bukan penjualan.</p>
     </div>
   </div>`;
 }
@@ -1113,7 +1141,7 @@ function homePage(products, tradeBySlug) {
     ],
   };
   return `${head({
-    url, active: 'home', ld, headExtra: PROBE_JS,
+    url, active: 'home', ld, headExtra: HUB_JS,
     title: 'LarisExpor: Permintaan Global, Harga Amazon & Syarat Ekspor UMKM Indonesia',
     desc: `Data ekspor ${products.length} produk Indonesia dari UN Comtrade — negara pembeli, kode HS, syarat ekspor, dan kalkulator margin Amazon. Gratis. Bagian dari LarisID.`,
   })}
@@ -1121,7 +1149,7 @@ function homePage(products, tradeBySlug) {
   <p class="cat-pill">Sister site LarisID</p>
   <h1>Riset ekspor untuk yang sudah jualan di dalam negeri</h1>
   <p class="lead">LarisID menjawab apa yang laku di Shopee. LarisExpor menjawab pertanyaan berikutnya: negara mana yang sudah membeli produk seperti milikmu, berapa harganya di luar, dan apa yang tersisa setelah biaya Amazon dan ongkir.</p>
-  <p class="updated">${products.length} produk &middot; ${withData.length} punya data UN Comtrade &middot; harga Amazon menyusul setelah sampel pertama</p>
+  <p class="updated">${products.length} produk &middot; ${withData.length} punya data UN Comtrade &middot; harga Amazon dari sampel listing US (omset badge selalu perkiraan)</p>
 
   <div class="sec">
     <h2>Produk dengan permintaan dunia yang nyata</h2>

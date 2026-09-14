@@ -11,6 +11,7 @@ QA: [journey-funnel-test.md](./journey-funnel-test.md) (Laris AI beats at the en
 ## `handleComposerSubmit` order
 
 1. “Produk lain” → directory.
+1b. `pasar=expor`: LOOKUP against Amazon listings, or an honest weekly/trending refuse. No Shopee agent, terlaris_minggu, or Favorit. See [expor-app.md](./expor-app.md).
 2. Conversational thread: decline pending offer; then `detectResponseMode` (`refer` / `promo` / `filter` / `weekly` / `lookup`); then affirm / refine → agent or product AI.
 3. Product compare / topic-change (fresh chat).
 4. Category evaluate (“apakah jualan fashion bagus?”).

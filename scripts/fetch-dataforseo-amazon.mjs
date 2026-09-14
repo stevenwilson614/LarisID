@@ -16,9 +16,13 @@
  *   1. dataforseo_labs/amazon/bulk_search_volume/live  — all keywords in one call
  *   2. merchant/amazon/products/task_post → task_get/advanced — SERP sample per keyword
  *
+ * Also writes scripts/expor-amazon-listings.json (one row per ASIN×keyword)
+ * including bought_past_month and image_url for the SPA. Omset is never
+ * invented here — the badge is Amazon's own floor, or null.
+ *
+ * After a successful fetch: node scripts/ingest-amazon-listings.mjs --apply
+ *
  * Reviews endpoint is documented temporarily unavailable; we never call it.
- * Review counts on the SERP items are a competition proxy, labelled as such
- * on the generated pages, never as units sold.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -28,6 +32,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const RAW = path.join(__dirname, '_expor_raw', 'amazon');
 const OUT = path.join(__dirname, 'expor-amazon.json');
+const LISTINGS_OUT = path.join(__dirname, 'expor-amazon-listings.json');
 const KEYWORDS = path.join(__dirname, 'expor-keywords.json');
 
 const API = 'https://api.dataforseo.com/v3';
@@ -125,6 +130,54 @@ function itemRating(it) {
   return Number.isFinite(n) ? n : null;
 }
 
+function itemBought(it) {
+  const n = Number(it.bought_past_month);
+  return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
+}
+
+function itemAsin(it) {
+  const a = it.asin || it.data_asin || it.asin_id;
+  return a ? String(a).trim() : null;
+}
+
+function itemImage(it) {
+  const u = it.image_url || it.image || it.thumbnail;
+  return u ? String(u) : null;
+}
+
+function itemUrl(it, asin) {
+  if (it.url) return String(it.url);
+  return asin ? `https://www.amazon.com/dp/${asin}` : null;
+}
+
+function itemRank(it, i) {
+  const n = Number(it.rank_group ?? it.rank_absolute ?? it.rank);
+  return Number.isFinite(n) && n > 0 ? n : i + 1;
+}
+
+function toListing(it, p, i, fetchedAt) {
+  const asin = itemAsin(it);
+  if (!asin) return null;
+  const price = itemPrice(it);
+  const bought = itemBought(it);
+  return {
+    asin,
+    keyword: p.kw,
+    slug: p.slug,
+    title: String(it.title || '').slice(0, 240),
+    image_url: itemImage(it),
+    url: itemUrl(it, asin),
+    price_usd: price,
+    rating: itemRating(it),
+    reviews: itemReviews(it),
+    bought_past_month: bought,
+    is_amazon_choice: !!it.is_amazon_choice,
+    is_best_seller: !!it.is_best_seller,
+    search_rank: itemRank(it, i),
+    fetched_at: fetchedAt,
+  };
+}
+
 async function main() {
   const corpus = JSON.parse(fs.readFileSync(KEYWORDS, 'utf8'));
   let products = corpus.keywords;
@@ -189,19 +242,27 @@ async function main() {
     process.stderr.write(`  ${t.kw}: ${items.length} items\n`);
   }
 
-  const fetchedAt = new Date().toISOString().slice(0, 10);
+  const fetchedAt = new Date().toISOString();
+  const fetchedDay = fetchedAt.slice(0, 10);
   const out = [];
+  const listings = [];
   for (const p of products) {
     const key = String(p.kw).toLowerCase();
     const items = serpByKw.get(key) || [];
-    const prices = items.map(itemPrice).filter((n) => n != null);
-    const reviews = items.map(itemReviews).filter((n) => n != null);
-    const top = items.slice(0, TOP_ASINS).map((it) => ({
-      asin: it.asin || null,
-      title: String(it.title || '').slice(0, 180),
-      price: itemPrice(it),
-      rating: itemRating(it),
-      reviews: itemReviews(it),
+    const rows = items.map((it, i) => toListing(it, p, i, fetchedAt)).filter(Boolean);
+    listings.push(...rows);
+    const prices = rows.map((r) => r.price_usd).filter((n) => n != null);
+    const reviews = rows.map((r) => r.reviews).filter((n) => n != null);
+    const bought = rows.map((r) => r.bought_past_month).filter((n) => n != null);
+    const top = rows.slice(0, TOP_ASINS).map((r) => ({
+      asin: r.asin,
+      title: r.title,
+      price: r.price_usd,
+      rating: r.rating,
+      reviews: r.reviews,
+      bought_past_month: r.bought_past_month,
+      image_url: r.image_url,
+      url: r.url,
     }));
     out.push({
       slug: p.slug,
@@ -212,12 +273,16 @@ async function main() {
       price_median: median(prices),
       price_max: prices.length ? Math.max(...prices) : null,
       reviews_median: median(reviews),
+      bought_median: median(bought),
+      listings_with_bought: bought.length,
       top_asins: top,
-      fetched_at: fetchedAt,
+      listings: rows,
+      fetched_at: fetchedDay,
     });
   }
 
   const withPrice = out.filter((o) => o.price_median != null);
+  const withBought = listings.filter((r) => r.bought_past_month != null);
   const result = {
     _meta: {
       source: 'DataForSEO Amazon US (bulk_search_volume + merchant/amazon/products)',
@@ -225,15 +290,27 @@ async function main() {
       location_code: LOCATION_CODE,
       language: LANGUAGE_CODE,
       depth: SERP_DEPTH,
-      honesty: 'Amazon exposes no country-of-origin field. These are search results for English keywords mapped to Indonesian export goods, not "Indonesian products found on Amazon". Review counts are a competition proxy, not units sold.',
-      fetched_at: new Date().toISOString(),
+      honesty: 'Amazon exposes no country-of-origin field. These are search results for English keywords mapped to Indonesian export goods, not "Indonesian products found on Amazon". bought_past_month is Amazon\'s own "N+ bought in past month" badge floor — omset/bulan = price × that number, always perkiraan. Null when Amazon hides the badge.',
+      fetched_at: fetchedAt,
       products_with_price: withPrice.length,
       products_total: out.length,
+      listings: listings.length,
+      listings_with_bought: withBought.length,
     },
     products: out,
   };
+  const listingsFile = {
+    _meta: result._meta,
+    listings,
+  };
   fs.writeFileSync(OUT, JSON.stringify(result, null, 2) + '\n');
-  process.stderr.write(`\nDone. ${withPrice.length}/${out.length} products have a price sample.\n-> ${path.relative(ROOT, OUT)}\nThen: node scripts/build-expor.mjs\n`);
+  fs.writeFileSync(LISTINGS_OUT, JSON.stringify(listingsFile, null, 2) + '\n');
+  process.stderr.write(
+    `\nDone. ${withPrice.length}/${out.length} products have a price sample. ` +
+    `${withBought.length}/${listings.length} listings have bought_past_month.\n` +
+    `-> ${path.relative(ROOT, OUT)}\n-> ${path.relative(ROOT, LISTINGS_OUT)}\n` +
+    `Then: node scripts/ingest-amazon-listings.mjs --apply && node scripts/build-expor.mjs\n`,
+  );
 }
 
 main().catch((e) => { process.stderr.write(`FATAL: ${e.stack || e.message}\n`); process.exit(1); });

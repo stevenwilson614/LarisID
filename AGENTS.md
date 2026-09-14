@@ -22,6 +22,10 @@ Komunitas (ex-Ajukan Fitur) is a logged-in peer board: Diskusi default, Usulan F
 
 Cari Produk shows **listing rows** (photo, harga, omset, unit, review, usia) with **Trending Sekarang** (top 3 by weekly omset %) above Urutkan. Keyword chips filter both. Do not remount the Peta Peluang scatter on `#dir-trending-now` or chat `.trend-host` — `peta_batch` still feeds `_petaTrend` via `PetaPeluang.hydrateTrends`. Row chrome: bandingkan checkbox, one % with arrow, Favorit bookmark (`trackProductFavorite` → `user_tracked_products`), chevron → Deep Dive. Deep Dive is **PRODUK-only**; keyword-grain entries (`#home-first-dd`, Langkah, terlaris minggu) open that keyword's top listing. Favorit Aku is product-grain — see **[docs/favorit-aku.md](./docs/favorit-aku.md)**. **Bandingkan Pasar** is retired from Cari Produk and lives only in the chat `handleBandingkanIntent` path — see **[docs/pasar-compare.md](./docs/pasar-compare.md)**. Before changing Skor Mudah Masuk weights (still used by that chat board), read that doc. Never add a hard filter on that score. Also **[docs/peta-peluang.md](./docs/peta-peluang.md)** and **[docs/pasar-compare.md](./docs/pasar-compare.md)**.
 
+## LarisExpor (`pasar=expor`)
+
+Logged-in export mode is the **same SPA**, Amazon US listings, not a second app. Before changing Amazon omset, LOOKUP, or Deep Dive lite, read **[docs/expor-app.md](./docs/expor-app.md)**. Do not mix Amazon rows into Shopee Cari Produk. Omset is always perkiraan (`price × bought_past_month`). Never invent BSR / Jungle Scout unit models. `terlaris_minggu` stays off until snapshot history exists. The LarisID side tab and sidebar “LarisExpor” button are **hidden for now** — do not put them back unless asked.
+
 ## "Terlaris Minggu Ini" badge
 
 Before changing badge thresholds, the weekly measurement window, the growth-percentage definition, or the `terlaris_minggu` composer intent, read **[docs/terlaris-minggu.md](./docs/terlaris-minggu.md)**.

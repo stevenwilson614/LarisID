@@ -7985,7 +7985,8 @@ body.view-chat .sfb-card {
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 4H6.2A2.2 2.2 0 0 0 4 6.2v8.6A2.2 2.2 0 0 0 6.2 17H7v3.2a.5.5 0 0 0 .85.36L11.4 17h6.4A2.2 2.2 0 0 0 20 14.8V6.2A2.2 2.2 0 0 0 17.8 4Z"/><path class="ic-a" d="M12 7.8v5.4M9.3 10.5h5.4"/></svg>
       <span class="side-btn-label">Komunitas</span>
     </button>
-    <a class="side-btn" href="/?pasar=expor" id="btn-expor-pasar" title="LarisExpor">
+    <!-- Hidden for now. Restore with the landing .expor-tab in scripts/lib/expor-tab.mjs. -->
+    <a class="side-btn" href="/?pasar=expor" id="btn-expor-pasar" title="LarisExpor" hidden>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
       <span class="side-btn-label">LarisExpor</span>
     </a>
@@ -10266,22 +10267,9 @@ body.view-chat .sfb-card {
 <script src="/js/expor-pasar.js?v=20260914a" defer></script>
 <script src="/js/gpt-app.js?v=20260914d" defer></script>
 <style>
-/* LarisExpor entry on the marketing landing only. Logged-in app uses the sidebar link. */
-.expor-tab {
-  position: fixed; right: 0; top: 50%; transform: translateY(-50%); z-index: 40;
-  display: flex; align-items: center; gap: 7px;
-  padding: 11px 13px 11px 14px; background: #0F766E; color: #fff !important;
-  font-size: .78rem; font-weight: 700; text-decoration: none !important;
-  border-radius: 10px 0 0 10px; box-shadow: 0 2px 10px rgba(16, 49, 47, .22);
-  writing-mode: vertical-rl;
-}
-.expor-tab svg { width: 15px; height: 15px; flex-shrink: 0; }
-.expor-tab:hover { background: #115E59; }
-body:not(.view-landing) .expor-tab { display: none; }
-@media (max-width: 560px) {
-  .expor-tab { padding: 9px 10px; font-size: .72rem; }
-  .expor-tab svg { width: 13px; height: 13px; }
-}
+/* LarisExpor chrome hidden for now. Restore with scripts/lib/expor-tab.mjs. */
+#btn-expor-pasar { display: none !important; }
+.expor-tab { display: none !important; }
 
 /* pasar=expor: same Cari Produk chrome, Amazon-only columns. */
 body.pasar-expor .lrow-trend,
@@ -10298,6 +10286,7 @@ body.pasar-expor #dir-kwreq,
 body.pasar-expor #btn-tracker,
 body.pasar-expor #results-bar-kategori,
 body.pasar-expor #results-bar-mega,
+body.pasar-expor #dir-workbench-host,
 body.pasar-expor .dir-compare-banner { display: none !important; }
 body.pasar-expor #btn-shopee-pasar { display: flex; }
 body.pasar-expor #btn-expor-pasar.active { background: var(--surface-2, #f4f4f5); }
@@ -10306,9 +10295,5 @@ body.pasar-expor .expor-dd .cta-row { display: flex; flex-wrap: wrap; gap: 8px; 
 body.pasar-expor .dir-cat-pill { padding: 8px 12px; }
 body.pasar-expor .dir-cat-pill-label { font-size: .82rem; }
 </style>
-<a class="expor-tab" href="/expor/" title="Ke LarisExpor — riset ekspor produk Indonesia">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-  LarisExpor
-</a>
 </body>
 </html>

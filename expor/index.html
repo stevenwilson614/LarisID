@@ -54,6 +54,15 @@
 <link rel="stylesheet" href="/styles/seo-pages.css">
 <link rel="stylesheet" href="/styles/expor.css">
 <script src="/js/laris-auth.js?v=20260914a" defer></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  try {
+    if (window.LARIS_AUTH && typeof LARIS_AUTH.isSignedIn === 'function' && LARIS_AUTH.isSignedIn()) {
+      location.replace('/?pasar=expor');
+    }
+  } catch (_) {}
+});
+</script>
 <script defer src="/js/expor-probe.js?v=20260914a"></script>
 <script type="application/ld+json">
 {
@@ -107,7 +116,7 @@
   <p class="cat-pill">Sister site LarisID</p>
   <h1>Riset ekspor untuk yang sudah jualan di dalam negeri</h1>
   <p class="lead">LarisID menjawab apa yang laku di Shopee. LarisExpor menjawab pertanyaan berikutnya: negara mana yang sudah membeli produk seperti milikmu, berapa harganya di luar, dan apa yang tersisa setelah biaya Amazon dan ongkir.</p>
-  <p class="updated">145 produk &middot; 132 punya data UN Comtrade &middot; harga Amazon menyusul setelah sampel pertama</p>
+  <p class="updated">145 produk &middot; 132 punya data UN Comtrade &middot; harga Amazon dari sampel listing US (omset badge selalu perkiraan)</p>
 
   <div class="sec">
     <h2>Produk dengan permintaan dunia yang nyata</h2>

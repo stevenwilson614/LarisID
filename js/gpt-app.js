@@ -1155,6 +1155,10 @@ function ddComposerChips(product) {
 }
 
 function setComposerChips(list, surface) {
+  if (isExporPasar()) {
+    list = EXPOR_CHIPS;
+    surface = surface || 'expor';
+  }
   const wrap = $('composer-chips');
   if (!wrap) return;
   if (!list || !list.length) { wrap.hidden = true; wrap.innerHTML = ''; return; }
@@ -1345,6 +1349,13 @@ function initLandingAiDemo() {
 /** Sidebar "Laris AI" entry — same landing as clicking the logo. */
 function openAskLaris() {
   abortAssistantStream();
+  if (isExporPasar()) {
+    beginFreshChat();
+    setView('chat');
+    try { renderChatThread(); } catch (_) {}
+    setComposerChips(EXPOR_CHIPS, 'expor');
+    return;
+  }
   renderHome();
 }
 
@@ -1807,6 +1818,20 @@ const state = {
   cityFilter: '',
   searchOpen: false,
 };
+
+function isExporPasar() {
+  return !!(window.LarisExpor && window.LarisExpor.isOn());
+}
+
+function isExporListing(p) {
+  return !!(p && (p._pasar === 'expor' || String(p.nowcast_method || '') === 'amazon_badge'));
+}
+
+const EXPOR_CHIPS = [
+  { id: 'expor_jati', label: 'Meja jati', icon: 'search', prompt: 'meja jati' },
+  { id: 'expor_kelapa', label: 'Minyak kelapa', icon: 'search', prompt: 'minyak kelapa' },
+  { id: 'expor_rotan', label: 'Kursi rotan', icon: 'search', prompt: 'kursi rotan' },
+];
 
 function loadLocalState() {
   try {
@@ -3959,6 +3984,7 @@ function setView(name, opts = {}) {
     if (name === 'deepdive' && state.deepdiveProduct && !histState.compare && histState.item_id == null) {
       histState.item_id = state.deepdiveProduct.item_id;
       histState.shop_id = state.deepdiveProduct.shop_id;
+      if (state.deepdiveProduct.asin) histState.asin = state.deepdiveProduct.asin;
     }
     try {
       // The FIRST view boot() settles on replaces the entry rather than
@@ -3990,11 +4016,18 @@ window.addEventListener('popstate', (e) => {
       const products = resolveCompareProducts(chat);
       if (products.length >= 2) void openProductCompare(products, { resume: true });
       else setView('directory');
-    } else if (view === 'deepdive' && st.item_id != null) {
+    } else if (view === 'deepdive' && (st.asin || st.item_id != null)) {
       if (st.fromCompare) state.compareReturnChatId = st.fromCompare;
-      const found = findProduct(st.item_id, st.shop_id);
+      const found = st.asin
+        ? findProduct(st.asin, 'amazon') || findProduct(st.item_id, st.shop_id)
+        : findProduct(st.item_id, st.shop_id);
       if (found) void openDeepDive(found, st.fromCompare ? { fromCompare: true } : {});
-      else setView('directory');
+      else if (st.asin && window.LarisExpor?.listingByAsin) {
+        void window.LarisExpor.listingByAsin(st.asin).then((row) => {
+          if (row) void openDeepDive(row, st.fromCompare ? { fromCompare: true } : {});
+          else setView('directory');
+        });
+      } else setView('directory');
     } else if (view === 'landing') {
       renderLanding();
     } else {
@@ -4221,6 +4254,8 @@ function updateAccountUI() {
   renderChatList();
   renderAdminSampleBanner();
   void refreshGptUsage();
+  const tab = document.querySelector('a.expor-tab');
+  if (tab) tab.href = currentUser ? '/?pasar=expor' : '/expor/';
 }
 
 function chatMessageSearchText(m) {
@@ -5118,6 +5153,7 @@ async function initSupabase() {
     _clearSessionRestoring();
   }
   if (_supabase) {
+    try { window.LarisExpor?.attachSupabase(_supabase); } catch (_) {}
     _supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.access_token && !currentUser) {
         _authSave(session);
@@ -8875,6 +8911,11 @@ async function _fetchPoolListings(out, types, chooser) {
 }
 
 async function resolveListingPool(opts = {}) {
+  if (isExporPasar() && window.LarisExpor && typeof window.LarisExpor.resolvePool === 'function') {
+    const pool = await window.LarisExpor.resolvePool(opts);
+    rememberProducts(pool.listings || []);
+    return pool;
+  }
   const key = dirPoolMemoKey(opts);
   const hit = _dirPoolMemo[key];
   if (hit) {
@@ -9038,7 +9079,7 @@ function keywordChipsHtml(types, activeKw, opts = {}) {
     const badge = t._terlaris
       ? `<span class="lrow-chip-badge" title="${esc(terlarisTooltip(t._terlaris))}">Terlaris</span>`
       : '';
-    chips.push(`<button type="button" class="lrow-chip${on ? ' is-on' : ''}" data-lrow-kw="${esc(kw)}">${esc(kw)}${badge}</button>`);
+    chips.push(`<button type="button" class="lrow-chip${on ? ' is-on' : ''}" data-lrow-kw="${esc(kw)}">${esc(t.nama_id || kw)}${badge}</button>`);
   });
   return `<div class="lrow-chips" role="tablist">${chips.join('')}</div>`;
 }
@@ -9164,6 +9205,11 @@ async function fetchNaikDaunGlobal(limit = 60) {
 // old quartiles aggregate) that competed with the real load for connections.
 // loadDirHomePool() memoizes the pool renderDirectory() genuinely uses.
 function warmDirInstantPool() {
+  if (isExporPasar()) {
+    const idle = window.larisIdle || ((fn) => setTimeout(fn, 800));
+    idle(() => { void resolveListingPool({ home: true }); }, 400);
+    return Promise.resolve([]);
+  }
   return loadDirHomePool().then(rows => {
     const idle = window.larisIdle || ((fn) => setTimeout(fn, 800));
     idle(() => { void resolveListingPool({ home: true }); }, 400);
@@ -9487,8 +9533,14 @@ async function handleIntent(intent, text) {
   void logUserEvent('gpt_intent', { ui: 'gpt', intent });
   clarityEvt('gpt_intent', { intent });
 
-  if (intent === 'trending') return handleTrendingIntent(chat);
-  if (intent === 'terlaris_minggu') return handleTerlarisMingguIntent(chat, text);
+  if (intent === 'trending') {
+    if (isExporPasar()) return handleExporWeeklyRefuse(chat, text);
+    return handleTrendingIntent(chat);
+  }
+  if (intent === 'terlaris_minggu') {
+    if (isExporPasar()) return handleExporWeeklyRefuse(chat, text);
+    return handleTerlarisMingguIntent(chat, text);
+  }
   if (intent === 'modal') return handleModalIntent(chat, text);
   if (intent === 'lowcomp') return handleLowcompIntent(chat);
   if (intent === 'profit') return handleProfitIntent(chat, text);
@@ -9636,6 +9688,34 @@ function lookupStrongTypes(query, types) {
   return strong.length ? strong : list;
 }
 
+async function handleExporWeeklyRefuse(chat, text) {
+  const html = (window.LarisExpor && window.LarisExpor.weeklyRefuseHtml)
+    ? window.LarisExpor.weeklyRefuseHtml()
+    : '<p>Belum ada riwayat mingguan Amazon. Cari nama produk untuk lihat listing Amazon US.</p>';
+  const loading = appendBubble('assistant', html);
+  await revealAssistant(loading, html, { instant: true });
+  pushMessage(chat, 'assistant', { text: 'Belum ada tren mingguan', q: text }, html);
+}
+
+async function handleExporComposer(text) {
+  if (chatIsResultsThread(activeChat())) beginFreshChat();
+  setView('chat');
+  const chat = ensureComposerChat(text);
+  appendBubble('user', `<p>${esc(text)}</p>`);
+  pushMessage(chat, 'user', text);
+  void logUserEvent('gpt_message_sent', { ui: 'gpt' });
+  const lower = String(text || '').toLowerCase();
+  const intent = detectIntent(lower);
+  const mode = _gptMem().detectResponseMode?.(text, chat);
+  if (mode === 'weekly' || intent === 'terlaris_minggu' || intent === 'trending') {
+    void logUserEvent('gpt_intent', { ui: 'gpt', intent: 'weekly_refuse', via: 'expor' });
+    await handleExporWeeklyRefuse(chat, text);
+    return;
+  }
+  void logUserEvent('gpt_intent', { ui: 'gpt', intent: 'lookup', via: 'expor' });
+  await handleLookupIntent(chat, text);
+}
+
 function tightenLookupPool(query, pool) {
   if (!pool) return pool;
   const strong = lookupStrongTypes(query, pool.keywords);
@@ -9699,29 +9779,36 @@ async function handleLookupIntent(chat, text) {
   // ("botol" → sabun bayi / sterilizer) and locks the table to primaryKw,
   // which often paints zero sold rows.
   const pool = await resolveListingPool({ q });
-  tightenLookupPool(q, pool);
-  if (!pool.listings.length && (pool.keywords || []).length) {
+  if (!isExporPasar()) tightenLookupPool(q, pool);
+  if (!pool.listings.length && (pool.keywords || []).length && !isExporPasar()) {
     const kws = pool.keywords.map(t => t.keyword).filter(Boolean).slice(0, 8);
     pool.listings = dedupeListings(await fetchListingsForKeywords(kws, 40, 200));
     rememberProducts(pool.listings);
   }
   if (!pool.listings.length) {
-    const html = `<p>Belum ketemu listing untuk “${esc(q)}” di data kami.</p>${kwReqHtml(q, 'chat')}`;
+    const html = isExporPasar()
+      ? `<p>Belum ketemu listing Amazon US untuk “${esc(q)}”.</p>`
+      : `<p>Belum ketemu listing untuk “${esc(q)}” di data kami.</p>${kwReqHtml(q, 'chat')}`;
     await revealAssistant(loading, html);
     pushMessage(chat, 'assistant', { text: 'Hasil pasar', q }, html);
     // This dead end logged nothing at all before — part of why corpus gaps
     // stayed invisible even when the search plainly failed.
-    void logUncoveredSearch(q, { via: 'lookup', match_quality: 'none' });
+    if (!isExporPasar()) void logUncoveredSearch(q, { via: 'lookup', match_quality: 'none' });
     return;
   }
   const gate = await ensureIntentChat(chat, q.slice(0, 60), { kind: 'lookup', q });
   if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
   registerTypes(pool.keywords);
   const type = pool.keywords.find(t => t.keyword === pool.primaryKw) || pool.keywords[0] || null;
-  const followups = defaultLookupFollowups(pool.listings);
-  const html = `${lookupOverviewHtml(type, q, placeLabel)}<div data-lrow-block>${listingBlockHtml(pool, {
+  const followups = isExporPasar() && window.LarisExpor
+    ? window.LarisExpor.defaultFollowups()
+    : defaultLookupFollowups(pool.listings);
+  const overview = isExporPasar() && window.LarisExpor
+    ? window.LarisExpor.lookupOverviewHtml(esc, type, q)
+    : lookupOverviewHtml(type, q, placeLabel);
+  const html = `${overview}<div data-lrow-block>${listingBlockHtml(pool, {
     query: q, chipKw: '', compact: true, skipLead: true, sort: 'sesuai', limit: 12, maxChips: 8,
-  })}</div>${followupChipsHtml(followups)}${kwReqHtml(q, 'chat')}`;
+  })}</div>${followupChipsHtml(followups)}${isExporPasar() ? '' : kwReqHtml(q, 'chat')}`;
   await revealAssistant(loading, html);
   pushMessage(chat, 'assistant', {
     text: 'Hasil produk', q, level: 'listing',
@@ -12611,6 +12698,12 @@ function omsetHonesty(p, opts) {
       tip: 'Angka agregat pasar (bukan satu listing). Perkiraan dari model kecepatan LarisID, bukan angka resmi Shopee.',
     };
   }
+  if (isExporListing(p)) {
+    return {
+      label: 'perkiraan',
+      tip: 'Omset/bulan = harga Amazon × badge “bought in past month” (lantai Amazon). Selalu perkiraan — bukan unit yang kami ukur. Amazon tidak punya field negara asal.',
+    };
+  }
   const method = String(p && p.nowcast_method || '').toLowerCase();
   const terukur = method === 'latest' || method === 'blend';
   return {
@@ -12651,6 +12744,12 @@ function productSnapshot(p) {
     nowcast_confidence: p.nowcast_confidence,
     nowcast_method: p.nowcast_method,
     is_ad: p.is_ad,
+    _pasar: p._pasar || null,
+    asin: p.asin || null,
+    bought_past_month: p.bought_past_month != null ? p.bought_past_month : null,
+    price_usd: p.price_usd != null ? p.price_usd : null,
+    nama_id: p.nama_id || null,
+    slug: p.slug || null,
   };
 }
 
@@ -12919,33 +13018,48 @@ function listingRowHtml(p, opts = {}) {
   const omset = estOmsetBulan(p);
   const usia = listingUsiaLabel(p);
   const reviews = Number(p.reviews) || 0;
-  const sold = Number(p.total_sold) || 0;
+  const expor = isExporListing(p);
+  const soldN = expor
+    ? (p.bought_past_month != null ? Number(p.bought_past_month) : null)
+    : (Number(p.total_sold) || 0);
   const price = Number(p.price) || 0;
   const snap = productSnapshot(p);
   const encoded = snap ? encodeURIComponent(JSON.stringify(snap)) : '';
   const actions = !!opts.actions;
-  const picking = actions || !!opts.pick;
+  const picking = !expor && (actions || !!opts.pick);
   const picked = picking && (state.comparePick?.selected || []).some(x => prodKey(x) === key);
   const hl = opts.highlightKey && opts.highlightKey === key;
-  const favOn = actions && isFavTracked(p);
+  const favOn = actions && !expor && isFavTracked(p);
   const cls = [
     'lrow',
     picking ? 'is-pickable' : '',
     picked ? 'is-picked' : '',
     hl ? 'is-sel' : '',
+    expor ? 'lrow-expor' : '',
   ].filter(Boolean).join(' ');
-  const check = actions
+  const check = expor ? '' : (actions
     ? `<td class="lrow-pick"><button type="button" class="lrow-check-btn" data-lrow-cmp="${esc(key)}" aria-pressed="${picked ? 'true' : 'false'}" aria-label="Pilih untuk bandingkan"><span class="lrow-check" aria-hidden="true">${ico('check', 12)}</span></button></td>`
     : (opts.pick
       ? `<td class="lrow-pick"><span class="lrow-check" aria-hidden="true">${ico('check', 12)}</span></td>`
-      : '');
+      : ''));
   // One thumb only — onerror swaps the <img> for a placeholder (do not leave a
   // hidden sibling: `.lrow-img { display:block }` overrides UA `[hidden]`).
   const thumb = img
     ? `<img class="lrow-img" src="${esc(imgThumb(img))}" alt="" loading="lazy" decoding="async" width="84" height="84" onerror="this.onerror=null;this.replaceWith(Object.assign(document.createElement('div'),{className:'lrow-img lrow-img--ph'}))">`
     : '<div class="lrow-img lrow-img--ph"></div>';
   const cat = trendNowCatHtml(p).replace('trend-now-cat', 'lrow-cat');
-  const metaSold = sold ? `${fmtSold(sold)} terjual` : '0 terjual';
+  const metaSold = expor
+    ? (soldN != null ? `${fmtSold(soldN)} /bln` : 'badge Amazon tidak ada')
+    : (soldN ? `${fmtSold(soldN)} terjual` : '0 terjual');
+  const priceTxt = expor
+    ? ((window.LarisExpor && window.LarisExpor.fmtUsd) ? window.LarisExpor.fmtUsd(price) : '—')
+    : (price ? fmtRp(price) : '—');
+  const omsetTxt = expor
+    ? ((window.LarisExpor && window.LarisExpor.fmtOmsetUsd) ? window.LarisExpor.fmtOmsetUsd(omset) : '—')
+    : (omset ? fmtOmset(omset) : '—');
+  const omsetChip = omset ? omsetChipHtml(p) : '';
+  const soldTxt = expor ? (soldN != null ? fmtSold(soldN) : '—') : (soldN ? fmtSold(soldN) : '0');
+  const usiaTxt = expor ? '—' : usia.text;
   // Thumb is its own cell so mobile can sticky-anchor the photo while metrics
   // scroll sideways. Desktop CSS keeps thumb + title looking like one Produk col.
   const thumbCell = `<td class="lrow-thumb">${thumb}</td>`;
@@ -12953,14 +13067,14 @@ function listingRowHtml(p, opts = {}) {
         <div class="lrow-name">${esc(name)}</div>
         <div class="lrow-toko">${esc(toko)}</div>
         ${cat}
-        <div class="lrow-meta">${metaSold} • ${esc(usia.text)}</div>
+        <div class="lrow-meta">${metaSold} • ${esc(usiaTxt)}</div>
       </div>`;
   const prodCell = actions
     ? `<td class="lrow-prod"><button type="button" class="lrow-open" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''}>${prodInner}</button></td>`
     : `<td class="lrow-prod">${prodInner}</td>`;
   const actCell = actions
     ? `<td class="lrow-act">
-        <button type="button" class="lrow-fav${favOn ? ' is-on' : ''}" data-lrow-fav="${esc(key)}" aria-pressed="${favOn ? 'true' : 'false'}" title="${favOn ? 'Hapus dari Favorit Aku' : 'Simpan ke Favorit Aku'}" aria-label="${favOn ? 'Hapus dari Favorit Aku' : 'Simpan ke Favorit Aku'}">${ico('bookmark', 16)}</button>
+        ${expor ? '' : `<button type="button" class="lrow-fav${favOn ? ' is-on' : ''}" data-lrow-fav="${esc(key)}" aria-pressed="${favOn ? 'true' : 'false'}" title="${favOn ? 'Hapus dari Favorit Aku' : 'Simpan ke Favorit Aku'}" aria-label="${favOn ? 'Hapus dari Favorit Aku' : 'Simpan ke Favorit Aku'}">${ico('bookmark', 16)}</button>`}
         <button type="button" class="lrow-go" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} aria-label="Lihat Deep Dive">${ico('chevronRight', 18)}</button>
       </td>`
     : '';
@@ -12971,14 +13085,14 @@ function listingRowHtml(p, opts = {}) {
     ${check}
     ${thumbCell}
     ${prodCell}
-    <td class="lrow-num lrow-harga"><span class="lrow-metric-lbl">Harga</span><span class="lrow-metric-val">${price ? fmtRp(price) : '—'}</span></td>
-    <td class="lrow-num lrow-omset"><span class="lrow-metric-lbl">Omset</span><span class="lrow-metric-val">${omset ? fmtOmset(omset) : '—'}</span>${omsetChipHtml(p)}</td>
+    <td class="lrow-num lrow-harga"><span class="lrow-metric-lbl">Harga</span><span class="lrow-metric-val">${priceTxt}</span></td>
+    <td class="lrow-num lrow-omset"><span class="lrow-metric-lbl">Omset</span><span class="lrow-metric-val">${omset ? omsetTxt : '—'}</span>${omsetChip}</td>
     ${listingTrendCellHtml(p)}
     ${listingTrendSparkCellHtml(p)}
-    <td class="lrow-num lrow-sold"><span class="lrow-metric-lbl">Terjual</span><span class="lrow-metric-val">${sold ? fmtSold(sold) : '0'}</span></td>
+    <td class="lrow-num lrow-sold"><span class="lrow-metric-lbl">${expor ? 'Terjual/bln' : 'Terjual'}</span><span class="lrow-metric-val">${soldTxt}</span></td>
     <td class="lrow-num lrow-wide lrow-reviews"><span class="lrow-metric-lbl">Review</span><span class="lrow-metric-val">${reviews ? fmtSold(reviews) : '0'}</span></td>
-    <td class="lrow-num lrow-wide lrow-usia" title="${esc(usia.title)}"><span class="lrow-metric-lbl">Usia</span><span class="lrow-metric-val">${esc(usia.text)}</span></td>
-    ${window.LarisDirWorkbench ? LarisDirWorkbench.extraCellsHtml(p) : ''}
+    <td class="lrow-num lrow-wide lrow-usia" title="${esc(expor ? 'Usia listing Amazon belum diukur di v1.' : usia.title)}"><span class="lrow-metric-lbl">Usia</span><span class="lrow-metric-val">${esc(usiaTxt)}</span></td>
+    ${expor ? '' : (window.LarisDirWorkbench ? LarisDirWorkbench.extraCellsHtml(p) : '')}
     ${actCell}
   </tr>`;
 }
@@ -13038,22 +13152,23 @@ function listingRowsHtml(list, opts = {}) {
   const pick = !!opts.pick;
   const actions = !!opts.actions;
   const sort = opts.sort || '';
+  const expor = isExporPasar() || rows.some(isExporListing);
   const th = (key, label) => {
     const on = sort === key || (key === 'termurah' && (sort === 'termurah' || sort === 'termahal'));
     return `<th scope="col" data-lrow-sort="${key}" class="${on ? 'is-on' : ''}">${label}</th>`;
   };
   const head = opts.headless ? '' : `<thead><tr>
-        ${actions || pick ? '<th class="lrow-pick"></th>' : ''}
+        ${!expor && (actions || pick) ? '<th class="lrow-pick"></th>' : ''}
         <th class="lrow-thumb"><span class="sr-only">Foto</span></th>
         <th class="lrow-col-prod">Produk</th>
         ${th('termurah', 'Harga')}
         ${th('omset', 'Omset')}
         ${th('trending', 'Trending')}
         <th class="lrow-spark"><span class="sr-only">Grafik tren</span></th>
-        ${th('terlaris', 'Unit jual')}
+        ${th('terlaris', expor ? 'Terjual/bln' : 'Unit jual')}
         ${th('review', 'Review')}
         ${th('terbaru', 'Usia')}
-        ${window.LarisDirWorkbench ? LarisDirWorkbench.extraHeadsHtml() : ''}
+        ${expor ? '' : (window.LarisDirWorkbench ? LarisDirWorkbench.extraHeadsHtml() : '')}
         ${actions ? '<th class="lrow-act"><span class="sr-only">Aksi</span></th>' : ''}
       </tr></thead>`;
   const table = `<div class="lrow-wrap${opts.compact ? ' lrow-wrap--compact' : ''}${pick ? ' lrow-wrap--pick' : ''}${actions ? ' lrow-wrap--actions' : ''}"${opts.keepChat ? ' data-lrow-keepchat="1"' : ''}>
@@ -16859,8 +16974,10 @@ async function openDeepDive(product, ddOpts = {}) {
     state.lastDeepDiveCategory = String(product.category || product.category_canonical);
   }
   saveLocalState();
-  if (isFirstDeepDive) schedulePantauNavPulse(product);
-  scheduleStevenDdVideo();
+  if (!isExporListing(product)) {
+    if (isFirstDeepDive) schedulePantauNavPulse(product);
+    scheduleStevenDdVideo();
+  }
   rememberProducts([product]);
   state.deepdiveProduct = product;
   if (!ddOpts.fromCompare) state.compareReturnChatId = null;
@@ -16883,6 +17000,15 @@ async function openDeepDive(product, ddOpts = {}) {
 
   product = { ...product, _fromListing: true };
   state.deepdiveProduct = product;
+
+  if (isExporListing(product) && window.LarisExpor) {
+    root.innerHTML = window.LarisExpor.deepDiveHtml(
+      esc, window.LarisExpor.fmtUsd, window.LarisExpor.fmtOmsetUsd, product,
+    );
+    window.LarisExpor.bindDeepDive(root, () => { void openDirectory(); });
+    setComposerChips(EXPOR_CHIPS, 'expor-dd');
+    return;
+  }
 
   const kw = product.keyword || '';
   const cacheKey = ddCacheKey(product);
@@ -17912,8 +18038,9 @@ function aiDataContext() {
   return `
 KONTEKS DATA (wajib):
 - Hari ini: ${dateStr} (WIB). Tahun ${pick('year')} sudah berjalan — jangan bilang tahun ini "belum terjadi".
-- Data LarisID adalah snapshot Shopee Indonesia. Sapuan scrape tiap 12–17 hari, bukan harian dan bukan agregat tahunan.
-- Tidak ada GMV tahunan. Angka omset adalah per bulan (terukur atau perkiraan).
+- Data LarisID adalah snapshot Shopee Indonesia. Sapuan scrape umumnya mingguan (12–17 hari), bukan real-time dan bukan agregat tahunan.
+- Favorit Aku: listing pilihan di-scrape tiap hari, dengan insight harian dan omset. Jangan sebut katalog pasar di-update harian.
+- Tidak ada GMV tahunan. Omset yang kami tonjolkan adalah per minggu (tren, Deep Dive); per bulan (×30) hanya skala.
 - Persona: kamu Laris AI. Pakai "aku/kamu", jangan "gue/lo".
 - Jangan sebut "jatah alat", "batas alat", atau "tool budget". Kalau data banyak, bilang "aku ambil N pasar/kategori terbesar dulu" dan tawarkan sisanya sebagai follow-up.`;
 }
@@ -17924,7 +18051,7 @@ YANG DATA LARISID PUNYA:
 - Per listing: nama produk, nama toko, harga, harga coret, total terjual, estimasi
   terjual, kategori, keyword/pasar, lokasi seller (WILAYAH INDONESIA saja), rating,
   jumlah ulasan, tanggal listing, wishlist, status iklan, peringkat pencarian,
-  estimasi omset per bulan.
+  estimasi omset per minggu dan per bulan.
 - Per pasar (product type): jumlah seller, jumlah listing, harga min/median/max,
   omset top-15 seller per bulan, pangsa 3 teratas, tren 30 hari, breakout_rate,
   jumlah produk baru, dan Skor Pasar 0-100.
@@ -18595,6 +18722,11 @@ async function handleComposerSubmit(text, opts = {}) {
   const lower = text.toLowerCase();
   if (/tampilkan produk lain/.test(lower) || /^produk lain$/.test(lower) || /^rekomendasi baru$/.test(lower)) {
     await openMoreProductsDirectory();
+    return;
+  }
+
+  if (isExporPasar()) {
+    await handleExporComposer(text, opts);
     return;
   }
 
@@ -21732,7 +21864,7 @@ function sortDirRows(rows, mode) {
 function _dirApplyDefaultsOnce() {
   if (state._dirDefaultsApplied) return;
   state._dirDefaultsApplied = true;
-  syncDirectoryFromOnboarding();
+  if (!isExporPasar()) syncDirectoryFromOnboarding();
 }
 
 function matchDirCatFromProduct(product) {
@@ -22124,6 +22256,10 @@ function applyDirCatUi() {
 // before any data fetch resolves. Click toggles that category as the sole
 // directory filter.
 function renderDirCatRail() {
+  if (isExporPasar()) {
+    void renderExporCatRail();
+    return;
+  }
   const rail = $('dir-cat-rail');
   if (!rail) return;
   const active = primaryDirCat();
@@ -22140,6 +22276,28 @@ function renderDirCatRail() {
           <span class="dir-cat-pill-label">${esc(cat)}</span>
         </span>
       </span>
+    </button>`;
+  }).join('');
+  rail.querySelectorAll('[data-dir-cat]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const cat = btn.getAttribute('data-dir-cat');
+      const already = cat === primaryDirCat();
+      void applyDirectoryCategory(already ? '' : cat);
+    });
+  });
+}
+
+async function renderExporCatRail() {
+  const rail = $('dir-cat-rail');
+  if (!rail || !window.LarisExpor) return;
+  const cats = await window.LarisExpor.categories();
+  if (!isExporPasar()) return;
+  const active = primaryDirCat();
+  if (!cats.length) { rail.innerHTML = ''; return; }
+  rail.innerHTML = cats.map(cat => {
+    const sel = cat === active;
+    return `<button type="button" class="dir-cat-pill${sel ? ' selected' : ''}" data-dir-cat="${esc(cat)}">
+      <span class="dir-cat-pill-label">${esc(cat)}</span>
     </button>`;
   }).join('');
   rail.querySelectorAll('[data-dir-cat]').forEach(btn => {
@@ -22199,6 +22357,10 @@ function updateDirHeading() {
     return;
   }
   if (isDirHomeBrowse()) {
+    if (isExporPasar()) {
+      h.textContent = 'Amazon US · ekspor Indonesia';
+      return;
+    }
     const userCity = state.onboarding?.city || '';
     h.textContent = userCity ? `Yang Laku di ${userCity}` : 'Semua produk';
     return;
@@ -22359,6 +22521,11 @@ async function openInsightHeroCta() {
 function syncDirHero() {
   const host = $('dir-hero');
   if (!host) return;
+  if (isExporPasar()) {
+    host.hidden = true;
+    host.innerHTML = '';
+    return;
+  }
   const show = isDirHomeBrowse();
   host.hidden = !show;
   if (!show || !window.LarisGptDirHero) return;
@@ -22439,9 +22606,13 @@ function paintDirTrending(opts = {}) {
 }
 
 function hydrateDirTrends() {
+  const host = $('dir-trending-now');
+  if (isExporPasar()) {
+    if (host) { host.innerHTML = ''; host.hidden = true; }
+    return;
+  }
   const seq = ++_dirTrendSeq;
   const all = (state.dirPoolListings || []).slice(0, 200);
-  const host = $('dir-trending-now');
   if (!all.length) {
     if (host) { host.innerHTML = ''; host.hidden = true; }
     return;
@@ -22456,6 +22627,11 @@ function hydrateDirTrends() {
 function paintDirAskSellers(q, keywords) {
   const host = $('dir-ask-sellers');
   if (!host) return;
+  if (isExporPasar()) {
+    host.hidden = true;
+    host.innerHTML = '';
+    return;
+  }
   const kw = String(q || '').trim()
     || (Array.isArray(keywords) && keywords[0] && (keywords[0].keyword || keywords[0]))
     || '';
@@ -22479,6 +22655,11 @@ function paintDirAskSellers(q, keywords) {
 function paintDirKwReq(q) {
   const host = $('dir-kwreq');
   if (!host) return;
+  if (isExporPasar()) {
+    host.hidden = true;
+    host.innerHTML = '';
+    return;
+  }
   const label = String(q || '').trim();
   if (!label || isDirHomeBrowse()) {
     host.hidden = true;
@@ -22495,9 +22676,9 @@ function dirChooserHtml(q, types) {
   const more = (types || []).length > 12
     ? `<p class="dd-sub">${(types || []).length} pasar cocok. Ketik lebih spesifik, atau minta produk baru di bawah.</p>`
     : '';
-  return `<div class="dir-chooser" id="dir-chooser">
+    return `<div class="dir-chooser" id="dir-chooser">
     <div class="dir-chooser-list">${list.map(t =>
-      `<button type="button" class="dir-chooser-btn" data-dir-choose="${esc(t.keyword)}">${esc(t.keyword)}</button>`
+      `<button type="button" class="dir-chooser-btn" data-dir-choose="${esc(t.keyword)}">${esc(t.nama_id || t.keyword)}</button>`
     ).join('')}</div>${more}
   </div>`;
 }
@@ -22518,7 +22699,7 @@ function paintDirectoryTable(opts = {}) {
   const grid = $('dir-grid');
   const pager = $('dir-pager');
   if (!grid) return;
-  if (window.LarisDirWorkbench) {
+  if (window.LarisDirWorkbench && !isExporPasar()) {
     try { LarisDirWorkbench.mount(); } catch (_) {}
   }
   const filtered = sortDirRows(
@@ -22535,7 +22716,9 @@ function paintDirectoryTable(opts = {}) {
   const q = (state.dirSearch || '').trim();
   const emptyMsg = q
     ? `<p class="dd-sub">Belum ketemu produk untuk “<strong>${esc(q)}</strong>”. Coba kata kunci lain.</p>`
-    : '<p class="dd-sub">Belum ketemu produk untuk filter ini.</p>';
+    : (isExporPasar()
+      ? '<p class="dd-sub">Listing Amazon US untuk kata kunci ekspor Indonesia. Cari meja jati, minyak kelapa, atau kursi rotan.</p>'
+      : '<p class="dd-sub">Belum ketemu produk untuk filter ini.</p>');
   const nearbyLead = searchMatchLeadHtml(q, {
     matchLevel: state.dirMatchLevel || (state.dirNearby ? 'nearby' : ''),
     keywords: state.dirTypes,
@@ -22575,7 +22758,10 @@ function paintDirectoryTable(opts = {}) {
   renderDirPager(pager, filtered.length);
   updateDirCount(filtered.length, slice.length, state.dirNearby);
   updateDirHeading();
-  if (opts.remountPeta !== false) hydrateDirTrends();
+  if (isExporPasar()) {
+    const trendHost = $('dir-trending-now');
+    if (trendHost) { trendHost.hidden = true; trendHost.innerHTML = ''; }
+  } else if (opts.remountPeta !== false) hydrateDirTrends();
   else paintDirTrending();
 }
 
@@ -22596,8 +22782,13 @@ async function renderDirectory() {
   paintGarudaLoading(grid, 'binocs');
   const trendHost = $('dir-trending-now');
   if (trendHost) {
-    trendHost.hidden = false;
-    paintTrendingNow(trendHost, [], { pending: true });
+    if (isExporPasar()) {
+      trendHost.hidden = true;
+      trendHost.innerHTML = '';
+    } else {
+      trendHost.hidden = false;
+      paintTrendingNow(trendHost, [], { pending: true });
+    }
   }
 
   const pool = await resolveListingPool({ q, cats, sub, home });
@@ -22634,7 +22825,7 @@ async function renderDirectory() {
   if (state._dirSkipScroll) state._dirSkipScroll = false;
   else scrollPanelToTop();
   paintDirectoryTable({ remountPeta: true });
-  if (q && pool.matchLevel !== 'chooser' && (pool.matchLevel !== 'keyword' || !pool.listings.length)) {
+  if (!isExporPasar() && q && pool.matchLevel !== 'chooser' && (pool.matchLevel !== 'keyword' || !pool.listings.length)) {
     void logUncoveredSearch(q, {
       category: detectSearchDomain(q.toLowerCase())?.id || null,
       brand: pool.brand || null,
@@ -22878,6 +23069,11 @@ document.addEventListener('laris-cohort-renamed', (ev) => {
 function goHome(e) {
   if (e) e.preventDefault();
   closeSidebar();
+  if (isExporPasar()) {
+    resetDirectoryToHome();
+    void openDirectory();
+    return;
+  }
   renderLanding();
 }
 
@@ -24510,6 +24706,20 @@ function wireUi() {
     resetDirectoryToHome();
     void openDirectory();
   });
+  $('btn-expor-pasar')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    try { window.LarisExpor?.activate(); } catch (_) {}
+    state.comparePick = null;
+    state.compareReturnChatId = null;
+    updateDirCompareBanner();
+    resetDirectoryToHome();
+    void openDirectory();
+  });
+  $('btn-shopee-pasar')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    try { window.LarisExpor?.setPasar('shopee'); } catch (_) {}
+    location.href = '/';
+  });
   $('btn-tracker')?.addEventListener('click', () => { openTrackerView(); });
   $('btn-cohort')?.addEventListener('click', () => { openCohortView(); });
   $('btn-community')?.addEventListener('click', () => { openCommunityBoard(); });
@@ -24682,6 +24892,12 @@ async function boot() {
   recomputeLearnedCategories();
   // Merdeka decorations — self-gates to August WIB, no-ops the rest of the year.
   try { window.LarisMerdeka?.mount({ site: 'b', navSelector: '.main-top' }); } catch (_) {}
+  try {
+    if (window.LarisExpor) {
+      if (new URLSearchParams(location.search).get('pasar') === 'expor') window.LarisExpor.activate();
+      else window.LarisExpor.syncChrome();
+    }
+  } catch (_) {}
   // The A/B ended 2026-08-10 and this used to self-stamp arm B here. New
   // visitors now carry no _lid_ab_v1 at all, which is what keeps post-merge
   // rows distinguishable from experiment-era ones — do not reintroduce a
@@ -24767,7 +24983,14 @@ async function boot() {
   const alreadyCommunity = state.view === 'community';
   const alreadyAdmin = state.view === 'admin';
   const finderResultsUp = !!$('chat-thread')?.querySelector('[data-lrow-block]');
-  if (!_offerActive && !pendingResume && !alreadyDeepdive && !alreadyCommunity && !alreadyAdmin && !finderResultsUp) {
+  if (isExporPasar() && !_offerActive && !pendingResume && !alreadyDeepdive && !alreadyCommunity && !alreadyAdmin) {
+    if (state.activeChatId && activeChat()) {
+      setView('chat');
+      renderChatThread();
+    } else {
+      void openDirectory();
+    }
+  } else if (!_offerActive && !pendingResume && !alreadyDeepdive && !alreadyCommunity && !alreadyAdmin && !finderResultsUp) {
     if (state.activeChatId && activeChat()) {
       setView('chat');
       renderChatThread();
@@ -26317,6 +26540,24 @@ function _exportWireDelegation() {
 function consumeProductDeepLink() {
   try {
     const q = new URLSearchParams(location.search);
+    const asin = String(q.get('asin') || '').trim();
+    if (asin && /^[A-Z0-9]{8,12}$/i.test(asin)) {
+      ['asin', 'utm_source', 'utm_medium'].forEach((k) => q.delete(k));
+      if (!q.get('pasar')) q.set('pasar', 'expor');
+      const qs = q.toString();
+      history.replaceState({}, '', location.pathname + (qs ? `?${qs}` : '') + location.hash);
+      try { window.LarisExpor?.activate(); } catch (_) {}
+      void (async () => {
+        try {
+          const row = window.LarisExpor?.listingByAsin
+            ? await window.LarisExpor.listingByAsin(asin)
+            : null;
+          if (!row) { showToast('Listing Amazon itu tidak ketemu lagi.'); return; }
+          await openDeepDive(row, { via: 'deeplink_asin' });
+        } catch (_) {}
+      })();
+      return true;
+    }
     const item = q.get('item');
     const shop = q.get('shop');
     if (!item || !shop || !/^\d{1,20}$/.test(item) || !/^\d{1,20}$/.test(shop)) return false;
