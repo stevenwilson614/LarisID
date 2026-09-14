@@ -700,3 +700,31 @@ main.wide.harga-free {
   .cmp-visit { font-size: .62rem; padding: 6px 6px; gap: 3px; border-radius: 8px; }
   .cmp-visit svg { width: 10px; height: 10px; }
 }
+
+/* LarisExpor side tab. CSS-only, always visible — never a JS display toggle. */
+.expor-tab {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 11px 13px 11px 14px;
+  background: #0F766E;
+  color: #fff !important;
+  font-size: .78rem;
+  font-weight: 700;
+  text-decoration: none !important;
+  border-radius: 10px 0 0 10px;
+  box-shadow: 0 2px 10px rgba(16, 49, 47, .22);
+  writing-mode: vertical-rl;
+}
+.expor-tab svg { width: 15px; height: 15px; flex-shrink: 0; }
+.expor-tab:hover { background: #115E59; text-decoration: none !important; }
+.expor-tab:focus-visible { outline: 2px solid #fff; outline-offset: -4px; }
+@media (max-width: 560px) {
+  .expor-tab { padding: 9px 10px; font-size: .72rem; }
+  .expor-tab svg { width: 13px; height: 13px; }
+}

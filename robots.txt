@@ -34,3 +34,4 @@ Allow: /
 # Ringkasan untuk asisten AI: https://larisid.com/llms.txt
 # Versi lengkap: https://larisid.com/llms-full.txt
 Sitemap: https://larisid.com/sitemap.xml
+Sitemap: https://larisid.com/expor/sitemap.xml

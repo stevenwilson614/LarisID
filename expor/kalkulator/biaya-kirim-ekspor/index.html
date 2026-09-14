@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=AW-862519971"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'AW-862519971');
+</script>
+<!-- Microsoft Clarity -->
+<script type="text/javascript">
+  window.clarity = window.clarity || function () { (window.clarity.q = window.clarity.q || []).push(arguments); };
+  window.addEventListener('load', function () {
+    var start = function () {
+      (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+      })(window, document, "clarity", "script", "vykppujn5k");
+    };
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(start, { timeout: 3000 });
+    else setTimeout(start, 1500);
+  });
+</script>
+<script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "c47631101f894583b52191104f6ef5ad"}'></script>
+<title>Kalkulator Ongkos Kirim Ekspor dari Indonesia (Udara, LCL, FCL) | LarisExpor</title>
+<meta name="description" content="Estimasi ongkos kirim ekspor dari Indonesia ke luar negeri: udara, laut LCL, dan FCL 20ft. Angka adalah titik awal, bukan quote forwarder. Gratis.">
+<meta name="robots" content="index, follow">
+<meta name="author" content="Steven Wilson">
+<link rel="canonical" href="https://larisid.com/expor/kalkulator/biaya-kirim-ekspor/">
+<meta property="og:title" content="Kalkulator Ongkos Kirim Ekspor dari Indonesia (Udara, LCL, FCL) | LarisExpor">
+<meta property="og:description" content="Estimasi ongkos kirim ekspor dari Indonesia ke luar negeri: udara, laut LCL, dan FCL 20ft. Angka adalah titik awal, bukan quote forwarder. Gratis.">
+<meta property="og:url" content="https://larisid.com/expor/kalkulator/biaya-kirim-ekspor/">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://larisid.com/images/Banner.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="id_ID">
+<meta property="og:site_name" content="LarisExpor">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Kalkulator Ongkos Kirim Ekspor dari Indonesia (Udara, LCL, FCL) | LarisExpor">
+<meta name="twitter:description" content="Estimasi ongkos kirim ekspor dari Indonesia ke luar negeri: udara, laut LCL, dan FCL 20ft. Angka adalah titik awal, bukan quote forwarder. Gratis.">
+<meta name="twitter:image" content="https://larisid.com/images/Banner.jpg">
+<link rel="icon" type="image/png" href="/images/brand/appicon-red.png">
+<link rel="alternate" href="https://larisid.com/llms.txt">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles/seo-pages.css">
+<link rel="stylesheet" href="/styles/expor.css">
+<style>
+  .calc{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:18px 0}
+  .calc-field{margin:0 0 14px}
+  .calc-field label{display:block;font-weight:600;font-size:.88rem;margin-bottom:6px;color:var(--navy)}
+  .calc-field .hint{font-weight:400;color:var(--tm);font-size:.78rem}
+  .calc-field input,.calc-field select{width:100%;box-sizing:border-box;padding:11px 12px;font-size:1rem;font-family:inherit;border:1px solid #CBD5E1;border-radius:9px;background:#fff}
+  .calc-field input:focus,.calc-field select:focus{outline:2px solid var(--orange);outline-offset:1px;border-color:var(--orange)}
+  .calc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:0 14px}
+  .calc-out{margin-top:6px;border-top:1px dashed var(--border);padding-top:16px}
+  .calc-row{display:flex;justify-content:space-between;gap:12px;padding:7px 0;font-size:.92rem;border-bottom:1px solid #F1F5F4}
+  .calc-row span:last-child{font-weight:600;color:var(--navy);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .calc-row.neg span:last-child{color:#B91C1C}
+  .calc-total{display:flex;justify-content:space-between;gap:12px;align-items:baseline;margin-top:12px;padding:14px 16px;background:#FEF2F2;border:1px solid #FECACA;border-radius:10px}
+  .calc-total .lbl{font-weight:700;color:var(--navy)}
+  .calc-total .val{font-weight:800;font-size:1.35rem;color:#B91C1C;white-space:nowrap}
+  .calc-total.good{background:#ECFDF5;border-color:#A7F3D0}
+  .calc-total.good .val{color:#047857}
+  .calc-sub{font-size:.8rem;color:var(--tm);margin-top:6px}
+  /* .calc-row sets display:flex, which outranks the [hidden] attribute's UA display:none.
+     Without this every "hidden" row stays on screen -- the exact bug that kept the
+     SPayLater row visible in the LarisID marketplace calculator. */
+  .calc-row[hidden],.calc-field[hidden],.calc-total[hidden]{display:none!important}
+</style><script src="/js/laris-auth.js?v=20260914a" defer></script>
+<script defer src="/js/expor-probe.js?v=20260914a"></script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "LarisID",
+          "item": "https://larisid.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "LarisExpor",
+          "item": "https://larisid.com/expor/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Kalkulator",
+          "item": "https://larisid.com/expor/kalkulator/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 4,
+          "name": "Kalkulator Ongkos Kirim Ekspor",
+          "item": "https://larisid.com/expor/kalkulator/biaya-kirim-ekspor/"
+        }
+      ]
+    },
+    {
+      "@type": "WebApplication",
+      "name": "Kalkulator Ongkos Kirim Ekspor dari Indonesia (Udara, LCL, FCL) | LarisExpor",
+      "description": "Estimasi ongkos kirim ekspor dari Indonesia ke luar negeri: udara, laut LCL, dan FCL 20ft. Angka adalah titik awal, bukan quote forwarder. Gratis.",
+      "url": "https://larisid.com/expor/kalkulator/biaya-kirim-ekspor/",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "inLanguage": "id",
+      "browserRequirements": "Requires JavaScript",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "IDR"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "LarisID",
+        "url": "https://larisid.com/"
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Apa bedanya berat aktual dan berat volumetrik?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Air freight menagih berat yang lebih besar antara berat asli dan berat volumetrik (P x L x T cm / 6000)."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Kenapa bukan harga resmi?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Tarif kirim berubah tiap minggu. Angka ini hanya titik awal -- minta quote ke forwarder sebelum ambil keputusan."
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body class="expor">
+<header class="site-header">
+  <a class="logo" href="/expor/">Laris<span>Expor</span></a>
+  <nav class="site-nav">
+    <a href="/expor/">Beranda Ekspor</a>
+    <a href="/expor/produk/">Produk Ekspor</a>
+    <a href="/expor/kalkulator/" class="active">Kalkulator</a>
+    <a href="/expor/siap-ekspor/">Siap Ekspor?</a>
+    <a href="/" class="nav-cta">Jualan lokal? Ke LarisID</a>
+  </nav>
+</header>
+<main>
+  <p class="cat-pill">Kalkulator Ekspor Gratis</p>
+  <h1>Kalkulator Ongkos Kirim Ekspor</h1>
+  <p class="lead">Pilih moda, isi berat atau volume. Hasilnya perkiraan biaya sampai pelabuhan/bandara tujuan, plus dokumen. Minta quote ke forwarder sebelum memutuskan.</p>
+  <p class="updated">Tarif per September 2026 &middot; gratis, jalan di browser &middot; tanpa login</p>
+
+  <article>
+    <div class="calc">
+      <div class="calc-grid">
+        <div class="calc-field">
+          <label for="bk-mode">Moda kirim</label>
+          <select id="bk-mode">
+            <option value="air">Udara (air freight) — $5-9 /kg</option>
+            <option value="seaLcl">Laut LCL (per CBM) — $80-150 /CBM</option>
+            <option value="seaFcl20">Laut FCL 20ft — $2.000-4.000</option>
+          </select>
+        </div>
+        <div class="calc-field" id="bk-kg-field">
+          <label for="bk-kg">Berat aktual (kg)</label>
+          <input type="number" id="bk-kg" inputmode="decimal" min="0" step="0.1" placeholder="mis. 12">
+        </div>
+        <div class="calc-field" id="bk-dim-field">
+          <label>Dimensi per kolis (cm) <span class="hint">Air freight menagih berat yang lebih besar antara berat asli dan berat volumetrik (P x L x T cm / 6000).</span></label>
+          <div class="calc-grid">
+            <input type="number" id="bk-l" inputmode="decimal" min="0" placeholder="P">
+            <input type="number" id="bk-w" inputmode="decimal" min="0" placeholder="L">
+            <input type="number" id="bk-h" inputmode="decimal" min="0" placeholder="T">
+          </div>
+        </div>
+        <div class="calc-field" id="bk-cbm-field" hidden>
+          <label for="bk-cbm">Volume (CBM)</label>
+          <input type="number" id="bk-cbm" inputmode="decimal" min="0" step="0.01" placeholder="mis. 1.2">
+        </div>
+        <div class="calc-field">
+          <label for="bk-rate">Tarif yang kamu pakai <span class="hint" id="bk-rate-hint"></span></label>
+          <input type="number" id="bk-rate" inputmode="decimal" min="0" step="0.01">
+        </div>
+        <div class="calc-field">
+          <label for="bk-docs">Dokumen &amp; bea cukai ekspor (USD) <span class="hint">$100-250</span></label>
+          <input type="number" id="bk-docs" inputmode="decimal" min="0" step="1">
+        </div>
+        <div class="calc-field">
+          <label for="bk-units">Jumlah unit dalam kiriman <span class="hint">opsional, untuk biaya per unit</span></label>
+          <input type="number" id="bk-units" inputmode="numeric" min="1" step="1" placeholder="mis. 200">
+        </div>
+        <div class="calc-field">
+          <label for="bk-fx">Kurs Rp per USD</label>
+          <input type="number" id="bk-fx" inputmode="numeric" min="1">
+        </div>
+      </div>
+      <div class="calc-out" id="bk-out" hidden>
+        <div class="calc-row"><span>Freight</span><span id="bk-freight">–</span></div>
+        <div class="calc-row"><span>Dokumen &amp; cukai</span><span id="bk-docs-out">–</span></div>
+        <div class="calc-row" id="bk-unit-row" hidden><span>Per unit</span><span id="bk-unit">–</span></div>
+        <div class="calc-total" id="bk-box"><span class="lbl">Estimasi total</span><span class="val" id="bk-total">–</span></div>
+        <p class="calc-sub" id="bk-note"></p>
+      </div>
+    </div>
+    <p class="disclaimer">Tarif kirim berubah tiap minggu. Angka ini hanya titik awal -- minta quote ke forwarder sebelum ambil keputusan.</p>
+    <div class="cta-row">
+      <a class="btn-primary" href="/expor/produk/">Lihat data 145 produk ekspor</a>
+      <a class="btn-secondary" href="/expor/kalkulator/">Kalkulator lainnya</a>
+      <a class="btn-secondary" href="/expor/siap-ekspor/">Syarat jualan di Amazon</a>
+    </div>
+  </article>
+  <div class="card">
+    <h2>Pertanyaan umum</h2>
+    <div class="faq-item">
+      <p class="faq-q">Apa bedanya berat aktual dan berat volumetrik?</p>
+      <p class="faq-a">Air freight menagih berat yang lebih besar antara berat asli dan berat volumetrik (P x L x T cm / 6000).</p>
+    </div>
+    <div class="faq-item">
+      <p class="faq-q">Kenapa bukan harga resmi?</p>
+      <p class="faq-a">Tarif kirim berubah tiap minggu. Angka ini hanya titik awal -- minta quote ke forwarder sebelum ambil keputusan.</p>
+    </div>
+  </div>
+  <div class="probe" id="probe">
+    <h3>Mau data ekspor yang lebih lengkap?</h3>
+    <p class="probe-sub">LarisExpor masih tahap awal. Tinggalkan email dan satu jawaban &mdash; itu yang menentukan bagian mana yang kami bangun dulu.</p>
+    <form id="probe-form" data-context="kalkulator:biaya-kirim-ekspor">
+      <label for="probe-email">Email</label>
+      <input type="email" id="probe-email" name="email" required autocomplete="email" placeholder="nama@email.com">
+      <label for="probe-need">Apa yang paling kamu butuhkan untuk mulai ekspor?</label>
+      <select id="probe-need" name="need" required>
+        <option value="">Pilih satu&hellip;</option>
+        <option value="produk-harga">Cari produk &amp; tahu harganya di luar negeri</option>
+        <option value="dokumen-izin">Dokumen, HS code &amp; izin ekspor</option>
+        <option value="cari-buyer">Cari pembeli / importir</option>
+        <option value="ongkos-kirim">Hitung ongkos kirim &amp; margin</option>
+        <option value="belum-tahu">Belum tahu harus mulai dari mana</option>
+      </select>
+      <label for="probe-note">Usaha kamu sekarang (opsional)</label>
+      <textarea id="probe-note" name="note" maxlength="500" placeholder="Contoh: bikin tas rotan di Cirebon, sudah jualan di Shopee"></textarea>
+      <button type="submit">Kirim</button>
+      <p class="probe-msg" id="probe-msg" role="status" aria-live="polite"></p>
+    </form>
+  </div>
+</main>
+<script src="/js/amazon-fees.js?v=20260914a"></script>
+<script>
+(function(){
+  var A = window.LARIS_AMZ; if (!A) return;
+  var mode = document.getElementById('bk-mode');
+  var kg = document.getElementById('bk-kg');
+  var L = document.getElementById('bk-l');
+  var W = document.getElementById('bk-w');
+  var H = document.getElementById('bk-h');
+  var cbm = document.getElementById('bk-cbm');
+  var rate = document.getElementById('bk-rate');
+  var docs = document.getElementById('bk-docs');
+  var units = document.getElementById('bk-units');
+  var fx = document.getElementById('bk-fx');
+  var out = document.getElementById('bk-out');
+  var kgField = document.getElementById('bk-kg-field');
+  var dimField = document.getElementById('bk-dim-field');
+  var cbmField = document.getElementById('bk-cbm-field');
+  var rateHint = document.getElementById('bk-rate-hint');
+  fx.value = A.FX.idrPerUsd;
+  docs.value = A.FREIGHT.docs.usdFlat;
+  function syncMode() {
+    var m = mode.value;
+    kgField.hidden = m !== 'air';
+    dimField.hidden = m !== 'air';
+    cbmField.hidden = m !== 'seaLcl';
+    if (m === 'air') { rate.value = A.FREIGHT.air.usdPerKg; rateHint.textContent = 'USD/kg, kisaran ' + A.FREIGHT.air.range; }
+    else if (m === 'seaLcl') { rate.value = A.FREIGHT.seaLcl.usdPerCbm; rateHint.textContent = 'USD/CBM, kisaran ' + A.FREIGHT.seaLcl.range; }
+    else { rate.value = A.FREIGHT.seaFcl20.usdFlat; rateHint.textContent = 'USD per kontainer, kisaran ' + A.FREIGHT.seaFcl20.range; }
+  }
+  function calc() {
+    var m = mode.value;
+    var r = parseFloat(rate.value);
+    var d = parseFloat(docs.value); if (!isFinite(d)) d = A.FREIGHT.docs.usdFlat;
+    var idr = parseFloat(fx.value) || A.FX.idrPerUsd;
+    var freight = 0, detail = '';
+    if (m === 'air') {
+      var ch = A.chargeableKg(parseFloat(kg.value) || 0, parseFloat(L.value) || 0, parseFloat(W.value) || 0, parseFloat(H.value) || 0);
+      freight = ch * (isFinite(r) ? r : A.FREIGHT.air.usdPerKg);
+      detail = 'Berat tertagih ' + ch.toFixed(2) + ' kg (yang lebih besar antara aktual dan volumetrik P×L×T/6000).';
+    } else if (m === 'seaLcl') {
+      var v = parseFloat(cbm.value) || 0;
+      freight = v * (isFinite(r) ? r : A.FREIGHT.seaLcl.usdPerCbm);
+      detail = v > 0 ? (v.toFixed(2) + ' CBM.') : 'Isi volume CBM.';
+    } else {
+      freight = isFinite(r) ? r : A.FREIGHT.seaFcl20.usdFlat;
+      detail = 'Flat per kontainer 20ft, belum termasuk trucking ke pelabuhan.';
+    }
+    var total = freight + d;
+    if (total <= 0 && m === 'air' && !(parseFloat(kg.value) > 0)) { out.hidden = true; return; }
+    out.hidden = false;
+    document.getElementById('bk-freight').textContent = A.fmtUsd(freight);
+    document.getElementById('bk-docs-out').textContent = A.fmtUsd(d);
+    document.getElementById('bk-total').textContent = A.fmtUsd(total) + ' · ' + A.fmtIdr(total * idr);
+    var u = parseFloat(units.value) || 0;
+    var row = document.getElementById('bk-unit-row');
+    if (u > 0) { row.hidden = false; document.getElementById('bk-unit').textContent = A.fmtUsd(total / u) + ' · ' + A.fmtIdr((total / u) * idr); }
+    else row.hidden = true;
+    document.getElementById('bk-note').textContent = detail + ' ' + A.FREIGHT.note;
+  }
+  mode.addEventListener('change', function () { syncMode(); calc(); });
+  [kg, L, W, H, cbm, rate, docs, units, fx].forEach(function (el) {
+    el.addEventListener('input', calc);
+  });
+  syncMode(); calc();
+})();
+</script>
+<footer class="site-footer">
+  &copy; 2026 LarisExpor &middot; bagian dari LarisID &middot;
+  <a href="/expor/">Beranda Ekspor</a>
+  <a href="/expor/produk/">Produk</a>
+  <a href="/expor/kalkulator/">Kalkulator</a>
+  <a href="/expor/siap-ekspor/">Siap Ekspor?</a>
+  <a href="/">LarisID</a>
+  <a href="/privacy/">Privasi</a>
+</footer>
+<a class="expor-tab to-laris" href="/" title="Ke LarisID - riset pasar Shopee Indonesia">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
+  LarisID
+</a>
+</body>
+</html>

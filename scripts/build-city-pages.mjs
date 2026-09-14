@@ -26,6 +26,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ANALYTICS } from './lib/analytics-head.mjs';
+import { EXPOR_TAB } from './lib/expor-tab.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -321,6 +322,7 @@ ${relatedHtml}
   <a href="/riset/">Riset Pasar</a>
   <a href="/privacy/">Privasi</a>
 </footer>
+${EXPOR_TAB}
 </body>
 </html>
 `;
@@ -421,6 +423,7 @@ ${sections}
   <a href="/harga/">Harga</a>
   <a href="/privacy/">Privasi</a>
 </footer>
+${EXPOR_TAB}
 </body>
 </html>
 `;

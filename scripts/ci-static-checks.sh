@@ -90,6 +90,27 @@ console.log(`ok append-only: ${head.length} -> ${cur.length} (+${cur.length - he
   rm -f /tmp/_kw_head.json
 fi
 
+echo "== expor-keywords.json is append-only =="
+if git rev-parse --verify HEAD >/dev/null 2>&1 && git cat-file -e HEAD:scripts/expor-keywords.json 2>/dev/null; then
+  git show HEAD:scripts/expor-keywords.json > /tmp/_expor_kw_head.json 2>/dev/null || true
+  node -e '
+const fs = require("fs");
+const head = JSON.parse(fs.readFileSync("/tmp/_expor_kw_head.json", "utf8")).keywords;
+const cur = JSON.parse(fs.readFileSync("scripts/expor-keywords.json", "utf8")).keywords;
+if (cur.length < head.length) {
+  console.error(`FAIL: expor-keywords.json shrank ${head.length} -> ${cur.length}`); process.exit(1);
+}
+for (let i = 0; i < head.length; i++) {
+  if (cur[i].slug !== head[i].slug) {
+    console.error(`FAIL: expor entry ${i} changed "${head[i].slug}" -> "${cur[i].slug}" (append-only violated)`);
+    process.exit(1);
+  }
+}
+console.log(`ok expor append-only: ${head.length} -> ${cur.length} (+${cur.length - head.length})`);
+' || fail=1
+  rm -f /tmp/_expor_kw_head.json
+fi
+
 echo "== forbidden pricing/quota copy =="
 # docs/seo.md messaging rules: LarisID is free with no tiers, and Laris AI is uncapped.
 for s in "paket Free" "Laris Pro" "Laris Business" "gratis selama Beta"; do

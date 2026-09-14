@@ -14,6 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ANALYTICS } from './lib/analytics-head.mjs';
+import { EXPOR_TAB } from './lib/expor-tab.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -94,6 +95,7 @@ const footer = `<footer class="site-footer">
   <a href="/riset/">Riset Pasar</a>
   <a href="/privacy/">Privasi</a>
 </footer>
+${EXPOR_TAB}
 </body>
 </html>
 `;

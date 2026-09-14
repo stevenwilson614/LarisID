@@ -1,0 +1,211 @@
+/**
+ * LarisExpor -- a distinct identity on top of styles/seo-pages.css, NOT a fork of it.
+ *
+ * Load order matters: seo-pages.css first, then this file. Every token below is one that
+ * seo-pages.css already declares on :root; redefining them on body.expor re-points the
+ * whole shared component system (buttons, pills, bars, stat tiles, header) at the export
+ * palette, because custom properties cascade to descendants.
+ *
+ * LarisID is deep red (#B5202A). LarisExpor is deep teal -- far enough apart that a
+ * screenshot of either is instantly identifiable, close enough in weight that the two
+ * sides read as siblings.
+ */
+
+body.expor {
+  --orange: #0F766E;   /* the shared "accent" token; teal-700 here */
+  --navy: #10312F;     /* header ground + headings, a deep teal-black */
+  --bg: #F6FAFA;       /* cool ground, vs LarisID's warm #FDF8F5 cream */
+  --td: #111827;
+  --tm: #64748B;
+  --card: #fff;
+  --border: #DDE7E6;
+  --green: #047857;
+  --accent-soft: #E6F2F1;
+  --accent-hover: #115E59;
+}
+
+/* seo-pages.css hardcodes the red hover on these two, so they need re-pointing. */
+body.expor .btn-primary:hover,
+body.expor .nav-cta:hover { background: var(--accent-hover); }
+body.expor .cat-pill { color: var(--orange); background: var(--accent-soft); }
+
+/* ---- The side tab: the only entry point onto LarisID's static pages ----------------
+   Deliberately CSS-only and always visible. No scroll handler, no IntersectionObserver,
+   no JS display toggle -- an ID rule in a stylesheet once silently beat a JS
+   style.display toggle and hid the Kohort sidebar button from every member for months. */
+.expor-tab {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 11px 13px 11px 14px;
+  background: #0F766E;
+  color: #fff !important;
+  font-size: .78rem;
+  font-weight: 700;
+  text-decoration: none !important;
+  border-radius: 10px 0 0 10px;
+  box-shadow: 0 2px 10px rgba(16, 49, 47, .22);
+  writing-mode: vertical-rl;
+}
+.expor-tab svg { width: 15px; height: 15px; flex-shrink: 0; }
+.expor-tab:hover { background: #115E59; }
+.expor-tab:focus-visible { outline: 2px solid #fff; outline-offset: -4px; }
+/* The mirror tab pointing back at LarisID, shown on /expor/ pages. */
+.expor-tab.to-laris { background: #B5202A; }
+.expor-tab.to-laris:hover { background: #8F1922; }
+
+/* ---- Regulatory chips -------------------------------------------------------------- */
+.reg-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px; }
+.reg-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: .76rem; font-weight: 600;
+  padding: 5px 11px; border-radius: 999px;
+  border: 1px solid var(--border); background: #fff; color: var(--td);
+}
+.reg-chip b { font-weight: 800; }
+.reg-chip.ok { background: #ECFDF5; border-color: #A7F3D0; color: #065F46; }
+.reg-chip.warn { background: #FFFBEB; border-color: #FDE68A; color: #92400E; }
+.reg-chip.stop { background: #FEF2F2; border-color: #FECACA; color: #991B1B; }
+.hs-badge {
+  display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .8rem; font-weight: 700; letter-spacing: .02em;
+  background: var(--accent-soft); color: #0B5A54;
+  border-radius: 6px; padding: 3px 8px;
+}
+
+/* ---- Tables: the explorer is 145 rows wide, so it must scroll on its own ----------- */
+.tbl-wrap { overflow-x: auto; margin: 18px 0; -webkit-overflow-scrolling: touch; }
+.tbl-wrap table { min-width: 680px; }
+table.expor-tbl { width: 100%; border-collapse: collapse; font-size: .86rem; }
+table.expor-tbl th, table.expor-tbl td {
+  padding: 9px 12px; border-bottom: 1px solid #F1F5F4; text-align: right; white-space: nowrap;
+}
+table.expor-tbl th:first-child, table.expor-tbl td:first-child { text-align: left; }
+table.expor-tbl thead th {
+  font-size: .72rem; text-transform: uppercase; letter-spacing: .03em;
+  color: var(--tm); font-weight: 700; border-bottom: 1.5px solid var(--border);
+  position: sticky; top: 0; background: #fff; cursor: pointer; user-select: none;
+}
+table.expor-tbl thead th[aria-sort]::after { content: " \2195"; opacity: .35; }
+table.expor-tbl thead th[aria-sort="ascending"]::after { content: " \2191"; opacity: 1; }
+table.expor-tbl thead th[aria-sort="descending"]::after { content: " \2193"; opacity: 1; }
+table.expor-tbl tbody tr:hover { background: #F8FBFB; }
+table.expor-tbl td.num { font-variant-numeric: tabular-nums; }
+
+/* ---- Login gate -------------------------------------------------------------------- */
+.gate {
+  background: linear-gradient(180deg, #fff 0%, #F3F9F8 100%);
+  border: 1px solid var(--border); border-radius: 14px;
+  padding: 26px 24px; margin: 20px 0; text-align: center;
+}
+.gate h3 { font-size: 1.1rem; color: var(--navy); margin-bottom: 8px; }
+.gate p { font-size: .9rem; color: #374151; max-width: 52ch; margin: 0 auto 16px; }
+.gate form { max-width: 320px; margin: 0 auto; text-align: left; }
+.gate label { display: block; font-size: .8rem; font-weight: 600; margin: 10px 0 5px; color: var(--navy); }
+.gate input {
+  width: 100%; box-sizing: border-box; padding: 10px 12px; font: inherit; font-size: .92rem;
+  border: 1px solid #CBD5E1; border-radius: 9px; background: #fff;
+}
+.gate input:focus { outline: 2px solid var(--orange); outline-offset: 1px; border-color: var(--orange); }
+.gate button {
+  width: 100%; margin-top: 14px; padding: 11px 18px; font: inherit; font-weight: 700;
+  font-size: .92rem; color: #fff; background: var(--orange);
+  border: 0; border-radius: 9px; cursor: pointer;
+}
+.gate button:hover { background: var(--accent-hover); }
+.gate button[disabled] { opacity: .6; cursor: default; }
+.gate .gate-alt { font-size: .82rem; color: var(--tm); margin-top: 14px; }
+.gate .gate-err { font-size: .84rem; color: #B91C1C; margin-top: 10px; min-height: 1.2em; }
+
+/* ---- Interest probe: the actual validation instrument ------------------------------ */
+.probe {
+  background: #fff; border: 1px solid var(--border); border-left: 3px solid var(--orange);
+  border-radius: 12px; padding: 22px; margin: 26px 0;
+}
+.probe h3 { font-size: 1.02rem; color: var(--navy); margin-bottom: 6px; }
+.probe .probe-sub { font-size: .86rem; color: var(--tm); margin-bottom: 14px; }
+.probe label { display: block; font-size: .82rem; font-weight: 600; margin: 12px 0 5px; color: var(--navy); }
+.probe input[type=email], .probe select, .probe textarea {
+  width: 100%; box-sizing: border-box; padding: 10px 12px; font: inherit; font-size: .92rem;
+  border: 1px solid #CBD5E1; border-radius: 9px; background: #fff;
+}
+.probe textarea { min-height: 64px; resize: vertical; }
+.probe input:focus, .probe select:focus, .probe textarea:focus {
+  outline: 2px solid var(--orange); outline-offset: 1px; border-color: var(--orange);
+}
+.probe button {
+  margin-top: 14px; padding: 11px 22px; font: inherit; font-weight: 700; font-size: .9rem;
+  color: #fff; background: var(--orange); border: 0; border-radius: 9px; cursor: pointer;
+}
+.probe button:hover { background: var(--accent-hover); }
+.probe button[disabled] { opacity: .6; cursor: default; }
+.probe .probe-msg { font-size: .86rem; margin-top: 10px; min-height: 1.2em; }
+.probe .probe-msg.ok { color: #047857; font-weight: 600; }
+.probe .probe-msg.err { color: #B91C1C; }
+
+/* ---- Destination list -------------------------------------------------------------- */
+.dest-list { margin: 14px 0 6px; }
+.dest-list .bar-label { flex: 0 0 116px; }
+.dest-list .bar-val { flex: 0 0 92px; }
+.unalloc {
+  font-size: .78rem; color: var(--tm); margin-top: 10px;
+  padding-top: 10px; border-top: 1px dashed var(--border);
+}
+
+/* ---- Source / provenance line ------------------------------------------------------ */
+.src-line {
+  font-size: .75rem; color: var(--tm); margin-top: 12px;
+  padding-top: 10px; border-top: 1px dashed var(--border);
+}
+.src-line a { font-weight: 600; }
+
+/* ---- Section headings inside a product page ---------------------------------------- */
+.sec { margin: 26px 0; }
+.sec > h2 {
+  font-size: 1.12rem; font-weight: 800; color: var(--navy);
+  margin-bottom: 4px; display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;
+}
+.sec > h2 .sec-n {
+  font-size: .72rem; font-weight: 800; color: var(--orange);
+  background: var(--accent-soft); border-radius: 6px; padding: 2px 7px;
+}
+.sec > .sec-lead { font-size: .88rem; color: var(--tm); margin-bottom: 12px; }
+
+/* ---- Mobile: the tab shrinks and the table scrolls --------------------------------- */
+@media (max-width: 560px) {
+  .expor-tab { padding: 9px 10px; font-size: .72rem; }
+  .expor-tab svg { width: 13px; height: 13px; }
+  .dest-list .bar-label { flex: 0 0 88px; font-size: .76rem; }
+  .dest-list .bar-val { flex: 0 0 78px; font-size: .76rem; }
+  .sec > h2 { font-size: 1.02rem; }
+}
+
+/* ---- Siap Ekspor checklist ------------------------------------------------------- */
+.check-list { list-style: none; margin: 0; padding: 0; }
+.check-list li {
+  display: grid; grid-template-columns: 2rem 1fr; gap: 12px;
+  padding: 14px 0; border-bottom: 1px solid var(--border); align-items: start;
+}
+.check-list li:last-child { border-bottom: 0; }
+.check-n {
+  width: 2rem; height: 2rem; border-radius: 8px;
+  background: var(--accent-soft); color: var(--orange);
+  font-weight: 800; font-size: .85rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.check-list strong { color: var(--navy); }
+.check-list p { margin: 4px 0 0; font-size: .88rem; color: #374151; }
+
+/* ---- Home explorer --------------------------------------------------------------- */
+#expor-explorer { margin-top: 8px; }
+#expor-explorer[hidden], #expor-gate[hidden] { display: none !important; }
+.filter-row { display: flex; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; }
+.filter-row input {
+  flex: 1; min-width: 180px; padding: 10px 12px; font: inherit; font-size: .92rem;
+  border: 1px solid #CBD5E1; border-radius: 9px; background: #fff;
+}
