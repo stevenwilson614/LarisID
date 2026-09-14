@@ -1,72 +1,72 @@
 {
-  "shops": 270951,
-  "products": 1115989,
+  "shops": 271385,
+  "products": 1118442,
   "sla_days": 7,
-  "snapshot": "2026-09-11",
-  "detail_ok": 1256,
+  "snapshot": "2026-09-14",
+  "detail_ok": 1476,
   "locations": 427,
   "categories": 87,
-  "scraped_7d": 6111,
+  "scraped_7d": 6110,
   "corpus_total": 6131,
   "first_scrape": "2026-04-08",
-  "generated_at": "2026-09-13T14:28:13+00",
-  "last_row_day": "2026-09-13",
-  "listing_rows": 4387267,
+  "generated_at": "2026-09-14T06:43:38+00",
+  "last_row_day": "2026-09-14",
+  "listing_rows": 4406462,
   "per_category": [
     {
-      "shops": 27495,
+      "shops": 27526,
       "category": "Rumah",
-      "products": 71625
+      "products": 71712
     },
     {
-      "shops": 23361,
+      "shops": 23393,
       "category": "Dapur",
-      "products": 66563
+      "products": 66665
     },
     {
-      "shops": 19194,
+      "shops": 19288,
       "category": "Perlengkapan Usaha",
-      "products": 48104
+      "products": 48412
     },
     {
-      "shops": 18787,
+      "shops": 18790,
       "category": "Fashion",
-      "products": 43506
+      "products": 43519
     },
     {
-      "shops": 18645,
+      "shops": 18741,
       "category": "Makanan & Minuman",
-      "products": 39950
+      "products": 40162
     },
     {
-      "shops": 10754,
+      "shops": 10755,
       "category": "HP & Gadget",
-      "products": 30514
+      "products": 30538
     },
     {
-      "shops": 13623,
+      "shops": 13633,
       "category": "Pertanian",
-      "products": 30075
+      "products": 30128
     },
     {
-      "shops": 10250,
+      "shops": 10260,
       "category": "Olahraga",
-      "products": 25961
+      "products": 25999
     },
     {
-      "shops": 11545,
+      "shops": 11549,
       "category": "Elektronik",
-      "products": 25701
+      "products": 25709
     },
     {
-      "shops": 9664,
+      "shops": 9703,
       "category": "Perkakas",
-      "products": 24405
+      "products": 24474
     },
     {
-      "shops": 8605,
+      "shops": 8610,
       "category": "Ibu & Bayi",
-      "products": 22561
+      "products": 22630
     },
     {
       "shops": 10252,
@@ -77,10 +77,10 @@
   "corpus_active": 6111,
   "keywords_seen": 6424,
   "never_scraped": 0,
-  "snapshot_rows": 239990,
-  "oldest_age_days": 6.9,
-  "products_with_omset": 584047,
+  "snapshot_rows": 19195,
+  "oldest_age_days": 7.5,
+  "products_with_omset": 588166,
   "days_to_full_coverage": 7,
-  "products_with_history": 470961,
-  "products_with_measured": 434764
+  "products_with_history": 472448,
+  "products_with_measured": 436309
 }
