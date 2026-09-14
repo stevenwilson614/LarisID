@@ -74,7 +74,10 @@ creator analytics. Excel/CSV download **is** available; do not claim “Belum ad
 - **Promote weekly, not monthly-only.** Lead with weekly listing updates and
   **weekly omset** (tren, Terlaris Minggu Ini, Deep Dive history). Monthly omset
   (×30) is a scale figure on listing rows — mention it as extra, never as the
-  only grain. Do not write “diperbarui harian”.
+  only grain. Do not write that the **catalog** is “diperbarui harian”.
+- **Favorit Aku is the daily exception.** Saved listings are scraped every day:
+  daily insights (harga, ulasan, terjual) **and omset** on the favorite card.
+  Do not invent a daily omset %. Do not imply the whole catalog is daily.
 - **Cari Produk:** listing snapshot, up to **90 product rows/day** (WIB); weekly
   trend % plus monthly omset as scale.
 - **Deep Dive (Tren icon):** weekly omset history, user picks **4 / 8 / 12 weeks**, shared cap **12 weeks/day**.
@@ -100,8 +103,10 @@ inconsistent prices across pages confuse both search and AI.
   free: Chrome extension +3/day permanent, referrals +1/day up to +5, product feedback +3 that day.
 - **Never gate** honesty, viability scores, sales estimates, or thin-data warnings — MISSION §3.
 - **Weekly, not monthly-only:** lead with weekly listing updates and weekly omset (tren,
-  Terlaris Minggu Ini, Deep Dive). Never write “diperbarui harian”. Monthly omset is a
-  scale figure, not the headline grain.
+  Terlaris Minggu Ini, Deep Dive). Never write that the catalog is “diperbarui harian”.
+  Monthly omset is a scale figure, not the headline grain.
+- **Favorit Aku:** daily scrape, daily insights, and omset on saved products. Catalog
+  stays weekly. Never invent a daily omset %.
 - **Downloads:** listing snapshot (Cari Produk, 90 rows/day) and weekly omset history (Deep
   Dive, 12 weeks/day). Never write “Belum ada” / “Rencana”. Paid tools still win on bulk.
 - **Everything else is free too:** 40 products & 20 stores tracked, Produk directory, `/riset/`,

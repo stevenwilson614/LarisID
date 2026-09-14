@@ -2,6 +2,13 @@
 
 **Status:** live model as of 2026-09-06. Replaces keyword Pantauan as what a user tracks.
 
+## Public copy (SEO / llms / comparisons)
+
+Saved listings are the **daily** exception to weekly catalog refresh. Use:
+
+- **Short:** Favorit Aku — scrape tiap hari, insight harian dan omset.
+- **With caveat:** Produk di Favorit Aku di-scrape tiap hari: insight harian (harga, ulasan, terjual) plus omset. Katalog pasar tetap diperbarui mingguan. Jangan karang persentase omset harian.
+
 One favorite = one Shopee listing (`item_id` + `shop_id`) in `user_tracked_products`.
 
 ## Capacity

@@ -62,8 +62,10 @@ perkiraan).
 Public/SEO copy **leads with weekly updates and weekly omset** — not monthly
 only. Card / listing-row still uses monthly (×30) as a scale figure. Weekly (×7)
 is the trend grain (Deep Dive, Terlaris Minggu Ini, tren %), always shown with
-its week label and terukur/perkiraan tag. Do not write “diperbarui harian” on
-the site.
+its week label and terukur/perkiraan tag. Do not write that the catalog is
+“diperbarui harian”. **Favorit Aku** is the exception: daily scrape, daily
+insights, and omset on saved listings (see [favorit-aku.md](./favorit-aku.md)).
+Do not invent a daily omset %.
 
 Never present a raw two-snapshot delta as "minggu ini". Scrapes land 12–17 days
 apart; the rate is span-normalised first. Same rule as

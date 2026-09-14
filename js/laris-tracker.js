@@ -691,7 +691,7 @@
     var act = $('[data-ltk-headact]');
     if (sub) {
       if (!S.products.length) {
-        sub.textContent = 'Simpan listing yang kamu incar. Kami scrape-nya tiap hari.';
+        sub.textContent = 'Simpan listing yang kamu incar. Kami scrape-nya tiap hari — insight harian dan omset.';
       } else {
         sub.textContent = S.products.length + ' / ' + S.productLimit + ' produk · data harian';
       }
