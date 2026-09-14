@@ -371,9 +371,7 @@ async function larisEnsureChart() {
 const SUPA_URL = 'https://api.larisid.com';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzg0MzM2Njc5LCJleHAiOjI0MTUwNTY2Nzl9.IuuxcLjM-ljEyrn2lInAqzESImYfMXlBBTZI2i671Ec';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzg0MzM2Njc5LCJleHAiOjI0MTUwNTY2Nzl9.IuuxcLjM-ljEyrn2lInAqzESImYfMXlBBTZI2i671Ec';
-// Paused until the Chrome extension update is published. Restore with the live
-// CWS URL (e.g. https://chromewebstore.google.com/detail/<id>) to show CTAs again.
-const CWS_EXT_URL = '';
+const CWS_EXT_URL = 'https://chromewebstore.google.com/detail/ldgcjbnecfnpbgenechgfbdagecnloae';
 window.CWS_EXT_URL = CWS_EXT_URL;
 
 const _AUTH_SK = 'laris_auth_v1';
