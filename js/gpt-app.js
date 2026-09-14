@@ -23205,6 +23205,9 @@ function renderAdminKpis(users) {
     : (users || []).reduce((n, u) => n + (Number(u.deepdive_count) || 0), 0);
   const divesDaily = admSeriesFromDaily(k.deepdives_daily, 'n', days);
 
+  const extClicksTotal = k.ext_clicks_total;
+  const extClicksDaily = admSeriesFromDaily(k.ext_clicks_daily, 'n', days);
+
   const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
   const spark = (id, series, color) => { const el = $(id); if (el) el.innerHTML = admSparkline(series, color); };
 
@@ -23231,6 +23234,10 @@ function renderAdminKpis(users) {
   set('adm-kpi-dives', admFmtNum(divesTotal));
   set('adm-kpi-dives-sub', 'Semua waktu, termasuk anonim');
   spark('adm-kpi-dives-spark', divesDaily, '#7C3AED');
+
+  set('adm-kpi-ext', admFmtNum(extClicksTotal));
+  set('adm-kpi-ext-sub', extClicksTotal == null ? 'Belum tersedia' : 'Klik ke Chrome Web Store');
+  spark('adm-kpi-ext-spark', extClicksDaily, '#0F766E');
 }
 
 // ── Monthly trend: landing page views vs sign ups ────────────────────────────
@@ -25873,22 +25880,49 @@ function cwsExtOfferable() {
 }
 window.cwsExtOfferable = cwsExtOfferable;
 
+const CWS_EXT_LINK_SOURCES = {
+  'hdr-ext-link': 'header',
+  'ext-hint-install': 'hint',
+  'gpt-limit-ext': 'limit',
+};
+
+/** Click-through to CWS — flush immediately so the row lands even if the tab stays open. */
+function trackCwsExtClick(source) {
+  const src = String(source || 'unknown').slice(0, 40);
+  void logUserEvent('cws_ext_click', { ui: 'gpt', source: src });
+  clarityEvt('cws_ext_click', { source: src });
+  _ceFlush(true);
+}
+
+function wireCwsExtClickTracking() {
+  if (document.documentElement.dataset.cwsExtTrackBound) return;
+  document.documentElement.dataset.cwsExtTrackBound = '1';
+  document.addEventListener('click', (e) => {
+    const a = e.target?.closest?.('[data-cws-ext]');
+    if (!a || a.hidden) return;
+    trackCwsExtClick(a.getAttribute('data-cws-ext') || 'unknown');
+  }, true);
+}
+
 function wireCwsExtLinks() {
   const live = cwsExtOfferable();
   window.CWS_EXT_URL = live ? CWS_EXT_URL : '';
-  ['hdr-ext-link', 'ext-hint-install', 'gpt-limit-ext'].forEach((id) => {
+  Object.keys(CWS_EXT_LINK_SOURCES).forEach((id) => {
     const el = $(id);
     if (!el) return;
     if (live) {
       el.href = CWS_EXT_URL;
+      el.setAttribute('data-cws-ext', CWS_EXT_LINK_SOURCES[id]);
       el.hidden = false;
     } else {
       el.removeAttribute('href');
+      el.removeAttribute('data-cws-ext');
       el.hidden = true;
     }
   });
   const hint = $('ext-install-hint');
   if (hint && !live) hint.hidden = true;
+  wireCwsExtClickTracking();
 }
 
 function maybeShowExtHint() {
