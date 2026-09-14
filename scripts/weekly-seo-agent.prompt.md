@@ -5,7 +5,7 @@ Read `docs/seo.md`, `MISSION.md`, and `docs/self-host.md` before changing anythi
 ## Every Monday
 
 1. `git pull --ff-only origin main` if the tree is clean. If it is dirty, stop and report the dirty files instead of mixing work.
-2. Find this week's "SEO refresh" pull request from the "Weekly SEO refresh" GitHub Action (`refresh-seo.yml`). If none exists, check `gh run list --workflow=refresh-seo.yml`. If the Action failed or never ran, trigger it with `gh workflow run "Weekly SEO refresh"` and wait. Only if Actions is unavailable, run the same pipeline here: `bash scripts/fetch-coverage.sh`, `node scripts/fetch-riset-batch.mjs --limit 500`, `node scripts/build-coverage-page.mjs`, `node scripts/build-seo-pages.mjs`, `bash scripts/ci-static-checks.sh`, then open a PR. Never push to `main`.
+2. Find this week's "SEO refresh" pull request from the "Weekly SEO refresh" GitHub Action (`refresh-seo.yml`). If none exists, check `gh run list --workflow=refresh-seo.yml`. If the Action ran and pushed `seo-refresh/…` but did not open a PR (repo setting used to block Actions from creating PRs), open the PR from that branch with `gh pr create`. If the Action failed or never ran, trigger it with `gh workflow run "Weekly SEO refresh"` and wait. Only if Actions is unavailable, run the same pipeline here: `bash scripts/fetch-coverage.sh`, `node scripts/fetch-riset-batch.mjs --limit 500`, `node scripts/build-coverage-page.mjs`, `node scripts/build-seo-pages.mjs`, `bash scripts/ci-static-checks.sh`, then open a PR. Never push to `main`.
 3. Review the PR:
    - 400–600 new `/riset/` pages, not thousands
    - `scripts/seo-keywords.json` is append-only (no reorder, no shrink)
