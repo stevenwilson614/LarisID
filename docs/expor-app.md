@@ -6,14 +6,14 @@ Read **[MISSION.md](../MISSION.md)** first. Do not invent Jungle Scout / Helium 
 
 ## Entry
 
-The LarisID side tab (`.expor-tab`) and sidebar “LarisExpor” button are **hidden for now**. `/expor/` and `/?pasar=expor` still work. Restore via [`scripts/lib/expor-tab.mjs`](../scripts/lib/expor-tab.mjs) (`EXPOR_TAB_MARKUP`) plus `#btn-expor-pasar` / landing tab in `index.html`.
+The LarisID side tab (`.expor-tab`) and sidebar market switchers (“LarisExpor” / “LarisID Shopee”) are **hidden for now**. `/expor/` and `/?pasar=expor` still work. Restore via [`scripts/lib/expor-tab.mjs`](../scripts/lib/expor-tab.mjs) (`EXPOR_TAB_MARKUP`) plus `#btn-expor-pasar` / `#btn-shopee-pasar` / landing tab in `index.html`.
 
 | Visitor | `/expor/` (hub) | `/?pasar=expor` |
 |---|---|---|
 | Logged out | SEO landing | SPA Cari Produk over Amazon |
 | Signed in | Redirects to `/?pasar=expor` | Same |
 
-`localStorage laris_pasar_v1` remembers the market. “LarisID Shopee” in the sidebar (export mode only) clears it and returns to `/`.
+`localStorage laris_pasar_v1` remembers the market. Clearing it (or visiting `/` after `setPasar('shopee')`) returns to Shopee Cari Produk.
 
 Do **not** dump Amazon rows into Shopee Cari Produk.
 

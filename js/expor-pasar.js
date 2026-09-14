@@ -64,7 +64,7 @@
     if (tab) tab.classList.toggle('active', !!on);
     var lid = document.getElementById('btn-shopee-pasar');
     if (lid) {
-      lid.hidden = !on;
+      lid.hidden = true;
       lid.classList.toggle('active', !on);
     }
   }

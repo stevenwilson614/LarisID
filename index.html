@@ -7990,6 +7990,7 @@ body.view-chat .sfb-card {
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
       <span class="side-btn-label">LarisExpor</span>
     </a>
+    <!-- Hidden for now with the LarisExpor market switcher. -->
     <a class="side-btn" href="/" id="btn-shopee-pasar" title="Pasar Shopee" hidden>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16l-1.2 12.2A2 2 0 0 1 16.81 21H7.19a2 2 0 0 1-1.99-1.8L4 7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>
       <span class="side-btn-label">LarisID Shopee</span>
@@ -10264,11 +10265,12 @@ body.view-chat .sfb-card {
 <script src="/js/peta-peluang.js?v=20260908a" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
-<script src="/js/expor-pasar.js?v=20260914a" defer></script>
+<script src="/js/expor-pasar.js?v=20260914e" defer></script>
 <script src="/js/gpt-app.js?v=20260914d" defer></script>
 <style>
 /* LarisExpor chrome hidden for now. Restore with scripts/lib/expor-tab.mjs. */
-#btn-expor-pasar { display: none !important; }
+#btn-expor-pasar,
+#btn-shopee-pasar { display: none !important; }
 .expor-tab { display: none !important; }
 
 /* pasar=expor: same Cari Produk chrome, Amazon-only columns. */
@@ -10288,7 +10290,6 @@ body.pasar-expor #results-bar-kategori,
 body.pasar-expor #results-bar-mega,
 body.pasar-expor #dir-workbench-host,
 body.pasar-expor .dir-compare-banner { display: none !important; }
-body.pasar-expor #btn-shopee-pasar { display: flex; }
 body.pasar-expor #btn-expor-pasar.active { background: var(--surface-2, #f4f4f5); }
 body.pasar-expor .expor-dd .disclaimer { margin-top: 12px; font-size: .85rem; color: var(--muted, #64748b); }
 body.pasar-expor .expor-dd .cta-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
