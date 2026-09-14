@@ -23801,7 +23801,7 @@ const TOUR_STEPS = [
   {
     sel: () => document.querySelector('#home-grid .product-card') || document.querySelector('.product-card'),
     title: 'Kartu Produk',
-    body: 'Setiap kartu menampilkan data nyata Shopee — median harga, potensi omset per bulan, dan jumlah pesaing aktif.',
+    body: 'Setiap kartu menampilkan data nyata Shopee — median harga, omset per minggu (plus skala per bulan), dan jumlah pesaing aktif.',
     pos: 'right'
   },
   {

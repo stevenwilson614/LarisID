@@ -58,8 +58,9 @@
       },
       "featureList": [
         "Riset produk lewat chat dengan data penjualan nyata",
-        "Analisa mendalam per produk: tren, kompetitor, keyword, rentang harga",
-        "Unduh listing produk dan riwayat omset ke Excel/CSV",
+        "Analisa mendalam per produk: tren omset mingguan, kompetitor, keyword, rentang harga",
+        "Unduh listing produk dan riwayat omset mingguan ke Excel/CSV",
+        "Data listing Shopee diperbarui mingguan; omset per minggu, bukan hanya per bulan",
         "Direktori jenis produk per kategori dan kota",
         "Favorit Aku — pantau produk pilihan tiap hari",
         "100% gratis selamanya — tidak ada paket berbayar"
@@ -103,7 +104,7 @@
           "name": "Bagaimana cara pakai LarisID?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Ketik apa yang ingin kamu jual — misalnya 'mau jualan perlengkapan bayi di Surabaya' — dan LarisID menjawab dengan rekomendasi produk dari data listing Shopee nyata. Dari situ kamu bisa buka analisa mendalam per produk: tren penjualan, kompetitor, keyword, dan rentang harga. Tidak perlu tahu istilah teknis apa pun."
+            "text": "Ketik apa yang ingin kamu jual — misalnya 'mau jualan perlengkapan bayi di Surabaya' — dan LarisID menjawab dengan rekomendasi produk dari data listing Shopee nyata. Dari situ kamu bisa buka analisa mendalam per produk: tren omset mingguan, kompetitor, keyword, dan rentang harga. Tidak perlu tahu istilah teknis apa pun."
           }
         },
         {
@@ -111,7 +112,7 @@
           "name": "Apa bedanya LarisID dan Datapinter?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Datapinter berlangganan mulai Rp 99.000 sampai Rp 2.999.000 per bulan (paket Dasar Rp 299.000 per bulan) dengan fitur riset marketplace lengkap dan ekspor data massal; mereka juga punya paket gratis dengan data terbatas. LarisID 100% gratis untuk semua fiturnya dan dipakai lewat percakapan sehingga tidak perlu belajar dashboard dulu; ekspor Excel/CSV sudah ada untuk listing produk dan riwayat omset (kuota harian), dan data listing-nya dari Shopee. Angka Datapinter dicek 21 Agustus 2026."
+            "text": "Datapinter berlangganan mulai Rp 99.000 sampai Rp 2.999.000 per bulan (paket Dasar Rp 299.000 per bulan) dengan fitur riset marketplace lengkap dan ekspor data massal; mereka juga punya paket gratis dengan data terbatas. LarisID 100% gratis untuk semua fiturnya dan dipakai lewat percakapan sehingga tidak perlu belajar dashboard dulu; ekspor Excel/CSV sudah ada untuk listing produk dan riwayat omset (kuota harian); data listing diperbarui mingguan dengan omset per minggu, bukan hanya per bulan. Angka Datapinter dicek 21 Agustus 2026."
           }
         },
         {
@@ -119,7 +120,7 @@
           "name": "Datanya dari mana?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Dari listing Shopee nyata yang di-scrape berkala, bukan tebakan AI. Estimasi omset dan kecepatan penjualan dihitung dari data terjual per listing. Metodologi dan batasannya dijelaskan di larisid.com/cara-kerja/"
+            "text": "Dari listing Shopee nyata yang di-scrape mingguan, bukan tebakan AI. Estimasi omset ditampilkan per minggu (tren, Deep Dive) — bukan hanya per bulan. Metodologi dan batasannya dijelaskan di larisid.com/cara-kerja/"
           }
         },
         {
@@ -7976,9 +7977,13 @@ body.view-chat .sfb-card {
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 4H6.2A2.2 2.2 0 0 0 4 6.2v8.6A2.2 2.2 0 0 0 6.2 17H7v3.2a.5.5 0 0 0 .85.36L11.4 17h6.4A2.2 2.2 0 0 0 20 14.8V6.2A2.2 2.2 0 0 0 17.8 4Z"/><path class="ic-a" d="M12 7.8v5.4M9.3 10.5h5.4"/></svg>
       <span class="side-btn-label">Komunitas</span>
     </button>
-    <a class="side-btn" href="/expor/" title="LarisExpor">
+    <a class="side-btn" href="/?pasar=expor" id="btn-expor-pasar" title="LarisExpor">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
       <span class="side-btn-label">LarisExpor</span>
+    </a>
+    <a class="side-btn" href="/" id="btn-shopee-pasar" title="Pasar Shopee" hidden>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16l-1.2 12.2A2 2 0 0 1 16.81 21H7.19a2 2 0 0 1-1.99-1.8L4 7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>
+      <span class="side-btn-label">LarisID Shopee</span>
     </a>
     <button type="button" class="side-btn" id="btn-cohort" title="Kohort LarisRise" style="display:none">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8.6" cy="7.4" r="3.2"/><path d="M2.6 20.4v-1.2a4.8 4.8 0 0 1 4.8-4.8h2.4a4.8 4.8 0 0 1 4.8 4.8v1.2"/><path class="ic-a" d="M16.6 11.2 19.2 8.6l2.6 2.6"/><path class="ic-a" d="M19.2 9v6.4"/></svg>
@@ -8874,7 +8879,7 @@ body.view-chat .sfb-card {
                 <span class="fh-feat-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19V8"/></svg></span>
                 <span class="fh-feat-txt">
                   <b>Deep Dive data lengkap</b>
-                  <span>Tren, harga, kompetitor</span>
+                  <span>Tren omset mingguan, harga, kompetitor</span>
                 </span>
               </div>
               <div class="fh-feat">
@@ -9043,7 +9048,7 @@ body.view-chat .sfb-card {
                   </tbody>
                 </table>
               </div>
-              <p class="cmp-foot">Harga dicek pada <strong>5 September 2026</strong> (Kalodata) dan <strong>21 Agustus 2026</strong> (alat lain) dan bisa berubah &mdash; verifikasi di sana. Yang kami tampilkan adalah harga termurah tiap alat: DataPinter naik sampai Rp 2.999.000/bulan (Rp 82.500&ndash;Rp 2.499.200/bulan bila dibayar tahunan) dan punya paket gratis dengan data terbatas; Kalodata sekitar Rp 325.000/bulan, tanpa paket gratis permanen; harga Shoptik adalah promo 50% dari Rp 994.000. Logo dan nama masing-masing alat adalah merek dagang pemiliknya, dipakai di sini hanya untuk perbandingan. LarisID sudah bisa unduh .xlsx/CSV: listing Cari Produk (90 baris/hari) dan riwayat omset Deep Dive (12 minggu/hari). Kami juga menuliskan yang belum kami punya: datanya diperbarui harian (bukan real-time), belum punya data listing Tokopedia, dan tidak punya analitik kreator TikTok Shop seperti Kalodata. <a href="/perbandingan/">Perbandingan selengkapnya</a>.</p>
+              <p class="cmp-foot">Harga dicek pada <strong>5 September 2026</strong> (Kalodata) dan <strong>21 Agustus 2026</strong> (alat lain) dan bisa berubah &mdash; verifikasi di sana. Yang kami tampilkan adalah harga termurah tiap alat: DataPinter naik sampai Rp 2.999.000/bulan (Rp 82.500&ndash;Rp 2.499.200/bulan bila dibayar tahunan) dan punya paket gratis dengan data terbatas; Kalodata sekitar Rp 325.000/bulan, tanpa paket gratis permanen; harga Shoptik adalah promo 50% dari Rp 994.000. Logo dan nama masing-masing alat adalah merek dagang pemiliknya, dipakai di sini hanya untuk perbandingan. LarisID sudah bisa unduh .xlsx/CSV: listing Cari Produk (90 baris/hari) dan riwayat omset mingguan Deep Dive (12 minggu/hari). Omset ditampilkan per minggu &mdash; bukan hanya per bulan. Kami juga menuliskan yang belum kami punya: datanya diperbarui mingguan (bukan real-time), belum punya data listing Tokopedia, dan tidak punya analitik kreator TikTok Shop seperti Kalodata. <a href="/perbandingan/">Perbandingan selengkapnya</a>.</p>
             </section>
 
             <div class="fh-rules">
@@ -9087,7 +9092,7 @@ body.view-chat .sfb-card {
                   </span>
                   LarisID itu apa?
                 </summary>
-                <p>Alat riset produk untuk seller Indonesia. Kami scrape data produk asli dari Shopee lalu merapikannya jadi angka yang bisa dipakai: berapa penjual di satu pasar, berapa omset per bulan, harga median, dan seberapa ramai persaingannya.</p>
+                <p>Alat riset produk untuk seller Indonesia. Kami scrape data produk asli dari Shopee secara <strong>mingguan</strong>, lalu merapikannya jadi angka yang bisa dipakai: berapa penjual di satu pasar, berapa omset per minggu (bukan hanya per bulan), harga median, dan seberapa ramai persaingannya.</p>
               </details>
               <details>
                 <summary>
@@ -9097,7 +9102,7 @@ body.view-chat .sfb-card {
                   </span>
                   Datanya dari mana?
                 </summary>
-                <p>Dari listing publik Shopee yang kami scrape sendiri secara berkala. Kami tidak memakai API resmi Shopee dan tidak mengambil data pribadi siapa pun. Angka omset adalah estimasi dari jumlah terjual dan harga, bukan laporan keuangan toko.</p>
+                <p>Dari listing publik Shopee yang kami scrape sendiri secara mingguan. Kami tidak memakai API resmi Shopee dan tidak mengambil data pribadi siapa pun. Angka omset adalah estimasi dari jumlah terjual dan harga — ditampilkan per minggu, bukan hanya per bulan — bukan laporan keuangan toko.</p>
               </details>
               <details>
                 <summary>
@@ -10240,7 +10245,8 @@ body.view-chat .sfb-card {
 <script src="/js/peta-peluang.js?v=20260908a" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
-<script src="/js/gpt-app.js?v=20260914c" defer></script>
+<script src="/js/expor-pasar.js?v=20260914a" defer></script>
+<script src="/js/gpt-app.js?v=20260914d" defer></script>
 <style>
 /* LarisExpor entry on the marketing landing only. Logged-in app uses the sidebar link. */
 .expor-tab {
@@ -10258,6 +10264,29 @@ body:not(.view-landing) .expor-tab { display: none; }
   .expor-tab { padding: 9px 10px; font-size: .72rem; }
   .expor-tab svg { width: 13px; height: 13px; }
 }
+
+/* pasar=expor: same Cari Produk chrome, Amazon-only columns. */
+body.pasar-expor .lrow-trend,
+body.pasar-expor .lrow-spark,
+body.pasar-expor .lrow-table thead th[data-lrow-sort="trending"],
+body.pasar-expor .lrow-pick,
+body.pasar-expor .lrow-fav,
+body.pasar-expor #dir-trending-now,
+body.pasar-expor #dir-hero,
+body.pasar-expor #dir-home-trending,
+body.pasar-expor #dir-home-feature,
+body.pasar-expor #dir-ask-sellers,
+body.pasar-expor #dir-kwreq,
+body.pasar-expor #btn-tracker,
+body.pasar-expor #results-bar-kategori,
+body.pasar-expor #results-bar-mega,
+body.pasar-expor .dir-compare-banner { display: none !important; }
+body.pasar-expor #btn-shopee-pasar { display: flex; }
+body.pasar-expor #btn-expor-pasar.active { background: var(--surface-2, #f4f4f5); }
+body.pasar-expor .expor-dd .disclaimer { margin-top: 12px; font-size: .85rem; color: var(--muted, #64748b); }
+body.pasar-expor .expor-dd .cta-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+body.pasar-expor .dir-cat-pill { padding: 8px 12px; }
+body.pasar-expor .dir-cat-pill-label { font-size: .82rem; }
 </style>
 <a class="expor-tab" href="/expor/" title="Ke LarisExpor — riset ekspor produk Indonesia">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>

@@ -59,8 +59,11 @@ perkiraan).
 | This week | `units_wk` = sum of 7 daily `velocity_at` evaluations (measured weeks: `v_latest * 7`) | `source=measured` → terukur; else perkiraan |
 | Next week | same sum, one WIB week further | always perkiraan |
 
-Primary seller-facing number stays **monthly (×30)**. Weekly (×7) is the trend
-grain, always shown with its week label and terukur/perkiraan tag.
+Public/SEO copy **leads with weekly updates and weekly omset** — not monthly
+only. Card / listing-row still uses monthly (×30) as a scale figure. Weekly (×7)
+is the trend grain (Deep Dive, Terlaris Minggu Ini, tren %), always shown with
+its week label and terukur/perkiraan tag. Do not write “diperbarui harian” on
+the site.
 
 Never present a raw two-snapshot delta as "minggu ini". Scrapes land 12–17 days
 apart; the rate is span-normalised first. Same rule as

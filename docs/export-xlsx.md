@@ -11,7 +11,7 @@ Use these sentences on public pages. Do **not** write “Belum ada”, “Rencan
 
 - **Table cell (vs Datapinter / Tokpee / Shoptik):** `Ya — listing + riwayat omset (kuota harian)` vs their `Ya — massal / tanpa batas`.
 - **Table cell (vs Kalodata):** `Ya — listing Shopee + riwayat omset (kuota harian)`. Kalodata’s export is TikTok GMV, not Shopee listings.
-- **Short fact:** LarisID unduh Excel/CSV (.xlsx): hasil Cari Produk (sampai 90 baris listing/hari, omset/bulan) dan riwayat omset mingguan dari Deep Dive (4/8/12 minggu, kuota 12 minggu/hari). Kompetitor berbayar tetap unggul pada ekspor massal tanpa batas dan data listing Tokopedia.
+- **Short fact:** LarisID unduh Excel/CSV (.xlsx): hasil Cari Produk (sampai 90 baris listing/hari) dan riwayat omset mingguan dari Deep Dive (4/8/12 minggu, kuota 12 minggu/hari). Omset ditampilkan per minggu — bukan hanya per bulan. Data listing diperbarui mingguan (bukan real-time). Kompetitor berbayar tetap unggul pada ekspor massal tanpa batas dan data listing Tokopedia.
 - **Kalodata FAQ:** do not say “ekspor belum ada di LarisID”. Say Kalodata uniquely exports **real-time TikTok GMV**; LarisID exports Shopee listing + weekly omset.
 
 ## Two budgets

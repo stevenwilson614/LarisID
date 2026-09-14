@@ -13,6 +13,7 @@ Read `docs/seo.md`, `MISSION.md`, and `docs/self-host.md` before changing anythi
    - no false freshness (do not bump dates over a stalled scrape)
    - no forbidden copy: "paket Free", "Laris Pro", "gratis selama Beta", any AI quota/cap
    - omset / terjual labelled as estimates
+   - public copy leads with weekly updates and weekly omset (not “diperbarui harian”, not monthly-only)
    - landing tiles still have `data-coverage` hooks
 4. Do **not** regenerate `/perbandingan/`, `/panduan/`, or `/kalkulator/` on a timer — those are hand copy.
 5. If the PR is honest and checks pass, merge it. Merging deploys via `deploy-pages.yml`. If anything looks like a mass dump or a stale scrape, comment and leave it open.

@@ -1,6 +1,6 @@
 # SEO & GEO (AI discoverability) — LarisID
 
-*Context for humans and AI assistants working in this repo. Last updated: 13 Sep 2026.*
+*Context for humans and AI assistants working in this repo. Last updated: 14 Sep 2026.*
 
 ## Goal
 
@@ -66,11 +66,17 @@ paid plans.** This is a MISSION.md commitment (§3: no paywalls that trap users)
 a freemium three-tier page shipped on 21 Aug 2026 and was retracted the same day. Do not
 reintroduce prices, tiers, "Pro", "Business", or "gratis selama Beta" framing anywhere.
 
-Copy must also carry what LarisID does **not** have — data refreshes daily rather than
-real-time, no Tokopedia listing data, no TikTok creator analytics. Excel/CSV download
-**is** available; do not claim “Belum ada”, “Rencana”, or “LarisID has none”:
+Copy must also carry what LarisID does **not** have — data refreshes **weekly**
+rather than real-time (not daily, not live), no Tokopedia listing data, no TikTok
+creator analytics. Excel/CSV download **is** available; do not claim “Belum ada”,
+“Rencana”, or “LarisID has none”:
 
-- **Cari Produk:** listing snapshot, up to **90 product rows/day** (WIB), monthly omset per row.
+- **Promote weekly, not monthly-only.** Lead with weekly listing updates and
+  **weekly omset** (tren, Terlaris Minggu Ini, Deep Dive history). Monthly omset
+  (×30) is a scale figure on listing rows — mention it as extra, never as the
+  only grain. Do not write “diperbarui harian”.
+- **Cari Produk:** listing snapshot, up to **90 product rows/day** (WIB); weekly
+  trend % plus monthly omset as scale.
 - **Deep Dive (Tren icon):** weekly omset history, user picks **4 / 8 / 12 weeks**, shared cap **12 weeks/day**.
 
 Canonical sentences: [docs/export-xlsx.md](./export-xlsx.md) § Public copy. Paid tools still
@@ -93,6 +99,9 @@ inconsistent prices across pages confuse both search and AI.
   as a server-cost guard, never as an upgrade prompt — there is nothing to upgrade to. Raise it for
   free: Chrome extension +3/day permanent, referrals +1/day up to +5, product feedback +3 that day.
 - **Never gate** honesty, viability scores, sales estimates, or thin-data warnings — MISSION §3.
+- **Weekly, not monthly-only:** lead with weekly listing updates and weekly omset (tren,
+  Terlaris Minggu Ini, Deep Dive). Never write “diperbarui harian”. Monthly omset is a
+  scale figure, not the headline grain.
 - **Downloads:** listing snapshot (Cari Produk, 90 rows/day) and weekly omset history (Deep
   Dive, 12 weeks/day). Never write “Belum ada” / “Rencana”. Paid tools still win on bulk.
 - **Everything else is free too:** 40 products & 20 stores tracked, Produk directory, `/riset/`,

@@ -45,7 +45,7 @@ const SNAPSHOT = '2026-06-19';
 // Article schema. Give hand-authored pages their real publish date instead.
 const CONTENT_2026_07 = '2026-07-24';
 const TOOLS_2026_09 = '2026-09-08'; // kalkulator fee tables refreshed
-const COPY_2026_09 = '2026-09-08'; // Excel/CSV listing + history copy on harga/perbandingan
+const COPY_2026_09 = '2026-09-14'; // weekly omset + weekly refresh copy on harga/perbandingan
 const OG_IMAGE = `${SITE}/images/Banner.jpg`;
 
 // /data/ is owned by build-coverage-page.mjs but its sitemap entry lives here (this
@@ -554,7 +554,7 @@ function buildSitemap(entries) {
     { loc: `${SITE}/harga/`, freq: 'monthly', pri: '0.85', mod: COPY_2026_09 },
     { loc: `${SITE}/rise/`, freq: 'monthly', pri: '0.8', mod: '2026-08-18' },
     { loc: `${SITE}/rise/daftar/`, freq: 'monthly', pri: '0.7', mod: '2026-08-21' },
-    { loc: `${SITE}/cara-kerja/`, freq: 'monthly', pri: '0.8', mod: '2026-08-21' },
+    { loc: `${SITE}/cara-kerja/`, freq: 'monthly', pri: '0.8', mod: COPY_2026_09 },
     { loc: `${SITE}/tentang/`, freq: 'monthly', pri: '0.7', mod: '2026-09-05' },
     { loc: `${SITE}/privacy/`, freq: 'yearly', pri: '0.3', mod: '2026-09-05' },
   ];

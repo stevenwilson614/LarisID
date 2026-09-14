@@ -270,7 +270,7 @@ const html = `${head(TITLE, DESC, `${SITE}/data/`, dataset, SNAPSHOT)}
       <tbody>
         <tr><td>Punya lebih dari satu titik riwayat</td><td>${n(C.products_with_history)} <span class="note">${pct(C.products_with_history, C.products)} dari seluruh produk</span></td></tr>
         <tr><td>Punya riwayat mingguan terukur</td><td>${n(C.products_with_measured)} <span class="note">${pct(C.products_with_measured, C.products)} — dipakai untuk grafik tren</span></td></tr>
-        <tr><td>Punya estimasi omset bulanan</td><td>${n(C.products_with_omset)} <span class="note">${pct(C.products_with_omset, C.products)} — estimasi, bukan angka resmi Shopee</span></td></tr>
+        <tr><td>Punya estimasi omset</td><td>${n(C.products_with_omset)} <span class="note">${pct(C.products_with_omset, C.products)} — mingguan di aplikasi; kolom ini skala bulanan; estimasi, bukan angka resmi Shopee</span></td></tr>
       </tbody>
     </table>
 
