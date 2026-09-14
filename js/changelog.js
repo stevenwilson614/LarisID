@@ -11,6 +11,20 @@
 // A plain string is still accepted and renders with no tech line.
 window.LARIS_CHANGELOG = [
   {
+    date: '2026-09-14',
+    title: 'Pesan Steven wajib dijawab kalau sudah pernah muncul',
+    items: [
+      {
+        text: 'Kalau pesan dari Steven sudah pernah muncul dan belum kamu balas, saat masuk lagi chat itu wajib dijawab dulu sebelum lanjut. Tutup atau klik di luar tidak menutupinya.',
+        tech: 'my_feedback_prompt_status.mandatory when asked_at set; body.sfb-mandatory + #sfb-backdrop; minimize/outside/Escape blocked until reply (20260914074000).',
+      },
+      {
+        text: 'Steven bisa kirim balasan lanjutan di chat yang sama (misalnya setelah kamu jawab soal data atau cara pakai).',
+        tech: 'user_notices kind=steven_followup opens #sfb-card with payload.lead; reply page=steven_followup + dismiss_notice.',
+      },
+    ],
+  },
+  {
     date: '2026-09-13',
     title: 'Lonceng pemberitahuan tetap terbuka di depan',
     items: [

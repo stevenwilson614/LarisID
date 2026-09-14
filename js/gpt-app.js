@@ -3247,12 +3247,31 @@ function lnoticeBodyHtml(payload) {
 async function lnoticeCheck() {
   if (!_supabase || !currentUser?.id) return;
   if (isPlatformAdminRaw() || adminIsPreviewing()) return;   // never message Steven from Steven
+  // Personal Steven follow-ups open the chat composer (#sfb-card), not the
+  // dismiss-only founder notice shell.
+  try {
+    const { data: followups } = await _supabase
+      .from('user_notices')
+      .select('id,kind,payload')
+      .eq('kind', 'steven_followup')
+      .is('dismissed_at', null)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    const fu = (followups || [])[0];
+    if (fu) {
+      sfbStartFollowup(fu);
+      try { window.LarisActivity?.refreshBell(); } catch (_) {}
+      return;
+    }
+  } catch (e) { console.warn('lnoticeCheck followup:', e?.message || e); }
+  // Do not stack a dismissible notice over a mandatory Steven chat.
+  if (sfbIsMandatory() || document.body.classList.contains('sfb-mandatory')) return;
   try {
     const { data: notices } = await _supabase
       .from('user_notices')
       .select('id,kind,payload')
       .is('dismissed_at', null)
-      .not('kind', 'in', '(keyword_ready,criteria_hit,export_done,quota_reset,tracker_change)')
+      .not('kind', 'in', '(keyword_ready,criteria_hit,export_done,quota_reset,tracker_change,steven_followup)')
       .order('created_at', { ascending: false })
       .limit(1);
     const n = (notices || [])[0];
@@ -3335,6 +3354,8 @@ async function openDeepDiveByIds(itemId, shopId) {
 // PERSON rather than once per browser. Close is a minimize, not a dismiss —
 // localStorage only remembers open | minimized | answered for this device.
 // Reading or closing must NOT clear Chat +1; only a reply does.
+// After the first show (asked_at), later logins are mandatory until they reply.
+// Personal follow-ups (user_notices kind=steven_followup) reopen this chat.
 const SFB_KEY   = 'lid_superuser_fb_v2';
 const SFB_DELAY = 6000;
 let _sfbTimer   = null;
@@ -3343,6 +3364,7 @@ let _sfbBusy    = false;
 let _sfbStatus  = null;   // cached my_feedback_prompt_status() for this page load
 let _sfbAnswered = false;
 let _sfbChip    = null;
+let _sfbFollowup = null;  // { id, lead } pending steven_followup notice
 
 function sfbState() {
   try {
@@ -3357,10 +3379,19 @@ function sfbSetState(v) {
 }
 
 function sfbHasReply() {
+  // A pending personal follow-up is not "answered" for this chat open, even
+  // if the original superuser prompt already was.
+  if (_sfbFollowup) return false;
   return _sfbAnswered || sfbState() === 'answered' || !!_sfbStatus?.answered_at;
 }
 
+function sfbIsMandatory() {
+  if (_sfbFollowup) return false; // follow-ups are soft; the ask itself is mandatory
+  return !sfbHasReply() && !!_sfbStatus?.mandatory;
+}
+
 function sfbIsPending() {
+  if (_sfbFollowup) return true;
   if (sfbHasReply()) return false;
   const s = sfbState();
   if (s === 'open' || s === 'minimized') return true;
@@ -3369,6 +3400,20 @@ function sfbIsPending() {
   // close the card. _lidIsNewSignup is the wrong gate: last_sign_in_at is
   // often still equal to created_at for session-restore users.
   return !!_sfbStatus?.eligible;
+}
+
+function sfbSetMandatoryUi(on) {
+  document.body.classList.toggle('sfb-mandatory', !!on);
+  const close = $('sfb-close');
+  if (close) {
+    close.hidden = !!on;
+    close.disabled = !!on;
+  }
+  const backdrop = $('sfb-backdrop');
+  if (backdrop) {
+    backdrop.classList.toggle('open', !!on);
+    backdrop.setAttribute('aria-hidden', on ? 'false' : 'true');
+  }
 }
 
 function sfbMark(action, feedbackId) {
@@ -3400,10 +3445,15 @@ function sfbBusySurface() {
 function sfbTryWhenQuiet(fn, delay, attempt) {
   clearTimeout(_sfbTimer);
   _sfbTimer = setTimeout(() => {
-    if (!currentUser || sfbHasReply()) return;
+    if (!currentUser || (sfbHasReply() && !_sfbFollowup)) return;
     if (sfbBusySurface()) {
       if (attempt < 3) sfbTryWhenQuiet(fn, 2200, attempt + 1);
-      else { sfbSetState('minimized'); sfbPaintFab(); void sfbMark('asked'); }
+      else if (sfbIsMandatory()) {
+        // Still force the card — mandatory cannot stay minimized behind a modal.
+        fn();
+      } else {
+        sfbSetState('minimized'); sfbPaintFab(); void sfbMark('asked');
+      }
       return;
     }
     fn();
@@ -3419,6 +3469,12 @@ async function scheduleSuperuserFeedback(_opts) {
   // created_at to last_sign_in_at, which stays stuck at signup for people who
   // restore a session instead of a fresh GoTrue login — most of the intended
   // audience. The server bar (2+ sessions, ≥1 Deep Dive) is the criteria.
+  if (_sfbFollowup) {
+    sfbBind();
+    sfbPaintFab();
+    sfbTryWhenQuiet(() => sfbFire({ restore: true, followup: true }), 400, 0);
+    return;
+  }
   if (sfbHasReply()) return;
   if ($('sfb-card')?.classList.contains('open')) {
     sfbPaintFab();
@@ -3447,6 +3503,13 @@ async function scheduleSuperuserFeedback(_opts) {
   sfbBind();
   sfbPaintFab();
 
+  // Already shown once → mandatory: ignore minimized localStorage and open now.
+  if (sfbIsMandatory()) {
+    try { localStorage.removeItem(SFB_KEY); } catch (_) {}
+    sfbTryWhenQuiet(() => sfbFire({ restore: true, mandatory: true }), 400, 0);
+    return;
+  }
+
   const last = sfbState();
   if (last === 'minimized') return;
   if (last === 'open') {
@@ -3456,24 +3519,65 @@ async function scheduleSuperuserFeedback(_opts) {
   sfbTryWhenQuiet(() => sfbFire(), SFB_DELAY, 0);
 }
 
+function sfbApplyPromptCopy() {
+  const msg = $('sfb-msg');
+  const chips = $('sfb-chips');
+  const composer = $('sfb-card')?.querySelector('.sfb-composer');
+  if (composer) composer.hidden = false;
+  if (_sfbFollowup?.lead) {
+    if (msg) msg.textContent = _sfbFollowup.lead;
+    if (chips) chips.hidden = true;
+    return;
+  }
+  if (msg && !msg.dataset.sfbDefault) {
+    msg.dataset.sfbDefault = msg.textContent.trim();
+  }
+  if (msg && msg.dataset.sfbDefault) msg.textContent = msg.dataset.sfbDefault;
+  if (chips) chips.hidden = false;
+}
+
+function sfbStartFollowup(notice) {
+  const lead = (notice?.payload?.lead || '').trim();
+  if (!notice?.id || !lead) return;
+  _sfbFollowup = { id: notice.id, lead };
+  _sfbAnswered = false;
+  sfbBind();
+  sfbApplyPromptCopy();
+  sfbPaintFab();
+  // Soft: do not steal focus if another modal is open; still mark pending.
+  if (sfbBusySurface()) {
+    sfbSetState('minimized');
+    sfbPaintFab();
+    return;
+  }
+  sfbFire({ restore: true, followup: true });
+}
+
 function sfbFire(opts = {}) {
-  if (!currentUser || sfbHasReply()) return;
+  if (!currentUser) return;
+  if (!opts.followup && sfbHasReply()) return;
   if (isPlatformAdminRaw() || adminIsPreviewing()) return;
   const card = $('sfb-card');
   if (!card) return;
 
   sfbBind();
+  sfbApplyPromptCopy();
   sfbSetState('open');
   card.classList.add('open');
   card.setAttribute('aria-hidden', 'false');
+  const mandatory = !!opts.mandatory || sfbIsMandatory();
+  sfbSetMandatoryUi(mandatory);
   sfbPaintFab();
-  void sfbMark('asked');
+  if (!opts.followup) void sfbMark('asked');
   void logUserEvent('superuser_feedback_prompt', {
     ui: 'gpt',
-    action: opts.restore ? 'reopen' : 'show',
+    action: opts.followup ? 'followup' : (opts.restore ? 'reopen' : 'show'),
+    mandatory: mandatory || undefined,
     sessions: _sfbStatus?.sessions, dives: _sfbStatus?.dives,
   });
-  clarityEvt('superuser_feedback_prompt', { action: opts.restore ? 'reopen' : 'show' });
+  clarityEvt('superuser_feedback_prompt', {
+    action: opts.followup ? 'followup' : (opts.restore ? 'reopen' : 'show'),
+  });
 }
 
 function sfbHideCard() {
@@ -3481,10 +3585,16 @@ function sfbHideCard() {
   if (!card) return;
   card.classList.remove('open');
   card.setAttribute('aria-hidden', 'true');
+  sfbSetMandatoryUi(false);
 }
 
 function sfbMinimize(reason) {
-  if (sfbHasReply()) {
+  if (sfbIsMandatory()) {
+    // Keep the card open — they must reply to move on.
+    if (!$('sfb-card')?.classList.contains('open')) sfbFire({ restore: true, mandatory: true });
+    return;
+  }
+  if (sfbHasReply() && !_sfbFollowup) {
     sfbHideCard();
     sfbPaintFab();
     return;
@@ -3494,11 +3604,19 @@ function sfbMinimize(reason) {
   clearTimeout(_sfbTimer);
   sfbSetState('minimized');
   sfbPaintFab();
-  void logUserEvent('superuser_feedback_prompt', { ui: 'gpt', action: reason || 'minimize' });
+  void logUserEvent('superuser_feedback_prompt', {
+    ui: 'gpt',
+    action: reason || 'minimize',
+    followup: _sfbFollowup ? true : undefined,
+  });
 }
 
 function sfbClose(reason) {
-  if (sfbHasReply() || reason === 'done') {
+  if (sfbIsMandatory()) {
+    sfbMinimize('close_blocked');
+    return;
+  }
+  if ((sfbHasReply() && !_sfbFollowup) || reason === 'done') {
     sfbHideCard();
     sfbSetState('answered');
     sfbPaintFab();
@@ -3549,13 +3667,19 @@ function sfbBind() {
   if (send) send.disabled = true;
 
   $('sfb-card')?.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') { e.stopPropagation(); sfbMinimize('escape'); }
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      if (sfbIsMandatory()) return;
+      sfbMinimize('escape');
+    }
   });
   document.addEventListener('pointerdown', (e) => {
     const card = $('sfb-card');
     if (!card?.classList.contains('open')) return;
     if (card.contains(e.target)) return;
     if (e.target.closest?.('#msg-steven-fab')) return;
+    if (e.target.closest?.('#sfb-backdrop')) return;
+    if (sfbIsMandatory()) return;
     sfbMinimize('outside');
   });
 }
@@ -3577,6 +3701,9 @@ async function sfbSubmit() {
   if (send) send.disabled = true;
   if (st) { st.textContent = 'Mengirim...'; st.className = 'sfb-status'; }
 
+  const isFollowup = !!_sfbFollowup;
+  const followupId = _sfbFollowup?.id || null;
+
   try {
     const record = {
       user_id:    currentUser?.id    || null,
@@ -3587,17 +3714,32 @@ async function sfbSubmit() {
       // fails every insert with 23514.) The prompt is identified by `page`.
       type:       'other',
       message:    msg,
-      page:       'superuser_prompt',
+      page:       isFollowup ? 'steven_followup' : 'superuser_prompt',
       element_context: {
         sessions: _sfbStatus?.sessions ?? null,
         dives:    _sfbStatus?.dives ?? null,
         chip:     _sfbChip,
         view:     state.view,
+        followup_notice_id: followupId,
       },
     };
     const { data: inserted, error } = await _supabase
       .from('feedback').insert(record).select('id').single();
     if (error) throw error;
+
+    if (isFollowup && followupId) {
+      try { await _supabase.rpc('dismiss_notice', { p_id: followupId }); } catch (_) {}
+      _sfbFollowup = null;
+      _sfbAnswered = true;
+      sfbSetMandatoryUi(false);
+      void logUserEvent('superuser_feedback_prompt', { ui: 'gpt', action: 'followup_answered',
+        chars: msg.length });
+      clarityEvt('superuser_feedback_prompt', { action: 'followup_answered' });
+      _supabase.functions.invoke('notify-feedback', { body: { record: { ...record, id: inserted?.id } } })
+        .then(({ error: e }) => { if (e) console.warn('notify-feedback:', e.message); });
+      sfbThankYou(0, gptUsageQuotaView().dlLeft);
+      return;
+    }
 
     _sfbAnswered = true;
     void sfbMark('answered', inserted?.id);
@@ -3607,12 +3749,13 @@ async function sfbSubmit() {
     _supabase.functions.invoke('notify-feedback', { body: { record: { ...record, id: inserted?.id } } })
       .then(({ error: e }) => { if (e) console.warn('notify-feedback:', e.message); });
     void logUserEvent('superuser_feedback_prompt', { ui: 'gpt', action: 'answered',
-      chars: msg.length, chip: _sfbChip });
+      chars: msg.length, chip: _sfbChip, mandatory: !!_sfbStatus?.mandatory });
     clarityEvt('superuser_feedback_prompt', { action: 'answered' });
 
     const fromLeft = gptUsageQuotaView().dlLeft;
     let granted = 0;
     if (inserted?.id) granted = await sfbClaimGrant(inserted.id);
+    sfbSetMandatoryUi(false);
     sfbThankYou(granted, fromLeft);
   } catch (err) {
     console.error('superuser feedback submit failed:', err?.code || '', err?.message || err);

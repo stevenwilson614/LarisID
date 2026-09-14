@@ -7696,9 +7696,22 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 
 /* ── Super-user feedback card ("pesan dari Steven") ───────────────────────────
    WhatsApp-shaped chat from the founder (avatar + bubbles + composer).
-   Deliberately NOT a .modal-overlay: AGENTS.md forbids blocking popups.
-   Own layer at z-index 90 — above the FAB (40), below .modal-overlay (100).
+   First show is soft (minimize ok). After asked_at, body.sfb-mandatory locks
+   the card until they reply — backdrop + no close. Own layer at z-index 90;
+   mandatory bumps card to 110 / backdrop 105 (above .modal-overlay 100).
    Namespaced .sfb-* / .wa-* so the late `.modal` rule never reaches it. */
+.sfb-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 105;
+  background: rgba(16, 24, 40, .45);
+}
+.sfb-backdrop.open { display: block; }
+body.sfb-mandatory .sfb-card#sfb-card {
+  z-index: 110;
+}
+body.sfb-mandatory .sfb-card#sfb-card .sfb-close { display: none; }
 .sfb-card {
   position: fixed;
   right: max(14px, env(safe-area-inset-right, 0px));
@@ -10036,9 +10049,13 @@ body.view-chat .sfb-card {
   <span class="msg-steven-fab-label">Pesan Steven</span>
 </button>
 
+<!-- Blocks the app while a mandatory Steven chat is open (asked once, no reply). -->
+<div class="sfb-backdrop" id="sfb-backdrop" aria-hidden="true"></div>
+
 <!-- Super-user feedback card. Shown to people with 2+ sign-ins and at
      least one Deep Dive. Close/read/refresh does not clear Chat +1 on the
-     Pesan Steven FAB — only a reply does. Eligibility comes from
+     Pesan Steven FAB — only a reply does. After the first show, later logins
+     require a reply (body.sfb-mandatory). Eligibility comes from
      my_feedback_prompt_status(); js/gpt-app.js (sfb*) drives it. -->
 <!-- Founder notice. Same shell as sfb-card, deliberately a SEPARATE element:
      the feedback prompt owns its own body and lifecycle, and a notice that has
