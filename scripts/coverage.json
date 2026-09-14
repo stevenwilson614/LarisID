@@ -1,6 +1,6 @@
 {
-  "shops": 271385,
-  "products": 1118442,
+  "shops": 271403,
+  "products": 1118560,
   "sla_days": 7,
   "snapshot": "2026-09-14",
   "detail_ok": 1476,
@@ -9,14 +9,14 @@
   "scraped_7d": 6110,
   "corpus_total": 6131,
   "first_scrape": "2026-04-08",
-  "generated_at": "2026-09-14T06:43:38+00",
+  "generated_at": "2026-09-14T08:34:53+00",
   "last_row_day": "2026-09-14",
-  "listing_rows": 4406462,
+  "listing_rows": 4407062,
   "per_category": [
     {
-      "shops": 27526,
+      "shops": 27528,
       "category": "Rumah",
-      "products": 71712
+      "products": 71730
     },
     {
       "shops": 23393,
@@ -69,16 +69,16 @@
       "products": 22630
     },
     {
-      "shops": 10252,
+      "shops": 10257,
       "category": "Kamar Mandi",
-      "products": 21137
+      "products": 21159
     }
   ],
   "corpus_active": 6111,
   "keywords_seen": 6424,
   "never_scraped": 0,
-  "snapshot_rows": 19195,
-  "oldest_age_days": 7.5,
+  "snapshot_rows": 19795,
+  "oldest_age_days": 7.6,
   "products_with_omset": 588166,
   "days_to_full_coverage": 7,
   "products_with_history": 472448,
