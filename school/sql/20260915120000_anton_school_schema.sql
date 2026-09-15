@@ -13,6 +13,8 @@
 --   cohort_member_billing
 --   cohort_threads + cohort_thread_replies (per-lesson Tanya)
 --
+--   school_products + school_entitlements (lynk a-la-carte vs mentoring)
+--
 -- Does not: payments processing, TikTok sends, Kalodata scrape, DMs.
 
 begin;
@@ -273,6 +275,47 @@ create table if not exists public.cohort_thread_replies (
 create index if not exists idx_ctr_thread
   on public.cohort_thread_replies (thread_id, created_at);
 
+-- ── lynk catalog (a-la-carte vs mentoring). DRAFT. DO NOT APPLY. ─────────────
+
+create table if not exists public.school_products (
+  id           uuid primary key default gen_random_uuid(),
+  school_id    uuid not null references public.schools (id) on delete cascade,
+  slug         text not null,
+  title        text not null,
+  job          text,
+  kind         text not null check (kind in ('tool', 'video', 'text')),
+  group_name   text not null check (group_name in ('alat', 'rekaman')),
+  price_idr    integer,
+  coret_idr    integer,
+  lynk_url     text,
+  iframe_src   text,
+  video_url    text,
+  is_example   boolean not null default true,
+  created_at   timestamptz not null default now(),
+  unique (school_id, slug)
+);
+
+create index if not exists idx_school_products_school on public.school_products (school_id);
+
+comment on table public.school_products is
+  'Anton lynk SKUs. Mentoring grants every row plus live cohort. Prototype only — do not apply on Contabo.';
+
+create table if not exists public.school_entitlements (
+  school_id    uuid not null references public.schools (id) on delete cascade,
+  user_id      uuid not null references auth.users (id) on delete cascade,
+  product_id   uuid not null references public.school_products (id) on delete cascade,
+  source       text not null default 'lynk'
+                 check (source in ('lynk', 'mentoring', 'gratis', 'manual')),
+  created_at   timestamptz not null default now(),
+  primary key (school_id, user_id, product_id)
+);
+
+create index if not exists idx_school_entitlements_user
+  on public.school_entitlements (user_id);
+
+comment on table public.school_entitlements is
+  'Per-student SKU access. Mentoring is one row per product with source=mentoring.';
+
 -- ── RLS: schools ─────────────────────────────────────────────────────────────
 
 alter table public.schools enable row level security;
@@ -280,6 +323,8 @@ alter table public.school_members enable row level security;
 alter table public.cohort_member_billing enable row level security;
 alter table public.cohort_threads enable row level security;
 alter table public.cohort_thread_replies enable row level security;
+alter table public.school_products enable row level security;
+alter table public.school_entitlements enable row level security;
 
 drop policy if exists schools_select on public.schools;
 create policy schools_select on public.schools
@@ -416,6 +461,29 @@ grant select, insert, update, delete on public.school_members to authenticated;
 grant select, insert, update, delete on public.cohort_member_billing to authenticated;
 grant select, insert, update, delete on public.cohort_threads to authenticated;
 grant select, insert, update, delete on public.cohort_thread_replies to authenticated;
+grant select, insert, update, delete on public.school_products to authenticated;
+grant select, insert, update, delete on public.school_entitlements to authenticated;
+
+drop policy if exists school_products_select on public.school_products;
+create policy school_products_select on public.school_products
+  for select using (public.is_school_staff(school_id) or true);
+
+drop policy if exists school_products_write on public.school_products;
+create policy school_products_write on public.school_products
+  for all using (public.is_school_owner(school_id))
+  with check (public.is_school_owner(school_id));
+
+drop policy if exists school_entitlements_select on public.school_entitlements;
+create policy school_entitlements_select on public.school_entitlements
+  for select using (
+    user_id = auth.uid()
+    or public.is_school_staff(school_id)
+  );
+
+drop policy if exists school_entitlements_write on public.school_entitlements;
+create policy school_entitlements_write on public.school_entitlements
+  for all using (public.can_see_school_billing(school_id))
+  with check (public.can_see_school_billing(school_id));
 
 -- Optional later (commented): wrap Kohort Pertama as a Rise school so pick
 -- logic becomes school-scoped without changing student UX.

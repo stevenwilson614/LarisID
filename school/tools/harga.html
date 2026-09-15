@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kalkulator harga — Anton</title>
+  <style>
+    :root { --ink:#0a0a0a; --text:#f3f3f3; --muted:#8a8a8a; --line:#2a2a2a; --card:#161616; --r:8px; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Plus Jakarta Sans", system-ui, sans-serif; background: var(--ink); color: var(--text); padding: 16px; }
+    h1 { font-size: 1.05rem; margin: 0 0 4px; }
+    .lead { font-size: .8rem; color: var(--muted); margin: 0 0 14px; line-height: 1.45; }
+    .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 14px; }
+    .tabs button {
+      border: 1px solid var(--line); background: transparent; color: var(--muted);
+      border-radius: var(--r); padding: 9px; font: 700 .78rem inherit; cursor: pointer;
+    }
+    .tabs button.on { background: #fff; color: #111; border-color: #fff; }
+    label { display: block; font-size: .7rem; font-weight: 700; margin: 10px 0 4px; }
+    label .hint { font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; font-size: .62rem; }
+    input {
+      width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r);
+      font: inherit; background: #141414; color: #fff;
+    }
+    input.kuning { background: #1c1a10; border-color: #8a7a20; }
+    .grid { display: grid; gap: 8px; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .out { margin-top: 14px; background: var(--card); border-radius: var(--r); padding: 14px; border: 1px solid var(--line); }
+    .out .line { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: .8rem; }
+    .out .line:last-child { border-bottom: 0; }
+    .out strong { color: #fff; }
+    .hl { background: #222; margin: 0 -14px; padding: 8px 14px; }
+    .muted { color: var(--muted); font-size: .74rem; line-height: 1.45; }
+    .btns { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 4px; }
+    button.act {
+      border: 0; border-radius: var(--r); padding: 10px 14px; font: 700 .78rem inherit; cursor: pointer;
+      background: #fff; color: #111;
+    }
+    button.ghost {
+      border: 1px solid var(--line); border-radius: var(--r); padding: 10px 14px;
+      font: 700 .78rem inherit; cursor: pointer; background: transparent; color: #fff;
+    }
+    .empty { text-align: center; padding: 28px 12px; color: var(--muted); font-size: .82rem; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <h1>Kalkulator harga TikTok Shop</h1>
+  <p class="lead">Isi yang kuning. Angka lain dihitung. Perkiraan — bukan laporan pajak. Template Anton, bukan file Excel.</p>
+  <div class="btns">
+    <button type="button" class="act" id="contoh">Pakai contoh</button>
+    <button type="button" class="ghost" id="kosong">Kosongkan</button>
+  </div>
+  <div class="tabs">
+    <button type="button" id="tab-set" class="on">Set harga</button>
+    <button type="button" id="tab-toko">Toko / HPP</button>
+  </div>
+
+  <section id="pane-set">
+    <div class="row2">
+      <div>
+        <label>Modal (Rp) <span class="hint">kuning</span></label>
+        <input class="kuning" id="modal" type="number" min="0" placeholder="—">
+      </div>
+      <div>
+        <label>Margin kotor (%) <span class="hint">kuning</span></label>
+        <input class="kuning" id="margin" type="number" min="0" max="99" step="0.1" placeholder="—">
+      </div>
+    </div>
+    <p class="muted" id="net-line">Net revenue muncul setelah modal &amp; margin diisi.</p>
+    <div class="grid">
+      <div class="row2">
+        <div><label>Admin TikTok (%)</label><input class="kuning" id="fee-admin" type="number" step="0.1" min="0"></div>
+        <div><label>Bebas ongkir (%)</label><input class="kuning" id="fee-ongkir" type="number" step="0.1" min="0"></div>
+      </div>
+      <div class="row2">
+        <div><label>Cashback bonus (%)</label><input class="kuning" id="fee-cashback" type="number" step="0.1" min="0"></div>
+        <div><label>Voucher extra (%)</label><input class="kuning" id="fee-voucher" type="number" step="0.1" min="0"></div>
+      </div>
+      <div class="row2">
+        <div><label>Komisi affiliate (%)</label><input class="kuning" id="fee-aff" type="number" step="0.1" min="0"></div>
+        <div><label>Biaya ads (%)</label><input class="kuning" id="fee-ads" type="number" step="0.1" min="0"></div>
+      </div>
+      <div><label>Pajak UMKM (%)</label><input class="kuning" id="fee-pajak" type="number" step="0.1" min="0"></div>
+    </div>
+    <div class="out" id="out-set"></div>
+  </section>
+
+  <section id="pane-toko" hidden>
+    <div class="row2">
+      <div>
+        <label>Modal produksi (Rp) <span class="hint">kuning</span></label>
+        <input class="kuning" id="prod" type="number" min="0" placeholder="—">
+      </div>
+      <div>
+        <label>Packaging (Rp) <span class="hint">kuning</span></label>
+        <input class="kuning" id="pack" type="number" min="0" placeholder="—">
+      </div>
+    </div>
+    <label>Harga jual (Rp) <span class="hint">kuning</span></label>
+    <input class="kuning" id="jual" type="number" min="0" placeholder="—">
+    <div class="row2">
+      <div><label>Fee TikTok (%)</label><input class="kuning" id="t-fee" type="number" step="0.1" min="0"></div>
+      <div><label>Bebas ongkir (%)</label><input class="kuning" id="t-ongkir" type="number" step="0.1" min="0"></div>
+    </div>
+    <div class="row2">
+      <div><label>Cashback (%)</label><input class="kuning" id="t-cash" type="number" step="0.1" min="0"></div>
+      <div><label>Voucher extra (%)</label><input class="kuning" id="t-voucher" type="number" step="0.1" min="0"></div>
+    </div>
+    <div class="row2">
+      <div><label>Biaya ads (%)</label><input class="kuning" id="t-ads" type="number" step="0.1" min="0"></div>
+      <div><label>Komisi aff (%)</label><input class="kuning" id="t-aff" type="number" step="0.1" min="0"></div>
+    </div>
+    <div class="row2">
+      <div><label>Host (Rp)</label><input class="kuning" id="t-host" type="number" min="0"></div>
+      <div><label>Kreator (Rp)</label><input class="kuning" id="t-kreator" type="number" min="0"></div>
+    </div>
+    <div class="row2">
+      <div><label>Packing / admin (Rp)</label><input class="kuning" id="t-admin" type="number" min="0"></div>
+      <div><label>Gaji owner (Rp)</label><input class="kuning" id="t-gaji" type="number" min="0"></div>
+    </div>
+    <div class="row2">
+      <div><label>Lain-lain (Rp)</label><input class="kuning" id="t-lain" type="number" min="0"></div>
+      <div><label>Pajak UMKM (%)</label><input class="kuning" id="t-pajak" type="number" step="0.1" min="0"></div>
+    </div>
+    <div class="out" id="out-toko"></div>
+  </section>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const num = (id) => {
+      const v = $(id).value;
+      if (v === '' || v == null) return null;
+      return +v;
+    };
+    const n0 = (id) => num(id) || 0;
+    function fmt(n) {
+      if (n == null || !isFinite(n)) return '—';
+      return 'Rp' + Math.round(n).toLocaleString('id-ID');
+    }
+    function pct(n) {
+      if (n == null || !isFinite(n)) return '—';
+      return (Math.round(n * 10) / 10).toLocaleString('id-ID') + '%';
+    }
+    function line(label, a, b) {
+      return '<div class="line"><span>' + label + '</span><strong>' + a + (b ? ' <span class="muted">' + b + '</span>' : '') + '</strong></div>';
+    }
+
+    const EXAMPLE_SET = {
+      modal: 60000, margin: 20,
+      'fee-admin': 8, 'fee-ongkir': 4, 'fee-cashback': 1.5, 'fee-voucher': 2,
+      'fee-aff': 6, 'fee-ads': 10, 'fee-pajak': 0.5
+    };
+    const EXAMPLE_TOKO = {
+      prod: 52000, pack: 8000, jual: 84507,
+      't-fee': 6, 't-ongkir': 1.5, 't-cash': 2, 't-voucher': 10,
+      't-ads': 10, 't-aff': 0, 't-host': 0, 't-kreator': 0,
+      't-admin': 0, 't-gaji': 0, 't-lain': 0, 't-pajak': 0.5
+    };
+
+    function fill(map) {
+      Object.keys(map).forEach((k) => { $(k).value = map[k]; });
+    }
+    function clearAll() {
+      document.querySelectorAll('input').forEach((i) => { i.value = ''; });
+      run();
+    }
+
+    function setHarga() {
+      const modal = num('modal');
+      const margin = num('margin');
+      if (modal == null || margin == null || margin >= 100) {
+        $('net-line').textContent = 'Net revenue muncul setelah modal & margin diisi.';
+        $('out-set').innerHTML = '<div class="empty">Isi yang kuning, atau Pakai contoh dari spreadsheet Anton.</div>';
+        return;
+      }
+      const net = modal / (1 - margin / 100);
+      const fees = [
+        ['Admin TikTok', n0('fee-admin')],
+        ['Bebas ongkir', n0('fee-ongkir')],
+        ['Cashback bonus', n0('fee-cashback')],
+        ['Voucher extra', n0('fee-voucher')],
+        ['Komisi affiliate', n0('fee-aff')],
+        ['Biaya ads', n0('fee-ads')],
+        ['Pajak UMKM', n0('fee-pajak')]
+      ];
+      const totalPct = fees.reduce((s, f) => s + f[1], 0);
+      const denom = 1 - totalPct / 100;
+      const promo = denom > 0 ? net / denom : null;
+      const coret = promo != null ? promo / 0.9 : null;
+      const awal = promo != null ? promo * 2 : null;
+      $('net-line').innerHTML = 'Net revenue = modal / (1 − margin) → <strong>' + fmt(net) + '</strong>';
+      $('out-set').innerHTML =
+        fees.map((f) => line(f[0], pct(f[1]), promo != null ? fmt(promo * f[1] / 100) : '')).join('') +
+        '<div class="line hl"><span>Total potongan</span><strong>' + pct(totalPct) + '</strong></div>' +
+        line('Harga promo', fmt(promo), '') +
+        line('Harga coret (promo / 0,9)', fmt(coret), '') +
+        line('Harga awal (2 × promo)', fmt(awal), '') +
+        '<p class="muted" style="margin:10px 0 0">Coret &amp; awal untuk etalase. Yang masuk kas adalah harga promo setelah potongan. Perkiraan.</p>';
+    }
+
+    function toko() {
+      const prod = num('prod');
+      const pack = n0('pack');
+      const jual = num('jual');
+      if (prod == null || jual == null || jual <= 0) {
+        $('out-toko').innerHTML = '<div class="empty">Isi modal produksi + harga jual, atau Pakai contoh.</div>';
+        return;
+      }
+      const modalBarang = prod + pack;
+      const hpp = modalBarang / jual * 100;
+      const pctFees = n0('t-fee') + n0('t-ongkir') + n0('t-cash') + n0('t-voucher') + n0('t-ads') + n0('t-aff') + n0('t-pajak');
+      const feeRp = jual * pctFees / 100;
+      const tetap = n0('t-host') + n0('t-kreator') + n0('t-admin') + n0('t-gaji') + n0('t-lain');
+      const totCost = modalBarang + feeRp + tetap;
+      const marginRp = jual - totCost;
+      const marginPct = marginRp / jual * 100;
+      $('out-toko').innerHTML =
+        line('Total modal barang', fmt(modalBarang), '') +
+        line('HPP', pct(hpp), fmt(modalBarang) + ' / harga jual') +
+        line('Potongan % toko', pct(pctFees), fmt(feeRp)) +
+        line('Biaya tetap (host, kreator, gaji, …)', fmt(tetap), '') +
+        '<div class="line hl"><span>Tot cost</span><strong>' + fmt(totCost) + '</strong></div>' +
+        line('Margin', fmt(marginRp), pct(marginPct)) +
+        '<p class="muted" style="margin:10px 0 0">Perkiraan unit economics. Bukan laporan pajak UMKM.</p>';
+    }
+
+    function run() { setHarga(); toko(); }
+
+    $('contoh').onclick = () => { fill(EXAMPLE_SET); fill(EXAMPLE_TOKO); run(); };
+    $('kosong').onclick = clearAll;
+    $('tab-set').onclick = () => {
+      $('tab-set').classList.add('on'); $('tab-toko').classList.remove('on');
+      $('pane-set').hidden = false; $('pane-toko').hidden = true;
+    };
+    $('tab-toko').onclick = () => {
+      $('tab-toko').classList.add('on'); $('tab-set').classList.remove('on');
+      $('pane-toko').hidden = false; $('pane-set').hidden = true;
+    };
+    document.querySelectorAll('input').forEach((i) => i.addEventListener('input', run));
+
+    const q = new URLSearchParams(location.search);
+    if (q.get('contoh') === '1' || location.hash === '#contoh') {
+      fill(EXAMPLE_SET); fill(EXAMPLE_TOKO);
+    }
+    if (location.hash === '#toko') $('tab-toko').click();
+    run();
+  </script>
+</body>
+</html>

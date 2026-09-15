@@ -1,8 +1,9 @@
 /* Sekolah Anton localhost prototype. No live WhatsApp, TikTok, Mayar, or Contabo. */
 (function () {
   const SEED = window.ANTON_SEED;
-  const KEY = 'anton-school-v1';
+  const KEY = 'anton-school-v2';
   const $ = (id) => document.getElementById(id);
+  const ALL_SKUS = () => (SEED.catalog || []).map((p) => p.id);
 
   if (/larisid\.com$/i.test(location.hostname) || location.hostname.endsWith('.pages.dev')) {
     $('prod-block').hidden = false;
@@ -41,6 +42,7 @@
     });
     return {
       lectures: SEED.lectures.map((l) => ({ ...l })),
+      catalog: SEED.catalog.map((p) => ({ ...p, outline: (p.outline || []).slice() })),
       weeks: SEED.weeks.map((w) => ({ ...w })),
       sessions: SEED.sessions.map((s) => ({ ...s })),
       billing: JSON.parse(JSON.stringify(SEED.billing)),
@@ -59,7 +61,11 @@
     try {
       const raw = localStorage.getItem(KEY);
       if (!raw) return defaultState();
-      return Object.assign(defaultState(), JSON.parse(raw));
+      const merged = Object.assign(defaultState(), JSON.parse(raw));
+      if (!merged.catalog || !merged.catalog.length) {
+        merged.catalog = SEED.catalog.map((p) => ({ ...p, outline: (p.outline || []).slice() }));
+      }
+      return merged;
     } catch {
       return defaultState();
     }
@@ -76,7 +82,9 @@
     drawerId: null,
     kolabSel: new Set(),
     filterSiswa: '',
-    kurOpen: false
+    kurOpen: false,
+    skuId: null,
+    skuPreview: false
   };
 
   function save() {
@@ -87,8 +95,27 @@
   function student() {
     return SEED.students.find((s) => s.id === ui.personaId) || SEED.students[0];
   }
-  function billingOf(id) { return db.billing[id] || { status: 'belum' }; }
-  function canLearn(id) { return billingOf(id).status !== 'belum'; }
+  function billingOf(id) {
+    if (!db.billing[id]) {
+      db.billing[id] = { status: 'belum', plan: '', products: [], amount: 0, source: 'manual' };
+    }
+    const b = db.billing[id];
+    if (!Array.isArray(b.products)) b.products = [];
+    return b;
+  }
+  function canMentoring(id) {
+    const b = billingOf(id);
+    if (b.status === 'gratis') return true;
+    if (b.status === 'belum') return false;
+    return b.plan === 'mentoring';
+  }
+  function canSku(id, skuId) {
+    if (canMentoring(id)) return true;
+    return billingOf(id).products.indexOf(skuId) !== -1;
+  }
+  function canLearn(id) { return canMentoring(id); }
+  function catalog() { return db.catalog || SEED.catalog; }
+  function productById(id) { return catalog().find((p) => p.id === id); }
   function isStaff() { return ui.role === 'owner' || ui.role === 'asisten'; }
   function canBill() { return ui.role === 'owner'; }
 
@@ -117,7 +144,7 @@
   function belumSiap(session) {
     const need = session.required || [];
     return SEED.students.filter((s) => {
-      if (!canLearn(s.id)) return false;
+      if (!canMentoring(s.id)) return false;
       return need.some((lid) => !isDone(s.id, lid));
     });
   }
@@ -203,6 +230,9 @@
   function fillChrome() {
     const mode = isStaff() ? 'mentor' : 'student';
     document.documentElement.dataset.mode = mode;
+    document.documentElement.dataset.plan = isStaff()
+      ? 'mentor'
+      : (canMentoring(ui.personaId) ? 'mentoring' : (billingOf(ui.personaId).products.length ? 'sku' : 'none'));
     $('app').classList.toggle('is-mentor', isStaff());
     $('app').classList.toggle('is-student', !isStaff());
     $('school-name').textContent = SEED.school.name;
@@ -216,15 +246,26 @@
       '<option value="' + esc(s.id) + '">' + esc(s.name) + '</option>').join('');
     pers.value = ui.personaId;
     pers.hidden = isStaff();
+    if (!isStaff()) {
+      const allowed = studentTabs().map((t) => t.id).concat(['sku']);
+      if (allowed.indexOf(ui.tab) === -1) ui.tab = 'home';
+    }
     renderTabs();
   }
 
   function studentTabs() {
+    if (canMentoring(ui.personaId)) {
+      return [
+        { id: 'home', label: 'Home' },
+        { id: 'belajar', label: 'Belajar' },
+        { id: 'pustaka', label: 'Pustaka' },
+        { id: 'diskusi', label: 'Diskusi' },
+        { id: 'progres', label: 'Progres' }
+      ];
+    }
     return [
       { id: 'home', label: 'Home' },
-      { id: 'belajar', label: 'Belajar' },
-      { id: 'alat', label: 'Alat' },
-      { id: 'diskusi', label: 'Diskusi' },
+      { id: 'pustaka', label: 'Pustaka' },
       { id: 'progres', label: 'Progres' }
     ];
   }
@@ -251,12 +292,14 @@
     const dock = $('dock');
     if (!isStaff()) {
       dock.hidden = false;
+      dock.classList.toggle('cols-3', !canMentoring(ui.personaId));
       dock.innerHTML = studentTabs().map((t) =>
         '<button type="button" data-act="tab" data-id="' + t.id + '" aria-selected="' +
-        (t.id === ui.tab) + '">' + esc(t.label) + '</button>'
+        (t.id === ui.tab || (ui.tab === 'sku' && t.id === 'pustaka')) + '">' + esc(t.label) + '</button>'
       ).join('');
     } else {
       dock.hidden = true;
+      dock.classList.remove('cols-3');
     }
   }
 
@@ -277,8 +320,9 @@
       const tab = ui.tab;
       if (tab === 'home') main.innerHTML = viewHome();
       else if (tab === 'belajar') main.innerHTML = viewBelajar();
-      else if (tab === 'alat') main.innerHTML = viewAlat();
-      else if (tab === 'diskusi') main.innerHTML = viewDiskusi(false);
+      else if (tab === 'pustaka') main.innerHTML = viewStudentPustaka();
+      else if (tab === 'sku') main.innerHTML = viewSkuPage();
+      else if (tab === 'diskusi') main.innerHTML = canMentoring(ui.personaId) ? viewDiskusi(false) : viewLocked();
       else if (tab === 'progres') main.innerHTML = viewProgres();
       else if (tab === 'kolab') main.innerHTML = viewKolab();
     }
@@ -296,6 +340,7 @@
 
   /* ── student views ───────────────────────────────────────────────── */
   function viewHome() {
+    if (!canMentoring(ui.personaId)) return viewHomeAlacarte();
     const s = student();
     const lastId = db.lastLecture[s.id] || 'l1';
     const last = lectureById(lastId) || lectures()[0];
@@ -309,9 +354,7 @@
           '<p class="muted">Lanjutkan</p>' +
           '<h2>' + esc(last.title) + '</h2>' +
           '<p class="muted">' + esc(typeLabel(last.type)) + ' · ' + pct + '% materi selesai</p>' +
-          (canLearn(s.id)
-            ? '<button class="btn" data-act="open-lec" data-id="' + esc(last.id) + '">Buka materi</button>'
-            : '<p class="muted">Belajar terkunci sampai Anton menandai pembayaran.</p>') +
+          '<button class="btn" data-act="open-lec" data-id="' + esc(last.id) + '">Buka materi</button>' +
         '</section>' +
         '<section class="card">' +
           '<h2>Sesi berikutnya</h2>' +
@@ -334,10 +377,37 @@
           '<h2>Pengumuman</h2>' +
           (ann ? '<p><strong>' + esc(ann.title) + '</strong></p><p class="muted">' + esc(ann.body) + '</p>' : '<p class="muted">Tidak ada.</p>') +
           '<div style="margin-top:12px">' + payChip(bill.status) +
-            '<span class="muted"> · ' + esc(bill.plan || '') + (bill.note ? ' · ' + esc(bill.note) : '') + '</span></div>' +
+            '<span class="muted"> · mentoring' + (bill.note ? ' · ' + esc(bill.note) : '') + '</span></div>' +
         '</section>' +
       '</div>'
     );
+  }
+
+  function viewHomeAlacarte() {
+    const s = student();
+    const b = billingOf(s.id);
+    const owned = catalog().filter((p) => canSku(s.id, p.id));
+    const ownedHtml = owned.length
+      ? owned.map((p) =>
+          '<section class="card resume" style="margin-bottom:10px">' +
+            '<p class="muted">Pustaka kamu</p>' +
+            '<h2>' + esc(p.title) + '</h2>' +
+            '<p class="muted">' + esc(p.job) + '</p>' +
+            '<button class="btn" data-act="open-sku" data-id="' + esc(p.id) + '">Buka</button>' +
+          '</section>'
+        ).join('')
+      : '<section class="card"><h2>Belum ada produk</h2><p class="muted">Beli satu alat di lynk.id, atau ikut mentoring supaya semua kebuka.</p></section>';
+    return ownedHtml +
+      '<section class="card" style="margin-top:10px">' +
+        '<h2>Ikut mentoring Anton</h2>' +
+        '<p class="muted">Live class + semua produk di Pustaka. Anton merchant di lynk.id — LarisID tidak menahan uang.</p>' +
+        '<div class="row" style="margin-top:10px">' +
+          '<a class="wa" href="' + esc(waLink(SEED.staff[0].wa, 'Halo Anton, mau ikut mentoring. Saya sudah cek lynk.id/obrolan.marketing')) + '" target="_blank" rel="noopener">Chat Anton di WA</a>' +
+          '<a class="btn secondary" href="' + esc(SEED.school.lynk) + '" target="_blank" rel="noopener">Buka lynk.id</a>' +
+        '</div>' +
+        '<p class="muted" style="margin-top:10px">' + payChip(b.status) +
+          (b.note ? ' · ' + esc(b.note) : ' · belum mentoring') + '</p>' +
+      '</section>';
   }
 
   function weekList(sid, weekId) {
@@ -348,16 +418,17 @@
   }
 
   function viewLocked() {
-    const s = student();
     return '<div class="locked">' +
-      '<h2>Materi dikunci</h2>' +
-      '<p class="muted">Anton belum menandai pembayaranmu (lunas, cicilan, atau beasiswa). LarisID tidak menahan uang — ini ledger kelas Anton. Tanya dia di WhatsApp, atau cek lynk.id kamu.</p>' +
-      '<a class="wa" href="' + esc(waLink(SEED.staff[0].wa, 'Halo Anton, mau konfirmasi pembayaran Batch September.')) + '" target="_blank" rel="noopener">Chat Anton</a>' +
-      '</div>';
+      '<h2>Live class terkunci</h2>' +
+      '<p class="muted">Belajar, Diskusi, dan Kolab hanya untuk yang ikut mentoring. Produk lynk tetap bisa dibeli satuan di Pustaka. Anton merchant — LarisID tidak menahan uang.</p>' +
+      '<div class="row" style="justify-content:center">' +
+        '<a class="wa" href="' + esc(waLink(SEED.staff[0].wa, 'Halo Anton, mau konfirmasi mentoring / produk lynk.')) + '" target="_blank" rel="noopener">Chat Anton</a>' +
+        '<a class="btn secondary" href="' + esc(SEED.school.lynk) + '" target="_blank" rel="noopener">lynk.id</a>' +
+      '</div></div>';
   }
 
   function viewBelajar() {
-    if (!canLearn(ui.personaId)) return viewLocked();
+    if (!canMentoring(ui.personaId)) return viewLocked();
     const lec = lectureById(ui.lectureId) || lectures()[0];
     ui.lectureId = lec.id;
     const inner = lec.tool === 'kolab'
@@ -381,7 +452,10 @@
         '<div class="play-orb">▶</div>' +
         '<div class="lazy-note">Ketuk untuk memuat · hemat data</div></div>';
     } else if (lec.type === 'tool') {
-      body = '<iframe sandbox="allow-scripts allow-forms allow-same-origin" src="' + esc(lec.iframe) + '" title="' + esc(lec.title) + '"></iframe>';
+      let src = lec.iframe || '';
+      const sku = lec.skuId ? productById(lec.skuId) : null;
+      if (sku && sku.example && src) src += (src.indexOf('?') >= 0 ? '&' : '?') + 'contoh=1';
+      body = '<iframe class="tool-frame" sandbox="allow-scripts allow-forms allow-same-origin" src="' + esc(src) + '" title="' + esc(lec.title) + '"></iframe>';
     } else if (lec.type === 'document') {
       body = '<div class="article"><p>File kelas: <a href="' + esc(lec.url) + '" target="_blank" rel="noopener">' + esc(lec.title) + '</a></p><p class="muted">Prototype memakai tautan dummy. Produksi nanti: bucket cohort-docs.</p></div>';
     } else {
@@ -454,17 +528,98 @@
     return (SEED.students.find((s) => s.id === id) || SEED.staff.find((s) => s.id === id) || { name: id }).name;
   }
 
+  function skuPriceHtml(p) {
+    return '<span class="price-coret">' + fmtRp(p.coret) + '</span> <strong>' + fmtRp(p.price) + '</strong>';
+  }
+
+  function exampleBanner(p, preview) {
+    if (!preview && !p.example) return '';
+    return '<p class="example-banner">Contoh · bukan file Anton. Ganti lewat Perpustakaan.</p>';
+  }
+
+  function iframeSrc(p, preview) {
+    if (!p.iframe) return '';
+    const q = (preview || p.example) ? 'contoh=1' : '';
+    if (!q) return p.iframe;
+    return p.iframe + (p.iframe.indexOf('?') >= 0 ? '&' : '?') + q;
+  }
+
+  function viewStudentPustaka() {
+    const sid = ui.personaId;
+    const groups = [
+      { id: 'alat', label: 'Alat' },
+      { id: 'rekaman', label: 'Rekaman' }
+    ];
+    let html = '<h2 style="margin:0 0 4px">Pustaka Anton</h2>' +
+      '<p class="muted" style="margin:0 0 12px">Beli satuan di lynk.id, atau mentoring = semua ini + live class. Checkout tetap di lynk — bukan LarisID.</p>';
+    groups.forEach((g) => {
+      const items = catalog().filter((p) => p.group === g.id);
+      html += '<h3 class="week-label">' + g.label + '</h3><div class="tool-grid">';
+      html += items.map((p) => skuTile(p, sid)).join('');
+      html += '</div>';
+    });
+    if (canMentoring(sid)) {
+      html += '<h3 class="week-label">Khusus kelas</h3><div class="tool-grid">' +
+        '<button type="button" class="card tool-tile" data-act="open-lec" data-id="l8">' +
+          '<h3>Kolab — cari kreator</h3>' +
+          '<p class="muted">Bukan produk lynk. Hanya mentoring.</p>' +
+        '</button></div>';
+    }
+    return html;
+  }
+
+  function skuTile(p, sid) {
+    const owned = canSku(sid, p.id);
+    const actions = owned
+      ? '<button class="btn" data-act="open-sku" data-id="' + esc(p.id) + '">Buka</button>'
+      : '<a class="btn" href="' + esc(p.lynk) + '" target="_blank" rel="noopener">Beli di lynk.id</a>' +
+        '<button class="btn secondary" data-act="contoh-sku" data-id="' + esc(p.id) + '">Lihat contoh</button>';
+    return '<div class="card tool-tile sku">' +
+      (owned ? '<span class="chip lunas">Punya</span>' : '<span class="chip">Satuan</span>') +
+      (p.example ? ' <span class="chip warn">Contoh</span>' : '') +
+      '<h3>' + esc(p.title) + '</h3>' +
+      '<p class="muted">' + esc(p.job) + '</p>' +
+      '<p class="sku-price">' + skuPriceHtml(p) + '</p>' +
+      '<div class="row" style="margin-top:10px">' + actions + '</div></div>';
+  }
+
+  function viewSkuPage() {
+    const p = productById(ui.skuId);
+    if (!p) return viewStudentPustaka();
+    const owned = canSku(ui.personaId, p.id);
+    const preview = !!ui.skuPreview && !owned;
+    if (!owned && !preview) return viewStudentPustaka();
+    let canvas = '';
+    let extra = '';
+    if (p.kind === 'tool') {
+      canvas = '<iframe class="tool-frame" sandbox="allow-scripts allow-forms allow-same-origin" src="' +
+        esc(iframeSrc(p, preview)) + '" title="' + esc(p.title) + '"></iframe>';
+    } else {
+      const e = parseEmbed(p.url);
+      canvas = '<div class="lazy-embed" data-embed="' + esc(e ? e.embed : '') + '">' +
+        '<div class="play-orb">▶</div>' +
+        '<div class="lazy-note">Ketuk untuk memuat · hemat data</div></div>';
+      if (p.outline && p.outline.length) {
+        extra = '<div class="card" style="margin-top:10px"><h3>Isi rekaman</h3><ul class="muted">' +
+          p.outline.map((x) => '<li>' + esc(x) + '</li>').join('') +
+          '</ul></div>';
+      }
+    }
+    return '<button type="button" class="kur-toggle" data-act="tab" data-id="pustaka">← Pustaka</button>' +
+      exampleBanner(p, preview) +
+      '<div class="card" style="padding:0;overflow:hidden;margin-top:10px">' +
+        '<div class="canvas">' + canvas + '</div>' +
+        '<div class="canvas-bar">' +
+          '<div><strong>' + esc(p.title) + '</strong>' +
+          '<div class="muted">' + (owned ? 'Punya kamu' : 'Contoh sampai Anton isi file') + '</div></div>' +
+          (owned
+            ? '<a class="btn secondary" href="' + esc(p.lynk) + '" target="_blank" rel="noopener">Halaman lynk</a>'
+            : '<a class="btn" href="' + esc(p.lynk) + '" target="_blank" rel="noopener">Beli di lynk.id</a>') +
+        '</div></div>' + extra;
+  }
+
   function viewAlat() {
-    if (!canLearn(ui.personaId)) return viewLocked();
-    const tools = lectures().filter((l) => l.type === 'tool');
-    return '<h2 style="margin:0 0 12px">Alat Anton</h2>' +
-      '<p class="muted" style="margin-top:0">Sama dengan materi di Belajar — dibuka di canvas yang sama, bukan aplikasi kedua.</p>' +
-      '<div class="tool-grid">' + tools.map((l) =>
-        '<button type="button" class="card tool-tile" data-act="open-lec" data-id="' + esc(l.id) + '">' +
-          '<h3>' + esc(l.title) + '</h3>' +
-          '<p class="muted">' + esc(l.job || 'Alat kelas') + '</p>' +
-        '</button>'
-      ).join('') + '</div>';
+    return viewStudentPustaka();
   }
 
   function viewDiskusi(staff) {
@@ -487,6 +642,19 @@
   function viewProgres() {
     const sid = ui.personaId;
     const bill = billingOf(sid);
+    if (!canMentoring(sid)) {
+      const owned = catalog().filter((p) => canSku(sid, p.id));
+      return '<section class="card"><h2>Pustaka kamu</h2>' +
+        (owned.length
+          ? '<ul class="list-check">' + owned.map((p) =>
+              '<li><span>' + esc(p.title) + (p.example ? ' · contoh' : '') + '</span>' +
+              '<button class="btn-sm" data-act="open-sku" data-id="' + esc(p.id) + '">Buka</button></li>'
+            ).join('') + '</ul>'
+          : '<p class="muted">Belum ada SKU. Beli di lynk.id atau lihat contoh di Pustaka.</p>') +
+        '<p style="margin-top:12px">Bayar: ' + payChip(bill.status) +
+          ' <span class="muted">' + esc(bill.note || 'satuan') + '</span></p>' +
+        '<p class="muted">Mentoring membuka live class + semua produk.</p></section>';
+    }
     const hadir = hadirPct(sid);
     return '<div class="grid-2">' +
       '<section class="card"><h2>Checklist</h2>' +
@@ -516,7 +684,7 @@
 
   /* ── Kolab ───────────────────────────────────────────────────────── */
   function viewKolab() {
-    if (!canLearn(ui.personaId) && !isStaff()) return viewLocked();
+    if (!canMentoring(ui.personaId) && !isStaff()) return viewLocked();
     const sid = isStaff() ? (ui.drawerId || ui.personaId) : ui.personaId;
     const k = kolabOf(sid);
     const q = SEED.kolabQuota;
@@ -532,7 +700,9 @@
       '<p class="muted">Kuota unconnected minggu ini: ' + k.used + ' / ' + q.weekly + ' terpakai · sisa ' + left +
       ' · cap harian ' + q.dailyCap + ' · batch ' + q.batch + '</p></div>' +
       '<div>' + payChip(billingOf(sid).status) + ' <span class="muted">' + esc(nameOf(sid)) + '</span></div></div>' +
-      '<p style="margin-top:8px"><strong>SKU:</strong> ' + esc(SEED.product.name) + ' · tawaran awal ' + SEED.product.suggestedCommission + '% (dari ekonomi produk, bukan biaya LarisID)</p>' +
+      '<p style="margin-top:8px"><strong>SKU:</strong> ' + esc(SEED.product.name) +
+      ' · modal contoh ' + fmtRp(SEED.product.modal) +
+      ' · tawaran awal ' + SEED.product.suggestedCommission + '% (dari ekonomi produk, bukan biaya LarisID)</p>' +
       '<div class="row" style="margin-top:10px">' +
         '<label class="btn secondary">Import CSV Kalodata<input type="file" accept=".csv" data-act="csv" hidden></label>' +
         '<button class="btn secondary" data-act="csv-demo">Pakai CSV dummy</button>' +
@@ -588,7 +758,8 @@
         '<td>' + esc(s.name) + '<div class="muted">' + esc(s.city) + '</div></td>' +
         '<td>' + progressPct(s.id) + '%</td>' +
         '<td>' + hadirPct(s.id) + '%</td>' +
-        '<td>' + payChip(billingOf(s.id).status) + '</td>' +
+        '<td>' + payChip(billingOf(s.id).status) +
+          '<div class="muted">' + (canMentoring(s.id) ? 'mentoring' : (billingOf(s.id).products.join(', ') || '—')) + '</div></td>' +
         '<td class="muted">' + fmtWhen(s.lastActive) + '</td>' +
         '<td><button type="button" class="btn-sm" data-act="open-student" data-id="' + esc(s.id) + '">Buka</button></td></tr>'
       ).join('') + '</tbody></table></div>';
@@ -611,8 +782,9 @@
         const st = (db.attendance[ses.id] || {})[id] || '—';
         return '<p>' + esc(ses.title) + ': <strong>' + esc(st) + '</strong></p>';
       }).join('') +
-      '<h3>Ledger</h3><p class="muted">' + esc(b.plan) + ' · ' + fmtRp(b.amount) + ' · ' + esc(b.source) +
+      '<h3>Ledger</h3><p class="muted">' + esc(b.plan || '—') + ' · ' + fmtRp(b.amount) + ' · ' + esc(b.source) +
       (b.note ? ' · ' + esc(b.note) : '') + '</p>' +
+      '<p class="muted">Produk: ' + (canMentoring(id) ? 'mentoring (semua)' : (b.products.length ? b.products.map((pid) => (productById(pid) || {}).title || pid).join(', ') : '—')) + '</p>' +
       (canBill() ? '<label class="muted">Ubah status</label><select data-act="bill-one" data-id="' + esc(id) + '">' +
         ['lunas', 'cicilan', 'belum', 'gratis'].map((st) =>
           '<option' + (b.status === st ? ' selected' : '') + ' value="' + st + '">' + st + '</option>').join('') +
@@ -675,12 +847,22 @@
   }
 
   function viewPustaka() {
-    const tools = lectures().filter((l) => l.type === 'tool');
-    return '<div class="card"><h2>Perpustakaan alat</h2>' +
-      '<p class="muted">Tile lynk.id, lecture Udemy. Iframe sandbox, tanpa eval di origin Laris.</p>' +
-      '<div class="tool-grid">' + tools.map((l) =>
-        '<div class="card"><h3>' + esc(l.title) + '</h3><p class="muted">' + esc(l.job || l.iframe || 'Kolab native') +
-        '</p><p class="muted">Minggu: ' + esc((db.weeks.find((w) => w.id === l.weekId) || {}).title || '') + '</p></div>'
+    return '<div class="card"><h2>Perpustakaan</h2>' +
+      '<p class="muted">Produk lynk Anton. Toggle Contoh → File Anton setelah dia isi. Tidak mengubah checkout lynk.id.</p>' +
+      '<div class="tool-grid">' + catalog().map((p) =>
+        '<div class="card tool-tile sku">' +
+          '<span class="chip">' + esc(p.group) + '</span>' +
+          (p.example ? ' <span class="chip warn">Contoh</span>' : ' <span class="chip lunas">File Anton</span>') +
+          '<h3>' + esc(p.title) + '</h3>' +
+          '<p class="muted">' + esc(p.job) + '</p>' +
+          '<p class="sku-price">' + skuPriceHtml(p) + '</p>' +
+          '<div class="row" style="margin-top:10px">' +
+            (canBill()
+              ? '<button class="btn-sm" data-act="toggle-example" data-id="' + esc(p.id) + '">' +
+                (p.example ? 'Tandai file Anton sudah masuk' : 'Kembalikan ke contoh') + '</button>'
+              : '') +
+            '<a class="btn-sm" href="' + esc(p.lynk) + '" target="_blank" rel="noopener">lynk</a>' +
+          '</div></div>'
       ).join('') + '</div></div>';
   }
 
@@ -709,17 +891,29 @@
   }
 
   function viewBayar() {
+    const skus = catalog();
     return '<div class="card"><h2>Pembayaran</h2>' +
-      '<p class="muted">Anton merchant (lynk.id / Mayar). LarisID tidak memegang uang. Status <strong>gratis</strong> = beasiswa, bukan diskon palsu.</p>' +
-      '<table class="table"><thead><tr><th>Siswa</th><th>Status</th><th>Sumber</th><th>Nominal</th><th></th></tr></thead><tbody>' +
+      '<p class="muted">Anton merchant (lynk.id / Mayar). Mentoring = semua SKU + live class. Satuan = checkbox produk. Status <strong>gratis</strong> = beasiswa.</p>' +
+      '<div style="overflow:auto">' +
+      '<table class="table"><thead><tr><th>Siswa</th><th>Status</th><th>Mentoring</th>' +
+      skus.map((p) => '<th>' + esc(p.id) + '</th>').join('') +
+      '<th>Nominal</th></tr></thead><tbody>' +
       SEED.students.map((s) => {
         const b = billingOf(s.id);
-        return '<tr><td>' + esc(s.name) + '</td><td>' + payChip(b.status) + '</td><td>' + esc(b.source) + '</td><td>' + fmtRp(b.amount) + '</td>' +
-          '<td><select data-act="bill-one" data-id="' + esc(s.id) + '">' +
+        const mentorOn = canMentoring(s.id);
+        return '<tr><td>' + esc(s.name) + '<div class="muted">' + esc(b.note || b.plan || '') + '</div></td>' +
+          '<td>' + payChip(b.status) + '<select data-act="bill-one" data-id="' + esc(s.id) + '" style="margin-top:6px">' +
           ['lunas', 'cicilan', 'belum', 'gratis'].map((st) =>
             '<option' + (b.status === st ? ' selected' : '') + ' value="' + st + '">' + st + '</option>').join('') +
-          '</select></td></tr>';
-      }).join('') + '</tbody></table></div>';
+          '</select></td>' +
+          '<td><input type="checkbox" data-act="ent-mentor" data-id="' + esc(s.id) + '"' +
+          (mentorOn ? ' checked' : '') + (b.status === 'gratis' ? ' disabled' : '') + '></td>' +
+          skus.map((p) =>
+            '<td><input type="checkbox" data-act="ent-sku" data-id="' + esc(s.id) + '" data-sku="' + esc(p.id) + '"' +
+            (canSku(s.id, p.id) ? ' checked' : '') + (mentorOn ? ' disabled' : '') + '></td>'
+          ).join('') +
+          '<td>' + fmtRp(b.amount) + '<div class="muted">' + esc(b.source) + '</div></td></tr>';
+      }).join('') + '</tbody></table></div></div>';
   }
 
   function openDrawer(id) {
@@ -750,6 +944,9 @@
       ui.personaId = t.value;
       ui.lectureId = db.lastLecture[ui.personaId] || 'l1';
       ui.kolabSel = new Set();
+      ui.skuId = null;
+      ui.skuPreview = false;
+      ui.tab = 'home';
       render();
       return;
     }
@@ -772,10 +969,52 @@
     }
     if (t.matches('[data-act="bill-one"]')) {
       const id = t.getAttribute('data-id');
-      db.billing[id].status = t.value;
-      db.billing[id].updatedAt = new Date().toISOString();
+      const b = billingOf(id);
+      b.status = t.value;
+      b.updatedAt = new Date().toISOString();
+      if (t.value === 'gratis') {
+        b.plan = 'mentoring';
+        b.products = ALL_SKUS();
+      }
+      if (t.value === 'belum') {
+        b.plan = '';
+        b.products = [];
+      }
       save();
       toast('Ledger ' + nameOf(id) + ' → ' + t.value);
+      render();
+      if (ui.drawerId) openDrawer(ui.drawerId);
+      return;
+    }
+    if (t.matches('[data-act="ent-mentor"]')) {
+      const id = t.getAttribute('data-id');
+      const b = billingOf(id);
+      if (t.checked) {
+        b.plan = 'mentoring';
+        b.products = ALL_SKUS();
+        if (b.status === 'belum') b.status = 'lunas';
+      } else {
+        b.plan = b.products.length ? 'sku' : '';
+        if (!b.products.length) b.status = 'belum';
+      }
+      save();
+      toast((t.checked ? 'Mentoring on · ' : 'Mentoring off · ') + nameOf(id));
+      render();
+      if (ui.drawerId) openDrawer(ui.drawerId);
+      return;
+    }
+    if (t.matches('[data-act="ent-sku"]')) {
+      const id = t.getAttribute('data-id');
+      const sku = t.getAttribute('data-sku');
+      const b = billingOf(id);
+      if (b.plan === 'mentoring' || b.status === 'gratis') return;
+      const set = new Set(b.products);
+      if (t.checked) set.add(sku); else set.delete(sku);
+      b.products = [...set];
+      b.plan = b.products.length ? 'sku' : '';
+      if (!b.products.length) b.status = 'belum';
+      else if (b.status === 'belum') b.status = 'lunas';
+      save();
       render();
       if (ui.drawerId) openDrawer(ui.drawerId);
       return;
@@ -822,14 +1061,52 @@
     const act = btn.getAttribute('data-act');
     if (act === 'tab') {
       const id = btn.getAttribute('data-id');
-      if (isStaff()) ui.mentorTab = id; else ui.tab = id;
-      if (id === 'belajar' && isStaff()) { /* no-op */ }
+      if (isStaff()) ui.mentorTab = id;
+      else {
+        ui.tab = id;
+        if (id === 'pustaka') { ui.skuId = null; ui.skuPreview = false; }
+      }
       render();
+    } else if (act === 'open-sku') {
+      const id = btn.getAttribute('data-id');
+      if (!canSku(ui.personaId, id) && !isStaff()) return;
+      ui.skuId = id;
+      ui.skuPreview = false;
+      ui.tab = 'sku';
+      render();
+    } else if (act === 'contoh-sku') {
+      ui.skuId = btn.getAttribute('data-id');
+      ui.skuPreview = true;
+      ui.tab = 'sku';
+      render();
+    } else if (act === 'toggle-example') {
+      const p = productById(btn.getAttribute('data-id'));
+      if (p && canBill()) {
+        p.example = !p.example;
+        save();
+        toast(p.example ? 'Kembali ke contoh' : 'Ditandai file Anton');
+        render();
+      }
     } else if (act === 'toggle-kur') {
       ui.kurOpen = !ui.kurOpen;
       render();
     } else if (act === 'open-lec') {
-      ui.lectureId = btn.getAttribute('data-id');
+      const id = btn.getAttribute('data-id');
+      const lec = lectureById(id);
+      if (!canMentoring(ui.personaId) && !isStaff()) {
+        if (lec && lec.skuId && canSku(ui.personaId, lec.skuId)) {
+          ui.skuId = lec.skuId;
+          ui.skuPreview = false;
+          ui.tab = 'sku';
+          render();
+          return;
+        }
+        toast('Live class hanya mentoring.');
+        ui.tab = 'pustaka';
+        render();
+        return;
+      }
+      ui.lectureId = id;
       db.lastLecture[ui.personaId] = ui.lectureId;
       save();
       ui.tab = 'belajar';

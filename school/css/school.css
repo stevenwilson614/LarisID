@@ -145,6 +145,16 @@ a { color: inherit; }
   font-size: .62rem; font-weight: 700; background: rgba(0,0,0,.7); padding: 3px 8px; border-radius: 4px;
 }
 .canvas iframe { width: 100%; aspect-ratio: 16/9; border: 0; background: #111; min-height: 260px; }
+.canvas iframe.tool-frame { aspect-ratio: auto; min-height: 640px; height: 70vh; }
+html[data-mode="student"] .canvas iframe.tool-frame { min-height: 360px; height: 48vh; }
+.example-banner {
+  margin: 10px 0 0; padding: 8px 12px; border: 1px dashed var(--line-2);
+  border-radius: var(--r); font-size: .72rem; font-weight: 700; color: #ddd;
+}
+.tool-tile.sku { border-left: 2px solid #f0e040; }
+.sku-price { font-size: .8rem; margin: 6px 0 0; }
+.price-coret { color: var(--muted); text-decoration: line-through; font-weight: 500; margin-right: 6px; }
+.dock.cols-3 { grid-template-columns: repeat(3, 1fr); }
 .article { padding: 18px; color: var(--text); background: var(--card); }
 .article h3 { margin-top: 0; }
 .canvas-bar {

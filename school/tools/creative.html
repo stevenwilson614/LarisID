@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Creative — contoh Anton</title>
+  <style>
+    :root { --ink:#0a0a0a; --text:#f3f3f3; --muted:#8a8a8a; --line:#2a2a2a; --card:#161616; --r:8px; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Plus Jakarta Sans", system-ui, sans-serif; background: var(--ink); color: var(--text); padding: 16px; }
+    h1 { font-size: 1.05rem; margin: 0 0 4px; }
+    p { font-size: .8rem; color: var(--muted); line-height: 1.5; }
+    h2 { font-size: .82rem; margin: 18px 0 8px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; margin: 8px 0; }
+    .card strong { display: block; margin-bottom: 4px; font-size: .8rem; }
+    .row { font-size: .78rem; padding: 8px 0; border-bottom: 1px solid var(--line); }
+    .row:last-child { border-bottom: 0; }
+    .muted { color: var(--muted); }
+    button {
+      border: 0; background: #fff; color: #111; border-radius: var(--r);
+      padding: 10px 14px; font: 700 .78rem inherit; cursor: pointer; margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>AI Seller Creative Assistant</h1>
+  <p>Contoh pack prompt untuk SKU jepit rambut satin. Bukan generate gambar live. File Anton masuk nanti lewat Perpustakaan.</p>
+  <button type="button" id="contoh">Lihat contoh</button>
+  <div id="body" hidden>
+    <h2>Prompt etalase</h2>
+    <div class="card"><strong>Foto 1 — hero</strong>Close-up jepit rambut satin isi 6 di tangan, cahaya jendela, background kamar rapi, teks “isi 6 · tidak cubit kulit”.</div>
+    <div class="card"><strong>Foto 2 — pakai</strong>Rambut terikat setengah, jepit terlihat dari samping, warna nude. Jangan stock China.</div>
+    <div class="card"><strong>Foto 3 — isi paket</strong>Enam jepit di atas kain, label ukuran, bukan pile kacau.</div>
+    <h2>Prompt video 15 detik</h2>
+    <div class="card">0–3s ambil dari tas. 3–8s pasang di rambut. 8–12s goyang kepala. 12–15s harga + “isi 6”.</div>
+    <div class="card">Hook: “Jepit Rp8rb yang cubit kulit vs yang ini.” Jangan sebut kompetitor merek.</div>
+    <div class="card">Live hook: “Sisa 40 pcs, yang kemarin habis 9 menit.” Hanya kalau stok memang sisa.</div>
+    <h2>Storyboard (3 shot)</h2>
+    <div class="card">
+      <div class="row"><strong>Shot A</strong><span class="muted"> Masalah: jepit metal nyangkut. 3 detik.</span></div>
+      <div class="row"><strong>Shot B</strong><span class="muted"> Ganti satin, bunyi klik. 5 detik.</span></div>
+      <div class="row"><strong>Shot C</strong><span class="muted"> Paket isi 6 + harga promo. 4 detik.</span></div>
+    </div>
+  </div>
+  <script>
+    const btn = document.getElementById('contoh');
+    const body = document.getElementById('body');
+    function show() { body.hidden = false; btn.hidden = true; }
+    btn.onclick = show;
+    if (new URLSearchParams(location.search).get('contoh') === '1') show();
+  </script>
+</body>
+</html>

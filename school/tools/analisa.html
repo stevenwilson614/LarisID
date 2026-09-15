@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Analisa Data — contoh Anton</title>
+  <style>
+    :root { --ink:#0a0a0a; --text:#f3f3f3; --muted:#8a8a8a; --line:#2a2a2a; --card:#161616; --r:8px; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Plus Jakarta Sans", system-ui, sans-serif; background: var(--ink); color: var(--text); padding: 16px; }
+    h1 { font-size: 1.05rem; margin: 0 0 4px; }
+    p, li { font-size: .8rem; color: var(--muted); line-height: 1.5; }
+    h2 { font-size: .82rem; color: #fff; }
+    table { width: 100%; border-collapse: collapse; font-size: .74rem; margin: 10px 0; }
+    th { text-align: left; color: var(--muted); font-size: .62rem; text-transform: uppercase; letter-spacing: .05em; padding: 6px 4px; }
+    td { padding: 8px 4px; border-top: 1px solid var(--line); }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; }
+    button {
+      border: 0; background: #fff; color: #111; border-radius: var(--r);
+      padding: 10px 14px; font: 700 .78rem inherit; cursor: pointer;
+    }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <h1>Asisten AI Analisa Data</h1>
+  <p>Contoh bacaan atas CSV Kalodata dummy. Bukan API Kalodata. File Anton belum masuk.</p>
+  <button type="button" id="contoh">Lihat contoh</button>
+  <div id="body" hidden>
+    <div class="card">
+      <h2>Yang dilihat dari export</h2>
+      <ol>
+        <li>GMV 30 hari besar belum berarti komisi aman — cek typical_commission_pct.</li>
+        <li>Niche hair-video lebih cocok SKU jepit daripada fashion-live.</li>
+        <li>Creator comedy (skor rendah) jangan diantrikan dulu.</li>
+        <li>Yang sudah connected tidak makan kuota unconnected.</li>
+        <li>Jangan scrape Kalodata. Pakai CSV yang kamu unduh sendiri.</li>
+      </ol>
+    </div>
+    <h2>Cuplikan dummy</h2>
+    <div id="tbl">Memuat CSV…</div>
+  </div>
+  <script>
+    const btn = document.getElementById('contoh');
+    const body = document.getElementById('body');
+    function fmt(n) { return 'Rp' + Math.round(n || 0).toLocaleString('id-ID'); }
+    function show() {
+      body.hidden = false;
+      btn.hidden = true;
+      fetch('../data/kalodata-creators.csv').then((r) => r.text()).then((txt) => {
+        const lines = txt.trim().split(/\r?\n/).filter(Boolean);
+        const head = lines[0].split(',');
+        const hi = head.indexOf('handle');
+        const gi = head.indexOf('gmv_30d');
+        const ni = head.indexOf('niche');
+        const rows = lines.slice(1, 6).map((line) => {
+          const c = line.split(',');
+          return '<tr><td>' + c[hi] + '</td><td>' + fmt(+c[gi]) + '</td><td>' + c[ni] + '</td></tr>';
+        }).join('');
+        document.getElementById('tbl').innerHTML =
+          '<table><thead><tr><th>Handle</th><th>GMV 30h</th><th>Niche</th></tr></thead><tbody>' +
+          rows + '</tbody></table>';
+      }).catch(() => {
+        document.getElementById('tbl').textContent = 'CSV dummy tidak terbaca. Buka dari /school/.';
+      });
+    }
+    btn.onclick = show;
+    if (new URLSearchParams(location.search).get('contoh') === '1') show();
+  </script>
+</body>
+</html>
