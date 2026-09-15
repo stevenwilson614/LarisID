@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kalkulator modal — Anton</title>
+  <style>
+    :root { --hijau:#1E6B3C; --krem:#F5EFE0; --hitam:#1A1A1A; --emas:#C9974B; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Plus Jakarta Sans", system-ui, sans-serif; background: var(--krem); color: var(--hitam); padding: 20px; }
+    h1 { font-size: 1.05rem; margin: 0 0 4px; }
+    p { font-size: .8rem; color: #5a5a5a; margin: 0 0 16px; }
+    label { display: block; font-size: .72rem; font-weight: 700; margin: 10px 0 4px; }
+    input { width: 100%; padding: 10px 12px; border: 1px solid #d8d0c0; border-radius: 10px; font: inherit; }
+    .out { margin-top: 16px; background: #fff; border-radius: 12px; padding: 14px; border: 1px solid #e6dfd0; }
+    .out strong { color: var(--hijau); }
+  </style>
+</head>
+<body>
+  <h1>Kalkulator modal</h1>
+  <p>Hitung modal stok + iklan sebelum kamu order. Bukan jaminan laba.</p>
+  <label>Harga modal / pcs (Rp)</label>
+  <input id="cost" type="number" value="18000">
+  <label>Jumlah pcs pertama</label>
+  <input id="qty" type="number" value="50">
+  <label>Budget iklan 14 hari (Rp)</label>
+  <input id="ads" type="number" value="500000">
+  <div class="out" id="out"></div>
+  <script>
+    function fmt(n) { return 'Rp' + Math.round(n).toLocaleString('id-ID'); }
+    function run() {
+      const cost = +document.getElementById('cost').value || 0;
+      const qty = +document.getElementById('qty').value || 0;
+      const ads = +document.getElementById('ads').value || 0;
+      const stock = cost * qty;
+      const total = stock + ads;
+      const be = qty ? total / qty : 0;
+      document.getElementById('out').innerHTML =
+        '<div>Stok: <strong>' + fmt(stock) + '</strong></div>' +
+        '<div>Total modal: <strong>' + fmt(total) + '</strong></div>' +
+        '<div>Harga jual minimum biar balik modal (belum ongkir/komisi): <strong>' + fmt(be) + '</strong> / pcs</div>';
+    }
+    document.querySelectorAll('input').forEach(i => i.addEventListener('input', run));
+    run();
+  </script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kalkulator komisi affiliate — Anton</title>
+  <style>
+    :root { --hijau:#1E6B3C; --krem:#F5EFE0; --hitam:#1A1A1A; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Plus Jakarta Sans", system-ui, sans-serif; background: var(--krem); color: var(--hitam); padding: 20px; }
+    h1 { font-size: 1.05rem; margin: 0 0 4px; }
+    p { font-size: .8rem; color: #5a5a5a; margin: 0 0 16px; }
+    label { display: block; font-size: .72rem; font-weight: 700; margin: 10px 0 4px; }
+    input { width: 100%; padding: 10px 12px; border: 1px solid #d8d0c0; border-radius: 10px; font: inherit; }
+    .out { margin-top: 16px; background: #fff; border-radius: 12px; padding: 14px; border: 1px solid #e6dfd0; }
+    .out strong { color: var(--hijau); }
+  </style>
+</head>
+<body>
+  <h1>Kalkulator komisi</h1>
+  <p>Perkiraan yang kamu tawarkan ke kreator. Bukan angka Kalodata — itu kamu isi sendiri dari export mereka.</p>
+  <label>Harga jual (Rp)</label>
+  <input id="price" type="number" value="89000">
+  <label>Modal + packing (Rp)</label>
+  <input id="cogs" type="number" value="32000">
+  <label>Komisi kreator (%)</label>
+  <input id="rate" type="number" value="18">
+  <label>Fee platform perkiraan (%)</label>
+  <input id="plat" type="number" value="6">
+  <div class="out" id="out"></div>
+  <script>
+    function fmt(n) { return 'Rp' + Math.round(n).toLocaleString('id-ID'); }
+    function run() {
+      const price = +document.getElementById('price').value || 0;
+      const cogs = +document.getElementById('cogs').value || 0;
+      const rate = +document.getElementById('rate').value || 0;
+      const plat = +document.getElementById('plat').value || 0;
+      const comm = price * rate / 100;
+      const fee = price * plat / 100;
+      const keep = price - cogs - comm - fee;
+      document.getElementById('out').innerHTML =
+        '<div>Bayar kreator: <strong>' + fmt(comm) + '</strong></div>' +
+        '<div>Sisa kasar per penjualan: <strong>' + fmt(keep) + '</strong>' +
+        (keep < 0 ? ' — komisi ini makan modal. Turunkan % atau naikkan harga.' : '.') + '</div>';
+    }
+    document.querySelectorAll('input').forEach(i => i.addEventListener('input', run));
+    run();
+  </script>
+</body>
+</html>
