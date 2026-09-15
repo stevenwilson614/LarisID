@@ -75,7 +75,8 @@
     pane: 'tanya',
     drawerId: null,
     kolabSel: new Set(),
-    filterSiswa: ''
+    filterSiswa: '',
+    kurOpen: false
   };
 
   function save() {
@@ -200,6 +201,10 @@
 
   /* ── chrome ──────────────────────────────────────────────────────── */
   function fillChrome() {
+    const mode = isStaff() ? 'mentor' : 'student';
+    document.documentElement.dataset.mode = mode;
+    $('app').classList.toggle('is-mentor', isStaff());
+    $('app').classList.toggle('is-student', !isStaff());
     $('school-name').textContent = SEED.school.name;
     $('role-switch').innerHTML =
       '<option value="student">Siswa</option>' +
@@ -355,10 +360,16 @@
     if (!canLearn(ui.personaId)) return viewLocked();
     const lec = lectureById(ui.lectureId) || lectures()[0];
     ui.lectureId = lec.id;
-    if (lec.tool === 'kolab') return viewKolab();
+    const inner = lec.tool === 'kolab'
+      ? viewKolab()
+      : renderCanvas(lec) + renderPanes(lec);
     return '<div class="player-layout">' +
-      '<div>' + renderCanvas(lec) + renderPanes(lec) + '</div>' +
-      '<aside class="kurikulum-pane">' + renderKurikulumSidebar() + '</aside>' +
+      '<div>' +
+        '<button type="button" class="kur-toggle" data-act="toggle-kur">' +
+        (ui.kurOpen ? 'Tutup kurikulum' : 'Kurikulum') + '</button>' +
+        inner + '</div>' +
+      '<aside class="kurikulum-pane' + (ui.kurOpen ? ' is-open' : '') + '">' +
+        renderKurikulumSidebar() + '</aside>' +
       '</div>';
   }
 
@@ -379,7 +390,7 @@
     const done = isDone(ui.personaId, lec.id);
     return '<div class="card" style="padding:0;overflow:hidden">' +
       '<div class="canvas">' + body + '</div>' +
-      '<div style="padding:12px 16px;background:var(--card);color:var(--hitam);display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap">' +
+      '<div class="canvas-bar">' +
         '<div><strong>' + esc(lec.title) + '</strong><div class="muted">' + esc(typeLabel(lec.type)) +
         (lec.requiredBefore ? ' · wajib sebelum kelas' : '') + '</div></div>' +
         '<button class="btn' + (done ? ' secondary' : '') + '" data-act="toggle-done" data-id="' + esc(lec.id) + '">' +
@@ -814,11 +825,15 @@
       if (isStaff()) ui.mentorTab = id; else ui.tab = id;
       if (id === 'belajar' && isStaff()) { /* no-op */ }
       render();
+    } else if (act === 'toggle-kur') {
+      ui.kurOpen = !ui.kurOpen;
+      render();
     } else if (act === 'open-lec') {
       ui.lectureId = btn.getAttribute('data-id');
       db.lastLecture[ui.personaId] = ui.lectureId;
       save();
       ui.tab = 'belajar';
+      ui.kurOpen = false;
       render();
     } else if (act === 'toggle-done') {
       const id = btn.getAttribute('data-id');

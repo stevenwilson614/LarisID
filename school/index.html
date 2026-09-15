@@ -1,18 +1,18 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" data-mode="student">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
   <title>Sekolah Anton — prototype offline</title>
   <link rel="stylesheet" href="/fonts/laris-fonts.css">
-  <link rel="stylesheet" href="./css/school.css?v=20260915b">
+  <link rel="stylesheet" href="./css/school.css?v=20260915d">
 </head>
 <body>
   <div id="prod-block" hidden>
     <p>Prototype localhost. Tidak untuk larisid.com.</p>
   </div>
-  <div id="app">
+  <div id="app" class="is-student">
     <header class="topbar">
       <div class="brand">
         <img src="/images/brand/logo-icon-light.png" alt="" width="28" height="28">
@@ -29,14 +29,16 @@
         <button type="button" class="ghost" id="btn-reset" title="Reset data lokal">Reset</button>
       </div>
     </header>
-    <nav class="tabs" id="tabs" role="tablist"></nav>
-    <main id="main" class="main"></main>
+    <div class="workspace">
+      <nav class="tabs" id="tabs" role="tablist"></nav>
+      <main id="main" class="main"></main>
+    </div>
     <nav class="dock" id="dock" hidden></nav>
   </div>
   <aside id="drawer" class="drawer" hidden></aside>
   <div id="drawer-scrim" class="scrim" hidden></div>
   <div id="toast" class="toast" hidden></div>
-  <script src="./js/seed.js?v=20260915b"></script>
-  <script src="./js/app.js?v=20260915b"></script>
+  <script src="./js/seed.js?v=20260915d"></script>
+  <script src="./js/app.js?v=20260915d"></script>
 </body>
 </html>
