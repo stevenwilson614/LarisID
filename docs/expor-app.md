@@ -13,7 +13,7 @@ The LarisID side tab (`.expor-tab`) and sidebar market switchers (“LarisExpor�
 | Logged out | SEO landing | SPA Cari Produk over Amazon |
 | Signed in | Redirects to `/?pasar=expor` | Same |
 
-`localStorage laris_pasar_v1` remembers the market. Clearing it (or visiting `/` after `setPasar('shopee')`) returns to Shopee Cari Produk.
+The URL is the switch: `/?pasar=expor` is Amazon, `/` is always Shopee. Do not restore expor from `localStorage` — that trapped the home SPA after the market switchers were hidden, and Shopee search looked broken.
 
 Do **not** dump Amazon rows into Shopee Cari Produk.
 

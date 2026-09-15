@@ -24902,7 +24902,7 @@ async function boot() {
   try {
     if (window.LarisExpor) {
       if (new URLSearchParams(location.search).get('pasar') === 'expor') window.LarisExpor.activate();
-      else window.LarisExpor.syncChrome();
+      else window.LarisExpor.setPasar('shopee');
     }
   } catch (_) {}
   // The A/B ended 2026-08-10 and this used to self-stamp arm B here. New

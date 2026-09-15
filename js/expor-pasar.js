@@ -19,12 +19,19 @@
     } catch (_) { return ''; }
   }
 
-  function readPasar() {
-    if (qsPasar() === 'expor') return 'expor';
+  // Drop leftover Amazon mode from before the market switchers were hidden.
+  // URL is the only switch: / is Shopee, /?pasar=expor is Amazon.
+  function forgetStaleExpor() {
+    if (qsPasar() === 'expor') return;
     try {
-      if (localStorage.getItem('laris_pasar_v1') === 'expor') return 'expor';
+      if (localStorage.getItem('laris_pasar_v1') === 'expor') {
+        localStorage.setItem('laris_pasar_v1', 'shopee');
+      }
     } catch (_) {}
-    return 'shopee';
+  }
+
+  function readPasar() {
+    return qsPasar() === 'expor' ? 'expor' : 'shopee';
   }
 
   function isOn() {
@@ -403,10 +410,16 @@
     FX: FX,
   };
 
+  forgetStaleExpor();
   document.addEventListener('DOMContentLoaded', function () {
+    forgetStaleExpor();
     if (isOn()) {
       document.body.classList.add('pasar-expor');
       syncChrome(true);
+    } else {
+      document.body.classList.remove('pasar-expor');
+      document.body.classList.add('pasar-shopee');
+      syncChrome(false);
     }
   });
 })(window);
