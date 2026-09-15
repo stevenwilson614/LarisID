@@ -64,6 +64,26 @@
       const merged = Object.assign(defaultState(), JSON.parse(raw));
       if (!merged.catalog || !merged.catalog.length) {
         merged.catalog = SEED.catalog.map((p) => ({ ...p, outline: (p.outline || []).slice() }));
+      } else {
+        const byId = Object.fromEntries((SEED.catalog || []).map((p) => [p.id, p]));
+        merged.catalog = merged.catalog.map((p) => {
+          const seed = byId[p.id];
+          if (!seed) return p;
+          return {
+            ...seed,
+            ...p,
+            cover: seed.cover || p.cover,
+            sheet: seed.sheet || p.sheet,
+            lynk: seed.lynk || p.lynk,
+            iframe: seed.iframe || p.iframe,
+            outline: (p.outline && p.outline.length) ? p.outline : (seed.outline || []).slice()
+          };
+        });
+        (SEED.catalog || []).forEach((p) => {
+          if (!merged.catalog.some((x) => x.id === p.id)) {
+            merged.catalog.push({ ...p, outline: (p.outline || []).slice() });
+          }
+        });
       }
       return merged;
     } catch {
@@ -236,6 +256,11 @@
     $('app').classList.toggle('is-mentor', isStaff());
     $('app').classList.toggle('is-student', !isStaff());
     $('school-name').textContent = SEED.school.name;
+    const logo = $('school-logo');
+    if (logo) {
+      logo.src = SEED.school.photo || SEED.school.logo;
+      logo.alt = SEED.school.name;
+    }
     $('role-switch').innerHTML =
       '<option value="student">Siswa</option>' +
       '<option value="owner">Mentor (Anton)</option>' +
@@ -379,7 +404,14 @@
           '<div style="margin-top:12px">' + payChip(bill.status) +
             '<span class="muted"> · mentoring' + (bill.note ? ' · ' + esc(bill.note) : '') + '</span></div>' +
         '</section>' +
-      '</div>'
+      '</div>' +
+      '<section class="card" style="margin-top:14px">' +
+        '<h2>Pustaka Anton</h2>' +
+        '<div class="cover-strip">' + catalog().map((p) =>
+          '<button type="button" data-act="open-sku" data-id="' + esc(p.id) + '">' +
+            skuCoverHtml(p) + '<span>' + esc(p.title) + '</span></button>'
+        ).join('') + '</div>' +
+      '</section>'
     );
   }
 
@@ -389,15 +421,18 @@
     const owned = catalog().filter((p) => canSku(s.id, p.id));
     const ownedHtml = owned.length
       ? owned.map((p) =>
-          '<section class="card resume" style="margin-bottom:10px">' +
-            '<p class="muted">Pustaka kamu</p>' +
-            '<h2>' + esc(p.title) + '</h2>' +
-            '<p class="muted">' + esc(p.job) + '</p>' +
-            '<button class="btn" data-act="open-sku" data-id="' + esc(p.id) + '">Buka</button>' +
+          '<section class="card resume home-sku">' +
+            skuCoverHtml(p, 'home-sku-cover') +
+            '<div class="sku-body">' +
+              '<p class="muted">Pustaka kamu</p>' +
+              '<h2>' + esc(p.title) + '</h2>' +
+              '<p class="muted">' + esc(p.job) + '</p>' +
+              '<button class="btn" data-act="open-sku" data-id="' + esc(p.id) + '">Buka</button>' +
+            '</div>' +
           '</section>'
         ).join('')
       : '<section class="card"><h2>Belum ada produk</h2><p class="muted">Beli satu alat di lynk.id, atau ikut mentoring supaya semua kebuka.</p></section>';
-    return ownedHtml +
+    return catalogHero() + ownedHtml +
       '<section class="card" style="margin-top:10px">' +
         '<h2>Ikut mentoring Anton</h2>' +
         '<p class="muted">Live class + semua produk di Pustaka. Anton merchant di lynk.id — LarisID tidak menahan uang.</p>' +
@@ -532,6 +567,25 @@
     return '<span class="price-coret">' + fmtRp(p.coret) + '</span> <strong>' + fmtRp(p.price) + '</strong>';
   }
 
+  function skuCoverHtml(p, cls) {
+    if (!p || !p.cover) return '';
+    return '<img class="' + (cls || 'sku-cover') + '" src="' + esc(p.cover) + '" alt="' + esc(p.title) + '">';
+  }
+
+  function catalogHero() {
+    const sch = SEED.school;
+    return '<section class="catalog-hero">' +
+      '<img class="catalog-photo" src="' + esc(sch.photo) + '" alt="Coach Anton">' +
+      '<div>' +
+        '<div class="catalog-brand">' +
+          '<img class="catalog-mark" src="' + esc(sch.logo) + '" alt="">' +
+          '<div><strong>Obrolan Marketing</strong><span>by Coach Anton GC</span></div>' +
+        '</div>' +
+        '<p class="muted" style="margin:6px 0 0">@obrolan.marketing · cover &amp; foto dari etalase lynk (salinan lokal).</p>' +
+        '<a class="btn secondary" href="' + esc(sch.lynk) + '" target="_blank" rel="noopener" style="margin-top:8px">Etalase lynk.id</a>' +
+      '</div></section>';
+  }
+
   function exampleBanner(p, preview) {
     if (!preview && !p.example) return '';
     return '<p class="example-banner">Contoh · bukan file Anton. Ganti lewat Perpustakaan.</p>';
@@ -550,7 +604,8 @@
       { id: 'alat', label: 'Alat' },
       { id: 'rekaman', label: 'Rekaman' }
     ];
-    let html = '<h2 style="margin:0 0 4px">Pustaka Anton</h2>' +
+    let html = catalogHero() +
+      '<h2 style="margin:12px 0 4px">Pustaka Anton</h2>' +
       '<p class="muted" style="margin:0 0 12px">Beli satuan di lynk.id, atau mentoring = semua ini + live class. Checkout tetap di lynk — bukan LarisID.</p>';
     groups.forEach((g) => {
       const items = catalog().filter((p) => p.group === g.id);
@@ -575,12 +630,14 @@
       : '<a class="btn" href="' + esc(p.lynk) + '" target="_blank" rel="noopener">Beli di lynk.id</a>' +
         '<button class="btn secondary" data-act="contoh-sku" data-id="' + esc(p.id) + '">Lihat contoh</button>';
     return '<div class="card tool-tile sku">' +
+      skuCoverHtml(p) +
+      '<div class="sku-body">' +
       (owned ? '<span class="chip lunas">Punya</span>' : '<span class="chip">Satuan</span>') +
       (p.example ? ' <span class="chip warn">Contoh</span>' : '') +
       '<h3>' + esc(p.title) + '</h3>' +
       '<p class="muted">' + esc(p.job) + '</p>' +
       '<p class="sku-price">' + skuPriceHtml(p) + '</p>' +
-      '<div class="row" style="margin-top:10px">' + actions + '</div></div>';
+      '<div class="row" style="margin-top:10px">' + actions + '</div></div></div>';
   }
 
   function viewSkuPage() {
@@ -596,7 +653,9 @@
         esc(iframeSrc(p, preview)) + '" title="' + esc(p.title) + '"></iframe>';
     } else {
       const e = parseEmbed(p.url);
-      canvas = '<div class="lazy-embed" data-embed="' + esc(e ? e.embed : '') + '">' +
+      canvas = '<div class="lazy-embed' + (p.cover ? ' has-cover' : '') + '"' +
+        (p.cover ? ' style="background-image:url(\'' + esc(p.cover) + '\')"' : '') +
+        ' data-embed="' + esc(e ? e.embed : '') + '">' +
         '<div class="play-orb">▶</div>' +
         '<div class="lazy-note">Ketuk untuk memuat · hemat data</div></div>';
       if (p.outline && p.outline.length) {
@@ -605,9 +664,18 @@
           '</ul></div>';
       }
     }
+    if (p.sheet) {
+      extra += '<div class="card" style="margin-top:10px"><h3>Spreadsheet Anton</h3>' +
+        '<p class="muted">Tangkapan layar rumus Set harga. Pakai tombol contoh di kalkulator.</p>' +
+        '<img class="sheet-shot" src="' + esc(p.sheet) + '" alt="Spreadsheet kalkulator TikTok"></div>';
+    }
+    const hero = p.kind === 'tool' && p.cover
+      ? '<img class="sku-hero" src="' + esc(p.cover) + '" alt="' + esc(p.title) + '">'
+      : '';
     return '<button type="button" class="kur-toggle" data-act="tab" data-id="pustaka">← Pustaka</button>' +
       exampleBanner(p, preview) +
       '<div class="card" style="padding:0;overflow:hidden;margin-top:10px">' +
+        hero +
         '<div class="canvas">' + canvas + '</div>' +
         '<div class="canvas-bar">' +
           '<div><strong>' + esc(p.title) + '</strong>' +
@@ -647,7 +715,8 @@
       return '<section class="card"><h2>Pustaka kamu</h2>' +
         (owned.length
           ? '<ul class="list-check">' + owned.map((p) =>
-              '<li><span>' + esc(p.title) + (p.example ? ' · contoh' : '') + '</span>' +
+              '<li><span class="row">' + (p.cover ? '<img class="thumb" src="' + esc(p.cover) + '" alt="">' : '') +
+              esc(p.title) + (p.example ? ' · contoh' : '') + '</span>' +
               '<button class="btn-sm" data-act="open-sku" data-id="' + esc(p.id) + '">Buka</button></li>'
             ).join('') + '</ul>'
           : '<p class="muted">Belum ada SKU. Beli di lynk.id atau lihat contoh di Pustaka.</p>') +
@@ -847,10 +916,13 @@
   }
 
   function viewPustaka() {
-    return '<div class="card"><h2>Perpustakaan</h2>' +
+    return catalogHero() +
+      '<div class="card" style="margin-top:12px"><h2>Perpustakaan</h2>' +
       '<p class="muted">Produk lynk Anton. Toggle Contoh → File Anton setelah dia isi. Tidak mengubah checkout lynk.id.</p>' +
       '<div class="tool-grid">' + catalog().map((p) =>
         '<div class="card tool-tile sku">' +
+          skuCoverHtml(p) +
+          '<div class="sku-body">' +
           '<span class="chip">' + esc(p.group) + '</span>' +
           (p.example ? ' <span class="chip warn">Contoh</span>' : ' <span class="chip lunas">File Anton</span>') +
           '<h3>' + esc(p.title) + '</h3>' +
@@ -862,7 +934,7 @@
                 (p.example ? 'Tandai file Anton sudah masuk' : 'Kembalikan ke contoh') + '</button>'
               : '') +
             '<a class="btn-sm" href="' + esc(p.lynk) + '" target="_blank" rel="noopener">lynk</a>' +
-          '</div></div>'
+          '</div></div></div>'
       ).join('') + '</div></div>';
   }
 

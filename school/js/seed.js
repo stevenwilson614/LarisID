@@ -8,10 +8,14 @@ window.ANTON_SEED = {
     slogan: 'Jualan TikTok Shop yang tahan lama',
     waGroup: 'https://chat.whatsapp.com/anton-batch-sep-demo',
     lynk: 'https://lynk.id/obrolan.marketing',
-    ownerId: 'u-anton'
+    ownerId: 'u-anton',
+    photo: './assets/obrolan/profile.png',
+    logo: './assets/obrolan/logo-mark.png',
+    lockup: './assets/obrolan/logo-lockup.png',
+    storefront: './assets/obrolan/storefront-phone.png'
   },
   staff: [
-    { id: 'u-anton', name: 'Anton', role: 'owner', wa: '628111000001' },
+    { id: 'u-anton', name: 'Anton', role: 'owner', wa: '628111000001', photo: './assets/obrolan/profile.png' },
     { id: 'u-lia', name: 'Lia', role: 'asisten', wa: '628111000002' }
   ],
   cohort: {
@@ -38,6 +42,8 @@ window.ANTON_SEED = {
       price: 99000,
       coret: 129000,
       lynk: 'https://lynk.id/obrolan.marketing/5py80v4o4pme',
+      cover: './assets/obrolan/cover-calc.webp',
+      sheet: './assets/obrolan/calc-sheet.png',
       iframe: './tools/harga.html',
       example: true,
       lectureIds: ['l3', 'l5']
@@ -51,6 +57,7 @@ window.ANTON_SEED = {
       price: 69000,
       coret: 100000,
       lynk: 'https://lynk.id/obrolan.marketing/rz8v1oxd8548',
+      cover: './assets/obrolan/cover-ai-creative.webp',
       iframe: './tools/creative.html',
       example: true
     },
@@ -63,6 +70,7 @@ window.ANTON_SEED = {
       price: 200000,
       coret: 250000,
       lynk: 'https://lynk.id/obrolan.marketing/ezw8grpexr15',
+      cover: './assets/obrolan/cover-ai-data.webp',
       iframe: './tools/analisa.html',
       example: true
     },
@@ -75,6 +83,7 @@ window.ANTON_SEED = {
       price: 99000,
       coret: 200000,
       lynk: 'https://lynk.id/obrolan.marketing/e8d459l0ne45',
+      cover: './assets/obrolan/cover-naik-harga.webp',
       url: 'https://www.youtube.com/watch?v=jNQXAC9IVRw',
       outline: [
         'Shoppertainment mindset',
@@ -96,6 +105,7 @@ window.ANTON_SEED = {
       price: 59900,
       coret: 199000,
       lynk: 'https://lynk.id/obrolan.marketing/8lW7la6',
+      cover: './assets/obrolan/cover-algo.jpg',
       url: 'https://www.youtube.com/watch?v=jNQXAC9IVRw',
       outline: [
         'Fundamental TikTok Shop',
@@ -115,6 +125,7 @@ window.ANTON_SEED = {
       price: 149000,
       coret: 249000,
       lynk: 'https://lynk.id/obrolan.marketing/WAgxXwP',
+      cover: './assets/obrolan/cover-ads.jpg',
       url: 'https://www.youtube.com/watch?v=jNQXAC9IVRw',
       outline: [
         'Audit toko sebelum iklan',

@@ -65,6 +65,8 @@ sampai Anton ganti file di Perpustakaan mentor.
 
 Kalkulator di `school/tools/harga.html` meniru spreadsheet Anton (Set harga + Toko/HPP).
 
+Cover, foto profil, dan logo Obrolan disalin ke `school/assets/obrolan/` dari CDN lynk (bukan hotlink). Pustaka, Home satuan, dan halaman SKU memakai file itu. Reset data lokal kalau tile masih tanpa gambar.
+
 ### Saran susunan lynk.id (kita tidak bisa edit lynk)
 
 Anton bisa paste sendiri:
