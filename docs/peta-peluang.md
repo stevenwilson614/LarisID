@@ -29,22 +29,27 @@ It marks `_petaTrend.pending`, calls `peta_batch` (max 200 keys), then attaches
 held, belum, pending }` from `mv_listing_momentum`. It does not draw SVG.
 
 The Cari Produk listing pool uses `listings_for_keywords` (LATERAL per-keyword
-lookup — do not `btrim()` the `listings_deduped.keyword` column). Home
-keywords/listings are prefetched at boot (`warmDirInstantPool` →
-`resolveListingPool({ home: true })` on idle). Category browse fetches 40
-`product_types_v` rows (not 1000) — only the top 15 keywords feed listings.
+lookup — do not `btrim()` the `listings_deduped.keyword` column, and do not
+`ORDER BY total_sold DESC NULLS LAST`: that misses
+`listings_deduped_kw_sold_ontopic_idx` and times out anon's 3s cap). Home
+opens with `listings_home` (top 15 terlaris keywords × 20 listings, one
+round-trip). Prefetch at boot (`warmDirInstantPool` →
+`resolveListingPool({ home: true })`) and paint from a 10-minute
+sessionStorage snapshot so a second open is instant. Category browse fetches
+40 `product_types_v` rows (not 1000) — only the top 15 keywords feed listings.
 
-`renderDirectory` still waits on `resolveListingPool` before painting rows.
-That resolve is memoized per home / category / query, races DeepSeek
-`search_plan` at 700 ms (static EN/ID seed on miss, AI plan cached in
-background), skips `product_type_quartiles` when matview columns are on
-the view, and defers `countKeywordUnsold` until after first paint.
+`renderDirectory` paints a memo/session snapshot immediately, then refreshes
+from `resolveListingPool`. That resolve is memoized per home / category /
+query, races DeepSeek `search_plan` at 700 ms (static EN/ID seed on miss, AI
+plan cached in background), skips `product_type_quartiles` when matview
+columns are on the view, and defers `countKeywordUnsold` until after first
+paint.
 
-Measured on api.larisid.com (2026-09-12, ~200 ms RTT): category 1000-row
-type fetch 1.07–4.8 s / 274 KB gzip → 40-row 0.36 s / 14 KB;
-`product_type_quartiles` n=24 0.77 s (now skipped); DeepSeek planner
-1.66 s (raced); single-keyword `ilike` 0.55 s → `eq` 0.19 s;
-`listings_for_keywords` 15×20 already 0.42–0.52 s.
+Measured on api.larisid.com (2026-09-15, ~200 ms RTT): `listings_for_keywords`
+15×20 with NULLS LAST timed out at 3.4s (anon 3s cap); matching the index
+(`ORDER BY total_sold DESC`) is ~20 ms server-side. `listings_home` is the
+same scan plus a 1.5 ms keyword pick. Fat `product_types_v` home (120 rows
+with `images`) was 1.52 s / 190 KB — no longer on the home path.
 
 ## Ranking
 

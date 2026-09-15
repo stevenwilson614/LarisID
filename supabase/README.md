@@ -151,18 +151,23 @@ On the self-host box, keep these in `ADDITIONAL_REDIRECT_URLS` / GoTrue env
 - `https://larisid.com/gpt/` (legacy path, still served; keep this or OAuth breaks for anyone with a stale `/gpt/` bookmark or in-flight session)
 - `http://localhost:8000/gpt/` and `http://localhost:8000/` (local testing)
 
-## Listing pool RPC (`migrations/20260905180000_listings_for_keywords.sql`)
+## Listing pool RPC (`migrations/20260915160000_listings_for_keywords_index_order.sql`)
 
 `listings_for_keywords(p_keywords text[], p_per_kw int default 20, p_max int default 300)`
-returns `setof listings_deduped`: top-N sold listings per keyword via
-`LATERAL` + exact `keyword` match (`is_offtopic = false`, `total_sold > 0`).
-`security invoker`; granted to `anon` and `authenticated`. Uses
-`listings_deduped_kw_sold_ontopic_idx`. Do not wrap the column in `btrim()` —
-that forced a 400k-row scan (~2.5s) and left the Peta Peluang skeleton up.
-Canonical body: `migrations/20260912180000_listings_for_keywords_lateral.sql`
-(the 20260905180000 file still has the old `btrim` WHERE; do not re-apply it).
+returns slim listing columns (not `setof listings_deduped`): top-N sold
+listings per keyword via `LATERAL` + exact `keyword` match
+(`is_offtopic = false`, `total_sold > 0`). **`ORDER BY total_sold DESC`**
+(not `NULLS LAST`) so `listings_deduped_kw_sold_ontopic_idx` can stop at
+`LIMIT`. `security invoker`; granted to `anon` and `authenticated`. Do not
+wrap `listings_deduped.keyword` in `btrim()`.
 
-The SPA (`js/gpt-app.js` `fetchListingsForKeywords`) calls this for category /
-home / multi-keyword pools. On `42883` / missing RPC it falls back to at most
-6 parallel per-keyword `.in()` queries. Single-keyword search uses
-`listings_deduped` `.eq('keyword')` first, then `ilike` if empty.
+`listings_home(p_max int default 300)` is the default Cari Produk page:
+top 15 terlaris-minggu keywords × 20 listings in one round-trip.
+
+Canonical body: `migrations/20260915160000_listings_for_keywords_index_order.sql`.
+Do not re-apply `20260905180000` (btrim WHERE) or `20260912180000` (NULLS LAST).
+
+The SPA (`js/gpt-app.js` `fetchListingsHome` / `fetchListingsForKeywords`)
+calls these. On `42883` / missing RPC it falls back to per-keyword
+`.eq('keyword')` queries. Single-keyword search uses `listings_deduped`
+`.eq('keyword')` first, then `ilike` if empty.

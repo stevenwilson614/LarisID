@@ -8754,8 +8754,9 @@ async function fetchListingsForKeyword(kw, limit = 120) {
       .gt('total_sold', 0)
       .eq('is_offtopic', false)
       .limit(limit);
-    if (exact) q = q.eq('keyword', needle).order('total_sold', { ascending: false, nullsFirst: false });
-    else q = q.ilike('keyword', needle).order('nowcast_omset_monthly', { ascending: false, nullsFirst: false });
+    // DESC without NULLS LAST matches listings_deduped_kw_sold_ontopic_idx.
+    if (exact) q = q.eq('keyword', needle).order('total_sold', { ascending: false });
+    else q = q.ilike('keyword', needle).order('nowcast_omset_monthly', { ascending: false });
     return q;
   };
   const run = async (exact) => {
@@ -8775,12 +8776,21 @@ async function fetchListingsForKeyword(kw, limit = 120) {
 }
 
 let _listingsForKwRpc = true;
+let _listingsHomeRpc = true;
 function listingsForKwRpcMissing(error) {
   if (!_listingsForKwRpc || !error) return false;
   const s = `${error.code || ''} ${error.message || ''} ${error.details || ''}`;
   if (!/42883|PGRST202|404|listings_for_keywords/.test(s)) return false;
   console.warn('[listings] listings_for_keywords missing — per-keyword fallback');
   _listingsForKwRpc = false;
+  return true;
+}
+function listingsHomeRpcMissing(error) {
+  if (!_listingsHomeRpc || !error) return false;
+  const s = `${error.code || ''} ${error.message || ''} ${error.details || ''}`;
+  if (!/42883|PGRST202|404|listings_home/.test(s)) return false;
+  console.warn('[listings] listings_home missing — types + listings_for_keywords fallback');
+  _listingsHomeRpc = false;
   return true;
 }
 
@@ -8802,9 +8812,26 @@ async function fetchListingsForKeywords(kws, perKw = 20, max = 300) {
       if (!listingsForKwRpcMissing(e)) console.warn('[listings_for_keywords]', e?.message || e);
     }
   }
-  const take = keywords.slice(0, 6);
+  const take = keywords.slice(0, 15);
   const chunks = await Promise.all(take.map(kw => fetchListingsForKeyword(kw, perKw)));
   return dedupeListings(chunks.flat()).slice(0, max);
+}
+
+async function fetchListingsHome(max = 300) {
+  if (!_supabase) return [];
+  if (_listingsHomeRpc) {
+    try {
+      const { data, error } = await _supabase.rpc('listings_home', { p_max: max });
+      if (listingsHomeRpcMissing(error)) { /* fall through */ }
+      else if (error) throw error;
+      else return dedupeListings(data || []).slice(0, max);
+    } catch (e) {
+      if (!listingsHomeRpcMissing(e)) console.warn('[listings_home]', e?.message || e);
+    }
+  }
+  const types = await loadDirHomePool();
+  return fetchListingsForKeywords(
+    types.slice(0, 15).map(t => t.keyword).filter(Boolean), 20, max);
 }
 
 async function countKeywordUnsold(kw) {
@@ -8825,6 +8852,8 @@ const _dirPoolMemo = Object.create(null);
 const _dirPoolInflight = Object.create(null);
 const DIR_POOL_MEMO_MAX = 20;
 const PLAN_RACE_MS = 700;
+const DIR_HOME_SS = 'lid_dir_home_v1';
+const DIR_HOME_SS_TTL = 10 * 60 * 1000;
 
 function dirPoolMemoKey({ q, cats, sub, home } = {}) {
   if (home) return 'home';
@@ -8841,10 +8870,51 @@ function dirPoolClone(p) {
   };
 }
 
+function dirHomeCacheRead() {
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem(DIR_HOME_SS) || 'null');
+    if (!parsed || !parsed.at || (Date.now() - parsed.at) > DIR_HOME_SS_TTL) return null;
+    if (!Array.isArray(parsed.listings) || !parsed.listings.length) return null;
+    return {
+      keywords: Array.isArray(parsed.keywords) ? parsed.keywords : [],
+      listings: parsed.listings,
+      primaryKw: '',
+      nearby: false,
+      matchLevel: 'keyword',
+      unsold: 0,
+      brand: '',
+      brandMissing: false,
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
+function dirHomeCacheWrite(pool) {
+  if (!pool || !(pool.listings || []).length) return;
+  try {
+    sessionStorage.setItem(DIR_HOME_SS, JSON.stringify({
+      at: Date.now(),
+      keywords: (pool.keywords || []).map(t => ({ keyword: t.keyword })),
+      listings: pool.listings,
+    }));
+  } catch (_) {}
+}
+
+function seedDirHomeMemoFromSession() {
+  if (_dirPoolMemo.home) return;
+  const cached = dirHomeCacheRead();
+  if (cached) _dirPoolMemo.home = cached;
+}
+
 function dirPoolMemoSet(key, pool) {
   _dirPoolMemo[key] = pool;
+  if (key === 'home') dirHomeCacheWrite(pool);
   const keys = Object.keys(_dirPoolMemo);
-  if (keys.length > DIR_POOL_MEMO_MAX) delete _dirPoolMemo[keys[0]];
+  if (keys.length > DIR_POOL_MEMO_MAX) {
+    const drop = keys[0] === 'home' ? keys[1] : keys[0];
+    if (drop && drop !== 'home') delete _dirPoolMemo[drop];
+  }
 }
 
 function _dirMark(stages, name) {
@@ -9012,14 +9082,23 @@ async function _resolveListingPoolUncached({ q, cats, sub, home } = {}, memoKey)
       if (out.listings.length && !out.matchLevel) out.matchLevel = 'title';
     }
     if (stages.listings == null) _dirMark(stages, 'listings');
+  } else if (home) {
+    out.listings = await fetchListingsHome(300);
+    _dirMark(stages, 'listings');
+    const seen = new Set();
+    out.keywords = [];
+    for (const r of out.listings) {
+      const kw = r && r.keyword;
+      if (!kw || seen.has(kw)) continue;
+      seen.add(kw);
+      out.keywords.push({ keyword: kw });
+    }
+    out.matchLevel = 'keyword';
+    out.primaryKw = '';
   } else {
-    let types = [];
-    if (home) types = await loadDirHomePool();
-    else {
-      types = await fetchProductTypes([], cats || [], 40, sub);
-      if (!types.length && !sub) {
-        types = await typesForListings(mergePool([], await fetchNaikDaunGlobal(200)), '', 60);
-      }
+    let types = await fetchProductTypes([], cats || [], 40, sub);
+    if (!types.length && !sub) {
+      types = await typesForListings(mergePool([], await fetchNaikDaunGlobal(200)), '', 60);
     }
     _dirMark(stages, 'types');
     types = sortTypeRows(types, 'sesuai', false);
@@ -9196,25 +9275,11 @@ async function fetchNaikDaunGlobal(limit = 60) {
   return data || [];
 }
 
-// ── Instant Produk-page open: warm the pool the directory actually reads, so
-// clicking Produk does not start from a cold cache.
-//
-// This used to build a separate `_dirInstantPool` that nothing ever read — the
-// only references to it were its declaration and its write — while costing two
-// boot-time queries (mv_naik_daun, then typesForListings, which itself ran the
-// old quartiles aggregate) that competed with the real load for connections.
-// loadDirHomePool() memoizes the pool renderDirectory() genuinely uses.
+// Instant Cari Produk open: seed from sessionStorage, then fetch listings_home
+// immediately (no idle delay). resolveListingPool memoizes the result.
 function warmDirInstantPool() {
-  if (isExporPasar()) {
-    const idle = window.larisIdle || ((fn) => setTimeout(fn, 800));
-    idle(() => { void resolveListingPool({ home: true }); }, 400);
-    return Promise.resolve([]);
-  }
-  return loadDirHomePool().then(rows => {
-    const idle = window.larisIdle || ((fn) => setTimeout(fn, 800));
-    idle(() => { void resolveListingPool({ home: true }); }, 400);
-    return rows;
-  });
+  seedDirHomeMemoFromSession();
+  return resolveListingPool({ home: true });
 }
 
 // ── Trending (mv_trending: real WoW sold deltas from listings history) ───
@@ -22432,10 +22497,26 @@ let _dirHomePoolPromise = null;
 function loadDirHomePool() {
   if (_dirHomePool) return Promise.resolve(_dirHomePool);
   if (_dirHomePoolPromise) return _dirHomePoolPromise;
-  _dirHomePoolPromise = fetchTerlarisMinggu(null, 80).then(rows => {
-    _dirHomePool = rows || [];
+  _dirHomePoolPromise = (async () => {
+    if (!_supabase) return [];
+    const build = () => {
+      let q = _supabase.from('product_types_v')
+        .select('keyword,wk_units,wk_pct,wk_items,n_listings')
+        .eq('city', 'ALL')
+        .gte('n_listings', 3)
+        .gte('wk_units', TERLARIS_MIN_UNITS)
+        .gte('wk_items', TERLARIS_MIN_ITEMS)
+        .order('wk_units', { ascending: false })
+        .limit(15);
+      if (_ptypeHasPct) q = q.gt('wk_pct', 0);
+      return q;
+    };
+    let { data, error } = await build();
+    if (ptypePctMissing(error) || ptypeWeeklyMissing(error)) ({ data, error } = await build());
+    if (error) throw error;
+    _dirHomePool = data || [];
     return _dirHomePool;
-  }).catch(() => {
+  })().catch(() => {
     _dirHomePoolPromise = null;
     return [];
   });
@@ -22765,6 +22846,31 @@ function paintDirectoryTable(opts = {}) {
   else paintDirTrending();
 }
 
+function applyDirectoryPool(pool, { q, cats, sub }) {
+  const scopeChanged = (state._dirPoolQ || '') !== q
+    || (state._dirPoolCats || '') !== (cats || []).join('|')
+    || (state._dirPoolSub || null) !== sub;
+  state._dirPoolQ = q;
+  state._dirPoolCats = (cats || []).join('|');
+  state._dirPoolSub = sub;
+  if (scopeChanged) {
+    // Keyword chips were removed from the directory UI; never pin the pool
+    // to primaryKw or results would stay silently filtered.
+    state.dirChipKw = '';
+    state.dirZoneKeys = null;
+    state.dirPage = 1;
+  }
+  state.dirTypes = pool.keywords;
+  state.dirNearby = pool.matchLevel === 'nearby' || !!pool.nearby;
+  state.dirMatchLevel = pool.matchLevel || (state.dirNearby ? 'nearby' : '');
+  state.dirBrand = pool.brand || '';
+  state.dirBrandMissing = !!pool.brandMissing;
+  state.dirPoolListings = pool.listings;
+  state.dirUnsold = pool.unsold || 0;
+  rememberProducts(pool.listings);
+  syncDirSortControls();
+}
+
 async function renderDirectory() {
   syncDirHero();
   void syncDirHome();
@@ -22778,16 +22884,26 @@ async function renderDirectory() {
   const sub = primaryDirCat() ? (state.dirSub || null) : null;
   const home = isDirHomeBrowse();
   const seq = ++_dirRenderSeq;
+  if (home) seedDirHomeMemoFromSession();
 
-  paintGarudaLoading(grid, 'binocs');
-  const trendHost = $('dir-trending-now');
-  if (trendHost) {
-    if (isExporPasar()) {
-      trendHost.hidden = true;
-      trendHost.innerHTML = '';
-    } else {
-      trendHost.hidden = false;
-      paintTrendingNow(trendHost, [], { pending: true });
+  const memo = _dirPoolMemo[dirPoolMemoKey({ q, cats, sub, home })];
+  const hasMemo = !!(memo && (memo.listings || []).length);
+  if (hasMemo) {
+    applyDirectoryPool(dirPoolClone(memo), { q, cats, sub });
+    const trendsReady = (memo.listings || []).some(r => r._petaTrend && !r._petaTrend.pending);
+    paintDirectoryTable({ remountPeta: !trendsReady });
+    state._dirSkipScroll = true;
+  } else {
+    paintGarudaLoading(grid, 'binocs');
+    const trendHost = $('dir-trending-now');
+    if (trendHost) {
+      if (isExporPasar()) {
+        trendHost.hidden = true;
+        trendHost.innerHTML = '';
+      } else {
+        trendHost.hidden = false;
+        paintTrendingNow(trendHost, [], { pending: true });
+      }
     }
   }
 
@@ -22798,33 +22914,17 @@ async function renderDirectory() {
     || (primaryDirCat() ? (state.dirSub || null) : null) !== sub;
   if (stale) return;
 
-  const scopeChanged = (state._dirPoolQ || '') !== q
-    || (state._dirPoolCats || '') !== cats.join('|')
-    || (state._dirPoolSub || null) !== sub;
-  state._dirPoolQ = q;
-  state._dirPoolCats = cats.join('|');
-  state._dirPoolSub = sub;
-  if (scopeChanged) {
-    // Keyword chips were removed from the directory UI; never pin the pool
-    // to primaryKw or results would stay silently filtered.
-    state.dirChipKw = '';
-    state.dirZoneKeys = null;
-    state.dirPage = 1;
+  const sameListings = hasMemo
+    && pool.listings && state.dirPoolListings
+    && pool.listings[0] === state.dirPoolListings[0];
+  applyDirectoryPool(pool, { q, cats, sub });
+  if (sameListings) {
+    state._dirSkipScroll = false;
+  } else {
+    if (state._dirSkipScroll) state._dirSkipScroll = false;
+    else scrollPanelToTop();
+    paintDirectoryTable({ remountPeta: true });
   }
-
-  state.dirTypes = pool.keywords;
-  state.dirNearby = pool.matchLevel === 'nearby' || !!pool.nearby;
-  state.dirMatchLevel = pool.matchLevel || (state.dirNearby ? 'nearby' : '');
-  state.dirBrand = pool.brand || '';
-  state.dirBrandMissing = !!pool.brandMissing;
-  state.dirPoolListings = pool.listings;
-  state.dirUnsold = pool.unsold || 0;
-  rememberProducts(pool.listings);
-  syncDirSortControls();
-
-  if (state._dirSkipScroll) state._dirSkipScroll = false;
-  else scrollPanelToTop();
-  paintDirectoryTable({ remountPeta: true });
   if (!isExporPasar() && q && pool.matchLevel !== 'chooser' && (pool.matchLevel !== 'keyword' || !pool.listings.length)) {
     void logUncoveredSearch(q, {
       category: detectSearchDomain(q.toLowerCase())?.id || null,

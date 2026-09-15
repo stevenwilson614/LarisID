@@ -11,6 +11,16 @@
 // A plain string is still accepted and renders with no tech line.
 window.LARIS_CHANGELOG = [
   {
+    date: '2026-09-15',
+    title: 'Cari Produk buka lebih cepat',
+    items: [
+      {
+        text: 'Daftar produk di Cari Produk muncul jauh lebih cepat, dan kalau kamu baru saja membukanya di tab yang sama, barisnya tampil langsung tanpa menunggu unduhan ulang.',
+        tech: 'listings_for_keywords ORDER BY matches kw_sold_ontopic_idx (no NULLS LAST); listings_home one-shot; sessionStorage lid_dir_home_v1 + paint-before-refresh (20260915160000).',
+      },
+    ],
+  },
+  {
     date: '2026-09-14',
     title: 'Pesan Steven wajib dijawab kalau sudah pernah muncul',
     items: [

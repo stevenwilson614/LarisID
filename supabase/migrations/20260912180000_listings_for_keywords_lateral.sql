@@ -3,7 +3,9 @@
 -- Live already uses LATERAL + exact d.keyword = k.kw so the btree
 -- listings_deduped_kw_sold_ontopic_idx can be used. This file makes
 -- re-apply idempotent. Measured ~0.45s for 15 keywords × 20 rows.
--- Apply: bash scripts/apply-selfhost.sh supabase/migrations/20260912180000_listings_for_keywords_lateral.sql
+-- Superseded by 20260915160000 (NULLS LAST missed the index; slim columns +
+-- listings_home). Do not re-apply this file.
+-- Apply: bash scripts/apply-selfhost.sh supabase/migrations/20260915160000_listings_for_keywords_index_order.sql
 
 create or replace function public.listings_for_keywords(
   p_keywords text[],
