@@ -291,6 +291,8 @@ html[data-mode="student"] .canvas iframe.tool-frame { min-height: 360px; height:
   width: 100%; border: 1px solid var(--line-2); border-radius: var(--r); padding: 10px 12px;
   font-size: .82rem; background: var(--ink-2); color: #fff;
 }
+.main input[type="checkbox"],
+.main input[type="file"] { width: auto; padding: 0; border: 0; background: transparent; }
 .compose { display: grid; gap: 8px; margin-top: 8px; }
 
 .table { width: 100%; border-collapse: collapse; font-size: .8rem; }
@@ -431,6 +433,45 @@ html[data-mode="mentor"] .inline-form { grid-template-columns: 1fr 1fr auto; ali
 html[data-mode="mentor"] .table { font-size: .82rem; }
 html[data-mode="mentor"] .toast { bottom: 24px; }
 
+.kur-toolbar {
+  display: flex; justify-content: space-between; gap: 12px; align-items: flex-start;
+  flex-wrap: wrap; margin-bottom: 14px;
+}
+.btn-sm.on { background: #fff; color: #111; border-color: #fff; }
+.kur-sec { margin-bottom: 12px; }
+.sec-head {
+  display: flex; justify-content: space-between; gap: 10px; align-items: center;
+  flex-wrap: nowrap; margin-bottom: 10px;
+}
+.sec-title {
+  font-size: 1rem; font-weight: 700; background: var(--ink-2); color: #fff;
+  border: 1px solid var(--line-2); border-radius: var(--r); padding: 8px 12px;
+  flex: 1 1 auto; min-width: 0; width: auto;
+}
+.lec-edit {
+  border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; margin: 8px 0;
+  background: var(--ink-2);
+}
+.lec-edit.is-open { border-color: var(--line-2); }
+.lec-edit-head { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; flex-wrap: wrap; }
+.lec-edit-body { display: grid; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.lec-edit-body h4 { margin: 8px 0 0; font-size: .78rem; }
+.lec-edit-body label { font-size: .7rem; font-weight: 700; color: var(--muted); }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.q-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.add-lec {
+  display: grid; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line-2);
+}
+.vid-drop {
+  display: grid; place-items: center; min-height: 88px; cursor: pointer;
+  border: 1px dashed var(--line-2); border-radius: var(--r);
+  background: var(--ink-3); color: var(--muted); font-size: .78rem; font-weight: 650;
+  text-align: center; padding: 12px;
+}
+.vid-drop:hover { border-color: #fff; color: #fff; }
+.vid-drop.is-over { border-color: var(--ok); color: #fff; background: #13261c; }
+.lec-video { width: 100%; aspect-ratio: 16/9; display: block; background: #000; }
+
 @media (max-width: 900px) {
   html[data-mode="mentor"] .workspace { grid-template-columns: 1fr; }
   html[data-mode="mentor"] .tabs {
@@ -441,4 +482,6 @@ html[data-mode="mentor"] .toast { bottom: 24px; }
   html[data-mode="mentor"] .grid-2,
   html[data-mode="mentor"] .inline-form { grid-template-columns: 1fr; }
   html[data-mode="mentor"] .player-layout { grid-template-columns: 1fr; }
+  .row2, .q-row { grid-template-columns: 1fr; }
+  .sec-head { flex-wrap: wrap; }
 }

@@ -42,7 +42,9 @@
   function hydrateCurriculum(merged) {
     const seedIds = (SEED.lectures || []).map((l) => l.id).join('|');
     const have = (merged.lectures || []).map((l) => l.id).join('|');
-    if (have !== seedIds) {
+    const legacy = !merged.lectures || !merged.lectures.length ||
+      merged.lectures.every((l) => /^l[0-9]+$/.test(l.id));
+    if (legacy) {
       merged.lectures = cloneLectures();
       merged.weeks = SEED.weeks.map((w) => ({ ...w }));
       merged.sessions = SEED.sessions.map((s) => ({
@@ -59,7 +61,7 @@
         merged.lastLecture[sid] = ids[ids.length - 1] || (SEED.lectures[0] && SEED.lectures[0].id);
       });
       merged.threads = SEED.threads.map((t) => ({ ...t }));
-    } else {
+    } else if (have === seedIds) {
       const byId = Object.fromEntries(SEED.lectures.map((l) => [l.id, l]));
       merged.lectures = merged.lectures.map((l) => {
         const seed = byId[l.id];
@@ -67,12 +69,24 @@
         return {
           ...seed,
           ...l,
-          url: seed.url || l.url,
+          url: l.url || seed.url,
+          videoBlob: !!l.videoBlob,
+          videoName: l.videoName || '',
           points: (l.points && l.points.length) ? l.points : (seed.points || []).slice(),
           questions: (l.questions && l.questions.length) ? l.questions : (seed.questions || []).map((q) => ({ ...q })),
           resources: (l.resources && l.resources.length) ? l.resources : (seed.resources || []).map((r) => ({ ...r }))
         };
       });
+    } else {
+      merged.lectures.forEach((l) => {
+        if (!l.points) l.points = [];
+        if (!l.questions) l.questions = [];
+        if (!l.resources) l.resources = [];
+      });
+    }
+    if (!merged.sectionStyle) merged.sectionStyle = 'minggu';
+    if (!merged.weeks || !merged.weeks.length) {
+      merged.weeks = SEED.weeks.map((w) => ({ ...w }));
     }
   }
 
@@ -99,7 +113,8 @@
       announcements: SEED.announcements.map((a) => ({ ...a })),
       progress,
       lastLecture: last,
-      kolab: {}
+      kolab: {},
+      sectionStyle: 'minggu'
     };
   }
 
@@ -151,7 +166,8 @@
     filterSiswa: '',
     kurOpen: false,
     skuId: null,
-    skuPreview: false
+    skuPreview: false,
+    editLecId: null
   };
 
   function save() {
@@ -250,11 +266,143 @@
     const yt = u.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/|live\/))([A-Za-z0-9_-]{11})/);
     if (yt) {
       return {
+        kind: 'youtube',
         embed: 'https://www.youtube-nocookie.com/embed/' + yt[1] + '?autoplay=1&rel=0&modestbranding=1',
         thumb: 'https://i.ytimg.com/vi/' + yt[1] + '/hqdefault.jpg'
       };
     }
+    const drive = u.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+    if (drive) {
+      return { kind: 'drive', embed: 'https://drive.google.com/file/d/' + drive[1] + '/preview' };
+    }
     return null;
+  }
+
+  function videoKindLabel(lec) {
+    if (lec.videoBlob) return lec.videoName ? ('File · ' + lec.videoName) : 'File di browser ini';
+    const e = parseEmbed(lec.url);
+    if (e && e.kind === 'youtube') return 'YouTube';
+    if (e && e.kind === 'drive') return 'Google Drive';
+    if (lec.url && /tiktok\.com/i.test(lec.url)) return 'TikTok (buka tab)';
+    if (lec.url) return 'Tautan';
+    return 'Belum ada video';
+  }
+
+  const BLOB_DB = 'anton-school-blobs-v1';
+  function blobDb() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(BLOB_DB, 1);
+      req.onupgradeneeded = () => { req.result.createObjectStore('files'); };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  function blobPut(id, file) {
+    return blobDb().then((d) => new Promise((resolve, reject) => {
+      const tx = d.transaction('files', 'readwrite');
+      tx.objectStore('files').put(file, id);
+      tx.oncomplete = () => { d.close(); resolve(); };
+      tx.onerror = () => { d.close(); reject(tx.error); };
+    }));
+  }
+  function blobGet(id) {
+    return blobDb().then((d) => new Promise((resolve, reject) => {
+      const tx = d.transaction('files', 'readonly');
+      const q = tx.objectStore('files').get(id);
+      q.onsuccess = () => { d.close(); resolve(q.result || null); };
+      q.onerror = () => { d.close(); reject(q.error); };
+    }));
+  }
+  function blobDel(id) {
+    return blobDb().then((d) => new Promise((resolve, reject) => {
+      const tx = d.transaction('files', 'readwrite');
+      tx.objectStore('files').delete(id);
+      tx.oncomplete = () => { d.close(); resolve(); };
+      tx.onerror = () => { d.close(); reject(tx.error); };
+    })).catch(() => {});
+  }
+  function blobClearAll() {
+    return blobDb().then((d) => new Promise((resolve) => {
+      const tx = d.transaction('files', 'readwrite');
+      tx.objectStore('files').clear();
+      tx.oncomplete = () => { d.close(); resolve(); };
+      tx.onerror = () => { d.close(); resolve(); };
+    })).catch(() => {});
+  }
+
+  function sectionStyle() { return db.sectionStyle === 'modul' ? 'modul' : 'minggu'; }
+  function sectionWord() { return sectionStyle() === 'modul' ? 'Modul' : 'Minggu'; }
+  function retitleDefaultSections() {
+    const word = sectionWord();
+    db.weeks.forEach((w, i) => {
+      const t = String(w.title || '').trim();
+      if (/^(Minggu|Modul)\b/i.test(t)) {
+        w.title = t.replace(/^(Minggu|Modul)/i, word);
+      } else if (!t) {
+        w.title = word + ' ' + (i + 1);
+      }
+    });
+  }
+
+  const MAX_VID = 80 * 1024 * 1024;
+
+  function moveLecInSection(id, dir) {
+    const l = lectureById(id);
+    if (!l) return;
+    const marked = lectures().map((x, i) => ({ x, i })).filter((o) => o.x.weekId === l.weekId);
+    const pos = marked.findIndex((o) => o.x.id === id);
+    const other = marked[pos + dir];
+    if (pos < 0 || !other) return;
+    const a = marked[pos].i;
+    const b = other.i;
+    const tmp = db.lectures[a];
+    db.lectures[a] = db.lectures[b];
+    db.lectures[b] = tmp;
+  }
+
+  function ingestVideoFile(file, opts) {
+    opts = opts || {};
+    if (!file) return;
+    if (file.type && file.type.indexOf('video') !== 0 && !/\.(mp4|webm|mov|m4v)$/i.test(file.name || '')) {
+      toast('Pilih file video (MP4 / WebM).');
+      return;
+    }
+    if (file.size > MAX_VID) {
+      toast('Maks 80 MB di prototype. Unggah ke YouTube/Drive lalu tempel tautan.');
+      return;
+    }
+    let id = opts.lecId;
+    if (!id) {
+      if (!opts.weekId) return;
+      id = 'v-' + Date.now();
+      const fromName = (file.name || 'Video').replace(/\.[^.]+$/, '');
+      db.lectures.push({
+        id,
+        weekId: opts.weekId,
+        type: 'video',
+        title: (opts.title || fromName).trim() || fromName,
+        mins: 8,
+        url: '',
+        videoBlob: true,
+        videoName: file.name,
+        requiredBefore: false,
+        points: [],
+        questions: [],
+        resources: []
+      });
+      ui.editLecId = id;
+    }
+    const lec = lectureById(id);
+    blobPut(id, file).then(() => {
+      if (lec) {
+        lec.videoBlob = true;
+        lec.videoName = file.name;
+        lec.type = 'video';
+      }
+      save();
+      toast('Video tersimpan di browser ini (bukan ke lynk / server).');
+      render();
+    }).catch(() => toast('Gagal simpan video di browser.'));
   }
 
   function payChip(st) {
@@ -422,13 +570,25 @@
       else if (tab === 'kolab') main.innerHTML = viewKolab();
     }
     bindLazy();
+    bindBlobVideos();
   }
 
   function bindLazy() {
     $('main').querySelectorAll('[data-embed]').forEach((el) => {
       el.addEventListener('click', () => {
         const src = el.getAttribute('data-embed');
+        if (!src) return;
         el.outerHTML = '<iframe src="' + esc(src) + '" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen title="Video materi"></iframe>';
+      });
+    });
+  }
+
+  function bindBlobVideos() {
+    $('main').querySelectorAll('video[data-blob]').forEach((el) => {
+      const id = el.getAttribute('data-blob');
+      blobGet(id).then((file) => {
+        if (!file || !el.isConnected) return;
+        el.src = URL.createObjectURL(file);
       });
     });
   }
@@ -554,10 +714,22 @@
   function renderCanvas(lec) {
     let body = '';
     if (lec.type === 'video') {
-      const e = parseEmbed(lec.url);
-      body = '<div class="lazy-embed" data-embed="' + esc(e ? e.embed : '') + '">' +
-        '<div class="play-orb">▶</div>' +
-        '<div class="lazy-note">Ketuk untuk memuat · hemat data</div></div>';
+      if (lec.videoBlob) {
+        body = '<video class="lec-video" controls playsinline preload="metadata" data-blob="' + esc(lec.id) + '"></video>';
+      } else {
+        const e = parseEmbed(lec.url);
+        if (e && e.embed) {
+          body = '<div class="lazy-embed" data-embed="' + esc(e.embed) + '">' +
+            '<div class="play-orb">▶</div>' +
+            '<div class="lazy-note">Ketuk untuk memuat · ' + (e.kind === 'drive' ? 'Google Drive' : 'hemat data') + '</div></div>';
+        } else if (lec.url) {
+          body = '<div class="article"><p>Video ini tidak bisa diputar di dalam kelas (TikTok / tautan lain).</p>' +
+            '<a class="btn" href="' + esc(lec.url) + '" target="_blank" rel="noopener">Buka video</a>' +
+            '<p class="muted" style="margin-top:10px">YouTube atau file MP4 tampil di sini. TikTok biasanya harus dibuka di aplikasinya.</p></div>';
+        } else {
+          body = '<div class="article"><p class="muted">Belum ada video. Mentor tempel tautan atau unggah di Kurikulum.</p></div>';
+        }
+      }
     } else if (lec.type === 'tool') {
       let src = lec.iframe || '';
       const sku = lec.skuId ? productById(lec.skuId) : null;
@@ -583,9 +755,11 @@
     const doc = (lec.resources || [])[0];
     let html = '';
     if (doc) {
+      const dummy = /handout\.html/.test(doc.url || '');
       html += '<div class="card lec-after"><h3>Dokumen</h3>' +
-        '<a class="doc-link" href="' + esc(doc.url) + '" target="_blank" rel="noopener">' + esc(doc.name) + '</a>' +
-        '<p class="muted" style="margin:8px 0 0">Contoh lembar kerja. Bukan file Anton.</p></div>';
+        '<a class="doc-link" href="' + esc(doc.url) + '" target="_blank" rel="noopener">' + esc(doc.name || 'Lembar kerja') + '</a>' +
+        (dummy ? '<p class="muted" style="margin:8px 0 0">Contoh lembar kerja. Bukan file Anton.</p>' : '') +
+        '</div>';
     }
     if (lec.points && lec.points.length) {
       html += '<div class="card lec-after"><h3>Poin penting</h3><ul class="key-points">' +
@@ -606,11 +780,11 @@
   }
 
   function renderKurikulumSidebar() {
-    const all = lectures();
+    let n = 0;
     return progressBarHtml(ui.personaId) + db.weeks.map((w) => {
       const items = lecturesInWeek(w.id).map((l) => {
+        n += 1;
         const cur = l.id === ui.lectureId;
-        const n = all.findIndex((x) => x.id === l.id) + 1;
         return '<button type="button" class="lec' + (cur ? ' current' : '') + '" data-act="open-lec" data-id="' + esc(l.id) + '">' +
           '<span class="mark' + (isDone(ui.personaId, l.id) ? ' done' : '') + '" aria-hidden="true">' +
           (isDone(ui.personaId, l.id) ? '✓' : '') + '</span>' +
@@ -999,24 +1173,113 @@
 
   function viewKurikulum() {
     const readonly = ui.role === 'asisten';
-    return '<div class="card"><h2>Kurikulum</h2>' +
-      '<p class="muted">12 video contoh. Tiap video: lembar kerja, poin penting, cek pemahaman. Bukan skor buatan.</p>' +
-      db.weeks.map((w) => {
-        const items = lecturesInWeek(w.id).map((l) =>
-          '<li><span>' + esc(typeLabel(l.type)) + ' · ' + esc(l.title) +
-          (l.requiredBefore ? ' · wajib' : '') + '</span>' +
-          (readonly ? '' : '<button class="btn-sm" data-act="del-lec" data-id="' + esc(l.id) + '">Hapus</button>') +
-          '</li>'
-        ).join('');
-        return '<h3>' + esc(w.title) + '</h3><ul class="list-check">' + items + '</ul>' +
-          (readonly ? '' : '<form class="inline-form" data-act="add-lec" data-week="' + esc(w.id) + '">' +
-            '<input name="title" required placeholder="Judul materi">' +
-            '<select name="type"><option value="video">Video</option><option value="text">Bacaan</option><option value="document">File</option><option value="tool">Alat</option></select>' +
-            '<input name="url" placeholder="URL video / file / iframe alat">' +
-            '<label class="muted"><input type="checkbox" name="req"> Wajib sebelum kelas</label>' +
-            '<button class="btn" type="submit">Tambah</button></form>');
-      }).join('') +
+    const word = sectionWord();
+    const nVid = lectures().filter((l) => l.type === 'video').length;
+    const toolbar = '<div class="kur-toolbar">' +
+      '<div><h2 style="margin:0">Kurikulum</h2>' +
+        '<p class="muted" style="margin:6px 0 0">' + nVid + ' video · label bagian: ' + word.toLowerCase() +
+        '. Ganti ke minggu/modul, atau ketik nama sendiri. Checkout Instagram tetap lynk.id.</p></div>' +
+      (readonly ? '' :
+        '<div class="row">' +
+          '<button type="button" class="btn-sm' + (sectionStyle() === 'minggu' ? ' on' : '') + '" data-act="sec-style" data-id="minggu">Pakai minggu</button>' +
+          '<button type="button" class="btn-sm' + (sectionStyle() === 'modul' ? ' on' : '') + '" data-act="sec-style" data-id="modul">Pakai modul</button>' +
+          '<button type="button" class="btn" data-act="add-sec">+ Bagian</button>' +
+        '</div>') +
       '</div>';
+    const sections = db.weeks.map((w, wi) => {
+      const items = lecturesInWeek(w.id);
+      const list = items.map((l, li) => lecEditorCard(l, readonly, wi, li, items.length)).join('') ||
+        '<p class="muted">Belum ada video di bagian ini.</p>';
+      return '<section class="card kur-sec">' +
+        '<div class="sec-head">' +
+          (readonly
+            ? '<h3 style="margin:0">' + esc(w.title) + '</h3>'
+            : '<input class="sec-title" data-act="sec-title" data-id="' + esc(w.id) + '" value="' + esc(w.title) + '" aria-label="Nama bagian">') +
+          (readonly ? '' : '<div class="row">' +
+            '<button type="button" class="btn-sm" data-act="sec-up" data-id="' + esc(w.id) + '"' + (wi === 0 ? ' disabled' : '') + '>Naik</button>' +
+            '<button type="button" class="btn-sm" data-act="sec-down" data-id="' + esc(w.id) + '"' + (wi === db.weeks.length - 1 ? ' disabled' : '') + '>Turun</button>' +
+            '<button type="button" class="btn-sm" data-act="del-sec" data-id="' + esc(w.id) + '">Hapus bagian</button>' +
+          '</div>') +
+        '</div>' +
+        list +
+        (readonly ? '' : addLecForm(w.id)) +
+      '</section>';
+    }).join('');
+    return toolbar + sections;
+  }
+
+  function addLecForm(weekId) {
+    return '<form class="add-lec" data-act="add-lec" data-week="' + esc(weekId) + '">' +
+      '<strong>Tambah video</strong>' +
+      '<input name="title" required maxlength="140" placeholder="Judul, contoh: Cara set harga promo">' +
+      '<label class="muted">Tempel tautan YouTube, Google Drive, atau TikTok</label>' +
+      '<input name="url" placeholder="https://www.youtube.com/watch?v=…">' +
+      '<p class="muted" style="margin:0">Lebih mudah: tempel tautan. File MP4/WebM (maks 80 MB) hanya tinggal di browser ini — produksi nanti ke Drive/YouTube.</p>' +
+      '<label class="vid-drop" data-act="vid-drop" data-week="' + esc(weekId) + '">' +
+        '<input type="file" name="videoFile" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v" hidden>' +
+        '<span>Drop video ke sini, atau ketuk untuk pilih file</span>' +
+      '</label>' +
+      '<div class="row">' +
+        '<label class="muted"><input type="checkbox" name="req"> Wajib sebelum live class</label>' +
+        '<button class="btn" type="submit">Tambah ke bagian ini</button>' +
+      '</div></form>';
+  }
+
+  function lecEditorCard(l, readonly, wi, li, len) {
+    const open = ui.editLecId === l.id;
+    const head = '<div class="lec-edit-head">' +
+      '<div><strong>' + esc(l.title) + '</strong>' +
+        '<div class="muted">' + esc(videoKindLabel(l)) + (l.requiredBefore ? ' · wajib' : '') +
+        ' · ' + esc(l.mins || 0) + ' mnt</div></div>' +
+      '<div class="row">' +
+        (readonly ? '' : '<button type="button" class="btn-sm" data-act="lec-up" data-id="' + esc(l.id) + '"' + (li === 0 ? ' disabled' : '') + '>Naik</button>' +
+          '<button type="button" class="btn-sm" data-act="lec-down" data-id="' + esc(l.id) + '"' + (li === len - 1 ? ' disabled' : '') + '>Turun</button>') +
+        '<button type="button" class="btn-sm" data-act="edit-lec" data-id="' + esc(l.id) + '">' +
+          (open ? 'Tutup' : 'Ubah') + '</button>' +
+        (readonly ? '' : '<button type="button" class="btn-sm" data-act="del-lec" data-id="' + esc(l.id) + '">Hapus</button>') +
+      '</div></div>';
+    if (!open) return '<article class="lec-edit">' + head + '</article>';
+    const qs = (l.questions || []).concat([{ q: '', hint: '' }]);
+    const qHtml = qs.map((q, i) =>
+      '<div class="q-row">' +
+        '<input data-act="q-field" data-id="' + esc(l.id) + '" data-i="' + i + '" data-k="q" value="' + esc(q.q || '') + '" placeholder="Pertanyaan ' + (i + 1) + '">' +
+        '<input data-act="q-field" data-id="' + esc(l.id) + '" data-i="' + i + '" data-k="hint" value="' + esc(q.hint || '') + '" placeholder="Arah jawaban (opsional)">' +
+      '</div>'
+    ).join('');
+    const doc = (l.resources && l.resources[0]) || { name: '', url: '' };
+    const body = readonly
+      ? '<p class="muted">Asisten hanya lihat. Anton yang unggah.</p>'
+      : '<div class="lec-edit-body">' +
+          '<label>Judul</label>' +
+          '<input data-act="lec-field" data-id="' + esc(l.id) + '" data-k="title" value="' + esc(l.title) + '">' +
+          '<div class="row2">' +
+            '<div><label>Durasi (menit)</label>' +
+              '<input data-act="lec-field" data-id="' + esc(l.id) + '" data-k="mins" type="number" min="1" value="' + esc(l.mins || 5) + '"></div>' +
+            '<div><label>Pindah ke bagian</label>' +
+              '<select data-act="lec-week" data-id="' + esc(l.id) + '">' +
+                db.weeks.map((w) => '<option value="' + esc(w.id) + '"' + (w.id === l.weekId ? ' selected' : '') + '>' + esc(w.title) + '</option>').join('') +
+              '</select></div>' +
+          '</div>' +
+          '<label class="muted"><input type="checkbox" data-act="lec-req" data-id="' + esc(l.id) + '"' +
+            (l.requiredBefore ? ' checked' : '') + '> Wajib sebelum live class</label>' +
+          '<h4>Video</h4>' +
+          '<p class="muted">YouTube paling lancar di dalam kelas. Drive juga bisa. Atau unggah MP4 di bawah.</p>' +
+          '<input data-act="lec-field" data-id="' + esc(l.id) + '" data-k="url" value="' + esc(l.url || '') + '" placeholder="https://youtube.com/…">' +
+          '<label class="vid-drop" data-act="vid-drop" data-id="' + esc(l.id) + '">' +
+            '<input type="file" data-act="vid-file" data-id="' + esc(l.id) + '" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v" hidden>' +
+            '<span>' + (l.videoBlob ? ('Ganti file · sekarang: ' + esc(l.videoName || 'video')) : 'Drop / pilih file MP4') + '</span>' +
+          '</label>' +
+          (l.videoBlob ? '<button type="button" class="btn-sm" data-act="clear-vid" data-id="' + esc(l.id) + '">Hapus file, pakai tautan</button>' : '') +
+          '<h4>Lembar kerja</h4>' +
+          '<input data-act="doc-name" data-id="' + esc(l.id) + '" value="' + esc(doc.name || '') + '" placeholder="Nama file, contoh: Worksheet harga.pdf">' +
+          '<input data-act="doc-url" data-id="' + esc(l.id) + '" value="' + esc(doc.url || '') + '" placeholder="Tautan Drive / PDF">' +
+          '<h4>Poin penting</h4>' +
+          '<textarea data-act="lec-points" data-id="' + esc(l.id) + '" rows="4" placeholder="Satu poin per baris">' +
+            esc((l.points || []).join('\n')) + '</textarea>' +
+          '<h4>Cek pemahaman</h4>' +
+          qHtml +
+        '</div>';
+    return '<article class="lec-edit is-open">' + head + body + '</article>';
   }
 
   function viewPustaka() {
@@ -1203,6 +1466,70 @@
       save();
       return;
     }
+    if (t.matches('[data-act="sec-title"]')) {
+      const w = db.weeks.find((x) => x.id === t.getAttribute('data-id'));
+      if (w) { w.title = t.value; save(); }
+      return;
+    }
+    if (t.matches('[data-act="lec-field"]')) {
+      const l = lectureById(t.getAttribute('data-id'));
+      if (!l) return;
+      const k = t.getAttribute('data-k');
+      if (k === 'mins') l.mins = Math.max(1, +t.value || 5);
+      else l[k] = t.value;
+      if (k === 'url' && t.value) { l.videoBlob = false; }
+      save();
+      return;
+    }
+    if (t.matches('[data-act="lec-req"]')) {
+      const l = lectureById(t.getAttribute('data-id'));
+      if (l) { l.requiredBefore = t.checked; save(); }
+      return;
+    }
+    if (t.matches('[data-act="lec-week"]')) {
+      const l = lectureById(t.getAttribute('data-id'));
+      if (l) { l.weekId = t.value; save(); render(); }
+      return;
+    }
+    if (t.matches('[data-act="lec-points"]')) {
+      const l = lectureById(t.getAttribute('data-id'));
+      if (l) {
+        l.points = String(t.value || '').split('\n').map((s) => s.trim()).filter(Boolean);
+        save();
+      }
+      return;
+    }
+    if (t.matches('[data-act="doc-name"]') || t.matches('[data-act="doc-url"]')) {
+      const l = lectureById(t.getAttribute('data-id'));
+      if (!l) return;
+      l.resources = l.resources && l.resources.length ? l.resources : [{ name: '', url: '' }];
+      if (t.matches('[data-act="doc-name"]')) l.resources[0].name = t.value;
+      else l.resources[0].url = t.value;
+      save();
+      return;
+    }
+    if (t.matches('[data-act="q-field"]')) {
+      const l = lectureById(t.getAttribute('data-id'));
+      if (!l) return;
+      const i = +t.getAttribute('data-i');
+      const k = t.getAttribute('data-k');
+      l.questions = l.questions || [];
+      while (l.questions.length <= i) l.questions.push({ q: '', hint: '' });
+      l.questions[i][k] = t.value;
+      l.questions = l.questions.filter((q) => q.q || q.hint);
+      save();
+      return;
+    }
+    if (t.matches('[data-act="vid-file"]')) {
+      const file = t.files && t.files[0];
+      if (file) ingestVideoFile(file, { lecId: t.getAttribute('data-id') });
+      return;
+    }
+    if (t.matches('[name="videoFile"]')) {
+      const span = t.closest('.vid-drop') && t.closest('.vid-drop').querySelector('span');
+      if (span && t.files && t.files[0]) span.textContent = 'Siap diunggah · ' + t.files[0].name;
+      return;
+    }
     if (t.matches('[data-act="csv"]')) {
       const file = t.files && t.files[0];
       if (!file) return;
@@ -1217,6 +1544,29 @@
     }
   });
 
+  document.addEventListener('dragover', (e) => {
+    const z = e.target.closest('[data-act="vid-drop"]');
+    if (!z) return;
+    e.preventDefault();
+    z.classList.add('is-over');
+  });
+  document.addEventListener('dragleave', (e) => {
+    const z = e.target.closest('[data-act="vid-drop"]');
+    if (z) z.classList.remove('is-over');
+  });
+  document.addEventListener('drop', (e) => {
+    const z = e.target.closest('[data-act="vid-drop"]');
+    if (!z) return;
+    e.preventDefault();
+    z.classList.remove('is-over');
+    const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!file) return;
+    const form = z.closest('form');
+    const titleInp = form && form.querySelector('[name="title"]');
+    const title = titleInp ? String(titleInp.value || '').trim() : '';
+    ingestVideoFile(file, { lecId: z.getAttribute('data-id'), weekId: z.getAttribute('data-week'), title: title });
+  });
+
   document.addEventListener('input', (e) => {
     const t = e.target;
     if (t.matches('[data-act="filter-siswa"]')) {
@@ -1228,6 +1578,14 @@
         const n = el.value.length;
         el.setSelectionRange(n, n);
       }
+      return;
+    }
+    if (t.matches('[data-act="lec-points"]')) {
+      const l = lectureById(t.getAttribute('data-id'));
+      if (l) {
+        l.points = String(t.value || '').split('\n').map((s) => s.trim()).filter(Boolean);
+        save();
+      }
     }
   });
 
@@ -1235,6 +1593,10 @@
     const btn = e.target.closest('[data-act]');
     if (!btn) return;
     const act = btn.getAttribute('data-act');
+    if (act === 'vid-drop' || act === 'vid-file' || act === 'add-lec' || act === 'sec-title' ||
+        act === 'lec-field' || act === 'lec-points' || act === 'q-field' || act === 'doc-name' || act === 'doc-url') {
+      return;
+    }
     if (act === 'tab') {
       const id = btn.getAttribute('data-id');
       if (isStaff()) ui.mentorTab = id;
@@ -1311,8 +1673,58 @@
     } else if (act === 'close-drawer') {
       closeDrawer();
     } else if (act === 'del-lec') {
-      db.lectures = db.lectures.filter((l) => l.id !== btn.getAttribute('data-id'));
+      const id = btn.getAttribute('data-id');
+      db.lectures = db.lectures.filter((l) => l.id !== id);
+      blobDel(id);
+      if (ui.editLecId === id) ui.editLecId = null;
       save();
+      render();
+    } else if (act === 'edit-lec') {
+      const id = btn.getAttribute('data-id');
+      ui.editLecId = ui.editLecId === id ? null : id;
+      render();
+    } else if (act === 'sec-style') {
+      db.sectionStyle = btn.getAttribute('data-id') === 'modul' ? 'modul' : 'minggu';
+      retitleDefaultSections();
+      save();
+      render();
+    } else if (act === 'add-sec') {
+      const n = db.weeks.length + 1;
+      db.weeks.push({ id: 's-' + Date.now(), title: sectionWord() + ' ' + n, due: '' });
+      save();
+      render();
+    } else if (act === 'del-sec') {
+      const id = btn.getAttribute('data-id');
+      if (lecturesInWeek(id).length) {
+        toast('Pindahkan atau hapus video di bagian ini dulu.');
+        return;
+      }
+      if (db.weeks.length < 2) {
+        toast('Minimal satu bagian.');
+        return;
+      }
+      db.weeks = db.weeks.filter((w) => w.id !== id);
+      save();
+      render();
+    } else if (act === 'sec-up' || act === 'sec-down') {
+      const id = btn.getAttribute('data-id');
+      const i = db.weeks.findIndex((w) => w.id === id);
+      const j = act === 'sec-up' ? i - 1 : i + 1;
+      if (i < 0 || j < 0 || j >= db.weeks.length) return;
+      const tmp = db.weeks[i]; db.weeks[i] = db.weeks[j]; db.weeks[j] = tmp;
+      save();
+      render();
+    } else if (act === 'lec-up' || act === 'lec-down') {
+      moveLecInSection(btn.getAttribute('data-id'), act === 'lec-up' ? -1 : 1);
+      save();
+      render();
+    } else if (act === 'clear-vid') {
+      const id = btn.getAttribute('data-id');
+      const l = lectureById(id);
+      if (l) { l.videoBlob = false; l.videoName = ''; }
+      blobDel(id);
+      save();
+      toast('File dihapus. Tempel tautan kalau perlu.');
       render();
     } else if (act === 'csv-demo') {
       fetch('./data/kalodata-creators.csv').then((r) => r.text()).then((txt) => {
@@ -1397,23 +1809,39 @@
       save();
       openDrawer(id);
     } else if (act === 'add-lec') {
-      const type = String(fd.get('type'));
-      const url = String(fd.get('url') || '');
+      const weekId = form.getAttribute('data-week');
+      const title = String(fd.get('title') || '').trim();
+      const url = String(fd.get('url') || '').trim();
+      const file = form.querySelector('[name="videoFile"]') && form.querySelector('[name="videoFile"]').files[0];
+      if (!title) return;
+      if (!url && !file) {
+        toast('Tempel tautan atau unggah file video.');
+        return;
+      }
+      const id = 'v-' + Date.now();
       db.lectures.push({
-        id: 'l-' + Date.now(),
-        weekId: form.getAttribute('data-week'),
-        type,
-        title: String(fd.get('title')),
-        mins: 5,
+        id,
+        weekId,
+        type: 'video',
+        title,
+        mins: 8,
         url,
-        iframe: type === 'tool' ? url : '',
-        requiredBefore: form.querySelector('[name=req]').checked,
-        body: type === 'text' ? url : '',
-        resources: [],
-        job: type === 'tool' ? 'Alat baru' : ''
+        videoBlob: false,
+        videoName: '',
+        requiredBefore: !!(form.querySelector('[name=req]') && form.querySelector('[name=req]').checked),
+        points: [],
+        questions: [],
+        resources: []
       });
+      ui.editLecId = id;
       save();
-      render();
+      if (file) {
+        ingestVideoFile(file, { lecId: id });
+      } else {
+        save();
+        toast('Video ditambah. Lengkapi poin & lembar kerja di Ubah.');
+        render();
+      }
     } else if (act === 'meet') {
       const ses = db.sessions.find((s) => s.id === form.getAttribute('data-id'));
       if (ses) ses.meetUrl = String(fd.get('meetUrl'));
@@ -1426,8 +1854,10 @@
   $('btn-reset').addEventListener('click', () => {
     if (!confirm('Hapus data lokal prototype ini?')) return;
     localStorage.removeItem(KEY);
+    blobClearAll();
     db = defaultState();
     ui.kolabSel = new Set();
+    ui.editLecId = null;
     closeDrawer();
     render();
   });

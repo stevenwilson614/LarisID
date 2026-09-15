@@ -51,6 +51,17 @@ poin penting, dan 2 pertanyaan cek pemahaman (bukan ujian). Check hijau + bar
 % untuk seluruh kurikulum. Kolab tetap alat mentoring di Pustaka, bukan salah
 satu dari 12.
 
+Mentor (desktop) boleh ganti bagian jadi **minggu atau modul**, rename, tambah,
+urutkan, dan unggah video (tautan YouTube/Drive atau file MP4 di browser ini).
+Asisten hanya lihat.
+
+## Instagram / lynk — kita tidak ambil alih
+
+Etalase IG (link in bio) **tetap lynk.id/obrolan.marketing**. LMS bukan pengganti
+menu Instagram. Lynk = daftar harga + checkout (Anton merchant). Sekolah =
+kelas setelah orang sudah bayar / mentoring. Kita tidak edit lynk dan tidak
+pindahkan checkout ke LarisID.
+
 ## Catalog (lynk.id/obrolan.marketing)
 
 Six products can be bought **satuan**. **Mentoring** unlocks all six plus live class
