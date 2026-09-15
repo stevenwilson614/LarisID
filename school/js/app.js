@@ -2,6 +2,7 @@
 (function () {
   const SEED = window.ANTON_SEED;
   const KEY = 'anton-school-v2';
+  const TOOL_SANDBOX = 'allow-scripts allow-forms allow-same-origin allow-modals allow-popups';
   const $ = (id) => document.getElementById(id);
   const ALL_SKUS = () => (SEED.catalog || []).map((p) => p.id);
 
@@ -432,15 +433,42 @@
   }
 
   /* ── Kolab (per-student) ─────────────────────────────────────────── */
+  function cloneKalodata() {
+    return (SEED.kalodataCreators || []).map((c) => Object.assign({ status: 'new' }, c));
+  }
+
   function kolabOf(sid) {
     if (!db.kolab[sid]) {
       db.kolab[sid] = {
-        creators: [],
+        creators: cloneKalodata(),
         used: SEED.kolabQuota.used,
-        jobs: []
+        jobs: [],
+        source: 'kalodata-sample'
       };
+    } else if (!db.kolab[sid].creators.length && db.kolab[sid].source !== 'import') {
+      db.kolab[sid].creators = cloneKalodata();
+      db.kolab[sid].source = 'kalodata-sample';
     }
     return db.kolab[sid];
+  }
+
+  function shopTiktok() {
+    return SEED.shopTiktok || { handle: 'bule_barat', display: '@bule_barat', url: 'https://www.tiktok.com/@bule_barat', name: 'Steven' };
+  }
+
+  function kolabMsg(c) {
+    const shop = shopTiktok();
+    const handle = (c && c.handle) || '{handle}';
+    const niche = (c && c.niche) || '{niche}';
+    return 'Halo ' + handle + ',\n\nAku ' + shop.name + ' dari TikTok ' + shop.display +
+      '. Lagi jual ' + SEED.product.name + ' dan cari kreator niche ' + niche +
+      ' buat collab affiliate.\n\nKomisi yang aku tawar ' + SEED.product.suggestedCommission +
+      '%. Boleh aku kirim undangan dari Affiliate Center?\n\n— ' + shop.display;
+  }
+
+  function kolabReply(c) {
+    const shop = shopTiktok();
+    return 'Halo ' + shop.display + ', boleh. Kirim undangan Affiliate Center aja ya, aku cek dulu.';
   }
 
   function rankCreator(c, product) {
@@ -751,7 +779,7 @@
       let src = lec.iframe || '';
       const sku = lec.skuId ? productById(lec.skuId) : null;
       if (sku && sku.example && src) src += (src.indexOf('?') >= 0 ? '&' : '?') + 'contoh=1';
-      body = '<iframe class="tool-frame" sandbox="allow-scripts allow-forms allow-same-origin" src="' + esc(src) + '" title="' + esc(lec.title) + '"></iframe>';
+      body = '<iframe class="tool-frame" sandbox="' + TOOL_SANDBOX + '" src="' + esc(src) + '" title="' + esc(lec.title) + '"></iframe>';
     } else if (lec.type === 'document') {
       body = '<div class="article"><p>File kelas: <a href="' + esc(lec.url) + '" target="_blank" rel="noopener">' + esc(lec.title) + '</a></p><p class="muted">Prototype memakai tautan dummy. Produksi nanti: bucket cohort-docs.</p></div>';
     } else {
@@ -941,7 +969,7 @@
     let canvas = '';
     let extra = '';
     if (p.kind === 'tool') {
-      canvas = '<iframe class="tool-frame" sandbox="allow-scripts allow-forms allow-same-origin" src="' +
+      canvas = '<iframe class="tool-frame" sandbox="' + TOOL_SANDBOX + '" src="' +
         esc(iframeSrc(p, preview)) + '" title="' + esc(p.title) + '"></iframe>';
     } else {
       const e = parseEmbed(p.url);
@@ -956,27 +984,28 @@
           '</ul></div>';
       }
     }
-    if (p.sheet) {
+    if (p.kind !== 'tool' && p.sheet) {
       extra += '<div class="card" style="margin-top:10px"><h3>Spreadsheet Anton</h3>' +
         '<p class="muted">Tangkapan layar rumus Set harga. Pakai tombol contoh di kalkulator.</p>' +
         '<img class="sheet-shot" src="' + esc(p.sheet) + '" alt="Spreadsheet kalkulator TikTok"></div>';
     }
-    const hero = p.kind === 'tool' && p.cover
-      ? '<img class="sku-hero" src="' + esc(p.cover) + '" alt="' + esc(p.title) + '">'
-      : '';
     return '<button type="button" class="kur-toggle" data-act="tab" data-id="' + esc(ui.skuFrom || 'pustaka') + '">← ' +
       (ui.skuFrom === 'alat' ? 'Alat' : 'Pustaka') + '</button>' +
       exampleBanner(p, preview) +
       '<div class="card" style="padding:0;overflow:hidden;margin-top:10px">' +
-        hero +
         '<div class="canvas">' + canvas + '</div>' +
         '<div class="canvas-bar">' +
-          '<div><strong>' + esc(p.title) + '</strong>' +
-          '<div class="muted">' + (owned ? 'Punya kamu' : 'Contoh sampai Anton isi file') + '</div></div>' +
+          '<div><strong>' + esc(alatName(p)) + '</strong>' +
+          '<div class="muted">' + (owned ? 'Punya kamu' : 'Contoh sampai Anton isi file') +
+          (p.id === 'calc' ? ' · Unduh PDF di dalam kalkulator' : '') + '</div></div>' +
           (owned
             ? '<a class="btn secondary" href="' + esc(p.lynk) + '" target="_blank" rel="noopener">Halaman lynk</a>'
             : '<a class="btn" href="' + esc(p.lynk) + '" target="_blank" rel="noopener">Beli di lynk.id</a>') +
         '</div></div>' + extra;
+  }
+
+  function alatName(p) {
+    return { calc: 'Kalkulator harga', 'ai-creative': 'AI Creative', 'ai-data': 'AI Analisa' }[p.id] || p.title;
   }
 
   function alatHomeStrip(sid) {
@@ -985,8 +1014,7 @@
       const owned = canSku(sid, p.id);
       return '<button type="button" class="alat-chip' + (owned ? '' : ' locked') + '" data-act="' +
         (owned ? 'open-sku' : 'contoh-sku') + '" data-from="alat" data-id="' + esc(p.id) + '">' +
-        skuCoverHtml(p, 'alat-chip-cover') +
-        '<span><strong>' + esc(p.title.replace(/^TikTok Seller |^Ai Seller |^Asisten AI /, '')) + '</strong>' +
+        '<span><strong>' + esc(alatName(p)) + '</strong>' +
         '<em>' + (owned ? 'Buka' : 'Contoh') + '</em></span></button>';
     }).join('');
     const kolab = canMentoring(sid)
@@ -996,7 +1024,7 @@
       '<div class="row" style="justify-content:space-between">' +
         '<h2 style="margin:0">Alat</h2>' +
         '<button type="button" class="btn-sm" data-act="tab" data-id="alat">Lihat semua</button></div>' +
-      '<p class="muted">Kalkulator, AI creative, AI analisa. Yang terkunci tetap bisa dilihat contohnya.</p>' +
+      '<p class="muted">Kalkulator, AI, Kolab. Yang terkunci tetap bisa dilihat contohnya.</p>' +
       '<div class="alat-pick">' + tiles + kolab + '</div></section>';
   }
 
@@ -1005,29 +1033,28 @@
     const tools = toolsCatalog();
     let html = '<h2 style="margin:0 0 4px">Alat</h2>' +
       '<p class="muted" style="margin:0 0 14px">Pilih yang mau dipakai. Mentoring = semua kebuka. Satuan = yang sudah dibeli di lynk.id.</p>' +
-      '<div class="tool-grid">';
+      '<div class="alat-list">';
     html += tools.map((p) => {
       const owned = canSku(sid, p.id);
       return '<div class="card alat-row">' +
-        skuCoverHtml(p, 'alat-chip-cover') +
         '<div class="sku-body">' +
         (owned ? '<span class="chip lunas">Bisa dipakai</span>' : '<span class="chip">Terkunci</span>') +
         (p.example ? ' <span class="chip warn">Contoh</span>' : '') +
-        '<h3>' + esc(p.title) + '</h3>' +
-        '<p class="muted">' + esc(p.job) + '</p>' +
-        '<div class="row" style="margin-top:8px">' +
+        '<h3>' + esc(alatName(p)) + '</h3>' +
+        '<p class="muted">' + esc(p.job) + '</p></div>' +
+        '<div class="alat-row-act">' +
           (owned
             ? '<button class="btn" data-act="open-sku" data-from="alat" data-id="' + esc(p.id) + '">Buka</button>'
             : '<a class="btn" href="' + esc(p.lynk) + '" target="_blank" rel="noopener">Beli di lynk.id</a>' +
               '<button class="btn secondary" data-act="contoh-sku" data-from="alat" data-id="' + esc(p.id) + '">Lihat contoh</button>') +
-        '</div></div></div>';
+        '</div></div>';
     }).join('');
     html += '</div>';
     if (canMentoring(sid)) {
       html += '<h3 class="week-label">Khusus kelas</h3>' +
         '<button type="button" class="card alat-row" data-act="open-kolab" style="width:100%;text-align:left">' +
           '<div class="sku-body" style="padding:0"><h3>Kolab — cari kreator</h3>' +
-          '<p class="muted">Bukan produk lynk. Hanya mentoring.</p></div>' +
+          '<p class="muted">Contoh Kalodata + DM dari ' + esc(shopTiktok().display) + '. Bukan produk lynk.</p></div>' +
         '</button>';
     }
     html += '<p class="muted" style="margin-top:16px">Rekaman webinar ada di Pustaka. Checkout tetap lynk.id.</p>';
@@ -1104,14 +1131,18 @@
     const sid = isStaff() ? (ui.drawerId || ui.personaId) : ui.personaId;
     const k = kolabOf(sid);
     const q = SEED.kolabQuota;
+    const shop = shopTiktok();
     const left = Math.max(0, q.weekly - k.used);
     const ranked = k.creators.map((c) => rankCreator(c, SEED.product))
       .sort((a, b) => b.score - a.score);
     const selected = ranked.filter((c) => ui.kolabSel.has(c.handle));
     const thisSend = Math.min(selected.length, q.batch, left);
+    const preview = selected[0] || ranked.find((c) => !c.skip);
+    const sampleNote = k.source === 'import' ? 'CSV kamu.' : 'Contoh export Kalodata (bukan scrape).';
     return '<section class="card">' +
       '<h2>Kolab · kuota toko, bukan blast</h2>' +
-      '<p class="muted">Kalodata (CSV kamu) = siapa &amp; komisi. Antrian ini menghormati cap TikTok: 50 kreator / kirim, 1.000 undangan / hari, kuota mingguan untuk yang <em>belum connected</em>. Prototype tidak mengirim ke TikTok.</p>' +
+      '<p class="muted">Pengirim contoh: <a href="' + esc(shop.url) + '" target="_blank" rel="noopener">' + esc(shop.display) + '</a> · akun TikTok ' +
+      esc(shop.name) + '. ' + sampleNote + ' Antrian menghormati cap TikTok: 50 / kirim, 1.000 / hari, kuota mingguan untuk yang belum connected. Prototype <strong>tidak</strong> mengirim ke TikTok — bukan Kaloboost.</p>' +
       '<div class="quota"><div><div class="bar"><span style="width:' + Math.min(100, (k.used / q.weekly) * 100) + '%"></span></div>' +
       '<p class="muted">Kuota unconnected minggu ini: ' + k.used + ' / ' + q.weekly + ' terpakai · sisa ' + left +
       ' · cap harian ' + q.dailyCap + ' · batch ' + q.batch + '</p></div>' +
@@ -1121,40 +1152,49 @@
       ' · tawaran awal ' + SEED.product.suggestedCommission + '% (dari ekonomi produk, bukan biaya LarisID)</p>' +
       '<div class="row" style="margin-top:10px">' +
         '<label class="btn secondary">Import CSV Kalodata<input type="file" accept=".csv" data-act="csv" hidden></label>' +
-        '<button class="btn secondary" data-act="csv-demo">Pakai CSV dummy</button>' +
-        '<button class="btn" data-act="fake-send" ' + (thisSend ? '' : 'disabled') + '>Antrikan ' + thisSend + ' undangan (palsu)</button>' +
+        '<button class="btn secondary" data-act="csv-demo">Muat ulang sampel Kalodata</button>' +
+        '<button class="btn" data-act="fake-send" ' + (thisSend ? '' : 'disabled') + '>Antrikan ' + thisSend + ' DM dari ' + esc(shop.display) + '</button>' +
       '</div></section>' +
       '<div class="grid-2" style="margin-top:14px">' +
         '<section class="card" style="overflow:auto"><h3>Kreator (skor cocok)</h3>' +
         (ranked.length ? kolabTable(ranked) : '<p class="muted">Import CSV dulu. Jangan scrape Kalodata.</p>') +
         '</section>' +
-        '<section class="card"><h3>Antrian &amp; template</h3>' +
-          '<p class="muted">Kirim ini = ' + thisSend + ' dari kuota unconnected. Yang sudah connected tidak makan kuota (belum ada di dummy sampai mereka “membalas”).</p>' +
-          '<textarea readonly rows="5">Halo {handle}, aku seller ' + esc(SEED.product.name) +
-          '. Komisi target collab ' + SEED.product.suggestedCommission +
-          '%. Kamu cocok karena niche {niche}. Boleh aku kirim undangan Affiliate Center?</textarea>' +
+        '<section class="card"><h3>DM dari ' + esc(shop.display) + '</h3>' +
+          '<p class="muted">Kirim ini = ' + thisSend + ' dari kuota unconnected. Bubble di bawah adalah contoh pesan, tidak masuk inbox TikTok sungguhan.</p>' +
+          (preview ? kolabBubble('out', shop.display, 'ke ' + preview.handle, kolabMsg(preview)) : '') +
+          '<h3 style="margin-top:16px">Antrian</h3>' +
           kolabJobs(k) +
         '</section></div>';
   }
 
   function kolabTable(rows) {
-    return '<table class="table"><thead><tr><th></th><th>Handle</th><th>GMV 30h</th><th>Niche</th><th>% usul</th><th>Skor</th></tr></thead><tbody>' +
+    return '<table class="table"><thead><tr><th></th><th>Handle</th><th>GMV 30h</th><th>Followers</th><th>Niche</th><th>% usul</th><th>Skor</th></tr></thead><tbody>' +
       rows.map((c) => '<tr>' +
         '<td><input type="checkbox" data-act="ksel" data-handle="' + esc(c.handle) + '"' +
         (ui.kolabSel.has(c.handle) ? ' checked' : '') + (c.skip ? ' disabled' : '') + '></td>' +
         '<td>' + esc(c.handle) + (c.skip ? ' <span class="chip belum">skip</span>' : '') + '</td>' +
         '<td>' + fmtRp(c.gmv_30d) + '</td>' +
+        '<td>' + (c.followers ? Number(c.followers).toLocaleString('id-ID') : '—') + '</td>' +
         '<td>' + esc(c.niche) + ' · ' + esc(c.content) + '</td>' +
         '<td>' + esc(c.suggested) + '%</td>' +
         '<td>' + Math.round(c.score) + '</td></tr>'
       ).join('') + '</tbody></table>';
   }
 
+  function kolabBubble(dir, from, sub, body) {
+    return '<div class="tt-bubble ' + dir + '">' +
+      '<div class="tt-meta">' + esc(from) + (sub ? ' · ' + esc(sub) : '') + '</div>' +
+      '<div class="tt-body">' + esc(body).replace(/\n/g, '<br>') + '</div></div>';
+  }
+
   function kolabJobs(k) {
-    if (!k.jobs.length) return '<p class="muted">Belum ada kiriman palsu.</p>';
-    return '<ul class="list-check">' + k.jobs.slice().reverse().map((j) =>
-      '<li><span>' + esc(j.handle) + ' · ' + esc(j.status) + '</span><span class="muted">' + fmtWhen(j.at) + '</span></li>'
-    ).join('') + '</ul>';
+    if (!k.jobs.length) return '<p class="muted">Belum ada kiriman. Centang kreator di kiri, lalu antrikan.</p>';
+    return '<div class="tt-thread">' + k.jobs.map((j) => {
+      const inbound = j.dir === 'in';
+      const from = j.from || (inbound ? j.handle : shopTiktok().display);
+      const sub = (j.status || '') + (inbound ? '' : ' · ke ' + j.handle);
+      return kolabBubble(inbound ? 'in' : 'out', from, sub, j.body || (inbound ? kolabReply({ handle: j.handle }) : kolabMsg({ handle: j.handle, niche: SEED.product.niche })));
+    }).join('') + '</div>';
   }
 
   /* ── mentor views ────────────────────────────────────────────────── */
@@ -1612,9 +1652,11 @@
       if (!file) return;
       const reader = new FileReader();
       reader.onload = () => {
-        kolabOf(ui.personaId).creators = parseCsv(String(reader.result));
+        const k = kolabOf(ui.personaId);
+        k.creators = parseCsv(String(reader.result));
+        k.source = 'import';
         save();
-        toast('CSV masuk · ' + kolabOf(ui.personaId).creators.length + ' kreator (milik ' + nameOf(ui.personaId) + ')');
+        toast('CSV masuk · ' + k.creators.length + ' kreator (milik ' + nameOf(ui.personaId) + ')');
         render();
       };
       reader.readAsText(file);
@@ -1823,27 +1865,49 @@
       toast('File dihapus. Tempel tautan kalau perlu.');
       render();
     } else if (act === 'csv-demo') {
-      fetch('./data/kalodata-creators.csv').then((r) => r.text()).then((txt) => {
-        kolabOf(ui.personaId).creators = parseCsv(txt);
-        save();
-        toast('Dummy Kalodata untuk ' + nameOf(ui.personaId));
-        render();
-      });
+      const k = kolabOf(ui.personaId);
+      k.creators = cloneKalodata();
+      k.source = 'kalodata-sample';
+      save();
+      toast('Sampel Kalodata · pengirim ' + shopTiktok().display);
+      render();
     } else if (act === 'fake-send') {
       const k = kolabOf(ui.personaId);
       const q = SEED.kolabQuota;
+      const shop = shopTiktok();
       const left = Math.max(0, q.weekly - k.used);
       const chosen = [...ui.kolabSel].slice(0, Math.min(q.batch, left));
       chosen.forEach((handle, i) => {
         k.used += 1;
-        k.jobs.push({ handle, status: 'sent', at: new Date().toISOString() });
         const row = k.creators.find((c) => c.handle === handle);
+        k.jobs.push({
+          handle: handle,
+          status: 'sent',
+          dir: 'out',
+          from: shop.display,
+          body: kolabMsg(row || { handle: handle, niche: SEED.product.niche }),
+          at: new Date().toISOString()
+        });
         if (row) row.status = 'sent';
         setTimeout(() => {
           if (i % 4 === 3) {
-            k.jobs.push({ handle, status: 'failed', at: new Date().toISOString() });
+            k.jobs.push({
+              handle: handle,
+              status: 'failed',
+              dir: 'out',
+              from: shop.display,
+              body: 'Gagal antri (prototype). Tidak terkirim ke TikTok.',
+              at: new Date().toISOString()
+            });
           } else if (i % 3 === 0) {
-            k.jobs.push({ handle, status: 'replied', at: new Date().toISOString() });
+            k.jobs.push({
+              handle: handle,
+              status: 'replied',
+              dir: 'in',
+              from: handle,
+              body: kolabReply(row || { handle: handle }),
+              at: new Date().toISOString()
+            });
             if (row) row.status = 'connected';
           }
           save();
@@ -1852,7 +1916,7 @@
       });
       ui.kolabSel = new Set();
       save();
-      toast('Antrian palsu: ' + chosen.length + ' undangan. Kuota toko berkurang.');
+      toast('Antrian palsu dari ' + shop.display + ': ' + chosen.length + ' DM. Tidak masuk TikTok.');
       render();
     }
   });

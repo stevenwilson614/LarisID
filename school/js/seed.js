@@ -32,6 +32,12 @@ window.ANTON_SEED = {
     suggestedCommission: 18,
     niche: 'hair'
   },
+  shopTiktok: {
+    handle: 'bule_barat',
+    display: '@bule_barat',
+    url: 'https://www.tiktok.com/@bule_barat',
+    name: 'Steven'
+  },
   catalog: [
     {
       id: 'calc',
@@ -268,5 +274,22 @@ window.ANTON_SEED = {
     's-rina': [],
     's-toni': []
   },
-  kolabQuota: { weekly: 200, used: 47, dailyCap: 1000, batch: 50, starterPack: false }
+  kolabQuota: { weekly: 200, used: 47, dailyCap: 1000, batch: 50, starterPack: false },
+  kalodataCreators: [
+    { handle: '@rinaskincare', gmv_30d: 185000000, followers: 42000, niche: 'skincare', content: 'video', email: 'rina.skincare@example.com', typical_commission_pct: 20, live_gmv_30d: 12000000 },
+    { handle: '@dewilivefinds', gmv_30d: 92000000, followers: 88000, niche: 'home', content: 'live', email: 'dewi.live@example.com', typical_commission_pct: 15, live_gmv_30d: 71000000 },
+    { handle: '@bagoesgadget', gmv_30d: 240000000, followers: 31000, niche: 'gadget', content: 'video', email: 'bagoes@example.com', typical_commission_pct: 12, live_gmv_30d: 4000000 },
+    { handle: '@niningdapur', gmv_30d: 54000000, followers: 19000, niche: 'dapur', content: 'video', email: 'nining.dapur@example.com', typical_commission_pct: 18, live_gmv_30d: 8000000 },
+    { handle: '@ayuhairstuff', gmv_30d: 67000000, followers: 27000, niche: 'hair', content: 'video', email: 'ayu.hair@example.com', typical_commission_pct: 22, live_gmv_30d: 9000000 },
+    { handle: '@tiktokpakrt', gmv_30d: 12000000, followers: 150000, niche: 'comedy', content: 'video', email: 'pakrt@example.com', typical_commission_pct: 10, live_gmv_30d: 1000000 },
+    { handle: '@megaofficialshop', gmv_30d: 310000000, followers: 54000, niche: 'fashion', content: 'live', email: 'mega.shop@example.com', typical_commission_pct: 14, live_gmv_30d: 190000000 },
+    { handle: '@lintangmom', gmv_30d: 41000000, followers: 22000, niche: 'mom', content: 'video', email: 'lintang.mom@example.com', typical_commission_pct: 18, live_gmv_30d: 6000000 },
+    { handle: '@hairclip.hani', gmv_30d: 28000000, followers: 9000, niche: 'hair', content: 'video', email: 'hani.clips@example.com', typical_commission_pct: 25, live_gmv_30d: 2000000 },
+    { handle: '@tokokecil.eko', gmv_30d: 8000000, followers: 4100, niche: 'home', content: 'video', email: 'eko.toko@example.com', typical_commission_pct: 20, live_gmv_30d: 500000 },
+    { handle: '@viviskincareid', gmv_30d: 150000000, followers: 61000, niche: 'skincare', content: 'live', email: 'vivi.skin@example.com', typical_commission_pct: 16, live_gmv_30d: 88000000 },
+    { handle: '@dapurmbakfitri', gmv_30d: 33000000, followers: 14000, niche: 'dapur', content: 'live', email: 'fitri.dapur@example.com', typical_commission_pct: 17, live_gmv_30d: 21000000 },
+    { handle: '@gadgetmurah.jkt', gmv_30d: 77000000, followers: 39000, niche: 'gadget', content: 'video', email: 'gadget.jkt@example.com', typical_commission_pct: 11, live_gmv_30d: 3000000 },
+    { handle: '@clipcantik.id', gmv_30d: 19000000, followers: 7200, niche: 'hair', content: 'video', email: 'clipcantik@example.com', typical_commission_pct: 24, live_gmv_30d: 1500000 },
+    { handle: '@sariaffiliate', gmv_30d: 45000000, followers: 18000, niche: 'fashion', content: 'video', email: 'sari.aff@example.com', typical_commission_pct: 19, live_gmv_30d: 7000000 }
+  ]
 };

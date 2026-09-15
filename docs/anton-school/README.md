@@ -57,7 +57,16 @@ file MP4 di browser ini). Asisten hanya lihat. **+ Bagian** nempel di toolbar
 atas supaya tidak hilang di bawah modul yang panjang.
 
 Siswa punya tab **Alat** (kalkulator, AI creative, AI analisa, plus Kolab kalau
-mentoring). Pustaka tetap etalase + rekaman. Checkout tetap lynk.id.
+mentoring) — daftar teks, tanpa cover lynk. Pustaka tetap etalase + rekaman.
+Checkout tetap lynk.id.
+
+Kalkulator (`school/tools/harga.html`) memakai contoh Anton langsung, hasil harga
+di atas, potongan di balik “Ubah”, dan **Unduh PDF** (dialog cetak → Simpan
+sebagai PDF). Bukan file Excel.
+
+Kolab memakai sampel export Kalodata (`school/data/kalodata-creators.csv`) dan
+contoh pengirim **@bule_barat** (akun TikTok Steven). Antrian palsu: tidak kirim
+ke TikTok, bukan Kaloboost.
 
 ## Instagram / lynk — kita tidak ambil alih
 
@@ -83,9 +92,10 @@ Six products can be bought **satuan**. **Mentoring** unlocks all six plus live c
 Persona **Kamu (demo)** = mentoring. **Budi** = belum. Setiap SKU punya **Lihat contoh**
 sampai Anton ganti file di Perpustakaan mentor.
 
-Kalkulator di `school/tools/harga.html` meniru spreadsheet Anton (Set harga + Toko/HPP).
+Kalkulator di `school/tools/harga.html` meniru spreadsheet Anton (Set harga + Toko/HPP),
+dengan contoh terisi, hasil tiga harga, dan unduh PDF.
 
-Cover, foto profil, dan logo Obrolan disalin ke `school/assets/obrolan/` dari CDN lynk (bukan hotlink). Pustaka, Home satuan, dan halaman SKU memakai file itu. Reset data lokal kalau tile masih tanpa gambar.
+Cover, foto profil, dan logo Obrolan disalin ke `school/assets/obrolan/` dari CDN lynk (bukan hotlink). Pustaka dan rekaman memakai file itu. Tab Alat tidak menampilkan cover.
 
 ### Saran susunan lynk.id (kita tidak bisa edit lynk)
 
