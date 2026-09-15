@@ -30,6 +30,52 @@
     toast._t = setTimeout(() => { el.hidden = true; }, 2400);
   }
 
+  function cloneLectures() {
+    return SEED.lectures.map((l) => ({
+      ...l,
+      points: (l.points || []).slice(),
+      questions: (l.questions || []).map((q) => ({ ...q })),
+      resources: (l.resources || []).map((r) => ({ ...r }))
+    }));
+  }
+
+  function hydrateCurriculum(merged) {
+    const seedIds = (SEED.lectures || []).map((l) => l.id).join('|');
+    const have = (merged.lectures || []).map((l) => l.id).join('|');
+    if (have !== seedIds) {
+      merged.lectures = cloneLectures();
+      merged.weeks = SEED.weeks.map((w) => ({ ...w }));
+      merged.sessions = SEED.sessions.map((s) => ({
+        ...s,
+        required: (s.required || []).slice()
+      }));
+      merged.progress = {};
+      Object.entries(SEED.progressSeed).forEach(([sid, ids]) => {
+        merged.progress[sid] = Object.fromEntries(ids.map((id) => [id, true]));
+      });
+      merged.lastLecture = merged.lastLecture || {};
+      Object.keys(merged.progress).forEach((sid) => {
+        const ids = Object.keys(merged.progress[sid]);
+        merged.lastLecture[sid] = ids[ids.length - 1] || (SEED.lectures[0] && SEED.lectures[0].id);
+      });
+      merged.threads = SEED.threads.map((t) => ({ ...t }));
+    } else {
+      const byId = Object.fromEntries(SEED.lectures.map((l) => [l.id, l]));
+      merged.lectures = merged.lectures.map((l) => {
+        const seed = byId[l.id];
+        if (!seed) return l;
+        return {
+          ...seed,
+          ...l,
+          url: seed.url || l.url,
+          points: (l.points && l.points.length) ? l.points : (seed.points || []).slice(),
+          questions: (l.questions && l.questions.length) ? l.questions : (seed.questions || []).map((q) => ({ ...q })),
+          resources: (l.resources && l.resources.length) ? l.resources : (seed.resources || []).map((r) => ({ ...r }))
+        };
+      });
+    }
+  }
+
   function defaultState() {
     const progress = {};
     Object.entries(SEED.progressSeed).forEach(([sid, ids]) => {
@@ -38,10 +84,10 @@
     const last = {};
     Object.keys(progress).forEach((sid) => {
       const ids = Object.keys(progress[sid]);
-      last[sid] = ids[ids.length - 1] || 'l1';
+      last[sid] = ids[ids.length - 1] || (SEED.lectures[0] && SEED.lectures[0].id);
     });
     return {
-      lectures: SEED.lectures.map((l) => ({ ...l })),
+      lectures: cloneLectures(),
       catalog: SEED.catalog.map((p) => ({ ...p, outline: (p.outline || []).slice() })),
       weeks: SEED.weeks.map((w) => ({ ...w })),
       sessions: SEED.sessions.map((s) => ({ ...s })),
@@ -85,6 +131,7 @@
           }
         });
       }
+      hydrateCurriculum(merged);
       return merged;
     } catch {
       return defaultState();
@@ -97,7 +144,7 @@
     tab: 'home',
     mentorTab: 'siswa',
     personaId: 's-kamu',
-    lectureId: db.lastLecture['s-kamu'] || 'l1',
+    lectureId: db.lastLecture['s-kamu'] || (SEED.lectures[0] && SEED.lectures[0].id),
     pane: 'tanya',
     drawerId: null,
     kolabSel: new Set(),
@@ -140,7 +187,12 @@
   function canBill() { return ui.role === 'owner'; }
 
   function lectures() { return db.lectures; }
-  function lectureById(id) { return lectures().find((l) => l.id === id); }
+  function lectureById(id) {
+    if (id === 'kolab') {
+      return { id: 'kolab', type: 'tool', tool: 'kolab', title: 'Kolab — cari kreator', mins: 20 };
+    }
+    return lectures().find((l) => l.id === id);
+  }
   function lecturesInWeek(wid) { return lectures().filter((l) => l.weekId === wid); }
 
   function doneSet(sid) { return db.progress[sid] || (db.progress[sid] = {}); }
@@ -155,6 +207,24 @@
     if (!list.length) return 0;
     const n = list.filter((l) => isDone(sid, l.id)).length;
     return Math.round((n / list.length) * 100);
+  }
+  function kurProgress(sid) {
+    const list = lectures();
+    const n = list.filter((l) => isDone(sid, l.id)).length;
+    return { n: n, total: list.length, pct: list.length ? Math.round((n / list.length) * 100) : 0 };
+  }
+  function progressBarHtml(sid) {
+    const p = kurProgress(sid);
+    return '<div class="kur-progress">' +
+      '<div class="kur-progress-top"><strong>Kurikulum</strong>' +
+      '<span>' + p.n + ' / ' + p.total + ' video · ' + p.pct + '%</span></div>' +
+      '<div class="bar kur-bar"><span style="width:' + p.pct + '%"></span></div></div>';
+  }
+  function currentWeekId(sid) {
+    for (let i = 0; i < db.weeks.length; i += 1) {
+      if (progressPct(sid, db.weeks[i].id) < 100) return db.weeks[i].id;
+    }
+    return db.weeks.length ? db.weeks[db.weeks.length - 1].id : '';
   }
 
   function nextSession() {
@@ -367,18 +437,18 @@
   function viewHome() {
     if (!canMentoring(ui.personaId)) return viewHomeAlacarte();
     const s = student();
-    const lastId = db.lastLecture[s.id] || 'l1';
+    const lastId = db.lastLecture[s.id] || (SEED.lectures[0] && SEED.lectures[0].id);
     const last = lectureById(lastId) || lectures()[0];
     const ses = nextSession();
     const bill = billingOf(s.id);
-    const pct = progressPct(s.id);
     const ann = db.announcements[0];
     return (
       '<div class="grid-2">' +
         '<section class="card resume">' +
           '<p class="muted">Lanjutkan</p>' +
           '<h2>' + esc(last.title) + '</h2>' +
-          '<p class="muted">' + esc(typeLabel(last.type)) + ' · ' + pct + '% materi selesai</p>' +
+          '<p class="muted">' + esc(typeLabel(last.type)) + ' · ' + kurProgress(s.id).n + '/' + kurProgress(s.id).total + ' video</p>' +
+          progressBarHtml(s.id) +
           '<button class="btn" data-act="open-lec" data-id="' + esc(last.id) + '">Buka materi</button>' +
         '</section>' +
         '<section class="card">' +
@@ -396,7 +466,7 @@
       '<div class="grid-2" style="margin-top:14px">' +
         '<section class="card">' +
           '<h2>Minggu ini</h2>' +
-          weekList(s.id, 'w3') +
+          weekList(s.id, currentWeekId(s.id)) +
         '</section>' +
         '<section class="card">' +
           '<h2>Pengumuman</h2>' +
@@ -447,7 +517,8 @@
 
   function weekList(sid, weekId) {
     return '<ul class="list-check">' + lecturesInWeek(weekId).map((l) =>
-      '<li><span>' + (isDone(sid, l.id) ? '✓ ' : '') + esc(l.title) + '</span>' +
+      '<li><span>' + (isDone(sid, l.id) ? '<span class="tick-ok" aria-hidden="true">✓</span> ' : '<span class="tick-off" aria-hidden="true"></span> ') +
+      esc(l.title) + '</span>' +
       '<button class="btn-sm" data-act="open-lec" data-id="' + esc(l.id) + '">Buka</button></li>'
     ).join('') + '</ul>';
   }
@@ -468,11 +539,12 @@
     ui.lectureId = lec.id;
     const inner = lec.tool === 'kolab'
       ? viewKolab()
-      : renderCanvas(lec) + renderPanes(lec);
+      : renderCanvas(lec) + renderLecAfter(lec) + renderPanes(lec);
     return '<div class="player-layout">' +
       '<div>' +
+        progressBarHtml(ui.personaId) +
         '<button type="button" class="kur-toggle" data-act="toggle-kur">' +
-        (ui.kurOpen ? 'Tutup kurikulum' : 'Kurikulum') + '</button>' +
+        (ui.kurOpen ? 'Tutup kurikulum' : 'Kurikulum · ' + kurProgress(ui.personaId).pct + '%') + '</button>' +
         inner + '</div>' +
       '<aside class="kurikulum-pane' + (ui.kurOpen ? ' is-open' : '') + '">' +
         renderKurikulumSidebar() + '</aside>' +
@@ -502,21 +574,50 @@
       '<div class="canvas-bar">' +
         '<div><strong>' + esc(lec.title) + '</strong><div class="muted">' + esc(typeLabel(lec.type)) +
         (lec.requiredBefore ? ' · wajib sebelum kelas' : '') + '</div></div>' +
-        '<button class="btn' + (done ? ' secondary' : '') + '" data-act="toggle-done" data-id="' + esc(lec.id) + '">' +
+        '<button class="btn' + (done ? ' done-ok' : '') + '" data-act="toggle-done" data-id="' + esc(lec.id) + '">' +
         (done ? 'Selesai ✓' : 'Tandai selesai') + '</button>' +
       '</div></div>';
   }
 
+  function renderLecAfter(lec) {
+    const doc = (lec.resources || [])[0];
+    let html = '';
+    if (doc) {
+      html += '<div class="card lec-after"><h3>Dokumen</h3>' +
+        '<a class="doc-link" href="' + esc(doc.url) + '" target="_blank" rel="noopener">' + esc(doc.name) + '</a>' +
+        '<p class="muted" style="margin:8px 0 0">Contoh lembar kerja. Bukan file Anton.</p></div>';
+    }
+    if (lec.points && lec.points.length) {
+      html += '<div class="card lec-after"><h3>Poin penting</h3><ul class="key-points">' +
+        lec.points.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul></div>';
+    }
+    if (lec.questions && lec.questions.length) {
+      html += '<div class="card lec-after"><h3>Cek pemahaman</h3>' +
+        lec.questions.map((q, i) =>
+          '<div class="quiz-q"><p><strong>' + (i + 1) + '.</strong> ' + esc(q.q) + '</p>' +
+          (q.hint
+            ? '<details><summary>Arah jawaban (contoh)</summary><p class="muted">' + esc(q.hint) + '</p></details>'
+            : '') +
+          '</div>'
+        ).join('') +
+        '<p class="muted">Bukan ujian — tidak ada skor. Tandai selesai setelah nonton dan baca.</p></div>';
+    }
+    return html;
+  }
+
   function renderKurikulumSidebar() {
-    return db.weeks.map((w) => {
+    const all = lectures();
+    return progressBarHtml(ui.personaId) + db.weeks.map((w) => {
       const items = lecturesInWeek(w.id).map((l) => {
         const cur = l.id === ui.lectureId;
+        const n = all.findIndex((x) => x.id === l.id) + 1;
         return '<button type="button" class="lec' + (cur ? ' current' : '') + '" data-act="open-lec" data-id="' + esc(l.id) + '">' +
-          '<span class="mark' + (isDone(ui.personaId, l.id) ? ' done' : '') + '"></span>' +
-          '<span><div class="t">' + esc(l.title) + '</div>' +
-          '<div class="m">' + esc(typeLabel(l.type)) + ' · ' + esc(l.mins) + ' mnt</div></span></button>';
+          '<span class="mark' + (isDone(ui.personaId, l.id) ? ' done' : '') + '" aria-hidden="true">' +
+          (isDone(ui.personaId, l.id) ? '✓' : '') + '</span>' +
+          '<span><div class="t">' + n + '. ' + esc(l.title) + '</div>' +
+          '<div class="m">' + esc(l.mins) + ' mnt' + (l.requiredBefore ? ' · wajib' : '') + '</div></span></button>';
       }).join('');
-      return '<div class="week-label">' + esc(w.title) + '</div>' + items;
+      return '<div class="week-label">' + esc(w.title) + ' · ' + progressPct(ui.personaId, w.id) + '%</div>' + items;
     }).join('');
   }
 
@@ -615,7 +716,7 @@
     });
     if (canMentoring(sid)) {
       html += '<h3 class="week-label">Khusus kelas</h3><div class="tool-grid">' +
-        '<button type="button" class="card tool-tile" data-act="open-lec" data-id="l8">' +
+        '<button type="button" class="card tool-tile" data-act="open-kolab">' +
           '<h3>Kolab — cari kreator</h3>' +
           '<p class="muted">Bukan produk lynk. Hanya mentoring.</p>' +
         '</button></div>';
@@ -725,19 +826,22 @@
         '<p class="muted">Mentoring membuka live class + semua produk.</p></section>';
     }
     const hadir = hadirPct(sid);
+    const p = kurProgress(sid);
+    const kolabOpened = !!(db.kolab[sid] && db.kolab[sid].jobs && db.kolab[sid].jobs.length);
     return '<div class="grid-2">' +
       '<section class="card"><h2>Checklist</h2>' +
+        progressBarHtml(sid) +
         db.weeks.map((w) => '<h3>' + esc(w.title) + ' · ' + progressPct(sid, w.id) + '%</h3>' + weekList(sid, w.id)).join('') +
       '</section>' +
       '<section class="card">' +
         '<h2>Status</h2>' +
-        '<p>Materi: <strong>' + progressPct(sid) + '%</strong></p>' +
+        '<p>Kurikulum: <strong>' + p.n + ' / ' + p.total + '</strong> · ' + p.pct + '%</p>' +
         '<p>Hadir: <strong>' + hadir + '%</strong></p>' +
         '<p>Bayar: ' + payChip(bill.status) + ' <span class="muted">' + esc(bill.note || bill.plan || '') + '</span></p>' +
         '<h3 style="margin-top:16px">Lencana (kejadian nyata)</h3>' +
         '<p class="muted">' +
-          (isDone(sid, 'l1') ? '✓ Masuk kelas. ' : 'Belum mulai. ') +
-          (isDone(sid, 'l8') ? '✓ Buka Kolab. ' : '') +
+          (isDone(sid, 'v1') ? '✓ Masuk kelas. ' : 'Belum mulai. ') +
+          (kolabOpened ? '✓ Antri Kolab. ' : '') +
           (hadir >= 50 ? '✓ Hadir ≥ setengah sesi.' : 'Hadir masih di bawah setengah sesi.') +
         '</p>' +
       '</section></div>';
@@ -896,7 +1000,7 @@
   function viewKurikulum() {
     const readonly = ui.role === 'asisten';
     return '<div class="card"><h2>Kurikulum</h2>' +
-      '<p class="muted">Port dari retired laris-app.js. Tipe: video, bacaan, file, alat (iframe sandbox).</p>' +
+      '<p class="muted">12 video contoh. Tiap video: lembar kerja, poin penting, cek pemahaman. Bukan skor buatan.</p>' +
       db.weeks.map((w) => {
         const items = lecturesInWeek(w.id).map((l) =>
           '<li><span>' + esc(typeLabel(l.type)) + ' · ' + esc(l.title) +
@@ -1161,6 +1265,17 @@
       }
     } else if (act === 'toggle-kur') {
       ui.kurOpen = !ui.kurOpen;
+      render();
+    } else if (act === 'open-kolab') {
+      if (!canMentoring(ui.personaId) && !isStaff()) {
+        toast('Live class hanya mentoring.');
+        ui.tab = 'pustaka';
+        render();
+        return;
+      }
+      ui.lectureId = 'kolab';
+      ui.tab = 'belajar';
+      ui.kurOpen = false;
       render();
     } else if (act === 'open-lec') {
       const id = btn.getAttribute('data-id');

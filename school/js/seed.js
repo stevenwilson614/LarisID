@@ -45,8 +45,7 @@ window.ANTON_SEED = {
       cover: './assets/obrolan/cover-calc.webp',
       sheet: './assets/obrolan/calc-sheet.png',
       iframe: './tools/harga.html',
-      example: true,
-      lectureIds: ['l3', 'l5']
+      example: true
     },
     {
       id: 'ai-creative',
@@ -166,30 +165,85 @@ window.ANTON_SEED = {
     { id: 'w3', title: 'Minggu 3 · Affiliate & kolab', due: '2026-09-21' },
     { id: 'w4', title: 'Minggu 4 · Live yang tahan', due: '2026-09-28' }
   ],
-  lectures: [
-    { id: 'l1', weekId: 'w1', type: 'video', title: 'Selamat datang di kelas', mins: 12, url: 'https://www.youtube.com/watch?v=jNQXAC9IVRw', requiredBefore: true, body: '', resources: [{ name: 'Slide sesi 1', url: 'https://example.com/sesi1.pdf' }] },
-    { id: 'l2', weekId: 'w1', type: 'text', title: 'Checklist toko sebelum iklan', mins: 8, body: 'Isi: foto 5 sudut, SKU nama jelas, etalase 3 koleksi, WA bisnis nyala. Jangan iklan dulu kalau foto masih gelap.', resources: [] },
-    { id: 'l3', weekId: 'w1', type: 'tool', title: 'Kalkulator harga', mins: 5, tool: 'harga', skuId: 'calc', iframe: './tools/harga.html', job: 'Set harga promo / coret / awal dari modal + potongan TikTok.', resources: [] },
-    { id: 'l4', weekId: 'w2', type: 'video', title: 'Cara baca harga pasar', mins: 14, url: 'https://www.youtube.com/watch?v=jNQXAC9IVRw', requiredBefore: true, resources: [] },
-    { id: 'l5', weekId: 'w2', type: 'tool', title: 'Template harga jual', mins: 6, tool: 'harga', skuId: 'calc', iframe: './tools/harga.html#toko', job: 'HPP toko + margin. Sama alat dengan kalkulator harga.', resources: [] },
-    { id: 'l6', weekId: 'w2', type: 'tool', title: 'Kalkulator komisi', mins: 6, tool: 'komisi', iframe: './tools/komisi.html', job: 'Berapa % yang masih aman ditawarkan ke kreator.', resources: [] },
-    { id: 'l7', weekId: 'w3', type: 'video', title: 'Kenapa blast itu makan kuota toko', mins: 11, url: 'https://www.youtube.com/watch?v=jNQXAC9IVRw', requiredBefore: true, resources: [] },
-    { id: 'l8', weekId: 'w3', type: 'tool', title: 'Kolab — cari kreator', mins: 20, tool: 'kolab', job: 'Import Kalodata, antri undangan sesuai kuota toko.', resources: [] },
-    { id: 'l9', weekId: 'w3', type: 'text', title: 'Template chat yang tidak spam', mins: 5, body: 'Sebut produk, komisi, kenapa mereka cocok (niche). Jangan “hai kak mau collab?” ke 500 orang.', resources: [] },
-    { id: 'l10', weekId: 'w4', type: 'video', title: 'Live 45 menit yang tidak habis suara', mins: 16, url: 'https://www.youtube.com/watch?v=jNQXAC9IVRw', resources: [] },
-    { id: 'l11', weekId: 'w4', type: 'text', title: 'Setelah live: sampel & follow-up', mins: 7, body: 'Kreator yang sudah connected tidak makan kuota mingguan. Kerjain mereka dulu sebelum undang orang baru.', resources: [] }
-  ],
+  lectures: (function () {
+    const yt = 'https://www.youtube.com/watch?v=jNQXAC9IVRw';
+    function v(id, weekId, title, mins, doc, points, questions, required) {
+      return {
+        id: id,
+        weekId: weekId,
+        type: 'video',
+        title: title,
+        mins: mins,
+        url: yt,
+        requiredBefore: !!required,
+        example: true,
+        resources: [{ name: doc, url: './tools/handout.html?id=' + id }],
+        points: points,
+        questions: questions
+      };
+    }
+    return [
+      v('v1', 'w1', 'Selamat datang di kelas', 12, 'Lembar kerja 01 — Cara pakai kelas.pdf',
+        ['Kurikulum 12 video. Tandai selesai sendiri — bukan auto-skor.', 'Live class terpisah di Home. Pustaka = alat & rekaman lynk.', 'Jangan sebar supplier atau margin di Tanya.'],
+        [{ q: 'Bedanya mentoring vs beli satuan di lynk?', hint: 'Mentoring = 12 video + live + semua SKU. Satuan = SKU yang dibayar saja.' },
+         { q: 'Kalau bingung cepat, WA atau Tanya di materi?', hint: 'WA untuk chat cepat. Tanya di sini supaya jawaban nempel di video yang sama.' }], true),
+      v('v2', 'w1', 'Etalase yang tidak gelap', 11, 'Lembar kerja 02 — Audit etalase.pdf',
+        ['Foto 5 sudut, cahaya jendela atau lampu, bukan stock gelap.', 'Nama SKU menyebut isi/manfaat, bukan “produk 01”.', 'WA bisnis nyala sebelum iklan.'],
+        [{ q: 'Apa 3 hal yang harus ada sebelum iklan?', hint: 'Foto jelas, nama SKU kebaca, etalase 3 koleksi + WA bisnis.' },
+         { q: 'Toko kamu lolos audit ini hari ini?', hint: 'Kalau tidak, selesaikan dulu. Iklan di toko gelap makan uang.' }], true),
+      v('v3', 'w1', 'Foto & SKU yang jelas', 10, 'Lembar kerja 03 — Brief foto SKU.pdf',
+        ['Satu SKU unggulan dulu. Jepit rambut satin isi 6 = contoh kelas.', 'Foto hero, pakai, isi paket. Bukan pile kacau.', 'Jangan klaim “terlaris Shopee” tanpa data.'],
+        [{ q: 'SKU contoh kelas ini apa, dan kenapa dipilih?', hint: 'Jepit rambut satin isi 6 — satu produk, modal kelihatan, cocok latihan harga.' },
+         { q: 'Tiga jenis foto wajib?', hint: 'Hero, pemakaian, isi paket.' }]),
+      v('v4', 'w2', 'Modal, margin, jangan tebak', 14, 'Lembar kerja 04 — Isi modal & margin.pdf',
+        ['Net revenue = modal / (1 − margin kotor).', 'Isi yang kuning di spreadsheet. Angka lain dihitung.', 'Perkiraan, bukan laporan pajak.'],
+        [{ q: 'Modal 60rb, margin 20% — net revenue berapa?', hint: '60.000 / 0,8 = Rp75.000.' },
+         { q: 'Kenapa jangan naikin harga dulu sebelum rumus ini?', hint: 'Tanpa net yang cukup, potongan TikTok bikin boncos.' }], true),
+      v('v5', 'w2', 'Potongan TikTok yang sering dilupakan', 13, 'Lembar kerja 05 — Daftar potongan.pdf',
+        ['Admin + ongkir + cashback + voucher + komisi + ads + pajak = total potongan.', 'Harga promo = net / (1 − total potongan).', 'Harga coret ≈ promo / 0,9. Harga awal ≈ promo × 2.'],
+        [{ q: 'Kalau total potongan 32% dan net 75rb, harga promo?', hint: '75.000 / 0,68 ≈ Rp110.294.' },
+         { q: 'Mana yang boleh ditebak: fee platform atau margin impian?', hint: 'Fee isi dari Seller Center. Margin kamu yang pilih, tapi harus masuk rumus.' }], true),
+      v('v6', 'w2', 'Komisi kreator yang masih aman', 12, 'Lembar kerja 06 — Komisi aman.pdf',
+        ['Komisi dari sisa setelah potongan, bukan dari harga coret.', 'Kalodata “minta 25%” bukan hukum. Cek ekonomi SKU.', 'Alat komisi ada di Pustaka kalau sudah beli / mentoring.'],
+        [{ q: 'Kreator hair minta 25%. Langsung yes?', hint: 'Hitung dulu. Kalau sisa tipis, tawar atau cari yang typical lebih rendah.' },
+         { q: 'Komisi dihitung dari harga mana?', hint: 'Dari sisa setelah fee TikTok, bukan dari harga awal.' }]),
+      v('v7', 'w3', 'Kuota toko, bukan blast', 11, 'Lembar kerja 07 — Kuota undangan.pdf',
+        ['Cap TikTok: 50 kreator / kirim, 1.000 undangan / hari.', 'Kuota mingguan hanya untuk yang belum connected.', 'Yang sudah connected tidak makan kuota. Kerjain mereka dulu.'],
+        [{ q: 'Kenapa blast 500 “hai kak collab” merusak toko?', hint: 'Makan kuota unconnected, sering skip, toko keliatan spam.' },
+         { q: 'Siapa yang tidak makan kuota mingguan?', hint: 'Kreator yang sudah connected.' }], true),
+      v('v8', 'w3', 'Baca Kalodata tanpa bohong diri', 15, 'Lembar kerja 08 — Baca CSV Kalodata.pdf',
+        ['GMV besar belum berarti komisi aman.', 'Pakai CSV yang kamu unduh. Jangan scrape Kalodata.', 'Alat Kolab di Pustaka = antrian palsu di prototype ini.'],
+        [{ q: 'Kenapa GMV 30 hari besar belum cukup?', hint: 'Cek typical commission dan niche. Comedy + jepit rambut biasanya skip.' },
+         { q: 'Boleh paste session Kalodata ke orang lain?', hint: 'Tidak. File kamu, toko kamu. UU PDP.' }], true),
+      v('v9', 'w3', 'Chat undangan yang tidak spam', 9, 'Lembar kerja 09 — Template chat.pdf',
+        ['Sebut produk, komisi, kenapa mereka cocok (niche).', 'Jangan “hai kak mau collab?” ke 500 orang.', 'Satu template, isi {handle} dan {niche}.'],
+        [{ q: 'Tiga elemen chat yang wajib?', hint: 'Produk, komisi yang sudah dihitung, alasan niche.' },
+         { q: 'Boleh janji “pasti laku” supaya mereka terima?', hint: 'Tidak. Jujur soal sampel dan komisi.' }]),
+      v('v10', 'w4', 'Live 45 menit yang tahan', 16, 'Lembar kerja 10 — Rundown live.pdf',
+        ['Rundown: buka, demo, tanya, bundling, tutup. Bukan teriak 45 menit.', 'Air, duduk, SKU di tangan. Suara habis = live mati.', 'Jangan iklan dulu kalau live masih kosong dan foto gelap.'],
+        [{ q: 'Kenapa 45 menit, bukan 3 jam pertama kali?', hint: 'Tahan suara dan stok. Naikkan durasi kalau rundown sudah rapi.' },
+         { q: 'Apa yang harus di tangan selama live?', hint: 'SKU fisik + harga yang sudah dihitung, bukan tebak di saat.' }]),
+      v('v11', 'w4', 'Setelah live: connected vs undangan baru', 10, 'Lembar kerja 11 — Follow-up live.pdf',
+        ['Follow-up yang sudah connected dulu.', 'Sampel hanya kalau stok dan HPP masuk.', 'Undangan baru makan kuota — antri, jangan panik.'],
+        [{ q: 'Setelah live, siapa yang dihubungi duluan?', hint: 'Yang sudah connected / datang ke live, baru undangan baru.' },
+         { q: 'Sampel gratis selalu wajib?', hint: 'Tidak. Hitung HPP. Kalau tipis, video + komisi dulu.' }]),
+      v('v12', 'w4', 'Iklan = akselerator, bukan keajaiban', 14, 'Lembar kerja 12 — Syarat sebelum iklan.pdf',
+        ['Iklan mempercepat toko yang sudah jalan, bukan menambal etalase gelap.', 'Baca ROAS jujur. Naikkan budget hanya kalau unit economics masuk.', 'Rekaman ads Anton ada di Pustaka (SKU terpisah) kalau sudah punya.'],
+        [{ q: 'Toko baru, foto gelap, boleh GMV Max?', hint: 'Tidak dulu. Selesaikan video 2–5. Iklan di toko gelap = bayar untuk gagal lebih cepat.' },
+         { q: 'Kapan naikkan budget iklan?', hint: 'Kalau harga sudah rumus, live/organik ada sinyal, CPA masih masuk.' }])
+    ];
+  })(),
   sessions: [
-    { id: 'ses-1', title: 'Sesi 1 · Buka toko', startsAt: '2026-09-07T19:30:00+07:00', meetUrl: 'https://meet.google.com/aaa-anton-one', location: 'Online', notes: 'Bawa screenshot etalase.', required: ['l1', 'l2'] },
-    { id: 'ses-2', title: 'Sesi 2 · Harga & komisi', startsAt: '2026-09-14T19:30:00+07:00', meetUrl: 'https://meet.google.com/bbb-anton-two', location: 'Online', notes: 'Hitung 1 SKU pakai kalkulator harga.', required: ['l4', 'l6'] },
-    { id: 'ses-3', title: 'Sesi 3 · Kolab', startsAt: '2026-09-21T19:30:00+07:00', meetUrl: 'https://meet.google.com/ccc-anton-three', location: 'Online', notes: 'Bawa CSV Kalodata. Jangan login Seller Center di sini.', required: ['l7', 'l8'] }
+    { id: 'ses-1', title: 'Sesi 1 · Buka toko', startsAt: '2026-09-07T19:30:00+07:00', meetUrl: 'https://meet.google.com/aaa-anton-one', location: 'Online', notes: 'Bawa screenshot etalase.', required: ['v1', 'v2'] },
+    { id: 'ses-2', title: 'Sesi 2 · Harga & komisi', startsAt: '2026-09-14T19:30:00+07:00', meetUrl: 'https://meet.google.com/bbb-anton-two', location: 'Online', notes: 'Hitung 1 SKU pakai kalkulator harga.', required: ['v4', 'v5'] },
+    { id: 'ses-3', title: 'Sesi 3 · Kolab', startsAt: '2026-09-21T19:30:00+07:00', meetUrl: 'https://meet.google.com/ccc-anton-three', location: 'Online', notes: 'Bawa CSV Kalodata. Jangan login Seller Center di sini.', required: ['v7', 'v8'] }
   ],
   announcements: [
     { id: 'an-1', title: 'Sesi 3 pindah jam 19.30 WIB', body: 'Bukan 20.00. Link Meet ada di Home.', at: '2026-09-15T08:00:00+07:00' }
   ],
   threads: [
-    { id: 't1', lectureId: 'l6', authorId: 's-dina', title: 'Komisi 25% masih aman?', body: 'Kalodata bilang kreator hair minta 25%. Modal saya 32rb, jual 89rb.', answered: false, createdAt: '2026-09-14T11:00:00+07:00' },
-    { id: 't2', lectureId: 'l3', authorId: 's-eko', title: 'Iklan 14 hari atau 7?', body: 'Di kalkulator default 14 hari. Kalau modal pas, boleh 7?', answered: true, createdAt: '2026-09-08T09:00:00+07:00' }
+    { id: 't1', lectureId: 'v6', authorId: 's-dina', title: 'Komisi 25% masih aman?', body: 'Kalodata bilang kreator hair minta 25%. Modal saya 32rb, jual 89rb.', answered: false, createdAt: '2026-09-14T11:00:00+07:00' },
+    { id: 't2', lectureId: 'v12', authorId: 's-eko', title: 'Iklan 14 hari atau 7?', body: 'Mau coba GMV Max. Toko baru 10 hari, foto sudah 5 sudut. Mulai 7 atau 14?', answered: true, createdAt: '2026-09-08T09:00:00+07:00' }
   ],
   replies: [
     { id: 'r1', threadId: 't2', authorId: 'u-anton', body: 'Mulai 7 hari. Naikkan kalau CPA masih masuk.', isStaff: true, createdAt: '2026-09-08T10:00:00+07:00' }
@@ -203,14 +257,14 @@ window.ANTON_SEED = {
     's-rina': [{ at: '2026-09-12', body: 'Beli kalkulator lynk. Tawarkan mentoring kalau dia hitung 3 SKU.' }]
   },
   progressSeed: {
-    's-kamu': ['l1', 'l2', 'l3', 'l4'],
-    's-dina': ['l1', 'l2'],
+    's-kamu': ['v1', 'v2', 'v3', 'v4'],
+    's-dina': ['v1', 'v2'],
     's-budi': [],
-    's-sari': ['l1', 'l2', 'l3', 'l4', 'l5', 'l6', 'l7'],
-    's-eko': ['l1', 'l2', 'l3', 'l4', 'l5'],
-    's-nina': ['l1', 'l2', 'l3', 'l4', 'l5', 'l6'],
-    's-raka': ['l1'],
-    's-maya': ['l1', 'l2', 'l3', 'l4', 'l5', 'l6'],
+    's-sari': ['v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7'],
+    's-eko': ['v1', 'v2', 'v3', 'v4', 'v5'],
+    's-nina': ['v1', 'v2', 'v3', 'v4', 'v5', 'v6'],
+    's-raka': ['v1'],
+    's-maya': ['v1', 'v2', 'v3', 'v4', 'v5', 'v6'],
     's-rina': [],
     's-toni': []
   },

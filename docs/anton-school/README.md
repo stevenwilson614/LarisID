@@ -19,7 +19,7 @@ This folder is not copied by `scripts/assemble-site.sh`.
 |---|---|---|
 | Who | Hendra / Afryian, Batch 1 | Anton, then other mentors |
 | Job | Shop-crawl verified progress, Toko Saya | Live class + kurikulum + tools + WA |
-| Live UI | Ringkasan / Siswa / Feed / Jadwal | Prototype: Home / Belajar / Pustaka / Diskusi / Progres |
+| Live UI | Ringkasan / Siswa / Feed / Jadwal | Prototype: Home / Belajar (12 video) / Pustaka / Diskusi / Progres |
 | Chrome | LaRISE applicants, hardcoded Zoom, scrape boards | Hidden |
 | Money | LarisID is free | Anton is merchant; ledger in LMS |
 | Next mentor | New `cohorts` row (today) | `schools` + `school_members` |
@@ -45,6 +45,11 @@ is **not loaded** and still holds authoring + `wscLazyEmbedHtml`.
 Gating is Anton’s membership and IP, not LarisID Cari Produk / Deep Dive.
 `gratis` / beasiswa is a first-class billing status. Progress is completed
 items / total — no fake scores.
+
+Kurikulum contoh: **12 video** (4 minggu × 3). Tiap video punya lembar kerja,
+poin penting, dan 2 pertanyaan cek pemahaman (bukan ujian). Check hijau + bar
+% untuk seluruh kurikulum. Kolab tetap alat mentoring di Pustaka, bukan salah
+satu dari 12.
 
 ## Catalog (lynk.id/obrolan.marketing)
 

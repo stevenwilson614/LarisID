@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lembar kerja — Sekolah Anton</title>
+  <style>
+    :root { --ink:#0a0a0a; --text:#f3f3f3; --muted:#8a8a8a; --line:#2a2a2a; --card:#161616; --r:8px; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Plus Jakarta Sans", system-ui, sans-serif; background: var(--ink); color: var(--text); padding: 20px; max-width: 640px; }
+    img.lock { display: block; height: 28px; width: auto; margin: 0 0 14px; }
+    h1 { font-size: 1.05rem; margin: 0 0 4px; }
+    .lead { font-size: .8rem; color: var(--muted); line-height: 1.5; margin: 0 0 16px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; margin: 10px 0; }
+    h2 { font-size: .78rem; margin: 0 0 8px; }
+    ol, ul { margin: 0; padding-left: 18px; font-size: .8rem; line-height: 1.55; }
+    li { margin: 6px 0; }
+    .muted { color: var(--muted); font-size: .74rem; }
+  </style>
+</head>
+<body>
+  <img class="lock" src="../assets/obrolan/logo-lockup.png" alt="Obrolan Marketing">
+  <p class="muted" id="num"></p>
+  <h1 id="title">Lembar kerja</h1>
+  <p class="lead">Contoh sampai Anton ganti PDF. Cetak atau isi di notes HP. Jangan sebar supplier.</p>
+  <div class="card">
+    <h2>Isi sebelum / sesudah nonton</h2>
+    <ol>
+      <li>SKU yang kamu pakai latihan: ________________</li>
+      <li>Modal (Rp): ________________</li>
+      <li>Satu hal yang masih gelap di toko: ________________</li>
+      <li>Satu aksi besok (bukan “nanti”): ________________</li>
+    </ol>
+  </div>
+  <div class="card">
+    <h2>Catatan video</h2>
+    <ul>
+      <li>________________________________</li>
+      <li>________________________________</li>
+      <li>________________________________</li>
+    </ul>
+  </div>
+  <p class="muted">Prototype Sekolah Anton · localhost · bukan file produksi.</p>
+  <script>
+    var titles = {
+      v1: '01 — Cara pakai kelas',
+      v2: '02 — Audit etalase',
+      v3: '03 — Brief foto SKU',
+      v4: '04 — Isi modal & margin',
+      v5: '05 — Daftar potongan',
+      v6: '06 — Komisi aman',
+      v7: '07 — Kuota undangan',
+      v8: '08 — Baca CSV Kalodata',
+      v9: '09 — Template chat',
+      v10: '10 — Rundown live',
+      v11: '11 — Follow-up live',
+      v12: '12 — Syarat sebelum iklan'
+    };
+    var id = new URLSearchParams(location.search).get('id') || 'v1';
+    document.getElementById('num').textContent = 'Lembar kerja ' + (titles[id] || id);
+    document.getElementById('title').textContent = titles[id] || 'Lembar kerja';
+    document.title = (titles[id] || 'Lembar kerja') + ' — Sekolah Anton';
+  </script>
+</body>
+</html>
