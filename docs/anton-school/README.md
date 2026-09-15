@@ -19,7 +19,7 @@ This folder is not copied by `scripts/assemble-site.sh`.
 |---|---|---|
 | Who | Hendra / Afryian, Batch 1 | Anton, then other mentors |
 | Job | Shop-crawl verified progress, Toko Saya | Live class + kurikulum + tools + WA |
-| Live UI | Ringkasan / Siswa / Feed / Jadwal | Prototype: Home / Belajar (12 video) / Pustaka / Diskusi / Progres |
+| Live UI | Ringkasan / Siswa / Feed / Jadwal | Prototype: Home / Belajar / Alat / Pustaka / Diskusi / Progres |
 | Chrome | LaRISE applicants, hardcoded Zoom, scrape boards | Hidden |
 | Money | LarisID is free | Anton is merchant; ledger in LMS |
 | Next mentor | New `cohorts` row (today) | `schools` + `school_members` |
@@ -52,8 +52,12 @@ poin penting, dan 2 pertanyaan cek pemahaman (bukan ujian). Check hijau + bar
 satu dari 12.
 
 Mentor (desktop) boleh ganti bagian jadi **minggu atau modul**, rename, tambah,
-urutkan, dan unggah video (tautan YouTube/Drive atau file MP4 di browser ini).
-Asisten hanya lihat.
+urutkan, tutup/buka dengan panah, dan unggah video (tautan YouTube/Drive atau
+file MP4 di browser ini). Asisten hanya lihat. **+ Bagian** nempel di toolbar
+atas supaya tidak hilang di bawah modul yang panjang.
+
+Siswa punya tab **Alat** (kalkulator, AI creative, AI analisa, plus Kolab kalau
+mentoring). Pustaka tetap etalase + rekaman. Checkout tetap lynk.id.
 
 ## Instagram / lynk — kita tidak ambil alih
 

@@ -167,7 +167,9 @@
     kurOpen: false,
     skuId: null,
     skuPreview: false,
-    editLecId: null
+    skuFrom: 'pustaka',
+    editLecId: null,
+    secFold: null
   };
 
   function save() {
@@ -332,6 +334,21 @@
 
   function sectionStyle() { return db.sectionStyle === 'modul' ? 'modul' : 'minggu'; }
   function sectionWord() { return sectionStyle() === 'modul' ? 'Modul' : 'Minggu'; }
+  function toolsCatalog() { return catalog().filter((p) => p.group === 'alat'); }
+  function ensureSecFold() {
+    if (ui.secFold) return;
+    ui.secFold = new Set();
+    (db.weeks || []).forEach((w, i) => { if (i > 0) ui.secFold.add(w.id); });
+  }
+  function isSecOpen(id) {
+    ensureSecFold();
+    return !ui.secFold.has(id);
+  }
+  function setSecOpen(id, open) {
+    ensureSecFold();
+    if (open) ui.secFold.delete(id);
+    else ui.secFold.add(id);
+  }
   function retitleDefaultSections() {
     const word = sectionWord();
     db.weeks.forEach((w, i) => {
@@ -490,7 +507,7 @@
     pers.value = ui.personaId;
     pers.hidden = isStaff();
     if (!isStaff()) {
-      const allowed = studentTabs().map((t) => t.id).concat(['sku']);
+      const allowed = studentTabs().map((t) => t.id).concat(['sku', 'alat']);
       if (allowed.indexOf(ui.tab) === -1) ui.tab = 'home';
     }
     renderTabs();
@@ -501,6 +518,7 @@
       return [
         { id: 'home', label: 'Home' },
         { id: 'belajar', label: 'Belajar' },
+        { id: 'alat', label: 'Alat' },
         { id: 'pustaka', label: 'Pustaka' },
         { id: 'diskusi', label: 'Diskusi' },
         { id: 'progres', label: 'Progres' }
@@ -508,6 +526,7 @@
     }
     return [
       { id: 'home', label: 'Home' },
+      { id: 'alat', label: 'Alat' },
       { id: 'pustaka', label: 'Pustaka' },
       { id: 'progres', label: 'Progres' }
     ];
@@ -534,15 +553,18 @@
     ).join('');
     const dock = $('dock');
     if (!isStaff()) {
+      const tabs = studentTabs();
+      const sku = ui.tab === 'sku' ? productById(ui.skuId) : null;
+      const skuTab = ui.skuFrom || (sku && sku.group === 'alat' ? 'alat' : 'pustaka');
       dock.hidden = false;
-      dock.classList.toggle('cols-3', !canMentoring(ui.personaId));
-      dock.innerHTML = studentTabs().map((t) =>
+      dock.className = 'dock cols-' + tabs.length;
+      dock.innerHTML = tabs.map((t) =>
         '<button type="button" data-act="tab" data-id="' + t.id + '" aria-selected="' +
-        (t.id === ui.tab || (ui.tab === 'sku' && t.id === 'pustaka')) + '">' + esc(t.label) + '</button>'
+        (t.id === ui.tab || (ui.tab === 'sku' && t.id === skuTab)) + '">' + esc(t.label) + '</button>'
       ).join('');
     } else {
       dock.hidden = true;
-      dock.classList.remove('cols-3');
+      dock.className = 'dock';
     }
   }
 
@@ -563,6 +585,7 @@
       const tab = ui.tab;
       if (tab === 'home') main.innerHTML = viewHome();
       else if (tab === 'belajar') main.innerHTML = viewBelajar();
+      else if (tab === 'alat') main.innerHTML = viewAlat();
       else if (tab === 'pustaka') main.innerHTML = viewStudentPustaka();
       else if (tab === 'sku') main.innerHTML = viewSkuPage();
       else if (tab === 'diskusi') main.innerHTML = canMentoring(ui.personaId) ? viewDiskusi(false) : viewLocked();
@@ -635,13 +658,7 @@
             '<span class="muted"> · mentoring' + (bill.note ? ' · ' + esc(bill.note) : '') + '</span></div>' +
         '</section>' +
       '</div>' +
-      '<section class="card" style="margin-top:14px">' +
-        '<h2>Pustaka Anton</h2>' +
-        '<div class="cover-strip">' + catalog().map((p) =>
-          '<button type="button" data-act="open-sku" data-id="' + esc(p.id) + '">' +
-            skuCoverHtml(p) + '<span>' + esc(p.title) + '</span></button>'
-        ).join('') + '</div>' +
-      '</section>'
+      alatHomeStrip(s.id)
     );
   }
 
@@ -657,12 +674,12 @@
               '<p class="muted">Pustaka kamu</p>' +
               '<h2>' + esc(p.title) + '</h2>' +
               '<p class="muted">' + esc(p.job) + '</p>' +
-              '<button class="btn" data-act="open-sku" data-id="' + esc(p.id) + '">Buka</button>' +
+              '<button class="btn" data-act="open-sku" data-from="alat" data-id="' + esc(p.id) + '">Buka</button>' +
             '</div>' +
           '</section>'
         ).join('')
       : '<section class="card"><h2>Belum ada produk</h2><p class="muted">Beli satu alat di lynk.id, atau ikut mentoring supaya semua kebuka.</p></section>';
-    return catalogHero() + ownedHtml +
+    return catalogHero() + ownedHtml + alatHomeStrip(s.id) +
       '<section class="card" style="margin-top:10px">' +
         '<h2>Ikut mentoring Anton</h2>' +
         '<p class="muted">Live class + semua produk di Pustaka. Anton merchant di lynk.id — LarisID tidak menahan uang.</p>' +
@@ -901,9 +918,9 @@
   function skuTile(p, sid) {
     const owned = canSku(sid, p.id);
     const actions = owned
-      ? '<button class="btn" data-act="open-sku" data-id="' + esc(p.id) + '">Buka</button>'
+      ? '<button class="btn" data-act="open-sku" data-from="pustaka" data-id="' + esc(p.id) + '">Buka</button>'
       : '<a class="btn" href="' + esc(p.lynk) + '" target="_blank" rel="noopener">Beli di lynk.id</a>' +
-        '<button class="btn secondary" data-act="contoh-sku" data-id="' + esc(p.id) + '">Lihat contoh</button>';
+        '<button class="btn secondary" data-act="contoh-sku" data-from="pustaka" data-id="' + esc(p.id) + '">Lihat contoh</button>';
     return '<div class="card tool-tile sku">' +
       skuCoverHtml(p) +
       '<div class="sku-body">' +
@@ -947,7 +964,8 @@
     const hero = p.kind === 'tool' && p.cover
       ? '<img class="sku-hero" src="' + esc(p.cover) + '" alt="' + esc(p.title) + '">'
       : '';
-    return '<button type="button" class="kur-toggle" data-act="tab" data-id="pustaka">← Pustaka</button>' +
+    return '<button type="button" class="kur-toggle" data-act="tab" data-id="' + esc(ui.skuFrom || 'pustaka') + '">← ' +
+      (ui.skuFrom === 'alat' ? 'Alat' : 'Pustaka') + '</button>' +
       exampleBanner(p, preview) +
       '<div class="card" style="padding:0;overflow:hidden;margin-top:10px">' +
         hero +
@@ -961,8 +979,59 @@
         '</div></div>' + extra;
   }
 
+  function alatHomeStrip(sid) {
+    const tools = toolsCatalog();
+    const tiles = tools.map((p) => {
+      const owned = canSku(sid, p.id);
+      return '<button type="button" class="alat-chip' + (owned ? '' : ' locked') + '" data-act="' +
+        (owned ? 'open-sku' : 'contoh-sku') + '" data-from="alat" data-id="' + esc(p.id) + '">' +
+        skuCoverHtml(p, 'alat-chip-cover') +
+        '<span><strong>' + esc(p.title.replace(/^TikTok Seller |^Ai Seller |^Asisten AI /, '')) + '</strong>' +
+        '<em>' + (owned ? 'Buka' : 'Contoh') + '</em></span></button>';
+    }).join('');
+    const kolab = canMentoring(sid)
+      ? '<button type="button" class="alat-chip" data-act="open-kolab"><span><strong>Kolab</strong><em>Cari kreator</em></span></button>'
+      : '';
+    return '<section class="card" style="margin-top:14px">' +
+      '<div class="row" style="justify-content:space-between">' +
+        '<h2 style="margin:0">Alat</h2>' +
+        '<button type="button" class="btn-sm" data-act="tab" data-id="alat">Lihat semua</button></div>' +
+      '<p class="muted">Kalkulator, AI creative, AI analisa. Yang terkunci tetap bisa dilihat contohnya.</p>' +
+      '<div class="alat-pick">' + tiles + kolab + '</div></section>';
+  }
+
   function viewAlat() {
-    return viewStudentPustaka();
+    const sid = ui.personaId;
+    const tools = toolsCatalog();
+    let html = '<h2 style="margin:0 0 4px">Alat</h2>' +
+      '<p class="muted" style="margin:0 0 14px">Pilih yang mau dipakai. Mentoring = semua kebuka. Satuan = yang sudah dibeli di lynk.id.</p>' +
+      '<div class="tool-grid">';
+    html += tools.map((p) => {
+      const owned = canSku(sid, p.id);
+      return '<div class="card alat-row">' +
+        skuCoverHtml(p, 'alat-chip-cover') +
+        '<div class="sku-body">' +
+        (owned ? '<span class="chip lunas">Bisa dipakai</span>' : '<span class="chip">Terkunci</span>') +
+        (p.example ? ' <span class="chip warn">Contoh</span>' : '') +
+        '<h3>' + esc(p.title) + '</h3>' +
+        '<p class="muted">' + esc(p.job) + '</p>' +
+        '<div class="row" style="margin-top:8px">' +
+          (owned
+            ? '<button class="btn" data-act="open-sku" data-from="alat" data-id="' + esc(p.id) + '">Buka</button>'
+            : '<a class="btn" href="' + esc(p.lynk) + '" target="_blank" rel="noopener">Beli di lynk.id</a>' +
+              '<button class="btn secondary" data-act="contoh-sku" data-from="alat" data-id="' + esc(p.id) + '">Lihat contoh</button>') +
+        '</div></div></div>';
+    }).join('');
+    html += '</div>';
+    if (canMentoring(sid)) {
+      html += '<h3 class="week-label">Khusus kelas</h3>' +
+        '<button type="button" class="card alat-row" data-act="open-kolab" style="width:100%;text-align:left">' +
+          '<div class="sku-body" style="padding:0"><h3>Kolab — cari kreator</h3>' +
+          '<p class="muted">Bukan produk lynk. Hanya mentoring.</p></div>' +
+        '</button>';
+    }
+    html += '<p class="muted" style="margin-top:16px">Rekaman webinar ada di Pustaka. Checkout tetap lynk.id.</p>';
+    return html;
   }
 
   function viewDiskusi(staff) {
@@ -1175,12 +1244,13 @@
     const readonly = ui.role === 'asisten';
     const word = sectionWord();
     const nVid = lectures().filter((l) => l.type === 'video').length;
+    ensureSecFold();
     const toolbar = '<div class="kur-toolbar">' +
       '<div><h2 style="margin:0">Kurikulum</h2>' +
         '<p class="muted" style="margin:6px 0 0">' + nVid + ' video · label bagian: ' + word.toLowerCase() +
-        '. Ganti ke minggu/modul, atau ketik nama sendiri. Checkout Instagram tetap lynk.id.</p></div>' +
+        '. Panah untuk tutup modul. Checkout Instagram tetap lynk.id.</p></div>' +
       (readonly ? '' :
-        '<div class="row">' +
+        '<div class="row kur-toolbar-actions">' +
           '<button type="button" class="btn-sm' + (sectionStyle() === 'minggu' ? ' on' : '') + '" data-act="sec-style" data-id="minggu">Pakai minggu</button>' +
           '<button type="button" class="btn-sm' + (sectionStyle() === 'modul' ? ' on' : '') + '" data-act="sec-style" data-id="modul">Pakai modul</button>' +
           '<button type="button" class="btn" data-act="add-sec">+ Bagian</button>' +
@@ -1188,21 +1258,28 @@
       '</div>';
     const sections = db.weeks.map((w, wi) => {
       const items = lecturesInWeek(w.id);
+      const open = isSecOpen(w.id);
       const list = items.map((l, li) => lecEditorCard(l, readonly, wi, li, items.length)).join('') ||
         '<p class="muted">Belum ada video di bagian ini.</p>';
-      return '<section class="card kur-sec">' +
+      return '<section class="card kur-sec' + (open ? '' : ' is-collapsed') + '" data-sec="' + esc(w.id) + '">' +
         '<div class="sec-head">' +
+          '<button type="button" class="sec-caret" data-act="sec-fold" data-id="' + esc(w.id) + '"' +
+            ' aria-expanded="' + open + '" aria-label="' + (open ? 'Tutup' : 'Buka') + ' bagian">' +
+            '<i></i></button>' +
           (readonly
-            ? '<h3 style="margin:0">' + esc(w.title) + '</h3>'
+            ? '<h3 style="margin:0;flex:1">' + esc(w.title) + '</h3>'
             : '<input class="sec-title" data-act="sec-title" data-id="' + esc(w.id) + '" value="' + esc(w.title) + '" aria-label="Nama bagian">') +
-          (readonly ? '' : '<div class="row">' +
+          '<span class="muted sec-count">' + items.length + ' video</span>' +
+          (readonly ? '' : '<div class="row sec-actions">' +
             '<button type="button" class="btn-sm" data-act="sec-up" data-id="' + esc(w.id) + '"' + (wi === 0 ? ' disabled' : '') + '>Naik</button>' +
             '<button type="button" class="btn-sm" data-act="sec-down" data-id="' + esc(w.id) + '"' + (wi === db.weeks.length - 1 ? ' disabled' : '') + '>Turun</button>' +
-            '<button type="button" class="btn-sm" data-act="del-sec" data-id="' + esc(w.id) + '">Hapus bagian</button>' +
+            '<button type="button" class="btn-sm" data-act="del-sec" data-id="' + esc(w.id) + '">Hapus</button>' +
           '</div>') +
         '</div>' +
-        list +
-        (readonly ? '' : addLecForm(w.id)) +
+        '<div class="sec-body">' +
+          list +
+          (readonly ? '' : addLecForm(w.id)) +
+        '</div>' +
       '</section>';
     }).join('');
     return toolbar + sections;
@@ -1602,7 +1679,7 @@
       if (isStaff()) ui.mentorTab = id;
       else {
         ui.tab = id;
-        if (id === 'pustaka') { ui.skuId = null; ui.skuPreview = false; }
+        if (id === 'pustaka' || id === 'alat') { ui.skuId = null; ui.skuPreview = false; }
       }
       render();
     } else if (act === 'open-sku') {
@@ -1610,11 +1687,13 @@
       if (!canSku(ui.personaId, id) && !isStaff()) return;
       ui.skuId = id;
       ui.skuPreview = false;
+      ui.skuFrom = btn.getAttribute('data-from') || (ui.tab === 'alat' ? 'alat' : 'pustaka');
       ui.tab = 'sku';
       render();
     } else if (act === 'contoh-sku') {
       ui.skuId = btn.getAttribute('data-id');
       ui.skuPreview = true;
+      ui.skuFrom = btn.getAttribute('data-from') || (ui.tab === 'alat' ? 'alat' : 'pustaka');
       ui.tab = 'sku';
       render();
     } else if (act === 'toggle-example') {
@@ -1682,6 +1761,8 @@
     } else if (act === 'edit-lec') {
       const id = btn.getAttribute('data-id');
       ui.editLecId = ui.editLecId === id ? null : id;
+      const lec = lectureById(id);
+      if (lec && ui.editLecId) setSecOpen(lec.weekId, true);
       render();
     } else if (act === 'sec-style') {
       db.sectionStyle = btn.getAttribute('data-id') === 'modul' ? 'modul' : 'minggu';
@@ -1689,9 +1770,23 @@
       save();
       render();
     } else if (act === 'add-sec') {
+      e.preventDefault();
+      ensureSecFold();
+      const id = 's-' + Date.now();
       const n = db.weeks.length + 1;
-      db.weeks.push({ id: 's-' + Date.now(), title: sectionWord() + ' ' + n, due: '' });
+      db.weeks.push({ id: id, title: sectionWord() + ' ' + n, due: '' });
+      db.weeks.forEach((w) => { if (w.id !== id) ui.secFold.add(w.id); });
+      ui.secFold.delete(id);
       save();
+      render();
+      toast(sectionWord() + ' ' + n + ' ditambah. Gulir ke bagian yang terbuka.');
+      requestAnimationFrame(() => {
+        const el = document.querySelector('[data-sec="' + id + '"]');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    } else if (act === 'sec-fold') {
+      const id = btn.getAttribute('data-id');
+      setSecOpen(id, !isSecOpen(id));
       render();
     } else if (act === 'del-sec') {
       const id = btn.getAttribute('data-id');
@@ -1704,6 +1799,7 @@
         return;
       }
       db.weeks = db.weeks.filter((w) => w.id !== id);
+      if (ui.secFold) ui.secFold.delete(id);
       save();
       render();
     } else if (act === 'sec-up' || act === 'sec-down') {
@@ -1858,6 +1954,8 @@
     db = defaultState();
     ui.kolabSel = new Set();
     ui.editLecId = null;
+    ui.secFold = null;
+    ui.skuFrom = 'pustaka';
     closeDrawer();
     render();
   });
