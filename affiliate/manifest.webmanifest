@@ -1,0 +1,19 @@
+{
+  "name": "Laris Affiliate",
+  "short_name": "Affiliate",
+  "description": "Kampanye outreach TikTok. Prototype LAN, bukan larisid.com.",
+  "start_url": "/affiliate/",
+  "scope": "/affiliate/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F5EFE0",
+  "theme_color": "#B5202A",
+  "icons": [
+    {
+      "src": "/images/brand/appicon-red.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

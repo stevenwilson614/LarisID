@@ -17,7 +17,7 @@ cp -r "$ROOT"/images "$ROOT"/styles "$ROOT"/fonts \
       "$ROOT"/kalkulator "$ROOT"/rise "$ROOT"/data "$ROOT"/expor "$OUT/"
 mkdir -p "$OUT/js"
 # Live JS only — do not ship laris-app.js, pre-cutover backups, or unused vendors.
-# school/ is the localhost Anton LMS prototype. Never copy it into _site.
+# school/ and affiliate/ are localhost prototypes. Never copy them into _site.
 rsync -a --exclude '*.bak' --exclude 'laris-app.js' \
   --exclude 'laris-catpicker.js' --exclude 'laris-finder.js' \
   --exclude 'laris-side-panel.js' --exclude 'laris-trending.js' \
