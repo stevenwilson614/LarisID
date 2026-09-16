@@ -11269,11 +11269,90 @@ function kalcPagePanel() {
   return $('kalc-page-body')?.querySelector('[data-kalc]');
 }
 
+function kalcPdfShotHtml(inp, r, product) {
+  const rate = inp.rate || LARIS_MP.rateFor(inp.mpKey, inp.category);
+  const mpLabel = rate.label || String(inp.mpKey || 'Shopee');
+  const mpColor = (LARIS_MP.FEES[inp.mpKey] && LARIS_MP.FEES[inp.mpKey].color) || '#B5202A';
+  const title = (product?.product_name || 'Kalkulasi profit').slice(0, 90);
+  const toko = product?.store_name || '';
+  const kw = product?.keyword || '';
+  const img = product?.image_url
+    ? `<img class="kalc-pdf-photo" src="${esc(product.image_url)}" alt="" crossorigin="anonymous">`
+    : `<span class="kalc-pdf-photo kalc-pdf-photo--ph"></span>`;
+  const catLabel = inp.manual ? 'Manual' : (inp.category || '—');
+  const marginTxt = `${(r.margin || 0).toFixed(1).replace('.', ',')}%`;
+  const feeRows = [
+    ['Harga jual', fmtRp(inp.price)],
+    ['Modal produk', fmtRp(inp.cogs)],
+    ['Kategori', catLabel],
+    [`Komisi (${LARIS_MP.fmtPct(rate.comm)})`, fmtRp(r.commAmt)],
+    [`Biaya admin (${LARIS_MP.fmtPct(rate.admin)})`, fmtRp(r.admAmt)],
+  ];
+  if (r.progAmt > 0) feeRows.push([rate.programLabel || 'Program promo', fmtRp(r.progAmt)]);
+  if ((r.ads || 0) > 0) feeRows.push(['Iklan', fmtRp(r.ads)]);
+  if (r.shipCost) feeRows.push(['Ongkir (subsidi)', fmtRp(r.shipCost)]);
+  feeRows.push(['Packing', fmtRp(inp.packing)]);
+  feeRows.push(['Operasional', fmtRp(inp.opex)]);
+  if ((r.taxAmt || 0) + (r.retAmt || 0) > 0) {
+    feeRows.push(['Pajak & return', fmtRp((r.taxAmt || 0) + (r.retAmt || 0))]);
+  }
+
+  const productBlock = product
+    ? `<div class="kalc-pdf-product">
+        ${img}
+        <div class="kalc-pdf-product-txt">
+          <div class="kalc-pdf-product-title">${esc(title)}</div>
+          ${toko ? `<div class="kalc-pdf-product-toko">${esc(toko)}</div>` : ''}
+          ${kw ? `<div class="kalc-pdf-product-kw">${esc(kw)}</div>` : ''}
+        </div>
+      </div>`
+    : `<div class="kalc-pdf-product kalc-pdf-product--empty">
+        <div class="kalc-pdf-product-txt">
+          <div class="kalc-pdf-product-title">Kalkulasi profit</div>
+          <div class="kalc-pdf-product-toko">Tanpa produk terpilih</div>
+        </div>
+      </div>`;
+
+  return `
+    <div class="kalc-pdf-brand">
+      <img src="/images/brand/logo-horizontal-red.webp" alt="LARIS" height="36" crossorigin="anonymous">
+    </div>
+    ${productBlock}
+    <div class="kalc-pdf-mp" style="--kalc-mp:${esc(mpColor)}">
+      <span class="kalc-pdf-mp-lbl">Marketplace</span>
+      <span class="kalc-pdf-mp-name">${esc(mpLabel)}</span>
+    </div>
+    <div class="kalc-pdf-hero">
+      <div class="kalc-pdf-hero-main">
+        <div class="kalc-pdf-eyebrow">Uang yang kamu dapat</div>
+        <div class="kalc-pdf-profit${r.profit < 0 ? ' is-neg' : ''}">${esc(fmtRp(r.profit))}</div>
+        <div class="kalc-pdf-margin">${esc(marginTxt)} margin</div>
+      </div>
+      <div class="kalc-pdf-hero-side">
+        <div><span>Omset / pesanan</span><b>${esc(fmtRp(r.price))}</b></div>
+        <div><span>Total biaya</span><b>${esc(fmtRp(r.totalCost))}</b></div>
+        <div><span>Laba bersih</span><b>${esc(fmtRp(r.profit))}</b></div>
+      </div>
+    </div>
+    <div class="kalc-pdf-grid">
+      ${feeRows.map(([k, v]) =>
+        `<div class="kalc-pdf-row"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`
+      ).join('')}
+    </div>
+    <div class="kalc-pdf-recs">
+      <div><span>Break even</span><b>${esc(fmtRp(gptKalcSolve(0, r)))}</b></div>
+      <div><span>Good profit ~18%</span><b>${esc(fmtRp(gptKalcSolve(18, r)))}</b></div>
+      <div><span>Healthy ~28%</span><b>${esc(fmtRp(gptKalcSolve(28, r)))}</b></div>
+    </div>
+    <div class="kalc-pdf-foot">${esc(new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }))} · Estimasi LarisID</div>
+  `;
+}
+
 async function downloadKalcPdf() {
-  const page = $('kalc-page');
   const panel = kalcPagePanel();
-  if (!page || !panel) return;
+  if (!panel) return;
   const inp = _gptKalcRead(panel);
+  const r = gptKalcCompute(inp);
   if (!(inp.price > 0)) {
     showToast('Isi harga jual dulu.');
     return;
@@ -11296,25 +11375,33 @@ async function downloadKalcPdf() {
   const shot = document.createElement('div');
   shot.className = 'kalc-pdf-shot';
   shot.setAttribute('aria-hidden', 'true');
-  const brand = document.createElement('div');
-  brand.className = 'kalc-pdf-brand';
-  brand.innerHTML = '<img src="/images/brand/logo-horizontal-red.webp" alt="LARIS" height="32" crossorigin="anonymous">';
-  shot.appendChild(brand);
-  const clone = page.cloneNode(true);
-  clone.querySelector('#kalc-product-hits')?.remove();
-  clone.querySelector('.kalc-page-actions')?.remove();
-  clone.querySelectorAll('input, select, textarea, button').forEach((el) => {
-    el.setAttribute('tabindex', '-1');
-    if (el.tagName === 'BUTTON') el.disabled = true;
-  });
-  shot.appendChild(clone);
+  shot.innerHTML = kalcPdfShotHtml(inp, r, _kalcPageProduct);
   document.body.appendChild(shot);
+
+  // Wait for logo (+ product photo if any) so the shot is not blank.
+  try {
+    const imgs = Array.from(shot.querySelectorAll('img'));
+    await Promise.all(imgs.map((el) => {
+      if (el.complete) return Promise.resolve();
+      return new Promise((res) => {
+        el.onload = () => res();
+        el.onerror = () => {
+          el.replaceWith(Object.assign(document.createElement('span'), {
+            className: el.className + ' kalc-pdf-photo--ph',
+          }));
+          res();
+        };
+        setTimeout(res, 1200);
+      });
+    }));
+  } catch (_) {}
 
   let canvas;
   try {
     canvas = await window.html2canvas(shot, {
       scale: 2,
       useCORS: true,
+      allowTaint: false,
       backgroundColor: '#ffffff',
       logging: false,
     });
@@ -11329,7 +11416,7 @@ async function downloadKalcPdf() {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageW = 210;
   const pageH = 297;
-  const margin = 8;
+  const margin = 10;
   const maxW = pageW - margin * 2;
   const maxH = pageH - margin * 2;
   let w = maxW;

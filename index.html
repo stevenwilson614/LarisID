@@ -10503,7 +10503,7 @@ body.view-chat .sfb-card {
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260916d" defer></script>
 <script src="/js/gpt-alat-preview.js?v=20260916ae" defer></script>
-<script src="/js/gpt-app.js?v=20260916s" defer></script>
+<script src="/js/gpt-app.js?v=20260916t" defer></script>
 <style>
 .alat-preview-banner {
   display: none;
@@ -10899,32 +10899,184 @@ body.alat-focus.view-home .home-finder::after {
   display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end;
   padding-top: 8px; border-top: 1px solid #F1F1F2;
 }
-/* Off-screen capture for Unduh PDF — looks like a calculator screenshot. */
+/* Off-screen capture for Unduh PDF — clean summary, not the interactive form. */
 .kalc-pdf-shot {
   position: fixed;
   left: -10000px;
   top: 0;
-  width: 720px;
-  padding: 24px 28px 32px;
+  width: 680px;
+  padding: 28px 32px 30px;
   background: #fff;
   box-sizing: border-box;
-  font-family: inherit;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
   color: #1A1A1A;
 }
-.kalc-pdf-brand {
-  margin: 0 0 18px;
+.kalc-pdf-brand { margin: 0 0 20px; }
+.kalc-pdf-brand img { display: block; height: 36px; width: auto; }
+.kalc-pdf-product {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  margin: 0 0 16px;
+  padding: 14px;
+  border: 1px solid #E8E8E8;
+  border-radius: 14px;
+  background: #FAFAFA;
 }
-.kalc-pdf-brand img {
+.kalc-pdf-product--empty { align-items: center; }
+.kalc-pdf-photo {
+  width: 112px;
+  height: 112px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex: none;
+  background: #EEE;
+}
+.kalc-pdf-photo--ph {
   display: block;
-  height: 32px;
-  width: auto;
+  background: linear-gradient(135deg, #F1F1F2, #E4E4E7);
 }
-.kalc-pdf-shot .kalc-page {
-  max-width: none;
-  margin: 0;
-  padding: 0;
+.kalc-pdf-product-txt { min-width: 0; flex: 1; padding-top: 4px; }
+.kalc-pdf-product-title {
+  font-size: 1.2rem;
+  font-weight: 750;
+  line-height: 1.3;
+  letter-spacing: -.02em;
+  margin: 0 0 8px;
 }
-.kalc-pdf-shot .kalc-page-pick { margin-bottom: 14px; }
+.kalc-pdf-product-toko {
+  font-size: .98rem;
+  font-weight: 650;
+  color: #333;
+  margin: 0 0 4px;
+}
+.kalc-pdf-product-kw {
+  font-size: .82rem;
+  color: #8A8A8A;
+}
+.kalc-pdf-mp {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--kalc-mp, #B5202A) 12%, #fff);
+  border: 1px solid color-mix(in srgb, var(--kalc-mp, #B5202A) 28%, #fff);
+}
+.kalc-pdf-mp-lbl {
+  font-size: .78rem;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.kalc-pdf-mp-name {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--kalc-mp, #B5202A);
+}
+.kalc-pdf-hero {
+  display: flex;
+  gap: 16px;
+  margin: 0 0 16px;
+  padding: 18px;
+  border-radius: 14px;
+  background: #1A1A1A;
+  color: #fff;
+}
+.kalc-pdf-hero-main { flex: 1.2; min-width: 0; }
+.kalc-pdf-eyebrow {
+  font-size: .75rem;
+  font-weight: 600;
+  opacity: .7;
+  margin-bottom: 6px;
+}
+.kalc-pdf-profit {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -.03em;
+  line-height: 1.1;
+  margin-bottom: 6px;
+}
+.kalc-pdf-profit.is-neg { color: #FCA5A5; }
+.kalc-pdf-margin {
+  display: inline-block;
+  font-size: .85rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.12);
+}
+.kalc-pdf-hero-side {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  font-size: .88rem;
+}
+.kalc-pdf-hero-side div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  opacity: .92;
+}
+.kalc-pdf-hero-side span { opacity: .7; }
+.kalc-pdf-hero-side b { font-weight: 700; font-variant-numeric: tabular-nums; }
+.kalc-pdf-grid {
+  border: 1px solid #E8E8E8;
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 0 0 14px;
+}
+.kalc-pdf-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  padding: 11px 14px;
+  border-top: 1px solid #F1F1F2;
+  font-size: 1rem;
+}
+.kalc-pdf-row:first-child { border-top: 0; }
+.kalc-pdf-row span { color: #555; min-width: 0; }
+.kalc-pdf-row strong {
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  font-size: 1.05rem;
+  letter-spacing: -.01em;
+}
+.kalc-pdf-recs {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  margin: 0 0 14px;
+}
+.kalc-pdf-recs > div {
+  border: 1px solid #E8E8E8;
+  border-radius: 10px;
+  padding: 12px;
+  background: #FAFAFA;
+}
+.kalc-pdf-recs span {
+  display: block;
+  font-size: .72rem;
+  color: #888;
+  margin-bottom: 4px;
+}
+.kalc-pdf-recs b {
+  font-size: 1rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+.kalc-pdf-foot {
+  font-size: .75rem;
+  color: #999;
+  text-align: right;
+}
 .kalc-picked { margin-top: 10px; }
 .kalc-picked-card {
   display: flex; align-items: center; gap: 12px;
