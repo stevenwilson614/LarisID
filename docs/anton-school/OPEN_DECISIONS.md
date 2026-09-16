@@ -34,8 +34,9 @@ Partner Center onboarding is built for businesses, not hobby localhost. Indonesi
 / SEA scope, seller OAuth, request signing, test shops. Likely needs the same
 entity as (1). This is the long pole for **live** Kolab sends — not for the mock.
 
-Until then: quota-aware queue UI with **fake** sends only. No Seller Center
-cookies, no unofficial blast.
+Until then: quota-aware queue UI. Live send for this slice is the
+**unpacked Chrome extension** (in-tab Affiliate Center session only). See §4.
+No cookie farms. No unofficial cloud blast.
 
 ## 3. Kalodata ToS — student’s Open API key
 
@@ -53,16 +54,24 @@ exports into one Laris list (UU PDP).
 **Question:** After Partner Center approval, do we send Target Collab / IM for
 real shops?
 
-Constraints that do not go away:
+**v0 exception (explicit, unpacked Chrome only):** in-tab Seller Center
+automation is allowed as a local experiment. The extension rides the shop’s
+already-open Affiliate Center session in this Chrome profile. Cookies never
+leave the machine, never go to LarisID/Contabo, and we do not collect Seller
+Center passwords.
+
+Still **out of scope:** cookie farms, cloud queues, selling sessions, unofficial
+“3.000 DM / 10 menit” claims.
+
+Caps that do not go away:
 
 - Shop cap: 1,000 target invites / 24h, 50 per send, weekly GMV quota for
-  **unconnected** creators. Connected = unlimited. Kaloboost cannot beat this.
-- Official API = that cap. Unofficial Seller Center / cookie / cloud farm =
-  ToS, shop bans, MISSION §3 (unsolicited bulk). Out of scope.
-- If live: informed, product-relevant invites, per-student data, honest quota
-  meter. Not a “3.000 DM / 10 menit” claim.
+  **unconnected** creators. Connected = unlimited.
+- Affiliate Center ToS still applies. Shops can get limited. Badge copy stays
+  **Unofficial · sesi Chrome kamu**.
 
-**Default while offline:** no. Mock the queue. A later explicit yes is required.
+Partner Center OAuth remains the durable path if we graduate. Default for
+anything that is not this unpacked extension: no live send.
 
 ## 5. ICS `calendar_token` on production Jadwal
 
