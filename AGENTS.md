@@ -24,7 +24,7 @@ Cari Produk shows **listing rows** (photo, harga, omset, unit, review, usia) wit
 
 ## LarisExpor (`pasar=expor`)
 
-Logged-in export mode is the **same SPA**, Amazon US listings, not a second app. Before changing Amazon omset, LOOKUP, or Deep Dive lite, read **[docs/expor-app.md](./docs/expor-app.md)**. Do not mix Amazon rows into Shopee Cari Produk. Omset is always perkiraan (`price × bought_past_month`). Never invent BSR / Jungle Scout unit models. `terlaris_minggu` stays off until snapshot history exists. The LarisID side tab and sidebar market switchers (“LarisExpor” / “LarisID Shopee”) are **hidden for now** — do not put them back unless asked.
+Logged-in export mode is the **same SPA**, Amazon US listings, not a second app. Before changing Amazon omset, LOOKUP, or Deep Dive lite, read **[docs/expor-app.md](./docs/expor-app.md)**. Do not mix Amazon rows into Shopee Cari Produk. Omset is always perkiraan (`price × bought_past_month`). Never invent BSR / Jungle Scout unit models. `terlaris_minggu` stays off until snapshot history exists. Mode is **gated** (localhost / admin/leader / `localStorage.laris_expor_lab`). Do not unhide `#btn-expor-pasar` for the public. Do not change public `/harga/` or `llms.txt` until graduation.
 
 ## "Terlaris Minggu Ini" badge
 

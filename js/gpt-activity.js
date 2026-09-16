@@ -30,8 +30,11 @@
   }
 
   function items() {
+    var pasar = (api.pasar && api.pasar()) || 'shopee';
     var out = [];
     (_cache.chats || []).forEach(function (c) {
+      var cp = c.pasar || (c.context && c.context.pasar) || 'shopee';
+      if (cp !== pasar) return;
       out.push({
         kind: 'chat',
         at: c.created_at || c.updated_at || 0,
@@ -42,6 +45,8 @@
       });
     });
     (_cache.searches || []).forEach(function (s) {
+      var sp = s.pasar || (s.source === 'expor' ? 'expor' : 'shopee');
+      if (sp !== pasar) return;
       out.push({
         kind: 'cari',
         at: s.created_at,
@@ -52,6 +57,8 @@
     });
     (_cache.dives || []).forEach(function (d) {
       var m = d.metadata || {};
+      var dp = m.pasar || (String(m.shop_id) === 'amazon' ? 'expor' : 'shopee');
+      if (dp !== pasar) return;
       out.push({
         kind: 'dive',
         at: d.created_at,

@@ -1790,6 +1790,7 @@ const state = {
   pendingTracker: null, // Favorit Aku seed behind the login gate; resumed after sign-in
   pendingTrackKeyword: null, // one-tap Favorit caught by the signup gate; added after sign-in
   pendingKomunitas: null, // { tab, title, topic, postId } behind login / email deep link
+  pendingAlat: null, // unpublished preview: 'existing' after landing sift / claim_shop
   everOpenedDeepdive: false,
   lastDeepDiveKeyword: '',
   lastDeepDiveCategory: '',
@@ -1849,6 +1850,7 @@ function loadLocalState() {
     if (raw.pendingTracker) state.pendingTracker = raw.pendingTracker;
     if (raw.pendingTrackKeyword) state.pendingTrackKeyword = raw.pendingTrackKeyword;
     if (raw.pendingKomunitas) state.pendingKomunitas = raw.pendingKomunitas;
+    if (raw.pendingAlat) state.pendingAlat = raw.pendingAlat;
     if (raw.everOpenedDeepdive != null) state.everOpenedDeepdive = !!raw.everOpenedDeepdive;
     if (raw.lastDeepDiveKeyword) state.lastDeepDiveKeyword = String(raw.lastDeepDiveKeyword);
     if (raw.lastDeepDiveCategory) state.lastDeepDiveCategory = String(raw.lastDeepDiveCategory);
@@ -1869,6 +1871,7 @@ function saveLocalState() {
       pendingTracker: state.pendingTracker || null,
       pendingTrackKeyword: state.pendingTrackKeyword || null,
       pendingKomunitas: state.pendingKomunitas || null,
+      pendingAlat: state.pendingAlat || null,
       everOpenedDeepdive: state.everOpenedDeepdive || false,
       lastDeepDiveKeyword: state.lastDeepDiveKeyword || '',
       lastDeepDiveCategory: state.lastDeepDiveCategory || '',
@@ -3921,7 +3924,9 @@ function setView(name, opts = {}) {
   state.view = name;
   ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'cohort'].forEach(v => {
     const el = $(`view-${v}`);
-    if (el) el.classList.toggle('active', v === name);
+    // FAQ copy lives in #view-harga (no separate #view-faq). Keep that
+    // panel on when the FAQ nav item is active.
+    if (el) el.classList.toggle('active', v === name || (name === 'faq' && v === 'harga'));
     document.body.classList.toggle(`view-${v}`, v === name);
   });
   if (leaving === 'deepdive' && name !== 'deepdive') {
@@ -3974,7 +3979,13 @@ function setView(name, opts = {}) {
   }
   // Fresh surface — always start at the top so populated content scrolls down.
   if (name !== leaving) {
-    scrollPanelToTop();
+    if (name === 'faq') {
+      const faq = document.querySelector('#view-harga .meta-faq');
+      if (faq) faq.scrollIntoView({ block: 'start' });
+      else scrollPanelToTop();
+    } else {
+      scrollPanelToTop();
+    }
     void logUserEvent('view_open', { ui: 'gpt', view: name });
   }
   if ((name !== leaving || !_historyPrimed || opts.forceHistory) && !_navigatingFromHistory) {
@@ -4104,7 +4115,7 @@ function closeSidebar() {
 }
 
 const PLATFORM_ADMIN_EMAILS = ['stevenwilson614@gmail.com'];
-let _accessState = { loaded: false, isAdmin: false };
+let _accessState = { loaded: false, isAdmin: false, isLeader: false };
 
 /** The account's REAL platform role. Never masked — use this for the student-mode
  *  toggle itself, and for anything that must not be spoofed. */
@@ -4142,18 +4153,29 @@ function supplierProbeVisible() {
   return SUPPLIER_PROBE_PUBLIC || isPlatformAdmin();
 }
 
+function syncExporStaffGate() {
+  try {
+    const staff = !!(currentUser && (_accessState.isAdmin || _accessState.isLeader || isPlatformAdminRaw()));
+    window.LarisExpor?.noteStaff(staff, true);
+  } catch (_) {}
+}
+
 async function loadCurrentAccess() {
   if (!_supabase || !currentUser) {
-    _accessState = { loaded: false, isAdmin: false };
+    _accessState = { loaded: false, isAdmin: false, isLeader: false };
+    syncExporStaffGate();
     return;
   }
   const email = String(currentUser.email || '').toLowerCase();
   let isAdmin = PLATFORM_ADMIN_EMAILS.includes(email);
+  let isLeader = false;
   try {
     const { data, error } = await _supabase.rpc('current_app_role');
     if (!error && data === 'admin') isAdmin = true;
+    if (!error && data === 'leader') isLeader = true;
   } catch (_) {}
-  _accessState = { loaded: true, isAdmin };
+  _accessState = { loaded: true, isAdmin, isLeader };
+  syncExporStaffGate();
   const btn = $('btn-admin');
   if (btn) btn.style.display = isAdmin ? '' : 'none';
   syncViewAsUi();
@@ -4255,7 +4277,7 @@ function updateAccountUI() {
   renderAdminSampleBanner();
   void refreshGptUsage();
   const tab = document.querySelector('a.expor-tab');
-  if (tab) tab.href = currentUser ? '/?pasar=expor' : '/expor/';
+  if (tab) tab.href = (currentUser && window.LarisExpor?.labUnlocked?.()) ? '/?pasar=expor' : '/expor/';
 }
 
 function chatMessageSearchText(m) {
@@ -4305,7 +4327,8 @@ function scoreChatMatch(chat, q) {
 
 function filteredChatsForList() {
   const q = String($('chat-search-input')?.value || '').trim();
-  const chats = state.chats.slice();
+  const pasar = currentPasarTag();
+  const chats = state.chats.filter(c => chatPasar(c) === pasar).slice();
   if (!q) return chats.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
   return chats
     .map(c => ({ c, score: scoreChatMatch(c, q) }))
@@ -4340,7 +4363,7 @@ function renderChatList() {
   if (!list) return;
   const q = String($('chat-search-input')?.value || '').trim();
   const chats = filteredChatsForList();
-  if (!state.chats.length) {
+  if (!chats.length && !state.chats.filter(c => chatPasar(c) === currentPasarTag()).length) {
     list.innerHTML = '<div class="chat-empty">Belum ada pencarian</div>';
     return;
   }
@@ -5023,7 +5046,7 @@ async function _authOnSignIn(session, opts) {
   renderSidebarLocCard();
 
   // Continue where the login gate interrupted: open the product they clicked.
-  const hadPending = !!(state.pendingDeepdive || state.pendingCompare || state.pendingTracker);
+  const hadPending = !!(state.pendingDeepdive || state.pendingCompare || state.pendingTracker || state.pendingAlat);
   if (state.pendingCompare) {
     const pending = state.pendingCompare;
     state.pendingCompare = null;
@@ -5049,6 +5072,10 @@ async function _authOnSignIn(session, opts) {
     state.pendingKomunitas = null;
     saveLocalState();
     openCommunityBoard(pk);
+  } else if (state.pendingAlat === 'existing' && window.LarisAlatPreview?.active()) {
+    state.pendingAlat = null;
+    saveLocalState();
+    window.LarisAlatPreview.openAudit();
   }
 
   // A one-tap "Kabari Kalau Berubah" that hit the signup gate finishes itself
@@ -5151,7 +5178,9 @@ async function initSupabase() {
     }
   } else {
     _clearSessionRestoring();
+    syncExporStaffGate();
   }
+  if (!currentUser) syncExporStaffGate();
   if (_supabase) {
     try { window.LarisExpor?.attachSupabase(_supabase); } catch (_) {}
     _supabase.auth.onAuthStateChange((event, session) => {
@@ -5175,6 +5204,8 @@ async function signOut() {
   try { window.LarisMerdeka && window.LarisMerdeka.resetPromo(); } catch (_) {}
   _authClear();
   currentUser = null;
+  _accessState = { loaded: false, isAdmin: false, isLeader: false };
+  try { window.LarisExpor?.noteStaff(false, true); } catch (_) {}
   resetGptJourney();
   updateAccountUI();
   showToast('Kamu sudah keluar.');
@@ -5219,7 +5250,7 @@ async function migrateLocalChatsToDb() {
     try {
       const { data } = await _supabase.rpc('gpt_new_chat', {
         p_title: chat.title || 'Chat',
-        p_context: chat.context || {},
+        p_context: withPasar(chat.context || {}),
       });
       if (data) noteGptUsage(data);
       if (data && data.allowed === false) break;
@@ -5245,6 +5276,7 @@ async function migrateLocalChatsToDb() {
             id: r.id,
             title: r.title,
             context: r.context || {},
+            pasar: (r.context && r.context.pasar) || 'shopee',
             messages: [],
             created_at: Date.parse(r.created_at) || Date.now(),
           });
@@ -5318,6 +5350,18 @@ function beginFreshChat() {
   renderChatList();
 }
 
+function currentPasarTag() {
+  return isExporPasar() ? 'expor' : 'shopee';
+}
+
+function withPasar(ctx) {
+  return { ...(ctx || {}), pasar: currentPasarTag() };
+}
+
+function chatPasar(chat) {
+  return chat?.pasar || chat?.context?.pasar || 'shopee';
+}
+
 /** New local thread. Always wipes #chat-thread so leftover finder /
  *  recommendation cards cannot sit above the first turn. */
 function startBlankLocalChat(title, context = {}) {
@@ -5325,7 +5369,8 @@ function startBlankLocalChat(title, context = {}) {
   const chat = {
     localId: 'local_' + Date.now(),
     title: String(title || 'Chat').slice(0, 40),
-    context,
+    context: withPasar(context),
+    pasar: currentPasarTag(),
     messages: [],
     created_at: Date.now(),
   };
@@ -5383,7 +5428,7 @@ async function persistCompareChat(chat) {
 async function ensureCompareChat(products, opts = {}) {
   const snaps = products.map(productSnapshot).filter(Boolean);
   const title = compareTitle(products);
-  const ctx = { kind: 'compare', compareProducts: snaps };
+  const ctx = withPasar({ kind: 'compare', compareProducts: snaps });
   rememberProducts(products);
 
   let chat = null;
@@ -5409,6 +5454,7 @@ async function ensureCompareChat(products, opts = {}) {
           id: data.chat.id,
           title,
           context: { ...(data.chat.context || {}), ...ctx },
+          pasar: currentPasarTag(),
           messages: [],
           created_at: Date.now(),
         };
@@ -5792,6 +5838,9 @@ function hasEngagedBeyondFinder() {
 }
 
 function shouldShowLandingFinder() {
+  if (window.LarisAlatPreview?.active() && (state.onboarding?.experience === 'existing' || window.LarisAlatPreview.intent?.() === 'existing')) {
+    return false;
+  }
   return !hasEngagedBeyondFinder();
 }
 
@@ -7093,6 +7142,16 @@ async function runFinderSearch() {
     updateHomeFinderVisibility();
     if (currentUser) await persistOnboardingPrefs();
 
+    if (window.LarisAlatPreview?.active() && _finder.experience === 'first_time') {
+      void logUserEvent('gpt_finder_search', {
+        ui: 'gpt', preview: 'alat', city: _finder.city,
+        categories: _finder.categories.join(', '), budget: _finder.budget,
+        experience: _finder.experience,
+      });
+      await openDirectory();
+      return;
+    }
+
     const bud = finderBudgetCfg(_finder.budget);
     const catLabel = _finder.categories.join(', ');
 
@@ -7450,7 +7509,7 @@ async function ensureChatPersisted(chat, title, context) {
   try {
     const { data, error } = await _supabase.rpc('gpt_new_chat', {
       p_title: String(title || chat.title || 'Chat').slice(0, 60),
-      p_context: context || chat.context || {},
+      p_context: withPasar(context || chat.context || {}),
     });
     if (error) { console.warn('[gpt] gpt_new_chat failed:', error.message); return false; }
     if (data) noteGptUsage(data);
@@ -7782,6 +7841,14 @@ function fillCalcContent(opts = {}) {
   if (!body) return;
   const product = opts.product || resolveSideProduct();
   if (!product) {
+    if (window.LarisAlatPreview?.active()) {
+      setSideContext('Kalkulator');
+      body.innerHTML = gptKalcHtml({ price: 0, cogs: 0 });
+      _calcFilled = true;
+      _calcProductKey = null;
+      bindGptKalc(body);
+      return;
+    }
     setSideContext('');
     body.innerHTML = '<p class="side-empty">Buka produk dulu untuk pakai kalkulator.</p>';
     _calcFilled = false;
@@ -8029,7 +8096,8 @@ async function sideAiSubmit(text) {
     chat = {
       localId: 'local_' + Date.now(),
       title: (product.product_name || product.keyword || q).slice(0, 60),
-      context: { kind: 'product', item_id: product.item_id, shop_id: product.shop_id, keyword: product.keyword },
+      context: withPasar({ kind: 'product', item_id: product.item_id, shop_id: product.shop_id, keyword: product.keyword }),
+      pasar: currentPasarTag(),
       messages: [], created_at: Date.now(),
     };
     state.chats.unshift(chat);
@@ -9536,7 +9604,7 @@ function detectIntent(lower) {
 // anon localStorage bump otherwise. Pass skipAnonBump for free landing-finder runs.
 async function ensureIntentChat(chat, title, context, opts = {}) {
   if (currentUser && _supabase && !chat.id) {
-    const { data } = await _supabase.rpc('gpt_new_chat', { p_title: String(title).slice(0, 60), p_context: context });
+    const { data } = await _supabase.rpc('gpt_new_chat', { p_title: String(title).slice(0, 60), p_context: withPasar(context) });
     if (data) noteGptUsage(data);
     if (data?.allowed === false) return { ok: false, resetAt: data.reset_at };
     if (data?.chat) { chat.id = data.chat.id; delete chat.localId; state.activeChatId = chat.id; flushChatMessages(chat); }
@@ -13052,6 +13120,34 @@ function favKey(p) {
   return '';
 }
 
+const EXPOR_FAV_KEY = 'laris_expor_favs_v1';
+
+function loadExporFavs() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(EXPOR_FAV_KEY) || '{}');
+    const uid = currentUser?.id || 'anon';
+    return Array.isArray(raw[uid]) ? raw[uid] : [];
+  } catch (_) { return []; }
+}
+
+function saveExporFavs(list) {
+  try {
+    const uid = currentUser?.id || 'anon';
+    let raw = {};
+    try { raw = JSON.parse(localStorage.getItem(EXPOR_FAV_KEY) || '{}'); } catch (_) {}
+    if (!raw || typeof raw !== 'object') raw = {};
+    raw[uid] = list;
+    localStorage.setItem(EXPOR_FAV_KEY, JSON.stringify(raw));
+  } catch (_) {}
+}
+
+function mergeExporFavSet() {
+  loadExporFavs().forEach((p) => {
+    const k = favKey(p);
+    if (k) _trackedFavSet.add(k);
+  });
+}
+
 function isFavTracked(p) {
   const k = typeof p === 'string' ? p : favKey(p);
   return !!(k && _trackedFavSet.has(k));
@@ -13060,6 +13156,7 @@ function isFavTracked(p) {
 async function refreshTrackedKwSet() {
   if (!_supabase || !currentUser) {
     _trackedFavSet = new Set();
+    mergeExporFavSet();
     _trackedKwLoaded = true;
     return;
   }
@@ -13068,6 +13165,7 @@ async function refreshTrackedKwSet() {
     _trackedFavSet = new Set(
       (data?.products || []).map(p => favKey(p)).filter(Boolean),
     );
+    mergeExporFavSet();
     _trackedKwLoaded = true;
   } catch (_) {
     _trackedKwLoaded = true;
@@ -13139,7 +13237,7 @@ function listingRowHtml(p, opts = {}) {
     : `<td class="lrow-prod">${prodInner}</td>`;
   const actCell = actions
     ? `<td class="lrow-act">
-        ${expor ? '' : `<button type="button" class="lrow-fav${favOn ? ' is-on' : ''}" data-lrow-fav="${esc(key)}" aria-pressed="${favOn ? 'true' : 'false'}" title="${favOn ? 'Hapus dari Favorit Aku' : 'Simpan ke Favorit Aku'}" aria-label="${favOn ? 'Hapus dari Favorit Aku' : 'Simpan ke Favorit Aku'}">${ico('bookmark', 16)}</button>`}
+        ${`<button type="button" class="lrow-fav${favOn ? ' is-on' : ''}" data-lrow-fav="${esc(key)}" aria-pressed="${favOn ? 'true' : 'false'}" title="${favOn ? 'Hapus dari Favorit Aku' : 'Simpan ke Favorit Aku'}" aria-label="${favOn ? 'Hapus dari Favorit Aku' : 'Simpan ke Favorit Aku'}">${ico('bookmark', 16)}</button>`}
         <button type="button" class="lrow-go" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} aria-label="Lihat Deep Dive">${ico('chevronRight', 18)}</button>
       </td>`
     : '';
@@ -13729,7 +13827,7 @@ function gptLogSearchHistory(keyword, source) {
     try { arr = JSON.parse(localStorage.getItem(GPT_SEARCH_HISTORY_KEY) || '[]'); } catch (_) {}
     if (!Array.isArray(arr)) arr = [];
     arr = arr.filter(e => !(e && String(e.keyword || '').toLowerCase() === norm));
-    arr.unshift({ keyword: kw, item_id: null, source: source || 'search', created_at: new Date().toISOString() });
+    arr.unshift({ keyword: kw, item_id: null, source: source || (isExporPasar() ? 'expor' : 'search'), pasar: currentPasarTag(), created_at: new Date().toISOString() });
     if (arr.length > GPT_SEARCH_HISTORY_MAX) arr = arr.slice(0, GPT_SEARCH_HISTORY_MAX);
     localStorage.setItem(GPT_SEARCH_HISTORY_KEY, JSON.stringify(arr));
   } catch (_) {}
@@ -13738,7 +13836,7 @@ function gptLogSearchHistory(keyword, source) {
       _supabase.from('user_search_history').insert({
         user_id: currentUser.id,
         keyword: kw,
-        source: source || 'search',
+        source: source || (isExporPasar() ? 'expor' : 'search'),
       }).then(() => {}, () => {});
     } catch (_) {}
   }
@@ -13806,6 +13904,11 @@ function gptTrackerAdapter() {
     fmtUnits:   fmtSold,
     fmtDate:    formatIdDate,
     toast:      showToast,
+    isExporMode() { return isExporPasar(); },
+    fmtPrice(p) {
+      if (p && isExporListing(p) && window.LarisExpor) return window.LarisExpor.fmtUsd(p.price);
+      return p && p.price ? fmtRp(p.price) : '';
+    },
     isAuthed() { return !!currentUser; },
     requireAuth() {
       if (currentUser) return true;
@@ -13851,6 +13954,12 @@ function gptTrackerAdapter() {
     // Top listings for the detail picker (Semua vs one SKU). listings_deduped
     // is one row per (item_id, shop_id, keyword); offtopic ads are filtered.
     async getKeywordTopListings(keyword) {
+      if (isExporPasar() && window.LarisExpor) {
+        try {
+          const pool = await window.LarisExpor.resolvePool({ q: keyword });
+          return (pool.listings || []).slice(0, 30);
+        } catch (_) { return []; }
+      }
       if (!keyword || !_supabase) return [];
       const cols = 'item_id,shop_id,store_name,product_name,image_url,price,total_sold,reviews';
       const kw = String(keyword).trim();
@@ -13884,7 +13993,8 @@ function gptTrackerAdapter() {
     // callers). Chart omset/units come from getFavoriteTrendWeeklies — the
     // same product_daily_series estimator as Deep Dive Tren produk.
     async getListingsWeeklyBatch(listings) {
-      if (!_supabase || !listings || !listings.length) return [];
+      listings = (listings || []).filter(l => !isExporListing(l) && String(l.shop_id) !== 'amazon');
+      if (!_supabase || !listings.length) return [];
       const ids = [...new Set(listings.map(l => l.item_id).filter(id => id != null))];
       if (!ids.length) return [];
       try {
@@ -13904,7 +14014,8 @@ function gptTrackerAdapter() {
      *  Tracked items are the one surface where product_details is ~100%
      *  covered, because tracked_pass.py rewrites their PDP row every day. */
     async getProductDetailsBatch(listings) {
-      if (!_supabase || !listings || !listings.length) return [];
+      listings = (listings || []).filter(l => !isExporListing(l) && String(l.shop_id) !== 'amazon');
+      if (!_supabase || !listings.length) return [];
       const ids = [...new Set(listings.map(l => l.item_id).filter(id => id != null))];
       if (!ids.length) return [];
       try {
@@ -13926,7 +14037,8 @@ function gptTrackerAdapter() {
     },
     /** Deep Dive Tren weekly series per favorite (product_daily_series → weeks). */
     async getFavoriteTrendWeeklies(listings) {
-      if (!_supabase || !listings || !listings.length) return [];
+      listings = (listings || []).filter(l => !isExporListing(l) && String(l.shop_id) !== 'amazon');
+      if (!_supabase || !listings.length) return [];
       const thisMon = Date.parse(listingWeekStartISO() + 'T00:00:00Z');
       const out = [];
       const queue = listings.filter(l => l && l.item_id != null && l.shop_id != null);
@@ -13964,7 +14076,8 @@ function gptTrackerAdapter() {
     },
     /** Last ~10 listing days for Favorit Aku daily scrape rows. */
     async getFavoriteListingSnaps(listings) {
-      if (!_supabase || !listings || !listings.length) return [];
+      listings = (listings || []).filter(l => !isExporListing(l) && String(l.shop_id) !== 'amazon');
+      if (!_supabase || !listings.length) return [];
       const ids = [...new Set(listings.map(l => l.item_id).filter(id => id != null))];
       const shops = [...new Set(listings.map(l => l.shop_id).filter(id => id != null))];
       if (!ids.length) return [];
@@ -14204,11 +14317,31 @@ function gptTrackerAdapter() {
     openTrackerView() { openTrackerView(); },
     openHowCalculated() { setView('faq'); },
 
-    getTracking()          { return rpc('get_my_favorites'); },
-    getFavorites()         { return rpc('get_my_favorites'); },
-    getRollup(days, scope) { return rpc('get_tracker_rollup', { p_days: days, p_scope: scope || 'keyword' }); },
+    getTracking()          { return this.getFavorites(); },
+    async getFavorites() {
+      if (isExporPasar()) {
+        return {
+          products: loadExporFavs(),
+          stores: [],
+          product_limit: 30,
+          store_limit: 20,
+          paused: false,
+          notify_channels: [],
+          notify_asked: true,
+        };
+      }
+      return rpc('get_my_favorites');
+    },
+    getRollup(days, scope) {
+      if (isExporPasar()) return Promise.resolve([]);
+      return rpc('get_tracker_rollup', { p_days: days, p_scope: scope || 'keyword' });
+    },
     touchViewed()          { return rpc('touch_tracker_viewed'); },
     async addProduct(p) {
+      if (isExporListing(p) || isExporPasar()) {
+        const ok = await trackProductFavorite(p, { via: 'tracker' });
+        return { ok };
+      }
       const d = await rpc('add_tracked_product', {
         p_item_id: p.item_id,
         p_shop_id: p.shop_id,
@@ -14224,6 +14357,12 @@ function gptTrackerAdapter() {
       return d;
     },
     removeProduct(p) {
+      if (isExporListing(p) || String(p?.shop_id) === 'amazon') {
+        const k = favKey(p);
+        saveExporFavs(loadExporFavs().filter(x => favKey(x) !== k));
+        if (k) _trackedFavSet.delete(k);
+        return { ok: true };
+      }
       return rpc('remove_tracked_product', { p_item_id: p.item_id, p_shop_id: p.shop_id });
     },
     async addKeyword(kw, cat) {
@@ -14250,7 +14389,12 @@ function gptTrackerAdapter() {
         p_cadence: o.cadence || 'on_update',
       });
     },
-    searchListings(q) { return searchListings(q, [], 8); },
+    searchListings(q) {
+      if (isExporPasar() && window.LarisExpor) {
+        return window.LarisExpor.resolvePool({ q }).then(pool => (pool.listings || []).slice(0, 8));
+      }
+      return searchListings(q, [], 8);
+    },
     waAlertsReady() { return WA_ALERTS_READY; },
     hasRealEmail() {
       const email = String(currentUser?.email || '');
@@ -14301,6 +14445,10 @@ function gptTrackerAdapter() {
     // an empty category searches everything.
     async searchKeywords(o) {
       const q = String(o?.q || '').trim();
+      if (isExporPasar() && window.LarisExpor) {
+        try { return await window.LarisExpor.searchKeywords(q); }
+        catch (_) { return []; }
+      }
       if (!_supabase || !q) return [];
       let sel = _supabase.from('product_types_v')
         .select('keyword,category,category_canonical,n_sellers,price_median,n_listings,rep_image_url,total_sold_sum')
@@ -14672,6 +14820,58 @@ async function trackProductFavorite(product, opts = {}) {
     showToast('Produk ini belum bisa disimpan ke favorit.');
     return false;
   }
+  if (isExporListing(p)) {
+    if (!currentUser) {
+      try {
+        state.pendingTrackKeyword = {
+          item_id: p.item_id, shop_id: p.shop_id, keyword: p.keyword || '',
+          category: p.category || '', product_name: p.product_name || '',
+          image_url: p.image_url || '', price: p.price ?? null,
+          store_name: p.store_name || '', total_sold: p.total_sold ?? null,
+          _pasar: 'expor', asin: p.asin || p.item_id,
+        };
+        saveLocalState();
+      } catch (_) {}
+      openAuthModal('signup', 'gpt_gate_track');
+      return false;
+    }
+    const list = loadExporFavs();
+    const k = favKey(p);
+    const idx = list.findIndex(x => favKey(x) === k);
+    if (idx >= 0) {
+      list.splice(idx, 1);
+      saveExporFavs(list);
+      _trackedFavSet.delete(k);
+      syncFavButtons();
+      showToast('Dihapus dari Favorit Aku. Pantau harian Amazon belum ada.');
+      return true;
+    }
+    list.unshift({
+      _pasar: 'expor',
+      asin: p.asin || p.item_id,
+      item_id: p.item_id,
+      shop_id: 'amazon',
+      product_name: p.product_name || '',
+      store_name: p.store_name || 'Amazon US',
+      image_url: p.image_url || '',
+      price: p.price ?? null,
+      price_usd: p.price_usd ?? p.price ?? null,
+      keyword: p.keyword || '',
+      category: p.category || '',
+      slug: p.slug || '',
+      url: p.url || '',
+      bought_past_month: p.bought_past_month ?? null,
+      nowcast_omset_monthly: p.nowcast_omset_monthly || 0,
+      nowcast_method: 'amazon_badge',
+      reviews: p.reviews || 0,
+      saved_at: new Date().toISOString(),
+    });
+    saveExporFavs(list.slice(0, 30));
+    _trackedFavSet.add(k);
+    syncFavButtons();
+    showToast(`Siap — "${p.product_name || 'Listing'}" masuk Favorit Aku. Pantau harian Amazon belum ada.`);
+    return true;
+  }
   if (!currentUser) {
     try {
       state.pendingTrackKeyword = {
@@ -14812,12 +15012,12 @@ function ensureTracker() {
       if (!document.getElementById('ltk-css')) {
         const l = document.createElement('link');
         l.id = 'ltk-css'; l.rel = 'stylesheet';
-        l.href = '/styles/laris-tracker.css?v=20260912a';
+        l.href = '/styles/laris-tracker.css?v=20260916a';
         document.head.appendChild(l);
       }
     } catch (_) {}
     _trkLoadPromise = (typeof larisLoadScript === 'function'
-      ? larisLoadScript('/js/laris-tracker.js?v=20260912a')
+      ? larisLoadScript('/js/laris-tracker.js?v=20260916b')
       : Promise.reject(new Error('no loader')))
       .then(() => window.LarisTracker || null)
       .catch(() => { _trkLoadPromise = null; return null; });
@@ -15066,7 +15266,11 @@ function consumeKomunitasDeepLink() {
 
 function askSellersAbout(keyword, opts) {
   const kw = String(keyword || '').trim();
-  const title = kw ? `Ada yang pernah jualan di pasar "${kw}"?` : '';
+  const title = kw
+    ? (isExporPasar()
+      ? `Ada yang pernah ekspor atau jualan di pasar "${kw}"?`
+      : `Ada yang pernah jualan di pasar "${kw}"?`)
+    : '';
   openCommunityBoard({
     tab: 'diskusi',
     title,
@@ -15097,6 +15301,7 @@ function openCommunityBoard(opts = {}) {
     currentUserId: currentUser.id,
     isAdmin: isPlatformAdmin,
     toast: showToast,
+    expor: isExporPasar(),
     initialTab: next.tab,
     prefillTitle: next.title,
     prefillTopic: next.topic,
@@ -15199,7 +15404,7 @@ async function startRecommendationChat(fromOnboarding) {
 
   let chat = null;
   const title = (state.onboarding.categories[0] || 'Rekomendasi') + (state.onboarding.city ? ` · ${state.onboarding.city}` : '');
-  const context = {
+  const context = withPasar({
     city: state.onboarding.city,
     categories: state.onboarding.categories,
     experience: state.onboarding.experience,
@@ -15208,7 +15413,7 @@ async function startRecommendationChat(fromOnboarding) {
     notes: state.onboarding.notes,
     freeText: state.onboarding.freeText || '',
     kind: 'recommendation',
-  };
+  });
 
   if (currentUser && _supabase) {
     const { data, error } = await _supabase.rpc('gpt_new_chat', { p_title: title, p_context: context });
@@ -15224,6 +15429,7 @@ async function startRecommendationChat(fromOnboarding) {
       id: data.chat.id,
       title: data.chat.title,
       context,
+      pasar: currentPasarTag(),
       messages: [],
       created_at: Date.now(),
     };
@@ -15234,6 +15440,7 @@ async function startRecommendationChat(fromOnboarding) {
       localId: 'local_' + Date.now(),
       title,
       context,
+      pasar: currentPasarTag(),
       messages: [],
       created_at: Date.now(),
     };
@@ -17071,7 +17278,12 @@ async function openDeepDive(product, ddOpts = {}) {
       esc, window.LarisExpor.fmtUsd, window.LarisExpor.fmtOmsetUsd, product,
     );
     window.LarisExpor.bindDeepDive(root, () => { void openDirectory(); });
+    window.LarisExpor.hydrateLab?.(root, product);
     setComposerChips(EXPOR_CHIPS, 'expor-dd');
+    void logUserEvent('deepdive_open', {
+      ui: 'gpt', keyword: product.keyword || '', item_id: product.item_id,
+      shop_id: product.shop_id, pasar: 'expor', asin: product.asin || '',
+    });
     return;
   }
 
@@ -17184,7 +17396,7 @@ async function openDeepDive(product, ddOpts = {}) {
     state.activeChatId = null;
   }
   const title = (kw || product.product_name || 'Produk').slice(0, 60);
-  const baseCtx = {
+  const baseCtx = withPasar({
     kind: 'product',
     keyword: kw,
     item_id: product.item_id,
@@ -17197,18 +17409,18 @@ async function openDeepDive(product, ddOpts = {}) {
       price: product.price,
       total_sold: product.total_sold,
     },
-  };
+  });
   if (!chat) {
     if (currentUser && _supabase) {
       const { data } = await _supabase.rpc('gpt_new_chat', {
         p_title: title,
-        p_context: { kind: 'product', keyword: kw, item_id: product.item_id, shop_id: product.shop_id },
+        p_context: withPasar({ kind: 'product', keyword: kw, item_id: product.item_id, shop_id: product.shop_id }),
       });
       if (data) noteGptUsage(data);
       if (data?.allowed === false) {
         // The daily cap is on NEW searches — viewing a product must never be
         // walled (MISSION: no trapping). Keep the session local, keep going.
-        chat = { localId: 'local_' + Date.now(), title, context: { ...baseCtx }, messages: [], created_at: Date.now() };
+        chat = { localId: 'local_' + Date.now(), title, context: { ...baseCtx }, pasar: currentPasarTag(), messages: [], created_at: Date.now() };
         state.chats.unshift(chat);
         state.activeChatId = chat.localId;
       } else if (data?.chat) {
@@ -17216,6 +17428,7 @@ async function openDeepDive(product, ddOpts = {}) {
           id: data.chat.id,
           title,
           context: { ...(data.chat.context || {}), ...baseCtx },
+          pasar: currentPasarTag(),
           messages: [],
           created_at: Date.now(),
         };
@@ -17224,7 +17437,7 @@ async function openDeepDive(product, ddOpts = {}) {
       }
     }
     if (!chat) {
-      chat = { localId: 'local_' + Date.now(), title, context: { ...baseCtx }, messages: [], created_at: Date.now() };
+      chat = { localId: 'local_' + Date.now(), title, context: { ...baseCtx }, pasar: currentPasarTag(), messages: [], created_at: Date.now() };
       state.chats.unshift(chat);
       state.activeChatId = chat.localId;
     }
@@ -19100,7 +19313,7 @@ async function handleComposerSubmit(text, opts = {}) {
 
     state.recommendations = [];
     if (currentUser && _supabase && !chat.id) {
-      const { data } = await _supabase.rpc('gpt_new_chat', { p_title: text.slice(0, 60), p_context: { kind: 'search', q: text } });
+      const { data } = await _supabase.rpc('gpt_new_chat', { p_title: text.slice(0, 60), p_context: withPasar({ kind: 'search', q: text }) });
       if (data) noteGptUsage(data);
       if (data?.allowed === false) {
         const msg = `Batas pencarian harian tercapai — reset dalam ${formatCountdown(data.reset_at || wibMidnightReset())}.`;
@@ -22708,11 +22921,6 @@ function hydrateDirTrends() {
 function paintDirAskSellers(q, keywords) {
   const host = $('dir-ask-sellers');
   if (!host) return;
-  if (isExporPasar()) {
-    host.hidden = true;
-    host.innerHTML = '';
-    return;
-  }
   const kw = String(q || '').trim()
     || (Array.isArray(keywords) && keywords[0] && (keywords[0].keyword || keywords[0]))
     || '';
@@ -22722,8 +22930,12 @@ function paintDirAskSellers(q, keywords) {
     host.innerHTML = '';
     return;
   }
+  const expor = isExporPasar();
   host.hidden = false;
-  host.innerHTML = `<p>Tanya seller lain tentang <strong>${esc(label)}</strong> — proses dan pelajaran, bukan rahasia toko.</p>
+  host.innerHTML = expor
+    ? `<p>Tanya seller / eksportir lain tentang <strong>${esc(label)}</strong> — proses dan pelajaran, bukan rahasia toko.</p>
+    <button type="button" data-dir-ask>Tanya seller / eksportir lain tentang “${esc(label)}”</button>`
+    : `<p>Tanya seller lain tentang <strong>${esc(label)}</strong> — proses dan pelajaran, bukan rahasia toko.</p>
     <button type="button" data-dir-ask>Tanya seller lain tentang “${esc(label)}”</button>`;
   host.querySelector('[data-dir-ask]')?.addEventListener('click', () => {
     askSellersAbout(label);
@@ -24815,16 +25027,19 @@ function wireUi() {
   });
   $('btn-expor-pasar')?.addEventListener('click', (e) => {
     e.preventDefault();
-    try { window.LarisExpor?.activate(); } catch (_) {}
+    if (!window.LarisExpor?.labUnlocked?.()) return;
+    try { window.LarisExpor.activate(); } catch (_) {}
     state.comparePick = null;
     state.compareReturnChatId = null;
     updateDirCompareBanner();
     resetDirectoryToHome();
+    renderChatList();
     void openDirectory();
   });
   $('btn-shopee-pasar')?.addEventListener('click', (e) => {
     e.preventDefault();
     try { window.LarisExpor?.setPasar('shopee'); } catch (_) {}
+    renderChatList();
     location.href = '/';
   });
   $('btn-tracker')?.addEventListener('click', () => { openTrackerView(); });
@@ -24984,6 +25199,7 @@ function wireUi() {
   wireCalcPanel();
   wireUsagePill();
   wireResultsBar();
+  attachAlatPreview();
 
   document.addEventListener('keydown', e => {
     if ((e.metaKey || e.ctrlKey) && String(e.key).toLowerCase() === 'k') {
@@ -24994,16 +25210,63 @@ function wireUi() {
   });
 }
 
+function attachAlatPreview() {
+  const api = window.LarisAlatPreview;
+  if (!api || typeof api.attach !== 'function') return;
+  api.attach({
+    $,
+    esc,
+    supabase: () => _supabase,
+    user: () => currentUser,
+    onboarding: () => state.onboarding,
+    pendingAlat: () => state.pendingAlat,
+    markPendingAlat(kind) {
+      state.pendingAlat = kind || 'existing';
+      saveLocalState();
+    },
+    setExperience(kind) {
+      _finder.experience = kind;
+      state.onboarding.experience = kind;
+      saveFinderState();
+      saveLocalState();
+      try { window.LarisAlatPreview.hideFinderXp(); } catch (_) {}
+    },
+    openAuthModal,
+    setView,
+    showToast,
+    logUserEvent,
+    renderHome,
+    openDirectory,
+    openDeepDive,
+    openCalcPanel,
+    persistOnboardingPrefs,
+    addTrackedProduct(p) {
+      return trackProductFavorite(p, { via: 'alat_preview' });
+    },
+    async addTrackedStore(id, name) {
+      if (!_supabase) return { ok: false };
+      const { data, error } = await _supabase.rpc('add_tracked_store', {
+        p_shop_id: id,
+        p_store_name: name || '',
+      });
+      if (error) return { ok: false, error: error.message };
+      return data || { ok: true };
+    },
+    renderStandaloneCalc(el) {
+      if (!el) return;
+      el.innerHTML = gptKalcHtml({ price: 0, cogs: 0 });
+      bindGptKalc(el);
+    },
+  });
+}
+
 async function boot() {
   loadLocalState();
   recomputeLearnedCategories();
   // Merdeka decorations — self-gates to August WIB, no-ops the rest of the year.
   try { window.LarisMerdeka?.mount({ site: 'b', navSelector: '.main-top' }); } catch (_) {}
   try {
-    if (window.LarisExpor) {
-      if (new URLSearchParams(location.search).get('pasar') === 'expor') window.LarisExpor.activate();
-      else window.LarisExpor.setPasar('shopee');
-    }
+    if (window.LarisExpor) window.LarisExpor.applyGate();
   } catch (_) {}
   // The A/B ended 2026-08-10 and this used to self-stamp arm B here. New
   // visitors now carry no _lid_ab_v1 at all, which is what keeps post-merge
@@ -25091,7 +25354,8 @@ async function boot() {
   const alreadyAdmin = state.view === 'admin';
   const finderResultsUp = !!$('chat-thread')?.querySelector('[data-lrow-block]');
   if (isExporPasar() && !_offerActive && !pendingResume && !alreadyDeepdive && !alreadyCommunity && !alreadyAdmin) {
-    if (state.activeChatId && activeChat()) {
+    const ac = state.activeChatId && activeChat();
+    if (ac && chatPasar(ac) === 'expor') {
       setView('chat');
       renderChatThread();
     } else {
@@ -25105,6 +25369,7 @@ async function boot() {
       renderHome();
       // Only an untouched default landing may be replaced by the cohort home.
       _bootLandingView = state.view;
+      if (window.LarisAlatPreview?.shouldTakeBoot()) window.LarisAlatPreview.onBoot();
     }
   }
   renderChatList();
@@ -26060,7 +26325,8 @@ function initRetentionSurfaces() {
       esc,
       supabase: () => _supabase,
       user: () => currentUser,
-      chats: () => state.chats,
+      chats: () => state.chats.filter(c => chatPasar(c) === currentPasarTag()),
+      pasar: () => currentPasarTag(),
       activeChatId: () => state.activeChatId,
       openChat,
       renameChat: beginChatRename,

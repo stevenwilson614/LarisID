@@ -682,7 +682,9 @@
     if (heroTitle) heroTitle.textContent = isDiskusi() ? 'Komunitas' : 'Ajukan Fitur';
     if (heroSub) {
       heroSub.textContent = isDiskusi()
-        ? 'Tanya dan bantu seller lain. Proses dan pelajaran — bukan rahasia toko.'
+        ? (_opts.expor
+          ? 'Tanya dan bantu seller / eksportir lain. Proses dan pelajaran — bukan rahasia toko.'
+          : 'Tanya dan bantu seller lain. Proses dan pelajaran — bukan rahasia toko.')
         : 'Usulkan fitur atau laporkan keluhan — dibaca dan bisa didukung/dikomentari user lain.';
     }
     if (openBtn) openBtn.innerHTML = `${svgPlus()} ${isDiskusi() ? 'Tanya sesuatu' : 'Ajukan Ide Baru'}`;
@@ -1049,6 +1051,7 @@
     if (container.dataset.communityBoardMounted === 'msb-v8') {
       _listEl = container.querySelector('#msb-list');
       applyLaunchOpts();
+      syncChrome();
       fetchPosts();
       renderUserMap();
       return;

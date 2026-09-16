@@ -57,9 +57,18 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   try {
-    if (window.LARIS_AUTH && typeof LARIS_AUTH.isSignedIn === 'function' && LARIS_AUTH.isSignedIn()) {
-      location.replace('/?pasar=expor');
-    }
+    var host = location.hostname || '';
+    var local = host === 'localhost' || host === '127.0.0.1' || host === '::1';
+    var flag = false;
+    try { flag = localStorage.getItem('laris_expor_lab') === '1'; } catch (_) {}
+    var email = '';
+    try {
+      var u = window.LARIS_AUTH && LARIS_AUTH.user && LARIS_AUTH.user();
+      email = String(u && u.email || '').toLowerCase();
+    } catch (_) {}
+    var staff = email === 'stevenwilson614@gmail.com';
+    var signed = window.LARIS_AUTH && typeof LARIS_AUTH.isSignedIn === 'function' && LARIS_AUTH.isSignedIn();
+    if ((local || flag || staff) && signed) location.replace('/?pasar=expor');
   } catch (_) {}
 });
 </script>

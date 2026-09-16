@@ -6,12 +6,20 @@
  * Omset/bulan = price_usd × bought_past_month (Amazon "bought in past month"
  * badge floor). Always perkiraan. Blank when Amazon hides the badge.
  *
+ * Gated: localhost, platform admin/leader, or localStorage.laris_expor_lab=1.
+ * Public visitors must not land in Amazon mode via /?pasar=expor or /expor/.
+ *
  * Loaded before js/gpt-app.js. gpt-app calls window.LarisExpor.
  */
 (function (w) {
   'use strict';
 
   var FX = 16500;
+  var LAB_KEY = 'laris_expor_lab';
+  var _staff = false;
+  var _staffResolved = false;
+  var _labDocs = null;
+  var _labPromise = null;
 
   function qsPasar() {
     try {
@@ -19,10 +27,32 @@
     } catch (_) { return ''; }
   }
 
+  function isLocalhost() {
+    var h = String(location.hostname || '');
+    return h === 'localhost' || h === '127.0.0.1' || h === '::1';
+  }
+
+  function labFlag() {
+    try { return localStorage.getItem(LAB_KEY) === '1'; } catch (_) { return false; }
+  }
+
+  function labUnlocked() {
+    return isLocalhost() || labFlag() || !!_staff;
+  }
+
+  function stripPasarParam() {
+    try {
+      var u = new URL(location.href);
+      if (!u.searchParams.has('pasar')) return;
+      u.searchParams.delete('pasar');
+      history.replaceState(history.state || {}, '', u.pathname + u.search + u.hash);
+    } catch (_) {}
+  }
+
   // Drop leftover Amazon mode from before the market switchers were hidden.
-  // URL is the only switch: / is Shopee, /?pasar=expor is Amazon.
+  // URL is the only switch: / is Shopee, /?pasar=expor is Amazon (when gated).
   function forgetStaleExpor() {
-    if (qsPasar() === 'expor') return;
+    if (qsPasar() === 'expor' && labUnlocked()) return;
     try {
       if (localStorage.getItem('laris_pasar_v1') === 'expor') {
         localStorage.setItem('laris_pasar_v1', 'shopee');
@@ -31,15 +61,42 @@
   }
 
   function readPasar() {
-    return qsPasar() === 'expor' ? 'expor' : 'shopee';
+    return qsPasar() === 'expor' && labUnlocked() ? 'expor' : 'shopee';
   }
 
   function isOn() {
     return readPasar() === 'expor';
   }
 
+  function applyGate() {
+    var unlocked = labUnlocked();
+    document.body.classList.toggle('expor-lab', unlocked);
+    if (qsPasar() === 'expor' && !unlocked) {
+      if (_staffResolved) {
+        stripPasarParam();
+        try { localStorage.setItem('laris_pasar_v1', 'shopee'); } catch (_) {}
+      }
+    }
+    var on = isOn();
+    document.body.classList.toggle('pasar-expor', on);
+    document.body.classList.toggle('pasar-shopee', !on);
+    forgetStaleExpor();
+    syncChrome(on);
+    return on ? 'expor' : 'shopee';
+  }
+
+  function noteStaff(on, resolved) {
+    _staff = !!on;
+    if (resolved) _staffResolved = true;
+    applyGate();
+  }
+
   function setPasar(name, opts) {
     var next = name === 'expor' ? 'expor' : 'shopee';
+    if (next === 'expor' && !labUnlocked()) {
+      applyGate();
+      return 'shopee';
+    }
     try { localStorage.setItem('laris_pasar_v1', next); } catch (_) {}
     try {
       var u = new URL(location.href);
@@ -51,11 +108,13 @@
     } catch (_) {}
     document.body.classList.toggle('pasar-expor', next === 'expor');
     document.body.classList.toggle('pasar-shopee', next !== 'expor');
+    document.body.classList.toggle('expor-lab', labUnlocked());
     syncChrome(next === 'expor');
     return next;
   }
 
   function syncChrome(on) {
+    var gated = labUnlocked();
     var brand = document.getElementById('btn-home');
     if (brand) {
       brand.title = on ? 'Beranda LarisExpor' : 'Beranda LarisID';
@@ -68,15 +127,24 @@
       inp.setAttribute('aria-label', on ? 'Cari produk ekspor Amazon US' : 'Cari produk');
     }
     var tab = document.getElementById('btn-expor-pasar');
-    if (tab) tab.classList.toggle('active', !!on);
+    if (tab) {
+      tab.hidden = !gated;
+      tab.classList.toggle('active', !!on);
+    }
     var lid = document.getElementById('btn-shopee-pasar');
     if (lid) {
-      lid.hidden = true;
+      lid.hidden = !gated;
       lid.classList.toggle('active', !on);
     }
+    var loc = document.getElementById('btn-set-lokasi');
+    if (loc) loc.hidden = !!on;
   }
 
   function activate() {
+    if (!labUnlocked()) {
+      applyGate();
+      return 'shopee';
+    }
     return setPasar('expor');
   }
 
@@ -327,6 +395,130 @@
       '<p>Cari nama produk (misalnya meja jati atau minyak kelapa) untuk lihat listing Amazon US.</p>';
   }
 
+  function escHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function uniq(arr) {
+    var seen = {};
+    var out = [];
+    (arr || []).forEach(function (x) {
+      if (!x || seen[x]) return;
+      seen[x] = 1;
+      out.push(x);
+    });
+    return out;
+  }
+
+  function resolveUsRule(rulesDoc, slug, kategori) {
+    if (!rulesDoc) return null;
+    var pack = (rulesDoc.by_kategori && rulesDoc.by_kategori[kategori]) || null;
+    var over = (rulesDoc.by_slug && rulesDoc.by_slug[slug]) || null;
+    if (!pack && !over) return null;
+    var risk = (over && over.risk) || (pack && pack.risk) || 'cek';
+    if (risk !== 'aman' && risk !== 'izin_khusus' && risk !== 'tinggi' && risk !== 'cek') risk = 'cek';
+    return {
+      risk: risk,
+      agencies: uniq([].concat((pack && pack.agencies) || [], (over && over.agencies) || [])),
+      flags: uniq([].concat((pack && pack.flags) || [], (over && over.flags) || [])),
+      notes_id: (over && over.notes_id) || (pack && pack.notes_id) || '',
+      checklist_us: uniq([].concat((over && over.checklist_us) || [], (pack && pack.checklist_us) || [])),
+    };
+  }
+
+  function loadLabDocs() {
+    if (_labDocs) return Promise.resolve(_labDocs);
+    if (_labPromise) return _labPromise;
+    if (location.protocol !== 'http:' && location.protocol !== 'https:') {
+      _labDocs = { rules: null, duty: null, playbooks: null };
+      return Promise.resolve(_labDocs);
+    }
+    function grab(path) {
+      return fetch(path, { credentials: 'same-origin' }).then(function (r) {
+        return r.ok ? r.json() : null;
+      }).catch(function () { return null; });
+    }
+    _labPromise = Promise.all([
+      grab('/lab/expor-os/data/us-import-rules.json'),
+      grab('/lab/expor-os/data/hts-duty.json'),
+      grab('/lab/expor-os/data/playbooks.json'),
+    ]).then(function (pair) {
+      _labDocs = { rules: pair[0], duty: pair[1], playbooks: pair[2] };
+      return _labDocs;
+    });
+    return _labPromise;
+  }
+
+  function riskLabel(risk) {
+    return ({
+      aman: 'Ringan',
+      izin_khusus: 'Izin khusus',
+      tinggi: 'Risiko tinggi',
+      cek: 'Perlu dicek',
+    })[risk] || 'Perlu dicek';
+  }
+
+  function labPanelHtml(esc, product, docs) {
+    docs = docs || {};
+    var slug = String(product.slug || '').trim();
+    var kat = String(product.category || '').trim();
+    var rule = resolveUsRule(docs.rules, slug, kat);
+    var duty = docs.duty && docs.duty.by_slug && slug ? docs.duty.by_slug[slug] : null;
+    var play = docs.playbooks && docs.playbooks.by_kategori && kat
+      ? docs.playbooks.by_kategori[kat]
+      : null;
+    if (!rule && !duty && !play) {
+      return '<p class="expor-dd-lab-empty">Catatan masuk AS / perkiraan HTS hanya termuat dari lab JSON di mesin lokal. Amazon tidak punya field negara asal — ini bukan bukti produk dibuat di Indonesia.</p>';
+    }
+    var chips = [];
+    if (rule) {
+      chips.push('<span class="expor-lab-chip expor-lab-chip--' + esc(rule.risk) + '">Masuk AS: '
+        + esc(riskLabel(rule.risk)) + '</span>');
+      (rule.agencies || []).slice(0, 4).forEach(function (a) {
+        chips.push('<span class="expor-lab-chip">' + esc(a) + '</span>');
+      });
+    }
+    if (duty && duty.htsno) {
+      var dutyTxt = duty.duty_pct === 0 || duty.general_raw === 'Free'
+        ? 'Free (MFN)'
+        : (duty.duty_pct != null ? String(duty.duty_pct) + '% MFN' : (duty.general_raw || 'cek'));
+      chips.push('<span class="expor-lab-chip">HTS ' + esc(duty.htsno) + ' · ' + esc(dutyTxt) + '</span>');
+    }
+    var notes = rule && rule.notes_id
+      ? '<p class="expor-dd-lab-notes">' + esc(rule.notes_id) + '</p>'
+      : '';
+    var checks = '';
+    if (rule && rule.checklist_us && rule.checklist_us.length) {
+      checks = '<ul class="expor-dd-lab-list">' + rule.checklist_us.slice(0, 4).map(function (c) {
+        return '<li>' + esc(c) + '</li>';
+      }).join('') + '</ul>';
+    }
+    var jalur = '';
+    if (play && play.jalur && play.jalur.length) {
+      jalur = '<p class="expor-dd-lab-jalur"><strong>Jalur (catatan lab):</strong> '
+        + play.jalur.slice(0, 3).map(function (j) { return esc(j.nama); }).join(' · ')
+        + '</p>';
+    }
+    var dutyNote = duty && duty.note
+      ? '<p class="expor-dd-lab-hts">' + esc(duty.note)
+        + (duty.confidence ? ' · keyakinan klasifikasi: ' + esc(duty.confidence) : '')
+        + '. Bukan ruling bea cukai.</p>'
+      : '';
+    return '<div class="expor-dd-lab-chips">' + chips.join('') + '</div>'
+      + notes + dutyNote + checks + jalur
+      + '<p class="disclaimer">Bukan nasihat hukum. Lab JSON di mesin lokal, bukan schema Contabo. Amazon tidak mempublikasikan negara asal.</p>';
+  }
+
+  function hydrateLab(root, product) {
+    if (!root || !product) return;
+    var host = root.querySelector('[data-expor-lab]');
+    if (!host) return;
+    loadLabDocs().then(function (docs) {
+      host.innerHTML = labPanelHtml(escHtml, product, docs);
+    });
+  }
+
   function deepDiveHtml(esc, fmtU, fmtO, product) {
     var p = product || {};
     var omset = Number(p.nowcast_omset_monthly) || 0;
@@ -374,6 +566,7 @@
             '<a class="btn-secondary" href="' + esc(calcHref) + '">Hitung margin Amazon</a>' +
             '<a class="btn-secondary" href="' + esc(slugHref) + '">Syarat ekspor &amp; Comtrade</a>' +
           '</div>' +
+          '<div class="expor-dd-lab" data-expor-lab><p class="expor-dd-lab-empty">Memuat catatan masuk AS…</p></div>' +
         '</div>' +
       '</div>'
     );
@@ -387,6 +580,9 @@
 
   w.LarisExpor = {
     isOn: isOn,
+    labUnlocked: labUnlocked,
+    applyGate: applyGate,
+    noteStaff: noteStaff,
     readPasar: readPasar,
     setPasar: setPasar,
     activate: activate,
@@ -407,19 +603,12 @@
     weeklyRefuseHtml: weeklyRefuseHtml,
     deepDiveHtml: deepDiveHtml,
     bindDeepDive: bindDeepDive,
+    hydrateLab: hydrateLab,
     FX: FX,
   };
 
   forgetStaleExpor();
   document.addEventListener('DOMContentLoaded', function () {
-    forgetStaleExpor();
-    if (isOn()) {
-      document.body.classList.add('pasar-expor');
-      syncChrome(true);
-    } else {
-      document.body.classList.remove('pasar-expor');
-      document.body.classList.add('pasar-shopee');
-      syncChrome(false);
-    }
+    applyGate();
   });
 })(window);

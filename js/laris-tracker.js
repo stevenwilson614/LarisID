@@ -690,7 +690,11 @@
     var sub = $('[data-ltk-sub]');
     var act = $('[data-ltk-headact]');
     if (sub) {
-      if (!S.products.length) {
+      if (call('isExporMode')) {
+        sub.textContent = S.products.length
+          ? S.products.length + ' / ' + S.productLimit + ' ASIN · pantau harian Amazon belum ada'
+          : 'Simpan ASIN di sini. Pantau harian Amazon belum ada — kami tidak mengarang delta harga.';
+      } else if (!S.products.length) {
         sub.textContent = 'Simpan listing yang kamu incar. Kami scrape-nya tiap hari — insight harian dan omset.';
       } else {
         sub.textContent = S.products.length + ' / ' + S.productLimit + ' produk · data harian';
@@ -707,10 +711,12 @@
     var bar = $('[data-ltk-scopetabs]');
     if (!bar) return;
     if (S.screen !== 'list') { bar.innerHTML = ''; return; }
-    var tabs = [
-      { id: 'product', label: 'Produk', n: S.products.length },
-      { id: 'store', label: 'Toko', n: S.stores.length },
-    ];
+    var tabs = call('isExporMode')
+      ? [{ id: 'product', label: 'Produk', n: S.products.length }]
+      : [
+          { id: 'product', label: 'Produk', n: S.products.length },
+          { id: 'store', label: 'Toko', n: S.stores.length },
+        ];
     bar.innerHTML = tabs.map(function (t) {
       return '<button type="button" role="tab" class="ltk-scopetab' + (S.tab === t.id ? ' is-active' : '') +
         '" aria-selected="' + (S.tab === t.id) + '" data-ltk-tab="' + t.id + '">' +
@@ -719,6 +725,12 @@
   }
 
   function emptyHtml() {
+    if (call('isExporMode')) {
+      return '<div class="ltk-empty">' +
+        '<p>Belum ada favorit Amazon. Bookmark listing di Cari Produk. Pantau harian Amazon belum ada.</p>' +
+        '<button type="button" class="ltk-btn ltk-btn--ghost" data-ltk-open-dir>Buka Cari Produk</button>' +
+      '</div>';
+    }
     return '<div class="ltk-empty">' +
       '<p>Belum ada favorit. Bookmark produk di Cari Produk, atau cari di sini — satu klik selesai.</p>' +
       '<button type="button" class="ltk-btn ltk-btn--ghost" data-ltk-open-dir>Buka Cari Produk</button>' +
@@ -728,11 +740,13 @@
   function addBoxHtml() {
     var rows = (S.addRows || []).map(function (p) {
       var on = isFavorited(p);
+      var priceAdd = (adapter && typeof adapter.fmtPrice === 'function' && adapter.fmtPrice(p))
+        || (p.price ? fmtRp(p.price) : '');
       return '<button type="button" class="ltk-add-row' + (on ? ' is-on' : '') + '" data-ltk-add-pick="' +
         attr(prodKey(p)) + '"' + (on ? ' disabled' : '') + '>' +
         imgOr(p.image_url, 'ltk-row-ico') +
         '<span class="ltk-add-txt"><b>' + esc(p.product_name || 'Produk') + '</b>' +
-        '<i>' + esc(p.store_name || '') + (p.price ? ' · ' + fmtRp(p.price) : '') + '</i></span>' +
+        '<i>' + esc(p.store_name || '') + (priceAdd ? ' · ' + priceAdd : '') + '</i></span>' +
         (on ? '<span>Sudah</span>' : '<span>Simpan</span>') +
       '</button>';
     }).join('');
@@ -772,6 +786,18 @@
     var omset = pair ? pair.cur.omset_wk : 0;
     var honesty = pair ? honestyLabel(trend.source) : '';
     var hasChart = chartSeries(weeks).length >= 2;
+    var priceTxt = (adapter && typeof adapter.fmtPrice === 'function' && adapter.fmtPrice(p))
+      || (p.price ? fmtRp(p.price) : '');
+    var omsetTxt = pair
+      ? (call('isExporMode') ? (omset ? String(omset) : '—') : (omset ? fmtRpShort(omset) : '—'))
+      : (call('isExporMode') && p.nowcast_omset_monthly && adapter && adapter.fmtPrice
+        ? ''
+        : (omset ? fmtRpShort(omset) : '—'));
+    if (call('isExporMode')) {
+      omsetTxt = (window.LarisExpor && window.LarisExpor.fmtOmsetUsd)
+        ? window.LarisExpor.fmtOmsetUsd(p.nowcast_omset_monthly || 0)
+        : '—';
+    }
     return '<article class="ltk-card ltk-fav-card">' +
       '<div class="ltk-card-row">' +
         '<div class="ltk-card-ident">' +
@@ -780,19 +806,23 @@
             '<div class="ltk-card-head">' +
               '<div class="ltk-card-name">' + esc(p.product_name || 'Produk') + '</div>' +
               '<div class="ltk-card-meta">' + esc(p.store_name || 'Toko') +
-                (p.price ? ' · ' + fmtRp(p.price) : '') + '</div>' +
+                (priceTxt ? ' · ' + priceTxt : '') + '</div>' +
             '</div>' +
           '</div>' +
           '<div class="ltk-card-stats">' +
-            '<div class="ltk-mstat"><span class="ltk-mstat-lbl">Omset / minggu</span>' +
-              '<span class="ltk-mstat-val">' + (omset ? fmtRpShort(omset) : '—') + '</span>' +
-              (honesty ? '<span class="ltk-honesty">' + honesty + '</span>' : '') +
-              deltaHtml(trend.pct, trend.enough) +
+            '<div class="ltk-mstat"><span class="ltk-mstat-lbl">' + (call('isExporMode') ? 'Omset / bulan' : 'Omset / minggu') + '</span>' +
+              '<span class="ltk-mstat-val">' + (omsetTxt || '—') + '</span>' +
+              (call('isExporMode')
+                ? '<span class="ltk-honesty">perkiraan</span>'
+                : (honesty ? '<span class="ltk-honesty">' + honesty + '</span>' : '')) +
+              (call('isExporMode') ? '' : deltaHtml(trend.pct, trend.enough)) +
             '</div>' +
           '</div>' +
-          detailLineHtml(p) +
+          (call('isExporMode')
+            ? '<p class="ltk-hint">Pantau harian Amazon belum ada. Bookmark ini tersimpan di perangkatmu.</p>'
+            : detailLineHtml(p)) +
         '</div>' +
-        (hasChart
+        (hasChart && !call('isExporMode')
           ? '<div class="ltk-card-chart">' +
               '<div class="ltk-chart-wrap">' +
                 '<canvas class="ltk-card-chart-canvas" data-ltk-chart="' + attr(key) + '"></canvas>' +
@@ -804,12 +834,13 @@
             '</div>'
           : '') +
       '</div>' +
-      updatesHtml(p) +
+      (call('isExporMode') ? '' : updatesHtml(p)) +
       '<div class="ltk-fav-actions">' +
+        (call('isExporMode') ? '' : (
         '<label class="ltk-switch">' +
           '<input type="checkbox" data-ltk-toko="' + attr(key) + '"' + (p.store_tracked ? ' checked' : '') + '>' +
           '<span>Pantau toko ini</span>' +
-        '</label>' +
+        '</label>')) +
         '<span class="ltk-fav-links">' +
           '<button type="button" class="ltk-link" data-ltk-dd="' + attr(key) + '">Deep Dive</button>' +
           '<button type="button" class="ltk-link" data-ltk-remove="' + attr(key) + '">Hapus</button>' +
@@ -881,15 +912,16 @@
     if (!pane) return;
     destroyCharts();
     if (S.tab === 'store') {
-      pane.innerHTML =
-        (S.stores.length ? S.stores.map(storeCardHtml).join('') : '<p class="ltk-hint">Belum ada toko. Nyalakan “Pantau toko ini” di kartu produk.</p>') +
-        notifyHtml();
+      pane.innerHTML = call('isExporMode')
+        ? '<p class="ltk-hint">Pantau toko Amazon belum ada.</p>'
+        : ((S.stores.length ? S.stores.map(storeCardHtml).join('') : '<p class="ltk-hint">Belum ada toko. Nyalakan “Pantau toko ini” di kartu produk.</p>') +
+        notifyHtml());
       return;
     }
     pane.innerHTML =
       addBoxHtml() +
       (S.products.length ? S.products.map(favCardHtml).join('') : emptyHtml()) +
-      (S.products.length ? notifyHtml() : '');
+      (S.products.length && !call('isExporMode') ? notifyHtml() : '');
     if (global.requestAnimationFrame) global.requestAnimationFrame(paintCharts);
     else paintCharts();
   }

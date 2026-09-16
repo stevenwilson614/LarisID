@@ -41,3 +41,5 @@ Onboarding is in-page on Beranda (`state.onboarding`: city → category → expe
 Arm-A names (`nuOnb*`, `dsc*`, `userJourneyTier` 0–3, `larisid_journey_v1`, `#dd-beginner-panel`) do **not** exist in `gpt-app.js`. Do not “fix” them.
 
 Leaders and platform admins bypass journey gating. Do not fabricate “what changed” numbers. Favorit Aku is daily PDP scrape (bucket sold = perkiraan). Toko data still ~2 minggu. See [favorit-aku.md](./favorit-aku.md).
+
+**LarisExpor** (`/?pasar=expor`) is lab-gated (localhost / admin-leader / `localStorage.laris_expor_lab`). Same nav chrome; hide lokasi; do not mix Amazon rows into Shopee Cari. See [expor-app.md](./expor-app.md).
