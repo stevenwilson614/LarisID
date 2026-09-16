@@ -11269,16 +11269,58 @@ function kalcPagePanel() {
   return $('kalc-page-body')?.querySelector('[data-kalc]');
 }
 
-function kalcPdfShotHtml(inp, r, product) {
+/** Load an image to a data URL so html2canvas never sees cross-origin assets. */
+function kalcPdfImgDataUrl(src, timeoutMs = 1800) {
+  return new Promise((resolve) => {
+    if (!src) { resolve(null); return; }
+    const img = new Image();
+    let done = false;
+    const finish = (v) => { if (done) return; done = true; resolve(v); };
+    const t = setTimeout(() => finish(null), timeoutMs);
+    img.onload = () => {
+      try {
+        const c = document.createElement('canvas');
+        const w = Math.min(img.naturalWidth || 112, 320);
+        const h = Math.min(img.naturalHeight || 112, 320);
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        finish(c.toDataURL('image/jpeg', 0.88));
+      } catch (_) {
+        finish(null);
+      } finally {
+        clearTimeout(t);
+      }
+    };
+    img.onerror = () => { clearTimeout(t); finish(null); };
+    // Same-origin (logo) or CORS-enabled only. Shopee CDN usually fails → placeholder.
+    img.crossOrigin = 'anonymous';
+    img.src = src;
+  });
+}
+
+function kalcPdfMixWhite(hex, t) {
+  const m = String(hex || '#B5202A').replace('#', '');
+  const n = m.length === 3 ? m.split('').map((c) => c + c).join('') : m;
+  const r = parseInt(n.slice(0, 2), 16) || 181;
+  const g = parseInt(n.slice(2, 4), 16) || 32;
+  const b = parseInt(n.slice(4, 6), 16) || 42;
+  const mix = (c) => Math.round(c + (255 - c) * t);
+  return `rgb(${mix(r)},${mix(g)},${mix(b)})`;
+}
+
+function kalcPdfShotHtml(inp, r, product, assets) {
   const rate = inp.rate || LARIS_MP.rateFor(inp.mpKey, inp.category);
   const mpLabel = rate.label || String(inp.mpKey || 'Shopee');
   const mpColor = (LARIS_MP.FEES[inp.mpKey] && LARIS_MP.FEES[inp.mpKey].color) || '#B5202A';
   const title = (product?.product_name || 'Kalkulasi profit').slice(0, 90);
   const toko = product?.store_name || '';
   const kw = product?.keyword || '';
-  const img = product?.image_url
-    ? `<img class="kalc-pdf-photo" src="${esc(product.image_url)}" alt="" crossorigin="anonymous">`
+  const photo = assets?.photo
+    ? `<img class="kalc-pdf-photo" src="${assets.photo}" alt="">`
     : `<span class="kalc-pdf-photo kalc-pdf-photo--ph"></span>`;
+  const logo = assets?.logo
+    ? `<img src="${assets.logo}" alt="LARIS" height="36">`
+    : `<div class="kalc-pdf-brand-txt">LARIS</div>`;
   const catLabel = inp.manual ? 'Manual' : (inp.category || '—');
   const marginTxt = `${(r.margin || 0).toFixed(1).replace('.', ',')}%`;
   const feeRows = [
@@ -11299,7 +11341,7 @@ function kalcPdfShotHtml(inp, r, product) {
 
   const productBlock = product
     ? `<div class="kalc-pdf-product">
-        ${img}
+        ${photo}
         <div class="kalc-pdf-product-txt">
           <div class="kalc-pdf-product-title">${esc(title)}</div>
           ${toko ? `<div class="kalc-pdf-product-toko">${esc(toko)}</div>` : ''}
@@ -11307,20 +11349,22 @@ function kalcPdfShotHtml(inp, r, product) {
         </div>
       </div>`
     : `<div class="kalc-pdf-product kalc-pdf-product--empty">
+        ${photo}
         <div class="kalc-pdf-product-txt">
           <div class="kalc-pdf-product-title">Kalkulasi profit</div>
           <div class="kalc-pdf-product-toko">Tanpa produk terpilih</div>
         </div>
       </div>`;
 
+  const mpBg = kalcPdfMixWhite(mpColor, 0.88);
+  const mpBorder = kalcPdfMixWhite(mpColor, 0.72);
+
   return `
-    <div class="kalc-pdf-brand">
-      <img src="/images/brand/logo-horizontal-red.webp" alt="LARIS" height="36" crossorigin="anonymous">
-    </div>
+    <div class="kalc-pdf-brand">${logo}</div>
     ${productBlock}
-    <div class="kalc-pdf-mp" style="--kalc-mp:${esc(mpColor)}">
+    <div class="kalc-pdf-mp" style="background:${mpBg};border-color:${mpBorder}">
       <span class="kalc-pdf-mp-lbl">Marketplace</span>
-      <span class="kalc-pdf-mp-name">${esc(mpLabel)}</span>
+      <span class="kalc-pdf-mp-name" style="color:${esc(mpColor)}">${esc(mpLabel)}</span>
     </div>
     <div class="kalc-pdf-hero">
       <div class="kalc-pdf-hero-main">
@@ -11372,47 +11416,44 @@ async function downloadKalcPdf() {
     return;
   }
 
+  // Bake images to data URLs first — remote Shopee photos taint the canvas.
+  const [logo, photo] = await Promise.all([
+    kalcPdfImgDataUrl('/images/brand/logo-horizontal-red.png'),
+    kalcPdfImgDataUrl(_kalcPageProduct?.image_url || null),
+  ]);
+
   const shot = document.createElement('div');
   shot.className = 'kalc-pdf-shot';
   shot.setAttribute('aria-hidden', 'true');
-  shot.innerHTML = kalcPdfShotHtml(inp, r, _kalcPageProduct);
+  shot.innerHTML = kalcPdfShotHtml(inp, r, _kalcPageProduct, { logo, photo });
   document.body.appendChild(shot);
-
-  // Wait for logo (+ product photo if any) so the shot is not blank.
-  try {
-    const imgs = Array.from(shot.querySelectorAll('img'));
-    await Promise.all(imgs.map((el) => {
-      if (el.complete) return Promise.resolve();
-      return new Promise((res) => {
-        el.onload = () => res();
-        el.onerror = () => {
-          el.replaceWith(Object.assign(document.createElement('span'), {
-            className: el.className + ' kalc-pdf-photo--ph',
-          }));
-          res();
-        };
-        setTimeout(res, 1200);
-      });
-    }));
-  } catch (_) {}
 
   let canvas;
   try {
     canvas = await window.html2canvas(shot, {
       scale: 2,
-      useCORS: true,
+      useCORS: false,
       allowTaint: false,
       backgroundColor: '#ffffff',
       logging: false,
+      imageTimeout: 0,
     });
-  } catch (_) {
+  } catch (err) {
+    console.warn('[kalc-pdf] html2canvas failed', err);
     shot.remove();
     showToast('Gagal mengambil gambar kalkulator.');
     return;
   }
   shot.remove();
 
-  const img = canvas.toDataURL('image/png');
+  let img;
+  try {
+    img = canvas.toDataURL('image/png');
+  } catch (err) {
+    console.warn('[kalc-pdf] toDataURL failed', err);
+    showToast('Gagal mengambil gambar kalkulator.');
+    return;
+  }
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageW = 210;
   const pageH = 297;

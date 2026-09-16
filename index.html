@@ -10503,7 +10503,7 @@ body.view-chat .sfb-card {
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260916d" defer></script>
 <script src="/js/gpt-alat-preview.js?v=20260916ae" defer></script>
-<script src="/js/gpt-app.js?v=20260916t" defer></script>
+<script src="/js/gpt-app.js?v=20260916u" defer></script>
 <style>
 .alat-preview-banner {
   display: none;
@@ -10899,10 +10899,10 @@ body.alat-focus.view-home .home-finder::after {
   display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end;
   padding-top: 8px; border-top: 1px solid #F1F1F2;
 }
-/* Off-screen capture for Unduh PDF — clean summary, not the interactive form. */
+/* Capture target for Unduh PDF — paint behind UI (opacity:0 blanks the canvas). */
 .kalc-pdf-shot {
   position: fixed;
-  left: -10000px;
+  left: 0;
   top: 0;
   width: 680px;
   padding: 28px 32px 30px;
@@ -10910,9 +10910,17 @@ body.alat-focus.view-home .home-finder::after {
   box-sizing: border-box;
   font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
   color: #1A1A1A;
+  pointer-events: none;
+  z-index: -1;
 }
 .kalc-pdf-brand { margin: 0 0 20px; }
 .kalc-pdf-brand img { display: block; height: 36px; width: auto; }
+.kalc-pdf-brand-txt {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  color: #B5202A;
+}
 .kalc-pdf-product {
   display: flex;
   gap: 18px;
@@ -10934,7 +10942,7 @@ body.alat-focus.view-home .home-finder::after {
 }
 .kalc-pdf-photo--ph {
   display: block;
-  background: linear-gradient(135deg, #F1F1F2, #E4E4E7);
+  background: #EEEEF0;
 }
 .kalc-pdf-product-txt { min-width: 0; flex: 1; padding-top: 4px; }
 .kalc-pdf-product-title {
@@ -10962,8 +10970,8 @@ body.alat-focus.view-home .home-finder::after {
   margin: 0 0 16px;
   padding: 12px 16px;
   border-radius: 12px;
-  background: color-mix(in srgb, var(--kalc-mp, #B5202A) 12%, #fff);
-  border: 1px solid color-mix(in srgb, var(--kalc-mp, #B5202A) 28%, #fff);
+  background: #F8ECEC;
+  border: 1px solid #F0D4D6;
 }
 .kalc-pdf-mp-lbl {
   font-size: .78rem;
@@ -10975,7 +10983,7 @@ body.alat-focus.view-home .home-finder::after {
 .kalc-pdf-mp-name {
   font-size: 1.15rem;
   font-weight: 800;
-  color: var(--kalc-mp, #B5202A);
+  color: #B5202A;
 }
 .kalc-pdf-hero {
   display: flex;
