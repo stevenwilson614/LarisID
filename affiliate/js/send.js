@@ -1,5 +1,12 @@
-/* Send workers. P0 = TikTok app (copy + open). P2 = Affiliate Seller API stub. */
+/* Send workers. Preview mimics Affiliate Seller API; live swap is the same send(). */
 (function (root) {
+  var BATCH = 50;
+  var DAILY = 1000;
+
+  function sleep(ms) {
+    return new Promise(function (resolve) { setTimeout(resolve, ms); });
+  }
+
   function normHandle(raw) {
     var s = String(raw || '').trim();
     if (!s) return '';
@@ -54,7 +61,7 @@
     document.body.appendChild(ta);
     ta.select();
     var ok = false;
-    try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+    try { ok = document.execCommand('copy'); } catch (err2) { ok = false; }
     document.body.removeChild(ta);
     return ok;
   }
@@ -70,17 +77,52 @@
     return !!(account && account.shopToken);
   }
 
-  function channelAvailable(channel, account) {
-    if (channel === 'tiktok_dm') {
-      return { ok: true, worker: 'tiktokApp' };
-    }
+  function liveApi(account) {
+    return !!(account && account.liveApi);
+  }
+
+  function endpointFor(channel) {
     if (channel === 'target_collab') {
-      if (shopBound(account)) {
-        return { ok: true, worker: 'affiliateSeller' };
+      return 'POST /affiliate_seller/202412/target_collaboration/links/generate';
+    }
+    return 'POST /affiliate_seller/202412/messages/send';
+  }
+
+  function channelAvailable(channel, account) {
+    if (channel === 'im' || channel === 'tiktok_dm' || channel === 'target_collab') {
+      if (liveApi(account) && shopBound(account)) {
+        return { ok: true, worker: 'affiliateSeller', live: true };
       }
-      return { ok: false, code: 'no_shop', reason: 'Butuh toko terhubung (OAuth Anton). Bukan password Seller Center.' };
+      return { ok: true, worker: 'preview', live: false };
     }
     return { ok: false, code: 'unknown_channel' };
+  }
+
+  async function previewSend(row, ctx) {
+    var channel = (ctx && ctx.channel) || 'im';
+    var body = compose(ctx.template, varsFor(row, ctx.account));
+    var ms = 320 + Math.floor(Math.random() * 380);
+    await sleep(ms);
+    var n = ctx.index == null ? 0 : ctx.index;
+    if (n % 7 === 6) {
+      return {
+        ok: false,
+        live: false,
+        method: 'preview',
+        code: 'preview_fail',
+        endpoint: endpointFor(channel),
+        reason: 'Preview: simulasi gagal (kuota kreator / timeout).',
+        body: body
+      };
+    }
+    return {
+      ok: true,
+      live: false,
+      method: 'preview',
+      endpoint: endpointFor(channel),
+      requestId: 'prev_' + Date.now().toString(36),
+      body: body
+    };
   }
 
   async function tiktokAppSend(row, ctx) {
@@ -89,6 +131,7 @@
     var opened = openTikTok(row.handle);
     return {
       ok: opened.ok,
+      live: false,
       method: 'tiktok-app',
       copied: copied,
       url: opened.url,
@@ -100,23 +143,33 @@
     if (!shopBound(ctx.account)) {
       return { ok: false, code: 'no_shop', reason: 'Toko belum terhubung.' };
     }
+    if (!liveApi(ctx.account)) {
+      var preview = await previewSend(row, ctx);
+      preview.method = 'affiliate-seller-preview';
+      return preview;
+    }
     return {
       ok: false,
       code: 'not_wired',
       method: 'affiliate-seller',
-      reason: 'Token toko ada, API Affiliate Seller belum dipasang. Kirim tidak menembak TikTok Shop.'
+      reason: 'API Affiliate Seller belum dipasang.'
     };
   }
 
   async function send(row, ctx) {
-    var channel = (ctx && ctx.channel) || 'tiktok_dm';
-    var avail = channelAvailable(channel, ctx && ctx.account);
+    ctx = ctx || {};
+    if (ctx.manualTiktok) return tiktokAppSend(row, ctx);
+    var channel = ctx.channel || 'im';
+    var avail = channelAvailable(channel, ctx.account);
     if (!avail.ok) return avail;
-    if (avail.worker === 'affiliateSeller') return affiliateSellerSend(row, ctx);
-    return tiktokAppSend(row, ctx);
+    if (avail.worker === 'affiliateSeller' && avail.live) return affiliateSellerSend(row, ctx);
+    return previewSend(row, ctx);
   }
 
   root.LarisAffiliateSend = {
+    BATCH: BATCH,
+    DAILY: DAILY,
+    sleep: sleep,
     normHandle: normHandle,
     displayHandle: displayHandle,
     tiktokUrl: tiktokUrl,
@@ -125,9 +178,12 @@
     copy: copy,
     openTikTok: openTikTok,
     shopBound: shopBound,
+    liveApi: liveApi,
+    endpointFor: endpointFor,
     channelAvailable: channelAvailable,
     send: send,
     workers: {
+      preview: previewSend,
       tiktokApp: tiktokAppSend,
       affiliateSeller: affiliateSellerSend
     }

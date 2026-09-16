@@ -4,33 +4,17 @@ Local LAN prototype. **Not** on larisid.com, **not** copied into `_site`, **not*
 
 Campaign tool to test TikTok outreach: first **Pesan TikTok** to friends, later a real shop via OAuth (Anton). It does not blast Seller Center cookies.
 
-## Phone test (P0)
-
-Mac and phone on the same Wi-Fi:
+## Phone / desktop preview
 
 ```bash
 bash affiliate/serve.sh
 ```
 
-Open the **Phone** URL it prints, e.g. `http://192.168.x.x:8766/affiliate/`
+Phone, same Wi-Fi: `http://192.168.x.x:8766/affiliate/` (must be `http://`, not https). Safari → Add to Home Screen.
 
-1. Safari → Share → Add to Home Screen.
-2. Stay logged into TikTok as `@bule_barat`.
-3. Tab **Kreator** → tambah handle teman (bukan hanya baris `contoh`).
-4. **Kampanye** → Buat kampanye → Pesan TikTok → pilih orang → template → **Kirim kampanye**.
-5. **Salin & buka TikTok** → di aplikasi, ketuk Message → paste → Send.
-6. Kembali ke Laris Affiliate → **Sudah kirim**.
+**Kirim kampanye** runs by itself: progress, log, jeda, batch 50, cap 1.000/hari. That is the live product shell. Rows are **preview** — they do not land in TikTok. Optional: **Buka 1 profil di TikTok** if you still want a manual friend DM.
 
-If the phone cannot load the page, allow incoming TCP 8766 on the Mac firewall.
-
-Latihan kuota: **50 / hari (WIB)**. Bukan cap resmi TikTok Shop. Reset tes ada di Akun.
-
-## What this is not
-
-- Not Kaloboost’s Chrome plugin or cookie farm.
-- Not “1.000 affiliator / 10 menit”.
-- Not an Indonesian seller account. `@bule_barat` is a TikTok login. ID shops need **KTP** (individu) or **NIB + NPWP** (PT Indonesia).
-- No consumer-DM API. The app copies and opens TikTok; **you** tap Send.
+When Partner Center is live, the same Kirim calls `messages/send` / Target Collab inside `send.js`. Do not paste Seller Center passwords.
 
 ## UI (P1)
 

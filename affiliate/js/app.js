@@ -1,10 +1,9 @@
-/* Laris Affiliate — P0 job loop, P1 Kaloboost shell, P2 send-worker seam. */
+/* Laris Affiliate — Kaloboost-shaped preview job (auto), same send() as live API later. */
 (function () {
   var SEED = window.LARIS_AFFILIATE_SEED;
   var Send = window.LarisAffiliateSend;
-  var KEY = 'laris-affiliate-v1';
+  var KEY = 'laris-affiliate-v2';
   var JAKARTA = 'Asia/Jakarta';
-
   var $ = function (id) { return document.getElementById(id); };
 
   if (/larisid\.com$/i.test(location.hostname) || /\.pages\.dev$/i.test(location.hostname)) {
@@ -12,7 +11,6 @@
     $('app').hidden = true;
     return;
   }
-
   $('prod-block').hidden = true;
   $('app').hidden = false;
 
@@ -21,20 +19,16 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
-
   function todayKey() {
     return new Intl.DateTimeFormat('en-CA', { timeZone: JAKARTA, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
   }
-
   function fmtWhen(iso) {
     if (!iso) return '—';
     return new Date(iso).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short', timeZone: JAKARTA });
   }
-
   function uid(prefix) {
     return prefix + '-' + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4);
   }
-
   function toast(msg) {
     var el = $('toast');
     el.textContent = msg;
@@ -42,25 +36,21 @@
     clearTimeout(toast._t);
     toast._t = setTimeout(function () { el.hidden = true; }, 2200);
   }
-
   function isLanHost() {
     var h = location.hostname;
     return h === '127.0.0.1' || h === 'localhost' || h === '::1' ||
       /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h);
   }
+  function channelLabel(ch) {
+    return ch === 'target_collab' ? 'Kolaborasi Bertarget' : 'Pesan IM';
+  }
 
   function defaultState() {
     return {
-      account: Object.assign({}, SEED.account),
-      quota: { cap: SEED.quota.cap, used: 0, day: todayKey() },
+      account: Object.assign({ liveApi: false }, SEED.account),
+      quota: { dailyCap: Send.DAILY, batch: Send.BATCH, weeklyCap: SEED.quota.weeklyCap, used: 0, weekUsed: 0, day: todayKey() },
       creators: SEED.demoCreators.map(function (c) {
-        return {
-          id: uid('c'),
-          handle: Send.normHandle(c.handle),
-          name: c.name || '',
-          demo: !!c.demo,
-          status: 'new'
-        };
+        return { id: uid('c'), handle: Send.normHandle(c.handle), name: c.name || '', demo: !!c.demo, status: 'new' };
       }),
       campaigns: [],
       template: SEED.template
@@ -73,7 +63,7 @@
       if (!raw) return defaultState();
       var s = JSON.parse(raw);
       if (!s.account) s.account = Object.assign({}, SEED.account);
-      if (!s.quota) s.quota = { cap: SEED.quota.cap, used: 0, day: todayKey() };
+      if (!s.quota) s.quota = defaultState().quota;
       if (s.quota.day !== todayKey()) {
         s.quota.used = 0;
         s.quota.day = todayKey();
@@ -88,41 +78,44 @@
   }
 
   var db = load();
-  var ui = {
-    tab: 'kampanye',
-    wizard: null,
-    selected: {},
-    filter: ''
-  };
+  var ui = { tab: 'kampanye', wizard: null, selected: {}, filter: '', jobId: null };
+  var runner = { id: null, timer: null, paused: false, busy: false };
 
-  function save() {
-    localStorage.setItem(KEY, JSON.stringify(db));
-  }
+  function save() { localStorage.setItem(KEY, JSON.stringify(db)); }
 
-  function leftQuota() {
+  function leftDaily() {
     if (db.quota.day !== todayKey()) {
       db.quota.used = 0;
       db.quota.day = todayKey();
       save();
     }
-    return Math.max(0, db.quota.cap - db.quota.used);
+    return Math.max(0, db.quota.dailyCap - db.quota.used);
   }
-
   function bumpQuota() {
     db.quota.used += 1;
+    db.quota.weekUsed = (db.quota.weekUsed || 0) + 1;
     save();
   }
-
-  function creatorById(id) {
-    return db.creators.find(function (c) { return c.id === id; });
-  }
-
+  function creatorById(id) { return db.creators.find(function (c) { return c.id === id; }); }
   function creatorByHandle(handle) {
     var h = Send.normHandle(handle);
     return db.creators.find(function (c) { return c.handle === h; });
   }
+  function campaignById(id) { return db.campaigns.find(function (c) { return c.id === id; }); }
+  function counts(c) {
+    var rows = c.rows || [];
+    return {
+      n: rows.length,
+      sent: rows.filter(function (r) { return r.status === 'sent'; }).length,
+      failed: rows.filter(function (r) { return r.status === 'failed'; }).length,
+      pending: rows.filter(function (r) { return r.status === 'pending' || r.status === 'sending'; }).length,
+      sending: rows.filter(function (r) { return r.status === 'sending'; }).length
+    };
+  }
+  function nextPending(c) {
+    return (c.rows || []).find(function (r) { return r.status === 'pending'; });
+  }
 
-  /* ── chrome ──────────────────────────────────────────────────────── */
   function renderDock() {
     var tabs = [
       { id: 'kampanye', label: 'Kampanye' },
@@ -134,14 +127,11 @@
       return '<button type="button" data-act="tab" data-id="' + t.id + '" aria-selected="' + (ui.tab === t.id) + '">' + esc(t.label) + '</button>';
     }).join('');
   }
-
   function renderQuota() {
-    var left = leftQuota();
     var el = $('quota-chip');
-    el.textContent = 'Latihan ' + db.quota.used + '/' + db.quota.cap;
-    el.classList.toggle('is-max', left === 0);
+    el.textContent = 'Preview ' + db.quota.used + '/' + db.quota.dailyCap;
+    el.classList.toggle('is-max', leftDaily() === 0);
   }
-
   function render() {
     renderDock();
     renderQuota();
@@ -151,42 +141,43 @@
     else if (ui.tab === 'crm') main.innerHTML = viewCrm();
     else if (ui.tab === 'akun') main.innerHTML = viewAkun();
     else main.innerHTML = viewKampanye();
+    if (ui.jobId) renderJob(ui.jobId);
   }
 
   function closeOverlay() {
+    ui.jobId = null;
     var el = $('overlay');
     el.hidden = true;
     el.innerHTML = '';
   }
-
   function openOverlay(html) {
     var el = $('overlay');
     el.innerHTML = html;
     el.hidden = false;
   }
 
-  /* ── views ───────────────────────────────────────────────────────── */
   function viewKampanye() {
     var list = db.campaigns.slice().sort(function (a, b) { return (b.createdAt || '').localeCompare(a.createdAt || ''); });
     var body = list.length
       ? list.map(campaignCard).join('')
-      : '<div class="empty card"><p class="muted">Belum ada kampanye. Tambah handle di Kreator, lalu kirim Pesan TikTok — salin, buka aplikasi, ketuk Send.</p></div>';
+      : '<div class="empty card"><p class="muted">Belum ada kampanye. Kirim = antrian otomatis (preview API). Tidak masuk inbox TikTok sampai toko live.</p></div>';
     return '<section class="card">' +
+      '<p class="preview-banner">Preview toko · Kirim jalan sendiri, batch ' + Send.BATCH + ', cap ' + Send.DAILY + '/hari. Bukan blast cookie.</p>' +
       '<h2>Kampanye</h2>' +
-      '<p class="muted">P0: pesan teman di aplikasi TikTok sebagai ' + esc(db.account.display) + '. Bukan Affiliate Center. Bukan 1.000 DM / 10 menit.</p>' +
+      '<p class="muted">Sama seperti nanti: pilih channel, kreator, template, satu tombol Kirim. Worker preview dulu; API Partner Center mengganti isi <code>send()</code> tanpa ganti layar ini.</p>' +
       '<button type="button" class="btn" data-act="new-campaign" style="margin-top:10px">Buat kampanye</button>' +
       '</section>' + body;
   }
 
   function campaignCard(c) {
-    var done = (c.rows || []).filter(function (r) { return r.status === 'sent'; }).length;
-    var n = (c.rows || []).length;
-    var ch = c.channel === 'target_collab' ? 'Kolaborasi Bertarget' : 'Pesan TikTok';
+    var k = counts(c);
+    var pct = k.n ? Math.round((k.sent + k.failed) / k.n * 100) : 0;
     return '<section class="card" data-act="open-campaign" data-id="' + esc(c.id) + '" style="cursor:pointer">' +
       '<h3>' + esc(c.title) + '</h3>' +
-      '<p class="muted">' + esc(ch) + ' · ' + fmtWhen(c.createdAt) + '</p>' +
-      '<div class="bar" style="margin:8px 0"><span style="width:' + (n ? Math.round(done / n * 100) : 0) + '%"></span></div>' +
-      '<p class="muted">' + done + '/' + n + ' terkirim · <span class="chip">' + esc(c.status) + '</span></p>' +
+      '<p class="muted">' + esc(channelLabel(c.channel)) + ' · ' + fmtWhen(c.createdAt) +
+        (c.live ? '' : ' · <span class="chip warn">preview</span>') + '</p>' +
+      '<div class="bar" style="margin:8px 0"><span style="width:' + pct + '%"></span></div>' +
+      '<p class="muted">' + k.sent + ' terkirim · ' + k.failed + ' gagal · ' + k.pending + ' antri · <span class="chip">' + esc(c.status) + '</span></p>' +
       '</section>';
   }
 
@@ -199,7 +190,7 @@
     var selectedN = rows.filter(function (c) { return ui.selected[c.id]; }).length;
     return '<section class="card">' +
       '<h2>Kreator</h2>' +
-      '<p class="muted">Handle teman untuk tes. CSV Kalodata bisa diimpor — kirim tetap Pesan TikTok sampai toko terhubung.</p>' +
+      '<p class="muted">Daftar untuk kampanye. CSV Kalodata bisa diimpor. Preview tidak menembak TikTok.</p>' +
       '<form data-act="add-handle" class="row" style="margin-top:10px">' +
         '<input name="handle" type="text" placeholder="@handle" required autocomplete="off" style="flex:1;min-width:0">' +
         '<button class="btn-sm" type="submit">Tambah</button>' +
@@ -221,7 +212,7 @@
     return '<label class="person">' +
       '<input type="checkbox" data-act="sel" data-id="' + esc(c.id) + '"' + (ui.selected[c.id] ? ' checked' : '') + '>' +
       '<span><strong>' + esc(Send.displayHandle(c.handle)) + '</strong>' +
-        '<span class="meta">' + esc(c.name || (c.demo ? 'contoh' : '')) +
+        '<span class="meta">' + esc(c.name || '') +
         (c.demo ? ' · <span class="chip warn">contoh</span>' : '') +
         ' · ' + statusChip(c.status) + '</span></span>' +
       '<button type="button" class="btn-ghost" data-act="del-creator" data-id="' + esc(c.id) + '" style="padding:6px 8px">Hapus</button>' +
@@ -230,8 +221,8 @@
 
   function statusChip(st) {
     if (st === 'sent') return '<span class="chip ok">terkirim</span>';
+    if (st === 'sending') return '<span class="chip warn">mengirim</span>';
     if (st === 'failed') return '<span class="chip bad">gagal</span>';
-    if (st === 'skipped') return '<span class="chip">lewati</span>';
     if (st === 'connected') return '<span class="chip ok">terhubung</span>';
     return '<span class="chip">baru</span>';
   }
@@ -242,18 +233,21 @@
     var rows = [];
     db.campaigns.forEach(function (c) {
       (c.rows || []).forEach(function (r) {
-        rows.push({ campaign: c.title, handle: r.handle, status: r.status, at: r.at, note: r.note || '' });
+        if (r.status === 'pending' || r.status === 'sending') return;
+        rows.push({ campaign: c.title, handle: r.handle, status: r.status, at: r.at, note: r.note || '', endpoint: r.endpoint || '' });
       });
     });
     rows.sort(function (a, b) { return (b.at || '').localeCompare(a.at || ''); });
     return '<section class="card"><h2>CRM</h2>' +
-      '<p class="muted">Terkirim ' + sent.length + ' · gagal ' + failed.length + ' · dari kampanye di perangkat ini.</p></section>' +
+      '<p class="muted">Terkirim ' + sent.length + ' · gagal ' + failed.length + ' · status preview di perangkat ini.</p></section>' +
       '<section class="card">' +
       (rows.length
         ? rows.map(function (r) {
             return '<div class="person" style="grid-template-columns:1fr auto">' +
               '<span><strong>' + esc(Send.displayHandle(r.handle)) + '</strong>' +
-              '<span class="meta">' + esc(r.campaign) + ' · ' + fmtWhen(r.at) + (r.note ? ' · ' + esc(r.note) : '') + '</span></span>' +
+              '<span class="meta">' + esc(r.campaign) + ' · ' + fmtWhen(r.at) +
+              (r.endpoint ? ' · ' + esc(r.endpoint.split(' ').pop()) : '') +
+              (r.note ? ' · ' + esc(r.note) : '') + '</span></span>' +
               statusChip(r.status) + '</div>';
           }).join('')
         : '<p class="muted">Belum ada kiriman.</p>') +
@@ -262,9 +256,10 @@
 
   function viewAkun() {
     var bound = Send.shopBound(db.account);
+    var live = Send.liveApi(db.account);
     return '<section class="card">' +
-      '<h2>Akun TikTok</h2>' +
-      '<p class="muted">Ini akun TikTok, bukan toko Seller Center. Tes teman memakai handle ini.</p>' +
+      '<h2>Toko / pengirim</h2>' +
+      '<p class="muted">Preview memakai handle ini di template. Kirim otomatis = worker preview, bukan DM TikTok.</p>' +
       '<label class="field">Handle</label>' +
       '<input type="text" data-act="acc-handle" value="' + esc(db.account.handle) + '">' +
       '<label class="field">Nama di template</label>' +
@@ -275,31 +270,37 @@
       '<input type="number" min="1" max="80" data-act="acc-komisi" value="' + esc(db.account.commissionPct) + '">' +
       '</section>' +
       '<section class="card">' +
+      '<h2>Kuota (bentuk cap toko)</h2>' +
+      '<p class="muted">Sama dengan TikTok Shop: ' + Send.BATCH + ' / batch, ' + Send.DAILY + ' / 24 jam, kuota mingguan unconnected. Angka di bawah preview, bukan cap live.</p>' +
+      '<div class="bar"><span style="width:' + Math.min(100, db.quota.used / db.quota.dailyCap * 100) + '%"></span></div>' +
+      '<p class="muted" style="margin-top:8px">Hari ini ' + db.quota.used + ' / ' + db.quota.dailyCap +
+        ' · minggu unconnected ' + (db.quota.weekUsed || 0) + ' / ' + db.quota.weeklyCap + '</p>' +
+      '<button type="button" class="btn-ghost" data-act="reset-quota">Reset kuota preview</button>' +
+      '</section>' +
+      '<section class="card">' +
       '<h2>Toko TikTok Shop</h2>' +
+      (live
+        ? '<p><span class="chip ok">API live</span></p>'
+        : '<p><span class="chip warn">preview</span> Worker belum menembak Affiliate Center.</p>') +
       (bound
-        ? '<p><span class="chip ok">terhubung</span> ' + esc(db.account.shopName || 'Toko') + '</p>' +
-          '<p class="muted">Kolaborasi Bertarget terbuka. Worker API masih stub — Kirim tidak menembak Affiliate Center sampai Partner Center dipasang.</p>' +
+        ? '<p><span class="chip ok">token ada</span> ' + esc(db.account.shopName || 'Toko') + '</p>' +
           '<button type="button" class="btn-ghost danger" data-act="unbind-shop">Putuskan toko (lokal)</button>'
-        : '<p><span class="chip locked">belum terhubung</span></p>' +
-          '<p class="muted">KTP tidak bisa membuka toko ID dari akun AS. Hubungkan toko Anton lewat OAuth, bukan password.</p>' +
+        : '<p><span class="chip locked">belum OAuth</span></p>' +
           '<button type="button" class="btn" disabled>Hubungkan toko</button>' +
-          '<p class="muted" style="margin-top:8px">Tombol hidup setelah callback OAuth. Jangan tempel cookie / password Seller Center.</p>' +
+          '<p class="muted" style="margin-top:8px">Nanti: Anton OAuth. Jangan tempel password Seller Center.</p>' +
           (isLanHost()
-            ? '<button type="button" class="btn-ghost" data-act="sim-shop" style="margin-top:8px">Simulasikan toko terhubung (UI saja)</button>' +
-              '<p class="muted">Hanya LAN. Membuka channel Target Collab supaya wizard bisa dites. Worker tetap stub — tidak kirim ke Affiliate Center.</p>'
+            ? '<button type="button" class="btn-ghost" data-act="sim-shop" style="margin-top:8px">Simulasikan token (UI saja)</button>'
             : '')) +
-      '<div class="note">Latihan kuota ' + db.quota.used + '/' + db.quota.cap + ' hari ini (WIB). Bukan cap resmi toko. Reset hanya untuk tes.</div>' +
-      '<button type="button" class="btn-ghost" data-act="reset-quota">Reset latihan kuota</button>' +
       '</section>' +
       '<section class="card">' +
       '<h2>OAuth nanti (Anton)</h2>' +
       '<ol class="checklist">' +
-        '<li>Daftar app di Partner Center (LarisID US LLC + paspor, bukan KTP toko).</li>' +
-        '<li>Anton otorisasi toko — bukan login Seller Center di app ini.</li>' +
-        '<li>Simpan shop token di <code>account.shopToken</code> → channel Target Collab terbuka.</li>' +
-        '<li>Tes 1 kreator yang Anton kontrol, baru mass sesuai cap toko (50/batch, 1.000/hari).</li>' +
+        '<li>Partner Center app (LarisID + paspor).</li>' +
+        '<li>Anton otorisasi toko.</li>' +
+        '<li><code>liveApi = true</code> → <code>send()</code> panggil messages/send + Target Collab.</li>' +
+        '<li>Layar kampanye tidak berubah.</li>' +
       '</ol>' +
-      '<p class="muted"><a href="./README.md">Baca checklist lengkap</a></p>' +
+      '<p class="muted"><a href="./README.md">Checklist</a></p>' +
       '</section>' +
       '<section class="card">' +
       '<button type="button" class="btn-ghost danger" data-act="reset-all">Hapus data lokal</button>' +
@@ -308,31 +309,27 @@
 
   function viewWizard() {
     var w = ui.wizard;
-    var bound = Send.shopBound(db.account);
-    var collab = Send.channelAvailable('target_collab', db.account);
     var html = '<div class="steps">' + [0, 1, 2, 3].map(function (i) {
       return '<i' + (i <= w.step ? ' class="on"' : '') + '></i>';
     }).join('') + '</div>';
     if (w.step === 0) {
       html += '<section class="card"><h2>Channel</h2>' +
-        '<button type="button" class="channel' + (w.channel === 'tiktok_dm' ? ' on' : '') + '" data-act="wiz-ch" data-id="tiktok_dm">' +
-          '<strong>Pesan TikTok</strong><em>Salin + buka aplikasi. Tes teman sebagai ' + esc(db.account.display) + '.</em></button>' +
-        '<button type="button" class="channel' + (w.channel === 'target_collab' ? ' on' : '') + '"' +
-          (bound ? '' : ' disabled') + ' data-act="wiz-ch" data-id="target_collab">' +
-          '<strong>Kolaborasi Bertarget</strong><em>' +
-          (bound ? esc(collab.ok ? 'Toko terhubung — API belum kirim sungguhan.' : collab.reason) : 'Terkunci. Butuh toko terhubung (OAuth Anton).') +
-          '</em></button>' +
+        '<p class="preview-banner">Dua channel yang sama dengan Affiliate Center. Preview meniru API, bukan DM aplikasi.</p>' +
+        '<button type="button" class="channel' + (w.channel === 'target_collab' ? ' on' : '') + '" data-act="wiz-ch" data-id="target_collab">' +
+          '<strong>Kolaborasi Bertarget</strong><em>' + esc(Send.endpointFor('target_collab')) + '</em></button>' +
+        '<button type="button" class="channel' + (w.channel === 'im' ? ' on' : '') + '" data-act="wiz-ch" data-id="im">' +
+          '<strong>Pesan IM</strong><em>' + esc(Send.endpointFor('im')) + '</em></button>' +
         '<div class="sticky-actions"><button type="button" class="btn" data-act="wiz-next">Lanjut</button>' +
         '<button type="button" class="btn-ghost" data-act="wiz-cancel">Batal</button></div></section>';
     } else if (w.step === 1) {
       var rows = db.creators;
-      html += '<section class="card"><h2>Pilih orang</h2>' +
+      html += '<section class="card"><h2>Pilih kreator</h2>' +
         '<label class="muted"><input type="checkbox" data-act="wiz-all"' + (rows.length && rows.every(function (c) { return w.ids[c.id]; }) ? ' checked' : '') + '> Pilih semua</label>' +
         (rows.length ? rows.map(function (c) {
           return '<label class="person">' +
             '<input type="checkbox" data-act="wiz-sel" data-id="' + esc(c.id) + '"' + (w.ids[c.id] ? ' checked' : '') + '>' +
             '<span><strong>' + esc(Send.displayHandle(c.handle)) + '</strong><span class="meta">' + esc(c.name || '') + (c.demo ? ' · contoh' : '') + '</span></span></label>';
-        }).join('') : '<p class="muted">Tambah handle di tab Kreator dulu.</p>') +
+        }).join('') : '<p class="muted">Tambah handle di Kreator dulu.</p>') +
         '<div class="sticky-actions"><button type="button" class="btn" data-act="wiz-next">Lanjut</button>' +
         '<button type="button" class="btn-ghost" data-act="wiz-back">Kembali</button></div></section>';
     } else if (w.step === 2) {
@@ -343,14 +340,12 @@
         '<button type="button" class="btn-ghost" data-act="wiz-back">Kembali</button></div></section>';
     } else {
       var chosen = selectedCreators(w);
-      var cap = leftQuota();
+      var cap = leftDaily();
       var n = Math.min(chosen.length, cap);
-      var truncated = chosen.length > n;
+      var batches = Math.max(1, Math.ceil(n / Send.BATCH));
       html += '<section class="card"><h2>Kirim</h2>' +
-        '<p><strong>' + n + '</strong> dari ' + chosen.length + ' antrian. Sisa latihan hari ini: ' + cap + '.</p>' +
-        (truncated ? '<div class="note">Dipotong ke latihan kuota ' + cap + '. Sisanya tidak masuk job ini.</div>' : '') +
-        (w.channel === 'target_collab' ? '<div class="note">Channel toko: worker API belum menembak Affiliate Center.</div>' : '') +
-        '<p class="muted">Tiap baris: salin pesan, buka TikTok, kamu yang ketuk Send di aplikasi.</p>' +
+        '<p><strong>' + n + '</strong> kreator · ' + batches + ' batch × max ' + Send.BATCH + ' · sisa hari ini ' + cap + '.</p>' +
+        '<p class="muted">Satu ketuk: antrian jalan sendiri. Pause kapan saja. Tidak membuka TikTok.</p>' +
         '<div class="sticky-actions">' +
           '<button type="button" class="btn" data-act="wiz-go"' + (n ? '' : ' disabled') + '>Kirim kampanye</button>' +
           '<button type="button" class="btn-ghost" data-act="wiz-back">Kembali</button></div></section>';
@@ -365,141 +360,164 @@
   function startWizard() {
     var ids = {};
     Object.keys(ui.selected).forEach(function (id) { if (ui.selected[id]) ids[id] = true; });
-    if (!Object.keys(ids).length) {
-      db.creators.forEach(function (c) { ids[c.id] = true; });
-    }
-    ui.wizard = {
-      step: 0,
-      channel: 'tiktok_dm',
-      ids: ids,
-      template: db.template
-    };
+    if (!Object.keys(ids).length) db.creators.forEach(function (c) { ids[c.id] = true; });
+    ui.wizard = { step: 0, channel: 'target_collab', ids: ids, template: db.template };
     render();
   }
 
   function startJobFromWizard() {
     var w = ui.wizard;
-    var avail = Send.channelAvailable(w.channel, db.account);
-    if (!avail.ok) { toast(avail.reason || 'Channel terkunci'); return; }
-    var chosen = selectedCreators(w).slice(0, leftQuota());
+    var chosen = selectedCreators(w).slice(0, leftDaily());
     if (!chosen.length) { toast('Tidak ada yang bisa dikirim'); return; }
     db.template = w.template;
     var campaign = {
       id: uid('job'),
-      title: (w.channel === 'target_collab' ? 'Target Collab' : 'Pesan TikTok') + ' · ' + new Date().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short', timeZone: JAKARTA }),
+      title: channelLabel(w.channel) + ' · ' + new Date().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short', timeZone: JAKARTA }),
       channel: w.channel,
       template: w.template,
+      live: false,
       status: 'berjalan',
       createdAt: new Date().toISOString(),
       cursor: 0,
       rows: chosen.map(function (c) {
-        return { creatorId: c.id, handle: c.handle, status: 'pending', at: null, note: '' };
+        return { creatorId: c.id, handle: c.handle, status: 'pending', at: null, note: '', endpoint: Send.endpointFor(w.channel) };
       })
     };
     db.campaigns.push(campaign);
     ui.wizard = null;
     save();
     render();
-    showJob(campaign.id);
+    startRunner(campaign.id);
   }
 
-  function campaignById(id) {
-    return db.campaigns.find(function (c) { return c.id === id; });
+  function stopRunner() {
+    if (runner.timer) clearTimeout(runner.timer);
+    runner.timer = null;
+    runner.id = null;
+    runner.busy = false;
+    runner.paused = false;
   }
 
-  function currentRow(campaign) {
-    return (campaign.rows || []).find(function (r) { return r.status === 'pending'; });
+  function startRunner(id) {
+    stopRunner();
+    runner.id = id;
+    runner.paused = false;
+    ui.jobId = id;
+    renderJob(id);
+    queueTick(80);
   }
 
-  function showJob(id) {
-    var campaign = campaignById(id);
+  function queueTick(ms) {
+    if (runner.timer) clearTimeout(runner.timer);
+    runner.timer = setTimeout(function () { tickCampaign(); }, ms);
+  }
+
+  async function tickCampaign() {
+    if (runner.paused || runner.busy) return;
+    var id = runner.id;
+    var campaign = id && campaignById(id);
     if (!campaign) return;
-    var row = currentRow(campaign);
-    var done = campaign.rows.filter(function (r) { return r.status !== 'pending'; }).length;
-    var total = campaign.rows.length;
+    if (leftDaily() === 0) {
+      campaign.status = 'pause';
+      save();
+      renderJob(id);
+      render();
+      return;
+    }
+    var done = counts(campaign).sent + counts(campaign).failed;
+    if (done > 0 && done % Send.BATCH === 0 && nextPending(campaign) && campaign._batchWaited !== done) {
+      campaign._batchWaited = done;
+      campaign.status = 'batch';
+      save();
+      renderJob(id);
+      queueTick(1400);
+      return;
+    }
+    var row = nextPending(campaign);
     if (!row) {
       campaign.status = 'selesai';
       save();
-      openOverlay(
-        '<p class="muted"><button type="button" class="btn-ghost" data-act="close-job">Tutup</button></p>' +
-        '<section class="card"><h2>Selesai</h2>' +
-        '<p>' + campaign.rows.filter(function (r) { return r.status === 'sent'; }).length + ' terkirim · ' +
-        campaign.rows.filter(function (r) { return r.status === 'failed'; }).length + ' gagal.</p>' +
-        '<p class="muted">Cek inbox TikTok. CRM di perangkat ini sudah di-update.</p></section>'
-      );
+      stopRunner();
+      renderJob(id);
       render();
       return;
     }
-    if (leftQuota() === 0 && row.status === 'pending') {
-      openOverlay(
-        '<p class="muted"><button type="button" class="btn-ghost" data-act="close-job">Tutup</button></p>' +
-        '<section class="card"><h2>Latihan kuota penuh</h2>' +
-        '<p>50 baris hari ini. Sisa antrian tetap di kampanye. Reset di Akun hanya untuk tes.</p></section>'
-      );
-      campaign.status = 'pause';
-      save();
-      render();
-      return;
-    }
+    runner.busy = true;
+    row.status = 'sending';
+    campaign.status = 'berjalan';
+    save();
+    renderJob(id);
     var creator = creatorById(row.creatorId) || { handle: row.handle };
-    var body = Send.compose(campaign.template, Send.varsFor(creator, db.account));
-    var pct = Math.round(done / total * 100);
-    openOverlay(
-      '<p class="muted"><button type="button" class="btn-ghost" data-act="close-job">Tutup</button> · ' + (done + 1) + '/' + total + '</p>' +
-      '<div class="bar"><span style="width:' + pct + '%"></span></div>' +
-      '<section class="card" style="margin-top:12px">' +
-        '<h2>' + esc(Send.displayHandle(row.handle)) + '</h2>' +
-        '<p class="muted">Salin, buka TikTok, kirim di aplikasi, lalu tandai di sini.</p>' +
-        '<div class="job-body">' + esc(body) + '</div>' +
-        '<div class="job-actions">' +
-          '<button type="button" class="btn" data-act="job-go" data-id="' + esc(campaign.id) + '">' +
-            (campaign.channel === 'target_collab' ? 'Coba kirim API' : 'Salin &amp; buka TikTok') +
-          '</button>' +
-          '<button type="button" class="btn-ghost" data-act="job-sent" data-id="' + esc(campaign.id) + '">Sudah kirim</button>' +
-          '<button type="button" class="btn-ghost danger" data-act="job-fail" data-id="' + esc(campaign.id) + '">Gagal</button>' +
-        '</div></section>'
-    );
-  }
-
-  async function jobGo(id) {
-    var campaign = campaignById(id);
-    var row = campaign && currentRow(campaign);
-    if (!row) return;
-    var creator = creatorById(row.creatorId) || { handle: row.handle };
+    var idx = campaign.rows.indexOf(row);
     var result = await Send.send(creator, {
       channel: campaign.channel,
       account: db.account,
-      template: campaign.template
+      template: campaign.template,
+      index: idx
     });
-    if (result.code === 'not_wired' || result.code === 'no_shop') {
-      toast(result.reason || 'Tidak terkirim');
+    row.at = new Date().toISOString();
+    row.endpoint = result.endpoint || row.endpoint;
+    row.note = result.requestId || result.reason || '';
+    if (result.ok) {
+      row.status = 'sent';
+      bumpQuota();
+      if (creatorById(row.creatorId)) creatorById(row.creatorId).status = 'sent';
+    } else {
       row.status = 'failed';
-      row.note = result.code;
-      row.at = new Date().toISOString();
-      var cr = creatorById(row.creatorId);
-      if (cr) cr.status = 'failed';
-      save();
-      showJob(id);
-      return;
+      if (creatorById(row.creatorId)) creatorById(row.creatorId).status = 'failed';
     }
-    if (result.copied && result.ok) toast('Tersalin. Kirim di TikTok, lalu Sudah kirim.');
-    else if (result.copied) toast('Tersalin. Buka TikTok manual.');
-    else toast('Salin gagal — blokir clipboard?');
+    save();
+    runner.busy = false;
+    renderJob(id);
+    renderQuota();
+    if (!runner.paused && runner.id === id) queueTick(180);
   }
 
-  function jobMark(id, status) {
+  function renderJob(id) {
     var campaign = campaignById(id);
-    var row = campaign && currentRow(campaign);
-    if (!row) return;
-    row.status = status;
-    row.at = new Date().toISOString();
-    var cr = creatorById(row.creatorId);
-    if (cr) cr.status = status === 'sent' ? 'sent' : 'failed';
-    if (status === 'sent') bumpQuota();
-    campaign.status = 'berjalan';
-    save();
-    showJob(id);
-    render();
+    if (!campaign) return;
+    ui.jobId = id;
+    var k = counts(campaign);
+    var pct = k.n ? Math.round((k.sent + k.failed) / k.n * 100) : 0;
+    var sending = (campaign.rows || []).find(function (r) { return r.status === 'sending'; });
+    var log = (campaign.rows || []).slice().reverse().filter(function (r) { return r.status !== 'pending'; }).slice(0, 12);
+    var pauseLbl = runner.paused ? 'Lanjut' : 'Jeda';
+    var ep = Send.endpointFor(campaign.channel);
+    var done = campaign.status === 'selesai';
+    var quotaStop = campaign.status === 'pause' && leftDaily() === 0;
+    openOverlay(
+      '<p class="muted"><button type="button" class="btn-ghost" data-act="close-job">Tutup</button> · job tetap jalan di belakang</p>' +
+      '<section class="card">' +
+        '<p class="preview-banner">' + (campaign.live ? 'LIVE' : 'PREVIEW') + ' · ' + esc(ep) + '</p>' +
+        '<h2>' + esc(campaign.title) + '</h2>' +
+        '<p class="muted">' + k.sent + ' terkirim · ' + k.failed + ' gagal · ' + k.pending + ' antri' +
+          (sending ? ' · mengirim ' + esc(Send.displayHandle(sending.handle)) : '') + '</p>' +
+        '<div class="bar" style="margin:10px 0"><span style="width:' + pct + '%"></span></div>' +
+        (quotaStop ? '<div class="note">Cap harian preview penuh. Reset di Akun atau lanjut besok.</div>' : '') +
+        (campaign.status === 'batch' ? '<div class="note">Istirahat antar batch ' + Send.BATCH + ' (seperti cap TikTok).</div>' : '') +
+        (done ? '<p><strong>Selesai.</strong> Inbox TikTok tidak berubah. CRM di app ini sudah terisi.</p>' : '') +
+        '<div class="job-actions">' +
+          (done ? '' : '<button type="button" class="btn" data-act="job-pause">' + pauseLbl + '</button>') +
+          '<button type="button" class="btn-ghost" data-act="job-manual" data-id="' + esc(campaign.id) + '">Buka 1 profil di TikTok (opsional)</button>' +
+        '</div>' +
+      '</section>' +
+      '<section class="card"><h3>Log</h3>' +
+        (log.length ? log.map(function (r) {
+          var label = r.status === 'sending' ? 'mengirim…' : r.status === 'sent' ? 'terkirim' : 'gagal';
+          return '<div class="job-log ' + esc(r.status) + '"><strong>' + esc(Send.displayHandle(r.handle)) + '</strong>' +
+            '<span>' + esc(label) + '</span></div>';
+        }).join('') : '<p class="muted">Menunggu worker…</p>') +
+      '</section>'
+    );
+  }
+
+  async function jobManual(id) {
+    var campaign = campaignById(id);
+    var row = (campaign.rows || []).find(function (r) { return r.status === 'sent'; }) || nextPending(campaign);
+    if (!row) { toast('Tidak ada baris'); return; }
+    var creator = creatorById(row.creatorId) || { handle: row.handle };
+    await Send.send(creator, { channel: campaign.channel, account: db.account, template: campaign.template, manualTiktok: true });
+    toast('TikTok dibuka. Itu tes manual, bukan kiriman kampanye.');
   }
 
   function addHandle(raw, name) {
@@ -507,9 +525,7 @@
     if (!h) { toast('Handle kosong'); return; }
     if (creatorByHandle(h)) { toast('Sudah ada'); return; }
     db.creators.unshift({ id: uid('c'), handle: h, name: name || '', demo: false, status: 'new' });
-    save();
-    render();
-    toast('Ditambah ' + Send.displayHandle(h));
+    save(); render(); toast('Ditambah ' + Send.displayHandle(h));
   }
 
   function parseCsv(text) {
@@ -530,7 +546,6 @@
     return out;
   }
 
-  /* ── events ──────────────────────────────────────────────────────── */
   document.addEventListener('click', function (ev) {
     var t = ev.target.closest('[data-act]');
     if (!t) return;
@@ -544,28 +559,19 @@
     } else if (act === 'new-campaign') {
       if (!db.creators.length) { toast('Tambah handle di Kreator dulu'); ui.tab = 'kreator'; render(); return; }
       startWizard();
-    } else if (act === 'wiz-cancel') {
-      ui.wizard = null; render();
-    } else if (act === 'wiz-back') {
-      ui.wizard.step = Math.max(0, ui.wizard.step - 1); render();
-    } else if (act === 'wiz-next') {
-      if (ui.wizard.step === 0 && !ui.wizard.channel) ui.wizard.channel = 'tiktok_dm';
+    } else if (act === 'wiz-cancel') { ui.wizard = null; render(); }
+    else if (act === 'wiz-back') { ui.wizard.step = Math.max(0, ui.wizard.step - 1); render(); }
+    else if (act === 'wiz-next') {
       if (ui.wizard.step === 1 && !selectedCreators(ui.wizard).length) { toast('Pilih minimal satu'); return; }
       ui.wizard.step = Math.min(3, ui.wizard.step + 1); render();
-    } else if (act === 'wiz-ch') {
-      var avail = Send.channelAvailable(id, db.account);
-      if (!avail.ok) { toast(avail.reason); return; }
-      ui.wizard.channel = id; render();
-    } else if (act === 'wiz-sel') {
-      ui.wizard.ids[id] = t.checked;
-    } else if (act === 'wiz-all') {
+    } else if (act === 'wiz-ch') { ui.wizard.channel = id; render(); }
+    else if (act === 'wiz-sel') { ui.wizard.ids[id] = t.checked; }
+    else if (act === 'wiz-all') {
       db.creators.forEach(function (c) { ui.wizard.ids[c.id] = t.checked; });
       render();
-    } else if (act === 'wiz-go') {
-      startJobFromWizard();
-    } else if (act === 'sel') {
-      ui.selected[id] = t.checked;
-    } else if (act === 'sel-all') {
+    } else if (act === 'wiz-go') { startJobFromWizard(); }
+    else if (act === 'sel') { ui.selected[id] = t.checked; }
+    else if (act === 'sel-all') {
       db.creators.forEach(function (c) { ui.selected[c.id] = t.checked; });
       render();
     } else if (act === 'del-creator') {
@@ -573,27 +579,32 @@
       delete ui.selected[id];
       save(); render();
     } else if (act === 'open-campaign') {
-      showJob(id);
-    } else if (act === 'close-job') {
-      closeOverlay(); render();
-    } else if (act === 'job-go') {
-      jobGo(id);
-    } else if (act === 'job-sent') {
-      jobMark(id, 'sent');
-    } else if (act === 'job-fail') {
-      jobMark(id, 'failed');
-    } else if (act === 'reset-quota') {
-      db.quota.used = 0; db.quota.day = todayKey(); save(); render(); toast('Kuota latihan direset');
+      ui.jobId = id;
+      if (campaignById(id) && campaignById(id).status === 'berjalan' && !runner.id) startRunner(id);
+      else renderJob(id);
+    } else if (act === 'close-job') { closeOverlay(); render(); }
+    else if (act === 'job-pause') {
+      runner.paused = !runner.paused;
+      var c = campaignById(runner.id);
+      if (c) { c.status = runner.paused ? 'jeda' : 'berjalan'; save(); }
+      if (!runner.paused && runner.id) queueTick(120);
+      renderJob(ui.jobId || runner.id);
+    } else if (act === 'job-manual') { jobManual(id); }
+    else if (act === 'reset-quota') {
+      db.quota.used = 0; db.quota.weekUsed = 0; db.quota.day = todayKey(); save(); render(); toast('Kuota preview direset');
     } else if (act === 'sim-shop') {
       if (!isLanHost()) return;
       db.account.shopToken = 'dev-placeholder';
       db.account.shopName = 'Toko uji (bukan OAuth)';
-      save(); render(); toast('Channel Target Collab terbuka. API belum kirim.');
+      save(); render(); toast('Token dummy. Kirim tetap preview.');
     } else if (act === 'unbind-shop') {
-      db.account.shopToken = null; db.account.shopName = ''; save(); render();
+      db.account.shopToken = null; db.account.shopName = ''; db.account.liveApi = false; save(); render();
     } else if (act === 'reset-all') {
       if (!confirm('Hapus kampanye dan kreator di browser ini?')) return;
-      db = defaultState(); save(); ui = { tab: 'kampanye', wizard: null, selected: {}, filter: '' }; closeOverlay(); render();
+      stopRunner();
+      db = defaultState(); save();
+      ui = { tab: 'kampanye', wizard: null, selected: {}, filter: '', jobId: null };
+      closeOverlay(); render();
     }
   });
 
@@ -609,8 +620,7 @@
     else if (act === 'acc-produk') { db.account.productName = t.value; save(); }
     else if (act === 'acc-komisi') { db.account.commissionPct = +t.value || 0; save(); }
     else if (act === 'csv' && t.files && t.files[0]) {
-      var f = t.files[0];
-      f.text().then(function (text) {
+      t.files[0].text().then(function (text) {
         var rows = parseCsv(text);
         var n = 0;
         rows.forEach(function (r) {
@@ -630,9 +640,7 @@
       render();
       var box = document.querySelector('[data-act="filter"]');
       if (box) { box.focus(); box.setSelectionRange(box.value.length, box.value.length); }
-    } else if (t.getAttribute('data-act') === 'wiz-tpl') {
-      ui.wizard.template = t.value;
-    }
+    } else if (t.getAttribute('data-act') === 'wiz-tpl') ui.wizard.template = t.value;
   });
 
   document.addEventListener('submit', function (ev) {

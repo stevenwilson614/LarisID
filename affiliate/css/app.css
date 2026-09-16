@@ -211,3 +211,20 @@ label.field { display: block; font-size: .72rem; font-weight: 700; margin: 10px 
 }
 
 .checklist { margin: 0; padding-left: 1.1rem; font-size: .82rem; line-height: 1.55; color: var(--muted); }
+
+.preview-banner {
+  margin: 0 0 10px;
+  font-size: .68rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--merah-dark); background: var(--merah-tint);
+  border-radius: 8px; padding: 6px 8px;
+}
+.job-log {
+  display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: baseline;
+  padding: 8px 0; border-bottom: 1px solid var(--line);
+  font-size: .82rem;
+}
+.job-log:last-child { border-bottom: 0; }
+.job-log span { color: var(--muted); font-size: .74rem; text-align: right; }
+.job-log.sending { color: var(--warn); }
+.job-log.sent strong { color: var(--ok); }
+.job-log.failed strong { color: var(--bad); }
