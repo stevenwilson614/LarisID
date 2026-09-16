@@ -25391,23 +25391,6 @@ function wireUi() {
     resetDirectoryToHome();
     void openDirectory();
   });
-  $('btn-expor-pasar')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    if (!window.LarisExpor?.labUnlocked?.()) return;
-    try { window.LarisExpor.activate(); } catch (_) {}
-    state.comparePick = null;
-    state.compareReturnChatId = null;
-    updateDirCompareBanner();
-    resetDirectoryToHome();
-    renderChatList();
-    void openDirectory();
-  });
-  $('btn-shopee-pasar')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    try { window.LarisExpor?.setPasar('shopee'); } catch (_) {}
-    renderChatList();
-    location.href = '/';
-  });
   $('btn-tracker')?.addEventListener('click', () => { openTrackerView(); });
   $('btn-kalkulator-alat')?.addEventListener('click', () => {
     try { window.LarisAlatPreview?.exitFocus?.(); } catch (_) {}

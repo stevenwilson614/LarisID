@@ -1988,13 +1988,6 @@
       document.body.classList.remove('pasar-expor');
       document.body.classList.add('pasar-shopee');
     } catch (_) {}
-    ['btn-expor-pasar', 'btn-shopee-pasar'].forEach(function (id) {
-      var el = document.getElementById(id);
-      if (el) {
-        el.hidden = true;
-        el.style.display = 'none';
-      }
-    });
     document.querySelectorAll('.side-links a[href="/expor/"], .expor-tab').forEach(function (el) {
       el.hidden = true;
       el.style.display = 'none';

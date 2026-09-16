@@ -126,16 +126,8 @@
       inp.placeholder = on ? 'Cari produk ekspor… meja jati, minyak kelapa' : 'Cari produk…';
       inp.setAttribute('aria-label', on ? 'Cari produk ekspor Amazon US' : 'Cari produk');
     }
-    var tab = document.getElementById('btn-expor-pasar');
-    if (tab) {
-      tab.hidden = !gated;
-      tab.classList.toggle('active', !!on);
-    }
-    var lid = document.getElementById('btn-shopee-pasar');
-    if (lid) {
-      lid.hidden = !gated;
-      lid.classList.toggle('active', !on);
-    }
+    // Left-rail LarisExpor / LarisID Shopee switchers were removed; mode still
+    // flips via /?pasar=expor (lab-gated).
     var loc = document.getElementById('btn-set-lokasi');
     if (loc) loc.hidden = !!on;
   }
