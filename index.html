@@ -10478,10 +10478,10 @@ body.view-chat .sfb-card {
 </aside>
 
 <script src="/js/laris-merdeka.js?v=20260816b" defer></script>
-<script src="/js/changelog.js?v=20260916a" defer></script>
+<script src="/js/changelog.js?v=20260916b" defer></script>
 <script defer src="/js/gpt-dir-filters.js?v=20260911c"></script>
 <script defer src="/js/gpt-dir-workbench.js?v=20260913b"></script>
-<script defer src="/js/gpt-activity.js?v=20260916b"></script>
+<script defer src="/js/gpt-activity.js?v=20260916c"></script>
 <script defer src="/js/gpt-dir-hero.js?v=20260824a"></script>
 <script defer src="/js/gpt-dir-home.js?v=20260824d"></script>
 <script defer src="/js/gpt-photo-analyze.js?v=20260824a"></script>
@@ -10503,7 +10503,7 @@ body.view-chat .sfb-card {
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260916d" defer></script>
 <script src="/js/gpt-alat-preview.js?v=20260916ae" defer></script>
-<script src="/js/gpt-app.js?v=20260916r" defer></script>
+<script src="/js/gpt-app.js?v=20260916s" defer></script>
 <style>
 .alat-preview-banner {
   display: none;
@@ -10899,6 +10899,32 @@ body.alat-focus.view-home .home-finder::after {
   display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end;
   padding-top: 8px; border-top: 1px solid #F1F1F2;
 }
+/* Off-screen capture for Unduh PDF — looks like a calculator screenshot. */
+.kalc-pdf-shot {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  width: 720px;
+  padding: 24px 28px 32px;
+  background: #fff;
+  box-sizing: border-box;
+  font-family: inherit;
+  color: #1A1A1A;
+}
+.kalc-pdf-brand {
+  margin: 0 0 18px;
+}
+.kalc-pdf-brand img {
+  display: block;
+  height: 32px;
+  width: auto;
+}
+.kalc-pdf-shot .kalc-page {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+.kalc-pdf-shot .kalc-page-pick { margin-bottom: 14px; }
 .kalc-picked { margin-top: 10px; }
 .kalc-picked-card {
   display: flex; align-items: center; gap: 12px;

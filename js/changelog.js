@@ -15,8 +15,8 @@ window.LARIS_CHANGELOG = [
     title: 'Kalkulator profit di menu',
     items: [
       {
-        text: 'Kalkulator Profit sekarang ada di menu kiri. Cari produk untuk mengisi harga otomatis, atau ketik modal dan harga jual sendiri. Bisa unduh PDF atau simpan ke Riwayat.',
-        tech: '#btn-kalkulator-alat + #view-kalkulator (ungated); Deep Dive kalkulator pill still opens the side sheet.',
+        text: 'Kalkulator Profit sekarang ada di menu kiri. Cari produk untuk mengisi harga otomatis, atau ketik modal dan harga jual sendiri. Simpan ke Riwayat masuk tab Kalk (tanpa buka chat). Unduh PDF jadi foto kalkulator dengan logo Laris.',
+        tech: '#btn-kalkulator-alat + #view-kalkulator; search_listings lim=12 typeahead cache; LarisActivity kind=kalk; html2canvas PDF shot.',
       },
     ],
   },

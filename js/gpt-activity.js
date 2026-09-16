@@ -18,7 +18,7 @@
   function loadChip() {
     try {
       var v = localStorage.getItem(CHIP_KEY);
-      if (v === 'chat' || v === 'dive' || v === 'cari' || v === 'unduh') _chip = v;
+      if (v === 'chat' || v === 'dive' || v === 'cari' || v === 'kalk' || v === 'unduh') _chip = v;
     } catch (_) {}
   }
 
@@ -35,6 +35,17 @@
     (_cache.chats || []).forEach(function (c) {
       var cp = c.pasar || (c.context && c.context.pasar) || 'shopee';
       if (cp !== pasar) return;
+      var ctxKind = c.context && c.context.kind;
+      if (ctxKind === 'kalkulator') {
+        out.push({
+          kind: 'kalk',
+          at: c.created_at || c.updated_at || 0,
+          id: c.id || c.localId,
+          title: c.title || 'Kalkulasi',
+          chat: c,
+        });
+        return;
+      }
       out.push({
         kind: 'chat',
         at: c.created_at || c.updated_at || 0,
@@ -87,12 +98,12 @@
   }
 
   function kindLabel(k) {
-    return { chat: 'Chat', dive: 'Dive', cari: 'Cari', unduh: 'Unduh' }[k] || k;
+    return { chat: 'Chat', dive: 'Dive', cari: 'Cari', kalk: 'Kalk', unduh: 'Unduh' }[k] || k;
   }
 
   function chipsHtml() {
     var chips = [
-      ['all', 'Semua'], ['chat', 'Chat'], ['dive', 'Dive'], ['cari', 'Cari'], ['unduh', 'Unduh'],
+      ['all', 'Semua'], ['chat', 'Chat'], ['dive', 'Dive'], ['cari', 'Cari'], ['kalk', 'Kalk'], ['unduh', 'Unduh'],
     ];
     return '<div class="riwayat-chips" id="riwayat-chips">' + chips.map(function (c) {
       return '<button type="button" class="riwayat-chip' + (_chip === c[0] ? ' is-on' : '')
@@ -327,6 +338,7 @@
   function openItem(it) {
     if (!it) return;
     if (it.kind === 'chat' && api.openChat) api.openChat(it.id);
+    else if (it.kind === 'kalk' && api.openKalc) api.openKalc(it.chat || it);
     else if (it.kind === 'cari' && api.rerunSearch) api.rerunSearch(it.query || it.title);
     else if (it.kind === 'dive' && api.openDive) api.openDive(it);
     else if (it.kind === 'unduh' && api.redownload) api.redownload(it.job);
