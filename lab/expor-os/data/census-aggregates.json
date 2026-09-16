@@ -1,0 +1,7 @@
+{
+  "_meta": {
+    "status": "empty",
+    "honesty": "Census USA Trade Online / International Trade API returns country×HS aggregates, not named importers. Fill via collectors/fetch-census-imports.mjs with CENSUS_API_KEY. Until then the kartu uses Comtrade Indonesia→US destination rows and labels them as aggregates."
+  },
+  "by_hs6": {}
+}

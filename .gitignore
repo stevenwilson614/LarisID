@@ -25,6 +25,7 @@ redesign-preview-2.html
 redesign-preview.html
 scripts/_seo_raw/
 scripts/_expor_raw/
+lab/expor-os/_raw/
 scripts/_amazon_ingest.sql
 scripts/_seed_*.json
 scripts/changelog-daily.log

@@ -1,0 +1,42 @@
+{
+  "_meta": {
+    "honesty": "Lab scenario defaults only. Not the seller’s HPP, not a freight quote, not Amazon’s size-tier decision.",
+    "hpp_share_of_price": 0.4
+  },
+  "by_slug": {
+    "kursi-rotan": { "fba": "bulky", "weight_lb": 12, "freight": "seaLcl", "unit_kg": 5.5, "unit_cbm": 0.08 },
+    "furnitur-jati": { "fba": "xl", "weight_lb": 40, "freight": "seaLcl", "unit_kg": 18, "unit_cbm": 0.25 },
+    "keranjang-rotan": { "fba": "large_mid", "weight_lb": 1.5, "freight": "seaLcl", "unit_kg": 0.7, "unit_cbm": 0.02 },
+    "tas-rotan": { "fba": "small_heavy", "weight_lb": 0.8, "freight": "air", "unit_kg": 0.4, "unit_cbm": 0.008 },
+    "ukiran-kayu-bali": { "fba": "large_heavy", "weight_lb": 4, "freight": "air", "unit_kg": 1.8, "unit_cbm": 0.015 },
+    "kopi-gayo": { "fba": "large_mid", "weight_lb": 1.1, "freight": "seaLcl", "unit_kg": 1.0, "unit_cbm": 0.002 },
+    "vanili": { "fba": "small_light", "weight_lb": 0.1, "freight": "air", "unit_kg": 0.05, "unit_cbm": 0.0004 },
+    "lada-hitam": { "fba": "large_mid", "weight_lb": 1.1, "freight": "seaLcl", "unit_kg": 1.0, "unit_cbm": 0.002 },
+    "minyak-nilam": { "fba": "small_heavy", "weight_lb": 0.3, "freight": "air", "unit_kg": 0.12, "unit_cbm": 0.0005 },
+    "minyak-kelapa": { "fba": "large_mid", "weight_lb": 2, "freight": "seaLcl", "unit_kg": 0.95, "unit_cbm": 0.0015 },
+    "briket-arang-kelapa": { "fba": "large_heavy", "weight_lb": 8, "freight": "seaLcl", "unit_kg": 10, "unit_cbm": 0.02 },
+    "cocopeat": { "fba": "bulky", "weight_lb": 15, "freight": "seaLcl", "unit_kg": 5, "unit_cbm": 0.03 },
+    "sedotan-bambu": { "fba": "small_heavy", "weight_lb": 0.4, "freight": "air", "unit_kg": 0.15, "unit_cbm": 0.002 },
+    "kain-batik": { "fba": "large_mid", "weight_lb": 1, "freight": "air", "unit_kg": 0.4, "unit_cbm": 0.004 },
+    "kemeja-batik": { "fba": "small_heavy", "weight_lb": 0.6, "freight": "air", "unit_kg": 0.25, "unit_cbm": 0.004 },
+    "perhiasan-perak-bali": { "fba": "small_light", "weight_lb": 0.1, "freight": "air", "unit_kg": 0.03, "unit_cbm": 0.0002 },
+    "sabun-alami": { "fba": "small_heavy", "weight_lb": 0.4, "freight": "air", "unit_kg": 0.12, "unit_cbm": 0.0008 },
+    "sambal": { "fba": "large_mid", "weight_lb": 1.2, "freight": "seaLcl", "unit_kg": 0.45, "unit_cbm": 0.001 },
+    "gula-aren": { "fba": "large_mid", "weight_lb": 1.1, "freight": "seaLcl", "unit_kg": 1.0, "unit_cbm": 0.0015 },
+    "tuna-kaleng": { "fba": "large_mid", "weight_lb": 0.8, "freight": "seaLcl", "unit_kg": 0.4, "unit_cbm": 0.0008 }
+  },
+  "by_kategori": {
+    "Furnitur & Dekorasi": { "fba": "bulky", "weight_lb": 20, "freight": "seaLcl", "unit_kg": 10, "unit_cbm": 0.12 },
+    "Kerajinan & Anyaman": { "fba": "large_mid", "weight_lb": 2, "freight": "seaLcl", "unit_kg": 0.8, "unit_cbm": 0.015 },
+    "Kopi, Teh & Kakao": { "fba": "large_mid", "weight_lb": 1.1, "freight": "seaLcl", "unit_kg": 1, "unit_cbm": 0.002 },
+    "Rempah & Bumbu": { "fba": "large_mid", "weight_lb": 1.1, "freight": "seaLcl", "unit_kg": 1, "unit_cbm": 0.002 },
+    "Minyak Atsiri & Ekstrak": { "fba": "small_heavy", "weight_lb": 0.3, "freight": "air", "unit_kg": 0.12, "unit_cbm": 0.0005 },
+    "Produk Kelapa": { "fba": "large_mid", "weight_lb": 2, "freight": "seaLcl", "unit_kg": 1, "unit_cbm": 0.004 },
+    "Fesyen & Tekstil": { "fba": "small_heavy", "weight_lb": 0.6, "freight": "air", "unit_kg": 0.3, "unit_cbm": 0.004 },
+    "Perhiasan & Aksesori": { "fba": "small_light", "weight_lb": 0.1, "freight": "air", "unit_kg": 0.03, "unit_cbm": 0.0002 },
+    "Perawatan Diri & Wellness": { "fba": "small_heavy", "weight_lb": 0.4, "freight": "air", "unit_kg": 0.15, "unit_cbm": 0.0008 },
+    "Dapur & Peralatan Makan": { "fba": "large_mid", "weight_lb": 1.5, "freight": "seaLcl", "unit_kg": 0.7, "unit_cbm": 0.008 },
+    "Makanan Olahan": { "fba": "large_mid", "weight_lb": 1.2, "freight": "seaLcl", "unit_kg": 0.5, "unit_cbm": 0.001 },
+    "Hasil Laut & Rumput Laut": { "fba": "large_mid", "weight_lb": 1, "freight": "seaLcl", "unit_kg": 0.5, "unit_cbm": 0.001 }
+  }
+}

@@ -1,0 +1,740 @@
+{
+  "_meta": {
+    "source": "USITC Harmonized Tariff Schedule exportList (MFN general)",
+    "source_url": "https://hts.usitc.gov/reststop/exportList",
+    "honesty": "Candidate 10-digit leaves from lab hts-map. Not a binding classification. Indonesia GSP/FTA special rates are not applied.",
+    "fetched_at": "2026-09-16T03:57:35.172Z",
+    "slugs": 20,
+    "pilots": 20
+  },
+  "by_slug": {
+    "kursi-rotan": {
+      "hs6": "940153",
+      "htsno": "9401.53.00.00",
+      "description": "Of rattan",
+      "confidence": "high",
+      "note": "Seats of rattan.",
+      "kind": "simple",
+      "duty_pct": 0,
+      "general_raw": "Free",
+      "alts": [
+        {
+          "htsno": "9401.52.00.00",
+          "general": "Free",
+          "description": "Of bamboo ",
+          "kind": "simple",
+          "duty_pct": 0,
+          "general_raw": "Free"
+        },
+        {
+          "htsno": "9401.53.00.00",
+          "general": "Free",
+          "description": "Of rattan",
+          "kind": "simple",
+          "duty_pct": 0,
+          "general_raw": "Free"
+        },
+        {
+          "htsno": "9401.59.00.00",
+          "general": "Free",
+          "description": "Other",
+          "kind": "simple",
+          "duty_pct": 0,
+          "general_raw": "Free"
+        }
+      ]
+    },
+    "furnitur-jati": {
+      "hs6": "940360",
+      "htsno": "9403.60.80",
+      "description": "Other",
+      "confidence": "medium",
+      "note": "Other wooden furniture; bent-wood is a different leaf.",
+      "kind": "simple",
+      "duty_pct": 0,
+      "general_raw": "Free",
+      "alts": [
+        {
+          "htsno": "9403.60.40.00",
+          "general": "Free",
+          "description": "Bent-wood furniture",
+          "kind": "simple",
+          "duty_pct": 0,
+          "general_raw": "Free"
+        },
+        {
+          "htsno": "9403.60.80",
+          "general": "Free",
+          "description": "Other",
+          "kind": "simple",
+          "duty_pct": 0,
+          "general_raw": "Free"
+        }
+      ]
+    },
+    "keranjang-rotan": {
+      "hs6": "460212",
+      "htsno": "4602.12.45.00",
+      "description": "Other",
+      "confidence": "cek",
+      "note": "Rattan basketwork splits: wickerwork Free vs other 5–18%. Confirm construction.",
+      "kind": "simple",
+      "duty_pct": 6.6,
+      "general_raw": "6.6%",
+      "alts": [
+        {
+          "htsno": "4602.12.05.00",
+          "general": "5%",
+          "description": "Fishing baskets or creels",
+          "kind": "simple",
+          "duty_pct": 5,
+          "general_raw": "5%"
+        },
+        {
+          "htsno": "4602.12.14.00",
+          "general": "Free",
+          "description": "Wickerwork",
+          "kind": "simple",
+          "duty_pct": 0,
+          "general_raw": "Free"
+        },
+        {
+          "htsno": "4602.12.16.00",
+          "general": "5%",
+          "description": "Other",
+          "kind": "simple",
+          "duty_pct": 5,
+          "general_raw": "5%"
+        },
+        {
+          "htsno": "4602.12.23.00",
+          "general": "9%",
+          "description": "Articles of a kind normally carried in the pocket or in the handbag",
+          "kind": "simple",
+          "duty_pct": 9,
+          "general_raw": "9%"
+        },
+        {
+          "htsno": "4602.12.25.00",
+          "general": "18%",
+          "description": "Other",
+          "kind": "simple",
+          "duty_pct": 18,
+          "general_raw": "18%"
+        },
+        {
+          "htsno": "4602.12.35.00",
+          "general": "Free",
+          "description": "Wickerwork",
+          "kind": "simple",
+          "duty_pct": 0,
+          "general_raw": "Free"
+        },
+        {
+          "htsno": "4602.12.45.00",
+          "general": "6.6%",
+          "description": "Other",
+          "kind": "simple",
+          "duty_pct": 6.6,
+          "general_raw": "6.6%"
+        }
+      ]
+    },
+    "tas-rotan": {
+      "hs6": "460290",
+      "htsno": "4602.90.00.00",
+      "description": "Other",
+      "confidence": "medium",
+      "note": "Corpus HS is ‘other basketware’. Handbags of rattan may be 4602.12.23 instead.",
+      "kind": "simple",
+      "duty_pct": 3.5,
+      "general_raw": "3.5%",
+      "alts": [
+        {
+          "htsno": "4602.90.00.00",
+          "general": "3.5%",
+          "description": "Other",
+          "kind": "simple",
+          "duty_pct": 3.5,
+          "general_raw": "3.5%"
+        }
+      ]
+    },
+    "ukiran-kayu-bali": {
+      "hs6": "442011",
+      "htsno": "4420.11.00",
+      "description": "Of tropical wood",
+      "confidence": "high",
+      "note": "Statuettes / wood ornaments of tropical wood.",
+      "kind": "simple",
+      "duty_pct": 3.2,
+      "general_raw": "3.2%",
+      "alts": [
+        {
+          "htsno": "4420.11.00",
+          "general": "3.2%",
+          "description": "Of tropical wood",
+          "kind": "simple",
+          "duty_pct": 3.2,
+          "general_raw": "3.2%"
+        }
+      ]
+    },
+    "kopi-gayo": {
+      "hs6": "090111",
+      "htsno": "0901.11.00",
+      "description": "Not decaffeinated",
+      "confidence": "high",
+      "note": "Coffee, not roasted, not decaffeinated. Statistical suffixes (organic vs other) share the same general rate.",
+      "kind": "simple",
+      "duty_pct": 0,
+      "general_raw": "Free",
+      "alts": [
+        {
+          "htsno": "0901.11.00",
+          "general": "Free",
+          "description": "Not decaffeinated",
+          "kind": "simple",
+          "duty_pct": 0,
+          "general_raw": "Free"
+        }
+      ]
+    },
+    "vanili": {
+      "hs6": "090510",
+      "htsno": "0905.10.00.00",
+      "description": "Neither crushed nor ground",
+      "confidence": "high",
+      "note": "Vanilla, neither crushed nor ground.",
+      "kind": "simple",
+      "duty_pct": 0,
+      "general_raw": "Free",
+      "alts": [
+        {
+          "htsno": "0905.10.00.00",
+          "general": "Free",
+          "description": "Neither crushed nor ground",
+          "kind": "simple",
+          "duty_pct": 0,
+          "general_raw": "Free"
+        }
+      ]
+    },
+    "lada-hitam": {
+      "hs6": "090411",
+      "htsno": "0904.11.00",
+      "description": "Neither crushed nor ground",
+      "confidence": "high",
+      "note": "Pepper of the genus Piper, neither crushed nor ground.",
+      "kind": "simple",
+      "duty_pct": 0,
+      "general_raw": "Free",
+      "alts": [
+        {
+          "htsno": "0904.11.00",
+          "general": "Free",
+          "description": "Neither crushed nor ground",
+          "kind": "simple",
+          "duty_pct": 0,
+          "general_raw": "Free"
+        }
+      ]
+    },
+    "minyak-nilam": {
+      "hs6": "330129",
+      "htsno": "3301.29.51",
+      "description": "Other",
+      "confidence": "high",
+      "note": "Other essential oils (patchouli is not eucalyptus/orris).",
+      "kind": "simple",
+      "duty_pct": 0,
+      "general_raw": "Free",
+      "alts": [
+        {
+          "htsno": "3301.29.10.00",
+          "general": "1.8%",
+          "description": "Of eucalyptus",
+          "kind": "simple",
+          "duty_pct": 1.8,
+          "general_raw": "1.8%"
+        },
+        {
+          "htsno": "3301.29.20.00",
+          "general": "1.1%",
+          "description": "Of orris",
+          "kind": "simple",
+          "duty_pct": 1.1,
+          "general_raw": "1.1%"
+        },
+        {
+          "htsno": "3301.29.51",
+          "general": "Free",
+          "description": "Other",
+          "kind": "simple",
+          "duty_pct": 0,
+          "general_raw": "Free"
+        }
+      ]
+    },
+    "minyak-kelapa": {
+      "hs6": "151319",
+      "htsno": "1513.19.00",
+      "description": "Other",
+      "confidence": "high",
+      "note": "Coconut oil, other than crude (refined). Crude is 1513.11.",
+      "kind": "simple",
+      "duty_pct": 0,
+      "general_raw": "Free",
+      "alts": [
+        {
+          "htsno": "1513.19.00",
+          "general": "Free",
+          "description": "Other",
+          "kind": "simple",
+          "duty_pct": 0,
+          "general_raw": "Free"
+        }
+      ]
+    },
+    "briket-arang-kelapa": {
+      "hs6": "440290",
+      "htsno": "4402.90.01.00",
+      "description": "Other",
+      "confidence": "high",
+      "note": "Wood charcoal, other.",
+      "kind": "simple",
+      "duty_pct": 0,
+      "general_raw": "Free",
+      "alts": [
+        {
+          "htsno": "4402.90.01.00",
+          "general": "Free",
+          "description": "Other",
+          "kind": "simple",
+          "duty_pct": 0,
+          "general_raw": "Free"
+        }
+      ]
+    },
+    "cocopeat": {
+      "hs6": "530500",
+      "htsno": "5305.00.00.00",
+      "description": "Coconut, abaca (Manila hemp or Musa textilis Nee), ramie and other vegetable textile fibers, not elsewhere specified or included, raw or processed but not spun; tow, noils and waste of these fibers (including yarn waste and garnetted stock)",
+      "confidence": "medium",
+      "note": "Coconut coir / other vegetable fibers. Growing media may be argued elsewhere — confirm with broker.",
+      "kind": "simple",
+      "duty_pct": 0,
+      "general_raw": "Free",
+      "alts": [
+        {
+          "htsno": "5305.00.00.00",
+          "general": "Free",
+          "description": "Coconut, abaca (Manila hemp or Musa textilis Nee), ramie and other vegetable textile fibers, not elsewhere specified or included, raw or processed but not spun; tow, noils and waste of these fibers (including yarn waste and garnetted stock)",
+          "kind": "simple",
+          "duty_pct": 0,
+          "general_raw": "Free"
+        }
+      ]
+    },
+    "sedotan-bambu": {
+      "hs6": "441919",
+      "htsno": "4419.19.90.00",
+      "description": "Other",
+      "confidence": "medium",
+      "note": "Bamboo tableware, other (not forks/spoons).",
+      "kind": "simple",
+      "duty_pct": 3.2,
+      "general_raw": "3.2%",
+      "alts": [
+        {
+          "htsno": "4419.19.10.00",
+          "general": "5.3%",
+          "description": "Forks and spoons",
+          "kind": "simple",
+          "duty_pct": 5.3,
+          "general_raw": "5.3%"
+        },
+        {
+          "htsno": "4419.19.90.00",
+          "general": "3.2%",
+          "description": "Other",
+          "kind": "simple",
+          "duty_pct": 3.2,
+          "general_raw": "3.2%"
+        }
+      ]
+    },
+    "kain-batik": {
+      "hs6": "520852",
+      "htsno": "5208.52.30",
+      "description": "Of number 42 or lower number",
+      "confidence": "cek",
+      "note": "Printed cotton weaves split by yarn number. Duty 6–12.5%.",
+      "kind": "simple",
+      "duty_pct": 6,
+      "general_raw": "6%",
+      "alts": [
+        {
+          "htsno": "5208.52.10.00",
+          "general": "3%",
+          "description": "Certified hand-loomed fabrics",
+          "kind": "simple",
+          "duty_pct": 3,
+          "general_raw": "3%"
+        },
+        {
+          "htsno": "5208.52.30",
+          "general": "6%",
+          "description": "Of number 42 or lower number",
+          "kind": "simple",
+          "duty_pct": 6,
+          "general_raw": "6%"
+        },
+        {
+          "htsno": "5208.52.40",
+          "general": "11.4%",
+          "description": "Of numbers 43 to 68",
+          "kind": "simple",
+          "duty_pct": 11.4,
+          "general_raw": "11.4%"
+        },
+        {
+          "htsno": "5208.52.50",
+          "general": "12.5%",
+          "description": "Of number 69 or higher number",
+          "kind": "simple",
+          "duty_pct": 12.5,
+          "general_raw": "12.5%"
+        }
+      ]
+    },
+    "kemeja-batik": {
+      "hs6": "620520",
+      "htsno": "6205.20.20",
+      "description": "Other",
+      "confidence": "medium",
+      "note": "Men’s cotton shirts, other. Folklore 6205.20.10 is 8.7% only if it truly qualifies.",
+      "kind": "simple",
+      "duty_pct": 19.7,
+      "general_raw": "19.7%",
+      "alts": [
+        {
+          "htsno": "6205.20.10.00",
+          "general": "8.7%",
+          "description": "Certified hand-loomed and folklore products (340)",
+          "kind": "simple",
+          "duty_pct": 8.7,
+          "general_raw": "8.7%"
+        },
+        {
+          "htsno": "6205.20.20",
+          "general": "19.7%",
+          "description": "Other",
+          "kind": "simple",
+          "duty_pct": 19.7,
+          "general_raw": "19.7%"
+        }
+      ]
+    },
+    "perhiasan-perak-bali": {
+      "hs6": "711311",
+      "htsno": "7113.11.50.00",
+      "description": "Other",
+      "confidence": "medium",
+      "note": "Other silver jewelry. Low-value pieces can be 13.5%.",
+      "kind": "simple",
+      "duty_pct": 5,
+      "general_raw": "5%",
+      "alts": [
+        {
+          "htsno": "7113.11.10.00",
+          "general": "6.3%",
+          "description": "Rope, curb, cable, chain and similar articles produced in continuous lengths, all the foregoing, whether or not cut to specific lengths and whether or not set with imitation pearls or imitation gemstones, suitable for use in the manufacture of articles provided for in this heading",
+          "kind": "simple",
+          "duty_pct": 6.3,
+          "general_raw": "6.3%"
+        },
+        {
+          "htsno": "7113.11.20.00",
+          "general": "13.5%",
+          "description": "Valued not over $18 per dozen pieces or parts",
+          "kind": "simple",
+          "duty_pct": 13.5,
+          "general_raw": "13.5%"
+        },
+        {
+          "htsno": "7113.11.50.00",
+          "general": "5%",
+          "description": "Other",
+          "kind": "simple",
+          "duty_pct": 5,
+          "general_raw": "5%"
+        }
+      ]
+    },
+    "sabun-alami": {
+      "hs6": "340111",
+      "htsno": "3401.11.50.00",
+      "description": "Other",
+      "confidence": "high",
+      "note": "Toilet soap, other than Castile.",
+      "kind": "simple",
+      "duty_pct": 0,
+      "general_raw": "Free",
+      "alts": [
+        {
+          "htsno": "3401.11.10.00",
+          "general": "Free",
+          "description": "Castile soap",
+          "kind": "simple",
+          "duty_pct": 0,
+          "general_raw": "Free"
+        },
+        {
+          "htsno": "3401.11.50.00",
+          "general": "Free",
+          "description": "Other",
+          "kind": "simple",
+          "duty_pct": 0,
+          "general_raw": "Free"
+        }
+      ]
+    },
+    "sambal": {
+      "hs6": "210390",
+      "htsno": "2103.90.90",
+      "description": "Other",
+      "confidence": "medium",
+      "note": "Other sauces. Fish-derived sauces are Free; some leaves are specific/compound.",
+      "kind": "simple",
+      "duty_pct": 6.4,
+      "general_raw": "6.4%",
+      "alts": [
+        {
+          "htsno": "2103.90.20.00",
+          "general": "Free",
+          "description": "Sauces derived or prepared from fish",
+          "kind": "simple",
+          "duty_pct": 0,
+          "general_raw": "Free"
+        },
+        {
+          "htsno": "2103.90.40.00",
+          "general": "3.2%",
+          "description": "Nonalcoholic preparations of yeast extract (other than sauces)",
+          "kind": "simple",
+          "duty_pct": 3.2,
+          "general_raw": "3.2%"
+        },
+        {
+          "htsno": "2103.90.72.00",
+          "general": "7.5%",
+          "description": "Described in general note 15 of the tariff schedule and entered pursuant to its provisions",
+          "kind": "simple",
+          "duty_pct": 7.5,
+          "general_raw": "7.5%"
+        },
+        {
+          "htsno": "2103.90.74.00",
+          "general": "7.5%",
+          "description": "Described in additional U.S. note 4 to this chapter and entered pursuant to its provisions",
+          "kind": "simple",
+          "duty_pct": 7.5,
+          "general_raw": "7.5%"
+        },
+        {
+          "htsno": "2103.90.78.00",
+          "general": "30.5¢/kg + 6.4%",
+          "description": "Other",
+          "kind": "complex",
+          "duty_pct": null,
+          "general_raw": "30.5¢/kg + 6.4%"
+        },
+        {
+          "htsno": "2103.90.80.00",
+          "general": "6.4%",
+          "description": "Other",
+          "kind": "simple",
+          "duty_pct": 6.4,
+          "general_raw": "6.4%"
+        },
+        {
+          "htsno": "2103.90.90",
+          "general": "6.4%",
+          "description": "Other",
+          "kind": "simple",
+          "duty_pct": 6.4,
+          "general_raw": "6.4%"
+        }
+      ]
+    },
+    "gula-aren": {
+      "hs6": "170290",
+      "htsno": "1702.90.58.00",
+      "description": "Other",
+      "confidence": "cek",
+      "note": "Other sugars — often TRQ / specific rates. Treat as complex until a broker picks a leaf.",
+      "kind": "complex",
+      "duty_pct": null,
+      "general_raw": "33.9¢/kg of total sugars + 5.1%",
+      "alts": [
+        {
+          "htsno": "1702.90.05.00",
+          "general": "3.6606¢/kg of total sugars",
+          "description": "Described in general note 15 of the tariff schedule and entered pursuant to its provisions",
+          "kind": "complex",
+          "duty_pct": null,
+          "general_raw": "3.6606¢/kg of total sugars"
+        },
+        {
+          "htsno": "1702.90.10.00",
+          "general": "3.6606¢/kg of total sugars",
+          "description": "Described in additional U.S. note 5 to this chapterand entered pursuant to its provisions",
+          "kind": "complex",
+          "duty_pct": null,
+          "general_raw": "3.6606¢/kg of total sugars"
+        },
+        {
+          "htsno": "1702.90.20.00",
+          "general": "35.74¢/kg",
+          "description": "Other",
+          "kind": "complex",
+          "duty_pct": null,
+          "general_raw": "35.74¢/kg"
+        },
+        {
+          "htsno": "1702.90.35.00",
+          "general": "0.35¢/liter",
+          "description": "Invert molasses",
+          "kind": "complex",
+          "duty_pct": null,
+          "general_raw": "0.35¢/liter"
+        },
+        {
+          "htsno": "1702.90.40.00",
+          "general": "0.35¢/liter",
+          "description": "Other",
+          "kind": "complex",
+          "duty_pct": null,
+          "general_raw": "0.35¢/liter"
+        },
+        {
+          "htsno": "1702.90.52.00",
+          "general": "6%",
+          "description": "Described in general note 15 of the tariff schedule and entered pursuant to its provisions",
+          "kind": "simple",
+          "duty_pct": 6,
+          "general_raw": "6%"
+        },
+        {
+          "htsno": "1702.90.54.00",
+          "general": "6%",
+          "description": "Described in additional U.S. note 9 to this chapter and entered pursuant to its provisions",
+          "kind": "simple",
+          "duty_pct": 6,
+          "general_raw": "6%"
+        },
+        {
+          "htsno": "1702.90.58.00",
+          "general": "33.9¢/kg of total sugars + 5.1%",
+          "description": "Other",
+          "kind": "complex",
+          "duty_pct": null,
+          "general_raw": "33.9¢/kg of total sugars + 5.1%"
+        },
+        {
+          "htsno": "1702.90.64.00",
+          "general": "6%",
+          "description": "Described in additional U.S. note 7 to this chapter and entered pursuant to its provisions",
+          "kind": "simple",
+          "duty_pct": 6,
+          "general_raw": "6%"
+        },
+        {
+          "htsno": "1702.90.68.00",
+          "general": "33.9¢/kg + 5.1%",
+          "description": "Other",
+          "kind": "complex",
+          "duty_pct": null,
+          "general_raw": "33.9¢/kg + 5.1%"
+        },
+        {
+          "htsno": "1702.90.90",
+          "general": "5.1%",
+          "description": "Other",
+          "kind": "simple",
+          "duty_pct": 5.1,
+          "general_raw": "5.1%"
+        }
+      ]
+    },
+    "tuna-kaleng": {
+      "hs6": "160414",
+      "htsno": "1604.14.30",
+      "description": "Other",
+      "confidence": "cek",
+      "note": "Prepared tuna. In-oil can be 35%. Container size changes the leaf.",
+      "kind": "simple",
+      "duty_pct": 12.5,
+      "general_raw": "12.5%",
+      "alts": [
+        {
+          "htsno": "1604.14.10",
+          "general": "35%",
+          "description": "In oil",
+          "kind": "simple",
+          "duty_pct": 35,
+          "general_raw": "35%"
+        },
+        {
+          "htsno": "1604.14.22",
+          "general": "6%",
+          "description": "In containers weighing with their contents not over 7 kg each, and not the product of any insular possession of the United States, for an aggregate quantity entered in any calendar year not to exceed 4.8 percent of apparent United States consumption of tuna in airtight containers during the immediately preceding year, as reported by the National Marine Fisheries Service",
+          "kind": "simple",
+          "duty_pct": 6,
+          "general_raw": "6%"
+        },
+        {
+          "htsno": "1604.14.30",
+          "general": "12.5%",
+          "description": "Other",
+          "kind": "simple",
+          "duty_pct": 12.5,
+          "general_raw": "12.5%"
+        },
+        {
+          "htsno": "1604.14.40.00",
+          "general": "1.1¢/kg",
+          "description": "In bulk or in immediate containers weighing with their contents over 6.8 kg each, not in oil",
+          "kind": "complex",
+          "duty_pct": null,
+          "general_raw": "1.1¢/kg"
+        },
+        {
+          "htsno": "1604.14.50.00",
+          "general": "6%",
+          "description": "Other",
+          "kind": "simple",
+          "duty_pct": 6,
+          "general_raw": "6%"
+        },
+        {
+          "htsno": "1604.14.70.00",
+          "general": "4.9%",
+          "description": "In oil",
+          "kind": "simple",
+          "duty_pct": 4.9,
+          "general_raw": "4.9%"
+        },
+        {
+          "htsno": "1604.14.80.00",
+          "general": "6%",
+          "description": "Not in oil",
+          "kind": "simple",
+          "duty_pct": 6,
+          "general_raw": "6%"
+        }
+      ]
+    }
+  }
+}

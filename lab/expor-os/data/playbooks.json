@@ -1,0 +1,80 @@
+{
+  "_meta": {
+    "honesty": "Curated channel notes, not scraped marketplace data and not a promise that a buyer exists."
+  },
+  "by_kategori": {
+    "Furnitur & Dekorasi": {
+      "jalur": [
+        { "id": "wholesale", "nama": "Wholesale / importer furnitur", "notes": "Pembeli AS sudah biasa Lacey dan container. Lebih masuk akal daripada FBA untuk meja/kursi berat." },
+        { "id": "handmade", "nama": "Amazon Handmade / Etsy", "notes": "Untuk piece kecil (sisi meja, stool). Bukan jalur sofa FCL." },
+        { "id": "fba", "nama": "FBA private label", "notes": "Hanya SKU yang muat small/standard. Ongkir dan oversized FBA memakan margin dengan cepat." }
+      ]
+    },
+    "Kerajinan & Anyaman": {
+      "jalur": [
+        { "id": "wholesale", "nama": "Gift / home importer", "notes": "Order musiman (Q4). Minta forecast, bukan PO dadakan." },
+        { "id": "handmade", "nama": "Etsy / Amazon Handmade", "notes": "Cocok untuk ukiran dan keranjang dengan cerita pembuat." },
+        { "id": "fba", "nama": "FBA", "notes": "Keranjang dan tas kecil. Hindari set furnitur." }
+      ]
+    },
+    "Kopi, Teh & Kakao": {
+      "jalur": [
+        { "id": "wholesale", "nama": "Roaster / specialty importer", "notes": "Green bean: kontrak, cupping, dan FSVP. Bukan listing Amazon pertama." },
+        { "id": "fba", "nama": "Roasted retail FBA", "notes": "Hanya jika sudah ada importir makanan dan label Inggris. Stale stock mematikan." }
+      ]
+    },
+    "Rempah & Bumbu": {
+      "jalur": [
+        { "id": "wholesale", "nama": "Spice importer / food distributor", "notes": "Lot besar, CoA, dan recall plan. Ini jalur yang buyer AS kenal." },
+        { "id": "fba", "nama": "Retail jar FBA", "notes": "Setelah ada importer of record. Jangan kirim karung ke gudang Amazon." }
+      ]
+    },
+    "Minyak Atsiri & Ekstrak": {
+      "jalur": [
+        { "id": "wholesale", "nama": "Fragrance / bulk aroma buyer", "notes": "Drum + GCMS + SDS. Harga per kilo, bukan per botol 10 ml." },
+        { "id": "fba", "nama": "Retail bottle FBA", "notes": "Hanya jika jalur kosmetik/label sudah beres dan kirim darat/laut, bukan asal udara." }
+      ]
+    },
+    "Produk Kelapa": {
+      "jalur": [
+        { "id": "wholesale", "nama": "Tergantung SKU", "notes": "Minyak = food importer. Arang = BBQ/hookah distributor. Cocopeat = horticulture. Jangan satu buyer untuk semua." },
+        { "id": "fba", "nama": "FBA selektif", "notes": "VCO jar dan sedotan mungkin. Briket 10 kg dan cocopeat bale biasanya bukan FBA." }
+      ]
+    },
+    "Fesyen & Tekstil": {
+      "jalur": [
+        { "id": "fba", "nama": "Amazon apparel", "notes": "Size chart AS, foto model, dan tarif ~20% harus sudah masuk HPP." },
+        { "id": "wholesale", "nama": "Boutique / marketplace wholesale", "notes": "Kain batik: yardage ke designer. Kemeja: small-batch boutiques." }
+      ]
+    },
+    "Perhiasan & Aksesori": {
+      "jalur": [
+        { "id": "handmade", "nama": "Etsy / Amazon Handmade", "notes": "Cerita Celuk/Bali merasuk di sini. Jangan overclaim sterling." },
+        { "id": "fba", "nama": "FBA jewelry", "notes": "Referral jewelry tinggi di harga rendah. Hitung dulu." }
+      ]
+    },
+    "Perawatan Diri & Wellness": {
+      "jalur": [
+        { "id": "fba", "nama": "Amazon beauty", "notes": "Setelah MoCRA/soap path jelas. Review foto label sebelum stok." },
+        { "id": "wholesale", "nama": "Indie retailer / spa", "notes": "Lebih pelan, lebih sedikit takedown listing." }
+      ]
+    },
+    "Dapur & Peralatan Makan": {
+      "jalur": [
+        { "id": "wholesale", "nama": "Home/kitchen importer", "notes": "Food-contact statement lebih penting daripada foto Instagram." },
+        { "id": "fba", "nama": "FBA kitchen", "notes": "SKU ringan. Keramik berat kalah ongkir." }
+      ]
+    },
+    "Makanan Olahan": {
+      "jalur": [
+        { "id": "wholesale", "nama": "Asian grocery / specialty food importer", "notes": "Mereka sudah punya FSVP. Kamu jual ke mereka, bukan ke stranger Amazon." },
+        { "id": "fba", "nama": "FBA grocery", "notes": "Hanya setelah process/label beres. Expiry dan heat di gudang Amazon nyata." }
+      ]
+    },
+    "Hasil Laut & Rumput Laut": {
+      "jalur": [
+        { "id": "wholesale", "nama": "Seafood importer", "notes": "Jalur yang masuk akal. Amazon FBA untuk tuna kaleng tanpa importer adalah cara cepat kena detention." }
+      ]
+    }
+  }
+}

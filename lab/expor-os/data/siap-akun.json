@@ -1,0 +1,31 @@
+{
+  "_meta": {
+    "source": "Copied from scripts/build-expor.mjs siap-ekspor checklist (2026-09). Not a live HTML scrape."
+  },
+  "items": [
+    {
+      "title": "KTP dan NPWP atas nama yang sama",
+      "body": "Penghasilan dari Amazon tetap kena pajak di Indonesia. Nama di KTP, NPWP, dan akun Seller Central harus konsisten, atau pencairan bisa ditahan."
+    },
+    {
+      "title": "NIB jika kamu jualan sebagai usaha",
+      "body": "Kalau akun Amazon memakai nama badan usaha, NIB harus atas nama yang sama. Jualan sebagai individu cukup KTP + NPWP."
+    },
+    {
+      "title": "Payout lewat Wise, Payoneer, atau Revolut",
+      "body": "Rekening bank di Amerika tidak lagi wajib. Yang wajib: nama di penyedia payout identik dengan nama di Seller Central dan rekening penerima di Indonesia."
+    },
+    {
+      "title": "Nama harus identik di tiga tempat",
+      "body": "Seller Central, penyedia payout, dan rekening bank/e-wallet penerima. Perbedaan spasi, gelar, atau singkatan adalah alasan paling umum dana tertahan berhari-hari."
+    },
+    {
+      "title": "Simpan disbursement report setiap pencairan",
+      "body": "Bank Indonesia sering menanyakan kenapa USD masuk. Laporan pencairan Amazon adalah bukti yang mereka minta. Unduh dan simpan."
+    },
+    {
+      "title": "Produk tidak termasuk barang terlarang Amazon",
+      "body": "Makanan, kosmetik, dan suplemen punya syarat tambahan (label bahasa Inggris, uji lab, FDA untuk sebagian). Cek kategori sebelum kirim stok."
+    }
+  ]
+}

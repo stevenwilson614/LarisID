@@ -1,0 +1,169 @@
+{
+  "_meta": {
+    "purpose": "HS6 (corpus) → candidate US HTS 10-digit leaves. Rates are filled by collectors/fetch-hts-duty.mjs from USITC exportList into hts-duty.json — not invented here.",
+    "honesty": "A 6-digit HS is not a legal 10-digit classification. Wrong HTS flips duty. confidence high|medium|cek.",
+    "source_api": "https://hts.usitc.gov/reststop/exportList"
+  },
+  "by_slug": {
+    "kursi-rotan": {
+      "hs6": "940153",
+      "fetch_from": "9401.50",
+      "fetch_to": "9401.60",
+      "prefer": ["9401.53.00.00", "9401.53.00"],
+      "confidence": "high",
+      "note": "Seats of rattan."
+    },
+    "furnitur-jati": {
+      "hs6": "940360",
+      "fetch_from": "9403.60",
+      "fetch_to": "9403.70",
+      "prefer": ["9403.60.80", "9403.60.80.00"],
+      "confidence": "medium",
+      "note": "Other wooden furniture; bent-wood is a different leaf."
+    },
+    "keranjang-rotan": {
+      "hs6": "460212",
+      "fetch_from": "4602.12",
+      "fetch_to": "4602.13",
+      "prefer": ["4602.12.45.00", "4602.12.16.00"],
+      "confidence": "cek",
+      "note": "Rattan basketwork splits: wickerwork Free vs other 5–18%. Confirm construction."
+    },
+    "tas-rotan": {
+      "hs6": "460290",
+      "fetch_from": "4602.90",
+      "fetch_to": "4603",
+      "prefer": ["4602.90.00.00"],
+      "confidence": "medium",
+      "note": "Corpus HS is ‘other basketware’. Handbags of rattan may be 4602.12.23 instead."
+    },
+    "ukiran-kayu-bali": {
+      "hs6": "442011",
+      "fetch_from": "4420.11",
+      "fetch_to": "4420.12",
+      "prefer": ["4420.11.00", "4420.11.00.00"],
+      "confidence": "high",
+      "note": "Statuettes / wood ornaments of tropical wood."
+    },
+    "kopi-gayo": {
+      "hs6": "090111",
+      "fetch_from": "0901.11",
+      "fetch_to": "0901.12",
+      "prefer": ["0901.11.00", "0901.11.00.25"],
+      "confidence": "high",
+      "note": "Coffee, not roasted, not decaffeinated. Statistical suffixes (organic vs other) share the same general rate."
+    },
+    "vanili": {
+      "hs6": "090510",
+      "fetch_from": "0905.10",
+      "fetch_to": "0905.20",
+      "prefer": ["0905.10.00.00", "0905.10.00"],
+      "confidence": "high",
+      "note": "Vanilla, neither crushed nor ground."
+    },
+    "lada-hitam": {
+      "hs6": "090411",
+      "fetch_from": "0904.11",
+      "fetch_to": "0904.12",
+      "prefer": ["0904.11.00", "0904.11.00.00"],
+      "confidence": "high",
+      "note": "Pepper of the genus Piper, neither crushed nor ground."
+    },
+    "minyak-nilam": {
+      "hs6": "330129",
+      "fetch_from": "3301.29",
+      "fetch_to": "3301.30",
+      "prefer": ["3301.29.51", "3301.29.51.00"],
+      "confidence": "high",
+      "note": "Other essential oils (patchouli is not eucalyptus/orris)."
+    },
+    "minyak-kelapa": {
+      "hs6": "151319",
+      "fetch_from": "1513.19",
+      "fetch_to": "1513.20",
+      "prefer": ["1513.19.00", "1513.19.00.00"],
+      "confidence": "high",
+      "note": "Coconut oil, other than crude (refined). Crude is 1513.11."
+    },
+    "briket-arang-kelapa": {
+      "hs6": "440290",
+      "fetch_from": "4402.90",
+      "fetch_to": "4403",
+      "prefer": ["4402.90.01.00", "4402.90.00.00"],
+      "confidence": "high",
+      "note": "Wood charcoal, other."
+    },
+    "cocopeat": {
+      "hs6": "530500",
+      "fetch_from": "5305",
+      "fetch_to": "5306",
+      "prefer": ["5305.00.00.00"],
+      "confidence": "medium",
+      "note": "Coconut coir / other vegetable fibers. Growing media may be argued elsewhere — confirm with broker."
+    },
+    "sedotan-bambu": {
+      "hs6": "441919",
+      "fetch_from": "4419.19",
+      "fetch_to": "4419.20",
+      "prefer": ["4419.19.90.00"],
+      "confidence": "medium",
+      "note": "Bamboo tableware, other (not forks/spoons)."
+    },
+    "kain-batik": {
+      "hs6": "520852",
+      "fetch_from": "5208.52",
+      "fetch_to": "5208.53",
+      "prefer": ["5208.52.30", "5208.52.40"],
+      "confidence": "cek",
+      "note": "Printed cotton weaves split by yarn number. Duty 6–12.5%."
+    },
+    "kemeja-batik": {
+      "hs6": "620520",
+      "fetch_from": "6205.20",
+      "fetch_to": "6205.30",
+      "prefer": ["6205.20.20", "6205.20.20.00"],
+      "confidence": "medium",
+      "note": "Men’s cotton shirts, other. Folklore 6205.20.10 is 8.7% only if it truly qualifies."
+    },
+    "perhiasan-perak-bali": {
+      "hs6": "711311",
+      "fetch_from": "7113.11",
+      "fetch_to": "7113.12",
+      "prefer": ["7113.11.50.00"],
+      "confidence": "medium",
+      "note": "Other silver jewelry. Low-value pieces can be 13.5%."
+    },
+    "sabun-alami": {
+      "hs6": "340111",
+      "fetch_from": "3401.11",
+      "fetch_to": "3401.12",
+      "prefer": ["3401.11.50.00"],
+      "confidence": "high",
+      "note": "Toilet soap, other than Castile."
+    },
+    "sambal": {
+      "hs6": "210390",
+      "fetch_from": "2103.90",
+      "fetch_to": "2104",
+      "prefer": ["2103.90.90", "2103.90.80.00"],
+      "confidence": "medium",
+      "note": "Other sauces. Fish-derived sauces are Free; some leaves are specific/compound."
+    },
+    "gula-aren": {
+      "hs6": "170290",
+      "fetch_from": "1702.90",
+      "fetch_to": "1703",
+      "prefer": ["1702.90.58.00", "1702.90.20.00"],
+      "confidence": "cek",
+      "note": "Other sugars — often TRQ / specific rates. Treat as complex until a broker picks a leaf."
+    },
+    "tuna-kaleng": {
+      "hs6": "160414",
+      "fetch_from": "1604.14",
+      "fetch_to": "1604.15",
+      "prefer": ["1604.14.30", "1604.14.22"],
+      "confidence": "cek",
+      "note": "Prepared tuna. In-oil can be 35%. Container size changes the leaf."
+    }
+  }
+}

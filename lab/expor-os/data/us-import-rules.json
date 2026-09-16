@@ -1,0 +1,395 @@
+{
+  "_meta": {
+    "honesty": "Curated starting points for US import risk, not legal advice and not a customs ruling. Confirm with counsel, FDA/CPSC/USDA primary pages, and a licensed customs broker. Collection method is category packs plus per-slug overrides — not an HTML scrape of FDA.",
+    "risk_values": "aman = typical consumer good with light paperwork | izin_khusus = named US agency filings | tinggi = high refusal / quota / seafood-or-TRQ risk | cek = classification or pathway is ambiguous",
+    "updated": "2026-09-16"
+  },
+  "by_kategori": {
+    "Furnitur & Dekorasi": {
+      "rule_id": "furniture",
+      "risk": "izin_khusus",
+      "agencies": ["CBP", "APHIS", "CPSC"],
+      "flags": ["lacey_act"],
+      "notes_id": "Furnitur dan dekorasi dari kayu, rotan, atau bambu masuk ke AS lewat Lacey Act: kamu harus bisa sebut spesies dan negara asal kayu/tanaman. Bukan izin ‘lolos Amazon’, tapi dokumen yang CBP bisa minta saat barang tiba.",
+      "sources": [
+        "https://www.aphis.usda.gov/plant-imports/lacey-act",
+        "https://www.cbp.gov/trade/programs-administration/trade-agreements/lacey-act",
+        "https://www.cpsc.gov/Business--Manufacturing/Business-Education/Business-Guidance/Furniture"
+      ],
+      "checklist_us": [
+        "Isi deklarasi Lacey (spesies + negara panen) untuk komponen kayu/rotan/bambu",
+        "Simpan invoice, packing list, dan bill of lading yang cocok dengan isi peti",
+        "Cek apakah produk anak (crib, high chair) — itu jalur CPSC terpisah"
+      ]
+    },
+    "Kerajinan & Anyaman": {
+      "rule_id": "craft",
+      "risk": "izin_khusus",
+      "agencies": ["CBP", "APHIS", "CPSC"],
+      "flags": ["lacey_act"],
+      "notes_id": "Anyaman rotan, purun, dan ukiran kayu tetap tanaman atau kayu. Lacey Act berlaku. Produk yang bisa dipakai anak (mainan, perhiasan anak) naik ke CPSC.",
+      "sources": [
+        "https://www.aphis.usda.gov/plant-imports/lacey-act",
+        "https://www.cpsc.gov/Business--Manufacturing/Business-Education"
+      ],
+      "checklist_us": [
+        "Deklarasi Lacey untuk kayu/rotan",
+        "Foto dan deskripsi bahan baku (bukan hanya ‘handmade’)",
+        "Jika mainan atau produk anak: uji CPSC, bukan hanya label cantik"
+      ]
+    },
+    "Kopi, Teh & Kakao": {
+      "rule_id": "coffee-tea-cocoa",
+      "risk": "izin_khusus",
+      "agencies": ["FDA", "CBP"],
+      "flags": ["food_facility", "fsvp", "prior_notice"],
+      "notes_id": "Makanan. Importir AS (bukan kamu di Indonesia) wajib FSVP. Setiap kiriman butuh Prior Notice ke FDA. Fasilitas produksi harus terdaftar FDA jika makanan dikemas untuk AS.",
+      "sources": [
+        "https://www.fda.gov/food/importing-food-products-united-states",
+        "https://www.fda.gov/food/importing-food-products-united-states/prior-notice-imported-foods",
+        "https://www.fda.gov/food/food-safety-modernization-act-fsma/fsma-final-rule-foreign-supplier-verification-programs-fsvp-importers-food-humans-and-animals"
+      ],
+      "checklist_us": [
+        "Pastikan ada importir AS yang mau jadi FSVP importer",
+        "Daftar fasilitas FDA jika kamu packer/processor untuk pasar AS",
+        "Siapkan Prior Notice (bisa lewat forwarder) sebelum kapal/pesawat tiba",
+        "Label Inggris: nama makanan, isi bersih, ingredients, allergen, nama/alamat responsible party di AS"
+      ]
+    },
+    "Rempah & Bumbu": {
+      "rule_id": "spices",
+      "risk": "izin_khusus",
+      "agencies": ["FDA", "APHIS", "CBP"],
+      "flags": ["food_facility", "fsvp", "prior_notice"],
+      "notes_id": "Rempah adalah makanan. FDA bisa tahan kiriman karena salmonella atau pestisida. Beberapa komoditas (vanili, lada utuh) juga menyinggung phytosanitary di sisi ekspor Indonesia.",
+      "sources": [
+        "https://www.fda.gov/food/importing-food-products-united-states",
+        "https://www.aphis.usda.gov/plant-imports"
+      ],
+      "checklist_us": [
+        "FSVP importer di AS + Prior Notice",
+        "CoA mikrobiologi (salmonella) dari lab yang bisa dibaca buyer AS",
+        "Label Inggris dan lot code yang bisa di-recall"
+      ]
+    },
+    "Minyak Atsiri & Ekstrak": {
+      "rule_id": "essentials",
+      "risk": "izin_khusus",
+      "agencies": ["FDA", "CBP", "CPSC"],
+      "flags": ["cosmetic_moCRA", "flammable"],
+      "notes_id": "Minyak atsiri bisa jadi bahan kosmetik, food flavor, atau bahan industri. Jalur FDA berubah tergantung klaim di label. Banyak yang flammable untuk pengiriman udara.",
+      "sources": [
+        "https://www.fda.gov/cosmetics/cosmetics-laws-regulations/modernization-cosmetics-regulation-act-2022-mocra",
+        "https://www.fda.gov/cosmetics/cosmetics-labeling"
+      ],
+      "checklist_us": [
+        "Tentukan klaim: kosmetik, food flavor, atau bahan mentah — jangan campur di label",
+        "Kalau dijual sebagai kosmetik: MoCRA facility listing + label INCI",
+        "Cek UN/IATA jika kirim udara (flash point)"
+      ]
+    },
+    "Produk Kelapa": {
+      "rule_id": "coconut-mixed",
+      "risk": "cek",
+      "agencies": ["FDA", "APHIS", "CBP", "CPSC"],
+      "flags": [],
+      "notes_id": "Keranjang ‘Produk Kelapa’ campur makanan (minyak, gula), media tanam (cocopeat), arang, dan alat makan bambu. Jangan pakai satu jalur untuk semua — cek override per produk.",
+      "sources": [
+        "https://www.fda.gov/food/importing-food-products-united-states",
+        "https://www.aphis.usda.gov/plant-imports"
+      ],
+      "checklist_us": [
+        "Pilih jalur yang benar: makanan vs media tanam vs barang rumah vs arang",
+        "Jangan kirim sampel makanan tanpa Prior Notice"
+      ]
+    },
+    "Fesyen & Tekstil": {
+      "rule_id": "apparel",
+      "risk": "aman",
+      "agencies": ["CBP", "CPSC", "FTC"],
+      "flags": [],
+      "notes_id": "Pakaian dewasa biasanya tanpa izin FDA. Yang wajib: label serat dan care (FTC), flammability CPSC, dan country of origin. Bea masuk pakaian katun sering lebih tinggi daripada kerajinan.",
+      "sources": [
+        "https://www.ftc.gov/business-guidance/resources/threading-your-way-through-labeling-requirements-under-textile-wool-acts",
+        "https://www.cpsc.gov/Business--Manufacturing/Business-Education/Business-Guidance/Clothing"
+      ],
+      "checklist_us": [
+        "Label fiber content + RN/care + Made in Indonesia",
+        "Jangan klaim ‘anak-anak’ tanpa uji flammability yang sesuai",
+        "Siapkan HTS 10-digit yang masuk akal — tarif apparel melonjak"
+      ]
+    },
+    "Perhiasan & Aksesori": {
+      "rule_id": "jewelry",
+      "risk": "aman",
+      "agencies": ["CBP", "CPSC", "FTC"],
+      "flags": ["children_product"],
+      "notes_id": "Perhiasan perak dewasa relatif ringan secara izin. Risiko nyata: lead/cadmium jika dipasarkan untuk anak, dan klaim kadar perak yang FTC bisa kejar.",
+      "sources": [
+        "https://www.ftc.gov/business-guidance/resources/jewelry-guides",
+        "https://www.cpsc.gov/Business--Manufacturing/Business-Education/childrens-products"
+      ],
+      "checklist_us": [
+        "Jangan pasarkan ke anak tanpa uji CPSC",
+        "Klaim sterling/silver harus sesuai Jewelry Guides FTC",
+        "Invoice dengan berat dan kadar, bukan hanya ‘handmade Bali’"
+      ]
+    },
+    "Perawatan Diri & Wellness": {
+      "rule_id": "personal-care",
+      "risk": "izin_khusus",
+      "agencies": ["FDA", "CBP"],
+      "flags": ["cosmetic_moCRA"],
+      "notes_id": "Sabun ‘true soap’ dan kosmetik beda jalur. Kalau ada klaim melembabkan, wangi, atau ‘treat’, FDA melihatnya kosmetik (MoCRA). Jangan tulis klaim obat.",
+      "sources": [
+        "https://www.fda.gov/cosmetics/cosmetics-laws-regulations/modernization-cosmetics-regulation-act-2022-mocra",
+        "https://www.fda.gov/cosmetics/cosmetics-labeling-claims"
+      ],
+      "checklist_us": [
+        "Tentukan soap vs cosmetic sebelum desain label",
+        "Kalau kosmetik: facility listing MoCRA + responsible person di AS",
+        "Ingredients list bahasa Inggris, tanpa klaim disease"
+      ]
+    },
+    "Dapur & Peralatan Makan": {
+      "rule_id": "tableware",
+      "risk": "izin_khusus",
+      "agencies": ["FDA", "CBP", "CPSC"],
+      "flags": [],
+      "notes_id": "Alat makan yang menyentuh makanan adalah food-contact. FDA peduli migrasi (terutama keramik berglaze). Kayu/bambu masih Lacey.",
+      "sources": [
+        "https://www.fda.gov/food/food-ingredients-packaging/food-contact-substances-fcs",
+        "https://www.aphis.usda.gov/plant-imports/lacey-act"
+      ],
+      "checklist_us": [
+        "Pastikan glaze/finishing food-safe, bukan cat dekoratif",
+        "Lacey Act jika kayu atau bambu",
+        "Jangan klaim ‘dishwasher safe’ tanpa uji"
+      ]
+    },
+    "Makanan Olahan": {
+      "rule_id": "processed-food",
+      "risk": "tinggi",
+      "agencies": ["FDA", "CBP"],
+      "flags": ["food_facility", "fsvp", "prior_notice"],
+      "notes_id": "Sambal, saus, dan makanan dalam jar sering masuk low-acid atau acidified foods. FDA bisa minta filed process. Label alergen wajib. Ini bukan ‘kirim aja ke FBA’.",
+      "sources": [
+        "https://www.fda.gov/food/importing-food-products-united-states",
+        "https://www.fda.gov/food/guidance-documents-regulatory-information-topic-food-and-dietary-supplements/acidified-low-acid-canned-foods"
+      ],
+      "checklist_us": [
+        "Cek apakah produk acidified/LACF — kalau ya, process filing",
+        "FSVP importer + Prior Notice + facility registration",
+        "Label Inggris lengkap (ingredients, allergen, net qty, responsible party AS)"
+      ]
+    },
+    "Hasil Laut & Rumput Laut": {
+      "rule_id": "seafood",
+      "risk": "tinggi",
+      "agencies": ["FDA", "NOAA", "CBP"],
+      "flags": ["food_facility", "fsvp", "prior_notice"],
+      "notes_id": "Seafood adalah salah satu kategori import AS yang paling sering ditahan. Perlu HACCP seafood, health certificate di sisi Indonesia, dan importir yang paham FDA seafood.",
+      "sources": [
+        "https://www.fda.gov/food/guidance-regulation-food-and-dietary-supplements/seafood-guidance-documents-regulatory-information",
+        "https://www.fda.gov/food/importing-food-products-united-states"
+      ],
+      "checklist_us": [
+        "Pilih importir AS yang sudah biasa seafood, bukan first-time FBA seller",
+        "Health certificate + HACCP pack",
+        "Prior Notice dan species name yang benar (bukan hanya ‘tuna’)"
+      ]
+    }
+  },
+  "by_slug": {
+    "furnitur-jati": {
+      "risk": "izin_khusus",
+      "flags": ["lacey_act"],
+      "notes_id": "Jati adalah kayu tropis. Lacey Act wajib: spesies (Tectona grandis) dan negara panen. Di sisi Indonesia biasanya SVLK / V-Legal — itu membantu, tapi bukan pengganti deklarasi AS.",
+      "checklist_us": [
+        "Deklarasi Lacey: Tectona grandis + negara panen",
+        "Simpan V-Legal / SVLK yang cocok dengan invoice",
+        "Jangan campur kayu lain di satu SKU tanpa menyebutkannya"
+      ]
+    },
+    "kursi-rotan": {
+      "risk": "izin_khusus",
+      "flags": ["lacey_act"],
+      "notes_id": "Rotan adalah tanaman. Lacey tetap relevan. Finishing cat/varnish tidak menghapus kewajiban spesies.",
+      "checklist_us": [
+        "Nama spesies rotan kalau diketahui, atau genus + ‘rattan’ dengan jujur di dokumen",
+        "Cek hardware logam terpisah di invoice jika ada"
+      ]
+    },
+    "ukiran-kayu-bali": {
+      "risk": "izin_khusus",
+      "flags": ["lacey_act"],
+      "notes_id": "Ukiran kayu tropis: Lacey + pastikan bukan spesies CITES. ‘Bali style’ di Amazon bukan bukti legal origin.",
+      "checklist_us": [
+        "Identifikasi kayu (bukan hanya ‘kayu Bali’)",
+        "Cek daftar CITES sebelum kirim",
+        "Deklarasi Lacey"
+      ]
+    },
+    "tas-rotan": {
+      "risk": "cek",
+      "flags": ["lacey_act"],
+      "notes_id": "Tas rotan bisa jatuh ke HTS anyaman (chapter 46) atau tas (chapter 42) tergantung konstruksi. Tarif dan dokumen ikut berubah. Cek fisik barang, bukan hanya kata ‘rotan’.",
+      "checklist_us": [
+        "Foto konstruksi (lining, hardware, frame) untuk broker",
+        "Lacey jika komponen tanaman",
+        "Jangan anggap tarif keranjang berlaku otomatis untuk handbag"
+      ]
+    },
+    "kopi-gayo": {
+      "risk": "izin_khusus",
+      "flags": ["food_facility", "fsvp", "prior_notice"],
+      "notes_id": "Green bean kopi ke AS adalah makanan. Prior Notice + FSVP. Nama ‘Gayo’ di AS juga soal trademark/GI — jangan meniru merek orang lain di Amazon.",
+      "checklist_us": [
+        "FSVP importer untuk green bean atau roasted",
+        "Prior Notice setiap shipment",
+        "Label: Arabica, origin, net weight, lot"
+      ]
+    },
+    "vanili": {
+      "risk": "izin_khusus",
+      "flags": ["food_facility", "fsvp", "prior_notice"],
+      "notes_id": "Vanili food-grade. FDA ketat pada kebersihan dan kadar air. Phytosanitary di sisi ekspor Indonesia tidak menggantikan FSVP di AS.",
+      "checklist_us": [
+        "CoA (moisture, vanillin jika diuji)",
+        "Prior Notice + FSVP",
+        "Kemasan food-grade, bukan plastik daur ulang tanpa spesifikasi"
+      ]
+    },
+    "lada-hitam": {
+      "risk": "izin_khusus",
+      "flags": ["food_facility", "fsvp", "prior_notice"],
+      "notes_id": "Lada sering kena pemeriksaan salmonella. Lab sheet lebih berguna daripada foto karung.",
+      "checklist_us": [
+        "Uji salmonella lot-by-lot jika buyer minta",
+        "Prior Notice + FSVP",
+        "Phytosanitary sesuai permintaan importir"
+      ]
+    },
+    "minyak-nilam": {
+      "risk": "izin_khusus",
+      "flags": ["cosmetic_moCRA", "flammable"],
+      "notes_id": "Patchouli oil biasanya bahan wangi, bukan makanan. Kalau dijual ‘essential oil for skin’ itu kosmetik. Jangan tulis klaim obat. Cek flash point untuk udara.",
+      "checklist_us": [
+        "SDS + GCMS dari distiller",
+        "Tentukan food vs cosmetic vs bulk aroma chemical",
+        "UN number untuk air freight jika applicable"
+      ]
+    },
+    "minyak-kelapa": {
+      "risk": "izin_khusus",
+      "flags": ["food_facility", "fsvp", "prior_notice"],
+      "notes_id": "Virgin coconut oil yang dijual makan adalah makanan. Refined/industrial beda cerita, tapi Amazon grocery tetap jalur FDA.",
+      "checklist_us": [
+        "Facility registration jika kamu packing",
+        "Prior Notice + FSVP",
+        "Label: refined vs virgin, net qty, allergen (coconut)"
+      ]
+    },
+    "briket-arang-kelapa": {
+      "risk": "aman",
+      "agencies": ["CBP", "CPSC"],
+      "flags": [],
+      "notes_id": "Bukan makanan. Risiko utama: klaim ‘hookah’ vs BBQ, moisture/ash yang buyer AS ukur, dan aturan consumer fuel. Bukan jalur FDA.",
+      "checklist_us": [
+        "Spesifikasi ash, moisture, burning time di COA",
+        "Label peringatan bakar arang (CO) bahasa Inggris",
+        "Jangan campur klaim food-grade"
+      ]
+    },
+    "cocopeat": {
+      "risk": "izin_khusus",
+      "agencies": ["APHIS", "CBP"],
+      "flags": [],
+      "notes_id": "Growing media. USDA APHIS, bukan FDA. Kiriman kotor atau berbiji bisa ditahan. Perlakuan (washed, buffered, sterilized) harus sesuai import permit buyer.",
+      "checklist_us": [
+        "Tanya importir AS apakah perlu APHIS permit",
+        "Perlakuan dan sertifikat sesuai perjanjian buyer",
+        "Jangan kirim ‘as is from mill’ ke pelabuhan AS"
+      ]
+    },
+    "sedotan-bambu": {
+      "risk": "izin_khusus",
+      "agencies": ["FDA", "CBP", "APHIS"],
+      "flags": ["lacey_act"],
+      "notes_id": "Menyentuh mulut/minuman = food-contact. Bambu = tanaman (Lacey). Finishing harus food-safe.",
+      "checklist_us": [
+        "Deklarasi Lacey untuk bambu",
+        "Pernyataan food-contact / finishing food-safe",
+        "Jangan cat dekoratif yang tidak food-safe"
+      ]
+    },
+    "kain-batik": {
+      "risk": "aman",
+      "notes_id": "Kain, bukan pakaian jadi. Label serat FTC tetap relevan kalau dijual eceran. Bea HTS kain katun printed bervariasi menurut thread count — confidence HTS sedang.",
+      "checklist_us": [
+        "Fiber content di label atau listing",
+        "Lebar kain dan gramasi di invoice",
+        "Cek HTS 5208.52 vs heading lain jika bukan katun printed"
+      ]
+    },
+    "kemeja-batik": {
+      "risk": "aman",
+      "notes_id": "Pakaian pria katun: tarif MFN bisa mendekati 20% kalau bukan folklore certified. Label care + fiber wajib. Folklore 8,7% hanya jika benar-benar masuk kategori itu — jangan mengaku.",
+      "checklist_us": [
+        "Label fiber/care/COO",
+        "HTS 6205.20 — jangan klaim folklore tanpa dasar",
+        "Size chart US, bukan hanya S/M/L lokal"
+      ]
+    },
+    "perhiasan-perak-bali": {
+      "risk": "aman",
+      "flags": ["children_product"],
+      "notes_id": "Perhiasan dewasa perak: bea sering 5% untuk ‘other silver jewelry’. Klaim sterling harus jujur. Produk anak = CPSC.",
+      "checklist_us": [
+        "Kadar perak di invoice",
+        "Jangan listing ‘for kids’ tanpa uji",
+        "Foto hallmark jika ada"
+      ]
+    },
+    "sabun-alami": {
+      "risk": "izin_khusus",
+      "flags": ["cosmetic_moCRA"],
+      "notes_id": "Sabun alkali + lemak bisa ‘true soap’ (bukan kosmetik). Kalau ada moisturizer claim, essential-oil skin claim, atau detergent syntetis, itu kosmetik MoCRA.",
+      "checklist_us": [
+        "Tulis formula: true soap vs cosmetic",
+        "Label ingredients bahasa Inggris",
+        "Tanpa klaim ‘mengobati jerawat/eksim’"
+      ]
+    },
+    "sambal": {
+      "risk": "tinggi",
+      "flags": ["food_facility", "fsvp", "prior_notice"],
+      "notes_id": "Sambal dalam botol hampir selalu diawasi sebagai makanan olahan. pH, water activity, dan proses thermal menentukan apakah perlu filed process. Jangan FBA-kan tanpa importir makanan.",
+      "checklist_us": [
+        "Ukur pH dan tentukan acidified vs LACF vs exempt",
+        "Facility registration + FSVP + Prior Notice",
+        "Label alergen (terasi/udang, kacang, dll.) dengan jujur"
+      ]
+    },
+    "gula-aren": {
+      "risk": "tinggi",
+      "flags": ["food_facility", "fsvp", "prior_notice"],
+      "notes_id": "Gula dan produk gula di AS sering kena tariff-rate quota. HTS 1702.90 hampir selalu ‘complex’ — bukan satu persen cantik. Makanan: tetap FDA.",
+      "checklist_us": [
+        "Broker untuk kuota gula sebelum packing besar",
+        "Prior Notice + FSVP",
+        "Spesifikasi: palm sugar vs coconut sugar vs syrup"
+      ]
+    },
+    "tuna-kaleng": {
+      "risk": "tinggi",
+      "flags": ["food_facility", "fsvp", "prior_notice"],
+      "notes_id": "Tuna kaleng: seafood HACCP + tarif yang berubah drastis jika ‘in oil’ vs bukan, dan ukuran kontainer. Ini salah satu produk yang paling mudah salah HTS dan paling mudah ditahan FDA.",
+      "checklist_us": [
+        "Species + in-oil vs not-in-oil di dokumen yang sama",
+        "Health certificate + HACCP",
+        "Importir seafood AS, bukan akun Amazon pribadi"
+      ]
+    }
+  }
+}

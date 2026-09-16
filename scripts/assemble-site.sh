@@ -15,6 +15,7 @@ cp -r "$ROOT"/images "$ROOT"/styles "$ROOT"/fonts \
       "$ROOT"/privacy "$ROOT"/perbandingan "$ROOT"/harga "$ROOT"/tentang \
       "$ROOT"/cara-kerja "$ROOT"/riset "$ROOT"/panduan "$ROOT"/kota \
       "$ROOT"/kalkulator "$ROOT"/rise "$ROOT"/data "$ROOT"/expor "$OUT/"
+# lab/ is an offline side project (see lab/expor-os/README.md). Never copy it here.
 mkdir -p "$OUT/js"
 # Live JS only — do not ship laris-app.js, pre-cutover backups, or unused vendors.
 # school/ and affiliate/ are localhost prototypes. Never copy them into _site.

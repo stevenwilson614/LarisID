@@ -1,0 +1,191 @@
+{
+  "_meta": {
+    "status": "sample",
+    "sample": true,
+    "source_file": "bol-sample.csv",
+    "ingested_at": "2026-09-16T03:57:35.373Z",
+    "honesty": "FIXTURE. Names are not real importers. Kartu must not present this as live data.",
+    "rows_in": 2,
+    "importers": 2
+  },
+  "by_hs": {
+    "090111": [
+      {
+        "name": "SAMPLE IMPORTER LLC",
+        "shipment_count": 1,
+        "last_seen": "2026-01-15",
+        "sample_origins": [
+          "Indonesia"
+        ]
+      }
+    ],
+    "090411": [
+      {
+        "name": "SAMPLE FOODS INC",
+        "shipment_count": 1,
+        "last_seen": "2026-02-02",
+        "sample_origins": [
+          "Indonesia"
+        ]
+      }
+    ]
+  },
+  "by_slug": {
+    "biji-kopi-indonesia": {
+      "hs": "090111",
+      "importers": [
+        {
+          "name": "SAMPLE IMPORTER LLC",
+          "shipment_count": 1,
+          "last_seen": "2026-01-15",
+          "sample_origins": [
+            "Indonesia"
+          ]
+        }
+      ]
+    },
+    "kopi-gayo": {
+      "hs": "090111",
+      "importers": [
+        {
+          "name": "SAMPLE IMPORTER LLC",
+          "shipment_count": 1,
+          "last_seen": "2026-01-15",
+          "sample_origins": [
+            "Indonesia"
+          ]
+        }
+      ]
+    },
+    "kopi-toraja": {
+      "hs": "090111",
+      "importers": [
+        {
+          "name": "SAMPLE IMPORTER LLC",
+          "shipment_count": 1,
+          "last_seen": "2026-01-15",
+          "sample_origins": [
+            "Indonesia"
+          ]
+        }
+      ]
+    },
+    "kopi-kintamani": {
+      "hs": "090111",
+      "importers": [
+        {
+          "name": "SAMPLE IMPORTER LLC",
+          "shipment_count": 1,
+          "last_seen": "2026-01-15",
+          "sample_origins": [
+            "Indonesia"
+          ]
+        }
+      ]
+    },
+    "kopi-java": {
+      "hs": "090111",
+      "importers": [
+        {
+          "name": "SAMPLE IMPORTER LLC",
+          "shipment_count": 1,
+          "last_seen": "2026-01-15",
+          "sample_origins": [
+            "Indonesia"
+          ]
+        }
+      ]
+    },
+    "kopi-mandheling": {
+      "hs": "090111",
+      "importers": [
+        {
+          "name": "SAMPLE IMPORTER LLC",
+          "shipment_count": 1,
+          "last_seen": "2026-01-15",
+          "sample_origins": [
+            "Indonesia"
+          ]
+        }
+      ]
+    },
+    "kopi-luwak": {
+      "hs": "090111",
+      "importers": [
+        {
+          "name": "SAMPLE IMPORTER LLC",
+          "shipment_count": 1,
+          "last_seen": "2026-01-15",
+          "sample_origins": [
+            "Indonesia"
+          ]
+        }
+      ]
+    },
+    "green-bean-kopi": {
+      "hs": "090111",
+      "importers": [
+        {
+          "name": "SAMPLE IMPORTER LLC",
+          "shipment_count": 1,
+          "last_seen": "2026-01-15",
+          "sample_origins": [
+            "Indonesia"
+          ]
+        }
+      ]
+    },
+    "kopi-robusta": {
+      "hs": "090111",
+      "importers": [
+        {
+          "name": "SAMPLE IMPORTER LLC",
+          "shipment_count": 1,
+          "last_seen": "2026-01-15",
+          "sample_origins": [
+            "Indonesia"
+          ]
+        }
+      ]
+    },
+    "kopi-sangrai": {
+      "hs": "090111",
+      "importers": [
+        {
+          "name": "SAMPLE IMPORTER LLC",
+          "shipment_count": 1,
+          "last_seen": "2026-01-15",
+          "sample_origins": [
+            "Indonesia"
+          ]
+        }
+      ]
+    },
+    "lada-hitam": {
+      "hs": "090411",
+      "importers": [
+        {
+          "name": "SAMPLE FOODS INC",
+          "shipment_count": 1,
+          "last_seen": "2026-02-02",
+          "sample_origins": [
+            "Indonesia"
+          ]
+        }
+      ]
+    },
+    "lada-putih": {
+      "hs": "090411",
+      "importers": [
+        {
+          "name": "SAMPLE FOODS INC",
+          "shipment_count": 1,
+          "last_seen": "2026-02-02",
+          "sample_origins": [
+            "Indonesia"
+          ]
+        }
+      ]
+    }
+  }
+}

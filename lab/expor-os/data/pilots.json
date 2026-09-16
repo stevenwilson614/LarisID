@@ -1,0 +1,28 @@
+{
+  "_meta": {
+    "purpose": "First 20 kartu ekspor slugs. Diversity across risk, logistics, and the 12 corpus categories (Dapur has no pilot; kategori pack still exists).",
+    "count": 20
+  },
+  "slugs": [
+    "kursi-rotan",
+    "furnitur-jati",
+    "keranjang-rotan",
+    "tas-rotan",
+    "ukiran-kayu-bali",
+    "kopi-gayo",
+    "vanili",
+    "lada-hitam",
+    "minyak-nilam",
+    "minyak-kelapa",
+    "briket-arang-kelapa",
+    "cocopeat",
+    "sedotan-bambu",
+    "kain-batik",
+    "kemeja-batik",
+    "perhiasan-perak-bali",
+    "sabun-alami",
+    "sambal",
+    "gula-aren",
+    "tuna-kaleng"
+  ]
+}

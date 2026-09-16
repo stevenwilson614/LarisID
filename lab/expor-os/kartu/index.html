@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Kartu ekspor lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>:root { --navy:#10312F; --teal:#0F766E; --bg:#F4F8F7; --td:#1A1A1A; --tm:#5B6B6A; --line:#D5E3E1; --card:#fff; --ok:#065F46; --warn:#92400E; --stop:#991B1B; --emas:#C9974B; }
+* { box-sizing:border-box; }
+body { margin:0; font:16px/1.55 "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif; background:var(--bg); color:var(--td); }
+a { color:var(--teal); }
+.wrap { max-width:760px; margin:0 auto; padding:28px 20px 64px; }
+.lab { display:inline-block; font-size:.72rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; background:#10312F; color:#F6FAFA; padding:5px 10px; }
+.cat-pill { font-size:.8rem; font-weight:700; color:var(--teal); margin:12px 0 0; }
+h1 { font-size:1.85rem; line-height:1.2; margin:.4em 0 .3em; color:var(--navy); }
+.lead, .disc { color:var(--tm); }
+.disc { font-size:.88rem; }
+.meta { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 28px; }
+.chip { font-size:.78rem; font-weight:600; padding:4px 10px; border:1px solid var(--line); background:#fff; }
+.chip.ok { background:#ECFDF5; border-color:#A7F3D0; color:var(--ok); }
+.chip.warn { background:#FFFBEB; border-color:#FDE68A; color:var(--warn); }
+.chip.stop { background:#FEF2F2; border-color:#FECACA; color:var(--stop); }
+.hs { font-family:ui-monospace,Menlo,monospace; font-size:.8rem; background:#E6F2F1; color:#0B5A54; padding:3px 8px; }
+section { background:var(--card); border:1px solid var(--line); padding:22px 22px 18px; margin:0 0 16px; }
+h2 { font-size:1.05rem; margin:0 0 10px; color:var(--navy); }
+h3 { font-size:.92rem; margin:16px 0 6px; }
+p { margin:0 0 10px; }
+ul { margin:0; padding:0 0 0 1.15em; }
+li { margin:0 0 6px; }
+.bars { margin:12px 0 0; }
+.bar { display:grid; grid-template-columns:120px 1fr 90px; gap:8px; align-items:center; margin:0 0 6px; font-size:.85rem; }
+.bar i { display:block; height:8px; background:var(--teal); }
+table { width:100%; border-collapse:collapse; font-size:.85rem; }
+th, td { text-align:left; padding:6px 8px 6px 0; border-bottom:1px solid var(--line); vertical-align:top; }
+.nums { font-variant-numeric:tabular-nums; }
+.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin:12px 0; }
+.stat b { display:block; font-size:1.05rem; }
+.stat span { font-size:.75rem; color:var(--tm); }
+form.lc { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin:12px 0; }
+form.lc label { font-size:.75rem; color:var(--tm); display:flex; flex-direction:column; gap:4px; }
+input, select { font:inherit; padding:6px 8px; border:1px solid var(--line); background:#fff; }
+.nav { display:flex; flex-wrap:wrap; gap:10px; margin:8px 0 22px; font-size:.9rem; }
+footer { font-size:.8rem; color:var(--tm); margin-top:28px; }
+.empty { background:#F6FAFA; border:1px dashed var(--line); padding:12px; font-size:.9rem; color:var(--tm); }
+@media (max-width:540px) { .bar { grid-template-columns:1fr; } }</style>
+</head>
+<body>
+<div class="wrap">
+
+<p class="lab">Lab offline · tidak di-deploy</p>
+<h1>Kartu ekspor</h1>
+<p class="lead">20 produk. Buka file lokal ini; jangan copy ke <code>expor/</code> atau jalankan deploy-static.</p>
+<table><thead><tr><th>Produk</th><th>Kategori</th><th>Masuk AS</th><th>Median Amazon</th><th>MFN</th></tr></thead>
+<tbody><tr>
+      <td><a href="kursi-rotan/index.html">Kursi rotan</a></td>
+      <td>Furnitur &amp; Dekorasi</td>
+      <td><span class="chip warn">Izin khusus</span></td>
+      <td class="nums">$144.99</td>
+      <td>Free</td>
+    </tr><tr>
+      <td><a href="furnitur-jati/index.html">Furnitur kayu jati</a></td>
+      <td>Furnitur &amp; Dekorasi</td>
+      <td><span class="chip warn">Izin khusus</span></td>
+      <td class="nums">—</td>
+      <td>Free</td>
+    </tr><tr>
+      <td><a href="keranjang-rotan/index.html">Keranjang rotan</a></td>
+      <td>Kerajinan &amp; Anyaman</td>
+      <td><span class="chip warn">Izin khusus</span></td>
+      <td class="nums">—</td>
+      <td>6.6%</td>
+    </tr><tr>
+      <td><a href="tas-rotan/index.html">Tas rotan</a></td>
+      <td>Kerajinan &amp; Anyaman</td>
+      <td><span class="chip warn">Cek dulu</span></td>
+      <td class="nums">—</td>
+      <td>3.5%</td>
+    </tr><tr>
+      <td><a href="ukiran-kayu-bali/index.html">Ukiran kayu Bali</a></td>
+      <td>Kerajinan &amp; Anyaman</td>
+      <td><span class="chip warn">Izin khusus</span></td>
+      <td class="nums">—</td>
+      <td>3.2%</td>
+    </tr><tr>
+      <td><a href="kopi-gayo/index.html">Kopi Gayo</a></td>
+      <td>Kopi, Teh &amp; Kakao</td>
+      <td><span class="chip warn">Izin khusus</span></td>
+      <td class="nums">—</td>
+      <td>Free</td>
+    </tr><tr>
+      <td><a href="vanili/index.html">Vanili</a></td>
+      <td>Rempah &amp; Bumbu</td>
+      <td><span class="chip warn">Izin khusus</span></td>
+      <td class="nums">—</td>
+      <td>Free</td>
+    </tr><tr>
+      <td><a href="lada-hitam/index.html">Lada hitam</a></td>
+      <td>Rempah &amp; Bumbu</td>
+      <td><span class="chip warn">Izin khusus</span></td>
+      <td class="nums">—</td>
+      <td>Free</td>
+    </tr><tr>
+      <td><a href="minyak-nilam/index.html">Minyak nilam</a></td>
+      <td>Minyak Atsiri &amp; Ekstrak</td>
+      <td><span class="chip warn">Izin khusus</span></td>
+      <td class="nums">—</td>
+      <td>Free</td>
+    </tr><tr>
+      <td><a href="minyak-kelapa/index.html">Minyak kelapa</a></td>
+      <td>Produk Kelapa</td>
+      <td><span class="chip warn">Izin khusus</span></td>
+      <td class="nums">$14.99</td>
+      <td>Free</td>
+    </tr><tr>
+      <td><a href="briket-arang-kelapa/index.html">Briket arang kelapa</a></td>
+      <td>Produk Kelapa</td>
+      <td><span class="chip ok">Aman-ish</span></td>
+      <td class="nums">—</td>
+      <td>Free</td>
+    </tr><tr>
+      <td><a href="cocopeat/index.html">Cocopeat / sabut kelapa</a></td>
+      <td>Produk Kelapa</td>
+      <td><span class="chip warn">Izin khusus</span></td>
+      <td class="nums">—</td>
+      <td>Free</td>
+    </tr><tr>
+      <td><a href="sedotan-bambu/index.html">Sedotan bambu</a></td>
+      <td>Produk Kelapa</td>
+      <td><span class="chip warn">Izin khusus</span></td>
+      <td class="nums">—</td>
+      <td>3.2%</td>
+    </tr><tr>
+      <td><a href="kain-batik/index.html">Kain batik</a></td>
+      <td>Fesyen &amp; Tekstil</td>
+      <td><span class="chip ok">Aman-ish</span></td>
+      <td class="nums">—</td>
+      <td>6%</td>
+    </tr><tr>
+      <td><a href="kemeja-batik/index.html">Kemeja batik</a></td>
+      <td>Fesyen &amp; Tekstil</td>
+      <td><span class="chip ok">Aman-ish</span></td>
+      <td class="nums">—</td>
+      <td>19.7%</td>
+    </tr><tr>
+      <td><a href="perhiasan-perak-bali/index.html">Perhiasan perak Bali</a></td>
+      <td>Perhiasan &amp; Aksesori</td>
+      <td><span class="chip ok">Aman-ish</span></td>
+      <td class="nums">—</td>
+      <td>5%</td>
+    </tr><tr>
+      <td><a href="sabun-alami/index.html">Sabun alami</a></td>
+      <td>Perawatan Diri &amp; Wellness</td>
+      <td><span class="chip warn">Izin khusus</span></td>
+      <td class="nums">—</td>
+      <td>Free</td>
+    </tr><tr>
+      <td><a href="sambal/index.html">Sambal</a></td>
+      <td>Makanan Olahan</td>
+      <td><span class="chip stop">Tinggi</span></td>
+      <td class="nums">—</td>
+      <td>6.4%</td>
+    </tr><tr>
+      <td><a href="gula-aren/index.html">Gula aren</a></td>
+      <td>Makanan Olahan</td>
+      <td><span class="chip stop">Tinggi</span></td>
+      <td class="nums">—</td>
+      <td>33.9¢/kg of total sugars + 5.1%</td>
+    </tr><tr>
+      <td><a href="tuna-kaleng/index.html">Tuna kaleng</a></td>
+      <td>Hasil Laut &amp; Rumput Laut</td>
+      <td><span class="chip stop">Tinggi</span></td>
+      <td class="nums">—</td>
+      <td>12.5%</td>
+    </tr></tbody></table>
+<footer>Lab offline LarisExpor OS — file lokal, tidak di-deploy ke larisid.com. Bukan nasihat hukum atau klasifikasi bea cukai.</footer>
+</div>
+
+</body>
+</html>

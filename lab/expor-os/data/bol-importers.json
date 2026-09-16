@@ -1,0 +1,9 @@
+{
+  "_meta": {
+    "status": "no_subscription",
+    "honesty": "Named US importers require a licensed bill-of-lading feed (ImportGenius, Descartes Datamyne, or S&P Panjiva). This file stays empty until collectors/ingest-bol-csv.mjs is run on a real vendor CSV. Do not invent importer names.",
+    "updated": "2026-09-16"
+  },
+  "by_slug": {},
+  "by_hs": {}
+}

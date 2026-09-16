@@ -63,3 +63,7 @@ Laris AI v1: **LOOKUP only** against `amazon_listings`. `terlaris_minggu` / week
 Shopee-only machinery stays Shopee-only: 3-scrape Trending Sekarang, `listing_weekly` next-week forecast, Favorit Aku daily PDP scrape, Peta Peluang scatter, Bandingkan Pasar scores, Keepa listing age / BSR history.
 
 Weekly refresh of the 145-keyword corpus (depth ~20) is enough once DataForSEO is funded. Cost is under $1 per refresh at current DataForSEO Amazon SERP prices.
+
+## Offline OS lab (not deployed)
+
+An offline “kartu ekspor” side project lives at [`lab/expor-os/`](../lab/expor-os/README.md): US import notes, HTS duty estimates, optional BOL CSV ingest, and local HTML. Lab builders write **only** under `lab/expor-os/`. They must not run `scripts/build-expor.mjs`, `scripts/ingest-amazon-listings.mjs --apply`, or `bash scripts/deploy-static.sh`. Do not copy `lab/expor-os/kartu/` into `expor/`.
