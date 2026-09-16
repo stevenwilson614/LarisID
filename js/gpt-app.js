@@ -3922,7 +3922,7 @@ let _historyPrimed = false;
 function setView(name, opts = {}) {
   const leaving = state.view;
   state.view = name;
-  ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'cohort'].forEach(v => {
+  ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'cohort', 'audit', 'sift', 'kalkulator'].forEach(v => {
     const el = $(`view-${v}`);
     // FAQ copy lives in #view-harga (no separate #view-faq). Keep that
     // panel on when the FAQ nav item is active.
@@ -3944,8 +3944,8 @@ function setView(name, opts = {}) {
   // .composer-dock display rule) — everywhere else now hides the bar
   // entirely rather than just clearing its chips, so this list stops
   // mattering for those views, but chips are still irrelevant on them either way.
-  if (name === 'home' || name === 'landing' || name === 'directory' || name === 'harga' || name === 'admin' || name === 'tracker' || name === 'community' || name === 'cohort') setComposerChips(null);
-  ['btn-ask-laris', 'btn-produk', 'btn-harga', 'btn-faq', 'btn-tentang', 'btn-admin', 'btn-tracker', 'btn-community', 'btn-cohort'].forEach(id => {
+  if (name === 'home' || name === 'landing' || name === 'directory' || name === 'harga' || name === 'admin' || name === 'tracker' || name === 'community' || name === 'cohort' || name === 'audit' || name === 'sift' || name === 'kalkulator') setComposerChips(null);
+  ['btn-ask-laris', 'btn-produk', 'btn-harga', 'btn-faq', 'btn-tentang', 'btn-admin', 'btn-tracker', 'btn-community', 'btn-cohort', 'btn-audit', 'btn-kalkulator-alat'].forEach(id => {
     const el = $(id);
     if (!el) return;
     el.classList.toggle('active',
@@ -3958,7 +3958,9 @@ function setView(name, opts = {}) {
       (id === 'btn-admin' && name === 'admin') ||
       (id === 'btn-tracker' && name === 'tracker') ||
       (id === 'btn-community' && name === 'community') ||
-      (id === 'btn-cohort' && name === 'cohort'));
+      (id === 'btn-cohort' && name === 'cohort') ||
+      (id === 'btn-audit' && name === 'audit') ||
+      (id === 'btn-kalkulator-alat' && name === 'kalkulator'));
   });
   // Mobile Tentang accordion: highlight the parent when a child page is current.
   const aboutChildActive = name === 'harga' || name === 'faq' || name === 'landing';
@@ -4010,7 +4012,7 @@ function setView(name, opts = {}) {
   }
 }
 
-const HISTORY_VIEWS = ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'cohort'];
+const HISTORY_VIEWS = ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'cohort', 'audit', 'sift', 'kalkulator'];
 // Old sessions may still have { view: 'tentang' } in history — map to landing.
 const HISTORY_VIEW_ALIASES = { tentang: 'landing' };
 
@@ -4045,6 +4047,8 @@ window.addEventListener('popstate', (e) => {
       setView(view);
       if (view === 'home') updateHomeFinderVisibility();
       if (view === 'chat' && state.activeChatId && activeChat()) renderChatThread();
+      if (view === 'kalkulator') openKalkulatorPage({ via: 'restore' });
+      if (view === 'audit' && window.LarisAlatPreview?.openAudit) window.LarisAlatPreview.openAudit();
       if (view === 'cohort') {
         void (async () => {
           mountLarisCohort();
@@ -4073,7 +4077,7 @@ function setSideAboutOpen(open) {
 
 function sellerToolsViewActive(name) {
   const v = name || state.view;
-  return v === 'home' || v === 'chat' || v === 'directory' || v === 'tracker' || v === 'deepdive';
+  return v === 'home' || v === 'chat' || v === 'directory' || v === 'tracker' || v === 'deepdive' || v === 'audit' || v === 'kalkulator';
 }
 
 function setSellerToolsOpen(open) {
@@ -5072,7 +5076,7 @@ async function _authOnSignIn(session, opts) {
     state.pendingKomunitas = null;
     saveLocalState();
     openCommunityBoard(pk);
-  } else if (state.pendingAlat === 'existing' && window.LarisAlatPreview?.active()) {
+  } else if (state.pendingAlat === 'existing' && window.LarisAlatPreview?.active() && !opts?.fromRestore) {
     state.pendingAlat = null;
     saveLocalState();
     window.LarisAlatPreview.openAudit();
@@ -5838,6 +5842,7 @@ function hasEngagedBeyondFinder() {
 }
 
 function shouldShowLandingFinder() {
+  if (window.LarisAlatPreview?.forceFinder?.()) return true;
   if (window.LarisAlatPreview?.active() && (state.onboarding?.experience === 'existing' || window.LarisAlatPreview.intent?.() === 'existing')) {
     return false;
   }
@@ -7148,6 +7153,7 @@ async function runFinderSearch() {
         categories: _finder.categories.join(', '), budget: _finder.budget,
         experience: _finder.experience,
       });
+      try { window.LarisAlatPreview.exitFocus?.(); } catch (_) {}
       await openDirectory();
       return;
     }
@@ -8164,7 +8170,17 @@ function openSidePanel(mode, opts = {}) {
 }
 
 function openAiPanel(opts = {}) { openSidePanel('ai', opts); }
-function openCalcPanel(opts = {}) { openSidePanel('kalkulator', opts); }
+function openCalcPanel(opts = {}) {
+  // Seller-tools preview: Kalkulator is a full page, not the right sheet.
+  if (window.LarisAlatPreview?.active()) {
+    openKalkulatorPage({
+      via: opts.via || 'panel',
+      product: opts.product || state.deepdiveProduct || null,
+    });
+    return;
+  }
+  openSidePanel('kalkulator', opts);
+}
 function openKompPanel(opts = {}) { openSidePanel('kompetitor', opts); }
 function openKeywordPanel(opts = {}) { openSidePanel('keyword', opts); }
 
@@ -10800,11 +10816,11 @@ function gptKalcHtml(opts = {}) {
       <div class="gpt-kalc-rec good"><div class="lbl">Good profit</div><div class="sub">Keuntungan yang baik</div><div class="price" data-out="good">—</div></div>
       <div class="gpt-kalc-rec healthy"><div class="lbl">Healthy margin</div><div class="sub">Margin sehat</div><div class="price" data-out="healthy">—</div></div>
     </div>
-    <button type="button" class="gpt-kalc-detail-tog" data-kalc-detail-tog>
+    <button type="button" class="gpt-kalc-detail-tog" data-kalc-detail-tog aria-expanded="true">
       <span data-out="detail-title">Rincian biaya</span>
-      <span data-out="detail-chev">▼ Lihat detail</span>
+      <span data-out="detail-chev">▲ Tutup</span>
     </button>
-    <div class="gpt-kalc-detail" data-kalc-detail>
+    <div class="gpt-kalc-detail open" data-kalc-detail>
       <div class="gpt-kalc-items" data-out="items"></div>
       <div class="gpt-kalc-detail-grid">
         <div class="gpt-kalc-field">
@@ -10996,12 +11012,347 @@ function bindGptKalc(root) {
     panel.querySelector('[data-kalc-detail-tog]')?.addEventListener('click', () => {
       const body = panel.querySelector('[data-kalc-detail]');
       const chev = panel.querySelector('[data-out="detail-chev"]');
+      const tog = panel.querySelector('[data-kalc-detail-tog]');
       if (!body) return;
       const open = body.classList.toggle('open');
       if (chev) chev.textContent = open ? '▲ Tutup' : '▼ Lihat detail';
+      if (tog) tog.setAttribute('aria-expanded', open ? 'true' : 'false');
     });
     gptKalcRefresh(panel);
   });
+}
+
+/** Full-page Kalkulator (seller-tools). Prefill from a product search, PDF, riwayat. */
+let _kalcPageProduct = null;
+let _kalcPageWired = false;
+
+function openKalkulatorPage(opts = {}) {
+  try { closeCalcPanel(); } catch (_) {}
+  setView('kalkulator');
+  _offerActive = false;
+  if (opts.product) {
+    _kalcPageProduct = asListingProduct(opts.product);
+  }
+  renderKalkulatorPage();
+  if (!_kalcPageWired) wireKalkulatorPage();
+  if (opts.via !== 'restore') {
+    void logUserEvent('gpt_kalc_page_open', { ui: 'gpt', via: opts.via || 'nav', has_product: !!_kalcPageProduct });
+  }
+  if (currentUser) {
+    try { void window.LarisCohort?.tryCompleteMilestone('open_kalkulator'); } catch (_) {}
+  }
+}
+
+function kalcOptsFromProduct(p) {
+  const price = Math.round(Number(p?.price) || 0);
+  const cat = ddFeeCategory(p) || '';
+  return {
+    price: price || 0,
+    cogs: price ? Math.round(price * 0.33) : 0,
+    category: cat || undefined,
+  };
+}
+
+function renderKalkulatorPage() {
+  const body = $('kalc-page-body');
+  if (!body) return;
+  const opts = _kalcPageProduct ? kalcOptsFromProduct(_kalcPageProduct) : { price: 0, cogs: 0 };
+  body.innerHTML = gptKalcHtml(opts);
+  bindGptKalc(body);
+  paintKalcPicked();
+}
+
+function paintKalcPicked() {
+  const box = $('kalc-product-picked');
+  if (!box) return;
+  if (!_kalcPageProduct) {
+    box.hidden = true;
+    box.innerHTML = '';
+    return;
+  }
+  const p = _kalcPageProduct;
+  box.hidden = false;
+  box.innerHTML =
+    `<div class="kalc-picked-card">` +
+      (p.image_url ? `<img src="${esc(p.image_url)}" alt="">` : '<span class="alat-ph"></span>') +
+      `<div><b>${esc((p.product_name || '').slice(0, 72))}</b>` +
+      `<small>${esc(p.keyword || '')} · ${fmtRp(p.price)} · ${esc(p.store_name || '')}</small></div>` +
+      `<button type="button" class="btn-ghost" id="kalc-product-clear">Hapus</button>` +
+    `</div>`;
+  $('kalc-product-clear')?.addEventListener('click', () => {
+    _kalcPageProduct = null;
+    paintKalcPicked();
+    renderKalkulatorPage();
+  });
+}
+
+function wireKalkulatorPage() {
+  if (_kalcPageWired) return;
+  _kalcPageWired = true;
+  let _kalcSearchTimer = null;
+  let _kalcSearchSeq = 0;
+  const runSearch = (opts = {}) => { void searchKalcProducts(opts); };
+  $('kalc-product-go')?.addEventListener('click', () => runSearch({ immediate: true, seq: ++_kalcSearchSeq }));
+  $('kalc-product-q')?.addEventListener('input', () => {
+    clearTimeout(_kalcSearchTimer);
+    const q = String($('kalc-product-q')?.value || '').trim();
+    if (q.length < 2) {
+      const hits = $('kalc-product-hits');
+      if (hits) { hits.hidden = true; hits.innerHTML = ''; hits._rows = null; }
+      return;
+    }
+    const seq = ++_kalcSearchSeq;
+    _kalcSearchTimer = setTimeout(() => runSearch({ seq }), 220);
+  });
+  $('kalc-product-q')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const hits = $('kalc-product-hits');
+      if (hits) { hits.hidden = true; hits.innerHTML = ''; }
+      return;
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      clearTimeout(_kalcSearchTimer);
+      runSearch({ immediate: true, seq: ++_kalcSearchSeq });
+    }
+  });
+  $('kalc-product-q')?.addEventListener('focus', () => {
+    const q = String($('kalc-product-q')?.value || '').trim();
+    const hits = $('kalc-product-hits');
+    if (q.length >= 2 && hits && hits._rows?.length) hits.hidden = false;
+  });
+  document.addEventListener('click', (e) => {
+    const wrap = document.querySelector('.kalc-page-pick');
+    const hits = $('kalc-product-hits');
+    if (!hits || hits.hidden) return;
+    if (wrap && wrap.contains(e.target)) return;
+    hits.hidden = true;
+  });
+  wireKalkulatorPage._seq = () => _kalcSearchSeq;
+  $('kalc-download-pdf')?.addEventListener('click', () => { void downloadKalcPdf(); });
+  $('kalc-save-riwayat')?.addEventListener('click', () => { void saveKalcToRiwayat(); });
+}
+
+async function searchKalcProducts(opts = {}) {
+  const q = String($('kalc-product-q')?.value || '').trim();
+  const hits = $('kalc-product-hits');
+  if (!hits) return;
+  const seq = opts.seq != null ? opts.seq : 0;
+  if (q.length < 2) {
+    hits.hidden = true;
+    hits.innerHTML = '';
+    hits._rows = null;
+    return;
+  }
+  hits.hidden = false;
+  hits.classList.add('kalc-ac');
+  hits.setAttribute('role', 'listbox');
+  hits.setAttribute('aria-label', 'Rekomendasi produk');
+  if (!hits.querySelector('.kalc-ac-list')) {
+    hits.innerHTML = '<p class="alat-lead agent-wait">Mencari produk…</p>';
+  }
+  let rows = [];
+  try {
+    rows = await searchListings(q, [], 15);
+  } catch (_) {}
+  if (seq && wireKalkulatorPage._seq && seq !== wireKalkulatorPage._seq()) return;
+  if (!rows.length) {
+    hits.innerHTML = `<p class="alat-hint">Tidak ketemu “${esc(q)}”. Coba keyword lain.</p>`;
+    hits._rows = null;
+    return;
+  }
+  rememberProducts(rows);
+  hits.innerHTML =
+    `<div class="kalc-ac-list">` +
+    rows.map((r, i) => {
+      const meta = [fmtRp(r.price), r.keyword || '', r.store_name || ''].filter(Boolean).join(' · ');
+      const img = r.image_url
+        ? `<img class="kalc-ac-img" src="${esc(r.image_url)}" alt="" loading="lazy">`
+        : `<span class="kalc-ac-img alat-ph"></span>`;
+      return `<button type="button" class="kalc-ac-item" role="option" data-kalc-hit="${i}">` +
+        img +
+        `<span class="kalc-ac-text">` +
+          `<span class="kalc-ac-name">${esc((r.product_name || '').slice(0, 80))}</span>` +
+          `<span class="kalc-ac-meta">${esc(meta)}</span>` +
+        `</span></button>`;
+    }).join('') +
+    `</div>`;
+  hits._rows = rows;
+  hits.querySelectorAll('[data-kalc-hit]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const row = hits._rows[Number(btn.getAttribute('data-kalc-hit'))];
+      if (!row) return;
+      _kalcPageProduct = asListingProduct(row);
+      hits.hidden = true;
+      hits.innerHTML = '';
+      hits._rows = null;
+      const inp = $('kalc-product-q');
+      if (inp) inp.value = (row.product_name || row.keyword || '').slice(0, 80);
+      renderKalkulatorPage();
+      void logUserEvent('gpt_kalc_page_prefill', {
+        ui: 'gpt',
+        item_id: _kalcPageProduct.item_id,
+        shop_id: _kalcPageProduct.shop_id,
+      });
+    });
+  });
+}
+
+function kalcPagePanel() {
+  return $('kalc-page-body')?.querySelector('[data-kalc]');
+}
+
+async function downloadKalcPdf() {
+  const panel = kalcPagePanel();
+  if (!panel) return;
+  const inp = _gptKalcRead(panel);
+  const r = gptKalcCompute(inp);
+  if (!(inp.price > 0)) {
+    showToast('Isi harga jual dulu.');
+    return;
+  }
+  try {
+    if (typeof ensureJsPdf === 'function') await ensureJsPdf();
+    else if (window.larisLoadScript) {
+      await window.larisLoadScript('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js');
+    }
+  } catch (_) {}
+  const { jsPDF } = window.jspdf || {};
+  if (!jsPDF) {
+    showToast('Gagal memuat PDF. Coba refresh.');
+    return;
+  }
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const W = 210;
+  const m = 18;
+  const p = _kalcPageProduct;
+  const name = (p?.product_name || 'Kalkulasi profit').slice(0, 70);
+  doc.setFillColor(181, 32, 42);
+  doc.rect(0, 0, W, 26, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text('LarisID', m, 12);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text('Kalkulator Profit', m, 19);
+  doc.text(new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }), W - m, 19, { align: 'right' });
+
+  let y = 36;
+  doc.setTextColor(26, 26, 26);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.text(name, m, y);
+  y += 6;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(100, 100, 100);
+  doc.text([p?.keyword, p?.store_name].filter(Boolean).join(' · ') || 'Tanpa produk terpilih', m, y);
+  y += 12;
+
+  const boxes = [
+    ['Harga jual', fmtRp(inp.price)],
+    ['Modal', fmtRp(inp.cogs)],
+    ['Laba bersih', fmtRp(r.profit)],
+    ['Margin', `${(r.margin || 0).toFixed(1).replace('.', ',')}%`],
+  ];
+  const bw = (W - m * 2 - 9) / 4;
+  boxes.forEach((b, i) => {
+    const x = m + i * (bw + 3);
+    doc.setFillColor(247, 247, 248);
+    doc.roundedRect(x, y, bw, 18, 2, 2, 'F');
+    doc.setFontSize(7);
+    doc.setTextColor(120, 120, 120);
+    doc.text(b[0], x + bw / 2, y + 6, { align: 'center' });
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(26, 26, 26);
+    doc.text(String(b[1]), x + bw / 2, y + 13, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+  });
+  y += 28;
+
+  doc.setFontSize(10);
+  doc.setTextColor(26, 26, 26);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Rincian', m, y);
+  y += 7;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  const lines = [
+    [`Marketplace`, String(inp.mpKey || 'shopee')],
+    [`Omset / pesanan`, fmtRp(r.price)],
+    [`Total biaya`, fmtRp(r.totalCost)],
+    [`Break even`, fmtRp(gptKalcSolve(0, r))],
+    [`Good profit (~18%)`, fmtRp(gptKalcSolve(18, r))],
+    [`Healthy margin (~28%)`, fmtRp(gptKalcSolve(28, r))],
+  ];
+  lines.forEach(([k, v]) => {
+    doc.setTextColor(100, 100, 100);
+    doc.text(k, m, y);
+    doc.setTextColor(26, 26, 26);
+    doc.text(String(v), W - m, y, { align: 'right' });
+    y += 6;
+  });
+  y += 8;
+  doc.setFontSize(8);
+  doc.setTextColor(130, 130, 130);
+  doc.text('Estimasi saja — biaya bisa berubah sesuai kebijakan platform. Belum termasuk pajak pribadi.', m, y, { maxWidth: W - m * 2 });
+
+  const slug = String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'kalkulasi';
+  doc.save(`larisid-kalkulator-${slug}.pdf`);
+  void logUserEvent('gpt_kalc_pdf', { ui: 'gpt' });
+  showToast('PDF tersimpan.');
+}
+
+async function saveKalcToRiwayat() {
+  const panel = kalcPagePanel();
+  if (!panel) return;
+  const inp = _gptKalcRead(panel);
+  const r = gptKalcCompute(inp);
+  if (!(inp.price > 0)) {
+    showToast('Isi harga jual dulu.');
+    return;
+  }
+  const p = _kalcPageProduct;
+  const title = `Kalkulasi: ${(p?.product_name || p?.keyword || 'Profit').slice(0, 36)}`;
+  const chat = startBlankLocalChat(title, {
+    kind: 'kalkulator',
+    product: p || null,
+    kalc: {
+      price: inp.price,
+      cogs: inp.cogs,
+      marketplace: inp.mpKey,
+      category: inp.category,
+      profit: r.profit,
+      margin: r.margin,
+    },
+  });
+  pushMessage(chat, 'user', p
+    ? `Hitung profit untuk ${(p.product_name || '').slice(0, 48)}`
+    : 'Hitung profit listing');
+  const summary =
+    `<p>Estimasi profit` +
+    (p ? ` untuk <strong>${esc((p.product_name || '').slice(0, 56))}</strong>` : '') +
+    `: laba bersih <strong>${esc(fmtRp(r.profit))}</strong> · margin <strong>${(r.margin || 0).toFixed(1).replace('.', ',')}%</strong>.</p>` +
+    gptKalcHtml({
+      price: inp.price,
+      cogs: inp.cogs,
+      category: inp.category,
+      marketplace: inp.mpKey,
+    });
+  pushMessage(chat, 'assistant', {
+    text: 'Kalkulasi profit',
+    kind: 'kalkulator',
+    profit: r.profit,
+    margin: r.margin,
+  }, summary);
+  setView('chat');
+  renderChatThread();
+  bindGptKalc($('chat-thread'));
+  void logUserEvent('gpt_kalc_save_riwayat', { ui: 'gpt', has_product: !!p });
+  showToast('Tersimpan di Riwayat.');
 }
 
 // Quick table above the calculator. Uses the real baseline rate for the
@@ -15039,6 +15390,13 @@ async function openTrackerView(seed, resumeDraft) {
   if (!window.LarisTracker) return;
   window.LarisTracker.mount({ hostId: 'laris-tracker-root', site: 'b', adapter: gptTrackerAdapter() });
   const p = window.LarisTracker.open({ touch: true });
+  // Existing-seller alat preview: Favorit Aku → Product Tracker.
+  try {
+    if (window.LarisAlatPreview?.active() && window.LarisAlatPreview.intent?.() === 'existing') {
+      const title = document.querySelector('#laris-tracker-root .ltk-title');
+      if (title) title.textContent = 'Product Tracker';
+    }
+  } catch (_) {}
   if (seed && (seed.item_id || seed.keyword)) {
     Promise.resolve(p).then(() => {
       try { window.LarisTracker.openSetup({ seed }); } catch (_) {}
@@ -23386,6 +23744,14 @@ function goHome(e) {
     void openDirectory();
     return;
   }
+  if (window.LarisAlatPreview?.active()) {
+    if (window.LarisAlatPreview.isWizardDone?.() && window.LarisAlatPreview.intent?.() === 'existing') {
+      window.LarisAlatPreview.openSellerCenter();
+    } else {
+      window.LarisAlatPreview.openSift();
+    }
+    return;
+  }
   renderLanding();
 }
 
@@ -25043,6 +25409,10 @@ function wireUi() {
     location.href = '/';
   });
   $('btn-tracker')?.addEventListener('click', () => { openTrackerView(); });
+  $('btn-kalkulator-alat')?.addEventListener('click', () => {
+    try { window.LarisAlatPreview?.exitFocus?.(); } catch (_) {}
+    openKalkulatorPage({ via: 'nav' });
+  });
   $('btn-cohort')?.addEventListener('click', () => { openCohortView(); });
   $('btn-community')?.addEventListener('click', () => { openCommunityBoard(); });
   $('btn-harga')?.addEventListener('click', () => setView('harga'));
@@ -25221,7 +25591,7 @@ function attachAlatPreview() {
     onboarding: () => state.onboarding,
     pendingAlat: () => state.pendingAlat,
     markPendingAlat(kind) {
-      state.pendingAlat = kind || 'existing';
+      state.pendingAlat = kind || null;
       saveLocalState();
     },
     setExperience(kind) {
@@ -25231,15 +25601,48 @@ function attachAlatPreview() {
       saveLocalState();
       try { window.LarisAlatPreview.hideFinderXp(); } catch (_) {}
     },
+    resetFinderForAlat() {
+      // Re-show the questionnaire even if this browser already finished onboarding.
+      if (state.onboarding) {
+        state.onboarding.step = 'city';
+        state.onboarding.completedAnon = false;
+        state.onboarding.experience = 'first_time';
+      }
+      _finder.experience = 'first_time';
+      saveFinderState();
+      saveLocalState();
+      try { window.LarisAlatPreview.hideFinderXp(); } catch (_) {}
+      updateHomeFinderVisibility();
+    },
     openAuthModal,
     setView,
     showToast,
     logUserEvent,
     renderHome,
+    renderLanding,
     openDirectory,
     openDeepDive,
     openCalcPanel,
+    openKalkulatorPage,
     persistOnboardingPrefs,
+    imgThumb,
+    async getShopLogo(shopId) {
+      if (!_supabase || shopId == null) return '';
+      try {
+        const { data } = await _supabase.from('shop_logo_cache')
+          .select('logo_url')
+          .eq('shop_id', Number(shopId))
+          .maybeSingle();
+        if (data?.logo_url) return data.logo_url;
+      } catch (_) {}
+      try {
+        const { data, error } = await _supabase.functions.invoke('get-shop-logo', {
+          body: { shop_id: Number(shopId) },
+        });
+        if (!error && data) return data.logo_url || data.logo || '';
+      } catch (_) {}
+      return '';
+    },
     addTrackedProduct(p) {
       return trackProductFavorite(p, { via: 'alat_preview' });
     },
@@ -25266,7 +25669,12 @@ async function boot() {
   // Merdeka decorations — self-gates to August WIB, no-ops the rest of the year.
   try { window.LarisMerdeka?.mount({ site: 'b', navSelector: '.main-top' }); } catch (_) {}
   try {
-    if (window.LarisExpor) window.LarisExpor.applyGate();
+    if (window.LarisAlatPreview?.active()) {
+      document.body.classList.remove('expor-lab', 'pasar-expor');
+      document.body.classList.add('pasar-shopee');
+    } else if (window.LarisExpor) {
+      window.LarisExpor.applyGate();
+    }
   } catch (_) {}
   // The A/B ended 2026-08-10 and this used to self-stamp arm B here. New
   // visitors now carry no _lid_ab_v1 at all, which is what keeps post-merge
@@ -25348,12 +25756,16 @@ async function boot() {
 
   // Landing is the default surface; onboarding never auto-starts.
   // Don't overwrite a deep dive / finder that _authOnSignIn just resumed.
-  const pendingResume = !!(state.pendingDeepdive || state.pendingCompare || state.pendingTracker || state.pendingKomunitas || state.pendingFinder || _finderResumeInFlight);
+  const pendingResume = !!(state.pendingDeepdive || state.pendingCompare || state.pendingTracker || state.pendingKomunitas || state.pendingFinder || (state.pendingAlat && currentUser) || _finderResumeInFlight);
   const alreadyDeepdive = state.view === 'deepdive' && !!state.deepdiveProduct;
   const alreadyCommunity = state.view === 'community';
   const alreadyAdmin = state.view === 'admin';
   const finderResultsUp = !!$('chat-thread')?.querySelector('[data-lrow-block]');
-  if (isExporPasar() && !_offerActive && !pendingResume && !alreadyDeepdive && !alreadyCommunity && !alreadyAdmin) {
+  const previewResumeProduct = !!(state.pendingDeepdive || state.pendingCompare || state.pendingTracker || state.pendingFinder || _finderResumeInFlight);
+  if (window.LarisAlatPreview?.active() && !_offerActive && !previewResumeProduct && !alreadyDeepdive && !alreadyCommunity && !alreadyAdmin) {
+    window.LarisAlatPreview.onBoot();
+    _bootLandingView = state.view;
+  } else if (isExporPasar() && !_offerActive && !pendingResume && !alreadyDeepdive && !alreadyCommunity && !alreadyAdmin) {
     const ac = state.activeChatId && activeChat();
     if (ac && chatPasar(ac) === 'expor') {
       setView('chat');
@@ -25369,13 +25781,15 @@ async function boot() {
       renderHome();
       // Only an untouched default landing may be replaced by the cohort home.
       _bootLandingView = state.view;
-      if (window.LarisAlatPreview?.shouldTakeBoot()) window.LarisAlatPreview.onBoot();
     }
   }
   renderChatList();
   renderSidebarLocCard();
   void routeCohortHome();
   consumeAdminDeepLink();
+  if (window.LarisAlatPreview?.active() && !document.body.className.split(/\s+/).some((c) => c.startsWith('view-'))) {
+    window.LarisAlatPreview.onBoot();
+  }
 }
 
 

@@ -11,6 +11,16 @@
 // A plain string is still accepted and renders with no tech line.
 window.LARIS_CHANGELOG = [
   {
+    date: '2026-09-16',
+    title: 'Kalkulator profit di menu',
+    items: [
+      {
+        text: 'Kalkulator Profit sekarang ada di menu kiri. Cari produk untuk mengisi harga otomatis, atau ketik modal dan harga jual sendiri. Bisa unduh PDF atau simpan ke Riwayat.',
+        tech: '#btn-kalkulator-alat + #view-kalkulator (ungated); Deep Dive kalkulator pill still opens the side sheet.',
+      },
+    ],
+  },
+  {
     date: '2026-09-15',
     title: 'Cari Produk buka lebih cepat',
     items: [
