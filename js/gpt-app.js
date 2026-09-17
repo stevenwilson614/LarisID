@@ -24086,7 +24086,13 @@ function renderAdminKpis(users) {
   spark('adm-kpi-stores-spark', storesDaily, '#0891B2');
 
   set('adm-kpi-downloads', admFmtNum(downloadsTotal));
-  set('adm-kpi-downloads-sub', downloadsTotal == null ? 'Belum tersedia' : 'File .xlsx/CSV dari situs');
+  if (downloadsTotal == null) {
+    set('adm-kpi-downloads-sub', 'Belum tersedia');
+  } else if (k.download_rows_total != null) {
+    set('adm-kpi-downloads-sub', `${admFmtNum(downloadsTotal)} file · ${admFmtNum(k.download_rows_total)} baris`);
+  } else {
+    set('adm-kpi-downloads-sub', 'File .xlsx/CSV dari situs');
+  }
   spark('adm-kpi-downloads-spark', downloadsDaily, '#4F46E5');
 
   set('adm-kpi-dives', admFmtNum(divesTotal));
@@ -24096,6 +24102,65 @@ function renderAdminKpis(users) {
   set('adm-kpi-ext', admFmtNum(extClicksTotal));
   set('adm-kpi-ext-sub', extClicksTotal == null ? 'Belum tersedia' : 'Klik ke Chrome Web Store');
   spark('adm-kpi-ext-spark', extClicksDaily, '#0F766E');
+
+  renderAdminUsage(days);
+}
+
+function renderAdminUsage(days) {
+  const k = _adminKpis || {};
+  const span = days || admLastDays(14);
+  const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+  const spark = (id, series, color) => { const el = $(id); if (el) el.innerHTML = admSparkline(series, color); };
+  const n24 = (v) => (v == null ? '—' : admFmtNum(v));
+
+  set('adm-usage-kalc-opens', admFmtNum(k.kalc_opens_total));
+  set('adm-usage-kalc-pdf', admFmtNum(k.kalc_pdf_total));
+  set('adm-usage-kalc-saves', admFmtNum(k.kalc_saves_total));
+  if (k.kalc_opens_total != null) {
+    const uniq = k.kalc_opens_unique != null ? `${admFmtNum(k.kalc_opens_unique)} orang unik · ` : '';
+    set('adm-usage-kalc-sub',
+      `${uniq}24 jam: ${n24(k.kalc_opens_24h)} buka / ${n24(k.kalc_pdf_24h)} PDF / ${n24(k.kalc_saves_24h)} simpan`);
+  }
+  spark('adm-usage-kalc-spark', admSeriesFromDaily(k.kalc_opens_daily, 'n', span), '#C2410C');
+
+  set('adm-usage-export-files', admFmtNum(k.downloads_total));
+  set('adm-usage-export-rows', admFmtNum(k.download_rows_total));
+  if (k.downloads_total != null) {
+    set('adm-usage-export-sub',
+      `${n24(k.downloads_24h)} file · ${n24(k.download_rows_24h)} baris (24 jam)`);
+  }
+  spark('adm-usage-export-spark', admSeriesFromDaily(k.download_rows_daily, 'n', span), '#4F46E5');
+
+  set('adm-usage-ai-prompts', admFmtNum(k.ai_prompts_total));
+  set('adm-usage-ai-24h', admFmtNum(k.ai_prompts_24h));
+  if (k.ai_prompts_total != null) {
+    set('adm-usage-ai-sub', 'Semua waktu · sparkline 14 hari');
+  }
+  spark('adm-usage-ai-spark', admSeriesFromDaily(k.ai_prompts_daily, 'n', span), '#7C3AED');
+
+  const neu = Number(k.new_users_24h);
+  const ret = Number(k.returning_users_24h);
+  set('adm-usage-new-24h', admFmtNum(k.new_users_24h));
+  set('adm-usage-ret-24h', admFmtNum(k.returning_users_24h));
+  const split = $('adm-usage-people-split');
+  const legend = $('adm-usage-people-legend');
+  const tot = (Number.isFinite(neu) ? neu : 0) + (Number.isFinite(ret) ? ret : 0);
+  if (split && legend) {
+    if (tot > 0) {
+      split.hidden = false;
+      legend.hidden = false;
+      const neuEl = $('adm-usage-split-new');
+      const retEl = $('adm-usage-split-ret');
+      if (neuEl) neuEl.style.width = `${(neu / tot) * 100}%`;
+      if (retEl) retEl.style.width = `${(ret / tot) * 100}%`;
+      set('adm-usage-people-sub', `${admFmtNum(tot)} orang masuk`);
+    } else {
+      split.hidden = true;
+      legend.hidden = true;
+      if (k.new_users_24h != null) set('adm-usage-people-sub', 'Belum ada kunjungan 24 jam ini');
+    }
+  }
+  spark('adm-usage-people-spark', admSeriesFromDaily(k.returning_users_daily, 'n', span), '#F59E0B');
 }
 
 // ── Monthly trend: landing page views vs sign ups ────────────────────────────

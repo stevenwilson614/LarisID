@@ -3213,6 +3213,37 @@ body.view-harga .panel-inner { max-width: 1180px; }
 .adm-kpi--dives .adm-kpi-ico { background: #F3E8FF; color: #7C3AED; }
 .adm-kpi--downloads .adm-kpi-ico { background: #EEF2FF; color: #4F46E5; }
 .adm-kpi--ext .adm-kpi-ico { background: #CCFBF1; color: #0F766E; }
+.adm-usage {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 14px;
+}
+.adm-usage-card { padding: 16px 18px 12px; min-width: 0; }
+.adm-usage-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 12px;
+}
+.adm-usage-head .adm-card-title { margin: 0; }
+.adm-usage-sub { margin: 0; font-size: .72rem; color: #9A9A9A; font-weight: 550; text-align: right; }
+.adm-usage-metrics {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;
+}
+.adm-usage-metrics--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.adm-usage-lbl { font-size: .7rem; font-weight: 600; color: #8A8A8A; }
+.adm-usage-val { font-size: 1.45rem; font-weight: 750; letter-spacing: -.03em; color: #1A1A1A; margin-top: 4px; line-height: 1.1; }
+.adm-usage--kalc .adm-usage-val { color: #C2410C; }
+.adm-usage--export .adm-usage-val { color: #4F46E5; }
+.adm-usage--ai .adm-usage-val { color: #7C3AED; }
+.adm-usage--people .adm-usage-val { color: #B5202A; }
+.adm-split {
+  display: flex; height: 8px; border-radius: 999px; overflow: hidden; background: #F3F4F6; margin-top: 12px;
+}
+.adm-split span { display: block; height: 100%; min-width: 0; }
+.adm-split-new { background: #B5202A; }
+.adm-split-ret { background: #F59E0B; }
+.adm-split-legend {
+  display: flex; gap: 14px; margin-top: 8px; font-size: .7rem; color: #6B7280; font-weight: 550;
+}
+.adm-split-legend i {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle;
+}
 .adm-trend-card { padding: 16px 18px 14px; margin-bottom: 14px; }
 .adm-trend-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .adm-trend-head .adm-card-title { margin: 0; }
@@ -3427,10 +3458,12 @@ body.view-harga .panel-inner { max-width: 1180px; }
 .sample-strip button:hover { background: #fff; color: #111; }
 @media (max-width: 980px) {
   .adm-kpis { grid-template-columns: repeat(2, 1fr); }
+  .adm-usage { grid-template-columns: 1fr; }
   .adm-mid { grid-template-columns: 1fr; }
 }
 @media (max-width: 560px) {
   .adm-kpis { grid-template-columns: 1fr; }
+  .adm-usage-metrics, .adm-usage-metrics--2 { grid-template-columns: 1fr 1fr; }
   .adm-search { max-width: none; }
 }
 
@@ -9623,7 +9656,7 @@ body.view-chat .sfb-card {
             <div class="adm-dash-head">
               <div>
                 <h2>Dashboard Admin</h2>
-                <p class="dd-sub">Ringkasan keseluruhan aktivitas Laris</p>
+                <p class="dd-sub">Ringkasan aktivitas, kalkulator, unduhan, AI, dan kunjungan 24 jam</p>
               </div>
               <div class="adm-dash-head-actions">
                 <button type="button" class="btn-ghost" id="admin-sample-new" style="margin:0">Sample sebagai user baru</button>
@@ -9699,6 +9732,89 @@ body.view-chat .sfb-card {
                 <div class="adm-kpi-val" id="adm-kpi-ext">—</div>
                 <div class="adm-kpi-sub" id="adm-kpi-ext-sub">Klik ke Chrome Web Store</div>
                 <div class="adm-kpi-spark" id="adm-kpi-ext-spark"></div>
+              </article>
+            </div>
+
+            <div class="adm-usage" id="admin-usage">
+              <article class="adm-card adm-usage-card adm-usage--kalc">
+                <div class="adm-usage-head">
+                  <h3 class="adm-card-title">Kalkulator</h3>
+                  <p class="adm-usage-sub" id="adm-usage-kalc-sub">Halaman Kalk</p>
+                </div>
+                <div class="adm-usage-metrics">
+                  <div>
+                    <div class="adm-usage-lbl">Buka halaman</div>
+                    <div class="adm-usage-val" id="adm-usage-kalc-opens">—</div>
+                  </div>
+                  <div>
+                    <div class="adm-usage-lbl">Unduh PDF</div>
+                    <div class="adm-usage-val" id="adm-usage-kalc-pdf">—</div>
+                  </div>
+                  <div>
+                    <div class="adm-usage-lbl">Simpan riwayat</div>
+                    <div class="adm-usage-val" id="adm-usage-kalc-saves">—</div>
+                  </div>
+                </div>
+                <div class="adm-kpi-spark" id="adm-usage-kalc-spark"></div>
+              </article>
+              <article class="adm-card adm-usage-card adm-usage--export">
+                <div class="adm-usage-head">
+                  <h3 class="adm-card-title">Unduhan produk</h3>
+                  <p class="adm-usage-sub" id="adm-usage-export-sub">File .xlsx/CSV dari Cari Produk</p>
+                </div>
+                <div class="adm-usage-metrics adm-usage-metrics--2">
+                  <div>
+                    <div class="adm-usage-lbl">File</div>
+                    <div class="adm-usage-val" id="adm-usage-export-files">—</div>
+                  </div>
+                  <div>
+                    <div class="adm-usage-lbl">Baris</div>
+                    <div class="adm-usage-val" id="adm-usage-export-rows">—</div>
+                  </div>
+                </div>
+                <div class="adm-kpi-spark" id="adm-usage-export-spark"></div>
+              </article>
+              <article class="adm-card adm-usage-card adm-usage--ai">
+                <div class="adm-usage-head">
+                  <h3 class="adm-card-title">Laris AI</h3>
+                  <p class="adm-usage-sub" id="adm-usage-ai-sub">Pertanyaan yang dikirim ke model</p>
+                </div>
+                <div class="adm-usage-metrics adm-usage-metrics--2">
+                  <div>
+                    <div class="adm-usage-lbl">Pertanyaan</div>
+                    <div class="adm-usage-val" id="adm-usage-ai-prompts">—</div>
+                  </div>
+                  <div>
+                    <div class="adm-usage-lbl">24 jam terakhir</div>
+                    <div class="adm-usage-val" id="adm-usage-ai-24h">—</div>
+                  </div>
+                </div>
+                <div class="adm-kpi-spark" id="adm-usage-ai-spark"></div>
+              </article>
+              <article class="adm-card adm-usage-card adm-usage--people">
+                <div class="adm-usage-head">
+                  <h3 class="adm-card-title">24 jam terakhir</h3>
+                  <p class="adm-usage-sub" id="adm-usage-people-sub">Pengguna masuk</p>
+                </div>
+                <div class="adm-usage-metrics adm-usage-metrics--2">
+                  <div>
+                    <div class="adm-usage-lbl">Pengguna baru</div>
+                    <div class="adm-usage-val" id="adm-usage-new-24h">—</div>
+                  </div>
+                  <div>
+                    <div class="adm-usage-lbl">Kembali (sesi ke-2+)</div>
+                    <div class="adm-usage-val" id="adm-usage-ret-24h">—</div>
+                  </div>
+                </div>
+                <div class="adm-split" id="adm-usage-people-split" hidden>
+                  <span class="adm-split-new" id="adm-usage-split-new"></span>
+                  <span class="adm-split-ret" id="adm-usage-split-ret"></span>
+                </div>
+                <div class="adm-split-legend" id="adm-usage-people-legend" hidden>
+                  <span><i class="adm-split-new"></i>Baru daftar</span>
+                  <span><i class="adm-split-ret"></i>Akun lama yang masuk lagi</span>
+                </div>
+                <div class="adm-kpi-spark" id="adm-usage-people-spark"></div>
               </article>
             </div>
 
@@ -10503,7 +10619,7 @@ body.view-chat .sfb-card {
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260916d" defer></script>
 <script src="/js/gpt-alat-preview.js?v=20260916ae" defer></script>
-<script src="/js/gpt-app.js?v=20260916u" defer></script>
+<script src="/js/gpt-app.js?v=20260917a" defer></script>
 <style>
 .alat-preview-banner {
   display: none;
