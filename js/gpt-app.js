@@ -24119,7 +24119,7 @@ function renderAdminUsage(days) {
   if (k.kalc_opens_total != null) {
     const uniq = k.kalc_opens_unique != null ? `${admFmtNum(k.kalc_opens_unique)} orang unik · ` : '';
     set('adm-usage-kalc-sub',
-      `${uniq}24 jam: ${n24(k.kalc_opens_24h)} buka / ${n24(k.kalc_pdf_24h)} PDF / ${n24(k.kalc_saves_24h)} simpan`);
+      `${uniq}24 jam ${n24(k.kalc_opens_24h)} buka / ${n24(k.kalc_pdf_24h)} PDF / ${n24(k.kalc_saves_24h)} simpan`);
   }
   spark('adm-usage-kalc-spark', admSeriesFromDaily(k.kalc_opens_daily, 'n', span), '#C2410C');
 
