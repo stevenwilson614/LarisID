@@ -1,23 +1,20 @@
 /* Local seed. Not a TikTok Shop. */
 window.LARIS_AFFILIATE_SEED = {
   account: {
-    handle: 'bule_barat',
-    display: '@bule_barat',
-    name: 'Steven',
-    productName: 'Jepit rambut satin isi 6',
-    commissionPct: 18,
+    handle: '',
+    display: '',
+    name: '',
+    productName: '',
+    commissionPct: 15,
     shopName: '',
-    allowLiveSend: false
+    allowLiveSend: false,
+    allowKalodataRead: false
   },
   quota: {
     dailyCap: 1000,
-    batch: 50,
-    weeklyCap: 200
+    batch: 50
   },
   template:
     'Halo @{handle},\n\nAku {name} dari {toko}. Lagi jual {produk} dan undang kolaborasi affiliate. Komisi {komisi}%.\n\nKalau cocok, terima undangan di Affiliate Center ya.\n\n— {toko}',
-  demoCreators: [
-    { handle: 'bule_barat', name: 'Steven (tes diri)', demo: false },
-    { handle: 'laris.fake.skin01', name: 'Laris Fake Skin 01', demo: true }
-  ]
+  demoCreators: []
 };

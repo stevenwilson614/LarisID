@@ -20,6 +20,8 @@
 .venv-story/
 _site/
 dist/
+!affiliate/dist/
+!affiliate/dist/**
 node_modules/
 redesign-preview-2.html
 redesign-preview.html

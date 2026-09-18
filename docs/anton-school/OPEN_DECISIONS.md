@@ -43,11 +43,32 @@ No cookie farms. No unofficial cloud blast.
 **Question:** May a third-party app (us) call Kalodata’s Open API with a key the
 **student** pasted, store only what they pulled, per user?
 
-Offline v0 uses **CSV they exported** (their subscription, their file). Path B
-(paste key) waits on a written ToS read. If forbidden, stay on CSV.
+Path B (paste Open API key) still waits on a written ToS read.
 
-**Never:** scrape kalodata.com, reuse their session, or pool a class’s contact
-exports into one Laris list (UU PDP).
+**Decision 2026-09-18 (Steven):** in-page DOM pickup of **visible** Kalodata
+creator rows is allowed in the unpacked Chrome extension, opt-in, disclosed.
+Kalodata ToS 4.1.7 (incorporate the Services into another program) and 4.1.8
+(automated scripts to collect information) cover this. Risk sits on the
+**student’s paid Kalodata account** (fingerprint / limits), not LarisID
+servers. Accepted with these hard rules:
+
+- DOM only. Rows the student can already see. **No** MAIN-world hook, **no**
+  XHR/response capture, **no** fetch to Kalodata APIs, **no** bypass of plan
+  limits (4.1.6 stays untouched).
+- No auto-pagination, no scrolling loop, no scheduler. One click = one visible
+  page. Student pages in Kalodata, then clicks Ambil again.
+- Opt-in default off. Confirm names 4.1.7 / 4.1.8 and that the risk is to
+  their Kalodata account.
+- Data stays in `chrome.storage.local` on that machine. Never pooled, never
+  sent to LarisID/Contabo (UU PDP).
+- Lift handle, nickname, Unique ID, followers, revenue only. Do not lift
+  emails / WhatsApp even if visible.
+
+CSV export and paste-from-Kalodata remain the fallbacks. Starter Kalodata
+cannot export; say so in the student README.
+
+**Still never:** Kalodata session reuse on our servers, class-wide API keys,
+pooling a class’s contact exports, server-side scrape.
 
 ## 4. Go / no-go — live TikTok sends
 
@@ -65,8 +86,10 @@ Still **out of scope:** cookie farms, cloud queues, selling sessions, unofficial
 
 Caps that do not go away:
 
-- Shop cap: 1,000 target invites / 24h, 50 per send, weekly GMV quota for
-  **unconnected** creators. Connected = unlimited.
+- Shop cap (US/BR help; ID live uses `invitation_group/create`): up to **50
+  creators per collaboration**, up to **1,000 collaborations / 24h**, plus a
+  weekly GMV quota for **unconnected** creators (new shops: one-time Starter
+  Pack of 1,000). Connected = unlimited. Do not promise students “1.000/hari”.
 - Affiliate Center ToS still applies. Shops can get limited. Badge copy stays
   **Unofficial · sesi Chrome kamu**.
 

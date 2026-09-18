@@ -75,8 +75,9 @@ di atas, potongan di balik “Ubah”, dan **Unduh PDF** (dialog cetak → Simpa
 sebagai PDF). Bukan file Excel.
 
 Kolab memakai sampel export Kalodata (`school/data/kalodata-creators.csv`) dan
-contoh pengirim **@bule_barat** (akun TikTok Steven). Antrian palsu: tidak kirim
-ke TikTok, bukan Kaloboost.
+contoh pengirim **@bule_barat** (akun TikTok Steven). Antrian palsu di LMS: tidak
+kirim ke TikTok. Live send is the unpacked extension (`affiliate/extension/`),
+not Kaloboost cloud.
 
 ## Instagram / lynk — kita tidak ambil alih
 

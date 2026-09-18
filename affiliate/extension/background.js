@@ -1,13 +1,22 @@
 /* Relay only. Job runner lives in the side panel (MV3 workers sleep). Cookies never stored. */
 var AFFILIATE_URL = 'https://affiliate-id.tokopedia.com/';
 var HOST_RE = /(^|\.)seller-id\.tokopedia\.com$|(^|\.)affiliate-id\.tokopedia\.com$|(^|\.)tiktokshop\.com$|(^|\.)tiktokglobalshop\.com$/i;
+var KALO_RE = /(^|\.)kalodata\.com$/i;
 var frames = {};
+var kaloFrames = {};
 
 try {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 } catch (err) { /* older Chrome */ }
 
-function injectTab(tabId) {
+function injectTab(tabId, url) {
+  if (url && KALO_RE.test(safeHost(url))) {
+    chrome.scripting.executeScript({
+      target: { tabId: tabId, allFrames: false },
+      files: ['content/kalodata.js']
+    }).catch(function () {});
+    return;
+  }
   chrome.scripting.executeScript({
     target: { tabId: tabId, allFrames: true },
     files: ['content/inject-hook.js'],
@@ -19,18 +28,27 @@ function injectTab(tabId) {
   }).catch(function () {});
 }
 
+function safeHost(url) {
+  try { return new URL(url).hostname; } catch (e) { return ''; }
+}
+
 function injectMatchingTabs() {
   chrome.tabs.query({}, function (tabs) {
     (tabs || []).forEach(function (tab) {
-      if (tab.id && tab.url && hostOk(tab.url)) injectTab(tab.id);
+      if (tab.id && tab.url && (hostOk(tab.url) || kaloOk(tab.url))) injectTab(tab.id, tab.url);
     });
   });
 }
 
 chrome.runtime.onInstalled.addListener(injectMatchingTabs);
+chrome.runtime.onStartup.addListener(injectMatchingTabs);
 
 function hostOk(url) {
   try { return HOST_RE.test(new URL(url).hostname); } catch (e) { return false; }
+}
+
+function kaloOk(url) {
+  try { return KALO_RE.test(new URL(url).hostname); } catch (e) { return false; }
 }
 
 function isAffiliateUrl(url) {
@@ -57,6 +75,32 @@ function rememberFrame(sender, payload) {
   };
 }
 
+function rememberKalo(sender, payload) {
+  if (!sender || !sender.tab) return;
+  var tabId = sender.tab.id;
+  kaloFrames[tabId] = {
+    tabId: tabId,
+    frameId: sender.frameId == null ? 0 : sender.frameId,
+    href: payload && payload.href || sender.tab.url || '',
+    count: payload && payload.count || 0,
+    at: Date.now()
+  };
+}
+
+function pruneKalo() {
+  var cut = Date.now() - 20000;
+  Object.keys(kaloFrames).forEach(function (k) {
+    if (kaloFrames[k].at < cut) delete kaloFrames[k];
+  });
+}
+
+function bestKalo() {
+  pruneKalo();
+  var list = Object.keys(kaloFrames).map(function (k) { return kaloFrames[k]; });
+  list.sort(function (a, b) { return (b.at || 0) - (a.at || 0); });
+  return list[0] || null;
+}
+
 function pruneFrames() {
   var cut = Date.now() - 20000;
   Object.keys(frames).forEach(function (k) {
@@ -77,8 +121,18 @@ function bestFrame() {
 
 function pingPayload() {
   var f = bestFrame();
+  var k = bestKalo();
+  var kalodata = k
+    ? { present: true, count: k.count || 0, href: k.href || '' }
+    : { present: false, count: 0, href: '' };
   if (!f || (!f.affiliate && !f.shopSession)) {
-    return { ok: false, code: 'no_tab', reason: 'Buka Seller Center / Affiliate Center di tab Chrome ini.', recon: (f && f.recon) || {} };
+    return {
+      ok: false,
+      code: 'no_tab',
+      reason: 'Buka Seller Center / Affiliate Center di tab Chrome ini.',
+      recon: (f && f.recon) || {},
+      kalodata: kalodata
+    };
   }
   return {
     ok: !!(f.affiliate || f.shopSession),
@@ -87,7 +141,8 @@ function pingPayload() {
     shopName: f.shopName || '',
     href: f.href,
     affiliate: !!f.affiliate,
-    recon: f.recon || {}
+    recon: f.recon || {},
+    kalodata: kalodata
   };
 }
 
@@ -128,7 +183,8 @@ chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
   if (!msg || !msg.type) return;
 
   if (msg.type === 'laris-hello') {
-    rememberFrame(sender, msg);
+    if (msg.kalodata) rememberKalo(sender, msg);
+    else rememberFrame(sender, msg);
     if (msg.href && isAffiliateUrl(msg.href)) {
       chrome.storage.local.set({ 'laris-last-affiliate-url': msg.href });
     }
@@ -162,6 +218,22 @@ chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
     return true;
   }
 
+  if (msg.type === 'laris-kalodata-read') {
+    var k = bestKalo();
+    if (!k) {
+      sendResponse({ ok: false, code: 'no_kalodata', reason: 'Buka tab Kalodata Daftar Kreator dulu.', rows: [], count: 0 });
+      return;
+    }
+    chrome.tabs.sendMessage(k.tabId, { type: 'laris-kalodata-read' }, { frameId: k.frameId }, function (res) {
+      if (chrome.runtime.lastError) {
+        sendResponse({ ok: false, code: 'no_listener', reason: 'Tab Kalodata belum siap. Refresh halaman, lalu coba lagi.', rows: [], count: 0 });
+        return;
+      }
+      sendResponse(res || { ok: false, rows: [], count: 0 });
+    });
+    return true;
+  }
+
   if (msg.type === 'laris-send') {
     var ctx = msg.ctx || {};
     if (!ctx.allowLiveSend || ctx.dryRun) {
@@ -176,6 +248,7 @@ chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
     sendToBestFrame({
       type: 'laris-send',
       row: msg.row,
+      rows: msg.rows,
       ctx: ctx
     }).then(sendResponse);
     return true;
