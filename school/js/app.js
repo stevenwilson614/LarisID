@@ -2783,27 +2783,18 @@
   }
 
   function viewJadwal(staff) {
-    return '<div class="card"><h2>Jadwal &amp; hadir</h2>' +
+    return '<div class="card"><h2>Jadwal</h2>' +
       '<p class="muted">Meet URL per sesi — tidak ada Zoom ID Rise yang di-hardcode. ICS token ada di prototype: ' +
       esc(SEED.cohort.calendarToken) + ' (produksi live masih belum mengirim token ini).</p>' +
-      db.sessions.map((s) => {
-        const roll = people().map((st) => {
-          const v = (db.attendance[s.id] || {})[st.id] || '';
-          return staff
-            ? '<label class="muted">' + esc(st.name) + ' <select data-act="hadir" data-sid="' + esc(s.id) + '" data-uid="' + esc(st.id) + '">' +
-              ['', 'hadir', 'izin', 'absen'].map((x) => '<option' + (v === x ? ' selected' : '') + '>' + (x || '—') + '</option>').join('') +
-              '</select></label>'
-            : '';
-        }).join('');
-        return '<article class="thread"><h4>' + esc(s.title) + '</h4>' +
+      db.sessions.map((s) =>
+        '<article class="thread"><h4>' + esc(s.title) + '</h4>' +
           '<p class="muted">' + fmtWhen(s.startsAt) + ' · ' + esc(s.location) + '</p>' +
           (staff && canBill()
             ? '<form class="compose" data-act="meet" data-id="' + esc(s.id) + '"><input name="meetUrl" value="' + esc(s.meetUrl) + '" placeholder="https://meet.google.com/..."><button class="btn" type="submit">Simpan tautan Meet</button></form>'
             : '<a class="btn" href="' + esc(s.meetUrl) + '" target="_blank" rel="noopener">Buka Meet</a>') +
           '<a class="wa" href="' + esc(SEED.school.waGroup) + '" target="_blank" rel="noopener">WA grup</a>' +
-          (staff ? '<div class="form-grid" style="margin-top:10px">' + roll + '</div>' : '') +
-          '</article>';
-      }).join('') + '</div>';
+        '</article>'
+      ).join('') + '</div>';
   }
 
   function viewBayar() {
@@ -3032,14 +3023,6 @@
       else if (b.status === 'belum') b.status = 'lunas';
       save();
       render();
-      return;
-    }
-    if (t.matches('[data-act="hadir"]')) {
-      const sid = t.getAttribute('data-sid');
-      const uid = t.getAttribute('data-uid');
-      db.attendance[sid] = db.attendance[sid] || {};
-      db.attendance[sid][uid] = t.value === '—' ? '' : t.value;
-      save();
       return;
     }
     if (t.matches('[data-act="sec-title"]')) {
