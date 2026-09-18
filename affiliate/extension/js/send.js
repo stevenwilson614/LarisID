@@ -118,24 +118,33 @@
     };
   }
 
-  async function sellerCenterSend(row, ctx) {
-    var body = compose(ctx.template, varsFor(row, ctx.account));
+  function packRow(row) {
+    return {
+      handle: normHandle(row.handle),
+      name: row.name || '',
+      creatorOpenId: row.creatorOpenId || row.openId || row.creatorId || row.creator_oec_id || ''
+    };
+  }
+
+  async function sellerCenterSendBatch(rows, ctx) {
+    ctx = ctx || {};
     var dryRun = !!ctx.dryRun;
+    var list = (rows || []).map(packRow);
+    var vars = varsFor(list[0] || {}, ctx.account);
+    if (list.length > 1) vars.handle = '';
     var payload = {
       type: dryRun ? 'laris-probe' : 'laris-send',
-      row: {
-        handle: normHandle(row.handle),
-        name: row.name || '',
-        creatorOpenId: row.creatorOpenId || row.openId || row.creatorId || ''
-      },
+      row: list[0],
+      rows: list,
       ctx: {
         channel: ctx.channel || 'im',
-        body: body,
+        body: compose(ctx.template, vars),
         dryRun: dryRun,
         allowLiveSend: !dryRun && !!(ctx.account && ctx.account.allowLiveSend)
       }
     };
     return runtimeSend(payload).then(function (res) {
+      res = res || {};
       if (!res.endpoint) res.endpoint = dryRun ? 'probe' : endpointFor(ctx.channel);
       if (res.ok === true) return res;
       return {
@@ -144,9 +153,14 @@
         method: res.method || (dryRun ? 'probe' : 'seller-center'),
         code: res.code || 'send_failed',
         endpoint: res.endpoint,
-        reason: res.reason || (dryRun ? 'Uji gagal. Tidak ada yang dikirim.' : 'Gagal kirim. Jangan ditandai terkirim.')
+        reason: res.reason || (dryRun ? 'Uji gagal. Tidak ada yang dikirim.' : 'Gagal kirim. Jangan ditandai terkirim.'),
+        results: res.results || []
       };
     });
+  }
+
+  async function sellerCenterSend(row, ctx) {
+    return sellerCenterSendBatch([row], ctx);
   }
 
   async function send(row, ctx) {
@@ -156,6 +170,18 @@
     var avail = channelAvailable(channel);
     if (!avail.ok) return avail;
     return sellerCenterSend(row, ctx);
+  }
+
+  async function sendBatch(rows, ctx) {
+    ctx = ctx || {};
+    var channel = ctx.channel || 'im';
+    var avail = channelAvailable(channel);
+    if (!avail.ok) return avail;
+    return sellerCenterSendBatch(rows, ctx);
+  }
+
+  async function kaloRead() {
+    return runtimeSend({ type: 'laris-kalodata-read' });
   }
 
   root.LarisAffiliateSend = {
@@ -175,6 +201,8 @@
     openAffiliate: openAffiliate,
     recon: recon,
     send: send,
+    sendBatch: sendBatch,
+    kaloRead: kaloRead,
     workers: {
       sellerCenter: sellerCenterSend,
       tiktokApp: tiktokAppSend

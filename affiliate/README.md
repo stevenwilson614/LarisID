@@ -2,13 +2,15 @@
 
 Local prototype. **Not** on larisid.com, **not** copied into `_site`, **not** applied to Contabo.
 
-## Product (v0)
+## Product (v0.3)
 
-Unpacked Chrome extension: [`extension/`](./extension/). Side panel campaigns send Target Collab / shop IM through the **open Affiliate Center tab**. Cookies stay in Chrome. No Partner Center. No password field.
+Unpacked Chrome extension: [`extension/`](./extension/). Side panel campaigns send Target Collab through the **open Affiliate Center tab** (`invitation_group/create`, up to 50 creators per request). Cookies stay in Chrome.
 
-Load: see [`extension/README.md`](./extension/README.md). **Kirim live is locked** until you tick Izinkan kirim live and confirm. Uji cari does not invite.
+Load: [`extension/README.md`](./extension/README.md). Class zip: [`dist/laris-affiliate-0.3.0.zip`](./dist/laris-affiliate-0.3.0.zip) (rebuild with `bash extension/pack.sh`).
 
-Badge: **Unofficial · sesi Chrome kamu**. Caps in UI: 50 / kirim, 1.000 / 24 jam.
+**Kirim live is locked** until you tick Izinkan kirim live and confirm. Uji cari does not invite.
+
+Caps: **50 kreator / kolaborasi**, **1.000 kolaborasi / 24 jam**, plus the shop’s weekly unconnected quota. Do not promise 1.000/hari. Badge: **Unofficial · sesi Chrome kamu**.
 
 ## LAN PWA (preview only)
 
@@ -20,4 +22,4 @@ bash affiliate/serve.sh
 
 ## Out of v0
 
-Chrome Web Store, class zip, Partner Center OAuth, cookie export, Contabo.
+Chrome Web Store, Partner Center OAuth, cookie export, Contabo.

@@ -1,4 +1,4 @@
-/* Classify Affiliate Center traffic and replay one invite/IM. No cookies stored. */
+/* Classify Affiliate Center traffic and replay Target Collab. No cookies stored. */
 (function (root) {
   if (root.LarisAffiliateAdapter) return;
   var STORE = 'laris-affiliate-recon';
@@ -8,13 +8,18 @@
 
   function classify(url, body, method) {
     var u = lower(url);
-    var b = lower(body);
-    var hay = u + ' ' + b;
     var m = String(method || 'GET').toUpperCase();
     var write = m === 'POST' || m === 'PUT' || m === 'PATCH';
-    if (write && /(\/im\/|\/message\/|messages\/send|conversation|chat\/send|im_send|affiliate_im)/.test(hay)) return 'im';
-    if (write && /(target.?collab|target_collaboration|invitation|invite.*creator|creator.*invite|collaboration\/invite|invite_to_collaborate)/.test(hay)) return 'collab';
-    if (/(creator.*search|search.*creator|find_creator|marketplace\/creator|creator\/list|query.?creator|creator\/marketplace)/.test(hay)) return 'search';
+    if (!write) return null;
+    if (/invitation_group\/create/.test(u) && !/conflict|sensitive|rate_limit|relevancy|prediction/.test(u)) {
+      return 'collab';
+    }
+    if (/invitation_group\/rate_limit_info/.test(u)) return 'quota';
+    if (/creator\/marketplace\/find/.test(u)) return 'search';
+    if (/(\/im\/send|messages\/send|conversation\/send|chat\/send|affiliate_im)/.test(u) &&
+        !/helpdesk\/im\/url|optimizer\/message/.test(u)) {
+      return 'im';
+    }
     return null;
   }
 
@@ -40,7 +45,7 @@
 
   function parseMaybe(text) {
     if (!text) return null;
-    var t = String(text).trim();
+    var t = String(text || '').trim();
     if (!t) return null;
     if (t[0] !== '{' && t[0] !== '[') return null;
     try { return JSON.parse(t); } catch (e) { return null; }
@@ -59,13 +64,13 @@
   }
 
   function looksLikeCreatorId(k) {
-    return /(open_id|openid|creator_id|creatorid|oec_id|oecuid|creator_oec|uid)$/i.test(String(k));
+    return /(creator_oec_id|creator_oecuid|oec_id|oecuid|open_id|openid)$/i.test(String(k));
   }
   function looksLikeHandle(k) {
-    return /(username|handle|unique_id|uniqueid|creator_name|nick_name)$/i.test(String(k));
+    return /(user_name|username|handle|unique_id|uniqueid|nick_name)$/i.test(String(k));
   }
   function looksLikeMessage(k) {
-    return /(message|content|text|remark|invitation_msg|invite_msg|im_body)$/i.test(String(k));
+    return /^(message|invitation_msg|invite_msg|im_body)$/i.test(String(k));
   }
 
   function extractCreator(json, handle) {
@@ -74,44 +79,50 @@
     walk(json, function (k, val, parent) {
       if (found) return;
       if (typeof val !== 'string' && typeof val !== 'number') return;
-      if (!looksLikeHandle(k) && !looksLikeCreatorId(k)) return;
-      if (looksLikeHandle(k) && want && lower(val).replace(/^@/, '') !== want) return;
-      if (parent && typeof parent === 'object' && !Array.isArray(parent)) {
-        var rec = { raw: parent };
-        walk(parent, function (pk, pv) {
-          if (typeof pv !== 'string' && typeof pv !== 'number') return;
-          if (looksLikeHandle(pk) && !rec.handle) rec.handle = String(pv).replace(/^@/, '');
-          if (looksLikeCreatorId(pk) && !rec.creatorOpenId) rec.creatorOpenId = String(pv);
-        });
-        if (rec.handle || rec.creatorOpenId) found = rec;
-      }
+      if (!parent || typeof parent !== 'object' || Array.isArray(parent)) return;
+      var rec = {};
+      walk(parent, function (pk, pv) {
+        if (typeof pv !== 'string' && typeof pv !== 'number') return;
+        if (looksLikeHandle(pk) && !rec.handle) rec.handle = String(pv).replace(/^@/, '');
+        if (looksLikeCreatorId(pk) && !rec.creatorOpenId) rec.creatorOpenId = String(pv);
+      });
+      if (!rec.creatorOpenId) return;
+      if (want && rec.handle && lower(rec.handle) !== want) return;
+      if (want && !rec.handle && looksLikeHandle(k) && lower(val).replace(/^@/, '') !== want) return;
+      found = rec;
     });
     return found;
   }
 
-  function shrinkCreatorArrays(obj, row) {
-    walk(obj, function (k, val, parent) {
-      if (!Array.isArray(val) || !val.length) return;
-      var first = val[0];
-      if (!first || typeof first !== 'object') {
-        if (typeof first === 'string' && looksLikeHandle(k)) parent[k] = [row.handle];
-        return;
-      }
-      var hit = false;
-      Object.keys(first).forEach(function (fk) {
-        if (looksLikeHandle(fk) || looksLikeCreatorId(fk)) hit = true;
-      });
-      if (!hit) return;
-      var one = JSON.parse(JSON.stringify(first));
-      walk(one, function (pk, pv, pnode) {
-        if (looksLikeHandle(pk) && typeof pv === 'string') pnode[pk] = row.handle;
-        if (looksLikeCreatorId(pk) && row.creatorOpenId) pnode[pk] = row.creatorOpenId;
-      });
-      parent[k] = [one];
-    });
+  function fillSearchTemplate(templateObj, row) {
+    var json = JSON.parse(JSON.stringify(templateObj));
+    if (json.query != null) json.query = row.handle;
+    if (json.request && typeof json.request === 'object' && json.request.query != null) {
+      json.request.query = row.handle;
+    }
+    return json;
   }
 
-  function fillTemplate(templateObj, row, message) {
+  function fillCollabTemplate(templateObj, rows, message) {
+    var json = JSON.parse(JSON.stringify(templateObj));
+    var g = json.invitation_group || json;
+    if (message != null && g.message != null) g.message = message;
+    var proto = (g.creator_id_list && g.creator_id_list[0])
+      ? JSON.parse(JSON.stringify(g.creator_id_list[0]))
+      : { base_info: { creator_id: '', nick_name: '', creator_oec_id: '' } };
+    g.creator_id_list = (rows || []).map(function (row) {
+      var one = JSON.parse(JSON.stringify(proto));
+      var base = one.base_info || (one.base_info = {});
+      base.creator_oec_id = row.creatorOpenId || row.creator_oec_id || '';
+      if ('nick_name' in base) base.nick_name = row.name || '';
+      if ('user_name' in base) base.user_name = row.handle || '';
+      if (!base.creator_id) base.creator_id = '';
+      return one;
+    });
+    return json;
+  }
+
+  function fillImTemplate(templateObj, row, message) {
     var json = JSON.parse(JSON.stringify(templateObj));
     walk(json, function (k, val, parent) {
       if (typeof val !== 'string' && typeof val !== 'number') return;
@@ -119,8 +130,41 @@
       else if (looksLikeHandle(k)) parent[k] = row.handle;
       else if (looksLikeCreatorId(k) && row.creatorOpenId) parent[k] = row.creatorOpenId;
     });
-    shrinkCreatorArrays(json, row);
     return json;
+  }
+
+  function fillTemplate(templateObj, row, message) {
+    if (templateObj && templateObj.invitation_group) {
+      return fillCollabTemplate(templateObj, [row], message);
+    }
+    if (templateObj && (templateObj.query != null || (templateObj.request && templateObj.request.query != null))) {
+      return fillSearchTemplate(templateObj, row);
+    }
+    return fillImTemplate(templateObj, row, message);
+  }
+
+  function collabSku(data) {
+    var create = latest(data, 'collab');
+    var body = parseMaybe(create && create.reqBody);
+    var g = body && body.invitation_group;
+    var product = g && g.product_list && g.product_list[0] || {};
+    var title = product.title || '';
+    ((data && data.collab) || []).forEach(function (e) {
+      var b = parseMaybe(e.reqBody);
+      var list = (b && b.invitation && b.invitation.product_list) ||
+        (b && b.invitation_group && b.invitation_group.product_list) || [];
+      if (list[0] && list[0].title) title = list[0].title;
+    });
+    var rawComm = product.target_commission;
+    var pct = rawComm == null ? null : (rawComm >= 100 ? rawComm / 100 : rawComm);
+    return {
+      productId: product.product_id ? String(product.product_id) : '',
+      productName: title,
+      commissionPct: pct,
+      invitationName: g && g.name || '',
+      endTime: g && g.end_time || '',
+      recordedCreators: g && g.creator_id_list ? g.creator_id_list.length : 0
+    };
   }
 
   function summarize(entry) {
@@ -136,7 +180,7 @@
   function loadStore() {
     return new Promise(function (resolve) {
       chrome.storage.local.get(STORE, function (res) {
-        resolve(res[STORE] || { search: [], collab: [], im: [] });
+        resolve(res[STORE] || { search: [], collab: [], im: [], quota: [] });
       });
     });
   }
@@ -160,15 +204,29 @@
 
   function latest(data, channel) {
     var list = data && data[channel];
-    return list && list[0] ? list[0] : null;
+    if (!list || !list.length) return null;
+    if (channel === 'search') {
+      var find = list.find(function (e) { return /marketplace\/find/.test(e.url); });
+      if (find) return find;
+    }
+    if (channel === 'collab') {
+      var create = list.find(function (e) { return /invitation_group\/create/.test(e.url); });
+      if (create) return create;
+    }
+    return list[0];
   }
 
   function reconFlags(data) {
     data = data || {};
+    var search = latest(data, 'search');
+    var collab = latest(data, 'collab');
+    var im = latest(data, 'im');
     return {
-      search: !!(data.search && data.search.length),
-      collab: !!(data.collab && data.collab.length),
-      im: !!(data.im && data.im.length)
+      search: !!(search && /marketplace\/find/.test(search.url)),
+      collab: !!(collab && /invitation_group\/create/.test(collab.url)),
+      im: !!(im && !/helpdesk\/im\/url/.test(im.url)),
+      quota: !!(data.quota && data.quota.length),
+      sku: collabSku(data)
     };
   }
 
@@ -182,17 +240,49 @@
     return need;
   }
 
+  function failIdsFromResponse(parsed) {
+    var ids = {};
+    walk(parsed, function (k, val) {
+      if (!looksLikeCreatorId(k)) return;
+      if (typeof val === 'string' || typeof val === 'number') {
+        var parentKey = '';
+        /* fail lists often sit under fail / error / invalid */
+      }
+    });
+    walk(parsed, function (k, val, parent) {
+      if (!Array.isArray(val)) return;
+      if (!/fail|error|invalid|reject/i.test(String(k))) return;
+      val.forEach(function (item) {
+        if (!item) return;
+        if (typeof item === 'string' || typeof item === 'number') {
+          ids[String(item)] = true;
+          return;
+        }
+        walk(item, function (pk, pv) {
+          if (looksLikeCreatorId(pk) && (typeof pv === 'string' || typeof pv === 'number')) {
+            ids[String(pv)] = true;
+          }
+        });
+      });
+    });
+    return ids;
+  }
+
   root.LarisAffiliateAdapter = {
     classify: classify,
     fillUrl: fillUrl,
     parseMaybe: parseMaybe,
     extractCreator: extractCreator,
     fillTemplate: fillTemplate,
+    fillCollabTemplate: fillCollabTemplate,
+    fillSearchTemplate: fillSearchTemplate,
+    collabSku: collabSku,
     ingest: ingest,
     loadStore: loadStore,
     saveStore: saveStore,
     latest: latest,
     reconFlags: reconFlags,
-    needsOpenId: needsOpenId
+    needsOpenId: needsOpenId,
+    failIdsFromResponse: failIdsFromResponse
   };
 })(typeof window !== 'undefined' ? window : self);
