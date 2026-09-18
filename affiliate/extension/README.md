@@ -16,6 +16,7 @@ Affiliate Center ToS still applies. Caps in the UI: **50 / kirim, 1.000 / 24 jam
 4. After a code pull: **Reload** the extension (version is in the card)
 5. Pin the icon. Click it to open the side panel.
 6. Log into [Seller Center](https://seller-id.tokopedia.com/) → **Affiliate → Get Started**
+   (Affiliate Center opens on `affiliate-id.tokopedia.com`)
 7. Akun chip: **Seller Center** or **Affiliate Center**
 
 ## Test without sending

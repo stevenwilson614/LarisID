@@ -1,6 +1,6 @@
 /* Relay only. Job runner lives in the side panel (MV3 workers sleep). Cookies never stored. */
-var AFFILIATE_URL = 'https://seller-id.tokopedia.com/';
-var HOST_RE = /(^|\.)seller-id\.tokopedia\.com$|(^|\.)tiktokshop\.com$|(^|\.)tiktokglobalshop\.com$/i;
+var AFFILIATE_URL = 'https://affiliate-id.tokopedia.com/';
+var HOST_RE = /(^|\.)seller-id\.tokopedia\.com$|(^|\.)affiliate-id\.tokopedia\.com$|(^|\.)tiktokshop\.com$|(^|\.)tiktokglobalshop\.com$/i;
 var frames = {};
 
 try {

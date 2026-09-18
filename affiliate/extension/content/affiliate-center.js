@@ -62,7 +62,7 @@
   function isShopSession() {
     if (isLoggedOut()) return false;
     var host = location.hostname || '';
-    return /(^|\.)seller-id\.tokopedia\.com$|(^|\.)tiktokshop\.com$|(^|\.)tiktokglobalshop\.com$/i.test(host);
+    return /(^|\.)seller-id\.tokopedia\.com$|(^|\.)affiliate-id\.tokopedia\.com$|(^|\.)tiktokshop\.com$|(^|\.)tiktokglobalshop\.com$/i.test(host);
   }
 
   async function hello() {

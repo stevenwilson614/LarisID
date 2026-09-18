@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "minimum_chrome_version": "114",
   "name": "Laris Affiliate",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Kampanye Target Collab dan IM lewat sesi Affiliate Center di Chrome ini. Unofficial. Cookie tidak dikirim ke LarisID.",
   "icons": {
     "16": "icons/icon16.png",
@@ -26,6 +26,7 @@
   "permissions": ["sidePanel", "storage", "tabs", "scripting"],
   "host_permissions": [
     "https://seller-id.tokopedia.com/*",
+    "https://affiliate-id.tokopedia.com/*",
     "https://*.tiktokshop.com/*",
     "https://seller.tiktokglobalshop.com/*"
   ],
@@ -33,6 +34,7 @@
     {
       "matches": [
         "https://seller-id.tokopedia.com/*",
+        "https://affiliate-id.tokopedia.com/*",
         "https://*.tiktokshop.com/*",
         "https://seller.tiktokglobalshop.com/*"
       ],
@@ -44,6 +46,7 @@
     {
       "matches": [
         "https://seller-id.tokopedia.com/*",
+        "https://affiliate-id.tokopedia.com/*",
         "https://*.tiktokshop.com/*",
         "https://seller.tiktokglobalshop.com/*"
       ],
