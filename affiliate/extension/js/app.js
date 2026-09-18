@@ -71,6 +71,7 @@
     s.creators.forEach(function (c) {
       if (!c.creatorOpenId) c.creatorOpenId = '';
     });
+    if (!s.account.allowLiveSend) s.account.allowLiveSend = false;
     return s;
   }
 
@@ -81,7 +82,7 @@
     selected: {},
     filter: '',
     jobId: null,
-    conn: { ok: false, shopName: '', href: '', recon: {} }
+    conn: { ok: false, shopSession: false, affiliate: false, shopName: '', href: '', recon: {} }
   };
   var runner = { id: null, timer: null, paused: false, busy: false };
 
@@ -113,6 +114,7 @@
     return {
       n: rows.length,
       sent: rows.filter(function (r) { return r.status === 'sent'; }).length,
+      probed: rows.filter(function (r) { return r.status === 'probed'; }).length,
       failed: rows.filter(function (r) { return r.status === 'failed'; }).length,
       pending: rows.filter(function (r) { return r.status === 'pending' || r.status === 'sending'; }).length,
       sending: rows.filter(function (r) { return r.status === 'sending'; }).length
@@ -163,7 +165,8 @@
   }
 
   function connChip() {
-    if (ui.conn.ok) return '<span class="chip ok">terhubung</span>';
+    if (ui.conn.affiliate) return '<span class="chip ok">Affiliate Center</span>';
+    if (ui.conn.shopSession) return '<span class="chip warn">Seller Center</span>';
     return '<span class="chip locked">belum tab</span>';
   }
 
@@ -173,16 +176,16 @@
       ? list.map(campaignCard).join('')
       : '<div class="empty card"><p class="muted">Belum ada kampanye. Kirim memakai sesi Affiliate Center di tab Chrome — bukan preview.</p></div>';
     return '<section class="card">' +
-      '<p class="preview-banner">Unofficial · sesi Chrome kamu · batch ' + Send.BATCH + ' · cap ' + Send.DAILY + '/hari</p>' +
+      '<p class="preview-banner">Unofficial · sesi Chrome kamu · kirim live terkunci sampai kamu izinkan</p>' +
       '<h2>Kampanye</h2>' +
-      '<p class="muted">' + connChip() + ' Channel Target Collab / IM. Cookie tidak keluar dari browser ini.</p>' +
+      '<p class="muted">' + connChip() + ' Uji cari tidak mengirim undangan. Kirim live butuh centang di Akun.</p>' +
       '<button type="button" class="btn" data-act="new-campaign" style="margin-top:10px">Buat kampanye</button>' +
       '</section>' + body;
   }
 
   function campaignCard(c) {
     var k = counts(c);
-    var pct = k.n ? Math.round((k.sent + k.failed) / k.n * 100) : 0;
+    var pct = k.n ? Math.round((k.sent + k.failed + (k.probed || 0)) / k.n * 100) : 0;
     return '<section class="card" data-act="open-campaign" data-id="' + esc(c.id) + '" style="cursor:pointer">' +
       '<h3>' + esc(c.title) + '</h3>' +
       '<p class="muted">' + esc(channelLabel(c.channel)) + ' · ' + fmtWhen(c.createdAt) + '</p>' +
@@ -231,6 +234,7 @@
   }
 
   function statusChip(st) {
+    if (st === 'probed') return '<span class="chip warn">uji · tidak kirim</span>';
     if (st === 'sent') return '<span class="chip ok">terkirim</span>';
     if (st === 'sending') return '<span class="chip warn">mengirim</span>';
     if (st === 'failed') return '<span class="chip bad">gagal</span>';
@@ -276,11 +280,18 @@
       '<p>' + connChip() + ' ' + esc(ui.conn.shopName || db.account.shopName || 'Toko belum terbaca') + '</p>' +
       (href ? '<p class="muted">' + esc(pathOnly(href)) + '</p>' : '') +
       '<button type="button" class="btn" data-act="open-affiliate" style="margin-top:10px">Buka Affiliate Center</button>' +
+      '<button type="button" class="btn-ghost" data-act="probe-one" style="margin-top:8px">Uji cari 1 kreator (tidak kirim)</button>' +
       '<p class="muted" style="margin-top:8px">Tidak ada kolom password. Pakai login Chrome kamu.</p>' +
       '</section>' +
       '<section class="card">' +
+      '<h2>Kirim live</h2>' +
+      '<p class="muted">Default terkunci. Saya tidak mengirim dari sini. Hanya jalan jika kamu centang dan konfirmasi di wizard.</p>' +
+      '<label class="muted"><input type="checkbox" data-act="arm-live"' + (db.account.allowLiveSend ? ' checked' : '') + '> Izinkan kirim live</label>' +
+      (db.account.allowLiveSend ? '<p class="note">Live terbuka. Tes 1 / Kirim akan minta konfirmasi lagi.</p>' : '') +
+      '</section>' +
+      '<section class="card">' +
       '<h2>Adapter (rekaman request)</h2>' +
-      '<p class="muted">Kirim 1 undangan / IM manual di Affiliate Center supaya Laris merekam URL yang sama. Cookie tidak disimpan.</p>' +
+      '<p class="muted">Buka <strong>Find Creators / Cari Kreator</strong> dan ketik sebuah handle. Jangan klik undang. Chip Cari kreator harus jadi terrekam.</p>' +
       '<ul class="recon-list">' +
         reconLine(!!recon.collab, 'Target Collab') +
         reconLine(!!recon.im, 'Pesan IM') +
@@ -351,11 +362,15 @@
       var batches = Math.max(1, Math.ceil(n / Send.BATCH));
       html += '<section class="card"><h2>Kirim</h2>' +
         '<p><strong>' + n + '</strong> kreator · ' + batches + ' batch × max ' + Send.BATCH + ' · sisa hari ini ' + cap + '.</p>' +
-        (ui.conn.ok ? '<p class="muted">' + connChip() + ' Antrian jalan di panel ini. Tutup panel = jeda.</p>' :
-          '<div class="note">Affiliate Center belum terhubung. Buka tabnya dulu. Kirim akan ditolak, bukan ditandai terkirim.</div>') +
+        (ui.conn.ok ? '<p class="muted">' + connChip() + '</p>' :
+          '<div class="note">Seller Center belum terhubung. Buka tabnya dulu.</div>') +
+        (db.account.allowLiveSend
+          ? '<div class="note">Kirim live terbuka. Tes 1 / Kirim kampanye akan minta konfirmasi, lalu benar-benar mengundang.</div>'
+          : '<p class="muted">Kirim live terkunci. Uji cari tidak mengirim undangan.</p>') +
         '<div class="sticky-actions">' +
-          '<button type="button" class="btn" data-act="wiz-one"' + (n && ui.conn.ok ? '' : ' disabled') + '>Tes 1 kreator</button>' +
-          '<button type="button" class="btn-ghost" data-act="wiz-go"' + (n && ui.conn.ok ? '' : ' disabled') + '>Kirim kampanye</button>' +
+          '<button type="button" class="btn" data-act="wiz-probe"' + (n && ui.conn.ok ? '' : ' disabled') + '>Uji cari (tidak kirim)</button>' +
+          '<button type="button" class="btn-ghost" data-act="wiz-one"' + (n && ui.conn.ok && db.account.allowLiveSend ? '' : ' disabled') + '>Tes 1 kreator · LIVE</button>' +
+          '<button type="button" class="btn-ghost" data-act="wiz-go"' + (n && ui.conn.ok && db.account.allowLiveSend ? '' : ' disabled') + '>Kirim kampanye · LIVE</button>' +
           '<button type="button" class="btn-ghost" data-act="wiz-back">Kembali</button></div></section>';
     }
     return html;
@@ -373,21 +388,30 @@
     render();
   }
 
-  function startJobFromWizard(limit) {
+  function startJobFromWizard(opts) {
+    opts = opts || {};
     var w = ui.wizard;
     if (!ui.conn.ok) {
-      toast('Buka Affiliate Center dulu');
+      toast('Buka Seller Center dulu');
       return;
     }
     var chosen = selectedCreators(w).slice(0, leftDaily());
-    if (limit) chosen = chosen.slice(0, limit);
+    if (opts.limit) chosen = chosen.slice(0, opts.limit);
     if (!chosen.length) { toast('Tidak ada yang bisa dikirim'); return; }
+    if (opts.dryRun) {
+      /* probe only */
+    } else {
+      if (!db.account.allowLiveSend) { toast('Kirim live terkunci'); return; }
+      var n = chosen.length;
+      if (!confirm('LIVE: kirim ' + (w.channel === 'target_collab' ? 'undangan Target Collab' : 'pesan IM') + ' ke ' + n + ' kreator di toko kamu. Lanjut?')) return;
+    }
     db.template = w.template;
     var campaign = {
       id: uid('job'),
-      title: channelLabel(w.channel) + (limit === 1 ? ' · tes 1' : '') + ' · ' + new Date().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short', timeZone: JAKARTA }),
+      title: (opts.dryRun ? 'Uji cari · ' : 'LIVE · ') + channelLabel(w.channel) + (opts.limit === 1 ? ' · 1' : '') + ' · ' + new Date().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short', timeZone: JAKARTA }),
       channel: w.channel,
       template: w.template,
+      dryRun: !!opts.dryRun,
       status: 'berjalan',
       createdAt: new Date().toISOString(),
       cursor: 0,
@@ -444,7 +468,7 @@
       render();
       return;
     }
-    var done = counts(campaign).sent + counts(campaign).failed;
+    var done = counts(campaign).sent + counts(campaign).failed + counts(campaign).probed;
     if (done > 0 && done % Send.BATCH === 0 && nextPending(campaign) && campaign._batchWaited !== done) {
       campaign._batchWaited = done;
       campaign.status = 'batch';
@@ -471,15 +495,25 @@
     var result = await Send.send(creator, {
       channel: campaign.channel,
       account: db.account,
-      template: campaign.template
+      template: campaign.template,
+      dryRun: !!campaign.dryRun
     });
     row.at = new Date().toISOString();
     row.endpoint = result.endpoint || row.endpoint;
     row.note = result.requestId || result.reason || '';
+    if (result.creatorOpenId && creatorById(row.creatorId) && !creatorById(row.creatorId).creatorOpenId) {
+      creatorById(row.creatorId).creatorOpenId = result.creatorOpenId;
+      row.creatorOpenId = result.creatorOpenId;
+    }
     if (result.ok) {
-      row.status = 'sent';
-      bumpQuota();
-      if (creatorById(row.creatorId)) creatorById(row.creatorId).status = 'sent';
+      if (campaign.dryRun) {
+        row.status = 'probed';
+        if (creatorById(row.creatorId)) creatorById(row.creatorId).status = 'probed';
+      } else {
+        row.status = 'sent';
+        bumpQuota();
+        if (creatorById(row.creatorId)) creatorById(row.creatorId).status = 'sent';
+      }
     } else {
       row.status = 'failed';
       if (creatorById(row.creatorId)) creatorById(row.creatorId).status = 'failed';
@@ -496,7 +530,7 @@
     if (!campaign) return;
     ui.jobId = id;
     var k = counts(campaign);
-    var pct = k.n ? Math.round((k.sent + k.failed) / k.n * 100) : 0;
+    var pct = k.n ? Math.round((k.sent + k.failed + (k.probed || 0)) / k.n * 100) : 0;
     var sending = (campaign.rows || []).find(function (r) { return r.status === 'sending'; });
     var log = (campaign.rows || []).slice().reverse().filter(function (r) { return r.status !== 'pending'; }).slice(0, 12);
     var pauseLbl = runner.paused ? 'Lanjut' : 'Jeda';
@@ -505,9 +539,9 @@
     openOverlay(
       '<p class="muted"><button type="button" class="btn-ghost" data-act="close-job">Tutup</button> · antrian jalan selama panel terbuka</p>' +
       '<section class="card">' +
-        '<p class="preview-banner">Unofficial · ' + esc(Send.endpointFor(campaign.channel)) + '</p>' +
+        '<p class="preview-banner">' + (campaign.dryRun ? 'UJI CARI · tidak kirim undangan' : 'LIVE · ' + esc(Send.endpointFor(campaign.channel))) + '</p>' +
         '<h2>' + esc(campaign.title) + '</h2>' +
-        '<p class="muted">' + k.sent + ' terkirim · ' + k.failed + ' gagal · ' + k.pending + ' antri' +
+        '<p class="muted">' + k.sent + ' terkirim · ' + (k.probed || 0) + ' uji · ' + k.failed + ' gagal · ' + k.pending + ' antri' +
           (sending ? ' · mengirim ' + esc(Send.displayHandle(sending.handle)) : '') + '</p>' +
         '<div class="bar" style="margin:10px 0"><span style="width:' + pct + '%"></span></div>' +
         (quotaStop ? '<div class="note">Cap harian lokal penuh.</div>' : '') +
@@ -519,7 +553,7 @@
       '</section>' +
       '<section class="card"><h3>Log</h3>' +
         (log.length ? log.map(function (r) {
-          var label = r.status === 'sending' ? 'mengirim…' : r.status === 'sent' ? 'terkirim' : 'gagal';
+          var label = r.status === 'sending' ? 'mengirim…' : r.status === 'sent' ? 'terkirim' : r.status === 'probed' ? 'uji' : 'gagal';
           return '<div class="job-log ' + esc(r.status) + '"><strong>' + esc(Send.displayHandle(r.handle)) + '</strong>' +
             '<span>' + esc(label) + (r.status === 'failed' && r.note ? ' · ' + esc(r.note).slice(0, 40) : '') + '</span></div>';
         }).join('') : '<p class="muted">Menunggu worker…</p>') +
@@ -576,6 +610,8 @@
     var recon = await Send.recon();
     ui.conn = {
       ok: !!(ping && ping.ok),
+      shopSession: !!(ping && ping.shopSession),
+      affiliate: !!(ping && ping.affiliate),
       shopName: ping && ping.shopName || '',
       href: ping && ping.href || '',
       recon: (ping && ping.recon) || {
@@ -619,8 +655,9 @@
     else if (act === 'wiz-all') {
       db.creators.forEach(function (c) { ui.wizard.ids[c.id] = t.checked; });
       render();
-    } else if (act === 'wiz-go') { startJobFromWizard(); }
-    else if (act === 'wiz-one') { startJobFromWizard(1); }
+    }     else if (act === 'wiz-go') { startJobFromWizard(); }
+    else if (act === 'wiz-one') { startJobFromWizard({ limit: 1 }); }
+    else if (act === 'wiz-probe') { startJobFromWizard({ limit: 1, dryRun: true }); }
     else if (act === 'sel') { ui.selected[id] = t.checked; }
     else if (act === 'sel-all') {
       db.creators.forEach(function (c) { ui.selected[c.id] = t.checked; });
@@ -640,8 +677,13 @@
       if (c) { c.status = runner.paused ? 'jeda' : 'berjalan'; persist(); }
       if (!runner.paused && runner.id) queueTick(120);
       renderJob(ui.jobId || runner.id);
-    } else if (act === 'open-affiliate') {
+    }     else if (act === 'open-affiliate') {
       Send.openAffiliate().then(function () { toast('Tab Seller Center'); refreshConn(); });
+    } else if (act === 'probe-one') {
+      if (!db.creators.length) { toast('Tambah handle di Kreator dulu'); ui.tab = 'kreator'; render(); return; }
+      ui.wizard = { step: 3, channel: 'target_collab', ids: {}, template: db.template };
+      ui.wizard.ids[db.creators[0].id] = true;
+      startJobFromWizard({ limit: 1, dryRun: true });
     } else if (act === 'reset-quota') {
       db.quota.used = 0; db.quota.weekUsed = 0; db.quota.day = todayKey(); persist(); render(); toast('Kuota lokal direset');
     } else if (act === 'reset-recon') {
@@ -669,6 +711,18 @@
     } else if (act === 'acc-name') { db.account.name = t.value; persist(); }
     else if (act === 'acc-produk') { db.account.productName = t.value; persist(); }
     else if (act === 'acc-komisi') { db.account.commissionPct = +t.value || 0; persist(); }
+    else if (act === 'arm-live') {
+      if (t.checked) {
+        if (!confirm('Izinkan kirim LIVE dari ekstensi ini? Undangan/IM bisa benar-benar terkirim setelah kamu konfirmasi di wizard. Default tetap: uji cari tidak mengirim.')) {
+          t.checked = false;
+          return;
+        }
+        db.account.allowLiveSend = true;
+      } else {
+        db.account.allowLiveSend = false;
+      }
+      persist(); render();
+    }
     else if (act === 'csv' && t.files && t.files[0]) {
       t.files[0].text().then(function (text) {
         var rows = parseCsv(text);

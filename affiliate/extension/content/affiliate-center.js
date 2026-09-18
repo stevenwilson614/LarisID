@@ -47,7 +47,7 @@
 
   function isAffiliateContext() {
     var href = location.href || '';
-    if (/affiliate|collaboration|target.?collab|creator/i.test(href)) return true;
+    if (/affiliate|collaboration|target.?collab|creator|connection\/target|find.?creator/i.test(href)) return true;
     var text = '';
     try { text = (document.body && document.body.innerText || '').slice(0, 4000); } catch (e) { text = ''; }
     return /target collaboration|kolaborasi bertarget|affiliate center|undang kreator|invite to collaborate/i.test(text);
@@ -59,11 +59,18 @@
     return /sign in|masuk ke|log in to seller/i.test(document.title || '');
   }
 
+  function isShopSession() {
+    if (isLoggedOut()) return false;
+    var host = location.hostname || '';
+    return /(^|\.)seller-id\.tokopedia\.com$|(^|\.)tiktokshop\.com$|(^|\.)tiktokglobalshop\.com$/i.test(host);
+  }
+
   async function hello() {
     var data = await Adapter.loadStore();
     chrome.runtime.sendMessage({
       type: 'laris-hello',
       href: location.href,
+      shopSession: isShopSession(),
       affiliate: isAffiliateContext() && !isLoggedOut(),
       shopName: shopNameGuess(),
       recon: Adapter.reconFlags(data)
@@ -74,6 +81,7 @@
     if (row.creatorOpenId) return row;
     var search = Adapter.latest(data, 'search');
     if (!search) return row;
+    var url = Adapter.fillUrl ? Adapter.fillUrl(search.url, row) : search.url;
     var bodyObj = Adapter.parseMaybe(search.reqBody);
     var init = { method: search.method || 'POST', headers: { 'content-type': 'application/json' } };
     if (bodyObj) {
@@ -81,7 +89,7 @@
     } else if ((search.method || 'POST') !== 'GET') {
       init.body = search.reqBody || '';
     }
-    var res = await pageFetch(search.url, init);
+    var res = await pageFetch(url, init);
     var json = Adapter.parseMaybe(res.text);
     if (!json) return row;
     var found = Adapter.extractCreator(json, row.handle);
@@ -98,7 +106,71 @@
     return true;
   }
 
+  async function probeOne(row) {
+    row = {
+      handle: String(row && row.handle || '').replace(/^@/, ''),
+      name: row && row.name || '',
+      creatorOpenId: row && (row.creatorOpenId || row.openId || row.creatorId) || ''
+    };
+    if (!row.handle && !row.creatorOpenId) {
+      return { ok: false, live: false, method: 'probe', code: 'no_handle', reason: 'Handle kosong.' };
+    }
+    var data = await Adapter.loadStore();
+    var flags = Adapter.reconFlags(data);
+    if (row.creatorOpenId) {
+      return {
+        ok: true,
+        live: false,
+        method: 'probe',
+        code: 'already_id',
+        endpoint: 'probe',
+        creatorOpenId: row.creatorOpenId,
+        reason: 'Sudah ada creator_id. Tidak ada undangan yang dikirim.'
+      };
+    }
+    if (!flags.search) {
+      return {
+        ok: false,
+        live: false,
+        method: 'probe',
+        code: 'no_search',
+        endpoint: 'probe',
+        reason: 'Belum rekaman cari kreator. Buka Find Creators / Cari Kreator, ketik handle, jangan klik undang.'
+      };
+    }
+    row = await resolveCreator(row, data);
+    if (row.creatorOpenId) {
+      return {
+        ok: true,
+        live: false,
+        method: 'probe',
+        code: 'resolved',
+        endpoint: (Adapter.latest(data, 'search').method || 'GET') + ' ' + Adapter.latest(data, 'search').url.split('?')[0],
+        creatorOpenId: row.creatorOpenId,
+        reason: 'Kreator ketemu. Tidak ada undangan yang dikirim.'
+      };
+    }
+    return {
+      ok: false,
+      live: false,
+      method: 'probe',
+      code: 'search_miss',
+      endpoint: 'probe',
+      reason: 'Search jalan, kreator tidak ketemu. Tidak ada undangan yang dikirim.'
+    };
+  }
+
   async function sendOne(row, ctx) {
+    if (!ctx || ctx.dryRun) return probeOne(row);
+    if (!ctx.allowLiveSend) {
+      return {
+        ok: false,
+        live: false,
+        method: 'seller-center',
+        code: 'locked',
+        reason: 'Kirim live terkunci. Centang Izinkan kirim live di Akun, lalu konfirmasi.'
+      };
+    }
     row = {
       handle: String(row && row.handle || '').replace(/^@/, ''),
       name: row && row.name || '',
@@ -173,7 +245,12 @@
   }
 
   chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
-    if (!msg || msg.type !== 'laris-send') return;
+    if (!msg) return;
+    if (msg.type === 'laris-probe') {
+      probeOne(msg.row).then(sendResponse);
+      return true;
+    }
+    if (msg.type !== 'laris-send') return;
     sendOne(msg.row, msg.ctx).then(sendResponse);
     return true;
   });

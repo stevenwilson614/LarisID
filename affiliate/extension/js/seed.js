@@ -6,7 +6,8 @@ window.LARIS_AFFILIATE_SEED = {
     name: 'Steven',
     productName: 'Jepit rambut satin isi 6',
     commissionPct: 18,
-    shopName: ''
+    shopName: '',
+    allowLiveSend: false
   },
   quota: {
     dailyCap: 1000,

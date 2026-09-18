@@ -6,14 +6,28 @@
 
   function lower(s) { return String(s || '').toLowerCase(); }
 
-  function classify(url, body) {
+  function classify(url, body, method) {
     var u = lower(url);
     var b = lower(body);
     var hay = u + ' ' + b;
-    if (/(\/im\/|\/message\/|messages\/send|conversation|chat\/send|im_send|affiliate_im)/.test(hay)) return 'im';
-    if (/(target.?collab|target_collaboration|invitation|invite.*creator|creator.*invite|collaboration\/invite|invite_to_collaborate)/.test(hay)) return 'collab';
-    if (/(creator.*search|search.*creator|find_creator|marketplace\/creator|creator\/list|query.?creator)/.test(hay)) return 'search';
+    var m = String(method || 'GET').toUpperCase();
+    var write = m === 'POST' || m === 'PUT' || m === 'PATCH';
+    if (write && /(\/im\/|\/message\/|messages\/send|conversation|chat\/send|im_send|affiliate_im)/.test(hay)) return 'im';
+    if (write && /(target.?collab|target_collaboration|invitation|invite.*creator|creator.*invite|collaboration\/invite|invite_to_collaborate)/.test(hay)) return 'collab';
+    if (/(creator.*search|search.*creator|find_creator|marketplace\/creator|creator\/list|query.?creator|creator\/marketplace)/.test(hay)) return 'search';
     return null;
+  }
+
+  function fillUrl(url, row) {
+    try {
+      var u = new URL(url, location.href);
+      ['keyword', 'username', 'handle', 'query', 'search_key', 'unique_id', 'creator_name'].forEach(function (key) {
+        if (u.searchParams.has(key)) u.searchParams.set(key, row.handle);
+      });
+      return u.toString();
+    } catch (e) {
+      return url;
+    }
   }
 
   function interestingUrl(url) {
@@ -133,7 +147,7 @@
 
   async function ingest(raw) {
     if (!raw || !interestingUrl(raw.url)) return null;
-    var channel = classify(raw.url, raw.reqBody || '');
+    var channel = classify(raw.url, raw.reqBody || '', raw.method);
     if (!channel) return null;
     var data = await loadStore();
     if (!data[channel]) data[channel] = [];
@@ -170,6 +184,7 @@
 
   root.LarisAffiliateAdapter = {
     classify: classify,
+    fillUrl: fillUrl,
     parseMaybe: parseMaybe,
     extractCreator: extractCreator,
     fillTemplate: fillTemplate,

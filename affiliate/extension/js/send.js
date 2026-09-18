@@ -120,8 +120,9 @@
 
   async function sellerCenterSend(row, ctx) {
     var body = compose(ctx.template, varsFor(row, ctx.account));
-    return runtimeSend({
-      type: 'laris-send',
+    var dryRun = !!ctx.dryRun;
+    var payload = {
+      type: dryRun ? 'laris-probe' : 'laris-send',
       row: {
         handle: normHandle(row.handle),
         name: row.name || '',
@@ -129,18 +130,21 @@
       },
       ctx: {
         channel: ctx.channel || 'im',
-        body: body
+        body: body,
+        dryRun: dryRun,
+        allowLiveSend: !dryRun && !!(ctx.account && ctx.account.allowLiveSend)
       }
-    }).then(function (res) {
-      if (!res.endpoint) res.endpoint = endpointFor(ctx.channel);
+    };
+    return runtimeSend(payload).then(function (res) {
+      if (!res.endpoint) res.endpoint = dryRun ? 'probe' : endpointFor(ctx.channel);
       if (res.ok === true) return res;
       return {
         ok: false,
         live: !!res.live,
-        method: res.method || 'seller-center',
+        method: res.method || (dryRun ? 'probe' : 'seller-center'),
         code: res.code || 'send_failed',
         endpoint: res.endpoint,
-        reason: res.reason || 'Gagal kirim. Jangan ditandai terkirim.'
+        reason: res.reason || (dryRun ? 'Uji gagal. Tidak ada yang dikirim.' : 'Gagal kirim. Jangan ditandai terkirim.')
       };
     });
   }
