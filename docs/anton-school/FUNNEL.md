@@ -29,11 +29,19 @@ This extends [README.md](./README.md). Offline lock unchanged.
 | Mentoring lunas / grace / beasiswa | All 12 | Included | Satuan unless bought | Open |
 | SKU only | Locked | Owned SKUs | If bought | Locked |
 
-## CRM (Follow Up Boss analog)
+## CRM (roster + profil + otomasi)
 
-Mentor tabs: **CRM** (kanban) · Siswa · Tugas · Antrian WA · Otomasi · Jaringan · … · Pembayaran · Pengaturan bayar.
+Satu tab **Siswa** dengan tiga kamera: **Daftar** (WA, TikTok, progres n/12, bayar, paket) · **Pipa** (kanban drag-and-drop) · **Progres** (heatmap + titik materi). Klik nama membuka **profil penuh** (bukan drawer): foto TikTok (oEmbed → unavatar.io, cache IndexedDB, fallback inisial + unggah), kontak, checklist, enroll otomasi, antrian email/WA/tugas, catatan.
 
-**Simulasi jam** (+1h / +12h / +1d) on the mentor chrome to demo clocks without waiting. Queued WA is `wa.me` + status, not live send.
+**Otomasi** = buat / salin / arsip rencana. Pemicu: bayar lunas, isi form, trial, perpanjangan, manual. Langkah: tunggu jam + email (`mailto`) / WA (`wa.me`) / tugas Anton / pindah stage. Seed **Onboarding bayar**. Tidak auto-kirim.
+
+**Tugas** dikelompokkan hari ini / mendatang / selesai. **Antrian** = WA | email.
+
+**Kurikulum:** cover modul/item, banyak file, item teks. Blob IndexedDB (cover ~5 MB, file ~20 MB).
+
+Mentor tabs: Siswa · Tugas · Antrian · Otomasi · Jaringan · Kurikulum · … · Pembayaran · Pengaturan bayar.
+
+**Simulasi jam** (+1h / +12h / +1d) on the mentor chrome to demo clocks without waiting. Queued WA/email is `wa.me` / `mailto` + status, not live send.
 
 ## Money
 

@@ -192,8 +192,19 @@ window.ANTON_SEED = {
   ],
   actionPlans: [
     {
+      id: 'onboarding',
+      name: 'Onboarding bayar',
+      trigger: 'bayar',
+      steps: [
+        { id: 'ob-mail', waitHours: 0, kind: 'email', title: 'Selamat datang + kuitansi', subject: 'Selamat datang di Sekolah Anton', body: 'Halo {name},\n\nTerima kasih. Mentoring sudah aktif.\nJumlah: {amount}\nPaket: {term}\nTransfer ke {bank} {rekening} a.n. {anama}.\n\nIni kuitansi mock — LarisID tidak menahan uang.' },
+        { id: 'ob-wa', waitHours: 24, kind: 'wa', title: 'WA selamat datang', body: 'Halo {name}, Anton di sini. Selamat datang di kelas. Video 1 + lembar kerja sudah kebuka. Kalau bingung, WA aja.' },
+        { id: 'ob-task', waitHours: 0, kind: 'task', title: 'Anton cek {name} sudah masuk kelas', body: 'Follow-up {name}: sudah nonton? Ada yang macet di harga?' }
+      ]
+    },
+    {
       id: 'trial',
       name: 'Trial 24 jam',
+      trigger: 'trial',
       steps: [
         { id: 't12', waitHours: 12, kind: 'wa', title: '12 jam sisa diskon', body: 'Halo {name}, sisa 12 jam harga perkenalan mentoring Anton. Bayar transfer atau kartu, atau lanjut coba video 1.' },
         { id: 'twatch', waitHours: 0, kind: 'task', title: 'Anton WA: sudah nonton, belum bayar', body: 'Halo {name}, semoga video 1 kebantu. Kalau mau lanjut kelas bulan ini, transfer / kartu di sekolah ya.' },
@@ -203,6 +214,7 @@ window.ANTON_SEED = {
     {
       id: 'renewal',
       name: 'Perpanjangan',
+      trigger: 'perpanjangan',
       steps: [
         { id: 'r5', waitHours: 120, kind: 'wa', title: '5 hari sebelum habis', body: 'Halo {name}, akses mentoring habis {until}. Transfer bulan berikutnya biar kelas tidak putus.' },
         { id: 'ranton', waitHours: 120, kind: 'task', title: 'Anton WA perpanjangan', body: 'Halo {name}, Anton di sini. Mau lanjut bulan ini?' },
@@ -212,6 +224,7 @@ window.ANTON_SEED = {
     {
       id: 'nurture',
       name: 'Nurture jangka panjang',
+      trigger: 'nurture',
       steps: [
         { id: 'n7', waitHours: 168, kind: 'wa', title: 'Follow-up 7 hari', body: 'Halo {name}, Anton masih buka mentoring. Kalau waktunya pas, form-nya masih ada di sekolah.' }
       ]
@@ -219,6 +232,7 @@ window.ANTON_SEED = {
     {
       id: 'extended',
       name: 'Tidak tertarik (jarang)',
+      trigger: 'tidak_tertarik',
       steps: [
         { id: 'e30', waitHours: 720, kind: 'wa', title: 'Cek 30 hari', body: 'Halo {name}, cuma numpang sapa. Kalau suatu saat mau kelas lagi, WA Anton saja.' }
       ]
@@ -235,26 +249,26 @@ window.ANTON_SEED = {
     ]
   },
   students: [
-    { id: 's-tamu', name: 'Tamu baru (wizard)', city: '—', lastActive: '2026-09-18T10:00:00+07:00', tags: ['WA baru'], wa: '628120000099', mentorId: 'u-anton', kind: 'student' },
-    { id: 's-kamu', name: 'Kamu (demo)', city: 'Bekasi', lastActive: '2026-09-15T10:00:00+07:00', tags: ['TTS'], wa: '628120000001', mentorId: 'u-anton', kind: 'student' },
-    { id: 's-dina', name: 'Dina Putri', city: 'Bandung', lastActive: '2026-09-14T21:00:00+07:00', tags: ['pemula'], wa: '628120000002', mentorId: 'u-anton', kind: 'student' },
-    { id: 's-budi', name: 'Budi Santoso', city: 'Solo', lastActive: '2026-09-10T08:00:00+07:00', tags: ['belum bayar'], wa: '628120000003', mentorId: 'u-anton', kind: 'student' },
-    { id: 's-sari', name: 'Sari Beasiswa', city: 'Yogyakarta', lastActive: '2026-09-15T07:30:00+07:00', tags: ['beasiswa'], wa: '628120000004', mentorId: 'u-anton', kind: 'student' },
-    { id: 's-eko', name: 'Eko Pras', city: 'Tangerang', lastActive: '2026-09-13T19:00:00+07:00', tags: ['live'], wa: '628120000005', mentorId: 'u-anton', kind: 'student' },
-    { id: 's-nina', name: 'Nina Ayu', city: 'Surabaya', lastActive: '2026-09-15T12:00:00+07:00', tags: ['TTS'], wa: '628120000006', mentorId: 'u-anton', kind: 'student' },
-    { id: 's-raka', name: 'Raka Aditya', city: 'Depok', lastActive: '2026-09-12T16:00:00+07:00', tags: ['cicilan'], wa: '628120000007', mentorId: 'u-anton', kind: 'student' },
-    { id: 's-maya', name: 'Maya Lestari', city: 'Semarang', lastActive: '2026-09-15T09:00:00+07:00', tags: ['hair'], wa: '628120000008', mentorId: 'u-anton', kind: 'student' },
-    { id: 's-rina', name: 'Rina Wulandari', city: 'Bogor', lastActive: '2026-09-15T16:00:00+07:00', tags: ['kalkulator'], wa: '628120000009', mentorId: 'u-anton', kind: 'student' },
-    { id: 's-toni', name: 'Toni Wijaya', city: 'Malang', lastActive: '2026-09-14T18:00:00+07:00', tags: ['webinar'], wa: '628120000010', mentorId: 'u-anton', kind: 'student' },
-    { id: 's-ayu', name: 'Ayu Rahma', city: 'Cirebon', lastActive: '2026-09-18T09:10:00+07:00', tags: ['trial'], wa: '628120000011', mentorId: 'u-anton', kind: 'student' },
-    { id: 's-farah', name: 'Farah Nisa', city: 'Bekasi', lastActive: '2026-09-18T08:00:00+07:00', tags: ['nonton'], wa: '628120000012', mentorId: 'u-anton', kind: 'student' },
-    { id: 's-gilang', name: 'Gilang Pratama', city: 'Medan', lastActive: '2026-09-16T12:00:00+07:00', tags: ['tidak tertarik'], wa: '628120000013', mentorId: 'u-anton', kind: 'student' },
-    { id: 's-hadi', name: 'Hadi Kusuma', city: 'Makassar', lastActive: '2026-09-17T19:00:00+07:00', tags: ['perpanjangan'], wa: '628120000014', mentorId: 'u-anton', kind: 'student' },
-    { id: 's-irma', name: 'Irma Sari', city: 'Palembang', lastActive: '2026-09-17T21:00:00+07:00', tags: ['grace'], wa: '628120000015', mentorId: 'u-anton', kind: 'student' },
-    { id: 's-joko', name: 'Joko Santoso', city: 'Jakarta', lastActive: '2026-09-18T07:00:00+07:00', tags: ['lulus'], wa: '628120000016', mentorId: 'u-anton', kind: 'student' },
-    { id: 's-dewi', name: 'Dewi Mentor', city: 'Bandung', lastActive: '2026-09-18T09:00:00+07:00', tags: ['mentor'], wa: '628120000017', mentorId: 'u-anton', kind: 'mentor' },
-    { id: 's-oki', name: 'Oki Firmansyah', city: 'Tasikmalaya', lastActive: '2026-09-17T11:00:00+07:00', tags: ['anak Dewi'], wa: '628120000018', mentorId: 's-dewi', kind: 'student' },
-    { id: 's-putri', name: 'Putri Laila', city: 'Cimahi', lastActive: '2026-09-16T15:00:00+07:00', tags: ['anak Dewi'], wa: '628120000019', mentorId: 's-dewi', kind: 'student' }
+    { id: 's-tamu', name: 'Tamu baru (wizard)', city: '—', lastActive: '2026-09-18T10:00:00+07:00', tags: ['WA baru'], wa: '628120000099', email: '', tiktok: '', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-kamu', name: 'Kamu (demo)', city: 'Bekasi', lastActive: '2026-09-15T10:00:00+07:00', tags: ['TTS'], wa: '628120000001', email: 'kamu.demo@example.com', tiktok: 'kamu.toko', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-dina', name: 'Dina Putri', city: 'Bandung', lastActive: '2026-09-14T21:00:00+07:00', tags: ['pemula'], wa: '628120000002', email: 'dina.putri@example.com', tiktok: 'dinaputri.id', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-budi', name: 'Budi Santoso', city: 'Solo', lastActive: '2026-09-10T08:00:00+07:00', tags: ['belum bayar'], wa: '628120000003', email: 'budi.solo@example.com', tiktok: '', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-sari', name: 'Sari Beasiswa', city: 'Yogyakarta', lastActive: '2026-09-15T07:30:00+07:00', tags: ['beasiswa'], wa: '628120000004', email: 'sari.beasiswa@example.com', tiktok: 'sari.yogya', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-eko', name: 'Eko Pras', city: 'Tangerang', lastActive: '2026-09-13T19:00:00+07:00', tags: ['live'], wa: '628120000005', email: 'eko.pras@example.com', tiktok: 'ekolive.finds', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-nina', name: 'Nina Ayu', city: 'Surabaya', lastActive: '2026-09-15T12:00:00+07:00', tags: ['TTS'], wa: '628120000006', email: 'nina.ayu@example.com', tiktok: 'ninaayu.sby', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-raka', name: 'Raka Aditya', city: 'Depok', lastActive: '2026-09-12T16:00:00+07:00', tags: ['cicilan'], wa: '628120000007', email: 'raka.aditya@example.com', tiktok: 'raka.depok', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-maya', name: 'Maya Lestari', city: 'Semarang', lastActive: '2026-09-15T09:00:00+07:00', tags: ['hair'], wa: '628120000008', email: 'maya.lestari@example.com', tiktok: 'mayahair.smg', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-rina', name: 'Rina Wulandari', city: 'Bogor', lastActive: '2026-09-15T16:00:00+07:00', tags: ['kalkulator'], wa: '628120000009', email: 'rina.wulan@example.com', tiktok: '', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-toni', name: 'Toni Wijaya', city: 'Malang', lastActive: '2026-09-14T18:00:00+07:00', tags: ['webinar'], wa: '628120000010', email: 'toni.wijaya@example.com', tiktok: 'tonialgo', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-ayu', name: 'Ayu Rahma', city: 'Cirebon', lastActive: '2026-09-18T09:10:00+07:00', tags: ['trial'], wa: '628120000011', email: 'ayu.rahma@example.com', tiktok: 'ayu.jepit', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-farah', name: 'Farah Nisa', city: 'Bekasi', lastActive: '2026-09-18T08:00:00+07:00', tags: ['nonton'], wa: '628120000012', email: 'farah.nisa@example.com', tiktok: 'farahnisa.id', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-gilang', name: 'Gilang Pratama', city: 'Medan', lastActive: '2026-09-16T12:00:00+07:00', tags: ['tidak tertarik'], wa: '628120000013', email: 'gilang.p@example.com', tiktok: '', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-hadi', name: 'Hadi Kusuma', city: 'Makassar', lastActive: '2026-09-17T19:00:00+07:00', tags: ['perpanjangan'], wa: '628120000014', email: 'hadi.kusuma@example.com', tiktok: 'hadimks', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-irma', name: 'Irma Sari', city: 'Palembang', lastActive: '2026-09-17T21:00:00+07:00', tags: ['grace'], wa: '628120000015', email: 'irma.sari@example.com', tiktok: 'irmasari.plg', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-joko', name: 'Joko Santoso', city: 'Jakarta', lastActive: '2026-09-18T07:00:00+07:00', tags: ['lulus'], wa: '628120000016', email: 'joko.santoso@example.com', tiktok: 'jokotoko.jkt', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-dewi', name: 'Dewi Mentor', city: 'Bandung', lastActive: '2026-09-18T09:00:00+07:00', tags: ['mentor'], wa: '628120000017', email: 'dewi.mentor@example.com', tiktok: 'dewilive.finds', mentorId: 'u-anton', kind: 'mentor' },
+    { id: 's-oki', name: 'Oki Firmansyah', city: 'Tasikmalaya', lastActive: '2026-09-17T11:00:00+07:00', tags: ['anak Dewi'], wa: '628120000018', email: 'oki.firmansyah@example.com', tiktok: 'oki.tasik', mentorId: 's-dewi', kind: 'student' },
+    { id: 's-putri', name: 'Putri Laila', city: 'Cimahi', lastActive: '2026-09-16T15:00:00+07:00', tags: ['anak Dewi'], wa: '628120000019', email: 'putri.laila@example.com', tiktok: 'putrilaila.cmh', mentorId: 's-dewi', kind: 'student' }
   ],
   billing: {
     's-tamu': { status: 'belum', plan: '', products: [], amount: 0, source: 'manual', paidAt: null, note: 'Baru dari grup WA', term: '', accessUntil: null },
@@ -453,6 +467,26 @@ window.ANTON_SEED = {
   waQueueSeed: [
     { id: 'wa-farah-12', toId: 's-farah', scheduledAt: '2026-09-18T11:00:00+07:00', status: 'queued', title: '12 jam sisa diskon', body: 'Halo Farah Nisa, sisa 12 jam harga perkenalan mentoring Anton. Bayar transfer atau kartu, atau lanjut coba video 1.' }
   ],
+  emailQueueSeed: [
+    { id: 'em-kamu-ob', toId: 's-kamu', scheduledAt: '2026-09-01T10:05:00+07:00', status: 'sent', title: 'Selamat datang + kuitansi', subject: 'Selamat datang di Sekolah Anton', body: 'Halo Kamu (demo),\n\nTerima kasih. Mentoring sudah aktif.\nJumlah: Rp400.000\nPaket: bulan\nTransfer ke BCA 123456789 a.n. Anton.\n\nIni kuitansi mock — LarisID tidak menahan uang.' }
+  ],
+  enrollmentsSeed: {
+    's-kamu': [{ planId: 'onboarding' }],
+    's-dina': [{ planId: 'onboarding' }],
+    's-sari': [{ planId: 'onboarding' }],
+    's-eko': [{ planId: 'onboarding' }],
+    's-nina': [{ planId: 'onboarding' }],
+    's-raka': [{ planId: 'onboarding' }],
+    's-maya': [{ planId: 'onboarding' }],
+    's-hadi': [{ planId: 'onboarding' }, { planId: 'renewal' }],
+    's-irma': [{ planId: 'onboarding' }, { planId: 'renewal' }],
+    's-joko': [{ planId: 'onboarding' }],
+    's-dewi': [{ planId: 'onboarding' }],
+    's-oki': [{ planId: 'onboarding' }],
+    's-ayu': [{ planId: 'trial' }],
+    's-farah': [{ planId: 'trial' }],
+    's-gilang': [{ planId: 'extended' }]
+  },
   kolabQuota: { weekly: 200, used: 47, dailyCap: 1000, batch: 50, starterPack: false },
   kalodataCreators: [
     { handle: '@rinaskincare', gmv_30d: 185000000, followers: 42000, niche: 'skincare', content: 'video', email: 'rina.skincare@example.com', typical_commission_pct: 20, live_gmv_30d: 12000000 },

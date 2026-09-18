@@ -16,7 +16,7 @@
       sayAnton: 'Tamu baru masuk kolom WA baru. Belum ada uang. Baca form dulu — bukan tes, bukan sisa kursi.',
       saySiswa: 'Tamu Demo isi nama, WA, pengalaman, kenapa mau di-mentor. Baru boleh lihat halaman bayar.',
       student: { personaId: 's-tamu', tab: 'daftar' },
-      mentor: { tab: 'crm', drawerId: 's-tamu' }
+      mentor: { tab: 'orang', personId: 's-tamu', hub: 'pipa' }
     },
     {
       id: 'a1-pay',
@@ -40,7 +40,7 @@
         }
       },
       student: { personaId: 's-tamu', tab: 'daftar', payTerm: 'month' },
-      mentor: { tab: 'crm', drawerId: 's-tamu' }
+      mentor: { tab: 'orang', personId: 's-tamu', hub: 'pipa' }
     },
     {
       id: 'a1-later',
@@ -49,7 +49,7 @@
       sayAnton: 'Ayu di Trial 24 jam. Home kelihatan utuh. Kamu tetap bisa buka filenya.',
       saySiswa: 'Ayu Rahma melihat sekolah yang sama. Live, Diskusi, Kolab masih kunci. Hanya video 1 yang janji kebuka.',
       student: { personaId: 's-ayu', tab: 'home' },
-      mentor: { tab: 'crm', drawerId: 's-ayu' }
+      mentor: { tab: 'orang', personId: 's-ayu', hub: 'pipa' }
     },
     {
       id: 'a1-video',
@@ -58,7 +58,7 @@
       sayAnton: 'Lembar kerja video 1 ikut. Materi berikutnya tetap kunci sampai lunas.',
       saySiswa: 'Ayu di Belajar: Selamat datang kebuka. Video 2 tertutup + Lanjut mentoring. Kurikulum HP bisa diketuk.',
       student: { personaId: 's-ayu', tab: 'belajar', lectureId: 'v1', kurOpen: true },
-      mentor: { tab: 'crm', drawerId: 's-ayu' }
+      mentor: { tab: 'orang', personId: 's-ayu', hub: 'pipa' }
     },
     {
       id: 'a1-nonton',
@@ -67,7 +67,7 @@
       sayAnton: 'Farah sudah nonton. Tugas: kamu yang buka WA, bukan sistem yang mengetik atas namamu.',
       saySiswa: 'Farah Nisa dapat prompt bayar setelah video 1. Affiliate tidak termasuk harga mentoring.',
       student: { personaId: 's-farah', tab: 'belajar', lectureId: 'v1', payPrompt: true },
-      mentor: { tab: 'tugas', drawerId: 's-farah' }
+      mentor: { tab: 'tugas', personId: 's-farah' }
     },
     {
       id: 'a1-12h',
@@ -76,7 +76,7 @@
       sayAnton: 'Simulasi jam, bukan tunggu semalam. Antrian WA = wa.me. Tidak auto-send.',
       saySiswa: 'Farah masih di trial. Harga perkenalan masih jalan sampai jam form + 24 jam.',
       student: { personaId: 's-farah', tab: 'home', payPrompt: true },
-      mentor: { tab: 'waq', drawerId: 's-farah' }
+      mentor: { tab: 'waq', personId: 's-farah' }
     },
     {
       id: 'a1-lunas',
@@ -85,7 +85,7 @@
       sayAnton: 'Kamu (demo) di Aktif. Merchant = Anton. Cek transfer di Pembayaran kalau perlu.',
       saySiswa: 'Kelas penuh. Alat lynk ikut mentoring. Laris Affiliate tetap satuan / Contoh.',
       student: { personaId: 's-kamu', tab: 'alat' },
-      mentor: { tab: 'crm', drawerId: 's-kamu' }
+      mentor: { tab: 'orang', personId: 's-kamu', hub: 'pipa' }
     },
     {
       id: 'a2-renew',
@@ -94,7 +94,7 @@
       sayAnton: 'Hadi Kusuma di Perpanjangan. Jeda 5 hari + copy WA di Otomasi, bukan hardcode.',
       saySiswa: 'Hadi masih masuk kelas. Akses sampai 23 Sep. Peringatan jujur, bukan ancaman palsu.',
       student: { personaId: 's-hadi', tab: 'home' },
-      mentor: { tab: 'crm', drawerId: 's-hadi' }
+      mentor: { tab: 'orang', personId: 's-hadi', hub: 'pipa' }
     },
     {
       id: 'a2-grace',
@@ -103,7 +103,7 @@
       sayAnton: 'Irma Sari: tugas WA pribadi Anton. Setelah grace, preview video 1 saja + Nurture.',
       saySiswa: 'Irma masih lunas dalam masa tenggang. Bayar hari ini supaya kelas tidak mengunci.',
       student: { personaId: 's-irma', tab: 'home' },
-      mentor: { tab: 'tugas', drawerId: 's-irma' }
+      mentor: { tab: 'tugas', personId: 's-irma' }
     },
     {
       id: 'a2-cert',
@@ -112,7 +112,7 @@
       sayAnton: 'Joko Santoso lulus 5/5. Satu tes di akhir, skor tidak dikarang. Sertifikat bisa dicetak.',
       saySiswa: 'Sertifikat serial ANT-JOKO-001. Pengakuan prestasi nyata — bukan kelangkaan palsu.',
       student: { personaId: 's-joko', tab: 'sertifikat' },
-      mentor: { tab: 'crm', drawerId: 's-joko' }
+      mentor: { tab: 'orang', personId: 's-joko', hub: 'pipa' }
     },
     {
       id: 'a2-mentor',
@@ -121,7 +121,7 @@
       sayAnton: 'Kamu tidak auto-enrol staf. Mereka terima dulu. 20% = licensing kurikulum/merek, satu tingkat.',
       saySiswa: 'Joko baca: tarik bayaran murid sendiri. Anton 20% dari mentoring + alat + Laris Affiliate. Bukan piramida rekrut.',
       student: { personaId: 's-joko', tab: 'progres' },
-      mentor: { tab: 'crm', drawerId: 's-joko' }
+      mentor: { tab: 'orang', personId: 's-joko', hub: 'pipa' }
     },
     {
       id: 'a2-jaringan',

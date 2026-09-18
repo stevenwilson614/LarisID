@@ -595,3 +595,56 @@ html.present-pane[data-mode="student"] .kurikulum-pane {
 html.present-pane[data-mode="student"] .kurikulum-pane.is-open {
   transform: translateY(0);
 }
+
+.hub-head {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  justify-content: space-between; margin-bottom: 12px;
+}
+.hub-seg {
+  display: inline-flex; gap: 2px; background: var(--ink-2);
+  border: 1px solid var(--line); border-radius: 99px; padding: 3px;
+}
+.hub-seg button {
+  border: 0; background: transparent; color: var(--muted);
+  font: inherit; font-weight: 750; font-size: .78rem;
+  padding: 6px 12px; border-radius: 99px; cursor: pointer;
+}
+.hub-seg button[aria-selected="true"] { background: #fff; color: #111; }
+.roster-row { cursor: pointer; }
+.roster-name { display: flex; align-items: center; gap: 8px; }
+.avatar {
+  display: inline-grid; place-items: center; flex: none;
+  width: 40px; height: 40px; border-radius: 50%;
+  object-fit: cover; background: #2a2a2a; color: #fff;
+  font-size: .72rem; font-weight: 800;
+}
+.avatar.sm { width: 28px; height: 28px; font-size: .58rem; }
+.avatar.lg { width: 88px; height: 88px; font-size: 1.4rem; }
+.avatar-fallback { border: 1px solid var(--line-2); }
+.lec-dots { display: inline-flex; gap: 3px; flex-wrap: wrap; vertical-align: middle; }
+.lec-dots i {
+  width: 8px; height: 8px; border-radius: 50%; background: #3a3a3a; display: block;
+}
+.lec-dots i.done { background: #7dffb3; }
+.lec-dots i.locked { background: #555; }
+.lec-dots i.rest { background: #888; }
+.person-page { display: grid; gap: 12px; }
+.person-head { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.person-ava { display: grid; justify-items: start; }
+.lec-check { margin: 8px 0 0; padding-left: 18px; font-size: .82rem; }
+.linkish {
+  border: 0; background: none; color: inherit; font: inherit;
+  font-weight: 750; cursor: pointer; text-decoration: underline; padding: 0;
+}
+.kanban-col.is-drop { outline: 2px dashed #fff; }
+.kanban-card.is-drag { opacity: .5; }
+.cover-thumb, .cover-mini, .lec-poster {
+  object-fit: cover; background: #111; border-radius: 8px;
+}
+.cover-thumb { width: 48px; height: 32px; flex: none; }
+.cover-mini { width: 28px; height: 20px; margin-right: 6px; vertical-align: middle; }
+.lec-poster { width: 100%; aspect-ratio: 16/9; display: block; }
+.week-label { display: flex; align-items: center; gap: 8px; }
+.res-list { list-style: none; padding: 0; margin: 0; }
+.res-list li { margin: 6px 0; }
+.lec-read { padding: 12px 16px; }

@@ -95,15 +95,21 @@
     if (!merged.weeks || !merged.weeks.length) {
       merged.weeks = SEED.weeks.map((w) => ({ ...w }));
     }
+    merged.weeks.forEach((w) => {
+      if (w.coverBlob == null) w.coverBlob = false;
+    });
+    merged.lectures.forEach((l) => {
+      if (!l.resources) l.resources = [];
+      if (l.body == null) l.body = l.body || '';
+      if (l.coverBlob == null) l.coverBlob = false;
+    });
   }
 
   function hydrateFunnel(merged) {
     merged.pricing = Object.assign({}, SEED.pricing, merged.pricing || {});
     merged.bank = Object.assign({}, SEED.bank, merged.bank || {});
     merged.dunning = Object.assign({}, SEED.dunning, merged.dunning || {});
-    merged.actionPlans = (merged.actionPlans && merged.actionPlans.length)
-      ? merged.actionPlans
-      : JSON.parse(JSON.stringify(SEED.actionPlans || []));
+    merged.actionPlans = mergeActionPlans(merged.actionPlans);
     merged.pipelineStages = (merged.pipelineStages && merged.pipelineStages.length)
       ? merged.pipelineStages
       : JSON.parse(JSON.stringify(SEED.pipelineStages || []));
@@ -112,6 +118,9 @@
     merged.timeline = Object.assign({}, JSON.parse(JSON.stringify(SEED.timelineSeed || {})), merged.timeline || {});
     merged.tasks = Array.isArray(merged.tasks) ? merged.tasks : JSON.parse(JSON.stringify(SEED.tasksSeed || []));
     merged.waQueue = Array.isArray(merged.waQueue) ? merged.waQueue : JSON.parse(JSON.stringify(SEED.waQueueSeed || []));
+    merged.emailQueue = Array.isArray(merged.emailQueue) ? merged.emailQueue : JSON.parse(JSON.stringify(SEED.emailQueueSeed || []));
+    merged.enrollments = Object.assign({}, JSON.parse(JSON.stringify(SEED.enrollmentsSeed || {})), merged.enrollments || {});
+    merged.people = merged.people && typeof merged.people === 'object' ? merged.people : {};
     merged.remittances = Array.isArray(merged.remittances) ? merged.remittances : JSON.parse(JSON.stringify(SEED.remittances || []));
     if (typeof merged.clockOffsetMs !== 'number') merged.clockOffsetMs = 0;
     Object.keys(SEED.billing || {}).forEach((id) => {
@@ -146,6 +155,9 @@
       tasks: JSON.parse(JSON.stringify(SEED.tasksSeed || [])),
       timeline: JSON.parse(JSON.stringify(SEED.timelineSeed || {})),
       waQueue: JSON.parse(JSON.stringify(SEED.waQueueSeed || [])),
+      emailQueue: JSON.parse(JSON.stringify(SEED.emailQueueSeed || [])),
+      enrollments: JSON.parse(JSON.stringify(SEED.enrollmentsSeed || {})),
+      people: {},
       pricing: JSON.parse(JSON.stringify(SEED.pricing)),
       bank: JSON.parse(JSON.stringify(SEED.bank)),
       dunning: JSON.parse(JSON.stringify(SEED.dunning)),
@@ -204,11 +216,17 @@
   const ui = {
     role: PRESENT && PRESENT_PANE === 'mentor' ? 'owner' : 'student',
     tab: 'home',
-    mentorTab: 'crm',
+    mentorTab: 'siswa',
     personaId: 's-kamu',
     lectureId: db.lastLecture['s-kamu'] || (SEED.lectures[0] && SEED.lectures[0].id),
     pane: 'tanya',
     drawerId: null,
+    personId: null,
+    siswaView: 'pipa',
+    hubBack: 'pipa',
+    queueKind: 'wa',
+    taskPerson: '',
+    editPlanId: null,
     kolabSel: new Set(),
     filterSiswa: '',
     kurOpen: false,
@@ -239,7 +257,31 @@
     }
   }
 
-  function people() { return SEED.students; }
+  function mergeActionPlans(have) {
+    const list = Array.isArray(have) && have.length ? have : [];
+    const byId = Object.fromEntries(list.map((p) => [p.id, p]));
+    (SEED.actionPlans || []).forEach((seed) => {
+      if (!byId[seed.id]) list.push(JSON.parse(JSON.stringify(seed)));
+      else {
+        if (!byId[seed.id].trigger) byId[seed.id].trigger = seed.trigger;
+        if (byId[seed.id].archived == null) byId[seed.id].archived = false;
+      }
+    });
+    return list.length ? list : JSON.parse(JSON.stringify(SEED.actionPlans || []));
+  }
+  function people() {
+    db.people = db.people || {};
+    return SEED.students.map((s) => {
+      if (db.people[s.id]) Object.assign(s, db.people[s.id]);
+      return s;
+    });
+  }
+  function patchPerson(id, fields) {
+    db.people = db.people || {};
+    db.people[id] = Object.assign({}, db.people[id] || {}, fields);
+    const s = SEED.students.find((x) => x.id === id);
+    if (s) Object.assign(s, db.people[id]);
+  }
   function student() {
     return people().find((s) => s.id === ui.personaId) || people()[0];
   }
@@ -374,7 +416,7 @@
     const p = kurProgress(sid);
     return '<div class="kur-progress">' +
       '<div class="kur-progress-top"><strong>Kurikulum</strong>' +
-      '<span>' + p.n + ' / ' + p.total + ' video · ' + p.pct + '%</span></div>' +
+      '<span>' + p.n + ' / ' + p.total + ' materi · ' + p.pct + '%</span></div>' +
       '<div class="bar kur-bar"><span style="width:' + p.pct + '%"></span></div></div>';
   }
   function currentWeekId(sid) {
@@ -405,7 +447,7 @@
     db.timeline[id] = db.timeline[id] || [];
     db.timeline[id].unshift({ at: isoNow(), kind: kind, body: body });
   }
-  function addTask(personId, title, body, dueAt) {
+  function addTask(personId, title, body, dueAt, kind) {
     const row = {
       id: 'task-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
       personId: personId,
@@ -414,7 +456,7 @@
       body: body || '',
       dueAt: dueAt || isoNow(),
       done: false,
-      kind: 'wa'
+      kind: kind || 'wa'
     };
     db.tasks.unshift(row);
     return row;
@@ -431,12 +473,122 @@
       status: 'queued'
     });
   }
+  function queueEmail(toId, title, subject, body, scheduledAt) {
+    db.emailQueue = db.emailQueue || [];
+    const exists = db.emailQueue.some((w) => w.toId === toId && w.title === title && w.status !== 'cancelled');
+    if (exists) return;
+    db.emailQueue.unshift({
+      id: 'em-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+      toId: toId,
+      title: title,
+      subject: fillTpl(subject || title, toId),
+      body: fillTpl(body, toId),
+      scheduledAt: scheduledAt || isoNow(),
+      status: 'queued'
+    });
+  }
+  function mailLink(email, subject, body) {
+    return 'mailto:' + encodeURIComponent(email || '') +
+      '?subject=' + encodeURIComponent(subject || '') +
+      '&body=' + encodeURIComponent(body || '');
+  }
   function fillTpl(text, id) {
     const s = people().find((x) => x.id === id) || { name: id };
     const b = billingOf(id);
+    const bank = db.bank || {};
+    const term = termLabel(b.term);
     return String(text || '')
       .replace(/\{name\}/g, s.name)
-      .replace(/\{until\}/g, b.accessUntil ? fmtWhen(b.accessUntil) : '—');
+      .replace(/\{until\}/g, b.accessUntil ? fmtWhen(b.accessUntil) : '—')
+      .replace(/\{amount\}/g, fmtRp(b.amount))
+      .replace(/\{term\}/g, term)
+      .replace(/\{bank\}/g, bank.bank || '—')
+      .replace(/\{rekening\}/g, bank.number || '—')
+      .replace(/\{anama\}/g, bank.name || 'Anton');
+  }
+  function termLabel(term) {
+    return { month: 'bulan', autopay: 'autopay', year: 'tahun' }[term] || '—';
+  }
+  function enrollmentsOf(id) {
+    db.enrollments = db.enrollments || {};
+    const raw = db.enrollments[id] || [];
+    return raw.map((x) => (typeof x === 'string' ? { planId: x } : x));
+  }
+  function isEnrolled(id, planId) {
+    return enrollmentsOf(id).some((x) => x.planId === planId);
+  }
+  function enrollPerson(id, planId, fire) {
+    const list = enrollmentsOf(id);
+    if (list.some((x) => x.planId === planId)) {
+      if (fire) {
+        db.enrollments[id] = list.map((x) => x.planId === planId ? Object.assign({}, x, { at: x.at || isoNow() }) : x);
+      }
+      return;
+    }
+    db.enrollments[id] = list.concat([{ planId: planId, at: fire ? isoNow() : null }]);
+  }
+  function unenrollPerson(id, planId) {
+    db.enrollments[id] = enrollmentsOf(id).filter((x) => x.planId !== planId);
+  }
+  function triggerLabel(id) {
+    return {
+      bayar: 'Bayar lunas',
+      form: 'Isi form',
+      trial: 'Trial 12 jam',
+      perpanjangan: 'Perpanjangan',
+      manual: 'Manual',
+      nurture: 'Nurture',
+      tidak_tertarik: 'Tidak tertarik'
+    }[id] || id;
+  }
+  function skipGenericPlan(id) {
+    return id === 'trial' || id === 'renewal' || id === 'nurture' || id === 'extended';
+  }
+  function triggerStartMs(s, plan, en) {
+    const b = billingOf(s.id);
+    const app = db.applications[s.id];
+    const t = plan.trigger;
+    if (t === 'bayar') return b.paidAt ? new Date(b.paidAt).getTime() : null;
+    if (t === 'form') return app && app.at ? new Date(app.at).getTime() : null;
+    if (t === 'trial') return b.offerStartedAt ? new Date(b.offerStartedAt).getTime() : null;
+    if (t === 'perpanjangan') {
+      if (!b.accessUntil) return null;
+      return new Date(b.accessUntil).getTime() - warningMs();
+    }
+    if (t === 'manual') return en && en.at ? new Date(en.at).getTime() : null;
+    if (t === 'nurture' && crmOf(s.id).stage === 'nurture') return en && en.at ? new Date(en.at).getTime() : nowMs();
+    if (t === 'tidak_tertarik' && crmOf(s.id).stage === 'tidak_tertarik') return en && en.at ? new Date(en.at).getTime() : nowMs();
+    return en && en.at ? new Date(en.at).getTime() : null;
+  }
+  function runPlanStep(s, st) {
+    if (st.kind === 'email') queueEmail(s.id, st.title, st.subject || st.title, st.body, isoNow());
+    else if (st.kind === 'wa') queueWa(s.id, st.title, st.body, isoNow());
+    else if (st.kind === 'task') addTask(s.id, fillTpl(st.title || 'Tugas', s.id), fillTpl(st.body || '', s.id), isoNow(), 'task');
+    else if (st.kind === 'stage' && st.to) setStage(s.id, st.to, 'Otomasi: ' + (st.title || stageLabel(st.to)));
+  }
+  function runEnrolledPlans() {
+    people().forEach((s) => {
+      enrollmentsOf(s.id).forEach((en) => {
+        const plan = planById(en.planId);
+        if (!plan || plan.archived || skipGenericPlan(plan.id)) return;
+        if (!en.at) return;
+        const start = triggerStartMs(s, plan, en);
+        if (!start) return;
+        let acc = start;
+        const c = crmOf(s.id);
+        c.fired = c.fired || {};
+        (plan.steps || []).forEach((st) => {
+          acc += (Number(st.waitHours) || 0) * 36e5;
+          const key = plan.id + ':' + st.id;
+          if (c.fired[key]) return;
+          if (nowMs() >= acc) {
+            runPlanStep(s, st);
+            c.fired[key] = isoNow();
+            pushTimeline(s.id, st.kind || 'auto', 'Otomasi ' + plan.name + ': ' + (st.title || st.kind));
+          }
+        });
+      });
+    });
   }
   function planById(id) {
     return (db.actionPlans || []).find((p) => p.id === id);
@@ -481,6 +633,7 @@
     b.note = term === 'year' ? 'Tahunan' : (term === 'autopay' ? 'Kartu autopay (mock)' : 'Bulanan transfer');
     setStage(id, 'aktif', 'Lunas mentoring · ' + term);
     pushTimeline(id, 'pay', 'Bayar ' + fmtRp(amount) + ' · ' + (source || 'transfer'));
+    enrollPerson(id, 'onboarding', true);
   }
   function startTrial(id) {
     const b = billingOf(id);
@@ -567,6 +720,7 @@
         }
       }
     });
+    runEnrolledPlans();
     save();
   }
 
@@ -670,6 +824,8 @@
   }
 
   const MAX_VID = 80 * 1024 * 1024;
+  const MAX_IMG = 5 * 1024 * 1024;
+  const MAX_FILE = 20 * 1024 * 1024;
 
   function moveLecInSection(id, dir) {
     const l = lectureById(id);
@@ -729,6 +885,47 @@
       render();
     }).catch(() => toast('Gagal simpan video di browser.'));
   }
+  function ingestCoverFile(file, kind, id) {
+    if (!file) return;
+    if (file.type && file.type.indexOf('image') !== 0) {
+      toast('Cover harus gambar.');
+      return;
+    }
+    if (file.size > MAX_IMG) {
+      toast('Cover maks 5 MB.');
+      return;
+    }
+    blobPut(coverKey(kind, id), file).then(() => {
+      if (kind === 'week') {
+        const w = db.weeks.find((x) => x.id === id);
+        if (w) w.coverBlob = true;
+      } else {
+        const l = lectureById(id);
+        if (l) l.coverBlob = true;
+      }
+      save();
+      toast('Cover tersimpan di browser ini.');
+      render();
+    }).catch(() => toast('Gagal simpan cover.'));
+  }
+  function ingestResourceFile(file, lecId) {
+    if (!file) return;
+    if (file.size > MAX_FILE) {
+      toast('File maks 20 MB di prototype.');
+      return;
+    }
+    const l = lectureById(lecId);
+    if (!l) return;
+    l.resources = l.resources || [];
+    const n = l.resources.length;
+    const blobId = fileKey(lecId, Date.now());
+    blobPut(blobId, file).then(() => {
+      l.resources.push({ name: file.name, url: '', blob: true, blobId: blobId });
+      save();
+      toast('File tersimpan di browser ini.');
+      render();
+    }).catch(() => toast('Gagal simpan file.'));
+  }
 
   function payChip(st) {
     const label = {
@@ -741,6 +938,128 @@
 
   function typeLabel(t) {
     return { video: 'Video', text: 'Bacaan', document: 'File', tool: 'Alat' }[t] || t;
+  }
+  function initialsOf(name) {
+    return String(name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w.charAt(0)).join('').toUpperCase() || '?';
+  }
+  function tiktokHandle(raw) {
+    let h = String(raw || '').trim();
+    if (!h) return '';
+    h = h.replace(/^https?:\/\/(www\.)?tiktok\.com\/@/i, '').replace(/^@/, '');
+    return h.split(/[/?#]/)[0];
+  }
+  function tiktokUrl(handle) {
+    const h = tiktokHandle(handle);
+    return h ? ('https://www.tiktok.com/@' + h) : '';
+  }
+  function photoKey(id) { return 'photo-' + id; }
+  function coverKey(kind, id) { return 'cover-' + kind + '-' + id; }
+  function fileKey(lecId, n) { return 'file-' + lecId + '-' + n; }
+  function avatarHtml(s, cls) {
+    const c = cls || 'avatar';
+    if (s.photoBlob) return '<img class="' + c + '" data-blob="' + esc(photoKey(s.id)) + '" alt="">';
+    if (s.photoUrl) return '<img class="' + c + '" src="' + esc(s.photoUrl) + '" alt="">';
+    return '<span class="' + c + ' avatar-fallback" aria-hidden="true">' + esc(initialsOf(s.name)) + '</span>';
+  }
+  function lecDotStrip(sid) {
+    const list = lectures();
+    return '<span class="lec-dots" title="' + kurProgress(sid).n + '/' + list.length + ' materi">' +
+      list.map((l) => {
+        const done = isDone(sid, l.id);
+        const locked = !canOpenLecture(sid, l.id);
+        return '<i class="' + (done ? 'done' : locked ? 'locked' : 'rest') + '"></i>';
+      }).join('') + '</span>';
+  }
+  function mdish(text) {
+    const inner = esc(text || '').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+    return '<p>' + inner + '</p>';
+  }
+  function coverHtml(kind, id, cls) {
+    const rec = kind === 'week' ? (db.weeks.find((w) => w.id === id) || {}) : (lectureById(id) || {});
+    if (rec.coverBlob) return '<img class="' + (cls || 'cover-thumb') + '" data-blob="' + esc(coverKey(kind, id)) + '" alt="">';
+    if (rec.coverUrl) return '<img class="' + (cls || 'cover-thumb') + '" src="' + esc(rec.coverUrl) + '" alt="">';
+    return '';
+  }
+  function fetchTikTokAvatar(handle) {
+    const h = tiktokHandle(handle);
+    if (!h) return Promise.resolve(null);
+    const oembed = 'https://www.tiktok.com/oembed?url=' + encodeURIComponent('https://www.tiktok.com/@' + h);
+    const unav = 'https://unavatar.io/tiktok/' + encodeURIComponent(h);
+    return fetch(oembed).then((r) => r.ok ? r.json() : null).then((j) => {
+      if (j && j.thumbnail_url) return fetch(j.thumbnail_url).then((r) => r.ok ? r.blob() : null);
+      return null;
+    }).catch(() => null).then((blob) => {
+      if (blob) return blob;
+      return fetch(unav).then((r) => r.ok ? r.blob() : null).catch(() => null);
+    });
+  }
+  function refreshPersonPhoto(id, force) {
+    const s = people().find((x) => x.id === id);
+    if (!s || !s.tiktok) return Promise.resolve(false);
+    if (s.photoBlob && !force) return Promise.resolve(true);
+    return fetchTikTokAvatar(s.tiktok).then((blob) => {
+      if (!blob) {
+        patchPerson(id, { photoFailed: true });
+        save();
+        return false;
+      }
+      return blobPut(photoKey(id), blob).then(() => {
+        patchPerson(id, { photoBlob: true, photoFailed: false });
+        save();
+        return true;
+      });
+    }).catch(() => {
+      patchPerson(id, { photoFailed: true });
+      save();
+      return false;
+    });
+  }
+  function bindKanbanDnD() {
+    const root = $('main');
+    if (!root) return;
+    root.querySelectorAll('.kanban-card[draggable="true"]').forEach((el) => {
+      el.addEventListener('dragstart', (ev) => {
+        ev.dataTransfer.setData('text/plain', el.getAttribute('data-id'));
+        ev.dataTransfer.effectAllowed = 'move';
+        el.classList.add('is-drag');
+      });
+      el.addEventListener('dragend', () => {
+        el.classList.remove('is-drag');
+        ui.skipOpen = el.getAttribute('data-id');
+        setTimeout(() => { if (ui.skipOpen === el.getAttribute('data-id')) ui.skipOpen = null; }, 250);
+      });
+    });
+    root.querySelectorAll('.kanban-col[data-stage]').forEach((col) => {
+      col.addEventListener('dragover', (ev) => { ev.preventDefault(); col.classList.add('is-drop'); });
+      col.addEventListener('dragleave', () => col.classList.remove('is-drop'));
+      col.addEventListener('drop', (ev) => {
+        ev.preventDefault();
+        col.classList.remove('is-drop');
+        const id = ev.dataTransfer.getData('text/plain');
+        const stage = col.getAttribute('data-stage');
+        if (!id || !stage) return;
+        setStage(id, stage, 'Geser kartu ke ' + stageLabel(stage));
+        save();
+        render();
+      });
+    });
+  }
+  function openPerson(id) {
+    closeDrawer();
+    ui.personId = id;
+    ui.hubBack = ui.siswaView || 'pipa';
+    ui.mentorTab = 'orang';
+    render();
+    const s = people().find((x) => x.id === id);
+    if (s && s.tiktok && !s.photoBlob) {
+      refreshPersonPhoto(id, false).then((ok) => { if (ok) render(); });
+    }
+  }
+  function closePerson() {
+    ui.personId = null;
+    ui.mentorTab = 'siswa';
+    ui.siswaView = ui.hubBack || ui.siswaView || 'pipa';
+    render();
   }
 
   /* ── Kolab (per-student) ─────────────────────────────────────────── */
@@ -859,7 +1178,8 @@
           '<button type="button" class="ghost" data-act="clock" data-ms="43200000">+12 jam</button>' +
           '<button type="button" class="ghost" data-act="clock" data-ms="86400000">+1 hari</button>' +
           '<button type="button" class="ghost" data-act="clock-reset">Reset jam</button>' +
-          '<span class="muted">WA antrian ' + (db.waQueue.filter((w) => w.status === 'queued').length) +
+          '<span class="muted">WA ' + (db.waQueue.filter((w) => w.status === 'queued').length) +
+          ' · email ' + ((db.emailQueue || []).filter((w) => w.status === 'queued').length) +
           ' · tugas ' + db.tasks.filter((t) => !t.done).length + '</span>';
       }
     }
@@ -891,13 +1211,11 @@
   }
   function mentorTabs() {
     const t = [
-      { id: 'crm', label: 'CRM' },
       { id: 'siswa', label: 'Siswa' },
       { id: 'tugas', label: 'Tugas' },
-      { id: 'waq', label: 'Antrian WA' },
+      { id: 'waq', label: 'Antrian' },
       { id: 'otomasi', label: 'Otomasi' },
       { id: 'jaringan', label: 'Jaringan' },
-      { id: 'progres', label: 'Progres' },
       { id: 'kurikulum', label: 'Kurikulum' },
       { id: 'pustaka', label: 'Perpustakaan' },
       { id: 'jadwal', label: 'Jadwal' },
@@ -912,7 +1230,7 @@
 
   function renderTabs() {
     const items = isStaff() ? mentorTabs() : studentTabs();
-    const cur = isStaff() ? ui.mentorTab : ui.tab;
+    const cur = isStaff() ? (ui.mentorTab === 'orang' ? 'siswa' : ui.mentorTab) : ui.tab;
     $('tabs').innerHTML = items.map((t) =>
       '<button type="button" role="tab" data-act="tab" data-id="' + t.id + '" aria-selected="' +
       (t.id === cur) + '">' + esc(t.label) + '</button>'
@@ -938,21 +1256,21 @@
     fillChrome();
     const main = $('main');
     if (isStaff()) {
-      const tab = ui.mentorTab;
-      if (tab === 'crm') main.innerHTML = viewCrm();
-      else if (tab === 'siswa') main.innerHTML = viewSiswa();
+      const tab = normalizeMentorTab(ui.mentorTab);
+      ui.mentorTab = tab;
+      if (tab === 'siswa') main.innerHTML = viewSiswaHub();
+      else if (tab === 'orang') main.innerHTML = viewPerson(ui.personId);
       else if (tab === 'tugas') main.innerHTML = viewTugas();
-      else if (tab === 'waq') main.innerHTML = viewWaQueue();
+      else if (tab === 'waq') main.innerHTML = viewAntrian();
       else if (tab === 'otomasi') main.innerHTML = viewOtomasi();
       else if (tab === 'jaringan') main.innerHTML = viewJaringan();
-      else if (tab === 'progres') main.innerHTML = viewMentorProgres();
       else if (tab === 'kurikulum') main.innerHTML = viewKurikulum();
       else if (tab === 'pustaka') main.innerHTML = viewPustaka();
       else if (tab === 'jadwal') main.innerHTML = viewJadwal(true);
       else if (tab === 'diskusi') main.innerHTML = viewDiskusi(true);
       else if (tab === 'bayar' && canBill()) main.innerHTML = viewBayar();
       else if (tab === 'harga' && canBill()) main.innerHTML = viewHarga();
-      else main.innerHTML = viewCrm();
+      else main.innerHTML = viewSiswaHub();
     } else {
       if (needsWizard(ui.personaId) || ui.tab === 'daftar') {
         main.innerHTML = viewWizard();
@@ -972,7 +1290,21 @@
       }
     }
     bindLazy();
-    bindBlobVideos();
+    bindBlobMedia();
+    bindKanbanDnD();
+  }
+
+  function normalizeMentorTab(tab) {
+    if (tab === 'crm') {
+      ui.siswaView = ui.siswaView || 'pipa';
+      return 'siswa';
+    }
+    if (tab === 'progres') {
+      ui.siswaView = 'progres';
+      return 'siswa';
+    }
+    if (tab === 'orang' && !ui.personId) return 'siswa';
+    return tab || 'siswa';
   }
 
   function bindLazy() {
@@ -985,12 +1317,20 @@
     });
   }
 
-  function bindBlobVideos() {
-    $('main').querySelectorAll('video[data-blob]').forEach((el) => {
+  function bindBlobMedia() {
+    $('main').querySelectorAll('video[data-blob], img[data-blob]').forEach((el) => {
       const id = el.getAttribute('data-blob');
       blobGet(id).then((file) => {
         if (!file || !el.isConnected) return;
         el.src = URL.createObjectURL(file);
+      });
+    });
+    $('main').querySelectorAll('a[data-blob-href]').forEach((el) => {
+      const id = el.getAttribute('data-blob-href');
+      blobGet(id).then((file) => {
+        if (!file || !el.isConnected) return;
+        el.href = URL.createObjectURL(file);
+        if (file.name) el.setAttribute('download', file.name);
       });
     });
   }
@@ -1242,32 +1582,37 @@
 
   function renderCanvas(lec) {
     let body = '';
+    const cover = coverHtml('lec', lec.id, 'lec-poster');
     if (lec.type === 'video') {
       if (lec.videoBlob) {
-        body = '<video class="lec-video" controls playsinline preload="metadata" data-blob="' + esc(lec.id) + '"></video>';
+        body = (cover || '') + '<video class="lec-video" controls playsinline preload="metadata" data-blob="' + esc(lec.id) + '"></video>';
       } else {
         const e = parseEmbed(lec.url);
         if (e && e.embed) {
           body = '<div class="lazy-embed" data-embed="' + esc(e.embed) + '">' +
+            (cover || '') +
             '<div class="play-orb">▶</div>' +
             '<div class="lazy-note">Ketuk untuk memuat · ' + (e.kind === 'drive' ? 'Google Drive' : 'hemat data') + '</div></div>';
         } else if (lec.url) {
-          body = '<div class="article"><p>Video ini tidak bisa diputar di dalam kelas (TikTok / tautan lain).</p>' +
+          body = '<div class="article">' + (cover || '') + '<p>Video ini tidak bisa diputar di dalam kelas (TikTok / tautan lain).</p>' +
             '<a class="btn" href="' + esc(lec.url) + '" target="_blank" rel="noopener">Buka video</a>' +
             '<p class="muted" style="margin-top:10px">YouTube atau file MP4 tampil di sini. TikTok biasanya harus dibuka di aplikasinya.</p></div>';
         } else {
-          body = '<div class="article"><p class="muted">Belum ada video. Mentor tempel tautan atau unggah di Kurikulum.</p></div>';
+          body = '<div class="article">' + (cover || '') + '<p class="muted">Belum ada video. Mentor tempel tautan atau unggah di Kurikulum.</p></div>';
         }
       }
+      if (lec.body) body += '<div class="article lec-read">' + mdish(lec.body) + '</div>';
     } else if (lec.type === 'tool') {
       let src = lec.iframe || '';
       const sku = lec.skuId ? productById(lec.skuId) : null;
       if (sku && sku.example && src) src += (src.indexOf('?') >= 0 ? '&' : '?') + 'contoh=1';
       body = '<iframe class="tool-frame" sandbox="' + TOOL_SANDBOX + '" src="' + esc(src) + '" title="' + esc(lec.title) + '"></iframe>';
     } else if (lec.type === 'document') {
-      body = '<div class="article"><p>File kelas: <a href="' + esc(lec.url) + '" target="_blank" rel="noopener">' + esc(lec.title) + '</a></p><p class="muted">Prototype memakai tautan dummy. Produksi nanti: bucket cohort-docs.</p></div>';
+      body = '<div class="article">' + (cover || '') + '<h3>' + esc(lec.title) + '</h3>' +
+        ((lec.resources || []).length ? resourceListHtml(lec) : '<p>File kelas: <a href="' + esc(lec.url || '#') + '" target="_blank" rel="noopener">' + esc(lec.title) + '</a></p>') +
+        '<p class="muted">Prototype. Produksi nanti: bucket cohort-docs.</p></div>';
     } else {
-      body = '<div class="article"><h3>' + esc(lec.title) + '</h3><p>' + esc(lec.body || '') + '</p></div>';
+      body = '<div class="article">' + (cover || '') + '<h3>' + esc(lec.title) + '</h3>' + mdish(lec.body || '') + '</div>';
     }
     const done = isDone(ui.personaId, lec.id);
     return '<div class="card" style="padding:0;overflow:hidden">' +
@@ -1280,15 +1625,23 @@
       '</div></div>';
   }
 
-  function renderLecAfter(lec) {
-    const doc = (lec.resources || [])[0];
-    let html = '';
-    if (doc) {
+  function resourceListHtml(lec) {
+    const docs = lec.resources || [];
+    if (!docs.length) return '';
+    return '<ul class="res-list">' + docs.map((doc) => {
+      if (doc.blob && doc.blobId) {
+        return '<li><a class="doc-link" data-blob-href="' + esc(doc.blobId) + '" download>' + esc(doc.name || 'File') + '</a></li>';
+      }
       const dummy = /handout\.html/.test(doc.url || '');
-      html += '<div class="card lec-after"><h3>Dokumen</h3>' +
-        '<a class="doc-link" href="' + esc(doc.url) + '" target="_blank" rel="noopener">' + esc(doc.name || 'Lembar kerja') + '</a>' +
-        (dummy ? '<p class="muted" style="margin:8px 0 0">Contoh lembar kerja. Bukan file Anton.</p>' : '') +
-        '</div>';
+      return '<li><a class="doc-link" href="' + esc(doc.url || '#') + '" target="_blank" rel="noopener">' + esc(doc.name || 'Lembar kerja') + '</a>' +
+        (dummy ? '<span class="muted"> · contoh</span>' : '') + '</li>';
+    }).join('') + '</ul>';
+  }
+
+  function renderLecAfter(lec) {
+    let html = '';
+    if ((lec.resources || []).length) {
+      html += '<div class="card lec-after"><h3>Dokumen</h3>' + resourceListHtml(lec) + '</div>';
     }
     if (lec.points && lec.points.length) {
       html += '<div class="card lec-after"><h3>Poin penting</h3><ul class="key-points">' +
@@ -1315,14 +1668,15 @@
         n += 1;
         const cur = l.id === ui.lectureId;
         const locked = !isStaff() && !canOpenLecture(ui.personaId, l.id);
+        const thumb = coverHtml('lec', l.id, 'cover-mini');
         return '<button type="button" class="lec' + (cur ? ' current' : '') + (locked ? ' locked' : '') + '" data-act="' +
           (locked ? 'tab' : 'open-lec') + '" data-id="' + (locked ? 'daftar' : esc(l.id)) + '">' +
-          '<span class="mark' + (isDone(ui.personaId, l.id) ? ' done' : '') + '" aria-hidden="true">' +
-          (isDone(ui.personaId, l.id) ? '✓' : (locked ? '×' : '')) + '</span>' +
+          (thumb || '<span class="mark' + (isDone(ui.personaId, l.id) ? ' done' : '') + '" aria-hidden="true">' +
+          (isDone(ui.personaId, l.id) ? '✓' : (locked ? '×' : '')) + '</span>') +
           '<span><div class="t">' + n + '. ' + esc(l.title) + (locked ? ' · terkunci' : '') + '</div>' +
-          '<div class="m">' + esc(l.mins) + ' mnt' + (l.requiredBefore ? ' · wajib' : '') + '</div></span></button>';
+          '<div class="m">' + esc(typeLabel(l.type)) + ' · ' + esc(l.mins) + ' mnt' + (l.requiredBefore ? ' · wajib' : '') + '</div></span></button>';
       }).join('');
-      return '<div class="week-label">' + esc(w.title) + ' · ' + progressPct(ui.personaId, w.id) + '%</div>' + items;
+      return '<div class="week-label">' + coverHtml('week', w.id, 'cover-mini') + esc(w.title) + ' · ' + progressPct(ui.personaId, w.id) + '%</div>' + items;
     }).join('');
   }
 
@@ -1333,10 +1687,10 @@
       '<button type="button" data-act="pane" data-id="sumber" aria-selected="' + (ui.pane === 'sumber') + '">Sumber</button>' +
       '</div>';
     if (ui.pane === 'sumber') {
-      const res = (lec.resources || []).map((r) =>
-        '<li><a href="' + esc(r.url) + '" target="_blank" rel="noopener">' + esc(r.name) + '</a></li>'
-      ).join('') || '<li class="muted">Tidak ada file di materi ini.</li>';
-      return tanya + '<div class="card"><h3>Sumber</h3><ul>' + res + '</ul></div>';
+      const res = (lec.resources || []).length
+        ? resourceListHtml(lec)
+        : '<p class="muted">Tidak ada file di materi ini.</p>';
+      return tanya + '<div class="card"><h3>Sumber</h3>' + res + '</div>';
     }
     return tanya + '<div class="card"><h3>Tanya di materi ini</h3>' +
       threadList(threads) +
@@ -1625,7 +1979,7 @@
   /* ── Kolab ───────────────────────────────────────────────────────── */
   function viewKolab() {
     if (!canMentoring(ui.personaId) && !isStaff()) return viewLocked();
-    const sid = isStaff() ? (ui.drawerId || ui.personaId) : ui.personaId;
+    const sid = isStaff() ? (ui.personId || ui.personaId) : ui.personaId;
     const k = kolabOf(sid);
     const q = SEED.kolabQuota;
     const shop = shopTiktok();
@@ -1729,9 +2083,58 @@
   }
 
   /* ── mentor views ────────────────────────────────────────────────── */
-  function viewCrm() {
+  function hubSeg() {
+    const cam = ui.siswaView || 'pipa';
+    const items = [
+      { id: 'daftar', label: 'Daftar' },
+      { id: 'pipa', label: 'Pipa' },
+      { id: 'progres', label: 'Progres' }
+    ];
+    return '<div class="hub-seg" role="tablist">' + items.map((t) =>
+      '<button type="button" data-act="siswa-view" data-id="' + t.id + '" aria-selected="' + (cam === t.id) + '">' + t.label + '</button>'
+    ).join('') + '</div>';
+  }
+  function viewSiswaHub() {
+    const cam = ui.siswaView || 'pipa';
+    const q = (ui.filterSiswa || ui.crmFilter || '').toLowerCase();
+    const head = '<div class="hub-head">' +
+      '<div><h2 style="margin:0">Siswa · ' + esc(SEED.cohort.name) + '</h2>' +
+        '<p class="muted">Satu roster. Daftar / pipa / progres. Klik nama = profil.</p></div>' +
+      hubSeg() +
+      '<input placeholder="Cari nama" value="' + esc(q) + '" data-act="filter-siswa" style="max-width:220px;padding:8px 12px;border:1px solid var(--line);border-radius:10px">' +
+      '</div>';
+    if (cam === 'daftar') return head + viewSiswaDaftar(q);
+    if (cam === 'progres') return head + viewMentorProgres();
+    return head + viewCrm(q);
+  }
+  function viewSiswaDaftar(q) {
+    const rows = people().filter((s) => {
+      if (!q) return true;
+      const handle = tiktokHandle(s.tiktok);
+      return s.name.toLowerCase().indexOf(q) >= 0 || (s.wa || '').indexOf(q) >= 0 ||
+        handle.toLowerCase().indexOf(q) >= 0 || billingOf(s.id).status.indexOf(q) >= 0;
+    });
+    return '<div class="card" style="overflow:auto">' +
+      '<table class="table roster"><thead><tr><th>Nama</th><th>WA</th><th>TikTok</th><th>Progres</th><th>Bayar</th><th>Paket</th></tr></thead><tbody>' +
+      rows.map((s) => {
+        const p = kurProgress(s.id);
+        const b = billingOf(s.id);
+        const handle = tiktokHandle(s.tiktok);
+        return '<tr class="roster-row" data-act="open-student" data-id="' + esc(s.id) + '">' +
+          '<td><button type="button" class="linkish roster-name" data-act="open-student" data-id="' + esc(s.id) + '">' +
+            avatarHtml(s, 'avatar sm') + '<span>' + esc(s.name) +
+            '<div class="muted">' + esc(s.city) + '</div></span></button></td>' +
+          '<td>' + (s.wa ? esc(s.wa) : '—') + '</td>' +
+          '<td>' + (handle ? ('@' + esc(handle)) : '—') + '</td>' +
+          '<td>' + p.n + '/' + p.total + ' · ' + p.pct + '%' +
+            '<div>' + lecDotStrip(s.id) + '</div></td>' +
+          '<td>' + payChip(b.status) + '</td>' +
+          '<td>' + esc(termLabel(b.term)) + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+  function viewCrm(q) {
+    q = (q != null ? q : ui.crmFilter || '').toLowerCase();
     const stages = db.pipelineStages || SEED.pipelineStages;
-    const q = (ui.crmFilter || '').toLowerCase();
     const cols = stages.map((st) => {
       const rows = people().filter((s) => {
         const stage = crmOf(s.id).stage || 'wa_baru';
@@ -1739,58 +2142,119 @@
         if (!q) return true;
         return s.name.toLowerCase().indexOf(q) >= 0 || (s.city || '').toLowerCase().indexOf(q) >= 0;
       });
-      return '<div class="kanban-col"><h3>' + esc(st.label) + ' · ' + rows.length + '</h3>' +
+      return '<div class="kanban-col" data-stage="' + esc(st.id) + '"><h3>' + esc(st.label) + ' · ' + rows.length + '</h3>' +
         (rows.length ? rows.map((s) => {
           const b = billingOf(s.id);
-          return '<button type="button" class="card kanban-card" data-act="open-student" data-id="' + esc(s.id) + '">' +
-            '<strong>' + esc(s.name) + '</strong>' +
+          return '<button type="button" class="card kanban-card" draggable="true" data-act="open-student" data-id="' + esc(s.id) + '">' +
+            '<div class="roster-name">' + avatarHtml(s, 'avatar sm') + '<strong>' + esc(s.name) + '</strong></div>' +
             '<div class="muted">' + esc(s.city) + (s.mentorId && s.mentorId !== 'u-anton' ? ' · ' + esc(nameOf(s.mentorId)) : '') + '</div>' +
             '<div>' + payChip(b.status) + ' <span class="muted">' + esc(fmtRemain(b.offerExpiresAt || b.accessUntil)) + '</span></div>' +
             '</button>';
-        }).join('') : '<p class="muted">Kosong</p>') +
+        }).join('') : '<p class="muted">Kosong · drop kartu ke sini</p>') +
         '</div>';
     }).join('');
     const openTasks = db.tasks.filter((t) => !t.done).length;
-    return '<div class="row" style="justify-content:space-between;margin-bottom:12px">' +
-      '<div><h2 style="margin:0">CRM</h2><p class="muted">Pipa Follow Up Boss. Klik kartu = file orang. Tugas terbuka: ' + openTasks + '</p></div>' +
-      '<input placeholder="Cari nama" value="' + esc(ui.crmFilter) + '" data-act="filter-crm" style="max-width:220px;padding:8px 12px;border:1px solid var(--line);border-radius:10px">' +
-      '</div>' +
+    return '<p class="muted">Geser kartu antar kolom. Klik tetap buka profil. Tugas terbuka: ' + openTasks + '</p>' +
       '<div class="kanban">' + cols + '</div>';
   }
+  function taskGroups() {
+    const start = new Date(nowMs());
+    start.setHours(0, 0, 0, 0);
+    const today0 = start.getTime();
+    const tomorrow0 = today0 + 86400000;
+    const pid = ui.taskPerson || '';
+    const list = db.tasks.filter((t) => !pid || t.personId === pid);
+    const hari = [];
+    const later = [];
+    const done = [];
+    list.forEach((t) => {
+      if (t.done) done.push(t);
+      else if (new Date(t.dueAt).getTime() < tomorrow0) hari.push(t);
+      else later.push(t);
+    });
+    const sortDue = (a, b) => new Date(a.dueAt) - new Date(b.dueAt);
+    hari.sort(sortDue); later.sort(sortDue); done.sort(sortDue);
+    return { hari: hari, later: later, done: done };
+  }
+  function taskRow(t) {
+    const s = people().find((x) => x.id === t.personId) || {};
+    return '<li><span>' + (t.done ? '<span class="tick-ok">✓</span> ' : '') +
+      '<strong>' + esc(t.title) + '</strong>' +
+      ' · <button type="button" class="linkish" data-act="open-student" data-id="' + esc(t.personId) + '">' + esc(nameOf(t.personId)) + '</button>' +
+      '<div class="muted">' + fmtWhen(t.dueAt) + ' · ' + esc(t.body || '') + '</div></span>' +
+      '<span class="row">' +
+        (t.kind === 'wa' ? '<a class="btn-sm" href="' + esc(waLink(s.wa, t.body)) + '" target="_blank" rel="noopener">Buka WA</a>' : '') +
+        (!t.done ? '<button class="btn-sm" data-act="task-done" data-id="' + esc(t.id) + '">Selesai</button>' : '') +
+      '</span></li>';
+  }
   function viewTugas() {
-    const rows = db.tasks.slice().sort((a, b) => Number(a.done) - Number(b.done) || new Date(a.dueAt) - new Date(b.dueAt));
+    const g = taskGroups();
+    const block = (title, rows) =>
+      '<h3>' + title + ' · ' + rows.length + '</h3>' +
+      (rows.length ? '<ul class="list-check">' + rows.map(taskRow).join('') + '</ul>' : '<p class="muted">Kosong.</p>');
     return '<div class="card"><h2>Tugas Anton / Lia</h2>' +
+      '<p class="muted">Hari ini, mendatang, selesai. Buka nama untuk profil.</p>' +
+      '<div class="row" style="margin-bottom:8px">' +
+        '<label class="muted">Filter orang <select data-act="task-person">' +
+          '<option value="">Semua</option>' +
+          people().map((s) => '<option value="' + esc(s.id) + '"' + (ui.taskPerson === s.id ? ' selected' : '') + '>' + esc(s.name) + '</option>').join('') +
+        '</select></label></div>' +
       '<form class="compose" data-act="add-task">' +
         '<select name="personId">' + people().map((s) => '<option value="' + esc(s.id) + '">' + esc(s.name) + '</option>').join('') + '</select>' +
         '<input name="title" required placeholder="Judul tugas">' +
         '<textarea name="body" rows="2" placeholder="Teks WA / catatan"></textarea>' +
         '<button class="btn" type="submit">Tambah tugas</button></form>' +
-      (rows.length ? '<ul class="list-check">' + rows.map((t) =>
-        '<li><span>' + (t.done ? '<span class="tick-ok">✓</span> ' : '') +
-        '<strong>' + esc(t.title) + '</strong> · ' + esc(nameOf(t.personId)) +
-        '<div class="muted">' + fmtWhen(t.dueAt) + ' · ' + esc(t.body || '') + '</div></span>' +
-        '<span class="row">' +
-          (t.kind === 'wa' ? '<a class="btn-sm" href="' + esc(waLink((people().find((x) => x.id === t.personId) || {}).wa, t.body)) + '" target="_blank" rel="noopener">Buka WA</a>' : '') +
-          (!t.done ? '<button class="btn-sm" data-act="task-done" data-id="' + esc(t.id) + '">Selesai</button>' : '') +
-        '</span></li>'
-      ).join('') + '</ul>' : '<p class="muted">Tidak ada tugas.</p>') +
+      block('Hari ini', g.hari) +
+      block('Mendatang', g.later) +
+      block('Selesai', g.done) +
       '</div>';
   }
-  function viewWaQueue() {
-    const rows = db.waQueue.slice().sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
-    return '<div class="card"><h2>Antrian WA (tidak terkirim)</h2>' +
+  function queueRowWa(w) {
+    const s = people().find((x) => x.id === w.toId) || {};
+    return '<tr><td>' + fmtWhen(w.scheduledAt) + '</td><td><button type="button" class="linkish" data-act="open-student" data-id="' + esc(w.toId) + '">' + esc(nameOf(w.toId)) + '</button></td><td>' + esc(w.title) +
+      '<div class="muted">' + esc(w.body) + '</div></td><td>' + esc(w.status) + '</td><td>' +
+      (w.status === 'queued' ? '<a class="btn-sm" href="' + esc(waLink(s.wa, w.body)) + '" target="_blank" rel="noopener">Buka WA</a>' +
+        '<button class="btn-sm" data-act="wa-sent" data-id="' + esc(w.id) + '">Tandai dikirim</button>' : '') +
+      '</td></tr>';
+  }
+  function queueRowEmail(w) {
+    const s = people().find((x) => x.id === w.toId) || {};
+    return '<tr><td>' + fmtWhen(w.scheduledAt) + '</td><td><button type="button" class="linkish" data-act="open-student" data-id="' + esc(w.toId) + '">' + esc(nameOf(w.toId)) + '</button></td><td>' + esc(w.subject || w.title) +
+      '<div class="muted">' + esc(w.body) + '</div></td><td>' + esc(w.status) + '</td><td>' +
+      (w.status === 'queued' ? '<a class="btn-sm" href="' + esc(mailLink(s.email, w.subject || w.title, w.body)) + '">mailto</a>' +
+        '<button class="btn-sm" data-act="em-sent" data-id="' + esc(w.id) + '">Tandai dikirim</button>' : '') +
+      '</td></tr>';
+  }
+  function viewAntrian() {
+    const kind = ui.queueKind === 'email' ? 'email' : 'wa';
+    const seg = '<div class="hub-seg" role="tablist">' +
+      '<button type="button" data-act="queue-kind" data-id="wa" aria-selected="' + (kind === 'wa') + '">WhatsApp</button>' +
+      '<button type="button" data-act="queue-kind" data-id="email" aria-selected="' + (kind === 'email') + '">Email</button>' +
+      '</div>';
+    if (kind === 'email') {
+      const rows = (db.emailQueue || []).slice().sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
+      return '<div class="card"><h2>Antrian email (tidak terkirim)</h2>' + seg +
+        '<p class="muted">Prototype memakai mailto: + Tandai dikirim. Tidak ada SMTP.</p>' +
+        (rows.length ? '<table class="table"><thead><tr><th>Jadwal</th><th>Ke</th><th>Subjek</th><th>Status</th><th></th></tr></thead><tbody>' +
+          rows.map(queueRowEmail).join('') + '</tbody></table>' : '<p class="muted">Antrian email kosong.</p>') +
+        '</div>';
+    }
+    const rows = (db.waQueue || []).slice().sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
+    return '<div class="card"><h2>Antrian WA (tidak terkirim)</h2>' + seg +
       '<p class="muted">Prototype hanya tautan wa.me. Tidak memanggil send-cohort-whatsapp.</p>' +
       (rows.length ? '<table class="table"><thead><tr><th>Jadwal</th><th>Ke</th><th>Judul</th><th>Status</th><th></th></tr></thead><tbody>' +
-        rows.map((w) => '<tr><td>' + fmtWhen(w.scheduledAt) + '</td><td>' + esc(nameOf(w.toId)) + '</td><td>' + esc(w.title) +
-          '<div class="muted">' + esc(w.body) + '</div></td><td>' + esc(w.status) + '</td><td>' +
-          (w.status === 'queued' ? '<a class="btn-sm" href="' + esc(waLink((people().find((x) => x.id === w.toId) || {}).wa, w.body)) + '" target="_blank" rel="noopener">Buka WA</a>' +
-            '<button class="btn-sm" data-act="wa-sent" data-id="' + esc(w.id) + '">Tandai dikirim</button>' : '') +
-          '</td></tr>'
-        ).join('') + '</tbody></table>' : '<p class="muted">Antrian kosong. Majukan jam simulasi untuk menembak 12 jam / 5 hari.</p>') +
+        rows.map(queueRowWa).join('') + '</tbody></table>' : '<p class="muted">Antrian kosong. Majukan jam simulasi untuk menembak 12 jam / 5 hari.</p>') +
       '</div>';
+  }
+  function stepKindOptions(cur) {
+    return ['email', 'wa', 'task', 'stage'].map((k) =>
+      '<option value="' + k + '"' + (cur === k ? ' selected' : '') + '>' + k + '</option>').join('');
   }
   function viewOtomasi() {
     const d = db.dunning;
+    const plans = db.actionPlans || [];
+    const showArchived = !!ui.showArchivedPlans;
+    const visible = plans.filter((p) => showArchived || !p.archived);
     return '<div class="grid-2">' +
       '<section class="card"><h2>Perpanjangan</h2>' +
         '<p class="muted">Anton bisa ganti jeda. Default: 5 hari peringatan, lalu WA Anton, lalu 1 hari grace.</p>' +
@@ -1802,20 +2266,52 @@
           '<button class="btn" type="submit">Simpan jeda</button></form>' +
       '</section>' +
       '<section class="card"><h2>Rencana aksi</h2>' +
-        '<p class="muted">Template Follow Up Boss. Ubah teks / jam tunggu.</p>' +
-        (db.actionPlans || []).map((p) =>
-          '<article class="thread"><h4>' + esc(p.name) + '</h4>' +
-          p.steps.map((st) =>
-            '<div class="lec-edit" style="margin-top:8px">' +
-              '<label class="muted">Tunggu jam</label>' +
-              '<input data-act="plan-wait" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '" type="number" value="' + esc(st.waitHours) + '">' +
-              '<label class="muted">Judul</label>' +
-              '<input data-act="plan-title" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '" value="' + esc(st.title) + '">' +
-              '<label class="muted">Isi</label>' +
-              '<textarea data-act="plan-body" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '" rows="2">' + esc(st.body || '') + '</textarea>' +
-            '</div>'
-          ).join('') + '</article>'
-        ).join('') +
+        '<p class="muted">Buat / salin / arsip. Langkah: tunggu jam, lalu email / WA / tugas / pindah stage. Tidak auto-kirim.</p>' +
+        '<div class="row">' +
+          '<button type="button" class="btn" data-act="plan-new">+ Rencana</button>' +
+          '<button type="button" class="btn-sm" data-act="plan-show-arch">' + (showArchived ? 'Sembunyikan arsip' : 'Tampilkan arsip') + '</button>' +
+        '</div>' +
+        visible.map((p) => {
+          const open = ui.editPlanId === p.id;
+          return '<article class="thread"><h4>' + esc(p.name) + (p.archived ? ' <span class="chip warn">Arsip</span>' : '') +
+            ' <span class="muted">· ' + esc(triggerLabel(p.trigger)) + '</span></h4>' +
+            '<div class="row">' +
+              '<button type="button" class="btn-sm" data-act="plan-edit" data-id="' + esc(p.id) + '">' + (open ? 'Tutup' : 'Ubah') + '</button>' +
+              '<button type="button" class="btn-sm" data-act="plan-dup" data-id="' + esc(p.id) + '">Salin</button>' +
+              (p.archived
+                ? '<button type="button" class="btn-sm" data-act="plan-unarch" data-id="' + esc(p.id) + '">Kembalikan</button>'
+                : '<button type="button" class="btn-sm" data-act="plan-arch" data-id="' + esc(p.id) + '">Arsip</button>') +
+            '</div>' +
+            (open ? '<div class="lec-edit-body">' +
+              '<label class="muted">Nama</label>' +
+              '<input data-act="plan-name" data-pid="' + esc(p.id) + '" value="' + esc(p.name) + '">' +
+              '<label class="muted">Pemicu</label>' +
+              '<select data-act="plan-trigger" data-pid="' + esc(p.id) + '">' +
+                ['bayar', 'form', 'trial', 'perpanjangan', 'manual', 'nurture', 'tidak_tertarik'].map((t) =>
+                  '<option value="' + t + '"' + (p.trigger === t ? ' selected' : '') + '>' + esc(triggerLabel(t)) + '</option>').join('') +
+              '</select>' +
+              (p.steps || []).map((st) =>
+                '<div class="lec-edit" style="margin-top:8px">' +
+                  '<label class="muted">Tunggu jam</label>' +
+                  '<input data-act="plan-wait" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '" type="number" value="' + esc(st.waitHours || 0) + '">' +
+                  '<label class="muted">Jenis</label>' +
+                  '<select data-act="plan-kind" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '">' + stepKindOptions(st.kind) + '</select>' +
+                  (st.kind === 'stage'
+                    ? '<label class="muted">Pindah ke</label><select data-act="plan-to" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '">' +
+                      (db.pipelineStages || []).map((sg) => '<option value="' + esc(sg.id) + '"' + (st.to === sg.id ? ' selected' : '') + '>' + esc(sg.label) + '</option>').join('') + '</select>'
+                    : '') +
+                  '<label class="muted">Judul</label>' +
+                  '<input data-act="plan-title" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '" value="' + esc(st.title || '') + '">' +
+                  (st.kind === 'email' ? '<label class="muted">Subjek</label><input data-act="plan-subject" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '" value="' + esc(st.subject || '') + '">' : '') +
+                  '<label class="muted">Isi</label>' +
+                  '<textarea data-act="plan-body" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '" rows="2">' + esc(st.body || '') + '</textarea>' +
+                  '<button type="button" class="btn-sm" data-act="plan-del-step" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '">Hapus langkah</button>' +
+                '</div>'
+              ).join('') +
+              '<button type="button" class="btn-sm" data-act="plan-add-step" data-id="' + esc(p.id) + '">+ Langkah</button>' +
+            '</div>' : '') +
+          '</article>';
+        }).join('') +
       '</section></div>';
   }
   function viewJaringan() {
@@ -1870,93 +2366,125 @@
       '<p class="muted">Siswa menyalin ini di halaman bayar. Anton menandai lunas di CRM / Pembayaran.</p>' +
       '</section></div>';
   }
-  function viewSiswa() {
-    const q = (ui.filterSiswa || '').toLowerCase();
-    const rows = people().filter((s) =>
-      !q || s.name.toLowerCase().includes(q) || billingOf(s.id).status.includes(q) || (crmOf(s.id).stage || '').includes(q)
-    );
-    return '<div class="card">' +
-      '<div class="row" style="justify-content:space-between">' +
-        '<h2>Siswa · ' + esc(SEED.cohort.name) + '</h2>' +
-        '<input placeholder="Cari nama / status bayar" value="' + esc(ui.filterSiswa) + '" data-act="filter-siswa" style="max-width:240px;padding:8px 12px;border:1px solid var(--line);border-radius:10px">' +
-      '</div>' +
-      '<p class="muted">Bukan daftar pelamar LaRISE. Roster sekolah Anton saja.</p>' +
-      '<table class="table"><thead><tr><th>Nama</th><th>Progres</th><th>Hadir</th><th>Bayar</th><th>Aktif</th><th></th></tr></thead><tbody>' +
-      rows.map((s) => '<tr>' +
-        '<td>' + esc(s.name) + '<div class="muted">' + esc(s.city) + '</div></td>' +
-        '<td>' + progressPct(s.id) + '%</td>' +
-        '<td>' + hadirPct(s.id) + '%</td>' +
-        '<td>' + payChip(billingOf(s.id).status) +
-          '<div class="muted">' + esc(stageLabel(crmOf(s.id).stage)) +
-          (canMentoring(s.id) ? ' · mentoring' : (billingOf(s.id).products.join(', ') ? ' · ' + billingOf(s.id).products.join(', ') : '')) + '</div></td>' +
-        '<td class="muted">' + fmtWhen(s.lastActive) + '</td>' +
-        '<td><button type="button" class="btn-sm" data-act="open-student" data-id="' + esc(s.id) + '">Buka</button></td></tr>'
-      ).join('') + '</tbody></table></div>';
-  }
-
-  function viewStudentDrawer(id) {
+  function viewPerson(id) {
     const s = people().find((x) => x.id === id);
-    if (!s) return '';
+    if (!s) return '<p class="muted">Orang tidak ditemukan.</p><button class="btn" data-act="close-person">Kembali</button>';
     const b = billingOf(id);
     const c = crmOf(id);
     const notes = db.notes[id] || [];
     const tl = db.timeline[id] || [];
     const app = db.applications[id];
     const stages = db.pipelineStages || SEED.pipelineStages;
-    return '<button class="btn secondary" data-act="close-drawer">Tutup</button>' +
-      '<h2>' + esc(s.name) + '</h2>' +
-      '<p class="muted">' + esc(s.city) + ' · ' + (s.tags || []).map(esc).join(', ') +
-      (s.mentorId ? ' · upline ' + esc(nameOf(s.mentorId)) : '') + '</p>' +
-      '<p>' + payChip(b.status) + ' <span class="chip">' + esc(stageLabel(c.stage)) + '</span></p>' +
-      '<label class="muted">Pindah stage</label>' +
-      '<select data-act="crm-stage" data-id="' + esc(id) + '">' +
-        stages.map((st) => '<option value="' + esc(st.id) + '"' + (c.stage === st.id ? ' selected' : '') + '>' + esc(st.label) + '</option>').join('') +
-      '</select>' +
-      '<div class="row" style="margin-top:10px">' +
-        '<a class="wa" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari Sekolah Anton.')) + '" target="_blank" rel="noopener">Chat WA</a>' +
-        '<button class="btn-sm" data-act="task-from" data-id="' + esc(id) + '">+ Tugas</button>' +
-      '</div>' +
-      (app ? '<h3>Form</h3><p class="muted">Pengalaman: ' + esc(app.experience) + '</p><p class="muted">Alasan: ' + esc(app.why) + '</p>' : '<p class="muted">Belum isi form.</p>') +
-      '<h3>Akses</h3>' +
-      '<p class="muted">' + esc(b.plan || '—') + ' · ' + esc(b.term || '—') +
-      (b.accessUntil ? ' · sampai ' + fmtWhen(b.accessUntil) : '') +
-      (b.offerExpiresAt ? ' · diskon ' + fmtRemain(b.offerExpiresAt) : '') + '</p>' +
-      '<p class="muted">Kurikulum ' + progressPct(id) + '% · hadir ' + hadirPct(id) + '%</p>' +
-      '<h3>Ledger</h3><p class="muted">' + fmtRp(b.amount) + ' · ' + esc(b.source) + (b.note ? ' · ' + esc(b.note) : '') + '</p>' +
-      (canBill() ? '<label class="muted">Ubah status</label><select data-act="bill-one" data-id="' + esc(id) + '">' +
-        ['lunas', 'cicilan', 'belum', 'gratis', 'trial'].map((st) =>
-          '<option' + (b.status === st ? ' selected' : '') + ' value="' + st + '">' + st + '</option>').join('') +
-        '</select>' : '<p class="muted">Asisten tidak mengubah pembayaran.</p>') +
-      '<h3>Linimasa</h3>' +
-      (tl.length ? tl.map((n) => '<p class="muted">' + fmtWhen(n.at) + ' · ' + esc(n.kind) + ' — ' + esc(n.body) + '</p>').join('') : '<p class="muted">Belum ada event.</p>') +
-      '<h3>Catatan mentor</h3>' +
-      notes.map((n) => '<p class="muted">' + esc(n.at) + ' — ' + esc(n.body) + '</p>').join('') +
-      '<form class="compose" data-act="note" data-id="' + esc(id) + '"><textarea name="body" required rows="2" placeholder="Catatan internal"></textarea><button class="btn" type="submit">Simpan</button></form>' +
-      '<p class="muted">Kolab siswa ini terpisah (UU PDP).</p>';
+    const p = kurProgress(id);
+    const handle = tiktokHandle(s.tiktok);
+    const plans = (db.actionPlans || []).filter((x) => !x.archived);
+    const emails = (db.emailQueue || []).filter((x) => x.toId === id);
+    const was = (db.waQueue || []).filter((x) => x.toId === id);
+    const tsk = db.tasks.filter((x) => x.personId === id);
+    const photoNote = s.photoBlob ? '' : (s.photoFailed
+      ? '<p class="muted">Foto TikTok gagal diambil (CORS/blok). Inisial dipakai. Unggah foto sendiri.</p>'
+      : (handle ? '<p class="muted">Mencoba oEmbed lalu unavatar.io. Tidak scrape tiktok.com.</p>' : ''));
+    const lecList = lectures().map((l) => {
+      const done = isDone(id, l.id);
+      const locked = !canOpenLecture(id, l.id);
+      return '<li>' + (done ? '✓ ' : (locked ? '× ' : '· ')) + esc(l.title) +
+        (locked ? ' <span class="chip">Terkunci</span>' : '') + '</li>';
+    }).join('');
+    const autoRows = emails.map((x) =>
+      '<p class="muted">' + fmtWhen(x.scheduledAt) + ' · email · ' + esc(x.status) + ' — ' + esc(x.subject || x.title) + '</p>'
+    ).concat(was.map((x) =>
+      '<p class="muted">' + fmtWhen(x.scheduledAt) + ' · wa · ' + esc(x.status) + ' — ' + esc(x.title) + '</p>'
+    )).concat(tsk.map((x) =>
+      '<p class="muted">' + fmtWhen(x.dueAt) + ' · tugas · ' + (x.done ? 'selesai' : 'terbuka') + ' — ' + esc(x.title) + '</p>'
+    )).join('') || '<p class="muted">Belum ada antrian otomasi.</p>';
+    return '<div class="person-page">' +
+      '<button class="btn secondary" data-act="close-person">← Roster</button>' +
+      '<header class="person-head">' +
+        '<div class="person-ava">' + avatarHtml(s, 'avatar lg') +
+          '<label class="btn-sm" style="margin-top:8px">Unggah foto<input type="file" hidden data-act="photo-file" data-id="' + esc(id) + '" accept="image/*"></label>' +
+        '</div>' +
+        '<div>' +
+          '<h2 style="margin:0">' + esc(s.name) + '</h2>' +
+          '<p class="muted">' + esc(s.city) + (s.mentorId ? ' · upline ' + esc(nameOf(s.mentorId)) : '') + '</p>' +
+          '<p>' + payChip(b.status) + ' <span class="chip">' + esc(stageLabel(c.stage)) + '</span> <span class="chip">' + esc(termLabel(b.term)) + '</span></p>' +
+          '<p>' + (handle ? '<a href="' + esc(tiktokUrl(handle)) + '" target="_blank" rel="noopener">@' + esc(handle) + '</a>' : '<span class="muted">TikTok —</span>') +
+            (s.email ? ' · ' + esc(s.email) : ' · <span class="muted">email —</span>') +
+            (s.wa ? ' · ' + esc(s.wa) : '') + '</p>' +
+          '<div class="row">' +
+            '<a class="wa" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari Sekolah Anton.')) + '" target="_blank" rel="noopener">Buka WA</a>' +
+            (s.email ? '<a class="btn-sm" href="' + esc(mailLink(s.email, 'Sekolah Anton', 'Halo ' + s.name)) + '">mailto</a>' : '') +
+            '<button class="btn-sm" data-act="task-from" data-id="' + esc(id) + '">+ Tugas</button>' +
+          '</div>' +
+          photoNote +
+        '</div>' +
+      '</header>' +
+      '<form class="compose card" data-act="save-person" data-id="' + esc(id) + '">' +
+        '<h3>Kontak</h3>' +
+        '<label class="muted">Email</label><input name="email" type="email" value="' + esc(s.email || '') + '">' +
+        '<label class="muted">Handle TikTok</label><input name="tiktok" value="' + esc(s.tiktok || '') + '" placeholder="ayu.jepit">' +
+        '<label class="muted">WA</label><input name="wa" value="' + esc(s.wa || '') + '">' +
+        '<button class="btn" type="submit">Simpan + ambil foto</button>' +
+      '</form>' +
+      '<section class="card">' + progressBarHtml(id) +
+        '<p class="muted">' + p.n + '/' + p.total + ' materi · ' + p.pct + '%</p>' +
+        lecDotStrip(id) +
+        '<ul class="lec-check">' + lecList + '</ul>' +
+      '</section>' +
+      '<section class="card"><h3>Otomasi pada orang ini</h3>' +
+        '<p class="muted">Centang = ikut rencana. Default onboarding saat lunas. Tidak auto-kirim.</p>' +
+        plans.map((pl) =>
+          '<label class="muted" style="display:block;margin:6px 0"><input type="checkbox" data-act="enroll-plan" data-id="' + esc(id) + '" data-pid="' + esc(pl.id) + '"' +
+          (isEnrolled(id, pl.id) ? ' checked' : '') + '> ' + esc(pl.name) + ' <span class="muted">(' + esc(triggerLabel(pl.trigger)) + ')</span></label>'
+        ).join('') +
+      '</section>' +
+      '<section class="card"><h3>Aktivitas otomasi</h3>' + autoRows + '</section>' +
+      '<section class="card"><h3>Stage &amp; bayar</h3>' +
+        '<label class="muted">Pindah stage</label>' +
+        '<select data-act="crm-stage" data-id="' + esc(id) + '">' +
+          stages.map((st) => '<option value="' + esc(st.id) + '"' + (c.stage === st.id ? ' selected' : '') + '>' + esc(st.label) + '</option>').join('') +
+        '</select>' +
+        (app ? '<p class="muted">Form: ' + esc(app.experience) + ' — ' + esc(app.why) + '</p>' : '<p class="muted">Belum isi form.</p>') +
+        '<p class="muted">' + esc(b.plan || '—') + (b.accessUntil ? ' · sampai ' + fmtWhen(b.accessUntil) : '') +
+        (b.offerExpiresAt ? ' · diskon ' + fmtRemain(b.offerExpiresAt) : '') + '</p>' +
+        '<p class="muted">Ledger ' + fmtRp(b.amount) + ' · ' + esc(b.source) + (b.note ? ' · ' + esc(b.note) : '') + '</p>' +
+        (canBill() ? '<label class="muted">Ubah status</label><select data-act="bill-one" data-id="' + esc(id) + '">' +
+          ['lunas', 'cicilan', 'belum', 'gratis', 'trial'].map((st) =>
+            '<option' + (b.status === st ? ' selected' : '') + ' value="' + st + '">' + st + '</option>').join('') +
+          '</select>' : '<p class="muted">Asisten tidak mengubah pembayaran.</p>') +
+      '</section>' +
+      '<section class="card"><h3>Linimasa</h3>' +
+        (tl.length ? tl.map((n) => '<p class="muted">' + fmtWhen(n.at) + ' · ' + esc(n.kind) + ' — ' + esc(n.body) + '</p>').join('') : '<p class="muted">Belum ada event.</p>') +
+      '</section>' +
+      '<section class="card"><h3>Catatan</h3>' +
+        notes.map((n) => '<p class="muted">' + esc(n.at) + ' — ' + esc(n.body) + '</p>').join('') +
+        '<form class="compose" data-act="note" data-id="' + esc(id) + '"><textarea name="body" required rows="2" placeholder="Catatan internal"></textarea><button class="btn" type="submit">Simpan</button></form>' +
+        '<p class="muted">Kolab siswa ini terpisah (UU PDP).</p>' +
+      '</section></div>';
   }
 
   function viewMentorProgres() {
     const ses = nextSession();
     const behind = belumSiap(ses);
-    const head = '<th class="name">Siswa</th>' + db.weeks.map((w) => '<th>' + esc(w.id) + '</th>').join('');
+    const head = '<th class="name">Siswa</th>' + db.weeks.map((w) => '<th>' + esc(w.id) + '</th>').join('') + '<th>Materi</th>';
     const body = people().map((s) => {
       const cells = db.weeks.map((w) => {
-        const p = progressPct(s.id, w.id);
-        const cls = p >= 75 ? 'p3' : p >= 40 ? 'p2' : p > 0 ? 'p1' : 'p0';
-        return '<td class="' + cls + '">' + p + '</td>';
+        const pct = progressPct(s.id, w.id);
+        const cls = pct >= 75 ? 'p3' : pct >= 40 ? 'p2' : pct > 0 ? 'p1' : 'p0';
+        return '<td class="' + cls + '">' + pct + '</td>';
       }).join('');
-      return '<tr><td class="name">' + esc(s.name) + '</td>' + cells + '</tr>';
+      return '<tr><td class="name"><button type="button" class="linkish" data-act="open-student" data-id="' + esc(s.id) + '">' + esc(s.name) + '</button></td>' +
+        cells + '<td>' + lecDotStrip(s.id) + '</td></tr>';
     }).join('');
     return '<div class="grid-2">' +
       '<section class="card heat"><h2>Heatmap minggu × siswa</h2>' +
         '<table><thead><tr>' + head + '</tr></thead><tbody>' + body + '</tbody></table>' +
-        '<p class="muted">Angka = % materi minggu itu yang ditandai selesai. Bukan skor buatan.</p>' +
+        '<p class="muted">Angka = % materi minggu itu yang ditandai selesai. Titik = 12 materi (selesai / terkunci / sisa). Bukan skor buatan.</p>' +
       '</section>' +
       '<section class="card"><h2>Belum siap kelas</h2>' +
-        '<p class="muted">Wajib sebelum ' + esc(ses.title) + ': ' + (ses.required || []).map((id) => esc((lectureById(id) || {}).title || id)).join(', ') + '</p>' +
+        '<p class="muted">Wajib sebelum ' + esc(ses.title) + ': ' + (ses.required || []).map((lid) => esc((lectureById(lid) || {}).title || lid)).join(', ') + '</p>' +
         (behind.length
           ? behind.map((s) => '<div class="row" style="justify-content:space-between;margin:8px 0">' +
-              '<span>' + esc(s.name) + '</span>' +
+              '<button type="button" class="linkish" data-act="open-student" data-id="' + esc(s.id) + '">' + esc(s.name) + '</button>' +
               '<a class="btn-sm" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', materi wajib sebelum sesi belum selesai ya.')) + '" target="_blank" rel="noopener">WA pengingat</a></div>'
             ).join('')
           : '<p>Semua yang lunas sudah siap.</p>') +
@@ -1968,11 +2496,12 @@
     const readonly = ui.role === 'asisten';
     const word = sectionWord();
     const nVid = lectures().filter((l) => l.type === 'video').length;
+    const nTxt = lectures().filter((l) => l.type === 'text').length;
     ensureSecFold();
     const toolbar = '<div class="kur-toolbar">' +
       '<div><h2 style="margin:0">Kurikulum</h2>' +
-        '<p class="muted" style="margin:6px 0 0">' + nVid + ' video · label bagian: ' + word.toLowerCase() +
-        '. Panah untuk tutup modul. Checkout Instagram tetap lynk.id.</p></div>' +
+        '<p class="muted" style="margin:6px 0 0">' + nVid + ' video · ' + nTxt + ' bacaan · label bagian: ' + word.toLowerCase() +
+        '. Cover &amp; file tinggal di browser ini.</p></div>' +
       (readonly ? '' :
         '<div class="row kur-toolbar-actions">' +
           '<button type="button" class="btn-sm' + (sectionStyle() === 'minggu' ? ' on' : '') + '" data-act="sec-style" data-id="minggu">Pakai minggu</button>' +
@@ -1987,14 +2516,16 @@
         '<p class="muted">Belum ada video di bagian ini.</p>';
       return '<section class="card kur-sec' + (open ? '' : ' is-collapsed') + '" data-sec="' + esc(w.id) + '">' +
         '<div class="sec-head">' +
+          coverHtml('week', w.id, 'cover-thumb') +
           '<button type="button" class="sec-caret" data-act="sec-fold" data-id="' + esc(w.id) + '"' +
             ' aria-expanded="' + open + '" aria-label="' + (open ? 'Tutup' : 'Buka') + ' bagian">' +
             '<i></i></button>' +
           (readonly
             ? '<h3 style="margin:0;flex:1">' + esc(w.title) + '</h3>'
             : '<input class="sec-title" data-act="sec-title" data-id="' + esc(w.id) + '" value="' + esc(w.title) + '" aria-label="Nama bagian">') +
-          '<span class="muted sec-count">' + items.length + ' video</span>' +
+          '<span class="muted sec-count">' + items.length + ' item</span>' +
           (readonly ? '' : '<div class="row sec-actions">' +
+            '<label class="btn-sm">Cover<input type="file" hidden data-act="cover-file" data-kind="week" data-id="' + esc(w.id) + '" accept="image/*"></label>' +
             '<button type="button" class="btn-sm" data-act="sec-up" data-id="' + esc(w.id) + '"' + (wi === 0 ? ' disabled' : '') + '>Naik</button>' +
             '<button type="button" class="btn-sm" data-act="sec-down" data-id="' + esc(w.id) + '"' + (wi === db.weeks.length - 1 ? ' disabled' : '') + '>Turun</button>' +
             '<button type="button" class="btn-sm" data-act="del-sec" data-id="' + esc(w.id) + '">Hapus</button>' +
@@ -2011,11 +2542,16 @@
 
   function addLecForm(weekId) {
     return '<form class="add-lec" data-act="add-lec" data-week="' + esc(weekId) + '">' +
-      '<strong>Tambah video</strong>' +
-      '<input name="title" required maxlength="140" placeholder="Judul, contoh: Cara set harga promo">' +
-      '<label class="muted">Tempel tautan YouTube, Google Drive, atau TikTok</label>' +
-      '<input name="url" placeholder="https://www.youtube.com/watch?v=…">' +
-      '<p class="muted" style="margin:0">Lebih mudah: tempel tautan. File MP4/WebM (maks 80 MB) hanya tinggal di browser ini — produksi nanti ke Drive/YouTube.</p>' +
+      '<strong>Tambah item</strong>' +
+      '<select name="kind">' +
+        '<option value="video">Video</option>' +
+        '<option value="file">File</option>' +
+        '<option value="text">Teks / bacaan</option>' +
+      '</select>' +
+      '<input name="title" required maxlength="140" placeholder="Judul">' +
+      '<label class="muted">Tautan YouTube / Drive / TikTok (video) atau URL file</label>' +
+      '<input name="url" placeholder="https://…">' +
+      '<p class="muted" style="margin:0">Video: MP4 maks 80 MB di browser ini. File lain maks 20 MB. Cover maks 5 MB.</p>' +
       '<label class="vid-drop" data-act="vid-drop" data-week="' + esc(weekId) + '">' +
         '<input type="file" name="videoFile" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v" hidden>' +
         '<span>Drop video ke sini, atau ketuk untuk pilih file</span>' +
@@ -2028,9 +2564,11 @@
 
   function lecEditorCard(l, readonly, wi, li, len) {
     const open = ui.editLecId === l.id;
+    const kindNote = l.type === 'video' ? videoKindLabel(l) : (l.type === 'text' ? 'Bacaan' : ((l.resources || []).length + ' file'));
     const head = '<div class="lec-edit-head">' +
+      coverHtml('lec', l.id, 'cover-thumb') +
       '<div><strong>' + esc(l.title) + '</strong>' +
-        '<div class="muted">' + esc(videoKindLabel(l)) + (l.requiredBefore ? ' · wajib' : '') +
+        '<div class="muted">' + esc(typeLabel(l.type)) + ' · ' + esc(kindNote) + (l.requiredBefore ? ' · wajib' : '') +
         ' · ' + esc(l.mins || 0) + ' mnt</div></div>' +
       '<div class="row">' +
         (readonly ? '' : '<button type="button" class="btn-sm" data-act="lec-up" data-id="' + esc(l.id) + '"' + (li === 0 ? ' disabled' : '') + '>Naik</button>' +
@@ -2047,7 +2585,15 @@
         '<input data-act="q-field" data-id="' + esc(l.id) + '" data-i="' + i + '" data-k="hint" value="' + esc(q.hint || '') + '" placeholder="Arah jawaban (opsional)">' +
       '</div>'
     ).join('');
-    const doc = (l.resources && l.resources[0]) || { name: '', url: '' };
+    const resHtml = (l.resources || []).map((r, i) =>
+      '<div class="row" style="margin-top:6px">' +
+        '<input data-act="res-name" data-id="' + esc(l.id) + '" data-i="' + i + '" value="' + esc(r.name || '') + '" placeholder="Nama file">' +
+        (r.blob
+          ? '<span class="muted">' + esc(r.name || 'file') + '</span>'
+          : '<input data-act="res-url" data-id="' + esc(l.id) + '" data-i="' + i + '" value="' + esc(r.url || '') + '" placeholder="Tautan">') +
+        '<button type="button" class="btn-sm" data-act="res-del" data-id="' + esc(l.id) + '" data-i="' + i + '">Hapus</button>' +
+      '</div>'
+    ).join('');
     const body = readonly
       ? '<p class="muted">Asisten hanya lihat. Anton yang unggah.</p>'
       : '<div class="lec-edit-body">' +
@@ -2063,17 +2609,25 @@
           '</div>' +
           '<label class="muted"><input type="checkbox" data-act="lec-req" data-id="' + esc(l.id) + '"' +
             (l.requiredBefore ? ' checked' : '') + '> Wajib sebelum live class</label>' +
-          '<h4>Video</h4>' +
-          '<p class="muted">YouTube paling lancar di dalam kelas. Drive juga bisa. Atau unggah MP4 di bawah.</p>' +
-          '<input data-act="lec-field" data-id="' + esc(l.id) + '" data-k="url" value="' + esc(l.url || '') + '" placeholder="https://youtube.com/…">' +
-          '<label class="vid-drop" data-act="vid-drop" data-id="' + esc(l.id) + '">' +
-            '<input type="file" data-act="vid-file" data-id="' + esc(l.id) + '" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v" hidden>' +
-            '<span>' + (l.videoBlob ? ('Ganti file · sekarang: ' + esc(l.videoName || 'video')) : 'Drop / pilih file MP4') + '</span>' +
-          '</label>' +
-          (l.videoBlob ? '<button type="button" class="btn-sm" data-act="clear-vid" data-id="' + esc(l.id) + '">Hapus file, pakai tautan</button>' : '') +
-          '<h4>Lembar kerja</h4>' +
-          '<input data-act="doc-name" data-id="' + esc(l.id) + '" value="' + esc(doc.name || '') + '" placeholder="Nama file, contoh: Worksheet harga.pdf">' +
-          '<input data-act="doc-url" data-id="' + esc(l.id) + '" value="' + esc(doc.url || '') + '" placeholder="Tautan Drive / PDF">' +
+          '<h4>Cover</h4>' +
+          '<label class="vid-drop"><input type="file" data-act="cover-file" data-kind="lec" data-id="' + esc(l.id) + '" accept="image/*" hidden><span>Unggah cover (maks 5 MB)</span></label>' +
+          (l.type === 'text'
+            ? '<h4>Bacaan</h4><textarea data-act="lec-body" data-id="' + esc(l.id) + '" rows="8" placeholder="Teks. **tebal** boleh.">' + esc(l.body || '') + '</textarea>'
+            : '<h4>Video</h4>' +
+              '<p class="muted">YouTube paling lancar. Drive juga bisa. Atau unggah MP4.</p>' +
+              '<input data-act="lec-field" data-id="' + esc(l.id) + '" data-k="url" value="' + esc(l.url || '') + '" placeholder="https://youtube.com/…">' +
+              '<label class="vid-drop" data-act="vid-drop" data-id="' + esc(l.id) + '">' +
+                '<input type="file" data-act="vid-file" data-id="' + esc(l.id) + '" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v" hidden>' +
+                '<span>' + (l.videoBlob ? ('Ganti file · sekarang: ' + esc(l.videoName || 'video')) : 'Drop / pilih file MP4') + '</span>' +
+              '</label>' +
+              (l.videoBlob ? '<button type="button" class="btn-sm" data-act="clear-vid" data-id="' + esc(l.id) + '">Hapus file, pakai tautan</button>' : '')) +
+          '<h4>File / lembar kerja</h4>' +
+          resHtml +
+          '<div class="row" style="margin-top:8px">' +
+            '<input data-act="res-new-url" data-id="' + esc(l.id) + '" placeholder="Tautan file baru">' +
+            '<button type="button" class="btn-sm" data-act="res-add-url" data-id="' + esc(l.id) + '">+ Tautan</button>' +
+            '<label class="btn-sm">+ Unggah file<input type="file" hidden data-act="res-file" data-id="' + esc(l.id) + '"></label>' +
+          '</div>' +
           '<h4>Poin penting</h4>' +
           '<textarea data-act="lec-points" data-id="' + esc(l.id) + '" rows="4" placeholder="Satu poin per baris">' +
             esc((l.points || []).join('\n')) + '</textarea>' +
@@ -2156,17 +2710,13 @@
       }).join('') + '</tbody></table></div></div>';
   }
 
-  function openDrawer(id) {
-    ui.drawerId = id;
-    $('drawer').hidden = false;
-    $('drawer-scrim').hidden = false;
-    $('drawer').innerHTML = viewStudentDrawer(id);
-  }
+  function openDrawer(id) { openPerson(id); }
   function closeDrawer() {
     ui.drawerId = null;
-    $('drawer').hidden = true;
-    $('drawer').innerHTML = '';
-    $('drawer-scrim').hidden = true;
+    const d = $('drawer');
+    const s = $('drawer-scrim');
+    if (d) { d.hidden = true; d.innerHTML = ''; }
+    if (s) s.hidden = true;
   }
 
   function resolvePresentVal(v) {
@@ -2211,8 +2761,18 @@
     ui.skuFrom = 'alat';
     if (ui.presentPane === 'mentor') {
       ui.role = 'owner';
-      ui.mentorTab = cam.tab || 'crm';
-      ui.drawerId = cam.drawerId || null;
+      ui.personId = cam.personId || cam.drawerId || null;
+      if (cam.hub) ui.siswaView = cam.hub;
+      if (cam.tab === 'crm') {
+        ui.siswaView = cam.hub || 'pipa';
+        ui.mentorTab = ui.personId ? 'orang' : 'siswa';
+      } else if (cam.tab === 'progres') {
+        ui.siswaView = 'progres';
+        ui.mentorTab = 'siswa';
+      } else {
+        ui.mentorTab = cam.tab || 'siswa';
+      }
+      if (cam.tab === 'tugas' && ui.personId) ui.taskPerson = ui.personId;
     } else {
       ui.role = 'student';
       ui.personaId = cam.personaId || ui.personaId;
@@ -2228,7 +2788,6 @@
     save();
     applyCamera(ui.presentPane === 'mentor' ? scene.mentor : scene.student);
     render();
-    if (ui.presentPane === 'mentor' && ui.drawerId) openDrawer(ui.drawerId);
     clearTimeout(applyPresent._ready);
     applyPresent._ready = setTimeout(() => {
       ui.presentApplying = false;
@@ -2239,7 +2798,6 @@
     if (ui.presentApplying) return;
     db = load();
     render();
-    if (ui.drawerId) openDrawer(ui.drawerId);
   }
   window.__antonSchool = { applyPresent: applyPresent, reloadDb: reloadDb };
 
@@ -2250,7 +2808,7 @@
       if (ui.present) return;
       ui.role = t.value;
       ui.tab = 'home';
-      ui.mentorTab = 'crm';
+      ui.mentorTab = 'siswa';
       closeDrawer();
       render();
       return;
@@ -2283,7 +2841,6 @@
       setStage(t.getAttribute('data-id'), t.value, 'Anton pindah stage.');
       save();
       render();
-      if (ui.drawerId) openDrawer(ui.drawerId);
       return;
     }
     if (t.matches('[data-act="filter-siswa"]')) {
@@ -2319,7 +2876,6 @@
       save();
       toast('Ledger ' + nameOf(id) + ' → ' + t.value);
       render();
-      if (ui.drawerId) openDrawer(ui.drawerId);
       return;
     }
     if (t.matches('[data-act="ent-mentor"]')) {
@@ -2336,7 +2892,6 @@
       save();
       toast((t.checked ? 'Mentoring on · ' : 'Mentoring off · ') + nameOf(id));
       render();
-      if (ui.drawerId) openDrawer(ui.drawerId);
       return;
     }
     if (t.matches('[data-act="ent-sku"]')) {
@@ -2355,7 +2910,6 @@
       else if (b.status === 'belum') b.status = 'lunas';
       save();
       render();
-      if (ui.drawerId) openDrawer(ui.drawerId);
       return;
     }
     if (t.matches('[data-act="hadir"]')) {
@@ -2399,13 +2953,75 @@
       }
       return;
     }
-    if (t.matches('[data-act="doc-name"]') || t.matches('[data-act="doc-url"]')) {
+    if (t.matches('[data-act="doc-name"]') || t.matches('[data-act="doc-url"]') || t.matches('[data-act="res-name"]') || t.matches('[data-act="res-url"]')) {
       const l = lectureById(t.getAttribute('data-id'));
       if (!l) return;
       l.resources = l.resources && l.resources.length ? l.resources : [{ name: '', url: '' }];
-      if (t.matches('[data-act="doc-name"]')) l.resources[0].name = t.value;
-      else l.resources[0].url = t.value;
+      const i = t.hasAttribute('data-i') ? +t.getAttribute('data-i') : 0;
+      while (l.resources.length <= i) l.resources.push({ name: '', url: '' });
+      if (t.matches('[data-act="doc-name"]') || t.matches('[data-act="res-name"]')) l.resources[i].name = t.value;
+      else l.resources[i].url = t.value;
       save();
+      return;
+    }
+    if (t.matches('[data-act="lec-body"]')) {
+      const l = lectureById(t.getAttribute('data-id'));
+      if (l) { l.body = t.value; save(); }
+      return;
+    }
+    if (t.matches('[data-act="cover-file"]')) {
+      const file = t.files && t.files[0];
+      if (file) ingestCoverFile(file, t.getAttribute('data-kind'), t.getAttribute('data-id'));
+      return;
+    }
+    if (t.matches('[data-act="res-file"]')) {
+      const file = t.files && t.files[0];
+      if (file) ingestResourceFile(file, t.getAttribute('data-id'));
+      return;
+    }
+    if (t.matches('[data-act="photo-file"]')) {
+      const file = t.files && t.files[0];
+      const id = t.getAttribute('data-id');
+      if (!file || !id) return;
+      if (file.size > MAX_IMG) { toast('Foto maks 5 MB.'); return; }
+      blobPut(photoKey(id), file).then(() => {
+        patchPerson(id, { photoBlob: true, photoFailed: false });
+        save();
+        toast('Foto diunggah di browser ini.');
+        render();
+      });
+      return;
+    }
+    if (t.matches('[data-act="task-person"]')) {
+      ui.taskPerson = t.value;
+      render();
+      return;
+    }
+    if (t.matches('[data-act="enroll-plan"]')) {
+      const id = t.getAttribute('data-id');
+      const pid = t.getAttribute('data-pid');
+      if (t.checked) enrollPerson(id, pid, true);
+      else unenrollPerson(id, pid);
+      save();
+      runAutomations();
+      render();
+      return;
+    }
+    if (t.matches('[data-act="plan-trigger"]')) {
+      const plan = planById(t.getAttribute('data-pid'));
+      if (plan) { plan.trigger = t.value; save(); }
+      return;
+    }
+    if (t.matches('[data-act="plan-kind"]')) {
+      const plan = planById(t.getAttribute('data-pid'));
+      const st = plan && plan.steps.find((x) => x.id === t.getAttribute('data-sid'));
+      if (st) { st.kind = t.value; save(); render(); }
+      return;
+    }
+    if (t.matches('[data-act="plan-to"]')) {
+      const plan = planById(t.getAttribute('data-pid'));
+      const st = plan && plan.steps.find((x) => x.id === t.getAttribute('data-sid'));
+      if (st) { st.to = t.value; save(); }
       return;
     }
     if (t.matches('[data-act="q-field"]')) {
@@ -2471,21 +3087,11 @@
 
   document.addEventListener('input', (e) => {
     const t = e.target;
-    if (t.matches('[data-act="filter-siswa"]')) {
+    if (t.matches('[data-act="filter-siswa"]') || t.matches('[data-act="filter-crm"]')) {
       ui.filterSiswa = t.value;
-      render();
-      const el = document.querySelector('[data-act="filter-siswa"]');
-      if (el) {
-        el.focus();
-        const n = el.value.length;
-        el.setSelectionRange(n, n);
-      }
-      return;
-    }
-    if (t.matches('[data-act="filter-crm"]')) {
       ui.crmFilter = t.value;
       render();
-      const el = document.querySelector('[data-act="filter-crm"]');
+      const el = document.querySelector('[data-act="filter-siswa"], [data-act="filter-crm"]');
       if (el) {
         el.focus();
         const n = el.value.length;
@@ -2493,14 +3099,22 @@
       }
       return;
     }
-    if (t.matches('[data-act="plan-wait"]') || t.matches('[data-act="plan-title"]') || t.matches('[data-act="plan-body"]')) {
+    if (t.matches('[data-act="plan-wait"]') || t.matches('[data-act="plan-title"]') || t.matches('[data-act="plan-body"]') || t.matches('[data-act="plan-subject"]') || t.matches('[data-act="plan-name"]')) {
       const plan = planById(t.getAttribute('data-pid'));
-      const st = plan && plan.steps.find((x) => x.id === t.getAttribute('data-sid'));
+      if (!plan) return;
+      if (t.matches('[data-act="plan-name"]')) { plan.name = t.value; save(); return; }
+      const st = plan.steps.find((x) => x.id === t.getAttribute('data-sid'));
       if (!st) return;
       if (t.matches('[data-act="plan-wait"]')) st.waitHours = +t.value || 0;
       else if (t.matches('[data-act="plan-title"]')) st.title = t.value;
+      else if (t.matches('[data-act="plan-subject"]')) st.subject = t.value;
       else st.body = t.value;
       save();
+      return;
+    }
+    if (t.matches('[data-act="lec-body"]')) {
+      const l = lectureById(t.getAttribute('data-id'));
+      if (l) { l.body = t.value; save(); }
       return;
     }
     if (t.matches('[data-act="lec-points"]')) {
@@ -2517,13 +3131,16 @@
     if (!btn) return;
     const act = btn.getAttribute('data-act');
     if (act === 'vid-drop' || act === 'vid-file' || act === 'add-lec' || act === 'sec-title' ||
-        act === 'lec-field' || act === 'lec-points' || act === 'q-field' || act === 'doc-name' || act === 'doc-url') {
+        act === 'lec-field' || act === 'lec-points' || act === 'q-field' || act === 'doc-name' || act === 'doc-url' ||
+        act === 'cover-file' || act === 'res-file' || act === 'photo-file' || act === 'lec-body' || act === 'res-name' || act === 'res-url') {
       return;
     }
     if (act === 'tab') {
       const id = btn.getAttribute('data-id');
-      if (isStaff()) ui.mentorTab = id;
-      else {
+      if (isStaff()) {
+        ui.mentorTab = id;
+        if (id !== 'orang') ui.personId = null;
+      } else {
         ui.tab = id;
         if (id === 'pustaka' || id === 'alat') { ui.skuId = null; ui.skuPreview = false; }
         if (id === 'belajar' && canPreview(ui.personaId) && !canMentoring(ui.personaId)) {
@@ -2597,13 +3214,103 @@
       ui.pane = btn.getAttribute('data-id');
       render();
     } else if (act === 'open-student') {
-      openDrawer(btn.getAttribute('data-id'));
-    } else if (act === 'close-drawer') {
-      closeDrawer();
+      const id = btn.getAttribute('data-id');
+      if (ui.skipOpen === id) return;
+      openPerson(id);
+    } else if (act === 'close-drawer' || act === 'close-person') {
+      closePerson();
+    } else if (act === 'siswa-view') {
+      ui.siswaView = btn.getAttribute('data-id');
+      ui.hubBack = ui.siswaView;
+      ui.mentorTab = 'siswa';
+      render();
+    } else if (act === 'queue-kind') {
+      ui.queueKind = btn.getAttribute('data-id');
+      render();
+    } else if (act === 'plan-new') {
+      const id = 'plan-' + Date.now();
+      db.actionPlans.push({
+        id: id,
+        name: 'Rencana baru',
+        trigger: 'manual',
+        archived: false,
+        steps: [{ id: 'st-' + Date.now(), waitHours: 0, kind: 'wa', title: '', body: '' }]
+      });
+      ui.editPlanId = id;
+      save();
+      render();
+    } else if (act === 'plan-edit') {
+      const id = btn.getAttribute('data-id');
+      ui.editPlanId = ui.editPlanId === id ? null : id;
+      render();
+    } else if (act === 'plan-dup') {
+      const p = planById(btn.getAttribute('data-id'));
+      if (!p) return;
+      const n = JSON.parse(JSON.stringify(p));
+      n.id = 'plan-' + Date.now();
+      n.name = p.name + ' (salinan)';
+      n.archived = false;
+      n.steps = (n.steps || []).map((st, i) => Object.assign({}, st, { id: n.id + '-s' + i }));
+      db.actionPlans.push(n);
+      ui.editPlanId = n.id;
+      save();
+      render();
+    } else if (act === 'plan-arch') {
+      const p = planById(btn.getAttribute('data-id'));
+      if (p) { p.archived = true; save(); render(); }
+    } else if (act === 'plan-unarch') {
+      const p = planById(btn.getAttribute('data-id'));
+      if (p) { p.archived = false; save(); render(); }
+    } else if (act === 'plan-show-arch') {
+      ui.showArchivedPlans = !ui.showArchivedPlans;
+      render();
+    } else if (act === 'plan-add-step') {
+      const p = planById(btn.getAttribute('data-id'));
+      if (!p) return;
+      p.steps = p.steps || [];
+      p.steps.push({ id: 'st-' + Date.now(), waitHours: 0, kind: 'wa', title: '', body: '' });
+      save();
+      render();
+    } else if (act === 'plan-del-step') {
+      const p = planById(btn.getAttribute('data-pid'));
+      if (!p) return;
+      p.steps = (p.steps || []).filter((x) => x.id !== btn.getAttribute('data-sid'));
+      save();
+      render();
+    } else if (act === 'res-add-url') {
+      const l = lectureById(btn.getAttribute('data-id'));
+      if (!l) return;
+      const inp = document.querySelector('[data-act="res-new-url"][data-id="' + l.id + '"]');
+      const url = inp ? String(inp.value || '').trim() : '';
+      if (!url) { toast('Tempel tautan dulu.'); return; }
+      l.resources = l.resources || [];
+      l.resources.push({ name: url.split('/').pop() || 'File', url: url });
+      save();
+      render();
+    } else if (act === 'res-del') {
+      const l = lectureById(btn.getAttribute('data-id'));
+      if (!l) return;
+      const i = +btn.getAttribute('data-i');
+      const row = (l.resources || [])[i];
+      if (row && row.blobId) blobDel(row.blobId);
+      l.resources.splice(i, 1);
+      save();
+      render();
+    } else if (act === 'em-sent') {
+      const w = (db.emailQueue || []).find((x) => x.id === btn.getAttribute('data-id'));
+      if (w) {
+        w.status = 'sent';
+        pushTimeline(w.toId, 'email', 'Anton menandai email terkirim: ' + (w.subject || w.title));
+      }
+      save();
+      render();
     } else if (act === 'del-lec') {
       const id = btn.getAttribute('data-id');
-      db.lectures = db.lectures.filter((l) => l.id !== id);
+      const l = lectureById(id);
       blobDel(id);
+      blobDel(coverKey('lec', id));
+      (l && l.resources || []).forEach((r) => { if (r.blobId) blobDel(r.blobId); });
+      db.lectures = db.lectures.filter((x) => x.id !== id);
       if (ui.editLecId === id) ui.editLecId = null;
       save();
       render();
@@ -2772,7 +3479,10 @@
       render();
     } else if (act === 'task-done') {
       const row = db.tasks.find((x) => x.id === btn.getAttribute('data-id'));
-      if (row) row.done = true;
+      if (row) {
+        row.done = true;
+        pushTimeline(row.personId, 'task', 'Tugas selesai: ' + row.title);
+      }
       save();
       render();
     } else if (act === 'task-from') {
@@ -2780,11 +3490,13 @@
       addTask(id, 'Follow-up ' + nameOf(id), '', isoNow());
       save();
       toast('Tugas ditambah');
-      render();
-      openDrawer(id);
+      openPerson(id);
     } else if (act === 'wa-sent') {
       const w = db.waQueue.find((x) => x.id === btn.getAttribute('data-id'));
-      if (w) w.status = 'sent';
+      if (w) {
+        w.status = 'sent';
+        pushTimeline(w.toId, 'wa', 'Anton menandai WA terkirim: ' + w.title);
+      }
       save();
       render();
     } else if (act === 'remit') {
@@ -2800,6 +3512,7 @@
       c.acceptedOverride = true;
       const s = student();
       s.kind = 'mentor';
+      patchPerson(ui.personaId, { kind: 'mentor' });
       setStage(ui.personaId, 'mentor', 'Terima peran mentor + 20% licensing.');
       save();
       toast('Peran mentor aktif. Murid baru menempel ke kamu.');
@@ -2855,39 +3568,54 @@
       db.notes[id] = db.notes[id] || [];
       db.notes[id].push({ at: new Date().toISOString().slice(0, 10), body: String(fd.get('body')) });
       save();
-      openDrawer(id);
+      render();
+    } else if (act === 'save-person') {
+      const id = form.getAttribute('data-id');
+      const email = String(fd.get('email') || '').trim();
+      const tiktok = tiktokHandle(fd.get('tiktok'));
+      const wa = String(fd.get('wa') || '').replace(/\D/g, '');
+      patchPerson(id, { email: email, tiktok: tiktok, wa: wa || undefined });
+      save();
+      toast('Kontak disimpan. Mengambil foto TikTok…');
+      refreshPersonPhoto(id, true).then((ok) => {
+        toast(ok ? 'Foto TikTok tersimpan.' : 'Foto gagal. Inisial + unggah.');
+        render();
+      });
     } else if (act === 'add-lec') {
       const weekId = form.getAttribute('data-week');
       const title = String(fd.get('title') || '').trim();
       const url = String(fd.get('url') || '').trim();
+      const kind = String(fd.get('kind') || 'video');
       const file = form.querySelector('[name="videoFile"]') && form.querySelector('[name="videoFile"]').files[0];
       if (!title) return;
-      if (!url && !file) {
+      if (kind === 'video' && !url && !file) {
         toast('Tempel tautan atau unggah file video.');
         return;
       }
       const id = 'v-' + Date.now();
+      const type = kind === 'text' ? 'text' : (kind === 'file' ? 'document' : 'video');
       db.lectures.push({
-        id,
-        weekId,
-        type: 'video',
-        title,
-        mins: 8,
-        url,
+        id: id,
+        weekId: weekId,
+        type: type,
+        title: title,
+        mins: type === 'text' ? 5 : 8,
+        url: url,
+        body: '',
         videoBlob: false,
         videoName: '',
         requiredBefore: !!(form.querySelector('[name=req]') && form.querySelector('[name=req]').checked),
         points: [],
         questions: [],
-        resources: []
+        resources: type === 'document' && url ? [{ name: title, url: url }] : []
       });
       ui.editLecId = id;
+      setSecOpen(weekId, true);
       save();
-      if (file) {
+      if (kind === 'video' && file) {
         ingestVideoFile(file, { lecId: id });
       } else {
-        save();
-        toast('Video ditambah. Lengkapi poin & lembar kerja di Ubah.');
+        toast(type === 'text' ? 'Bacaan ditambah. Isi teks di Ubah.' : (type === 'document' ? 'File ditambah.' : 'Video ditambah.'));
         render();
       }
     } else if (act === 'meet') {
@@ -2910,6 +3638,7 @@
       };
       s.name = name || s.name;
       s.wa = wa.replace(/\D/g, '') || s.wa;
+      patchPerson(sid, { name: s.name, wa: s.wa });
       const b = billingOf(sid);
       if (!b.offerStartedAt) {
         b.offerStartedAt = isoNow();
