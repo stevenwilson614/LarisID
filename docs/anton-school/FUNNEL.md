@@ -31,15 +31,19 @@ This extends [README.md](./README.md). Offline lock unchanged.
 
 ## CRM (roster + profil + otomasi)
 
-Satu tab **Siswa** dengan tiga kamera: **Daftar** (baris orang ala CRM: nama+foto, telepon, email, stage, nilai, tag · filter stage) · **Pipa** (kanban drag-and-drop, aksen warna kolom) · **Progres** (heatmap + titik materi). Klik nama membuka **profil 3 kolom** (bukan drawer): kiri kontak, tengah catatan/linimasa, kanan tugas + rencana aksi. Foto TikTok (oEmbed → unavatar.io, cache IndexedDB, fallback inisial + unggah).
+Satu tab **Siswa** dengan tiga kamera: **Daftar** (baris orang: nama+foto, telepon, email, stage, bayar, nilai · klik baris = profil) · **Pipa** (kanban drag-and-drop) · **Progres** (heatmap + titik materi). Profil 3 kolom: kiri kontak **inline-edit** + status/SKU bayar, tengah catatan/linimasa + composer tugas, kanan tugas + rencana aksi. Foto TikTok (oEmbed → unavatar.io, cache IndexedDB, fallback inisial + unggah).
 
 **Otomasi** = peta visual (pemicu → tunggu jam → email / WA / tugas / pindah stage → selesai). Buat / salin / arsip. Seed **Onboarding bayar**. Tidak auto-kirim.
 
-**Tugas** dikelompokkan hari ini / mendatang / selesai. **Antrian** = WA | email.
+**Tugas** = inbox Follow Up Boss: jenis WA / Email / Telepon / pengingat, tanggal+jam, kelompok terlambat / hari ini / besok / minggu ini / nanti / selesai. Klik nama → profil. Antrian WA/email (wa.me / mailto, tidak auto-kirim) tampil di sini, bukan halaman terpisah.
 
-**Kurikulum:** cover modul/item, banyak file, item teks. Blob IndexedDB (cover ~5 MB, file ~20 MB).
+**Kurikulum:** drag-and-drop bagian & item (tampilan sama dengan daftar siswa) + preview HP. Cover, file, teks. Blob IndexedDB. Jatuh tempo bagian masuk kalender.
 
-Mentor tabs: Siswa · Tugas · Antrian · Otomasi · Jaringan · Kurikulum · … · Pembayaran · Pengaturan bayar.
+**Perpustakaan:** Anton bisa tambah SKU lokal (lynk URL). Toggle Contoh → File Anton.
+
+**Jadwal:** kalender bulan — kurikulum (due), Meet/Zoom, tugas.
+
+Mentor tabs: Siswa · Tugas · Otomasi · Jaringan · Kurikulum · Perpustakaan · Jadwal · Diskusi · Pengaturan bayar. **Tidak ada** tab Antrian atau Pembayaran — bayar di baris siswa + profil.
 
 **Simulasi jam** (+1h / +12h / +1d) on the mentor chrome to demo clocks without waiting. Queued WA/email is `wa.me` / `mailto` + status, not live send.
 
@@ -73,7 +77,7 @@ Reset lokal clears `localStorage` key `anton-school-v3`.
 
 | Bab | Adegan |
 |---|---|
-| 1 Tutup trial | Tamu form → pay 24 jam → Ayu bayar nanti → video 1 → Farah nonton → antrian WA 12 jam → Kamu lunas (Affiliate tetap satuan) |
+| 1 Tutup trial | Tamu form → pay 24 jam → Ayu bayar nanti → video 1 → Farah nonton → tugas WA 12 jam → Kamu lunas (Affiliate tetap satuan) |
 | 2 Jaga & luluskan | Hadi perpanjangan → Irma grace → Joko sertifikat → 20% licensing → Jaringan Dewi |
 
 Keyboard: Left/Right. Reset demo returns to the first scene of the current act. Do not deploy.

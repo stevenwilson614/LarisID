@@ -72,17 +72,17 @@
     {
       id: 'a1-12h',
       act: 1,
-      title: '12 jam · antrian WA',
-      sayAnton: 'Simulasi jam, bukan tunggu semalam. Antrian WA = wa.me. Tidak auto-send.',
+      title: '12 jam · tugas WA',
+      sayAnton: 'Simulasi jam, bukan tunggu semalam. Tugas + antrian WA = wa.me. Tidak auto-send.',
       saySiswa: 'Farah masih di trial. Harga perkenalan masih jalan sampai jam form + 24 jam.',
       student: { personaId: 's-farah', tab: 'home', payPrompt: true },
-      mentor: { tab: 'waq', personId: 's-farah' }
+      mentor: { tab: 'tugas', personId: 's-farah' }
     },
     {
       id: 'a1-lunas',
       act: 1,
       title: 'Lunas mentoring',
-      sayAnton: 'Kamu (demo) di Aktif. Merchant = Anton. Cek transfer di Pembayaran kalau perlu.',
+      sayAnton: 'Kamu (demo) di Aktif. Merchant = Anton. Cek transfer di baris siswa / profil.',
       saySiswa: 'Kelas penuh. Alat lynk ikut mentoring. Laris Affiliate tetap satuan / Contoh.',
       student: { personaId: 's-kamu', tab: 'alat' },
       mentor: { tab: 'orang', personId: 's-kamu', hub: 'pipa' }

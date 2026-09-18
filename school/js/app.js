@@ -227,6 +227,11 @@
     stageFilter: '',
     queueKind: 'wa',
     taskPerson: '',
+    taskComposer: '',
+    calYM: '',
+    calDay: '',
+    kurPreviewId: 's-kamu',
+    kurPreviewLec: '',
     editPlanId: null,
     kolabSel: new Set(),
     filterSiswa: '',
@@ -461,6 +466,55 @@
     };
     db.tasks.unshift(row);
     return row;
+  }
+  function taskKindLabel(k) {
+    return { wa: 'WhatsApp', email: 'Email', call: 'Telepon', reminder: 'Pengingat', task: 'Pengingat' }[k] || 'Pengingat';
+  }
+  function taskKindOptions(cur) {
+    return ['wa', 'email', 'call', 'reminder'].map((k) =>
+      '<option value="' + k + '"' + ((cur || 'wa') === k ? ' selected' : '') + '>' + esc(taskKindLabel(k)) + '</option>').join('');
+  }
+  function splitLocal(iso) {
+    const d = iso ? new Date(iso) : nowDate();
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Jakarta', year: 'numeric', month: 'numeric', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hour12: false
+    }).formatToParts(d);
+    const g = (t) => (parts.find((p) => p.type === t) || {}).value || '';
+    const mo = String(g('month')).padStart(2, '0');
+    const da = String(g('day')).padStart(2, '0');
+    const hh = String(g('hour') || '09').padStart(2, '0');
+    const mi = String(g('minute') || '00').padStart(2, '0');
+    return { date: g('year') + '-' + mo + '-' + da, time: hh + ':' + mi };
+  }
+  function joinLocal(date, time) {
+    const t = String(time || '09:00');
+    return new Date(String(date || splitLocal().date) + 'T' + (t.length >= 5 ? t.slice(0, 5) : '09:00') + ':00+07:00').toISOString();
+  }
+  function fmtClock(iso) {
+    if (!iso) return '';
+    return new Date(iso).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
+  }
+  function ymdOf(iso) { return splitLocal(iso).date; }
+  function taskComposerHtml(personId) {
+    const due = splitLocal();
+    const pid = personId || '';
+    return '<form class="compose task-create" data-act="add-task">' +
+      (pid
+        ? '<input type="hidden" name="personId" value="' + esc(pid) + '">'
+        : '<label class="muted">Orang</label><select name="personId">' +
+          people().map((s) => '<option value="' + esc(s.id) + '">' + esc(s.name) + '</option>').join('') + '</select>') +
+      '<label class="muted">Nama tugas</label>' +
+      '<input name="title" required placeholder="Follow up, cek transfer…">' +
+      '<div class="row2">' +
+        '<div><label class="muted">Jenis</label><select name="kind">' + taskKindOptions('wa') + '</select></div>' +
+        '<div></div></div>' +
+      '<div class="row2">' +
+        '<div><label class="muted">Tanggal</label><input name="date" type="date" required value="' + esc(due.date) + '"></div>' +
+        '<div><label class="muted">Jam</label><input name="time" type="time" required value="' + esc(due.time) + '"></div>' +
+      '</div>' +
+      '<textarea name="body" rows="2" placeholder="Teks WA / email / catatan"></textarea>' +
+      '<button class="btn" type="submit">Buat tugas</button></form>';
   }
   function queueWa(toId, title, body, scheduledAt) {
     const exists = (db.waQueue || []).some((w) => w.toId === toId && w.title === title && w.status !== 'cancelled');
@@ -841,6 +895,24 @@
     db.lectures[a] = db.lectures[b];
     db.lectures[b] = tmp;
   }
+  function moveWeekTo(id, toIndex) {
+    const i = db.weeks.findIndex((w) => w.id === id);
+    if (i < 0) return;
+    const [row] = db.weeks.splice(i, 1);
+    db.weeks.splice(Math.max(0, Math.min(toIndex, db.weeks.length)), 0, row);
+  }
+  function moveLecTo(id, weekId, toIndex) {
+    const from = db.lectures.findIndex((x) => x.id === id);
+    if (from < 0) return;
+    const [row] = db.lectures.splice(from, 1);
+    row.weekId = weekId;
+    const same = db.lectures.map((x, i) => ({ x, i })).filter((o) => o.x.weekId === weekId);
+    let insertAt;
+    if (!same.length) insertAt = db.lectures.length;
+    else if (toIndex >= same.length) insertAt = same[same.length - 1].i + 1;
+    else insertAt = same[Math.max(0, toIndex)].i;
+    db.lectures.splice(insertAt, 0, row);
+  }
 
   function ingestVideoFile(file, opts) {
     opts = opts || {};
@@ -935,6 +1007,30 @@
     }[st] || st;
     const cls = st === 'trial' ? 'warn' : st;
     return '<span class="chip ' + esc(cls) + '">' + esc(label) + '</span>';
+  }
+  function billStatusSelect(id, b) {
+    return '<select data-act="bill-one" data-id="' + esc(id) + '">' +
+      ['lunas', 'cicilan', 'belum', 'gratis', 'trial', 'pending'].map((st) =>
+        '<option' + (b.status === st ? ' selected' : '') + ' value="' + st + '">' + st + '</option>').join('') +
+      '</select>';
+  }
+  function billAmountInput(id, b) {
+    return '<input class="inline-edit money-in" data-act="bill-amount" data-id="' + esc(id) + '" type="number" min="0" step="1000" value="' + (Number(b.amount) || 0) + '">';
+  }
+  function personEntitlementsHtml(id) {
+    if (!canBill()) return '';
+    const b = billingOf(id);
+    const mentorOn = canMentoring(id);
+    return '<div class="fub-field"><dt>Mentoring</dt><dd>' +
+      '<label class="muted"><input type="checkbox" data-act="ent-mentor" data-id="' + esc(id) + '"' +
+        (mentorOn ? ' checked' : '') + (b.status === 'gratis' ? ' disabled' : '') + '> Live class + alat lynk</label></dd></div>' +
+      '<div class="fub-field"><dt>SKU</dt><dd class="sku-checks">' +
+        catalog().map((p) =>
+          '<label><input type="checkbox" data-act="ent-sku" data-id="' + esc(id) + '" data-sku="' + esc(p.id) + '"' +
+            (canSku(id, p.id) ? ' checked' : '') + ((mentorOn && bundled(p)) ? ' disabled' : '') + '> ' +
+            esc(p.title) + '</label>'
+        ).join('') +
+      '</dd></div>';
   }
 
   function typeLabel(t) {
@@ -1094,6 +1190,58 @@
       });
     });
   }
+  function bindKurDnD() {
+    const root = $('main');
+    if (!root || ui.role === 'asisten') return;
+    root.querySelectorAll('[data-drag="sec"], [data-drag="lec"]').forEach((el) => {
+      el.addEventListener('dragstart', (ev) => {
+        const kind = el.getAttribute('data-drag');
+        const id = el.getAttribute('data-id');
+        ev.dataTransfer.setData('text/plain', kind + ':' + id);
+        ev.dataTransfer.effectAllowed = 'move';
+        el.classList.add('is-drag');
+      });
+      el.addEventListener('dragend', () => el.classList.remove('is-drag'));
+    });
+    const mark = (el, on) => { if (el) el.classList.toggle('is-drop', on); };
+    root.querySelectorAll('.kur-sec').forEach((sec) => {
+      sec.addEventListener('dragover', (ev) => {
+        ev.preventDefault();
+        mark(sec, true);
+      });
+      sec.addEventListener('dragleave', () => mark(sec, false));
+      sec.addEventListener('drop', (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        mark(sec, false);
+        const raw = ev.dataTransfer.getData('text/plain') || '';
+        const weekId = sec.getAttribute('data-sec');
+        const lecEl = ev.target.closest('[data-lec-drop]');
+        if (raw.indexOf('sec:') === 0) {
+          const id = raw.slice(4);
+          const to = db.weeks.findIndex((w) => w.id === weekId);
+          if (id && to >= 0 && id !== weekId) {
+            moveWeekTo(id, to);
+            save();
+            render();
+          }
+          return;
+        }
+        if (raw.indexOf('lec:') === 0) {
+          const id = raw.slice(4);
+          let idx = lecturesInWeek(weekId).length;
+          if (lecEl) {
+            const lid = lecEl.getAttribute('data-lec-drop');
+            idx = lecturesInWeek(weekId).findIndex((x) => x.id === lid);
+            if (idx < 0) idx = lecturesInWeek(weekId).length;
+          }
+          moveLecTo(id, weekId, idx);
+          save();
+          render();
+        }
+      });
+    });
+  }
   function openPerson(id) {
     closeDrawer();
     ui.personId = id;
@@ -1228,9 +1376,8 @@
           '<button type="button" class="ghost" data-act="clock" data-ms="43200000">+12 jam</button>' +
           '<button type="button" class="ghost" data-act="clock" data-ms="86400000">+1 hari</button>' +
           '<button type="button" class="ghost" data-act="clock-reset">Reset jam</button>' +
-          '<span class="muted">WA ' + (db.waQueue.filter((w) => w.status === 'queued').length) +
-          ' · email ' + ((db.emailQueue || []).filter((w) => w.status === 'queued').length) +
-          ' · tugas ' + db.tasks.filter((t) => !t.done).length + '</span>';
+          '<span class="muted">Tugas ' + db.tasks.filter((t) => !t.done).length +
+          ' · antrian ' + ((db.waQueue.filter((w) => w.status === 'queued').length) + ((db.emailQueue || []).filter((w) => w.status === 'queued').length)) + '</span>';
       }
     }
     if (!isStaff()) {
@@ -1263,7 +1410,6 @@
     const t = [
       { id: 'siswa', label: 'Siswa' },
       { id: 'tugas', label: 'Tugas' },
-      { id: 'waq', label: 'Antrian' },
       { id: 'otomasi', label: 'Otomasi' },
       { id: 'jaringan', label: 'Jaringan' },
       { id: 'kurikulum', label: 'Kurikulum' },
@@ -1271,10 +1417,7 @@
       { id: 'jadwal', label: 'Jadwal' },
       { id: 'diskusi', label: 'Diskusi' }
     ];
-    if (canBill()) {
-      t.push({ id: 'bayar', label: 'Pembayaran' });
-      t.push({ id: 'harga', label: 'Pengaturan bayar' });
-    }
+    if (canBill()) t.push({ id: 'harga', label: 'Pengaturan bayar' });
     return t;
   }
 
@@ -1311,14 +1454,12 @@
       if (tab === 'siswa') main.innerHTML = viewSiswaHub();
       else if (tab === 'orang') main.innerHTML = viewPerson(ui.personId);
       else if (tab === 'tugas') main.innerHTML = viewTugas();
-      else if (tab === 'waq') main.innerHTML = viewAntrian();
       else if (tab === 'otomasi') main.innerHTML = viewOtomasi();
       else if (tab === 'jaringan') main.innerHTML = viewJaringan();
       else if (tab === 'kurikulum') main.innerHTML = viewKurikulum();
       else if (tab === 'pustaka') main.innerHTML = viewPustaka();
       else if (tab === 'jadwal') main.innerHTML = viewJadwal(true);
       else if (tab === 'diskusi') main.innerHTML = viewDiskusi(true);
-      else if (tab === 'bayar' && canBill()) main.innerHTML = viewBayar();
       else if (tab === 'harga' && canBill()) main.innerHTML = viewHarga();
       else main.innerHTML = viewSiswaHub();
     } else {
@@ -1342,6 +1483,7 @@
     bindLazy();
     bindBlobMedia();
     bindKanbanDnD();
+    bindKurDnD();
   }
 
   function normalizeMentorTab(tab) {
@@ -1354,6 +1496,11 @@
       return 'siswa';
     }
     if (tab === 'orang' && !ui.personId) return 'siswa';
+    if (tab === 'waq') return 'tugas';
+    if (tab === 'bayar') {
+      ui.siswaView = 'daftar';
+      return 'siswa';
+    }
     return tab || 'siswa';
   }
 
@@ -1711,22 +1858,28 @@
     return html;
   }
 
-  function renderKurikulumSidebar() {
+  function renderKurikulumSidebar(sid, opts) {
+    sid = sid || ui.personaId;
+    opts = opts || {};
+    const preview = !!opts.preview;
+    const currentId = preview ? (ui.kurPreviewLec || '') : ui.lectureId;
     let n = 0;
-    return progressBarHtml(ui.personaId) + db.weeks.map((w) => {
+    return progressBarHtml(sid) + db.weeks.map((w) => {
       const items = lecturesInWeek(w.id).map((l) => {
         n += 1;
-        const cur = l.id === ui.lectureId;
-        const locked = !isStaff() && !canOpenLecture(ui.personaId, l.id);
+        const cur = l.id === currentId;
+        const locked = preview ? !canOpenLecture(sid, l.id) : (!isStaff() && !canOpenLecture(sid, l.id));
         const thumb = coverHtml('lec', l.id, 'cover-mini');
+        const act = preview ? 'kur-prev-lec' : (locked ? 'tab' : 'open-lec');
+        const dataId = preview ? l.id : (locked ? 'daftar' : l.id);
         return '<button type="button" class="lec' + (cur ? ' current' : '') + (locked ? ' locked' : '') + '" data-act="' +
-          (locked ? 'tab' : 'open-lec') + '" data-id="' + (locked ? 'daftar' : esc(l.id)) + '">' +
-          (thumb || '<span class="mark' + (isDone(ui.personaId, l.id) ? ' done' : '') + '" aria-hidden="true">' +
-          (isDone(ui.personaId, l.id) ? '✓' : (locked ? '×' : '')) + '</span>') +
+          act + '" data-id="' + esc(dataId) + '">' +
+          (thumb || '<span class="mark' + (isDone(sid, l.id) ? ' done' : '') + '" aria-hidden="true">' +
+          (isDone(sid, l.id) ? '✓' : (locked ? '×' : '')) + '</span>') +
           '<span><div class="t">' + n + '. ' + esc(l.title) + (locked ? ' · terkunci' : '') + '</div>' +
           '<div class="m">' + esc(typeLabel(l.type)) + ' · ' + esc(l.mins) + ' mnt' + (l.requiredBefore ? ' · wajib' : '') + '</div></span></button>';
       }).join('');
-      return '<div class="week-label">' + coverHtml('week', w.id, 'cover-mini') + esc(w.title) + ' · ' + progressPct(ui.personaId, w.id) + '%</div>' + items;
+      return '<div class="week-label">' + coverHtml('week', w.id, 'cover-mini') + esc(w.title) + ' · ' + progressPct(sid, w.id) + '%</div>' + items;
     }).join('');
   }
 
@@ -2177,13 +2330,13 @@
     return stageTabsHtml(q) +
       '<div class="fub-list">' +
       '<div class="fub-toolbar"><span class="muted">Menampilkan ' + rows.length + ' orang</span>' +
-        '<span class="muted">Kolom: nama · WA · email · stage</span></div>' +
-      '<table class="table roster"><thead><tr><th>Nama</th><th>Telepon</th><th>Email</th><th>Stage</th><th>Nilai</th></tr></thead><tbody>' +
+        '<span class="muted">Klik baris untuk profil · bayar di kolom</span></div>' +
+      '<table class="table roster"><thead><tr><th>Nama</th><th>Telepon</th><th>Email</th><th>Stage</th><th>Bayar</th><th>Nilai</th></tr></thead><tbody>' +
       (rows.length ? rows.map((s) => {
         const b = billingOf(s.id);
         const c = crmOf(s.id);
         const tags = (s.tags || []).slice(0, 3);
-        return '<tr class="roster-row">' +
+        return '<tr class="roster-row" data-act="open-student" data-id="' + esc(s.id) + '">' +
           '<td><button type="button" class="linkish roster-name" data-act="open-student" data-id="' + esc(s.id) + '">' +
             avatarHtml(s, 'avatar sm') + '<span>' + esc(s.name) +
             '<div class="muted">' + esc(s.city || '—') +
@@ -2195,8 +2348,11 @@
             ? '<a class="fub-cell-link" href="' + esc(mailLink(s.email, 'Sekolah Anton', 'Halo ' + s.name)) + '">' + esc(s.email) + '</a>'
             : '<span class="muted">—</span>') + '</td>' +
           '<td>' + esc(stageLabel(c.stage)) + '</td>' +
-          '<td' + (b.amount ? ' class="money"' : '') + '>' + (b.amount ? esc(fmtRp(b.amount)) : '—') + '</td></tr>';
-      }).join('') : '<tr><td colspan="5" class="muted">Tidak ada orang di filter ini.</td></tr>') +
+          '<td>' + (canBill() ? billStatusSelect(s.id, b) : payChip(b.status)) + '</td>' +
+          '<td class="money">' + (canBill()
+            ? billAmountInput(s.id, b)
+            : (b.amount ? esc(fmtRp(b.amount)) : '—')) + '</td></tr>';
+      }).join('') : '<tr><td colspan="6" class="muted">Tidak ada orang di filter ini.</td></tr>') +
       '</tbody></table></div>';
   }
   function viewCrm(q) {
@@ -2227,93 +2383,98 @@
     return '<p class="muted">Geser kartu antar kolom. Klik tetap buka profil. Tugas terbuka: ' + openTasks + '</p>' +
       '<div class="kanban">' + cols + '</div>';
   }
+  function queuedItems() {
+    const wa = (db.waQueue || []).filter((w) => w.status === 'queued').map((w) => ({
+      id: w.id, personId: w.toId, title: w.title, body: w.body, dueAt: w.scheduledAt,
+      done: false, kind: 'wa', queue: 'wa'
+    }));
+    const em = (db.emailQueue || []).filter((w) => w.status === 'queued').map((w) => ({
+      id: w.id, personId: w.toId, title: w.subject || w.title, body: w.body, dueAt: w.scheduledAt,
+      done: false, kind: 'email', queue: 'email'
+    }));
+    return wa.concat(em);
+  }
   function taskGroups() {
-    const start = new Date(nowMs());
-    start.setHours(0, 0, 0, 0);
-    const today0 = start.getTime();
-    const tomorrow0 = today0 + 86400000;
+    const today = splitLocal().date;
+    const t0 = new Date(today + 'T00:00:00+07:00').getTime();
+    const t1 = t0 + 86400000;
+    const t2 = t0 + 2 * 86400000;
+    const weekEnd = t0 + 7 * 86400000;
     const pid = ui.taskPerson || '';
-    const list = db.tasks.filter((t) => !pid || t.personId === pid);
+    const list = db.tasks.concat(queuedItems()).filter((t) => !pid || t.personId === pid);
+    const overdue = [];
     const hari = [];
+    const besok = [];
+    const minggu = [];
     const later = [];
     const done = [];
     list.forEach((t) => {
-      if (t.done) done.push(t);
-      else if (new Date(t.dueAt).getTime() < tomorrow0) hari.push(t);
+      if (t.done) { done.push(t); return; }
+      const ms = new Date(t.dueAt).getTime();
+      if (ms < t0) overdue.push(t);
+      else if (ms < t1) hari.push(t);
+      else if (ms < t2) besok.push(t);
+      else if (ms < weekEnd) minggu.push(t);
       else later.push(t);
     });
     const sortDue = (a, b) => new Date(a.dueAt) - new Date(b.dueAt);
-    hari.sort(sortDue); later.sort(sortDue); done.sort(sortDue);
-    return { hari: hari, later: later, done: done };
+    [overdue, hari, besok, minggu, later, done].forEach((a) => a.sort(sortDue));
+    return { overdue: overdue, hari: hari, besok: besok, minggu: minggu, later: later, done: done };
   }
   function taskRow(t) {
     const s = people().find((x) => x.id === t.personId) || {};
-    return '<li><span>' + (t.done ? '<span class="tick-ok">✓</span> ' : '') +
-      '<strong>' + esc(t.title) + '</strong>' +
-      ' · <button type="button" class="linkish" data-act="open-student" data-id="' + esc(t.personId) + '">' + esc(nameOf(t.personId)) + '</button>' +
-      '<div class="muted">' + fmtWhen(t.dueAt) + ' · ' + esc(t.body || '') + '</div></span>' +
-      '<span class="row">' +
-        (t.kind === 'wa' ? '<a class="btn-sm" href="' + esc(waLink(s.wa, t.body)) + '" target="_blank" rel="noopener">Buka WA</a>' : '') +
-        (!t.done ? '<button class="btn-sm" data-act="task-done" data-id="' + esc(t.id) + '">Selesai</button>' : '') +
-      '</span></li>';
+    const kind = t.kind === 'task' ? 'reminder' : (t.kind || 'wa');
+    let action = '';
+    if (t.queue === 'wa') {
+      action = '<a class="btn-sm" href="' + esc(waLink(s.wa, t.body)) + '" target="_blank" rel="noopener">Buka WA</a>' +
+        '<button class="btn-sm" data-act="wa-sent" data-id="' + esc(t.id) + '">Tandai dikirim</button>';
+    } else if (t.queue === 'email') {
+      action = '<a class="btn-sm" href="' + esc(mailLink(s.email, t.title, t.body)) + '">mailto</a>' +
+        '<button class="btn-sm" data-act="em-sent" data-id="' + esc(t.id) + '">Tandai dikirim</button>';
+    } else if (!t.done) {
+      if (kind === 'wa') action += '<a class="btn-sm" href="' + esc(waLink(s.wa, t.body)) + '" target="_blank" rel="noopener">Buka WA</a>';
+      if (kind === 'email') action += '<a class="btn-sm" href="' + esc(mailLink(s.email, t.title, t.body)) + '">Email</a>';
+      if (kind === 'call' && s.wa) action += '<a class="btn-sm" href="tel:+' + esc(String(s.wa).replace(/\D/g, '')) + '">Telepon</a>';
+      action += '<button class="btn-sm" data-act="task-done" data-id="' + esc(t.id) + '">Selesai</button>';
+    }
+    return '<div class="task-row' + (t.done ? ' is-done' : '') + '">' +
+      (t.done
+        ? '<span class="tick-ok">✓</span>'
+        : '<button type="button" class="task-check" data-act="' + (t.queue ? (t.queue === 'email' ? 'em-sent' : 'wa-sent') : 'task-done') + '" data-id="' + esc(t.id) + '" aria-label="Selesai"></button>') +
+      avatarHtml(s, 'avatar sm') +
+      '<div class="task-main">' +
+        '<button type="button" class="linkish task-who" data-act="open-student" data-id="' + esc(t.personId) + '">' + esc(nameOf(t.personId)) + '</button>' +
+        '<div class="task-title"><span class="task-kind kind-' + esc(kind) + '">' + esc(taskKindLabel(kind)) + '</span> ' + esc(t.title) +
+          (t.queue ? ' <span class="chip warn">Antrian</span>' : '') + '</div>' +
+        (t.body ? '<div class="muted">' + esc(t.body) + '</div>' : '') +
+      '</div>' +
+      '<div class="task-meta"><span class="muted">' + esc(fmtClock(t.dueAt)) + '</span>' +
+        '<span class="row">' + action + '</span></div></div>';
   }
   function viewTugas() {
     const g = taskGroups();
     const block = (title, rows) =>
-      '<h3>' + title + ' · ' + rows.length + '</h3>' +
-      (rows.length ? '<ul class="list-check">' + rows.map(taskRow).join('') + '</ul>' : '<p class="muted">Kosong.</p>');
-    return '<div class="card"><h2>Tugas Anton / Lia</h2>' +
-      '<p class="muted">Hari ini, mendatang, selesai. Buka nama untuk profil.</p>' +
-      '<div class="row" style="margin-bottom:8px">' +
+      '<section class="task-group"><h3>' + title + ' · ' + rows.length + '</h3>' +
+      (rows.length ? '<div class="task-list">' + rows.map(taskRow).join('') + '</div>' : '<p class="muted">Kosong.</p>') +
+      '</section>';
+    const open = ui.taskComposer === 'new';
+    return '<div class="task-board">' +
+      '<div class="task-toolbar">' +
+        '<div><h2 style="margin:0">Tugas</h2><p class="muted" style="margin:4px 0 0">Hari ini, besok, minggu ini. Klik nama untuk profil. Antrian WA/email ikut di sini.</p></div>' +
+        '<button type="button" class="btn" data-act="task-compose" data-id="new">' + (open ? 'Tutup' : '+ Tugas') + '</button>' +
+      '</div>' +
+      (open ? '<div class="card" style="margin-bottom:14px"><h3>Buat tugas</h3>' + taskComposerHtml('') + '</div>' : '') +
+      '<div class="row" style="margin-bottom:12px">' +
         '<label class="muted">Filter orang <select data-act="task-person">' +
           '<option value="">Semua</option>' +
           people().map((s) => '<option value="' + esc(s.id) + '"' + (ui.taskPerson === s.id ? ' selected' : '') + '>' + esc(s.name) + '</option>').join('') +
         '</select></label></div>' +
-      '<form class="compose" data-act="add-task">' +
-        '<select name="personId">' + people().map((s) => '<option value="' + esc(s.id) + '">' + esc(s.name) + '</option>').join('') + '</select>' +
-        '<input name="title" required placeholder="Judul tugas">' +
-        '<textarea name="body" rows="2" placeholder="Teks WA / catatan"></textarea>' +
-        '<button class="btn" type="submit">Tambah tugas</button></form>' +
+      block('Terlambat', g.overdue) +
       block('Hari ini', g.hari) +
-      block('Mendatang', g.later) +
+      block('Besok', g.besok) +
+      block('Minggu ini', g.minggu) +
+      block('Nanti', g.later) +
       block('Selesai', g.done) +
-      '</div>';
-  }
-  function queueRowWa(w) {
-    const s = people().find((x) => x.id === w.toId) || {};
-    return '<tr><td>' + fmtWhen(w.scheduledAt) + '</td><td><button type="button" class="linkish" data-act="open-student" data-id="' + esc(w.toId) + '">' + esc(nameOf(w.toId)) + '</button></td><td>' + esc(w.title) +
-      '<div class="muted">' + esc(w.body) + '</div></td><td>' + esc(w.status) + '</td><td>' +
-      (w.status === 'queued' ? '<a class="btn-sm" href="' + esc(waLink(s.wa, w.body)) + '" target="_blank" rel="noopener">Buka WA</a>' +
-        '<button class="btn-sm" data-act="wa-sent" data-id="' + esc(w.id) + '">Tandai dikirim</button>' : '') +
-      '</td></tr>';
-  }
-  function queueRowEmail(w) {
-    const s = people().find((x) => x.id === w.toId) || {};
-    return '<tr><td>' + fmtWhen(w.scheduledAt) + '</td><td><button type="button" class="linkish" data-act="open-student" data-id="' + esc(w.toId) + '">' + esc(nameOf(w.toId)) + '</button></td><td>' + esc(w.subject || w.title) +
-      '<div class="muted">' + esc(w.body) + '</div></td><td>' + esc(w.status) + '</td><td>' +
-      (w.status === 'queued' ? '<a class="btn-sm" href="' + esc(mailLink(s.email, w.subject || w.title, w.body)) + '">mailto</a>' +
-        '<button class="btn-sm" data-act="em-sent" data-id="' + esc(w.id) + '">Tandai dikirim</button>' : '') +
-      '</td></tr>';
-  }
-  function viewAntrian() {
-    const kind = ui.queueKind === 'email' ? 'email' : 'wa';
-    const seg = '<div class="hub-seg" role="tablist">' +
-      '<button type="button" data-act="queue-kind" data-id="wa" aria-selected="' + (kind === 'wa') + '">WhatsApp</button>' +
-      '<button type="button" data-act="queue-kind" data-id="email" aria-selected="' + (kind === 'email') + '">Email</button>' +
-      '</div>';
-    if (kind === 'email') {
-      const rows = (db.emailQueue || []).slice().sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
-      return '<div class="card"><h2>Antrian email (tidak terkirim)</h2>' + seg +
-        '<p class="muted">Prototype memakai mailto: + Tandai dikirim. Tidak ada SMTP.</p>' +
-        (rows.length ? '<table class="table"><thead><tr><th>Jadwal</th><th>Ke</th><th>Subjek</th><th>Status</th><th></th></tr></thead><tbody>' +
-          rows.map(queueRowEmail).join('') + '</tbody></table>' : '<p class="muted">Antrian email kosong.</p>') +
-        '</div>';
-    }
-    const rows = (db.waQueue || []).slice().sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
-    return '<div class="card"><h2>Antrian WA (tidak terkirim)</h2>' + seg +
-      '<p class="muted">Prototype hanya tautan wa.me. Tidak memanggil send-cohort-whatsapp.</p>' +
-      (rows.length ? '<table class="table"><thead><tr><th>Jadwal</th><th>Ke</th><th>Judul</th><th>Status</th><th></th></tr></thead><tbody>' +
-        rows.map(queueRowWa).join('') + '</tbody></table>' : '<p class="muted">Antrian kosong. Majukan jam simulasi untuk menembak 12 jam / 5 hari.</p>') +
       '</div>';
   }
   function stepKindOptions(cur) {
@@ -2457,7 +2618,7 @@
         '<label class="muted">Nomor</label><input name="number" value="' + esc(b.number) + '">' +
         '<label class="muted">Atas nama</label><input name="name" value="' + esc(b.name) + '">' +
         '<button class="btn" type="submit">Simpan rekening</button></form>' +
-      '<p class="muted">Siswa menyalin ini di halaman bayar. Anton menandai lunas di CRM / Pembayaran.</p>' +
+      '<p class="muted">Siswa menyalin ini di halaman bayar. Anton menandai lunas di baris siswa / profil.</p>' +
       '</section></div>';
   }
   function viewPerson(id) {
@@ -2485,42 +2646,40 @@
     const left =
       '<aside class="fub-left">' +
         '<div class="fub-iden">' + avatarHtml(s, 'avatar lg') +
-          '<div><h2>' + esc(s.name) + '</h2>' +
-            '<p class="muted" style="margin:4px 0 0">' + esc(s.city || '—') + '</p>' +
+          '<div><input class="inline-edit name-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="name" value="' + esc(s.name) + '">' +
+            '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="city" value="' + esc(s.city || '') + '" placeholder="Kota">' +
             '<label class="btn-sm" style="margin-top:8px">Unggah foto<input type="file" hidden data-act="photo-file" data-id="' + esc(id) + '" accept="image/*"></label>' +
           '</div></div>' +
         photoNote +
         '<dl>' +
-          '<div class="fub-field"><dt>Telepon</dt><dd>' + (s.wa
-            ? '<a class="fub-cell-link" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari Sekolah Anton.')) + '" target="_blank" rel="noopener">' + esc(fmtPhone(s.wa)) + '</a>'
-            : '<span class="muted">Tambah WA</span>') + '</dd></div>' +
-          '<div class="fub-field"><dt>Email</dt><dd>' + (s.email
-            ? '<a class="fub-cell-link" href="' + esc(mailLink(s.email, 'Sekolah Anton', 'Halo ' + s.name)) + '">' + esc(s.email) + '</a>'
-            : '<span class="muted">—</span>') + '</dd></div>' +
-          '<div class="fub-field"><dt>TikTok</dt><dd>' + (handle
-            ? '<a class="fub-cell-link" href="' + esc(tiktokUrl(handle)) + '" target="_blank" rel="noopener">@' + esc(handle) + '</a>'
-            : '<span class="muted">—</span>') + '</dd></div>' +
+          '<div class="fub-field"><dt>Telepon</dt><dd>' +
+            '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="wa" value="' + esc(s.wa || '') + '" placeholder="62812…">' +
+            (s.wa ? '<a class="fub-cell-link" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari Sekolah Anton.')) + '" target="_blank" rel="noopener">Buka WA</a>' : '') +
+          '</dd></div>' +
+          '<div class="fub-field"><dt>Email</dt><dd>' +
+            '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="email" type="email" value="' + esc(s.email || '') + '" placeholder="email">' +
+            (s.email ? '<a class="fub-cell-link" href="' + esc(mailLink(s.email, 'Sekolah Anton', 'Halo ' + s.name)) + '">mailto</a>' : '') +
+          '</dd></div>' +
+          '<div class="fub-field"><dt>TikTok</dt><dd>' +
+            '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="tiktok" value="' + esc(s.tiktok || '') + '" placeholder="handle">' +
+            (handle ? '<a class="fub-cell-link" href="' + esc(tiktokUrl(handle)) + '" target="_blank" rel="noopener">@' + esc(handle) + '</a>' : '') +
+          '</dd></div>' +
           '<div class="fub-field"><dt>Stage</dt><dd><select data-act="crm-stage" data-id="' + esc(id) + '">' +
             stages.map((st) => '<option value="' + esc(st.id) + '"' + (c.stage === st.id ? ' selected' : '') + '>' + esc(st.label) + '</option>').join('') +
           '</select></dd></div>' +
           '<div class="fub-field"><dt>Sumber</dt><dd>' + esc(b.source || app && 'Form' || '—') +
             (app ? '<div class="muted">' + esc(app.experience || '') + '</div>' : '') + '</dd></div>' +
           '<div class="fub-field"><dt>Upline</dt><dd>' + esc(s.mentorId ? nameOf(s.mentorId) : 'Anton') + '</dd></div>' +
-          '<div class="fub-field"><dt>Nilai</dt><dd class="money">' + esc(fmtRp(b.amount || 0)) +
-            '<div class="muted">' + payChip(b.status) + ' · ' + esc(termLabel(b.term)) + '</div>' +
-            (canBill() ? '<select data-act="bill-one" data-id="' + esc(id) + '" style="margin-top:6px">' +
-              ['lunas', 'cicilan', 'belum', 'gratis', 'trial'].map((st) =>
-                '<option' + (b.status === st ? ' selected' : '') + ' value="' + st + '">' + st + '</option>').join('') +
-            '</select>' : '') +
+          '<div class="fub-field"><dt>Bayar</dt><dd>' +
+            (canBill() ? billStatusSelect(id, b) : payChip(b.status)) +
+            '<div class="muted" style="margin-top:6px">' + esc(termLabel(b.term)) + '</div>' +
+            (canBill() ? '<div style="margin-top:6px">' + billAmountInput(id, b) + '</div>' : '<div class="money">' + esc(fmtRp(b.amount || 0)) + '</div>') +
           '</dd></div>' +
-          '<div class="fub-field"><dt>Tag</dt><dd>' + ((s.tags || []).map((t) => '<span class="tag-chip">' + esc(t) + '</span>').join('') || '—') + '</dd></div>' +
+          personEntitlementsHtml(id) +
+          '<div class="fub-field"><dt>Tag</dt><dd>' +
+            '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="tags" value="' + esc((s.tags || []).join(', ')) + '" placeholder="tag, tag">' +
+          '</dd></div>' +
         '</dl>' +
-        '<form class="compose" data-act="save-person" data-id="' + esc(id) + '" style="margin-top:12px">' +
-          '<label class="muted">Email</label><input name="email" type="email" value="' + esc(s.email || '') + '">' +
-          '<label class="muted">Handle TikTok</label><input name="tiktok" value="' + esc(s.tiktok || '') + '" placeholder="ayu.jepit">' +
-          '<label class="muted">WA</label><input name="wa" value="' + esc(s.wa || '') + '">' +
-          '<button class="btn" type="submit">Simpan kontak</button>' +
-        '</form>' +
         '<div style="margin-top:16px">' + progressBarHtml(id) +
           '<p class="muted">' + p.n + '/' + p.total + ' materi · ' + p.pct + '%</p>' +
           lecDotStrip(id) +
@@ -2534,12 +2693,14 @@
             '<span class="btn-sm">Catatan</span>' +
             (s.email ? '<a class="btn-sm" href="' + esc(mailLink(s.email, 'Sekolah Anton', 'Halo ' + s.name)) + '">Email</a>' : '<span class="btn-sm" style="opacity:.45">Email</span>') +
             '<a class="btn-sm" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari Sekolah Anton.')) + '" target="_blank" rel="noopener">WA</a>' +
-            '<button type="button" class="btn-sm" data-act="task-from" data-id="' + esc(id) + '">Tugas</button>' +
+            '<button type="button" class="btn-sm" data-act="task-compose" data-id="' + esc(id) + '">Tugas</button>' +
           '</div>' +
-          '<form class="compose" data-act="note" data-id="' + esc(id) + '" style="margin:0">' +
-            '<textarea name="body" required rows="3" placeholder="Tambah catatan…"></textarea>' +
-            '<button class="btn" type="submit">Simpan catatan</button>' +
-          '</form>' +
+          (ui.taskComposer === id
+            ? taskComposerHtml(id)
+            : '<form class="compose" data-act="note" data-id="' + esc(id) + '" style="margin:0">' +
+                '<textarea name="body" required rows="3" placeholder="Tambah catatan…"></textarea>' +
+                '<button class="btn" type="submit">Simpan catatan</button>' +
+              '</form>') +
         '</div>' +
         '<div class="fub-tl-label">Linimasa</div>' +
         (feed.length
@@ -2553,14 +2714,14 @@
       '</main>';
     const right =
       '<aside class="fub-right fub-side">' +
-        '<h3>Tugas <button type="button" class="btn-sm" data-act="task-from" data-id="' + esc(id) + '">+</button></h3>' +
+        '<h3>Tugas <button type="button" class="btn-sm" data-act="task-compose" data-id="' + esc(id) + '">+</button></h3>' +
         (tsk.length
           ? tsk.map((t) =>
               '<div class="fub-task">' +
                 (t.done
                   ? '<span class="tick-ok">✓</span>'
                   : '<button type="button" class="btn-sm" data-act="task-done" data-id="' + esc(t.id) + '">Selesai</button>') +
-                '<div><strong>' + esc(t.title) + '</strong>' +
+                '<div><strong>' + esc(taskKindLabel(t.kind)) + ' · ' + esc(t.title) + '</strong>' +
                   '<div class="muted">' + esc(relWhen(t.dueAt)) + (t.body ? ' · ' + esc(t.body) : '') + '</div></div></div>'
             ).join('')
           : '<p class="muted">Tidak ada tugas.</p>') +
@@ -2616,14 +2777,12 @@
 
   function viewKurikulum() {
     const readonly = ui.role === 'asisten';
-    const word = sectionWord();
     const nVid = lectures().filter((l) => l.type === 'video').length;
     const nTxt = lectures().filter((l) => l.type === 'text').length;
     ensureSecFold();
     const toolbar = '<div class="kur-toolbar">' +
       '<div><h2 style="margin:0">Kurikulum</h2>' +
-        '<p class="muted" style="margin:6px 0 0">' + nVid + ' video · ' + nTxt + ' bacaan · label bagian: ' + word.toLowerCase() +
-        '. Cover &amp; file tinggal di browser ini.</p></div>' +
+        '<p class="muted" style="margin:6px 0 0">' + nVid + ' video · ' + nTxt + ' bacaan · geser bagian/item seperti siswa melihatnya. Preview HP di kanan.</p></div>' +
       (readonly ? '' :
         '<div class="row kur-toolbar-actions">' +
           '<button type="button" class="btn-sm' + (sectionStyle() === 'minggu' ? ' on' : '') + '" data-act="sec-style" data-id="minggu">Pakai minggu</button>' +
@@ -2631,13 +2790,18 @@
           '<button type="button" class="btn" data-act="add-sec">+ Bagian</button>' +
         '</div>') +
       '</div>';
-    const sections = db.weeks.map((w, wi) => {
+    let n = 0;
+    const sections = db.weeks.map((w) => {
       const items = lecturesInWeek(w.id);
       const open = isSecOpen(w.id);
-      const list = items.map((l, li) => lecEditorCard(l, readonly, wi, li, items.length)).join('') ||
-        '<p class="muted">Belum ada video di bagian ini.</p>';
+      const list = items.map((l) => {
+        n += 1;
+        return lecEditorCard(l, readonly, n);
+      }).join('') ||
+        '<p class="muted kur-empty">Belum ada item. Tarik ke sini atau tambah di bawah.</p>';
       return '<section class="card kur-sec' + (open ? '' : ' is-collapsed') + '" data-sec="' + esc(w.id) + '">' +
         '<div class="sec-head">' +
+          (readonly ? '' : '<span class="drag-handle" draggable="true" data-drag="sec" data-id="' + esc(w.id) + '" title="Geser bagian">⋮⋮</span>') +
           coverHtml('week', w.id, 'cover-thumb') +
           '<button type="button" class="sec-caret" data-act="sec-fold" data-id="' + esc(w.id) + '"' +
             ' aria-expanded="' + open + '" aria-label="' + (open ? 'Tutup' : 'Buka') + ' bagian">' +
@@ -2647,9 +2811,8 @@
             : '<input class="sec-title" data-act="sec-title" data-id="' + esc(w.id) + '" value="' + esc(w.title) + '" aria-label="Nama bagian">') +
           '<span class="muted sec-count">' + items.length + ' item</span>' +
           (readonly ? '' : '<div class="row sec-actions">' +
+            '<label class="muted">Jatuh tempo <input type="date" data-act="sec-due" data-id="' + esc(w.id) + '" value="' + esc(w.due || '') + '"></label>' +
             '<label class="btn-sm">Cover<input type="file" hidden data-act="cover-file" data-kind="week" data-id="' + esc(w.id) + '" accept="image/*"></label>' +
-            '<button type="button" class="btn-sm" data-act="sec-up" data-id="' + esc(w.id) + '"' + (wi === 0 ? ' disabled' : '') + '>Naik</button>' +
-            '<button type="button" class="btn-sm" data-act="sec-down" data-id="' + esc(w.id) + '"' + (wi === db.weeks.length - 1 ? ' disabled' : '') + '>Turun</button>' +
             '<button type="button" class="btn-sm" data-act="del-sec" data-id="' + esc(w.id) + '">Hapus</button>' +
           '</div>') +
         '</div>' +
@@ -2659,7 +2822,22 @@
         '</div>' +
       '</section>';
     }).join('');
-    return toolbar + sections;
+    const previewSid = ui.kurPreviewId || 's-kamu';
+    const preview =
+      '<aside class="kur-phone">' +
+        '<label class="muted">Lihat sebagai siswa ' +
+          '<select data-act="kur-preview-person">' +
+            people().map((s) => '<option value="' + esc(s.id) + '"' + (previewSid === s.id ? ' selected' : '') + '>' + esc(s.name) + '</option>').join('') +
+          '</select></label>' +
+        '<div class="phone-bezel">' +
+          '<div class="phone-notch"></div>' +
+          '<div class="phone-screen kurikulum-pane is-open" style="position:relative;max-height:none;transform:none;left:auto;width:auto">' +
+            renderKurikulumSidebar(previewSid, { preview: true }) +
+          '</div>' +
+        '</div>' +
+        '<p class="muted">Kunci &amp; centang mengikuti akses ' + esc(nameOf(previewSid)) + '.</p>' +
+      '</aside>';
+    return '<div class="kur-split">' + '<div class="kur-editor">' + toolbar + sections + '</div>' + preview + '</div>';
   }
 
   function addLecForm(weekId) {
@@ -2684,22 +2862,22 @@
       '</div></form>';
   }
 
-  function lecEditorCard(l, readonly, wi, li, len) {
+  function lecEditorCard(l, readonly, n) {
     const open = ui.editLecId === l.id;
     const kindNote = l.type === 'video' ? videoKindLabel(l) : (l.type === 'text' ? 'Bacaan' : ((l.resources || []).length + ' file'));
-    const head = '<div class="lec-edit-head">' +
-      coverHtml('lec', l.id, 'cover-thumb') +
-      '<div><strong>' + esc(l.title) + '</strong>' +
-        '<div class="muted">' + esc(typeLabel(l.type)) + ' · ' + esc(kindNote) + (l.requiredBefore ? ' · wajib' : '') +
-        ' · ' + esc(l.mins || 0) + ' mnt</div></div>' +
+    const thumb = coverHtml('lec', l.id, 'cover-mini');
+    const head = '<div class="lec-edit-head lec">' +
+      (readonly ? '' : '<span class="drag-handle" draggable="true" data-drag="lec" data-id="' + esc(l.id) + '" title="Geser materi">⋮⋮</span>') +
+      (thumb || '<span class="mark" aria-hidden="true"></span>') +
+      '<span><div class="t">' + (n || '') + '. ' + esc(l.title) + '</div>' +
+        '<div class="m">' + esc(typeLabel(l.type)) + ' · ' + esc(kindNote) + (l.requiredBefore ? ' · wajib' : '') +
+        ' · ' + esc(l.mins || 0) + ' mnt</div></span>' +
       '<div class="row">' +
-        (readonly ? '' : '<button type="button" class="btn-sm" data-act="lec-up" data-id="' + esc(l.id) + '"' + (li === 0 ? ' disabled' : '') + '>Naik</button>' +
-          '<button type="button" class="btn-sm" data-act="lec-down" data-id="' + esc(l.id) + '"' + (li === len - 1 ? ' disabled' : '') + '>Turun</button>') +
         '<button type="button" class="btn-sm" data-act="edit-lec" data-id="' + esc(l.id) + '">' +
           (open ? 'Tutup' : 'Ubah') + '</button>' +
         (readonly ? '' : '<button type="button" class="btn-sm" data-act="del-lec" data-id="' + esc(l.id) + '">Hapus</button>') +
       '</div></div>';
-    if (!open) return '<article class="lec-edit">' + head + '</article>';
+    if (!open) return '<article class="lec-edit" data-lec-drop="' + esc(l.id) + '">' + head + '</article>';
     const qs = (l.questions || []).concat([{ q: '', hint: '' }]);
     const qHtml = qs.map((q, i) =>
       '<div class="q-row">' +
@@ -2756,13 +2934,36 @@
           '<h4>Cek pemahaman</h4>' +
           qHtml +
         '</div>';
-    return '<article class="lec-edit is-open">' + head + body + '</article>';
+    return '<article class="lec-edit is-open" data-lec-drop="' + esc(l.id) + '">' + head + body + '</article>';
   }
 
   function viewPustaka() {
     return catalogHero() +
       '<div class="card" style="margin-top:12px"><h2>Perpustakaan</h2>' +
-      '<p class="muted">Produk lynk Anton. Toggle Contoh → File Anton setelah dia isi. Tidak mengubah checkout lynk.id.</p>' +
+      '<p class="muted">Produk lynk Anton. Toggle Contoh → File Anton setelah dia isi. Tambah SKU baru di bawah — tidak mengubah checkout lynk.id.</p>' +
+      (canBill()
+        ? '<form class="compose add-sku" data-act="add-sku">' +
+            '<strong>Tambah produk</strong>' +
+            '<div class="row2">' +
+              '<div><label class="muted">Judul</label><input name="title" required placeholder="Nama alat / rekaman"></div>' +
+              '<div><label class="muted">Grup</label><select name="group"><option value="alat">Alat</option><option value="rekaman">Rekaman</option></select></div>' +
+            '</div>' +
+            '<label class="muted">Untuk apa</label>' +
+            '<input name="job" placeholder="Satu kalimat">' +
+            '<div class="row2">' +
+              '<div><label class="muted">Harga</label><input name="price" type="number" min="0" value="99000"></div>' +
+              '<div><label class="muted">Coret</label><input name="coret" type="number" min="0" value="129000"></div>' +
+            '</div>' +
+            '<label class="muted">Tautan lynk</label>' +
+            '<input name="lynk" placeholder="https://lynk.id/…">' +
+            '<label class="muted">Cover URL (opsional)</label>' +
+            '<input name="cover" placeholder="./assets/… atau https://">' +
+            '<div class="row">' +
+              '<label class="muted"><input type="checkbox" name="example" checked> Contoh dulu</label>' +
+              '<label class="muted"><input type="checkbox" name="mentor" checked> Termasuk mentoring</label>' +
+              '<button class="btn" type="submit">Tambah ke perpustakaan</button>' +
+            '</div></form>'
+        : '') +
       '<div class="tool-grid">' + catalog().map((p) =>
         '<div class="card tool-tile sku">' +
           skuCoverHtml(p) +
@@ -2777,50 +2978,99 @@
               ? '<button class="btn-sm" data-act="toggle-example" data-id="' + esc(p.id) + '">' +
                 (p.example ? 'Tandai file Anton sudah masuk' : 'Kembalikan ke contoh') + '</button>'
               : '') +
-            '<a class="btn-sm" href="' + esc(p.lynk) + '" target="_blank" rel="noopener">lynk</a>' +
+            (p.lynk ? '<a class="btn-sm" href="' + esc(p.lynk) + '" target="_blank" rel="noopener">lynk</a>' : '') +
+            (canBill() && String(p.id).indexOf('sku-') === 0
+              ? '<button class="btn-sm" data-act="del-sku" data-id="' + esc(p.id) + '">Hapus</button>'
+              : '') +
           '</div></div></div>'
       ).join('') + '</div></div>';
   }
 
-  function viewJadwal(staff) {
-    return '<div class="card"><h2>Jadwal</h2>' +
-      '<p class="muted">Meet URL per sesi — tidak ada Zoom ID Rise yang di-hardcode. ICS token ada di prototype: ' +
-      esc(SEED.cohort.calendarToken) + ' (produksi live masih belum mengirim token ini).</p>' +
-      db.sessions.map((s) =>
-        '<article class="thread"><h4>' + esc(s.title) + '</h4>' +
-          '<p class="muted">' + fmtWhen(s.startsAt) + ' · ' + esc(s.location) + '</p>' +
-          (staff && canBill()
-            ? '<form class="compose" data-act="meet" data-id="' + esc(s.id) + '"><input name="meetUrl" value="' + esc(s.meetUrl) + '" placeholder="https://meet.google.com/..."><button class="btn" type="submit">Simpan tautan Meet</button></form>'
-            : '<a class="btn" href="' + esc(s.meetUrl) + '" target="_blank" rel="noopener">Buka Meet</a>') +
-          '<a class="wa" href="' + esc(SEED.school.waGroup) + '" target="_blank" rel="noopener">WA grup</a>' +
-        '</article>'
-      ).join('') + '</div>';
+  function calEvents() {
+    const ev = [];
+    (db.sessions || []).forEach((s) => ev.push({
+      kind: 'meet', at: s.startsAt, title: s.title, id: s.id, loc: s.location, url: s.meetUrl
+    }));
+    (db.weeks || []).forEach((w) => {
+      if (w.due) ev.push({ kind: 'kur', at: joinLocal(w.due, '09:00'), title: w.title, id: w.id });
+    });
+    (db.tasks || []).filter((t) => !t.done).forEach((t) => ev.push({
+      kind: 'task', at: t.dueAt, title: t.title, id: t.id, personId: t.personId
+    }));
+    queuedItems().forEach((t) => ev.push({
+      kind: 'task', at: t.dueAt, title: t.title, id: t.id, personId: t.personId
+    }));
+    return ev;
   }
-
-  function viewBayar() {
-    const skus = catalog();
-    return '<div class="card"><h2>Pembayaran</h2>' +
-      '<p class="muted">Anton merchant (lynk.id / Mayar). Mentoring = live class + alat lynk (bukan Laris Affiliate). Satuan = checkbox produk. Status <strong>gratis</strong> = beasiswa.</p>' +
-      '<div style="overflow:auto">' +
-      '<table class="table"><thead><tr><th>Siswa</th><th>Status</th><th>Mentoring</th>' +
-      skus.map((p) => '<th>' + esc(p.id) + '</th>').join('') +
-      '<th>Nominal</th></tr></thead><tbody>' +
-      SEED.students.map((s) => {
-        const b = billingOf(s.id);
-        const mentorOn = canMentoring(s.id);
-        return '<tr><td>' + esc(s.name) + '<div class="muted">' + esc(b.note || b.plan || '') + '</div></td>' +
-          '<td>' + payChip(b.status) + '<select data-act="bill-one" data-id="' + esc(s.id) + '" style="margin-top:6px">' +
-          ['lunas', 'cicilan', 'belum', 'gratis', 'trial'].map((st) =>
-            '<option' + (b.status === st ? ' selected' : '') + ' value="' + st + '">' + st + '</option>').join('') +
-          '</select></td>' +
-          '<td><input type="checkbox" data-act="ent-mentor" data-id="' + esc(s.id) + '"' +
-          (mentorOn ? ' checked' : '') + (b.status === 'gratis' ? ' disabled' : '') + '></td>' +
-          skus.map((p) =>
-            '<td><input type="checkbox" data-act="ent-sku" data-id="' + esc(s.id) + '" data-sku="' + esc(p.id) + '"' +
-            (canSku(s.id, p.id) ? ' checked' : '') + ((mentorOn && bundled(p)) ? ' disabled' : '') + '></td>'
+  function viewJadwal(staff) {
+    const today = splitLocal().date;
+    const ym = ui.calYM || today.slice(0, 7);
+    const [yy, mm] = ym.split('-').map(Number);
+    const dim = new Date(Date.UTC(yy, mm, 0)).getUTCDate();
+    const pad = (new Date(Date.UTC(yy, mm - 1, 1)).getUTCDay() + 6) % 7;
+    const events = calEvents();
+    const byDay = {};
+    events.forEach((ev) => {
+      const d = ymdOf(ev.at);
+      (byDay[d] = byDay[d] || []).push(ev);
+    });
+    const selected = ui.calDay || today;
+    const cells = [];
+    for (let i = 0; i < pad; i++) cells.push('<div class="cal-cell is-pad"></div>');
+    for (let d = 1; d <= dim; d++) {
+      const key = yy + '-' + String(mm).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+      const list = byDay[key] || [];
+      cells.push(
+        '<button type="button" class="cal-cell' + (key === today ? ' is-today' : '') + (key === selected ? ' is-on' : '') +
+          '" data-act="cal-day" data-id="' + esc(key) + '">' +
+          '<span class="cal-n">' + d + '</span>' +
+          list.slice(0, 3).map((ev) =>
+            '<span class="cal-dot kind-' + esc(ev.kind) + '">' + esc(ev.title) + '</span>'
           ).join('') +
-          '<td>' + fmtRp(b.amount) + '<div class="muted">' + esc(b.source) + '</div></td></tr>';
-      }).join('') + '</tbody></table></div></div>';
+          (list.length > 3 ? '<span class="muted">+' + (list.length - 3) + '</span>' : '') +
+        '</button>'
+      );
+    }
+    const dayEv = (byDay[selected] || []).slice().sort((a, b) => new Date(a.at) - new Date(b.at));
+    const kindLabel = { meet: 'Meet / Zoom', kur: 'Kurikulum', task: 'Tugas' };
+    const detail = '<div class="cal-day">' +
+      '<h3>' + esc(selected) + '</h3>' +
+      (dayEv.length
+        ? dayEv.map((ev) => {
+            if (ev.kind === 'meet') {
+              return '<article class="thread"><h4>' + esc(kindLabel.meet) + ' · ' + esc(ev.title) + '</h4>' +
+                '<p class="muted">' + fmtWhen(ev.at) + (ev.loc ? ' · ' + esc(ev.loc) : '') + '</p>' +
+                (staff && canBill()
+                  ? '<form class="compose" data-act="meet" data-id="' + esc(ev.id) + '"><input name="meetUrl" value="' + esc(ev.url || '') + '" placeholder="https://meet.google.com/..."><button class="btn" type="submit">Simpan tautan Meet</button></form>'
+                  : (ev.url ? '<a class="btn" href="' + esc(ev.url) + '" target="_blank" rel="noopener">Buka Meet</a>' : '')) +
+                '</article>';
+            }
+            if (ev.kind === 'kur') {
+              return '<article class="thread"><h4>Kurikulum · ' + esc(ev.title) + '</h4>' +
+                '<p class="muted">Jatuh tempo bagian</p>' +
+                '<button type="button" class="btn-sm" data-act="tab" data-id="kurikulum">Buka kurikulum</button></article>';
+            }
+            return '<article class="thread"><h4>Tugas · ' + esc(ev.title) + '</h4>' +
+              '<p class="muted">' + fmtClock(ev.at) + ' · <button type="button" class="linkish" data-act="open-student" data-id="' + esc(ev.personId) + '">' + esc(nameOf(ev.personId)) + '</button></p></article>';
+          }).join('')
+        : '<p class="muted">Tidak ada kurikulum, Meet, atau tugas di hari ini.</p>') +
+      '</div>';
+    const prevM = mm === 1 ? (yy - 1) + '-12' : yy + '-' + String(mm - 1).padStart(2, '0');
+    const nextM = mm === 12 ? (yy + 1) + '-01' : yy + '-' + String(mm + 1).padStart(2, '0');
+    const monthLabel = new Date(Date.UTC(yy, mm - 1, 1)).toLocaleDateString('id-ID', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+    return '<div class="card"><h2>Jadwal</h2>' +
+      '<p class="muted">Kalender: kurikulum (jatuh tempo bagian), Meet/Zoom, tugas. ICS token prototype: ' +
+      esc(SEED.cohort.calendarToken) + '.</p>' +
+      '<div class="cal-nav">' +
+        '<button type="button" class="btn-sm" data-act="cal-ym" data-id="' + esc(prevM) + '">←</button>' +
+        '<strong>' + esc(monthLabel) + '</strong>' +
+        '<button type="button" class="btn-sm" data-act="cal-ym" data-id="' + esc(nextM) + '">→</button>' +
+        '<button type="button" class="btn-sm" data-act="cal-ym" data-id="' + esc(today.slice(0, 7)) + '">Hari ini</button>' +
+      '</div>' +
+      '<div class="cal-week">' + ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].map((d) => '<span>' + d + '</span>').join('') + '</div>' +
+      '<div class="cal-grid">' + cells.join('') + '</div>' +
+      detail +
+      '<a class="wa" href="' + esc(SEED.school.waGroup) + '" target="_blank" rel="noopener">WA grup</a></div>';
   }
 
   function openDrawer(id) { openPerson(id); }
@@ -2885,7 +3135,9 @@
       } else {
         ui.mentorTab = cam.tab || 'siswa';
       }
-      if (cam.tab === 'tugas' && ui.personId) ui.taskPerson = ui.personId;
+      if (cam.tab === 'tugas' || cam.tab === 'waq') {
+        if (ui.personId) ui.taskPerson = ui.personId;
+      }
     } else {
       ui.role = 'student';
       ui.personaId = cam.personaId || ui.personaId;
@@ -3102,6 +3354,47 @@
       render();
       return;
     }
+    if (t.matches('[data-act="person-field"]')) {
+      const id = t.getAttribute('data-id');
+      const k = t.getAttribute('data-k');
+      let val = t.value;
+      if (k === 'wa') val = String(val).replace(/\D/g, '');
+      if (k === 'tiktok') val = tiktokHandle(val);
+      if (k === 'email') val = String(val).trim();
+      if (k === 'tags') {
+        patchPerson(id, { tags: String(val).split(',').map((s) => s.trim()).filter(Boolean) });
+      } else {
+        const fields = {};
+        fields[k] = val;
+        patchPerson(id, fields);
+      }
+      save();
+      if (k === 'tiktok') {
+        refreshPersonPhoto(id, true).then((ok) => {
+          toast(ok ? 'Foto TikTok tersimpan.' : 'Foto gagal. Inisial + unggah.');
+          render();
+        });
+      }
+      return;
+    }
+    if (t.matches('[data-act="bill-amount"]')) {
+      const b = billingOf(t.getAttribute('data-id'));
+      b.amount = Math.max(0, +t.value || 0);
+      b.updatedAt = new Date().toISOString();
+      save();
+      return;
+    }
+    if (t.matches('[data-act="sec-due"]')) {
+      const w = db.weeks.find((x) => x.id === t.getAttribute('data-id'));
+      if (w) { w.due = t.value; save(); }
+      return;
+    }
+    if (t.matches('[data-act="kur-preview-person"]')) {
+      ui.kurPreviewId = t.value;
+      ui.kurPreviewLec = '';
+      render();
+      return;
+    }
     if (t.matches('[data-act="enroll-plan"]')) {
       const id = t.getAttribute('data-id');
       const pid = t.getAttribute('data-pid');
@@ -3237,7 +3530,8 @@
     const act = btn.getAttribute('data-act');
     if (act === 'vid-drop' || act === 'vid-file' || act === 'add-lec' || act === 'sec-title' ||
         act === 'lec-field' || act === 'lec-points' || act === 'q-field' || act === 'doc-name' || act === 'doc-url' ||
-        act === 'cover-file' || act === 'res-file' || act === 'photo-file' || act === 'lec-body' || act === 'res-name' || act === 'res-url') {
+        act === 'cover-file' || act === 'res-file' || act === 'photo-file' || act === 'lec-body' || act === 'res-name' || act === 'res-url' ||
+        act === 'person-field' || act === 'bill-amount' || act === 'sec-due' || act === 'kur-preview-person') {
       return;
     }
     if (act === 'tab') {
@@ -3319,10 +3613,30 @@
       ui.pane = btn.getAttribute('data-id');
       render();
     } else if (act === 'open-student') {
-      if (e.target.closest('a')) return;
+      if (e.target.closest('a, select, input, textarea, label, .btn-sm')) return;
       const id = btn.getAttribute('data-id');
       if (ui.skipOpen === id) return;
       openPerson(id);
+    } else if (act === 'task-compose') {
+      const id = btn.getAttribute('data-id') || 'new';
+      ui.taskComposer = ui.taskComposer === id ? '' : id;
+      render();
+    } else if (act === 'cal-day') {
+      ui.calDay = btn.getAttribute('data-id');
+      render();
+    } else if (act === 'cal-ym') {
+      ui.calYM = btn.getAttribute('data-id');
+      render();
+    } else if (act === 'kur-prev-lec') {
+      ui.kurPreviewLec = btn.getAttribute('data-id');
+      render();
+    } else if (act === 'del-sku') {
+      const id = btn.getAttribute('data-id');
+      if (!canBill() || String(id).indexOf('sku-') !== 0) return;
+      db.catalog = catalog().filter((p) => p.id !== id);
+      save();
+      toast('SKU dihapus dari perpustakaan lokal');
+      render();
     } else if (act === 'close-drawer' || act === 'close-person') {
       closePerson();
     } else if (act === 'siswa-view') {
@@ -3598,9 +3912,7 @@
       render();
     } else if (act === 'task-from') {
       const id = btn.getAttribute('data-id');
-      addTask(id, 'Follow-up ' + nameOf(id), '', isoNow());
-      save();
-      toast('Tugas ditambah');
+      ui.taskComposer = id;
       openPerson(id);
     } else if (act === 'wa-sent') {
       const w = db.waQueue.find((x) => x.id === btn.getAttribute('data-id'));
@@ -3761,9 +4073,32 @@
       toast('Form tersimpan. Lanjut pilih bayar.');
       render();
     } else if (act === 'add-task') {
-      addTask(String(fd.get('personId')), String(fd.get('title')), String(fd.get('body') || ''), isoNow());
+      const due = joinLocal(fd.get('date'), fd.get('time'));
+      addTask(String(fd.get('personId')), String(fd.get('title')), String(fd.get('body') || ''), due, String(fd.get('kind') || 'wa'));
+      ui.taskComposer = '';
       save();
       toast('Tugas ditambah');
+      render();
+    } else if (act === 'add-sku') {
+      if (!canBill()) return;
+      const title = String(fd.get('title') || '').trim();
+      if (!title) return;
+      db.catalog = catalog();
+      db.catalog.push({
+        id: 'sku-' + Date.now(),
+        group: String(fd.get('group') || 'alat'),
+        kind: String(fd.get('group')) === 'rekaman' ? 'video' : 'tool',
+        title: title,
+        job: String(fd.get('job') || '').trim(),
+        price: +fd.get('price') || 0,
+        coret: +fd.get('coret') || 0,
+        lynk: String(fd.get('lynk') || '').trim(),
+        cover: String(fd.get('cover') || '').trim(),
+        example: !!fd.get('example'),
+        includedInMentoring: !!fd.get('mentor')
+      });
+      save();
+      toast('Produk masuk perpustakaan (lokal)');
       render();
     } else if (act === 'save-dunning') {
       db.dunning.warningDays = Math.max(1, +fd.get('warningDays') || 5);
