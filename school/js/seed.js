@@ -51,7 +51,8 @@ window.ANTON_SEED = {
       cover: './assets/obrolan/cover-calc.webp',
       sheet: './assets/obrolan/calc-sheet.png',
       iframe: './tools/harga.html',
-      example: true
+      example: true,
+      includedInMentoring: true
     },
     {
       id: 'ai-creative',
@@ -64,7 +65,8 @@ window.ANTON_SEED = {
       lynk: 'https://lynk.id/obrolan.marketing/rz8v1oxd8548',
       cover: './assets/obrolan/cover-ai-creative.webp',
       iframe: './tools/creative.html',
-      example: true
+      example: true,
+      includedInMentoring: true
     },
     {
       id: 'ai-data',
@@ -77,7 +79,8 @@ window.ANTON_SEED = {
       lynk: 'https://lynk.id/obrolan.marketing/ezw8grpexr15',
       cover: './assets/obrolan/cover-ai-data.webp',
       iframe: './tools/analisa.html',
-      example: true
+      example: true,
+      includedInMentoring: true
     },
     {
       id: 'naik-harga',
@@ -99,7 +102,8 @@ window.ANTON_SEED = {
         'D4 Dibeli — Convince',
         'D5 Direkomendasikan'
       ],
-      example: true
+      example: true,
+      includedInMentoring: true
     },
     {
       id: 'algo',
@@ -119,7 +123,8 @@ window.ANTON_SEED = {
         'Studi kasus',
         'Implementasi'
       ],
-      example: true
+      example: true,
+      includedInMentoring: true
     },
     {
       id: 'ads',
@@ -138,33 +143,173 @@ window.ANTON_SEED = {
         'Baca ROAS tanpa bohong diri',
         'Naikkan budget hanya kalau unit economics masuk'
       ],
-      example: true
+      example: true,
+      includedInMentoring: true
+    },
+    {
+      id: 'laris-aff',
+      group: 'alat',
+      kind: 'tool',
+      title: 'Laris Affiliate',
+      job: 'Antrian kolab TikTok Shop. Dijual terpisah — tidak termasuk harga mentoring.',
+      price: 299000,
+      coret: 399000,
+      lynk: 'https://lynk.id/obrolan.marketing',
+      iframe: '/affiliate/',
+      example: true,
+      includedInMentoring: false
     }
   ],
+  pricing: {
+    monthlyIdr: 500000,
+    annualDiscountPct: 15,
+    autopayDiscountPct: 10,
+    welcomeDiscountPct: 20,
+    overridePct: 20
+  },
+  bank: {
+    bank: 'BCA',
+    name: 'Anton GC',
+    number: '1234567890'
+  },
+  dunning: {
+    warningDays: 5,
+    antonWaAfterWarningDays: 5,
+    graceDays: 1
+  },
+  pipelineStages: [
+    { id: 'wa_baru', label: 'WA baru' },
+    { id: 'form', label: 'Form' },
+    { id: 'trial', label: 'Trial 24 jam' },
+    { id: 'nonton', label: 'Nonton belum bayar' },
+    { id: 'aktif', label: 'Aktif' },
+    { id: 'perpanjangan', label: 'Perpanjangan' },
+    { id: 'grace', label: 'Grace' },
+    { id: 'nurture', label: 'Nurture' },
+    { id: 'tidak_tertarik', label: 'Tidak tertarik' },
+    { id: 'lulus', label: 'Lulus' },
+    { id: 'mentor', label: 'Mentor' }
+  ],
+  actionPlans: [
+    {
+      id: 'trial',
+      name: 'Trial 24 jam',
+      steps: [
+        { id: 't12', waitHours: 12, kind: 'wa', title: '12 jam sisa diskon', body: 'Halo {name}, sisa 12 jam harga perkenalan mentoring Anton. Bayar transfer atau kartu, atau lanjut coba video 1.' },
+        { id: 'twatch', waitHours: 0, kind: 'task', title: 'Anton WA: sudah nonton, belum bayar', body: 'Halo {name}, semoga video 1 kebantu. Kalau mau lanjut kelas bulan ini, transfer / kartu di sekolah ya.' },
+        { id: 'tnurture', waitHours: 24, kind: 'stage', to: 'nurture' }
+      ]
+    },
+    {
+      id: 'renewal',
+      name: 'Perpanjangan',
+      steps: [
+        { id: 'r5', waitHours: 120, kind: 'wa', title: '5 hari sebelum habis', body: 'Halo {name}, akses mentoring habis {until}. Transfer bulan berikutnya biar kelas tidak putus.' },
+        { id: 'ranton', waitHours: 120, kind: 'task', title: 'Anton WA perpanjangan', body: 'Halo {name}, Anton di sini. Mau lanjut bulan ini?' },
+        { id: 'rgrace', waitHours: 24, kind: 'wa', title: 'Grace 1 hari', body: 'Halo {name}, ini hari terakhir grace. Bayar hari ini supaya akses penuh kembali.' }
+      ]
+    },
+    {
+      id: 'nurture',
+      name: 'Nurture jangka panjang',
+      steps: [
+        { id: 'n7', waitHours: 168, kind: 'wa', title: 'Follow-up 7 hari', body: 'Halo {name}, Anton masih buka mentoring. Kalau waktunya pas, form-nya masih ada di sekolah.' }
+      ]
+    },
+    {
+      id: 'extended',
+      name: 'Tidak tertarik (jarang)',
+      steps: [
+        { id: 'e30', waitHours: 720, kind: 'wa', title: 'Cek 30 hari', body: 'Halo {name}, cuma numpang sapa. Kalau suatu saat mau kelas lagi, WA Anton saja.' }
+      ]
+    }
+  ],
+  exam: {
+    passMark: 4,
+    questions: [
+      { q: 'Apa yang kebuka kalau ikut mentoring (bukan beli satuan)?', choices: ['Hanya kalkulator', '12 video + live class + alat lynk (bukan Laris Affiliate)', 'Semua termasuk Laris Affiliate', 'Hanya grup WA'], answer: 1 },
+      { q: 'Komisi kreator dihitung dari mana?', choices: ['Harga coret', 'Sisa setelah potongan TikTok', 'Modal supplier', 'GMV 30 hari Kalodata'], answer: 1 },
+      { q: 'Cap undangan TikTok yang aman dipakai di Kolab?', choices: ['500 per kirim, tanpa batas harian', '50 per kirim, 1.000 per hari, kuota mingguan unconnected', 'Blast 3.000 DM / 10 menit', 'Tidak ada cap kalau pakai Kaloboost'], answer: 1 },
+      { q: 'Iklan GMV Max dipakai kapan?', choices: ['Hari pertama toko, foto masih gelap', 'Setelah harga rumus dan etalase/live ada sinyal', 'Kalau modal habis', 'Supaya kelihatan terlaris'], answer: 1 },
+      { q: 'Sertifikat mentor Anton artinya apa soal uang downline?', choices: ['Rekrut 5 orang, dapat bonus tanpa mengajar', 'Pakai kurikulum Anton; setor 20% pendapatan ke Anton (disampaikan sebelum terima)', 'Anton menahan uang murid kamu', 'Gratis selamanya'], answer: 1 }
+    ]
+  },
   students: [
-    { id: 's-kamu', name: 'Kamu (demo)', city: 'Bekasi', lastActive: '2026-09-15T10:00:00+07:00', tags: ['TTS'], wa: '628120000001' },
-    { id: 's-dina', name: 'Dina Putri', city: 'Bandung', lastActive: '2026-09-14T21:00:00+07:00', tags: ['pemula'], wa: '628120000002' },
-    { id: 's-budi', name: 'Budi Santoso', city: 'Solo', lastActive: '2026-09-10T08:00:00+07:00', tags: ['belum bayar'], wa: '628120000003' },
-    { id: 's-sari', name: 'Sari Beasiswa', city: 'Yogyakarta', lastActive: '2026-09-15T07:30:00+07:00', tags: ['beasiswa'], wa: '628120000004' },
-    { id: 's-eko', name: 'Eko Pras', city: 'Tangerang', lastActive: '2026-09-13T19:00:00+07:00', tags: ['live'], wa: '628120000005' },
-    { id: 's-nina', name: 'Nina Ayu', city: 'Surabaya', lastActive: '2026-09-15T12:00:00+07:00', tags: ['TTS'], wa: '628120000006' },
-    { id: 's-raka', name: 'Raka Aditya', city: 'Depok', lastActive: '2026-09-12T16:00:00+07:00', tags: ['cicilan'], wa: '628120000007' },
-    { id: 's-maya', name: 'Maya Lestari', city: 'Semarang', lastActive: '2026-09-15T09:00:00+07:00', tags: ['hair'], wa: '628120000008' },
-    { id: 's-rina', name: 'Rina Wulandari', city: 'Bogor', lastActive: '2026-09-15T16:00:00+07:00', tags: ['kalkulator'], wa: '628120000009' },
-    { id: 's-toni', name: 'Toni Wijaya', city: 'Malang', lastActive: '2026-09-14T18:00:00+07:00', tags: ['webinar'], wa: '628120000010' }
+    { id: 's-tamu', name: 'Tamu baru (wizard)', city: '—', lastActive: '2026-09-18T10:00:00+07:00', tags: ['WA baru'], wa: '628120000099', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-kamu', name: 'Kamu (demo)', city: 'Bekasi', lastActive: '2026-09-15T10:00:00+07:00', tags: ['TTS'], wa: '628120000001', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-dina', name: 'Dina Putri', city: 'Bandung', lastActive: '2026-09-14T21:00:00+07:00', tags: ['pemula'], wa: '628120000002', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-budi', name: 'Budi Santoso', city: 'Solo', lastActive: '2026-09-10T08:00:00+07:00', tags: ['belum bayar'], wa: '628120000003', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-sari', name: 'Sari Beasiswa', city: 'Yogyakarta', lastActive: '2026-09-15T07:30:00+07:00', tags: ['beasiswa'], wa: '628120000004', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-eko', name: 'Eko Pras', city: 'Tangerang', lastActive: '2026-09-13T19:00:00+07:00', tags: ['live'], wa: '628120000005', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-nina', name: 'Nina Ayu', city: 'Surabaya', lastActive: '2026-09-15T12:00:00+07:00', tags: ['TTS'], wa: '628120000006', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-raka', name: 'Raka Aditya', city: 'Depok', lastActive: '2026-09-12T16:00:00+07:00', tags: ['cicilan'], wa: '628120000007', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-maya', name: 'Maya Lestari', city: 'Semarang', lastActive: '2026-09-15T09:00:00+07:00', tags: ['hair'], wa: '628120000008', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-rina', name: 'Rina Wulandari', city: 'Bogor', lastActive: '2026-09-15T16:00:00+07:00', tags: ['kalkulator'], wa: '628120000009', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-toni', name: 'Toni Wijaya', city: 'Malang', lastActive: '2026-09-14T18:00:00+07:00', tags: ['webinar'], wa: '628120000010', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-ayu', name: 'Ayu Rahma', city: 'Cirebon', lastActive: '2026-09-18T09:10:00+07:00', tags: ['trial'], wa: '628120000011', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-farah', name: 'Farah Nisa', city: 'Bekasi', lastActive: '2026-09-18T08:00:00+07:00', tags: ['nonton'], wa: '628120000012', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-gilang', name: 'Gilang Pratama', city: 'Medan', lastActive: '2026-09-16T12:00:00+07:00', tags: ['tidak tertarik'], wa: '628120000013', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-hadi', name: 'Hadi Kusuma', city: 'Makassar', lastActive: '2026-09-17T19:00:00+07:00', tags: ['perpanjangan'], wa: '628120000014', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-irma', name: 'Irma Sari', city: 'Palembang', lastActive: '2026-09-17T21:00:00+07:00', tags: ['grace'], wa: '628120000015', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-joko', name: 'Joko Santoso', city: 'Jakarta', lastActive: '2026-09-18T07:00:00+07:00', tags: ['lulus'], wa: '628120000016', mentorId: 'u-anton', kind: 'student' },
+    { id: 's-dewi', name: 'Dewi Mentor', city: 'Bandung', lastActive: '2026-09-18T09:00:00+07:00', tags: ['mentor'], wa: '628120000017', mentorId: 'u-anton', kind: 'mentor' },
+    { id: 's-oki', name: 'Oki Firmansyah', city: 'Tasikmalaya', lastActive: '2026-09-17T11:00:00+07:00', tags: ['anak Dewi'], wa: '628120000018', mentorId: 's-dewi', kind: 'student' },
+    { id: 's-putri', name: 'Putri Laila', city: 'Cimahi', lastActive: '2026-09-16T15:00:00+07:00', tags: ['anak Dewi'], wa: '628120000019', mentorId: 's-dewi', kind: 'student' }
   ],
   billing: {
-    's-kamu': { status: 'lunas', plan: 'mentoring', products: ['calc', 'ai-creative', 'ai-data', 'naik-harga', 'algo', 'ads'], amount: 1500000, source: 'lynk', paidAt: '2026-09-01', note: 'Batch Sep · mentoring' },
-    's-dina': { status: 'cicilan', plan: 'mentoring', products: ['calc', 'ai-creative', 'ai-data', 'naik-harga', 'algo', 'ads'], amount: 750000, source: 'manual', paidAt: '2026-09-05', note: 'Sisa 750rb' },
-    's-budi': { status: 'belum', plan: '', products: [], amount: 0, source: 'manual', paidAt: null, note: 'Belum transfer' },
-    's-sari': { status: 'gratis', plan: 'mentoring', products: ['calc', 'ai-creative', 'ai-data', 'naik-harga', 'algo', 'ads'], amount: 0, source: 'manual', paidAt: '2026-09-01', note: 'Beasiswa' },
-    's-eko': { status: 'lunas', plan: 'mentoring', products: ['calc', 'ai-creative', 'ai-data', 'naik-harga', 'algo', 'ads'], amount: 1500000, source: 'mayar', paidAt: '2026-08-30', note: '' },
-    's-nina': { status: 'lunas', plan: 'mentoring', products: ['calc', 'ai-creative', 'ai-data', 'naik-harga', 'algo', 'ads'], amount: 1500000, source: 'lynk', paidAt: '2026-09-02', note: '' },
-    's-raka': { status: 'cicilan', plan: 'mentoring', products: ['calc', 'ai-creative', 'ai-data', 'naik-harga', 'algo', 'ads'], amount: 500000, source: 'manual', paidAt: '2026-09-08', note: 'Sisa 1jt' },
-    's-maya': { status: 'lunas', plan: 'mentoring', products: ['calc', 'ai-creative', 'ai-data', 'naik-harga', 'algo', 'ads'], amount: 1500000, source: 'lynk', paidAt: '2026-09-01', note: '' },
-    's-rina': { status: 'lunas', plan: 'sku', products: ['calc'], amount: 99000, source: 'lynk', paidAt: '2026-09-12', note: 'Kalkulator saja' },
-    's-toni': { status: 'lunas', plan: 'sku', products: ['algo'], amount: 59900, source: 'lynk', paidAt: '2026-09-11', note: 'Rekaman algoritma' }
+    's-tamu': { status: 'belum', plan: '', products: [], amount: 0, source: 'manual', paidAt: null, note: 'Baru dari grup WA', term: '', accessUntil: null },
+    's-kamu': { status: 'lunas', plan: 'mentoring', products: ['calc', 'ai-creative', 'ai-data', 'naik-harga', 'algo', 'ads'], amount: 500000, source: 'transfer', paidAt: '2026-09-01T10:00:00+07:00', note: 'Batch Sep · mentoring', term: 'month', accessUntil: '2026-10-01T10:00:00+07:00' },
+    's-dina': { status: 'cicilan', plan: 'mentoring', products: ['calc', 'ai-creative', 'ai-data', 'naik-harga', 'algo', 'ads'], amount: 250000, source: 'manual', paidAt: '2026-09-05T10:00:00+07:00', note: 'Sisa 250rb', term: 'month', accessUntil: '2026-10-05T10:00:00+07:00' },
+    's-budi': { status: 'belum', plan: '', products: [], amount: 0, source: 'manual', paidAt: null, note: 'Belum isi form', term: '', accessUntil: null },
+    's-sari': { status: 'gratis', plan: 'mentoring', products: ['calc', 'ai-creative', 'ai-data', 'naik-harga', 'algo', 'ads'], amount: 0, source: 'manual', paidAt: '2026-09-01T10:00:00+07:00', note: 'Beasiswa', term: 'year', accessUntil: '2027-09-01T10:00:00+07:00' },
+    's-eko': { status: 'lunas', plan: 'mentoring', products: ['calc', 'ai-creative', 'ai-data', 'naik-harga', 'algo', 'ads'], amount: 450000, source: 'mayar', paidAt: '2026-08-30T10:00:00+07:00', note: 'Autopay kartu (placeholder)', term: 'autopay', accessUntil: '2026-09-30T10:00:00+07:00' },
+    's-nina': { status: 'lunas', plan: 'mentoring', products: ['calc', 'ai-creative', 'ai-data', 'naik-harga', 'algo', 'ads'], amount: 500000, source: 'transfer', paidAt: '2026-09-02T10:00:00+07:00', note: '', term: 'month', accessUntil: '2026-10-02T10:00:00+07:00' },
+    's-raka': { status: 'cicilan', plan: 'mentoring', products: ['calc', 'ai-creative', 'ai-data', 'naik-harga', 'algo', 'ads'], amount: 250000, source: 'manual', paidAt: '2026-09-08T10:00:00+07:00', note: 'Sisa 250rb', term: 'month', accessUntil: '2026-10-08T10:00:00+07:00' },
+    's-maya': { status: 'lunas', plan: 'mentoring', products: ['calc', 'ai-creative', 'ai-data', 'naik-harga', 'algo', 'ads'], amount: 5100000, source: 'transfer', paidAt: '2026-09-01T10:00:00+07:00', note: 'Tahunan (placeholder −15%)', term: 'year', accessUntil: '2027-09-01T10:00:00+07:00' },
+    's-rina': { status: 'lunas', plan: 'sku', products: ['calc'], amount: 99000, source: 'lynk', paidAt: '2026-09-12T10:00:00+07:00', note: 'Kalkulator saja', term: '', accessUntil: null },
+    's-toni': { status: 'lunas', plan: 'sku', products: ['algo'], amount: 59900, source: 'lynk', paidAt: '2026-09-11T10:00:00+07:00', note: 'Rekaman algoritma', term: '', accessUntil: null },
+    's-ayu': { status: 'trial', plan: 'preview', products: [], amount: 0, source: 'manual', paidAt: null, note: 'Bayar nanti · 24 jam', term: '', accessUntil: null, offerStartedAt: '2026-09-18T09:00:00+07:00', offerExpiresAt: '2026-09-19T09:00:00+07:00' },
+    's-farah': { status: 'trial', plan: 'preview', products: [], amount: 0, source: 'manual', paidAt: null, note: 'Nonton v1, belum bayar', term: '', accessUntil: null, offerStartedAt: '2026-09-17T23:00:00+07:00', offerExpiresAt: '2026-09-18T23:00:00+07:00' },
+    's-gilang': { status: 'belum', plan: '', products: [], amount: 0, source: 'manual', paidAt: null, note: 'Tidak tertarik', term: '', accessUntil: null },
+    's-hadi': { status: 'lunas', plan: 'mentoring', products: ['calc', 'ai-creative', 'ai-data', 'naik-harga', 'algo', 'ads'], amount: 500000, source: 'transfer', paidAt: '2026-08-23T10:00:00+07:00', note: 'Habis 23 Sep', term: 'month', accessUntil: '2026-09-23T10:00:00+07:00' },
+    's-irma': { status: 'lunas', plan: 'mentoring', products: ['calc', 'ai-creative', 'ai-data', 'naik-harga', 'algo', 'ads'], amount: 500000, source: 'transfer', paidAt: '2026-08-18T08:00:00+07:00', note: 'Grace', term: 'month', accessUntil: '2026-09-18T08:00:00+07:00' },
+    's-joko': { status: 'lunas', plan: 'mentoring', products: ['calc', 'ai-creative', 'ai-data', 'naik-harga', 'algo', 'ads'], amount: 500000, source: 'transfer', paidAt: '2026-08-01T10:00:00+07:00', note: 'Lulus tes', term: 'month', accessUntil: '2026-10-01T10:00:00+07:00' },
+    's-dewi': { status: 'lunas', plan: 'mentoring', products: ['calc', 'ai-creative', 'ai-data', 'naik-harga', 'algo', 'ads'], amount: 500000, source: 'transfer', paidAt: '2026-07-01T10:00:00+07:00', note: 'Mentor tersertifikasi', term: 'year', accessUntil: '2027-07-01T10:00:00+07:00' },
+    's-oki': { status: 'lunas', plan: 'mentoring', products: ['calc', 'ai-creative', 'ai-data', 'naik-harga', 'algo', 'ads'], amount: 500000, source: 'transfer', paidAt: '2026-09-01T10:00:00+07:00', note: 'Murid Dewi', term: 'month', accessUntil: '2026-10-01T10:00:00+07:00' },
+    's-putri': { status: 'lunas', plan: 'sku', products: ['calc', 'laris-aff'], amount: 398000, source: 'lynk', paidAt: '2026-09-10T10:00:00+07:00', note: 'Kalkulator + Laris Affiliate', term: '', accessUntil: null }
   },
+  crm: {
+    's-tamu': { stage: 'wa_baru' },
+    's-kamu': { stage: 'aktif' },
+    's-dina': { stage: 'aktif' },
+    's-budi': { stage: 'wa_baru' },
+    's-sari': { stage: 'aktif' },
+    's-eko': { stage: 'aktif' },
+    's-nina': { stage: 'aktif' },
+    's-raka': { stage: 'aktif' },
+    's-maya': { stage: 'aktif' },
+    's-rina': { stage: 'nurture' },
+    's-toni': { stage: 'nurture' },
+    's-ayu': { stage: 'trial' },
+    's-farah': { stage: 'nonton', watchedFirstAt: '2026-09-18T08:00:00+07:00', antonWatchTask: true, wa12Sent: true },
+    's-gilang': { stage: 'tidak_tertarik', notInterestedAt: '2026-09-16T12:00:00+07:00', extendedQueued: true },
+    's-hadi': { stage: 'perpanjangan', warn5Sent: true },
+    's-irma': { stage: 'grace', warn5Sent: true, antonRenewTask: true, grace1Sent: true },
+    's-joko': { stage: 'lulus', examScore: 5, examAt: '2026-09-17T18:00:00+07:00', eligibleMentor: true, certSerial: 'ANT-JOKO-001' },
+    's-dewi': { stage: 'mentor', examScore: 5, examAt: '2026-06-20T18:00:00+07:00', eligibleMentor: true, acceptedMentorAt: '2026-07-01T10:00:00+07:00', certSerial: 'ANT-DEWI-001', acceptedOverride: true },
+    's-oki': { stage: 'aktif' },
+    's-putri': { stage: 'aktif' }
+  },
+  applications: {
+    's-ayu': { name: 'Ayu Rahma', wa: '628120000011', experience: 'Jualan jepit rambut 2 bulan, omset masih kecil.', why: 'Mau rumus harga dan live yang tahan.', at: '2026-09-18T09:00:00+07:00' },
+    's-farah': { name: 'Farah Nisa', wa: '628120000012', experience: 'Dropship Shopee, baru buka TikTok Shop.', why: 'Butuh mentor yang jujur soal iklan.', at: '2026-09-17T23:00:00+07:00' },
+    's-gilang': { name: 'Gilang Pratama', wa: '628120000013', experience: 'Belum jualan.', why: 'Coba-coba dari grup WA.', at: '2026-09-16T10:00:00+07:00' },
+    's-joko': { name: 'Joko Santoso', wa: '628120000016', experience: 'TTS 1 tahun.', why: 'Mau sertifikat mentor.', at: '2026-08-01T10:00:00+07:00' },
+    's-dewi': { name: 'Dewi Mentor', wa: '628120000017', experience: 'Live seller Bandung.', why: 'Mau bimbing toko kecil.', at: '2026-06-01T10:00:00+07:00' }
+  },
+  remittances: [
+    { id: 'rem-dewi-sep', mentorId: 's-dewi', period: '2026-09', expected: 179600, received: 0, note: '20% dari mentoring Oki (500rb) + SKU Putri (398rb)' }
+  ],
   weeks: [
     { id: 'w1', title: 'Minggu 1 · Fondasi toko', due: '2026-09-07' },
     { id: 'w2', title: 'Minggu 2 · Produk & harga', due: '2026-09-14' },
@@ -191,7 +336,7 @@ window.ANTON_SEED = {
     return [
       v('v1', 'w1', 'Selamat datang di kelas', 12, 'Lembar kerja 01 — Cara pakai kelas.pdf',
         ['Kurikulum 12 video. Tandai selesai sendiri — bukan auto-skor.', 'Live class terpisah di Home. Pustaka = alat & rekaman lynk.', 'Jangan sebar supplier atau margin di Tanya.'],
-        [{ q: 'Bedanya mentoring vs beli satuan di lynk?', hint: 'Mentoring = 12 video + live + semua SKU. Satuan = SKU yang dibayar saja.' },
+        [{ q: 'Bedanya mentoring vs beli satuan di lynk?', hint: 'Mentoring = 12 video + live + alat lynk. Laris Affiliate selalu satuan. Satuan = SKU yang dibayar saja.' },
          { q: 'Kalau bingung cepat, WA atau Tanya di materi?', hint: 'WA untuk chat cepat. Tanya di sini supaya jawaban nempel di video yang sama.' }], true),
       v('v2', 'w1', 'Etalase yang tidak gelap', 11, 'Lembar kerja 02 — Audit etalase.pdf',
         ['Foto 5 sudut, cahaya jendela atau lampu, bukan stock gelap.', 'Nama SKU menyebut isi/manfaat, bukan “produk 01”.', 'WA bisnis nyala sebelum iklan.'],
@@ -255,14 +400,17 @@ window.ANTON_SEED = {
     { id: 'r1', threadId: 't2', authorId: 'u-anton', body: 'Mulai 7 hari. Naikkan kalau CPA masih masuk.', isStaff: true, createdAt: '2026-09-08T10:00:00+07:00' }
   ],
   attendance: {
-    'ses-1': { 's-kamu': 'hadir', 's-dina': 'hadir', 's-budi': 'absen', 's-sari': 'hadir', 's-eko': 'hadir', 's-nina': 'izin', 's-raka': 'hadir', 's-maya': 'hadir' },
-    'ses-2': { 's-kamu': 'hadir', 's-dina': 'izin', 's-sari': 'hadir', 's-eko': 'hadir', 's-nina': 'hadir', 's-raka': 'absen', 's-maya': 'hadir' }
+    'ses-1': { 's-kamu': 'hadir', 's-dina': 'hadir', 's-budi': 'absen', 's-sari': 'hadir', 's-eko': 'hadir', 's-nina': 'izin', 's-raka': 'hadir', 's-maya': 'hadir', 's-joko': 'hadir', 's-dewi': 'hadir', 's-oki': 'hadir' },
+    'ses-2': { 's-kamu': 'hadir', 's-dina': 'izin', 's-sari': 'hadir', 's-eko': 'hadir', 's-nina': 'hadir', 's-raka': 'absen', 's-maya': 'hadir', 's-joko': 'hadir', 's-hadi': 'hadir', 's-irma': 'izin' }
   },
   notes: {
-    's-dina': [{ at: '2026-09-14', body: 'Cicilan sisa 750rb. Ingatkan WA.' }],
-    's-rina': [{ at: '2026-09-12', body: 'Beli kalkulator lynk. Tawarkan mentoring kalau dia hitung 3 SKU.' }]
+    's-dina': [{ at: '2026-09-14', body: 'Cicilan sisa 250rb. Ingatkan WA.' }],
+    's-rina': [{ at: '2026-09-12', body: 'Beli kalkulator lynk. Tawarkan mentoring kalau dia hitung 3 SKU.' }],
+    's-farah': [{ at: '2026-09-18', body: 'Sudah nonton video 1. Anton harus WA — jangan auto-kirim sebagai Anton.' }],
+    's-dewi': [{ at: '2026-07-01', body: 'Terima 20% licensing. Rekening Dewi sendiri. Setoran September belum masuk.' }]
   },
   progressSeed: {
+    's-tamu': [],
     's-kamu': ['v1', 'v2', 'v3', 'v4'],
     's-dina': ['v1', 'v2'],
     's-budi': [],
@@ -272,8 +420,39 @@ window.ANTON_SEED = {
     's-raka': ['v1'],
     's-maya': ['v1', 'v2', 'v3', 'v4', 'v5', 'v6'],
     's-rina': [],
-    's-toni': []
+    's-toni': [],
+    's-ayu': [],
+    's-farah': ['v1'],
+    's-gilang': [],
+    's-hadi': ['v1', 'v2', 'v3', 'v4', 'v5', 'v6'],
+    's-irma': ['v1', 'v2', 'v3'],
+    's-joko': ['v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10', 'v11', 'v12'],
+    's-dewi': ['v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10', 'v11', 'v12'],
+    's-oki': ['v1', 'v2', 'v3'],
+    's-putri': []
   },
+  tasksSeed: [
+    { id: 'task-farah', personId: 's-farah', assignee: 'u-anton', title: 'Anton WA: Farah sudah nonton, belum bayar', body: 'Halo Farah Nisa, semoga video 1 kebantu. Kalau mau lanjut kelas bulan ini, transfer / kartu di sekolah ya.', dueAt: '2026-09-18T09:00:00+07:00', done: false, kind: 'wa' },
+    { id: 'task-irma', personId: 's-irma', assignee: 'u-anton', title: 'Anton WA perpanjangan Irma', body: 'Halo Irma Sari, Anton di sini. Mau lanjut bulan ini?', dueAt: '2026-09-17T10:00:00+07:00', done: false, kind: 'wa' }
+  ],
+  timelineSeed: {
+    's-ayu': [
+      { at: '2026-09-18T08:50:00+07:00', kind: 'wa', body: 'Masuk grup WA Batch September.' },
+      { at: '2026-09-18T09:00:00+07:00', kind: 'form', body: 'Isi form: jualan jepit 2 bulan.' },
+      { at: '2026-09-18T09:02:00+07:00', kind: 'offer', body: 'Pilih bayar nanti. Diskon 24 jam sampai 19 Sep 09.00.' }
+    ],
+    's-farah': [
+      { at: '2026-09-17T23:00:00+07:00', kind: 'form', body: 'Isi form. Bayar nanti.' },
+      { at: '2026-09-18T08:00:00+07:00', kind: 'video', body: 'Selesai video 1.' }
+    ],
+    's-gilang': [
+      { at: '2026-09-16T10:00:00+07:00', kind: 'form', body: 'Isi form.' },
+      { at: '2026-09-16T12:00:00+07:00', kind: 'stage', body: 'Tidak tertarik. Pindah extended nurture.' }
+    ]
+  },
+  waQueueSeed: [
+    { id: 'wa-farah-12', toId: 's-farah', scheduledAt: '2026-09-18T11:00:00+07:00', status: 'queued', title: '12 jam sisa diskon', body: 'Halo Farah Nisa, sisa 12 jam harga perkenalan mentoring Anton. Bayar transfer atau kartu, atau lanjut coba video 1.' }
+  ],
   kolabQuota: { weekly: 200, used: 47, dailyCap: 1000, batch: 50, starterPack: false },
   kalodataCreators: [
     { handle: '@rinaskincare', gmv_30d: 185000000, followers: 42000, niche: 'skincare', content: 'video', email: 'rina.skincare@example.com', typical_commission_pct: 20, live_gmv_30d: 12000000 },

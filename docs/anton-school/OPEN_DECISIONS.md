@@ -78,3 +78,14 @@ anything that is not this unpacked extension: no live send.
 Live subscribe URL in `js/laris-cohort.js` omits `calendar_token` (403 in
 practice). Fix is a one-line production change; **out of this prototype** so
 Kohort Pertama stays frozen. Revisit when the offline lock lifts.
+
+## Closed in the funnel prototype (still offline)
+
+Answered 2026-09-18. Implementation is localhost only — see [FUNNEL.md](./FUNNEL.md).
+
+- Mentoring is **monthly**. Default collect: **bank transfer** (Anton’s rekening in Pengaturan bayar). Offer discount for **annual transfer** and **card autopay** (Mayar still mock).
+- 24-hour welcome cut is a **real clock from form submit**, not fake scarcity.
+- **Bayar nanti** = first lecture + supplies; CRM stages Trial / Nonton / Nurture / Tidak tertarik.
+- Renewal: 5-day warning → Anton WA task → 1-day grace; Anton can edit in Otomasi.
+- Certified mentors: one-level **20% licensing** of their student + SKU + Laris Affiliate earnings, disclosed before they accept. Not a recruit pyramid. Not LarisID as MoR.
+- **Laris Affiliate** is never included in mentoring price.

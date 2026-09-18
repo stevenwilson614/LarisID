@@ -360,6 +360,35 @@ html[data-mode="student"] .canvas iframe.tool-frame { min-height: 520px; height:
 .form-grid { display: grid; gap: 8px; }
 .inline-form { display: grid; gap: 8px; }
 
+.clock-bar {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  padding: 8px 14px; border-bottom: 1px solid var(--line);
+  background: var(--ink-2);
+}
+.clock-bar[hidden] { display: none !important; }
+.pay-terms { display: grid; gap: 8px; margin-top: 12px; }
+.pay-terms .current-term { border-color: #fff; }
+.kanban {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px; align-items: start;
+}
+.kanban-col {
+  background: var(--ink-2); border: 1px solid var(--line); border-radius: var(--r);
+  padding: 10px; min-height: 120px;
+}
+.kanban-col h3 { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 8px; }
+.kanban-card {
+  width: 100%; text-align: left; margin-bottom: 8px; cursor: pointer; color: inherit;
+}
+.kanban-card strong { display: block; font-size: .82rem; }
+.cert-sheet { text-align: center; padding: 32px 20px; }
+.cert-sheet h2 { font-size: 1.4rem; }
+.cert-sheet h3 { font-size: 1.2rem; margin: 12px 0; }
+@media print {
+  .topbar, .tabs, .dock, .clock-bar, .off-badge { display: none !important; }
+  #app { box-shadow: none; max-width: none; }
+}
+
 /* ── student: phone column ─────────────────────────────────────────── */
 html[data-mode="student"] body { background: #000; }
 html[data-mode="student"] #app {
@@ -436,7 +465,8 @@ html[data-mode="mentor"] .quota { grid-template-columns: 1fr auto; align-items: 
 html[data-mode="mentor"] .inline-form { grid-template-columns: 1fr 1fr auto; align-items: end; }
 html[data-mode="mentor"] .table { font-size: .82rem; }
 html[data-mode="mentor"] .alat-pick { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
-html[data-mode="mentor"] .toast { bottom: 24px; }
+html[data-mode="mentor"] .pay-terms { grid-template-columns: repeat(3, 1fr); }
+html[data-mode="mentor"] .kanban { grid-template-columns: repeat(6, minmax(160px, 1fr)); }
 
 .kur-toolbar {
   display: flex; justify-content: space-between; gap: 12px; align-items: flex-start;

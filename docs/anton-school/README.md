@@ -46,6 +46,13 @@ Gating is Anton’s membership and IP, not LarisID Cari Produk / Deep Dive.
 `gratis` / beasiswa is a first-class billing status. Progress is completed
 items / total — no fake scores.
 
+**Funnel + CRM** (localhost): form → 24h offer or bayar nanti → first-video
+preview → Follow Up Boss pipeline, tasks, queued WA, customizable renewal.
+Finish program → tes + sertifikat → optional mentor with disclosed 20%
+licensing. Laris Affiliate is never bundled. Details:
+[FUNNEL.md](./FUNNEL.md). Draft SQL (do not apply):
+[`school/sql/20260918120000_anton_funnel_crm.sql`](../../school/sql/20260918120000_anton_funnel_crm.sql).
+
 Kurikulum contoh: **12 video** (4 minggu × 3). Tiap video punya lembar kerja,
 poin penting, dan 2 pertanyaan cek pemahaman (bukan ujian). Check hijau + bar
 % untuk seluruh kurikulum. Kolab tetap alat mentoring di Pustaka, bukan salah
@@ -77,8 +84,9 @@ pindahkan checkout ke LarisID.
 
 ## Catalog (lynk.id/obrolan.marketing)
 
-Six products can be bought **satuan**. **Mentoring** unlocks all six plus live class
-(Home / Belajar / Diskusi / Kolab). Checkout stays on lynk.id.
+Six products can be bought **satuan**. **Mentoring** unlocks those six plus live class
+(Home / Belajar / Diskusi / Kolab). **Laris Affiliate is a seventh SKU and is
+never included in mentoring.** Checkout for satuan stays on lynk.id.
 
 | SKU | Harga (coret) | Demo siswa |
 |---|---|---|
@@ -89,8 +97,10 @@ Six products can be bought **satuan**. **Mentoring** unlocks all six plus live c
 | Mastering Algorithm (rekaman) | 59.9k (199k) | Toni Wijaya |
 | Ads Strategic GMV (rekaman) | 149k (249k) | mentoring |
 
-Persona **Kamu (demo)** = mentoring. **Budi** = belum. Setiap SKU punya **Lihat contoh**
-sampai Anton ganti file di Perpustakaan mentor.
+| Laris Affiliate | 299k (399k) placeholder | Putri Laila (satuan); **never** mentoring |
+
+Persona **Kamu (demo)** = mentoring. **Ayu** = trial video 1. **Budi** = belum form.
+Setiap SKU punya **Lihat contoh** sampai Anton ganti file di Perpustakaan mentor.
 
 Kalkulator di `school/tools/harga.html` meniru spreadsheet Anton (Set harga + Toko/HPP),
 dengan contoh terisi, hasil tiga harga, dan unduh PDF.
@@ -101,7 +111,8 @@ Cover, foto profil, dan logo Obrolan disalin ke `school/assets/obrolan/` dari CD
 
 Anton bisa paste sendiri:
 
-1. Kartu pertama: **Mentoring** — “Live class + semua produk di bawah.” Pintu: WA.
+1. Kartu pertama: **Mentoring** — “Live class + alat lynk di bawah (bukan Laris Affiliate).” Pintu: WA.
 2. Grup **Alat:** Calculator, AI Creative, AI Analisa Data.
 3. Grup **Rekaman:** Naik harga, Algoritma, Ads GMV.
-4. Harga lynk tetap. LMS tidak checkout.
+4. **Laris Affiliate** terpisah — tidak termasuk mentoring.
+5. Harga lynk tetap. LMS tidak checkout.

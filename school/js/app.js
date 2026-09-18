@@ -1,10 +1,12 @@
 /* Sekolah Anton localhost prototype. No live WhatsApp, TikTok, Mayar, or Contabo. */
 (function () {
   const SEED = window.ANTON_SEED;
-  const KEY = 'anton-school-v2';
+  const KEY = 'anton-school-v3';
+  const FIRST_LEC = 'v1';
   const TOOL_SANDBOX = 'allow-scripts allow-forms allow-same-origin allow-modals allow-popups';
   const $ = (id) => document.getElementById(id);
   const ALL_SKUS = () => (SEED.catalog || []).map((p) => p.id);
+  const MENTOR_SKUS = () => (SEED.catalog || []).filter((p) => p.includedInMentoring !== false).map((p) => p.id);
 
   if (/larisid\.com$/i.test(location.hostname) || location.hostname.endsWith('.pages.dev')) {
     $('prod-block').hidden = false;
@@ -91,6 +93,33 @@
     }
   }
 
+  function hydrateFunnel(merged) {
+    merged.pricing = Object.assign({}, SEED.pricing, merged.pricing || {});
+    merged.bank = Object.assign({}, SEED.bank, merged.bank || {});
+    merged.dunning = Object.assign({}, SEED.dunning, merged.dunning || {});
+    merged.actionPlans = (merged.actionPlans && merged.actionPlans.length)
+      ? merged.actionPlans
+      : JSON.parse(JSON.stringify(SEED.actionPlans || []));
+    merged.pipelineStages = (merged.pipelineStages && merged.pipelineStages.length)
+      ? merged.pipelineStages
+      : JSON.parse(JSON.stringify(SEED.pipelineStages || []));
+    merged.crm = Object.assign({}, JSON.parse(JSON.stringify(SEED.crm || {})), merged.crm || {});
+    merged.applications = Object.assign({}, JSON.parse(JSON.stringify(SEED.applications || {})), merged.applications || {});
+    merged.timeline = Object.assign({}, JSON.parse(JSON.stringify(SEED.timelineSeed || {})), merged.timeline || {});
+    merged.tasks = Array.isArray(merged.tasks) ? merged.tasks : JSON.parse(JSON.stringify(SEED.tasksSeed || []));
+    merged.waQueue = Array.isArray(merged.waQueue) ? merged.waQueue : JSON.parse(JSON.stringify(SEED.waQueueSeed || []));
+    merged.remittances = Array.isArray(merged.remittances) ? merged.remittances : JSON.parse(JSON.stringify(SEED.remittances || []));
+    if (typeof merged.clockOffsetMs !== 'number') merged.clockOffsetMs = 0;
+    Object.keys(SEED.billing || {}).forEach((id) => {
+      if (!merged.billing[id]) merged.billing[id] = JSON.parse(JSON.stringify(SEED.billing[id]));
+    });
+    Object.entries(SEED.progressSeed || {}).forEach(([sid, ids]) => {
+      if (!merged.progress[sid]) {
+        merged.progress[sid] = Object.fromEntries((ids || []).map((id) => [id, true]));
+      }
+    });
+  }
+
   function defaultState() {
     const progress = {};
     Object.entries(SEED.progressSeed).forEach(([sid, ids]) => {
@@ -107,6 +136,18 @@
       weeks: SEED.weeks.map((w) => ({ ...w })),
       sessions: SEED.sessions.map((s) => ({ ...s })),
       billing: JSON.parse(JSON.stringify(SEED.billing)),
+      crm: JSON.parse(JSON.stringify(SEED.crm || {})),
+      applications: JSON.parse(JSON.stringify(SEED.applications || {})),
+      remittances: JSON.parse(JSON.stringify(SEED.remittances || [])),
+      tasks: JSON.parse(JSON.stringify(SEED.tasksSeed || [])),
+      timeline: JSON.parse(JSON.stringify(SEED.timelineSeed || {})),
+      waQueue: JSON.parse(JSON.stringify(SEED.waQueueSeed || [])),
+      pricing: JSON.parse(JSON.stringify(SEED.pricing)),
+      bank: JSON.parse(JSON.stringify(SEED.bank)),
+      dunning: JSON.parse(JSON.stringify(SEED.dunning)),
+      actionPlans: JSON.parse(JSON.stringify(SEED.actionPlans)),
+      pipelineStages: JSON.parse(JSON.stringify(SEED.pipelineStages)),
+      clockOffsetMs: 0,
       threads: SEED.threads.map((t) => ({ ...t })),
       replies: SEED.replies.map((r) => ({ ...r })),
       attendance: JSON.parse(JSON.stringify(SEED.attendance)),
@@ -148,6 +189,7 @@
         });
       }
       hydrateCurriculum(merged);
+      hydrateFunnel(merged);
       return merged;
     } catch {
       return defaultState();
@@ -170,7 +212,12 @@
     skuPreview: false,
     skuFrom: 'pustaka',
     editLecId: null,
-    secFold: null
+    secFold: null,
+    wizard: null,
+    payTerm: 'month',
+    examAnswers: {},
+    payPrompt: false,
+    crmFilter: ''
   };
 
   function save() {
@@ -178,8 +225,9 @@
     localStorage.setItem(KEY, JSON.stringify(copy));
   }
 
+  function people() { return SEED.students; }
   function student() {
-    return SEED.students.find((s) => s.id === ui.personaId) || SEED.students[0];
+    return people().find((s) => s.id === ui.personaId) || people()[0];
   }
   function billingOf(id) {
     if (!db.billing[id]) {
@@ -189,17 +237,85 @@
     if (!Array.isArray(b.products)) b.products = [];
     return b;
   }
+  function crmOf(id) {
+    if (!db.crm[id]) db.crm[id] = { stage: 'wa_baru' };
+    return db.crm[id];
+  }
+  function nowMs() { return Date.now() + (db.clockOffsetMs || 0); }
+  function nowDate() { return new Date(nowMs()); }
+  function isoNow() { return nowDate().toISOString(); }
+  function addMs(iso, ms) { return new Date(new Date(iso).getTime() + ms).toISOString(); }
+  function hoursLeft(iso) {
+    if (!iso) return null;
+    return (new Date(iso).getTime() - nowMs()) / 36e5;
+  }
+  function fmtRemain(iso) {
+    const h = hoursLeft(iso);
+    if (h == null) return '—';
+    if (h <= 0) return 'habis';
+    if (h < 1) return Math.max(1, Math.round(h * 60)) + ' mnt';
+    if (h < 48) return h.toFixed(1).replace(/\.0$/, '') + ' jam';
+    return Math.round(h / 24) + ' hari';
+  }
+  function bundled(p) { return !p || p.includedInMentoring !== false; }
+  function firstLectureId() {
+    const l = lectures()[0];
+    return (l && l.id) || FIRST_LEC;
+  }
+  function termActive(id) {
+    const b = billingOf(id);
+    if (b.status === 'gratis') return true;
+    if (!b.accessUntil) return b.status === 'lunas' || b.status === 'cicilan';
+    return nowMs() < new Date(b.accessUntil).getTime() + graceMs();
+  }
+  function graceMs() {
+    return (Number(db.dunning.graceDays) || 1) * 86400000;
+  }
+  function warningMs() {
+    return (Number(db.dunning.warningDays) || 5) * 86400000;
+  }
+  function inGrace(id) {
+    const b = billingOf(id);
+    if (!b.accessUntil || b.status === 'gratis') return false;
+    const end = new Date(b.accessUntil).getTime();
+    const t = nowMs();
+    return t >= end && t < end + graceMs();
+  }
   function canMentoring(id) {
     const b = billingOf(id);
     if (b.status === 'gratis') return true;
-    if (b.status === 'belum') return false;
-    return b.plan === 'mentoring';
+    if (b.plan !== 'mentoring' && b.status !== 'gratis') return false;
+    if (b.status === 'belum' || b.status === 'trial') return false;
+    if (inGrace(id)) return true;
+    if (b.accessUntil && nowMs() >= new Date(b.accessUntil).getTime() + graceMs()) return false;
+    return b.status === 'lunas' || b.status === 'cicilan';
+  }
+  function canPreview(id) {
+    if (canMentoring(id)) return false;
+    const b = billingOf(id);
+    if (b.status === 'trial' || b.plan === 'preview') return true;
+    const c = crmOf(id);
+    return c.stage === 'trial' || c.stage === 'nonton' || c.stage === 'nurture';
+  }
+  function canOpenLecture(id, lid) {
+    if (canMentoring(id)) return true;
+    if (canPreview(id) && lid === firstLectureId()) return true;
+    return false;
   }
   function canSku(id, skuId) {
-    if (canMentoring(id)) return true;
+    const p = productById(skuId);
+    if (canMentoring(id) && bundled(p)) return true;
     return billingOf(id).products.indexOf(skuId) !== -1;
   }
-  function canLearn(id) { return canMentoring(id); }
+  function canLearn(id) { return canMentoring(id) || canPreview(id); }
+  function needsWizard(id) {
+    const c = crmOf(id);
+    return !db.applications[id] && (c.stage === 'wa_baru' || c.stage === 'form');
+  }
+  function wizardStep(id) {
+    if (!db.applications[id]) return 'form';
+    return 'pay';
+  }
   function catalog() { return db.catalog || SEED.catalog; }
   function productById(id) { return catalog().find((p) => p.id === id); }
   function isStaff() { return ui.role === 'owner' || ui.role === 'asisten'; }
@@ -219,6 +335,14 @@
   function markDone(sid, lid, val) {
     doneSet(sid)[lid] = val;
     db.lastLecture[sid] = lid;
+    if (val && lid === firstLectureId() && !canMentoring(sid)) {
+      const c = crmOf(sid);
+      if (!c.watchedFirstAt) {
+        c.watchedFirstAt = isoNow();
+        pushTimeline(sid, 'video', 'Selesai video 1.');
+        ui.payPrompt = true;
+      }
+    }
     save();
   }
   function progressPct(sid, weekId) {
@@ -247,12 +371,12 @@
   }
 
   function nextSession() {
-    const now = Date.now();
+    const now = nowMs();
     return db.sessions.find((s) => new Date(s.startsAt).getTime() >= now) || db.sessions[db.sessions.length - 1];
   }
   function belumSiap(session) {
     const need = session.required || [];
-    return SEED.students.filter((s) => {
+    return people().filter((s) => {
       if (!canMentoring(s.id)) return false;
       return need.some((lid) => !isDone(s.id, lid));
     });
@@ -261,6 +385,175 @@
   function waLink(phone, text) {
     const n = String(phone || '').replace(/\D/g, '');
     return 'https://wa.me/' + n + (text ? ('?text=' + encodeURIComponent(text)) : '');
+  }
+
+  function pushTimeline(id, kind, body) {
+    db.timeline[id] = db.timeline[id] || [];
+    db.timeline[id].unshift({ at: isoNow(), kind: kind, body: body });
+  }
+  function addTask(personId, title, body, dueAt) {
+    const row = {
+      id: 'task-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+      personId: personId,
+      assignee: 'u-anton',
+      title: title,
+      body: body || '',
+      dueAt: dueAt || isoNow(),
+      done: false,
+      kind: 'wa'
+    };
+    db.tasks.unshift(row);
+    return row;
+  }
+  function queueWa(toId, title, body, scheduledAt) {
+    const exists = (db.waQueue || []).some((w) => w.toId === toId && w.title === title && w.status !== 'cancelled');
+    if (exists) return;
+    db.waQueue.unshift({
+      id: 'wa-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+      toId: toId,
+      title: title,
+      body: fillTpl(body, toId),
+      scheduledAt: scheduledAt || isoNow(),
+      status: 'queued'
+    });
+  }
+  function fillTpl(text, id) {
+    const s = people().find((x) => x.id === id) || { name: id };
+    const b = billingOf(id);
+    return String(text || '')
+      .replace(/\{name\}/g, s.name)
+      .replace(/\{until\}/g, b.accessUntil ? fmtWhen(b.accessUntil) : '—');
+  }
+  function planById(id) {
+    return (db.actionPlans || []).find((p) => p.id === id);
+  }
+  function setStage(id, stage, note) {
+    const c = crmOf(id);
+    if (c.stage === stage) return;
+    c.stage = stage;
+    pushTimeline(id, 'stage', note || ('Pindah ke ' + stageLabel(stage)));
+  }
+  function stageLabel(id) {
+    const s = (db.pipelineStages || SEED.pipelineStages).find((x) => x.id === id);
+    return (s && s.label) || id;
+  }
+  function monthlyPrice() { return Number(db.pricing.monthlyIdr) || 500000; }
+  function priceForTerm(term, welcome) {
+    const m = monthlyPrice();
+    let n = m;
+    if (term === 'year') n = Math.round(m * 12 * (1 - (Number(db.pricing.annualDiscountPct) || 0) / 100));
+    else if (term === 'autopay') n = Math.round(m * (1 - (Number(db.pricing.autopayDiscountPct) || 0) / 100));
+    if (welcome) n = Math.round(n * (1 - (Number(db.pricing.welcomeDiscountPct) || 0) / 100));
+    return n;
+  }
+  function welcomeOpen(id) {
+    const b = billingOf(id);
+    return !!(b.offerExpiresAt && hoursLeft(b.offerExpiresAt) > 0);
+  }
+  function grantMentoring(id, term, source, amount) {
+    const b = billingOf(id);
+    const start = nowDate();
+    const until = new Date(start.getTime());
+    if (term === 'year') until.setFullYear(until.getFullYear() + 1);
+    else until.setMonth(until.getMonth() + 1);
+    b.status = 'lunas';
+    b.plan = 'mentoring';
+    b.products = MENTOR_SKUS().slice();
+    b.term = term;
+    b.source = source;
+    b.amount = amount;
+    b.paidAt = isoNow();
+    b.accessUntil = until.toISOString();
+    b.note = term === 'year' ? 'Tahunan' : (term === 'autopay' ? 'Kartu autopay (mock)' : 'Bulanan transfer');
+    setStage(id, 'aktif', 'Lunas mentoring · ' + term);
+    pushTimeline(id, 'pay', 'Bayar ' + fmtRp(amount) + ' · ' + (source || 'transfer'));
+  }
+  function startTrial(id) {
+    const b = billingOf(id);
+    const start = b.offerStartedAt || isoNow();
+    b.status = 'trial';
+    b.plan = 'preview';
+    b.offerStartedAt = start;
+    b.offerExpiresAt = b.offerExpiresAt || addMs(start, 24 * 36e5);
+    b.note = 'Bayar nanti · 24 jam';
+    setStage(id, 'trial', 'Bayar nanti. Diskon 24 jam dari jam form.');
+    pushTimeline(id, 'offer', 'Trial: video 1 + lembar kerja. Jam diskon sampai ' + fmtWhen(b.offerExpiresAt));
+  }
+  function runAutomations() {
+    people().forEach((s) => {
+      const b = billingOf(s.id);
+      const c = crmOf(s.id);
+      if ((c.stage === 'trial' || c.stage === 'nonton') && b.offerExpiresAt) {
+        const left = hoursLeft(b.offerExpiresAt);
+        if (left != null && left <= 12 && left > 0 && !c.wa12Sent) {
+          const plan = planById('trial');
+          const step = plan && plan.steps.find((x) => x.id === 't12');
+          queueWa(s.id, (step && step.title) || '12 jam sisa diskon', (step && step.body) || '', isoNow());
+          c.wa12Sent = true;
+          pushTimeline(s.id, 'wa', 'Antrian WA: 12 jam sisa harga perkenalan.');
+        }
+        if (left != null && left <= 0 && c.stage !== 'nurture' && c.stage !== 'tidak_tertarik' && c.stage !== 'aktif') {
+          setStage(s.id, 'nurture', '24 jam habis, belum bayar → nurture.');
+          c.expiredToNurture = true;
+        }
+      }
+      if (c.watchedFirstAt && (c.stage === 'trial' || c.stage === 'nonton') && !c.antonWatchTask) {
+        const plan = planById('trial');
+        const step = plan && plan.steps.find((x) => x.id === 'twatch');
+        addTask(s.id, (step && step.title) || 'Anton WA: sudah nonton, belum bayar', fillTpl((step && step.body) || '', s.id), isoNow());
+        c.antonWatchTask = true;
+        setStage(s.id, 'nonton', 'Nonton video 1, belum bayar.');
+      }
+      if (b.plan === 'mentoring' && b.accessUntil && b.status !== 'gratis' && c.stage !== 'tidak_tertarik' && c.stage !== 'lulus' && c.stage !== 'mentor') {
+        const end = new Date(b.accessUntil).getTime();
+        const t = nowMs();
+        const warnStart = end - warningMs();
+        if (t >= warnStart && t < end && !c.warn5Sent) {
+          const plan = planById('renewal');
+          const step = plan && plan.steps.find((x) => x.id === 'r5');
+          queueWa(s.id, (step && step.title) || '5 hari sebelum habis', fillTpl((step && step.body) || '', s.id), isoNow());
+          c.warn5Sent = true;
+          setStage(s.id, 'perpanjangan', 'Peringatan 5 hari.');
+        }
+        if (t >= end && t < end + graceMs()) {
+          if (!c.antonRenewTask) {
+            const plan = planById('renewal');
+            const step = plan && plan.steps.find((x) => x.id === 'ranton');
+            addTask(s.id, (step && step.title) || 'Anton WA perpanjangan', fillTpl((step && step.body) || '', s.id), isoNow());
+            c.antonRenewTask = true;
+          }
+          if (t >= end + graceMs() - 86400000 && !c.grace1Sent) {
+            const plan = planById('renewal');
+            const step = plan && plan.steps.find((x) => x.id === 'rgrace');
+            queueWa(s.id, (step && step.title) || 'Grace 1 hari', fillTpl((step && step.body) || '', s.id), isoNow());
+            c.grace1Sent = true;
+          }
+          setStage(s.id, 'grace', 'Masa tenggang.');
+        }
+        if (t >= end + graceMs() && (c.stage === 'grace' || c.stage === 'perpanjangan' || c.stage === 'aktif')) {
+          b.status = 'trial';
+          b.plan = 'preview';
+          setStage(s.id, 'nurture', 'Grace habis. Kembali ke preview video 1.');
+        }
+      }
+      if (c.stage === 'nurture' && !c.nurtureQueued) {
+        const plan = planById('nurture');
+        const step = plan && plan.steps[0];
+        if (step) {
+          queueWa(s.id, step.title, step.body, addMs(isoNow(), (step.waitHours || 168) * 36e5));
+          c.nurtureQueued = true;
+        }
+      }
+      if (c.stage === 'tidak_tertarik' && !c.extendedQueued) {
+        const plan = planById('extended');
+        const step = plan && plan.steps[0];
+        if (step) {
+          queueWa(s.id, step.title, step.body, addMs(isoNow(), (step.waitHours || 720) * 36e5));
+          c.extendedQueued = true;
+        }
+      }
+    });
+    save();
   }
 
   function parseEmbed(url) {
@@ -424,8 +717,12 @@
   }
 
   function payChip(st) {
-    const label = { lunas: 'Lunas', cicilan: 'Cicilan', belum: 'Belum bayar', gratis: 'Beasiswa' }[st] || st;
-    return '<span class="chip ' + esc(st) + '">' + esc(label) + '</span>';
+    const label = {
+      lunas: 'Lunas', cicilan: 'Cicilan', belum: 'Belum bayar', gratis: 'Beasiswa',
+      trial: 'Trial', pending: 'Cek transfer'
+    }[st] || st;
+    const cls = st === 'trial' ? 'warn' : st;
+    return '<span class="chip ' + esc(cls) + '">' + esc(label) + '</span>';
   }
 
   function typeLabel(t) {
@@ -511,11 +808,12 @@
 
   /* ── chrome ──────────────────────────────────────────────────────── */
   function fillChrome() {
+    runAutomations();
     const mode = isStaff() ? 'mentor' : 'student';
     document.documentElement.dataset.mode = mode;
     document.documentElement.dataset.plan = isStaff()
       ? 'mentor'
-      : (canMentoring(ui.personaId) ? 'mentoring' : (billingOf(ui.personaId).products.length ? 'sku' : 'none'));
+      : (canMentoring(ui.personaId) ? 'mentoring' : (canPreview(ui.personaId) ? 'trial' : (billingOf(ui.personaId).products.length ? 'sku' : 'none')));
     $('app').classList.toggle('is-mentor', isStaff());
     $('app').classList.toggle('is-student', !isStaff());
     $('school-name').textContent = SEED.school.name;
@@ -530,19 +828,34 @@
       '<option value="asisten">Asisten (Lia)</option>';
     $('role-switch').value = ui.role;
     const pers = $('persona-switch');
-    pers.innerHTML = SEED.students.map((s) =>
-      '<option value="' + esc(s.id) + '">' + esc(s.name) + '</option>').join('');
+    pers.innerHTML = people().map((s) =>
+      '<option value="' + esc(s.id) + '">' + esc(s.name) + (s.kind === 'mentor' ? ' · mentor' : '') + '</option>').join('');
     pers.value = ui.personaId;
     pers.hidden = isStaff();
+    const clock = $('clock-bar');
+    if (clock) {
+      clock.hidden = !isStaff();
+      if (isStaff()) {
+        clock.innerHTML =
+          '<span class="muted">Simulasi jam: <strong>' + esc(fmtWhen(isoNow())) + '</strong></span>' +
+          '<button type="button" class="ghost" data-act="clock" data-ms="3600000">+1 jam</button>' +
+          '<button type="button" class="ghost" data-act="clock" data-ms="43200000">+12 jam</button>' +
+          '<button type="button" class="ghost" data-act="clock" data-ms="86400000">+1 hari</button>' +
+          '<button type="button" class="ghost" data-act="clock-reset">Reset jam</button>' +
+          '<span class="muted">WA antrian ' + (db.waQueue.filter((w) => w.status === 'queued').length) +
+          ' · tugas ' + db.tasks.filter((t) => !t.done).length + '</span>';
+      }
+    }
     if (!isStaff()) {
-      const allowed = studentTabs().map((t) => t.id).concat(['sku', 'alat']);
+      const allowed = studentTabs().map((t) => t.id).concat(['sku', 'alat', 'daftar', 'tes', 'sertifikat']);
+      if (needsWizard(ui.personaId) && ui.tab !== 'daftar') ui.tab = 'daftar';
       if (allowed.indexOf(ui.tab) === -1) ui.tab = 'home';
     }
     renderTabs();
   }
 
   function studentTabs() {
-    if (canMentoring(ui.personaId)) {
+    if (canMentoring(ui.personaId) || canPreview(ui.personaId)) {
       return [
         { id: 'home', label: 'Home' },
         { id: 'belajar', label: 'Belajar' },
@@ -561,14 +874,22 @@
   }
   function mentorTabs() {
     const t = [
+      { id: 'crm', label: 'CRM' },
       { id: 'siswa', label: 'Siswa' },
+      { id: 'tugas', label: 'Tugas' },
+      { id: 'waq', label: 'Antrian WA' },
+      { id: 'otomasi', label: 'Otomasi' },
+      { id: 'jaringan', label: 'Jaringan' },
       { id: 'progres', label: 'Progres' },
       { id: 'kurikulum', label: 'Kurikulum' },
       { id: 'pustaka', label: 'Perpustakaan' },
       { id: 'jadwal', label: 'Jadwal' },
       { id: 'diskusi', label: 'Diskusi' }
     ];
-    if (canBill()) t.push({ id: 'bayar', label: 'Pembayaran' });
+    if (canBill()) {
+      t.push({ id: 'bayar', label: 'Pembayaran' });
+      t.push({ id: 'harga', label: 'Pengaturan bayar' });
+    }
     return t;
   }
 
@@ -601,24 +922,37 @@
     const main = $('main');
     if (isStaff()) {
       const tab = ui.mentorTab;
-      if (tab === 'siswa') main.innerHTML = viewSiswa();
+      if (tab === 'crm') main.innerHTML = viewCrm();
+      else if (tab === 'siswa') main.innerHTML = viewSiswa();
+      else if (tab === 'tugas') main.innerHTML = viewTugas();
+      else if (tab === 'waq') main.innerHTML = viewWaQueue();
+      else if (tab === 'otomasi') main.innerHTML = viewOtomasi();
+      else if (tab === 'jaringan') main.innerHTML = viewJaringan();
       else if (tab === 'progres') main.innerHTML = viewMentorProgres();
       else if (tab === 'kurikulum') main.innerHTML = viewKurikulum();
       else if (tab === 'pustaka') main.innerHTML = viewPustaka();
       else if (tab === 'jadwal') main.innerHTML = viewJadwal(true);
       else if (tab === 'diskusi') main.innerHTML = viewDiskusi(true);
       else if (tab === 'bayar' && canBill()) main.innerHTML = viewBayar();
-      else main.innerHTML = viewSiswa();
+      else if (tab === 'harga' && canBill()) main.innerHTML = viewHarga();
+      else main.innerHTML = viewCrm();
     } else {
-      const tab = ui.tab;
-      if (tab === 'home') main.innerHTML = viewHome();
-      else if (tab === 'belajar') main.innerHTML = viewBelajar();
-      else if (tab === 'alat') main.innerHTML = viewAlat();
-      else if (tab === 'pustaka') main.innerHTML = viewStudentPustaka();
-      else if (tab === 'sku') main.innerHTML = viewSkuPage();
-      else if (tab === 'diskusi') main.innerHTML = canMentoring(ui.personaId) ? viewDiskusi(false) : viewLocked();
-      else if (tab === 'progres') main.innerHTML = viewProgres();
-      else if (tab === 'kolab') main.innerHTML = viewKolab();
+      if (needsWizard(ui.personaId) || ui.tab === 'daftar') {
+        main.innerHTML = viewWizard();
+      } else {
+        const tab = ui.tab;
+        if (tab === 'home') main.innerHTML = viewHome();
+        else if (tab === 'belajar') main.innerHTML = viewBelajar();
+        else if (tab === 'alat') main.innerHTML = viewAlat();
+        else if (tab === 'pustaka') main.innerHTML = viewStudentPustaka();
+        else if (tab === 'sku') main.innerHTML = viewSkuPage();
+        else if (tab === 'diskusi') main.innerHTML = canMentoring(ui.personaId) ? viewDiskusi(false) : viewLockedDiskusi();
+        else if (tab === 'progres') main.innerHTML = viewProgres();
+        else if (tab === 'kolab') main.innerHTML = viewKolab();
+        else if (tab === 'tes') main.innerHTML = viewExam();
+        else if (tab === 'sertifikat') main.innerHTML = viewSertifikat(ui.personaId);
+        else main.innerHTML = viewHome();
+      }
     }
     bindLazy();
     bindBlobVideos();
@@ -645,30 +979,129 @@
   }
 
   /* ── student views ───────────────────────────────────────────────── */
-  function viewHome() {
-    if (!canMentoring(ui.personaId)) return viewHomeAlacarte();
+  function offerBanner(sid) {
+    const b = billingOf(sid);
+    if (!welcomeOpen(sid)) return '';
+    return '<section class="card resume" style="margin-bottom:12px">' +
+      '<p class="muted">Harga perkenalan · sisa <strong>' + esc(fmtRemain(b.offerExpiresAt)) + '</strong> (jam nyata dari form, bukan sisa kursi)</p>' +
+      '<p>Bulanan transfer ' + fmtRp(priceForTerm('month', true)) +
+      ' · tahunan ' + fmtRp(priceForTerm('year', true)) +
+      ' · kartu autopay ' + fmtRp(priceForTerm('autopay', true)) + '</p>' +
+      '<div class="row" style="margin-top:10px">' +
+        '<button class="btn" data-act="tab" data-id="daftar">Bayar mentoring</button>' +
+        '<button class="btn secondary" data-act="not-interested">Tidak tertarik</button>' +
+      '</div></section>';
+  }
+  function dualCta(p, extraClass) {
+    const sid = ui.personaId;
+    const owned = canSku(sid, p.id);
+    if (owned) {
+      return '<button class="btn" data-act="open-sku" data-from="' + (extraClass || 'pustaka') + '" data-id="' + esc(p.id) + '">Buka</button>';
+    }
+    const mentorLine = bundled(p)
+      ? '<button class="btn secondary" data-act="tab" data-id="daftar">Ikut mentoring, termasuk</button>'
+      : '<span class="muted">Tidak termasuk mentoring.</span>';
+    return '<a class="btn" href="' + esc(p.lynk || SEED.school.lynk) + '" target="_blank" rel="noopener">Beli satuan</a>' + mentorLine +
+      '<button class="btn secondary" data-act="contoh-sku" data-from="' + (extraClass || 'pustaka') + '" data-id="' + esc(p.id) + '">Lihat contoh</button>';
+  }
+  function viewWizard() {
+    const sid = ui.personaId;
     const s = student();
-    const lastId = db.lastLecture[s.id] || (SEED.lectures[0] && SEED.lectures[0].id);
+    const step = wizardStep(sid);
+    const app = db.applications[sid] || {};
+    if (step === 'pay') return viewPayPage(sid);
+    return '<section class="card">' +
+      '<p class="muted">Dari grup WA · langkah 1 dari 2</p>' +
+      '<h2>Siapa kamu</h2>' +
+      '<p class="muted">Anton baca ini sebelum kelas. Bukan tes. Tidak ada “sisa 3 kursi”.</p>' +
+      '<form class="compose" data-act="apply">' +
+        '<label class="muted">Nama</label>' +
+        '<input name="name" required maxlength="80" value="' + esc(app.name || (s.name.indexOf('Tamu') === 0 ? '' : s.name)) + '">' +
+        '<label class="muted">WhatsApp</label>' +
+        '<input name="wa" required value="' + esc(app.wa || s.wa || '') + '" placeholder="08…">' +
+        '<label class="muted">Pengalaman jualan</label>' +
+        '<textarea name="experience" required rows="3" placeholder="Toko, platform, omset kira-kira, sudah berapa lama.">' + esc(app.experience || '') + '</textarea>' +
+        '<label class="muted">Kenapa mau di-mentor</label>' +
+        '<textarea name="why" required rows="3" placeholder="Yang mau kamu pecahkan bulan ini.">' + esc(app.why || '') + '</textarea>' +
+        '<button class="btn" type="submit">Lanjut ke pembayaran</button>' +
+      '</form></section>';
+  }
+  function viewPayPage(sid) {
+    const welcome = welcomeOpen(sid) || !billingOf(sid).offerExpiresAt;
+    const b = billingOf(sid);
+    const exp = b.offerExpiresAt || addMs(isoNow(), 24 * 36e5);
+    const term = ui.payTerm || 'month';
+    const price = priceForTerm(term, welcome && hoursLeft(exp) > 0);
+    const list = priceForTerm(term, false);
+    return '<section class="card">' +
+      '<p class="muted">Langkah 2 · Anton merchant. LarisID tidak menahan uang.</p>' +
+      '<h2>Bayar mentoring</h2>' +
+      (hoursLeft(exp) > 0
+        ? '<p>Diskon 24 jam (dari jam form). Sisa <strong>' + esc(fmtRemain(exp)) + '</strong>.</p>'
+        : '<p class="muted">Jendela 24 jam sudah habis. Harga list di bawah. Tidak ada kelangkaan palsu.</p>') +
+      '<div class="pay-terms">' +
+        termCard('month', 'Transfer tiap bulan', monthlyPrice(), priceForTerm('month', hoursLeft(exp) > 0), term) +
+        termCard('year', 'Transfer tahunan (−' + (db.pricing.annualDiscountPct || 15) + '%)', monthlyPrice() * 12, priceForTerm('year', hoursLeft(exp) > 0), term) +
+        termCard('autopay', 'Kartu autopay (−' + (db.pricing.autopayDiscountPct || 10) + '%)', monthlyPrice(), priceForTerm('autopay', hoursLeft(exp) > 0), term) +
+      '</div>' +
+      '<div class="card" style="margin-top:12px">' +
+        '<h3>Transfer ke rekening Anton</h3>' +
+        '<p><strong>' + esc(db.bank.bank) + '</strong> ' + esc(db.bank.number) + '<br>' +
+        'a.n. ' + esc(db.bank.name) + '</p>' +
+        '<p class="muted">Jumlah sekarang: <strong>' + fmtRp(price) + '</strong>' +
+        (price < list ? ' <span class="price-coret">' + fmtRp(list) + '</span>' : '') + '</p>' +
+        '<p class="muted">Kartu autopay = mock Mayar. Prototype tidak menagih sungguhan.</p>' +
+        '<div class="row" style="margin-top:10px">' +
+          '<button class="btn" data-act="pay-now" data-term="' + esc(term) + '">' +
+          (term === 'autopay' ? 'Bayar kartu (mock)' : 'Saya sudah transfer') + '</button>' +
+          '<button class="btn secondary" data-act="pay-later">Bayar nanti</button>' +
+          '<button class="btn secondary" data-act="not-interested">Tidak tertarik</button>' +
+        '</div>' +
+      '</div>' +
+      '<p class="muted" style="margin-top:12px">Bayar nanti: Home kelihatan utuh, hanya video 1 + lembar kerja yang kebuka. Laris Affiliate tidak termasuk mentoring.</p>' +
+      '</section>';
+  }
+  function termCard(id, label, coret, now, cur) {
+    return '<button type="button" class="card tool-tile' + (cur === id ? ' current-term' : '') + '" data-act="pick-term" data-id="' + id + '">' +
+      '<h3>' + esc(label) + '</h3>' +
+      (now < coret ? '<p class="sku-price"><span class="price-coret">' + fmtRp(coret) + '</span> <strong>' + fmtRp(now) + '</strong></p>'
+        : '<p class="sku-price"><strong>' + fmtRp(now) + '</strong></p>') +
+      '</button>';
+  }
+  function viewHome() {
+    const s = student();
+    if (!canMentoring(s.id) && !canPreview(s.id)) return viewHomeAlacarte();
+    const lastId = canPreview(s.id) && !canMentoring(s.id)
+      ? firstLectureId()
+      : (db.lastLecture[s.id] || firstLectureId());
     const last = lectureById(lastId) || lectures()[0];
     const ses = nextSession();
     const bill = billingOf(s.id);
     const ann = db.announcements[0];
+    const preview = canPreview(s.id) && !canMentoring(s.id);
     return (
+      (preview ? offerBanner(s.id) : '') +
       '<div class="grid-2">' +
         '<section class="card resume">' +
-          '<p class="muted">Lanjutkan</p>' +
+          '<p class="muted">' + (preview ? 'Coba video 1' : 'Lanjutkan') + '</p>' +
           '<h2>' + esc(last.title) + '</h2>' +
-          '<p class="muted">' + esc(typeLabel(last.type)) + ' · ' + kurProgress(s.id).n + '/' + kurProgress(s.id).total + ' video</p>' +
+          '<p class="muted">' + esc(typeLabel(last.type)) + ' · ' + kurProgress(s.id).n + '/' + kurProgress(s.id).total + ' video' +
+          (preview ? ' · video lain terkunci sampai lunas' : '') + '</p>' +
           progressBarHtml(s.id) +
           '<button class="btn" data-act="open-lec" data-id="' + esc(last.id) + '">Buka materi</button>' +
         '</section>' +
         '<section class="card">' +
           '<h2>Sesi berikutnya</h2>' +
+          (preview
+            ? '<p class="muted">Live class terkunci sampai mentoring lunas. Jadwal tetap kelihatan.</p>'
+            : '') +
           '<p><strong>' + esc(ses.title) + '</strong></p>' +
           '<p class="muted">' + fmtWhen(ses.startsAt) + ' · ' + esc(ses.location) + '</p>' +
           '<p class="muted">' + esc(ses.notes || '') + '</p>' +
           '<div class="row" style="margin-top:10px">' +
-            '<a class="btn" href="' + esc(ses.meetUrl) + '" target="_blank" rel="noopener">Buka Meet</a>' +
+            (preview
+              ? '<button class="btn" data-act="tab" data-id="daftar">Buka dengan mentoring</button>'
+              : '<a class="btn" href="' + esc(ses.meetUrl) + '" target="_blank" rel="noopener">Buka Meet</a>') +
             '<a class="wa" href="' + esc(waLink(SEED.staff[0].wa, 'Halo Anton, saya dari Batch September.')) + '" target="_blank" rel="noopener">Chat Anton di WA</a>' +
           '</div>' +
           '<p class="muted" style="margin-top:10px">Grup WA kelas: undangan hanya lewat Anton. Prototype tidak mengirim WA sungguhan.</p>' +
@@ -683,7 +1116,9 @@
           '<h2>Pengumuman</h2>' +
           (ann ? '<p><strong>' + esc(ann.title) + '</strong></p><p class="muted">' + esc(ann.body) + '</p>' : '<p class="muted">Tidak ada.</p>') +
           '<div style="margin-top:12px">' + payChip(bill.status) +
-            '<span class="muted"> · mentoring' + (bill.note ? ' · ' + esc(bill.note) : '') + '</span></div>' +
+            '<span class="muted"> · ' + esc(bill.plan || crmOf(s.id).stage) +
+            (bill.accessUntil ? ' · sampai ' + fmtWhen(bill.accessUntil) : '') +
+            (bill.note ? ' · ' + esc(bill.note) : '') + '</span></div>' +
         '</section>' +
       '</div>' +
       alatHomeStrip(s.id)
@@ -710,22 +1145,28 @@
     return catalogHero() + ownedHtml + alatHomeStrip(s.id) +
       '<section class="card" style="margin-top:10px">' +
         '<h2>Ikut mentoring Anton</h2>' +
-        '<p class="muted">Live class + semua produk di Pustaka. Anton merchant di lynk.id — LarisID tidak menahan uang.</p>' +
+        '<p class="muted">Live class + alat lynk di Pustaka. Laris Affiliate tetap satuan. Anton merchant — LarisID tidak menahan uang.</p>' +
         '<div class="row" style="margin-top:10px">' +
           '<a class="wa" href="' + esc(waLink(SEED.staff[0].wa, 'Halo Anton, mau ikut mentoring. Saya sudah cek lynk.id/obrolan.marketing')) + '" target="_blank" rel="noopener">Chat Anton di WA</a>' +
           '<a class="btn secondary" href="' + esc(SEED.school.lynk) + '" target="_blank" rel="noopener">Buka lynk.id</a>' +
         '</div>' +
         '<p class="muted" style="margin-top:10px">' + payChip(b.status) +
           (b.note ? ' · ' + esc(b.note) : ' · belum mentoring') + '</p>' +
+        '<div class="row" style="margin-top:10px">' +
+          '<button class="btn" data-act="tab" data-id="daftar">Isi form mentoring</button>' +
+        '</div>' +
       '</section>';
   }
 
   function weekList(sid, weekId) {
-    return '<ul class="list-check">' + lecturesInWeek(weekId).map((l) =>
-      '<li><span>' + (isDone(sid, l.id) ? '<span class="tick-ok" aria-hidden="true">✓</span> ' : '<span class="tick-off" aria-hidden="true"></span> ') +
-      esc(l.title) + '</span>' +
-      '<button class="btn-sm" data-act="open-lec" data-id="' + esc(l.id) + '">Buka</button></li>'
-    ).join('') + '</ul>';
+    return '<ul class="list-check">' + lecturesInWeek(weekId).map((l) => {
+      const locked = !canOpenLecture(sid, l.id) && !isStaff();
+      return '<li><span>' + (isDone(sid, l.id) ? '<span class="tick-ok" aria-hidden="true">✓</span> ' : '<span class="tick-off" aria-hidden="true"></span> ') +
+      esc(l.title) + (locked ? ' <span class="chip">Terkunci</span>' : '') + '</span>' +
+      (locked
+        ? '<button class="btn-sm" data-act="tab" data-id="daftar">Lanjut mentoring</button>'
+        : '<button class="btn-sm" data-act="open-lec" data-id="' + esc(l.id) + '">Buka</button>') + '</li>';
+    }).join('') + '</ul>';
   }
 
   function viewLocked() {
@@ -733,18 +1174,33 @@
       '<h2>Live class terkunci</h2>' +
       '<p class="muted">Belajar, Diskusi, dan Kolab hanya untuk yang ikut mentoring. Produk lynk tetap bisa dibeli satuan di Pustaka. Anton merchant — LarisID tidak menahan uang.</p>' +
       '<div class="row" style="justify-content:center">' +
+        '<button class="btn" data-act="tab" data-id="daftar">Ikut mentoring</button>' +
         '<a class="wa" href="' + esc(waLink(SEED.staff[0].wa, 'Halo Anton, mau konfirmasi mentoring / produk lynk.')) + '" target="_blank" rel="noopener">Chat Anton</a>' +
         '<a class="btn secondary" href="' + esc(SEED.school.lynk) + '" target="_blank" rel="noopener">lynk.id</a>' +
       '</div></div>';
   }
+  function viewLockedDiskusi() {
+    return '<div class="locked">' +
+      '<h2>Diskusi untuk yang lunas</h2>' +
+      '<p class="muted">Trial hanya video 1. Tanya di materi itu tetap ada. Forum kelas dan live class setelah bayar.</p>' +
+      '<button class="btn" data-act="tab" data-id="daftar">Bayar mentoring</button></div>';
+  }
 
   function viewBelajar() {
-    if (!canMentoring(ui.personaId)) return viewLocked();
+    if (!canMentoring(ui.personaId) && !canPreview(ui.personaId)) return viewLocked();
     const lec = lectureById(ui.lectureId) || lectures()[0];
     ui.lectureId = lec.id;
+    if (!canOpenLecture(ui.personaId, lec.id) && !isStaff()) {
+      return '<div class="player-layout"><div>' +
+        progressBarHtml(ui.personaId) +
+        '<div class="locked"><h2>Materi terkunci</h2>' +
+        '<p class="muted">Trial = video 1 + lembar kerja. Sisanya setelah mentoring lunas.</p>' +
+        '<button class="btn" data-act="tab" data-id="daftar">Bayar mentoring</button></div></div>' +
+        '<aside class="kurikulum-pane' + (ui.kurOpen ? ' is-open' : '') + '">' + renderKurikulumSidebar() + '</aside></div>';
+    }
     const inner = lec.tool === 'kolab'
       ? viewKolab()
-      : renderCanvas(lec) + renderLecAfter(lec) + renderPanes(lec);
+      : renderCanvas(lec) + renderLecAfter(lec) + payAfterFirst(lec) + renderPanes(lec);
     return '<div class="player-layout">' +
       '<div>' +
         progressBarHtml(ui.personaId) +
@@ -754,6 +1210,17 @@
       '<aside class="kurikulum-pane' + (ui.kurOpen ? ' is-open' : '') + '">' +
         renderKurikulumSidebar() + '</aside>' +
       '</div>';
+  }
+  function payAfterFirst(lec) {
+    if (lec.id !== firstLectureId()) return '';
+    if (canMentoring(ui.personaId)) return '';
+    if (!isDone(ui.personaId, lec.id) && !ui.payPrompt) return '';
+    return '<section class="card resume lec-after"><h3>Lanjut mentoring?</h3>' +
+      '<p class="muted">Video 1 selesai. Tools satuan di Pustaka, atau mentoring supaya kelas + alat lynk kebuka (bukan Laris Affiliate).</p>' +
+      '<div class="row">' +
+        '<button class="btn" data-act="tab" data-id="daftar">Bayar sekarang</button>' +
+        '<button class="btn secondary" data-act="not-interested">Tidak tertarik</button>' +
+      '</div></section>';
   }
 
   function renderCanvas(lec) {
@@ -830,10 +1297,12 @@
       const items = lecturesInWeek(w.id).map((l) => {
         n += 1;
         const cur = l.id === ui.lectureId;
-        return '<button type="button" class="lec' + (cur ? ' current' : '') + '" data-act="open-lec" data-id="' + esc(l.id) + '">' +
+        const locked = !isStaff() && !canOpenLecture(ui.personaId, l.id);
+        return '<button type="button" class="lec' + (cur ? ' current' : '') + (locked ? ' locked' : '') + '" data-act="' +
+          (locked ? 'tab' : 'open-lec') + '" data-id="' + (locked ? 'daftar' : esc(l.id)) + '">' +
           '<span class="mark' + (isDone(ui.personaId, l.id) ? ' done' : '') + '" aria-hidden="true">' +
-          (isDone(ui.personaId, l.id) ? '✓' : '') + '</span>' +
-          '<span><div class="t">' + n + '. ' + esc(l.title) + '</div>' +
+          (isDone(ui.personaId, l.id) ? '✓' : (locked ? '×' : '')) + '</span>' +
+          '<span><div class="t">' + n + '. ' + esc(l.title) + (locked ? ' · terkunci' : '') + '</div>' +
           '<div class="m">' + esc(l.mins) + ' mnt' + (l.requiredBefore ? ' · wajib' : '') + '</div></span></button>';
       }).join('');
       return '<div class="week-label">' + esc(w.title) + ' · ' + progressPct(ui.personaId, w.id) + '%</div>' + items;
@@ -880,7 +1349,7 @@
   }
 
   function nameOf(id) {
-    return (SEED.students.find((s) => s.id === id) || SEED.staff.find((s) => s.id === id) || { name: id }).name;
+    return (people().find((s) => s.id === id) || SEED.staff.find((s) => s.id === id) || { name: id }).name;
   }
 
   function skuPriceHtml(p) {
@@ -926,7 +1395,7 @@
     ];
     let html = catalogHero() +
       '<h2 style="margin:12px 0 4px">Pustaka Anton</h2>' +
-      '<p class="muted" style="margin:0 0 12px">Beli satuan di lynk.id, atau mentoring = semua ini + live class. Checkout tetap di lynk — bukan LarisID.</p>';
+      '<p class="muted" style="margin:0 0 12px">Beli satuan, atau mentoring = alat lynk + live class. <strong>Laris Affiliate tidak termasuk</strong> harga mentoring. Checkout satuan tetap lynk — bukan LarisID.</p>';
     groups.forEach((g) => {
       const items = catalog().filter((p) => p.group === g.id);
       html += '<h3 class="week-label">' + g.label + '</h3><div class="tool-grid">';
@@ -945,19 +1414,16 @@
 
   function skuTile(p, sid) {
     const owned = canSku(sid, p.id);
-    const actions = owned
-      ? '<button class="btn" data-act="open-sku" data-from="pustaka" data-id="' + esc(p.id) + '">Buka</button>'
-      : '<a class="btn" href="' + esc(p.lynk) + '" target="_blank" rel="noopener">Beli di lynk.id</a>' +
-        '<button class="btn secondary" data-act="contoh-sku" data-from="pustaka" data-id="' + esc(p.id) + '">Lihat contoh</button>';
     return '<div class="card tool-tile sku">' +
       skuCoverHtml(p) +
       '<div class="sku-body">' +
       (owned ? '<span class="chip lunas">Punya</span>' : '<span class="chip">Satuan</span>') +
+      (!bundled(p) ? ' <span class="chip warn">Bukan mentoring</span>' : '') +
       (p.example ? ' <span class="chip warn">Contoh</span>' : '') +
       '<h3>' + esc(p.title) + '</h3>' +
       '<p class="muted">' + esc(p.job) + '</p>' +
       '<p class="sku-price">' + skuPriceHtml(p) + '</p>' +
-      '<div class="row" style="margin-top:10px">' + actions + '</div></div></div>';
+      '<div class="row" style="margin-top:10px">' + dualCta(p, 'pustaka') + '</div></div></div>';
   }
 
   function viewSkuPage() {
@@ -1005,7 +1471,7 @@
   }
 
   function alatName(p) {
-    return { calc: 'Kalkulator harga', 'ai-creative': 'AI Creative', 'ai-data': 'AI Analisa' }[p.id] || p.title;
+    return { calc: 'Kalkulator harga', 'ai-creative': 'AI Creative', 'ai-data': 'AI Analisa', 'laris-aff': 'Laris Affiliate' }[p.id] || p.title;
   }
 
   function alatHomeStrip(sid) {
@@ -1024,7 +1490,7 @@
       '<div class="row" style="justify-content:space-between">' +
         '<h2 style="margin:0">Alat</h2>' +
         '<button type="button" class="btn-sm" data-act="tab" data-id="alat">Lihat semua</button></div>' +
-      '<p class="muted">Kalkulator, AI, Kolab. Yang terkunci tetap bisa dilihat contohnya.</p>' +
+      '<p class="muted">Kalkulator, AI, Kolab. Yang terkunci: beli satuan atau ikut mentoring (Laris Affiliate selalu terpisah).</p>' +
       '<div class="alat-pick">' + tiles + kolab + '</div></section>';
   }
 
@@ -1032,7 +1498,7 @@
     const sid = ui.personaId;
     const tools = toolsCatalog();
     let html = '<h2 style="margin:0 0 4px">Alat</h2>' +
-      '<p class="muted" style="margin:0 0 14px">Pilih yang mau dipakai. Mentoring = semua kebuka. Satuan = yang sudah dibeli di lynk.id.</p>' +
+      '<p class="muted" style="margin:0 0 14px">Mentoring membuka alat lynk + Kolab. Laris Affiliate selalu satuan. Satuan = yang sudah dibeli di lynk.id.</p>' +
       '<div class="alat-list">';
     html += tools.map((p) => {
       const owned = canSku(sid, p.id);
@@ -1041,13 +1507,9 @@
         (owned ? '<span class="chip lunas">Bisa dipakai</span>' : '<span class="chip">Terkunci</span>') +
         (p.example ? ' <span class="chip warn">Contoh</span>' : '') +
         '<h3>' + esc(alatName(p)) + '</h3>' +
+        (!bundled(p) ? '<p class="muted">Tidak termasuk mentoring.</p>' : '') +
         '<p class="muted">' + esc(p.job) + '</p></div>' +
-        '<div class="alat-row-act">' +
-          (owned
-            ? '<button class="btn" data-act="open-sku" data-from="alat" data-id="' + esc(p.id) + '">Buka</button>'
-            : '<a class="btn" href="' + esc(p.lynk) + '" target="_blank" rel="noopener">Beli di lynk.id</a>' +
-              '<button class="btn secondary" data-act="contoh-sku" data-from="alat" data-id="' + esc(p.id) + '">Lihat contoh</button>') +
-        '</div></div>';
+        '<div class="alat-row-act">' + dualCta(p, 'alat') + '</div></div>';
     }).join('');
     html += '</div>';
     if (canMentoring(sid)) {
@@ -1093,11 +1555,13 @@
           : '<p class="muted">Belum ada SKU. Beli di lynk.id atau lihat contoh di Pustaka.</p>') +
         '<p style="margin-top:12px">Bayar: ' + payChip(bill.status) +
           ' <span class="muted">' + esc(bill.note || 'satuan') + '</span></p>' +
-        '<p class="muted">Mentoring membuka live class + semua produk.</p></section>';
+        '<p class="muted">Mentoring membuka live class + alat lynk. Laris Affiliate tetap satuan.</p></section>';
     }
     const hadir = hadirPct(sid);
     const p = kurProgress(sid);
     const kolabOpened = !!(db.kolab[sid] && db.kolab[sid].jobs && db.kolab[sid].jobs.length);
+    const c = crmOf(sid);
+    const doneAll = p.n >= p.total && p.total > 0;
     return '<div class="grid-2">' +
       '<section class="card"><h2>Checklist</h2>' +
         progressBarHtml(sid) +
@@ -1107,13 +1571,29 @@
         '<h2>Status</h2>' +
         '<p>Kurikulum: <strong>' + p.n + ' / ' + p.total + '</strong> · ' + p.pct + '%</p>' +
         '<p>Hadir: <strong>' + hadir + '%</strong></p>' +
-        '<p>Bayar: ' + payChip(bill.status) + ' <span class="muted">' + esc(bill.note || bill.plan || '') + '</span></p>' +
+        '<p>Bayar: ' + payChip(bill.status) + ' <span class="muted">' + esc(bill.note || bill.plan || '') +
+        (bill.accessUntil ? ' · sampai ' + fmtWhen(bill.accessUntil) : '') + '</span></p>' +
         '<h3 style="margin-top:16px">Lencana (kejadian nyata)</h3>' +
         '<p class="muted">' +
-          (isDone(sid, 'v1') ? '✓ Masuk kelas. ' : 'Belum mulai. ') +
+          (isDone(sid, firstLectureId()) ? '✓ Masuk kelas. ' : 'Belum mulai. ') +
           (kolabOpened ? '✓ Antri Kolab. ' : '') +
           (hadir >= 50 ? '✓ Hadir ≥ setengah sesi.' : 'Hadir masih di bawah setengah sesi.') +
         '</p>' +
+        (doneAll && !c.examScore
+          ? '<h3 style="margin-top:16px">Tes akhir</h3><p class="muted">Satu duduk. Lulus = sertifikat. Bukan mesin kuis Canvas.</p>' +
+            '<button class="btn" data-act="tab" data-id="tes">Mulai tes</button>'
+          : '') +
+        (c.examScore != null
+          ? '<p style="margin-top:12px">Tes: <strong>' + c.examScore + ' / ' + (SEED.exam.questions.length) + '</strong>' +
+            (c.eligibleMentor ? ' · lulus, layak jadi mentor' : ' · belum lulus') + '</p>' +
+            (c.certSerial ? '<button class="btn secondary" data-act="tab" data-id="sertifikat">Lihat sertifikat</button>' : '')
+          : '') +
+        (c.eligibleMentor && c.stage !== 'mentor'
+          ? '<div class="card" style="margin-top:12px"><h3>Jadi mentor</h3>' +
+            '<p class="muted">Pakai kurikulum dan nama Anton. Kamu tarik bayaran muridmu sendiri. Anton menerima <strong>' +
+            (db.pricing.overridePct || 20) + '% licensing</strong> dari pendapatan mentoring + alat + Laris Affiliate yang kamu jual. Satu tingkat, bukan piramida rekrut. Tidak ada bonus karena mengajak orang.</p>' +
+            '<button class="btn" data-act="accept-mentor">Saya paham, terima peran mentor</button></div>'
+          : '') +
       '</section></div>';
   }
 
@@ -1197,11 +1677,186 @@
     }).join('') + '</div>';
   }
 
+  function viewExam() {
+    const sid = ui.personaId;
+    const p = kurProgress(sid);
+    if (p.n < p.total) {
+      return '<div class="locked"><h2>Tes setelah 12 video</h2><p class="muted">Selesaikan kurikulum dulu. Skor tidak dikarang.</p></div>';
+    }
+    const qs = SEED.exam.questions;
+    return '<section class="card"><h2>Tes akhir program</h2>' +
+      '<p class="muted">Lulus ' + SEED.exam.passMark + ' dari ' + qs.length + '. Jawaban contoh dari materi Anton, bukan AI certainty.</p>' +
+      '<form data-act="exam">' +
+      qs.map((q, i) =>
+        '<fieldset class="quiz-q"><p><strong>' + (i + 1) + '.</strong> ' + esc(q.q) + '</p>' +
+        q.choices.map((ch, j) =>
+          '<label class="muted" style="display:block;margin:6px 0"><input type="radio" name="q' + i + '" value="' + j + '"' +
+          (String(ui.examAnswers[i]) === String(j) ? ' checked' : '') + '> ' + esc(ch) + '</label>'
+        ).join('') + '</fieldset>'
+      ).join('') +
+      '<button class="btn" type="submit">Kirim jawaban</button></form></section>';
+  }
+  function viewSertifikat(id) {
+    const s = people().find((x) => x.id === id) || student();
+    const c = crmOf(id);
+    if (!c.certSerial) return '<p class="muted">Belum ada sertifikat.</p>';
+    return '<section class="card cert-sheet">' +
+      '<p class="muted">Sertifikat kelas · serial ' + esc(c.certSerial) + '</p>' +
+      '<h2>Sekolah Anton</h2>' +
+      '<p>Menerangkan bahwa</p>' +
+      '<h3>' + esc(s.name) + '</h3>' +
+      '<p>menyelesaikan kurikulum mentoring dan lulus tes akhir (' + esc(c.examScore) + '/' + SEED.exam.questions.length + ').</p>' +
+      '<p class="muted">Diterbitkan ' + fmtWhen(c.examAt) + '. Pengakuan prestasi nyata — bukan kelangkaan palsu.</p>' +
+      (c.eligibleMentor ? '<p>Status: layak diajukan jadi mentor (licensing 20% disampaikan sebelum terima).</p>' : '') +
+      '<button class="btn secondary" data-act="print-cert">Cetak / PDF</button></section>';
+  }
+
   /* ── mentor views ────────────────────────────────────────────────── */
+  function viewCrm() {
+    const stages = db.pipelineStages || SEED.pipelineStages;
+    const q = (ui.crmFilter || '').toLowerCase();
+    const cols = stages.map((st) => {
+      const rows = people().filter((s) => {
+        const stage = crmOf(s.id).stage || 'wa_baru';
+        if (stage !== st.id) return false;
+        if (!q) return true;
+        return s.name.toLowerCase().indexOf(q) >= 0 || (s.city || '').toLowerCase().indexOf(q) >= 0;
+      });
+      return '<div class="kanban-col"><h3>' + esc(st.label) + ' · ' + rows.length + '</h3>' +
+        (rows.length ? rows.map((s) => {
+          const b = billingOf(s.id);
+          return '<button type="button" class="card kanban-card" data-act="open-student" data-id="' + esc(s.id) + '">' +
+            '<strong>' + esc(s.name) + '</strong>' +
+            '<div class="muted">' + esc(s.city) + (s.mentorId && s.mentorId !== 'u-anton' ? ' · ' + esc(nameOf(s.mentorId)) : '') + '</div>' +
+            '<div>' + payChip(b.status) + ' <span class="muted">' + esc(fmtRemain(b.offerExpiresAt || b.accessUntil)) + '</span></div>' +
+            '</button>';
+        }).join('') : '<p class="muted">Kosong</p>') +
+        '</div>';
+    }).join('');
+    const openTasks = db.tasks.filter((t) => !t.done).length;
+    return '<div class="row" style="justify-content:space-between;margin-bottom:12px">' +
+      '<div><h2 style="margin:0">CRM</h2><p class="muted">Pipa Follow Up Boss. Klik kartu = file orang. Tugas terbuka: ' + openTasks + '</p></div>' +
+      '<input placeholder="Cari nama" value="' + esc(ui.crmFilter) + '" data-act="filter-crm" style="max-width:220px;padding:8px 12px;border:1px solid var(--line);border-radius:10px">' +
+      '</div>' +
+      '<div class="kanban">' + cols + '</div>';
+  }
+  function viewTugas() {
+    const rows = db.tasks.slice().sort((a, b) => Number(a.done) - Number(b.done) || new Date(a.dueAt) - new Date(b.dueAt));
+    return '<div class="card"><h2>Tugas Anton / Lia</h2>' +
+      '<form class="compose" data-act="add-task">' +
+        '<select name="personId">' + people().map((s) => '<option value="' + esc(s.id) + '">' + esc(s.name) + '</option>').join('') + '</select>' +
+        '<input name="title" required placeholder="Judul tugas">' +
+        '<textarea name="body" rows="2" placeholder="Teks WA / catatan"></textarea>' +
+        '<button class="btn" type="submit">Tambah tugas</button></form>' +
+      (rows.length ? '<ul class="list-check">' + rows.map((t) =>
+        '<li><span>' + (t.done ? '<span class="tick-ok">✓</span> ' : '') +
+        '<strong>' + esc(t.title) + '</strong> · ' + esc(nameOf(t.personId)) +
+        '<div class="muted">' + fmtWhen(t.dueAt) + ' · ' + esc(t.body || '') + '</div></span>' +
+        '<span class="row">' +
+          (t.kind === 'wa' ? '<a class="btn-sm" href="' + esc(waLink((people().find((x) => x.id === t.personId) || {}).wa, t.body)) + '" target="_blank" rel="noopener">Buka WA</a>' : '') +
+          (!t.done ? '<button class="btn-sm" data-act="task-done" data-id="' + esc(t.id) + '">Selesai</button>' : '') +
+        '</span></li>'
+      ).join('') + '</ul>' : '<p class="muted">Tidak ada tugas.</p>') +
+      '</div>';
+  }
+  function viewWaQueue() {
+    const rows = db.waQueue.slice().sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
+    return '<div class="card"><h2>Antrian WA (tidak terkirim)</h2>' +
+      '<p class="muted">Prototype hanya tautan wa.me. Tidak memanggil send-cohort-whatsapp.</p>' +
+      (rows.length ? '<table class="table"><thead><tr><th>Jadwal</th><th>Ke</th><th>Judul</th><th>Status</th><th></th></tr></thead><tbody>' +
+        rows.map((w) => '<tr><td>' + fmtWhen(w.scheduledAt) + '</td><td>' + esc(nameOf(w.toId)) + '</td><td>' + esc(w.title) +
+          '<div class="muted">' + esc(w.body) + '</div></td><td>' + esc(w.status) + '</td><td>' +
+          (w.status === 'queued' ? '<a class="btn-sm" href="' + esc(waLink((people().find((x) => x.id === w.toId) || {}).wa, w.body)) + '" target="_blank" rel="noopener">Buka WA</a>' +
+            '<button class="btn-sm" data-act="wa-sent" data-id="' + esc(w.id) + '">Tandai dikirim</button>' : '') +
+          '</td></tr>'
+        ).join('') + '</tbody></table>' : '<p class="muted">Antrian kosong. Majukan jam simulasi untuk menembak 12 jam / 5 hari.</p>') +
+      '</div>';
+  }
+  function viewOtomasi() {
+    const d = db.dunning;
+    return '<div class="grid-2">' +
+      '<section class="card"><h2>Perpanjangan</h2>' +
+        '<p class="muted">Anton bisa ganti jeda. Default: 5 hari peringatan, lalu WA Anton, lalu 1 hari grace.</p>' +
+        '<form class="compose" data-act="save-dunning">' +
+          '<label class="muted">Hari peringatan sebelum habis</label>' +
+          '<input name="warningDays" type="number" min="1" value="' + esc(d.warningDays) + '">' +
+          '<label class="muted">Hari grace setelah habis</label>' +
+          '<input name="graceDays" type="number" min="0" value="' + esc(d.graceDays) + '">' +
+          '<button class="btn" type="submit">Simpan jeda</button></form>' +
+      '</section>' +
+      '<section class="card"><h2>Rencana aksi</h2>' +
+        '<p class="muted">Template Follow Up Boss. Ubah teks / jam tunggu.</p>' +
+        (db.actionPlans || []).map((p) =>
+          '<article class="thread"><h4>' + esc(p.name) + '</h4>' +
+          p.steps.map((st) =>
+            '<div class="lec-edit" style="margin-top:8px">' +
+              '<label class="muted">Tunggu jam</label>' +
+              '<input data-act="plan-wait" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '" type="number" value="' + esc(st.waitHours) + '">' +
+              '<label class="muted">Judul</label>' +
+              '<input data-act="plan-title" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '" value="' + esc(st.title) + '">' +
+              '<label class="muted">Isi</label>' +
+              '<textarea data-act="plan-body" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '" rows="2">' + esc(st.body || '') + '</textarea>' +
+            '</div>'
+          ).join('') + '</article>'
+        ).join('') +
+      '</section></div>';
+  }
+  function viewJaringan() {
+    const mentors = people().filter((s) => s.kind === 'mentor' || crmOf(s.id).stage === 'mentor');
+    const antonKids = people().filter((s) => (s.mentorId || 'u-anton') === 'u-anton' && s.kind !== 'mentor');
+    const override = (db.pricing.overridePct || 20) / 100;
+    let html = '<section class="card"><h2>Jaringan Anton</h2>' +
+      '<p class="muted">Dua lapis. Bukan MLM tak terbatas. 20% = licensing kurikulum/merek, disampaikan sebelum seseorang terima peran mentor. Anton tidak menahan uang murid downline.</p>' +
+      '<h3>Murid langsung Anton · ' + antonKids.length + '</h3>' +
+      '<table class="table"><thead><tr><th>Nama</th><th>Stage</th><th>Bayar</th></tr></thead><tbody>' +
+      antonKids.map((s) => '<tr><td><button class="btn-sm" data-act="open-student" data-id="' + esc(s.id) + '">' + esc(s.name) + '</button></td>' +
+        '<td>' + esc(stageLabel(crmOf(s.id).stage)) + '</td><td>' + payChip(billingOf(s.id).status) + '</td></tr>').join('') +
+      '</tbody></table></section>';
+    html += '<section class="card" style="margin-top:12px"><h3>Mentor yang Anton bimbing</h3>';
+    mentors.forEach((m) => {
+      const kids = people().filter((s) => s.mentorId === m.id);
+      const earned = kids.reduce((n, s) => n + (Number(billingOf(s.id).amount) || 0), 0);
+      const due = Math.round(earned * override);
+      const rem = db.remittances.filter((r) => r.mentorId === m.id);
+      html += '<article class="thread"><h4>' + esc(m.name) + '</h4>' +
+        '<p class="muted">' + kids.length + ' murid · omset tercatat ' + fmtRp(earned) +
+        ' · 20% ' + fmtRp(due) + '</p>' +
+        (kids.length ? '<ul>' + kids.map((s) => '<li>' + esc(s.name) + ' · ' + fmtRp(billingOf(s.id).amount) + ' · ' + esc(billingOf(s.id).note || billingOf(s.id).plan) + '</li>').join('') + '</ul>' : '<p class="muted">Belum ada murid.</p>') +
+        rem.map((r) =>
+          '<p>Setoran ' + esc(r.period) + ': harus ' + fmtRp(r.expected) + ' · masuk ' + fmtRp(r.received) +
+          ' <button class="btn-sm" data-act="remit" data-id="' + esc(r.id) + '">Tandai masuk</button></p>'
+        ).join('') +
+        '</article>';
+    });
+    html += '</section>';
+    return html;
+  }
+  function viewHarga() {
+    const p = db.pricing;
+    const b = db.bank;
+    return '<div class="grid-2"><section class="card"><h2>Harga mentoring (placeholder)</h2>' +
+      '<form class="compose" data-act="save-pricing">' +
+        '<label class="muted">Bulanan (IDR)</label><input name="monthlyIdr" type="number" value="' + esc(p.monthlyIdr) + '">' +
+        '<label class="muted">Diskon tahunan %</label><input name="annualDiscountPct" type="number" value="' + esc(p.annualDiscountPct) + '">' +
+        '<label class="muted">Diskon kartu autopay %</label><input name="autopayDiscountPct" type="number" value="' + esc(p.autopayDiscountPct) + '">' +
+        '<label class="muted">Diskon 24 jam %</label><input name="welcomeDiscountPct" type="number" value="' + esc(p.welcomeDiscountPct) + '">' +
+        '<label class="muted">Licensing mentor %</label><input name="overridePct" type="number" value="' + esc(p.overridePct) + '">' +
+        '<button class="btn" type="submit">Simpan harga</button></form>' +
+      '<p class="muted">List bulanan ' + fmtRp(monthlyPrice()) + ' · tahunan ' + fmtRp(priceForTerm('year', false)) +
+      ' · autopay ' + fmtRp(priceForTerm('autopay', false)) + ' · 24 jam ' + fmtRp(priceForTerm('month', true)) + '</p>' +
+      '</section><section class="card"><h2>Rekening transfer</h2>' +
+      '<form class="compose" data-act="save-bank">' +
+        '<label class="muted">Bank</label><input name="bank" value="' + esc(b.bank) + '">' +
+        '<label class="muted">Nomor</label><input name="number" value="' + esc(b.number) + '">' +
+        '<label class="muted">Atas nama</label><input name="name" value="' + esc(b.name) + '">' +
+        '<button class="btn" type="submit">Simpan rekening</button></form>' +
+      '<p class="muted">Siswa menyalin ini di halaman bayar. Anton menandai lunas di CRM / Pembayaran.</p>' +
+      '</section></div>';
+  }
   function viewSiswa() {
     const q = (ui.filterSiswa || '').toLowerCase();
-    const rows = SEED.students.filter((s) =>
-      !q || s.name.toLowerCase().includes(q) || billingOf(s.id).status.includes(q)
+    const rows = people().filter((s) =>
+      !q || s.name.toLowerCase().includes(q) || billingOf(s.id).status.includes(q) || (crmOf(s.id).stage || '').includes(q)
     );
     return '<div class="card">' +
       '<div class="row" style="justify-content:space-between">' +
@@ -1215,47 +1870,59 @@
         '<td>' + progressPct(s.id) + '%</td>' +
         '<td>' + hadirPct(s.id) + '%</td>' +
         '<td>' + payChip(billingOf(s.id).status) +
-          '<div class="muted">' + (canMentoring(s.id) ? 'mentoring' : (billingOf(s.id).products.join(', ') || '—')) + '</div></td>' +
+          '<div class="muted">' + esc(stageLabel(crmOf(s.id).stage)) +
+          (canMentoring(s.id) ? ' · mentoring' : (billingOf(s.id).products.join(', ') ? ' · ' + billingOf(s.id).products.join(', ') : '')) + '</div></td>' +
         '<td class="muted">' + fmtWhen(s.lastActive) + '</td>' +
         '<td><button type="button" class="btn-sm" data-act="open-student" data-id="' + esc(s.id) + '">Buka</button></td></tr>'
       ).join('') + '</tbody></table></div>';
   }
 
   function viewStudentDrawer(id) {
-    const s = SEED.students.find((x) => x.id === id);
+    const s = people().find((x) => x.id === id);
     if (!s) return '';
     const b = billingOf(id);
+    const c = crmOf(id);
     const notes = db.notes[id] || [];
+    const tl = db.timeline[id] || [];
+    const app = db.applications[id];
+    const stages = db.pipelineStages || SEED.pipelineStages;
     return '<button class="btn secondary" data-act="close-drawer">Tutup</button>' +
       '<h2>' + esc(s.name) + '</h2>' +
-      '<p class="muted">' + esc(s.city) + ' · ' + (s.tags || []).map(esc).join(', ') + '</p>' +
-      '<p>' + payChip(b.status) + '</p>' +
-      '<a class="wa" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari Sekolah Anton.')) + '" target="_blank" rel="noopener">Chat WA</a>' +
-      '<h3>Checklist</h3>' +
-      db.weeks.map((w) => '<p class="muted">' + esc(w.title) + ' · ' + progressPct(id, w.id) + '%</p>').join('') +
-      '<h3>Hadir</h3>' +
-      db.sessions.map((ses) => {
-        const st = (db.attendance[ses.id] || {})[id] || '—';
-        return '<p>' + esc(ses.title) + ': <strong>' + esc(st) + '</strong></p>';
-      }).join('') +
-      '<h3>Ledger</h3><p class="muted">' + esc(b.plan || '—') + ' · ' + fmtRp(b.amount) + ' · ' + esc(b.source) +
-      (b.note ? ' · ' + esc(b.note) : '') + '</p>' +
-      '<p class="muted">Produk: ' + (canMentoring(id) ? 'mentoring (semua)' : (b.products.length ? b.products.map((pid) => (productById(pid) || {}).title || pid).join(', ') : '—')) + '</p>' +
+      '<p class="muted">' + esc(s.city) + ' · ' + (s.tags || []).map(esc).join(', ') +
+      (s.mentorId ? ' · upline ' + esc(nameOf(s.mentorId)) : '') + '</p>' +
+      '<p>' + payChip(b.status) + ' <span class="chip">' + esc(stageLabel(c.stage)) + '</span></p>' +
+      '<label class="muted">Pindah stage</label>' +
+      '<select data-act="crm-stage" data-id="' + esc(id) + '">' +
+        stages.map((st) => '<option value="' + esc(st.id) + '"' + (c.stage === st.id ? ' selected' : '') + '>' + esc(st.label) + '</option>').join('') +
+      '</select>' +
+      '<div class="row" style="margin-top:10px">' +
+        '<a class="wa" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari Sekolah Anton.')) + '" target="_blank" rel="noopener">Chat WA</a>' +
+        '<button class="btn-sm" data-act="task-from" data-id="' + esc(id) + '">+ Tugas</button>' +
+      '</div>' +
+      (app ? '<h3>Form</h3><p class="muted">Pengalaman: ' + esc(app.experience) + '</p><p class="muted">Alasan: ' + esc(app.why) + '</p>' : '<p class="muted">Belum isi form.</p>') +
+      '<h3>Akses</h3>' +
+      '<p class="muted">' + esc(b.plan || '—') + ' · ' + esc(b.term || '—') +
+      (b.accessUntil ? ' · sampai ' + fmtWhen(b.accessUntil) : '') +
+      (b.offerExpiresAt ? ' · diskon ' + fmtRemain(b.offerExpiresAt) : '') + '</p>' +
+      '<p class="muted">Kurikulum ' + progressPct(id) + '% · hadir ' + hadirPct(id) + '%</p>' +
+      '<h3>Ledger</h3><p class="muted">' + fmtRp(b.amount) + ' · ' + esc(b.source) + (b.note ? ' · ' + esc(b.note) : '') + '</p>' +
       (canBill() ? '<label class="muted">Ubah status</label><select data-act="bill-one" data-id="' + esc(id) + '">' +
-        ['lunas', 'cicilan', 'belum', 'gratis'].map((st) =>
+        ['lunas', 'cicilan', 'belum', 'gratis', 'trial'].map((st) =>
           '<option' + (b.status === st ? ' selected' : '') + ' value="' + st + '">' + st + '</option>').join('') +
-        '</select>' : '<p class="muted">Asisten tidak melihat ubah pembayaran.</p>') +
+        '</select>' : '<p class="muted">Asisten tidak mengubah pembayaran.</p>') +
+      '<h3>Linimasa</h3>' +
+      (tl.length ? tl.map((n) => '<p class="muted">' + fmtWhen(n.at) + ' · ' + esc(n.kind) + ' — ' + esc(n.body) + '</p>').join('') : '<p class="muted">Belum ada event.</p>') +
       '<h3>Catatan mentor</h3>' +
       notes.map((n) => '<p class="muted">' + esc(n.at) + ' — ' + esc(n.body) + '</p>').join('') +
       '<form class="compose" data-act="note" data-id="' + esc(id) + '"><textarea name="body" required rows="2" placeholder="Catatan internal"></textarea><button class="btn" type="submit">Simpan</button></form>' +
-      '<p class="muted">Kolab siswa ini terpisah (UU PDP). Buka alat sebagai siswa itu lewat menu Siswa di header saat mode siswa.</p>';
+      '<p class="muted">Kolab siswa ini terpisah (UU PDP).</p>';
   }
 
   function viewMentorProgres() {
     const ses = nextSession();
     const behind = belumSiap(ses);
     const head = '<th class="name">Siswa</th>' + db.weeks.map((w) => '<th>' + esc(w.id) + '</th>').join('');
-    const body = SEED.students.map((s) => {
+    const body = people().map((s) => {
       const cells = db.weeks.map((w) => {
         const p = progressPct(s.id, w.id);
         const cls = p >= 75 ? 'p3' : p >= 40 ? 'p2' : p > 0 ? 'p1' : 'p0';
@@ -1427,7 +2094,7 @@
       '<p class="muted">Meet URL per sesi — tidak ada Zoom ID Rise yang di-hardcode. ICS token ada di prototype: ' +
       esc(SEED.cohort.calendarToken) + ' (produksi live masih belum mengirim token ini).</p>' +
       db.sessions.map((s) => {
-        const roll = SEED.students.map((st) => {
+        const roll = people().map((st) => {
           const v = (db.attendance[s.id] || {})[st.id] || '';
           return staff
             ? '<label class="muted">' + esc(st.name) + ' <select data-act="hadir" data-sid="' + esc(s.id) + '" data-uid="' + esc(st.id) + '">' +
@@ -1449,7 +2116,7 @@
   function viewBayar() {
     const skus = catalog();
     return '<div class="card"><h2>Pembayaran</h2>' +
-      '<p class="muted">Anton merchant (lynk.id / Mayar). Mentoring = semua SKU + live class. Satuan = checkbox produk. Status <strong>gratis</strong> = beasiswa.</p>' +
+      '<p class="muted">Anton merchant (lynk.id / Mayar). Mentoring = live class + alat lynk (bukan Laris Affiliate). Satuan = checkbox produk. Status <strong>gratis</strong> = beasiswa.</p>' +
       '<div style="overflow:auto">' +
       '<table class="table"><thead><tr><th>Siswa</th><th>Status</th><th>Mentoring</th>' +
       skus.map((p) => '<th>' + esc(p.id) + '</th>').join('') +
@@ -1459,14 +2126,14 @@
         const mentorOn = canMentoring(s.id);
         return '<tr><td>' + esc(s.name) + '<div class="muted">' + esc(b.note || b.plan || '') + '</div></td>' +
           '<td>' + payChip(b.status) + '<select data-act="bill-one" data-id="' + esc(s.id) + '" style="margin-top:6px">' +
-          ['lunas', 'cicilan', 'belum', 'gratis'].map((st) =>
+          ['lunas', 'cicilan', 'belum', 'gratis', 'trial'].map((st) =>
             '<option' + (b.status === st ? ' selected' : '') + ' value="' + st + '">' + st + '</option>').join('') +
           '</select></td>' +
           '<td><input type="checkbox" data-act="ent-mentor" data-id="' + esc(s.id) + '"' +
           (mentorOn ? ' checked' : '') + (b.status === 'gratis' ? ' disabled' : '') + '></td>' +
           skus.map((p) =>
             '<td><input type="checkbox" data-act="ent-sku" data-id="' + esc(s.id) + '" data-sku="' + esc(p.id) + '"' +
-            (canSku(s.id, p.id) ? ' checked' : '') + (mentorOn ? ' disabled' : '') + '></td>'
+            (canSku(s.id, p.id) ? ' checked' : '') + ((mentorOn && bundled(p)) ? ' disabled' : '') + '></td>'
           ).join('') +
           '<td>' + fmtRp(b.amount) + '<div class="muted">' + esc(b.source) + '</div></td></tr>';
       }).join('') + '</tbody></table></div></div>';
@@ -1491,19 +2158,39 @@
     if (t.id === 'role-switch') {
       ui.role = t.value;
       ui.tab = 'home';
-      ui.mentorTab = 'siswa';
+      ui.mentorTab = 'crm';
       closeDrawer();
       render();
       return;
     }
     if (t.id === 'persona-switch') {
       ui.personaId = t.value;
-      ui.lectureId = db.lastLecture[ui.personaId] || 'l1';
+      ui.lectureId = db.lastLecture[ui.personaId] || firstLectureId();
       ui.kolabSel = new Set();
       ui.skuId = null;
       ui.skuPreview = false;
-      ui.tab = 'home';
+      ui.payPrompt = false;
+      ui.examAnswers = {};
+      ui.tab = needsWizard(ui.personaId) ? 'daftar' : 'home';
       render();
+      return;
+    }
+    if (t.matches('[data-act="filter-crm"]')) {
+      ui.crmFilter = t.value;
+      render();
+      const el = document.querySelector('[data-act="filter-crm"]');
+      if (el) {
+        el.focus();
+        const n = el.value.length;
+        el.setSelectionRange(n, n);
+      }
+      return;
+    }
+    if (t.matches('[data-act="crm-stage"]')) {
+      setStage(t.getAttribute('data-id'), t.value, 'Anton pindah stage.');
+      save();
+      render();
+      if (ui.drawerId) openDrawer(ui.drawerId);
       return;
     }
     if (t.matches('[data-act="filter-siswa"]')) {
@@ -1530,7 +2217,7 @@
       b.updatedAt = new Date().toISOString();
       if (t.value === 'gratis') {
         b.plan = 'mentoring';
-        b.products = ALL_SKUS();
+        b.products = MENTOR_SKUS().slice();
       }
       if (t.value === 'belum') {
         b.plan = '';
@@ -1547,7 +2234,7 @@
       const b = billingOf(id);
       if (t.checked) {
         b.plan = 'mentoring';
-        b.products = ALL_SKUS();
+        b.products = MENTOR_SKUS().slice();
         if (b.status === 'belum') b.status = 'lunas';
       } else {
         b.plan = b.products.length ? 'sku' : '';
@@ -1563,7 +2250,10 @@
       const id = t.getAttribute('data-id');
       const sku = t.getAttribute('data-sku');
       const b = billingOf(id);
-      if (b.plan === 'mentoring' || b.status === 'gratis') return;
+      if (b.plan === 'mentoring' || b.status === 'gratis') {
+        const p = productById(sku);
+        if (bundled(p)) return;
+      }
       const set = new Set(b.products);
       if (t.checked) set.add(sku); else set.delete(sku);
       b.products = [...set];
@@ -1699,6 +2389,27 @@
       }
       return;
     }
+    if (t.matches('[data-act="filter-crm"]')) {
+      ui.crmFilter = t.value;
+      render();
+      const el = document.querySelector('[data-act="filter-crm"]');
+      if (el) {
+        el.focus();
+        const n = el.value.length;
+        el.setSelectionRange(n, n);
+      }
+      return;
+    }
+    if (t.matches('[data-act="plan-wait"]') || t.matches('[data-act="plan-title"]') || t.matches('[data-act="plan-body"]')) {
+      const plan = planById(t.getAttribute('data-pid'));
+      const st = plan && plan.steps.find((x) => x.id === t.getAttribute('data-sid'));
+      if (!st) return;
+      if (t.matches('[data-act="plan-wait"]')) st.waitHours = +t.value || 0;
+      else if (t.matches('[data-act="plan-title"]')) st.title = t.value;
+      else st.body = t.value;
+      save();
+      return;
+    }
     if (t.matches('[data-act="lec-points"]')) {
       const l = lectureById(t.getAttribute('data-id'));
       if (l) {
@@ -1722,6 +2433,9 @@
       else {
         ui.tab = id;
         if (id === 'pustaka' || id === 'alat') { ui.skuId = null; ui.skuPreview = false; }
+        if (id === 'belajar' && canPreview(ui.personaId) && !canMentoring(ui.personaId)) {
+          ui.lectureId = firstLectureId();
+        }
       }
       render();
     } else if (act === 'open-sku') {
@@ -1763,7 +2477,7 @@
     } else if (act === 'open-lec') {
       const id = btn.getAttribute('data-id');
       const lec = lectureById(id);
-      if (!canMentoring(ui.personaId) && !isStaff()) {
+      if (!canOpenLecture(ui.personaId, id) && !isStaff()) {
         if (lec && lec.skuId && canSku(ui.personaId, lec.skuId)) {
           ui.skuId = lec.skuId;
           ui.skuPreview = false;
@@ -1771,8 +2485,8 @@
           render();
           return;
         }
-        toast('Live class hanya mentoring.');
-        ui.tab = 'pustaka';
+        toast('Video ini kebuka setelah mentoring lunas.');
+        ui.tab = 'daftar';
         render();
         return;
       }
@@ -1918,6 +2632,87 @@
       save();
       toast('Antrian palsu dari ' + shop.display + ': ' + chosen.length + ' DM. Tidak masuk TikTok.');
       render();
+    } else if (act === 'clock') {
+      db.clockOffsetMs = (db.clockOffsetMs || 0) + (+btn.getAttribute('data-ms') || 0);
+      save();
+      toast('Jam majukan');
+      render();
+    } else if (act === 'clock-reset') {
+      db.clockOffsetMs = 0;
+      save();
+      toast('Jam kembali ke sekarang');
+      render();
+    } else if (act === 'pick-term') {
+      ui.payTerm = btn.getAttribute('data-id');
+      render();
+    } else if (act === 'pay-later') {
+      if (!db.applications[ui.personaId]) {
+        toast('Isi form dulu.');
+        return;
+      }
+      startTrial(ui.personaId);
+      save();
+      ui.tab = 'home';
+      toast('Trial: video 1 kebuka. Diskon 24 jam dari jam form.');
+      render();
+    } else if (act === 'pay-now') {
+      const term = btn.getAttribute('data-term') || ui.payTerm || 'month';
+      const welcome = welcomeOpen(ui.personaId) || hoursLeft(billingOf(ui.personaId).offerExpiresAt) > 0;
+      const amount = priceForTerm(term, welcome);
+      const source = term === 'autopay' ? 'mayar' : 'transfer';
+      grantMentoring(ui.personaId, term, source, amount);
+      addTask(ui.personaId, 'Cek transfer ' + nameOf(ui.personaId), 'Jumlah ' + fmtRp(amount) + ' ke ' + db.bank.bank + ' ' + db.bank.number, isoNow());
+      save();
+      ui.tab = 'home';
+      toast(term === 'autopay' ? 'Autopay mock · akses kebuka' : 'Tercatat transfer · Anton cek rekening');
+      render();
+    } else if (act === 'not-interested') {
+      setStage(ui.personaId, 'tidak_tertarik', 'Siswa bilang tidak tertarik.');
+      const b = billingOf(ui.personaId);
+      if (b.status === 'trial') {
+        b.status = 'belum';
+        b.plan = '';
+      }
+      save();
+      ui.tab = 'home';
+      toast('Pindah ke follow-up jarang.');
+      render();
+    } else if (act === 'task-done') {
+      const row = db.tasks.find((x) => x.id === btn.getAttribute('data-id'));
+      if (row) row.done = true;
+      save();
+      render();
+    } else if (act === 'task-from') {
+      const id = btn.getAttribute('data-id');
+      addTask(id, 'Follow-up ' + nameOf(id), '', isoNow());
+      save();
+      toast('Tugas ditambah');
+      render();
+      openDrawer(id);
+    } else if (act === 'wa-sent') {
+      const w = db.waQueue.find((x) => x.id === btn.getAttribute('data-id'));
+      if (w) w.status = 'sent';
+      save();
+      render();
+    } else if (act === 'remit') {
+      const r = db.remittances.find((x) => x.id === btn.getAttribute('data-id'));
+      if (r) r.received = r.expected;
+      save();
+      toast('Setoran 20% ditandai masuk');
+      render();
+    } else if (act === 'accept-mentor') {
+      const c = crmOf(ui.personaId);
+      if (!c.eligibleMentor) return;
+      c.acceptedMentorAt = isoNow();
+      c.acceptedOverride = true;
+      const s = student();
+      s.kind = 'mentor';
+      setStage(ui.personaId, 'mentor', 'Terima peran mentor + 20% licensing.');
+      save();
+      toast('Peran mentor aktif. Murid baru menempel ke kamu.');
+      render();
+    } else if (act === 'print-cert') {
+      window.print();
     }
   });
 
@@ -2007,6 +2802,77 @@
       if (ses) ses.meetUrl = String(fd.get('meetUrl'));
       save();
       toast('Tautan Meet disimpan');
+      render();
+    } else if (act === 'apply') {
+      const sid = ui.personaId;
+      const s = student();
+      const name = String(fd.get('name') || '').trim();
+      const wa = String(fd.get('wa') || '').trim();
+      db.applications[sid] = {
+        name: name,
+        wa: wa,
+        experience: String(fd.get('experience') || '').trim(),
+        why: String(fd.get('why') || '').trim(),
+        at: isoNow()
+      };
+      s.name = name || s.name;
+      s.wa = wa.replace(/\D/g, '') || s.wa;
+      const b = billingOf(sid);
+      if (!b.offerStartedAt) {
+        b.offerStartedAt = isoNow();
+        b.offerExpiresAt = addMs(isoNow(), 24 * 36e5);
+      }
+      setStage(sid, 'form', 'Form masuk. Jam diskon 24 jam dimulai.');
+      save();
+      ui.tab = 'daftar';
+      toast('Form tersimpan. Lanjut pilih bayar.');
+      render();
+    } else if (act === 'add-task') {
+      addTask(String(fd.get('personId')), String(fd.get('title')), String(fd.get('body') || ''), isoNow());
+      save();
+      toast('Tugas ditambah');
+      render();
+    } else if (act === 'save-dunning') {
+      db.dunning.warningDays = Math.max(1, +fd.get('warningDays') || 5);
+      db.dunning.graceDays = Math.max(0, +fd.get('graceDays') || 1);
+      save();
+      toast('Jeda perpanjangan disimpan');
+      render();
+    } else if (act === 'save-pricing') {
+      db.pricing.monthlyIdr = +fd.get('monthlyIdr') || db.pricing.monthlyIdr;
+      db.pricing.annualDiscountPct = +fd.get('annualDiscountPct') || 0;
+      db.pricing.autopayDiscountPct = +fd.get('autopayDiscountPct') || 0;
+      db.pricing.welcomeDiscountPct = +fd.get('welcomeDiscountPct') || 0;
+      db.pricing.overridePct = +fd.get('overridePct') || 20;
+      save();
+      toast('Harga placeholder disimpan');
+      render();
+    } else if (act === 'save-bank') {
+      db.bank.bank = String(fd.get('bank') || db.bank.bank);
+      db.bank.number = String(fd.get('number') || db.bank.number);
+      db.bank.name = String(fd.get('name') || db.bank.name);
+      save();
+      toast('Rekening disimpan');
+      render();
+    } else if (act === 'exam') {
+      const qs = SEED.exam.questions;
+      let score = 0;
+      qs.forEach((q, i) => {
+        const v = fd.get('q' + i);
+        if (v != null && +v === q.answer) score += 1;
+      });
+      const c = crmOf(ui.personaId);
+      c.examScore = score;
+      c.examAt = isoNow();
+      c.eligibleMentor = score >= SEED.exam.passMark;
+      if (c.eligibleMentor) {
+        c.certSerial = c.certSerial || ('ANT-' + ui.personaId.replace(/\W/g, '').toUpperCase().slice(0, 8) + '-' + String(nowMs()).slice(-4));
+        setStage(ui.personaId, 'lulus', 'Lulus tes ' + score + '/' + qs.length);
+      }
+      pushTimeline(ui.personaId, 'exam', 'Tes akhir ' + score + '/' + qs.length);
+      save();
+      ui.tab = c.eligibleMentor ? 'sertifikat' : 'progres';
+      toast(c.eligibleMentor ? 'Lulus. Sertifikat terbit.' : 'Belum lulus. Ulangi setelah baca materi.');
       render();
     }
   });
