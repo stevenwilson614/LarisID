@@ -224,6 +224,7 @@
     personId: null,
     siswaView: 'pipa',
     hubBack: 'pipa',
+    stageFilter: '',
     queueKind: 'wa',
     taskPerson: '',
     editPlanId: null,
@@ -957,9 +958,58 @@
   function fileKey(lecId, n) { return 'file-' + lecId + '-' + n; }
   function avatarHtml(s, cls) {
     const c = cls || 'avatar';
-    if (s.photoBlob) return '<img class="' + c + '" data-blob="' + esc(photoKey(s.id)) + '" alt="">';
-    if (s.photoUrl) return '<img class="' + c + '" src="' + esc(s.photoUrl) + '" alt="">';
-    return '<span class="' + c + ' avatar-fallback" aria-hidden="true">' + esc(initialsOf(s.name)) + '</span>';
+    if (s && s.photoBlob) return '<img class="' + c + '" data-blob="' + esc(photoKey(s.id)) + '" alt="">';
+    if (s && s.photoUrl) return '<img class="' + c + '" src="' + esc(s.photoUrl) + '" alt="">';
+    return '<span class="' + c + ' avatar-fallback" aria-hidden="true">' + esc(initialsOf(s && s.name)) + '</span>';
+  }
+  function fmtPhone(wa) {
+    const d = String(wa || '').replace(/\D/g, '');
+    if (!d) return '';
+    if (d.indexOf('62') === 0) {
+      return '+62 ' + d.slice(2, 5) + (d.length > 5 ? '-' + d.slice(5, 9) : '') + (d.length > 9 ? '-' + d.slice(9) : '');
+    }
+    return d;
+  }
+  function relWhen(iso) {
+    if (!iso) return '';
+    const t = new Date(iso).getTime();
+    if (!isFinite(t)) return String(iso);
+    const ms = nowMs() - t;
+    if (ms < 45000) return 'baru saja';
+    if (ms < 3600000) return Math.max(1, Math.floor(ms / 60000)) + ' menit lalu';
+    if (ms < 86400000) return Math.max(1, Math.floor(ms / 3600000)) + ' jam lalu';
+    if (ms < 172800000) return 'kemarin';
+    return fmtWhen(iso);
+  }
+  function stageHue(i) {
+    return ['#fb923c', '#60a5fa', '#fbbf24', '#34d399', '#a78bfa', '#f472b6', '#22d3ee', '#94a3b8', '#f87171', '#c4b5fd', '#4ade80'][i % 11];
+  }
+  function stepKindLabel(k) {
+    return { email: 'Email', wa: 'WhatsApp', task: 'Tugas', stage: 'Pindah stage' }[k] || k;
+  }
+  function staffPerson() {
+    return people().find((x) => x.id === 'u-anton') || { id: 'u-anton', name: 'Anton' };
+  }
+  function personFeed(id) {
+    const items = [];
+    (db.notes[id] || []).forEach((n) => items.push({ at: n.at, kind: 'note', who: 'Anton', body: n.body }));
+    (db.timeline[id] || []).forEach((n) => items.push({ at: n.at, kind: n.kind || 'event', who: 'Sistem', body: n.body }));
+    (db.emailQueue || []).filter((x) => x.toId === id).forEach((x) =>
+      items.push({ at: x.scheduledAt, kind: 'email', who: 'Otomasi', body: (x.status || '') + ' · ' + (x.subject || x.title) }));
+    (db.waQueue || []).filter((x) => x.toId === id).forEach((x) =>
+      items.push({ at: x.scheduledAt, kind: 'wa', who: 'Otomasi', body: (x.status || '') + ' · ' + x.title }));
+    db.tasks.filter((x) => x.personId === id).forEach((x) =>
+      items.push({ at: x.dueAt, kind: 'task', who: 'Tugas', body: (x.done ? 'selesai' : 'terbuka') + ' · ' + x.title }));
+    items.sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0));
+    return items;
+  }
+  function matchPerson(s, q) {
+    if (!q) return true;
+    const handle = tiktokHandle(s.tiktok);
+    return s.name.toLowerCase().indexOf(q) >= 0 || (s.wa || '').indexOf(q) >= 0 ||
+      (s.email || '').toLowerCase().indexOf(q) >= 0 || (s.city || '').toLowerCase().indexOf(q) >= 0 ||
+      handle.toLowerCase().indexOf(q) >= 0 || billingOf(s.id).status.indexOf(q) >= 0 ||
+      stageLabel(crmOf(s.id).stage).toLowerCase().indexOf(q) >= 0;
   }
   function lecDotStrip(sid) {
     const list = lectures();
@@ -2099,58 +2149,78 @@
     const q = (ui.filterSiswa || ui.crmFilter || '').toLowerCase();
     const head = '<div class="hub-head">' +
       '<div><h2 style="margin:0">Siswa · ' + esc(SEED.cohort.name) + '</h2>' +
-        '<p class="muted">Satu roster. Daftar / pipa / progres. Klik nama = profil.</p></div>' +
-      hubSeg() +
-      '<input placeholder="Cari nama" value="' + esc(q) + '" data-act="filter-siswa" style="max-width:220px;padding:8px 12px;border:1px solid var(--line);border-radius:10px">' +
-      '</div>';
+        '<p class="muted">Klik nama = profil. Geser kartu di Pipa.</p></div>' +
+      '<input placeholder="Cari orang…" value="' + esc(q) + '" data-act="filter-siswa" style="max-width:260px;padding:8px 12px;border:1px solid var(--line);border-radius:10px">' +
+      '</div>' + hubSeg();
     if (cam === 'daftar') return head + viewSiswaDaftar(q);
     if (cam === 'progres') return head + viewMentorProgres();
     return head + viewCrm(q);
   }
+  function stageTabsHtml(q) {
+    const stages = db.pipelineStages || SEED.pipelineStages;
+    const all = people().filter((s) => matchPerson(s, q));
+    const cur = ui.stageFilter || '';
+    const chip = (id, label, n) =>
+      '<button type="button" data-act="stage-filter" data-id="' + esc(id) + '" aria-selected="' + (cur === id) + '">' +
+        esc(label) + (n ? ' (' + n + ')' : '') + '</button>';
+    return '<div class="stage-tabs">' +
+      chip('', 'Semua', all.length) +
+      stages.map((st) => chip(st.id, st.label, all.filter((s) => crmOf(s.id).stage === st.id).length)).join('') +
+      '</div>';
+  }
   function viewSiswaDaftar(q) {
+    const stage = ui.stageFilter || '';
     const rows = people().filter((s) => {
-      if (!q) return true;
-      const handle = tiktokHandle(s.tiktok);
-      return s.name.toLowerCase().indexOf(q) >= 0 || (s.wa || '').indexOf(q) >= 0 ||
-        handle.toLowerCase().indexOf(q) >= 0 || billingOf(s.id).status.indexOf(q) >= 0;
+      if (stage && crmOf(s.id).stage !== stage) return false;
+      return matchPerson(s, q);
     });
-    return '<div class="card" style="overflow:auto">' +
-      '<table class="table roster"><thead><tr><th>Nama</th><th>WA</th><th>TikTok</th><th>Progres</th><th>Bayar</th><th>Paket</th></tr></thead><tbody>' +
-      rows.map((s) => {
-        const p = kurProgress(s.id);
+    return stageTabsHtml(q) +
+      '<div class="fub-list">' +
+      '<div class="fub-toolbar"><span class="muted">Menampilkan ' + rows.length + ' orang</span>' +
+        '<span class="muted">Kolom: nama · WA · email · stage</span></div>' +
+      '<table class="table roster"><thead><tr><th>Nama</th><th>Telepon</th><th>Email</th><th>Stage</th><th>Nilai</th></tr></thead><tbody>' +
+      (rows.length ? rows.map((s) => {
         const b = billingOf(s.id);
-        const handle = tiktokHandle(s.tiktok);
-        return '<tr class="roster-row" data-act="open-student" data-id="' + esc(s.id) + '">' +
+        const c = crmOf(s.id);
+        const tags = (s.tags || []).slice(0, 3);
+        return '<tr class="roster-row">' +
           '<td><button type="button" class="linkish roster-name" data-act="open-student" data-id="' + esc(s.id) + '">' +
             avatarHtml(s, 'avatar sm') + '<span>' + esc(s.name) +
-            '<div class="muted">' + esc(s.city) + '</div></span></button></td>' +
-          '<td>' + (s.wa ? esc(s.wa) : '—') + '</td>' +
-          '<td>' + (handle ? ('@' + esc(handle)) : '—') + '</td>' +
-          '<td>' + p.n + '/' + p.total + ' · ' + p.pct + '%' +
-            '<div>' + lecDotStrip(s.id) + '</div></td>' +
-          '<td>' + payChip(b.status) + '</td>' +
-          '<td>' + esc(termLabel(b.term)) + '</td></tr>';
-      }).join('') + '</tbody></table></div>';
+            '<div class="muted">' + esc(s.city || '—') +
+            (tags.length ? ' · ' + tags.map((t) => esc(t)).join(', ') : '') + '</div></span></button></td>' +
+          '<td>' + (s.wa
+            ? '<a class="fub-cell-link" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari Sekolah Anton.')) + '" target="_blank" rel="noopener">' + esc(fmtPhone(s.wa)) + '</a>'
+            : '<span class="muted">—</span>') + '</td>' +
+          '<td>' + (s.email
+            ? '<a class="fub-cell-link" href="' + esc(mailLink(s.email, 'Sekolah Anton', 'Halo ' + s.name)) + '">' + esc(s.email) + '</a>'
+            : '<span class="muted">—</span>') + '</td>' +
+          '<td>' + esc(stageLabel(c.stage)) + '</td>' +
+          '<td' + (b.amount ? ' class="money"' : '') + '>' + (b.amount ? esc(fmtRp(b.amount)) : '—') + '</td></tr>';
+      }).join('') : '<tr><td colspan="5" class="muted">Tidak ada orang di filter ini.</td></tr>') +
+      '</tbody></table></div>';
   }
   function viewCrm(q) {
     q = (q != null ? q : ui.crmFilter || '').toLowerCase();
     const stages = db.pipelineStages || SEED.pipelineStages;
-    const cols = stages.map((st) => {
+    const cols = stages.map((st, i) => {
       const rows = people().filter((s) => {
         const stage = crmOf(s.id).stage || 'wa_baru';
         if (stage !== st.id) return false;
-        if (!q) return true;
-        return s.name.toLowerCase().indexOf(q) >= 0 || (s.city || '').toLowerCase().indexOf(q) >= 0;
+        return matchPerson(s, q);
       });
-      return '<div class="kanban-col" data-stage="' + esc(st.id) + '"><h3>' + esc(st.label) + ' · ' + rows.length + '</h3>' +
+      const sum = rows.reduce((n, s) => n + (Number(billingOf(s.id).amount) || 0), 0);
+      return '<div class="kanban-col" data-stage="' + esc(st.id) + '" style="border-top-color:' + stageHue(i) + '">' +
+        '<div class="kanban-col-head"><h3>' + esc(st.label) + '</h3>' +
+          '<div class="muted">' + rows.length + ' orang · ' + (sum ? fmtRp(sum) : 'Rp0') + '</div></div>' +
         (rows.length ? rows.map((s) => {
           const b = billingOf(s.id);
-          return '<button type="button" class="card kanban-card" draggable="true" data-act="open-student" data-id="' + esc(s.id) + '">' +
+          return '<button type="button" class="kanban-card" draggable="true" data-act="open-student" data-id="' + esc(s.id) + '">' +
             '<div class="roster-name">' + avatarHtml(s, 'avatar sm') + '<strong>' + esc(s.name) + '</strong></div>' +
             '<div class="muted">' + esc(s.city) + (s.mentorId && s.mentorId !== 'u-anton' ? ' · ' + esc(nameOf(s.mentorId)) : '') + '</div>' +
+            (b.amount ? '<div class="money">' + esc(fmtRp(b.amount)) + '</div>' : '') +
             '<div>' + payChip(b.status) + ' <span class="muted">' + esc(fmtRemain(b.offerExpiresAt || b.accessUntil)) + '</span></div>' +
             '</button>';
-        }).join('') : '<p class="muted">Kosong · drop kartu ke sini</p>') +
+        }).join('') : '<p class="muted">Kosong, tarik kartu ke sini</p>') +
         '</div>';
     }).join('');
     const openTasks = db.tasks.filter((t) => !t.done).length;
@@ -2248,71 +2318,95 @@
   }
   function stepKindOptions(cur) {
     return ['email', 'wa', 'task', 'stage'].map((k) =>
-      '<option value="' + k + '"' + (cur === k ? ' selected' : '') + '>' + k + '</option>').join('');
+      '<option value="' + k + '"' + (cur === k ? ' selected' : '') + '>' + esc(stepKindLabel(k)) + '</option>').join('');
+  }
+  function triggerOptions(cur) {
+    return ['bayar', 'form', 'trial', 'perpanjangan', 'manual', 'nurture', 'tidak_tertarik'].map((t) =>
+      '<option value="' + t + '"' + (cur === t ? ' selected' : '') + '>' + esc(triggerLabel(t)) + '</option>').join('');
+  }
+  function autoStepEditor(p, st) {
+    return '<span class="auto-kicker">' + esc(stepKindLabel(st.kind)) + '</span>' +
+      '<select data-act="plan-kind" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '">' + stepKindOptions(st.kind) + '</select>' +
+      (st.kind === 'stage'
+        ? '<label class="muted">Pindah ke</label><select data-act="plan-to" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '">' +
+          (db.pipelineStages || []).map((sg) => '<option value="' + esc(sg.id) + '"' + (st.to === sg.id ? ' selected' : '') + '>' + esc(sg.label) + '</option>').join('') + '</select>'
+        : '') +
+      '<label class="muted">Judul</label>' +
+      '<input data-act="plan-title" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '" value="' + esc(st.title || '') + '">' +
+      (st.kind === 'email' ? '<label class="muted">Subjek</label><input data-act="plan-subject" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '" value="' + esc(st.subject || '') + '">' : '') +
+      '<label class="muted">Isi</label>' +
+      '<textarea data-act="plan-body" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '" rows="2">' + esc(st.body || '') + '</textarea>' +
+      '<button type="button" class="btn-sm" data-act="plan-del-step" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '">Hapus langkah</button>';
+  }
+  function autoMapHtml(p) {
+    let html = '<div class="auto-map">' +
+      '<div class="auto-node trigger">' +
+        '<span class="auto-kicker">Pemicu</span>' +
+        '<input data-act="plan-name" data-pid="' + esc(p.id) + '" value="' + esc(p.name) + '">' +
+        '<select data-act="plan-trigger" data-pid="' + esc(p.id) + '" style="margin-top:8px">' + triggerOptions(p.trigger) + '</select>' +
+        '<p class="muted" style="margin:8px 0 0">Mulai saat event ini terjadi pada orang itu.</p>' +
+      '</div>';
+    (p.steps || []).forEach((st) => {
+      html += '<div class="auto-pipe"></div>' +
+        '<div class="auto-node is-wait">' +
+          '<span class="auto-kicker">Tunggu</span>' +
+          '<div class="row" style="justify-content:center">' +
+            '<input data-act="plan-wait" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '" type="number" min="0" value="' + esc(st.waitHours || 0) + '" style="width:72px;text-align:center">' +
+            '<span class="muted">jam</span></div>' +
+        '</div>' +
+        '<div class="auto-pipe"></div>' +
+        '<div class="auto-node ' + esc(st.kind || 'task') + '">' + autoStepEditor(p, st) + '</div>';
+    });
+    html += '<div class="auto-pipe"></div>' +
+      '<div class="auto-node done"><span class="auto-kicker">Selesai</span>' +
+        '<p class="muted" style="margin:0">Tidak auto-kirim. Anton tandai di Antrian. Boleh berulang per orang.</p></div>' +
+      '<div class="row" style="margin-top:14px;justify-content:center">' +
+        '<button type="button" class="btn" data-act="plan-add-step" data-id="' + esc(p.id) + '">+ Langkah</button>' +
+      '</div></div>';
+    return html;
   }
   function viewOtomasi() {
     const d = db.dunning;
     const plans = db.actionPlans || [];
     const showArchived = !!ui.showArchivedPlans;
     const visible = plans.filter((p) => showArchived || !p.archived);
-    return '<div class="grid-2">' +
-      '<section class="card"><h2>Perpanjangan</h2>' +
-        '<p class="muted">Anton bisa ganti jeda. Default: 5 hari peringatan, lalu WA Anton, lalu 1 hari grace.</p>' +
-        '<form class="compose" data-act="save-dunning">' +
-          '<label class="muted">Hari peringatan sebelum habis</label>' +
+    if (!ui.editPlanId || !visible.some((p) => p.id === ui.editPlanId)) {
+      const pref = visible.find((p) => p.id === 'onboarding');
+      ui.editPlanId = (pref || visible[0] || {}).id || null;
+    }
+    const open = planById(ui.editPlanId);
+    return '<div class="auto-page">' +
+      '<aside class="auto-rail">' +
+        '<h2>Otomasi</h2>' +
+        '<p class="muted">Peta visual. Tidak auto-kirim.</p>' +
+        '<div class="row" style="margin:8px 0">' +
+          '<button type="button" class="btn" data-act="plan-new">+ Rencana</button>' +
+          '<button type="button" class="btn-sm" data-act="plan-show-arch">' + (showArchived ? 'Sembunyikan arsip' : 'Arsip') + '</button>' +
+        '</div>' +
+        visible.map((p) =>
+          '<button type="button" class="auto-plan' + (p.id === ui.editPlanId ? ' is-on' : '') + '" data-act="plan-edit" data-id="' + esc(p.id) + '">' +
+            '<strong>' + esc(p.name) + (p.archived ? ' · arsip' : '') + '</strong>' +
+            '<span class="muted">' + esc(triggerLabel(p.trigger)) + ' · ' + ((p.steps || []).length) + ' langkah</span>' +
+          '</button>'
+        ).join('') +
+        '<form class="compose" data-act="save-dunning" style="margin-top:18px">' +
+          '<strong>Perpanjangan</strong>' +
+          '<label class="muted">Hari peringatan</label>' +
           '<input name="warningDays" type="number" min="1" value="' + esc(d.warningDays) + '">' +
-          '<label class="muted">Hari grace setelah habis</label>' +
+          '<label class="muted">Hari grace</label>' +
           '<input name="graceDays" type="number" min="0" value="' + esc(d.graceDays) + '">' +
           '<button class="btn" type="submit">Simpan jeda</button></form>' +
-      '</section>' +
-      '<section class="card"><h2>Rencana aksi</h2>' +
-        '<p class="muted">Buat / salin / arsip. Langkah: tunggu jam, lalu email / WA / tugas / pindah stage. Tidak auto-kirim.</p>' +
-        '<div class="row">' +
-          '<button type="button" class="btn" data-act="plan-new">+ Rencana</button>' +
-          '<button type="button" class="btn-sm" data-act="plan-show-arch">' + (showArchived ? 'Sembunyikan arsip' : 'Tampilkan arsip') + '</button>' +
-        '</div>' +
-        visible.map((p) => {
-          const open = ui.editPlanId === p.id;
-          return '<article class="thread"><h4>' + esc(p.name) + (p.archived ? ' <span class="chip warn">Arsip</span>' : '') +
-            ' <span class="muted">· ' + esc(triggerLabel(p.trigger)) + '</span></h4>' +
-            '<div class="row">' +
-              '<button type="button" class="btn-sm" data-act="plan-edit" data-id="' + esc(p.id) + '">' + (open ? 'Tutup' : 'Ubah') + '</button>' +
-              '<button type="button" class="btn-sm" data-act="plan-dup" data-id="' + esc(p.id) + '">Salin</button>' +
-              (p.archived
-                ? '<button type="button" class="btn-sm" data-act="plan-unarch" data-id="' + esc(p.id) + '">Kembalikan</button>'
-                : '<button type="button" class="btn-sm" data-act="plan-arch" data-id="' + esc(p.id) + '">Arsip</button>') +
-            '</div>' +
-            (open ? '<div class="lec-edit-body">' +
-              '<label class="muted">Nama</label>' +
-              '<input data-act="plan-name" data-pid="' + esc(p.id) + '" value="' + esc(p.name) + '">' +
-              '<label class="muted">Pemicu</label>' +
-              '<select data-act="plan-trigger" data-pid="' + esc(p.id) + '">' +
-                ['bayar', 'form', 'trial', 'perpanjangan', 'manual', 'nurture', 'tidak_tertarik'].map((t) =>
-                  '<option value="' + t + '"' + (p.trigger === t ? ' selected' : '') + '>' + esc(triggerLabel(t)) + '</option>').join('') +
-              '</select>' +
-              (p.steps || []).map((st) =>
-                '<div class="lec-edit" style="margin-top:8px">' +
-                  '<label class="muted">Tunggu jam</label>' +
-                  '<input data-act="plan-wait" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '" type="number" value="' + esc(st.waitHours || 0) + '">' +
-                  '<label class="muted">Jenis</label>' +
-                  '<select data-act="plan-kind" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '">' + stepKindOptions(st.kind) + '</select>' +
-                  (st.kind === 'stage'
-                    ? '<label class="muted">Pindah ke</label><select data-act="plan-to" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '">' +
-                      (db.pipelineStages || []).map((sg) => '<option value="' + esc(sg.id) + '"' + (st.to === sg.id ? ' selected' : '') + '>' + esc(sg.label) + '</option>').join('') + '</select>'
-                    : '') +
-                  '<label class="muted">Judul</label>' +
-                  '<input data-act="plan-title" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '" value="' + esc(st.title || '') + '">' +
-                  (st.kind === 'email' ? '<label class="muted">Subjek</label><input data-act="plan-subject" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '" value="' + esc(st.subject || '') + '">' : '') +
-                  '<label class="muted">Isi</label>' +
-                  '<textarea data-act="plan-body" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '" rows="2">' + esc(st.body || '') + '</textarea>' +
-                  '<button type="button" class="btn-sm" data-act="plan-del-step" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '">Hapus langkah</button>' +
-                '</div>'
-              ).join('') +
-              '<button type="button" class="btn-sm" data-act="plan-add-step" data-id="' + esc(p.id) + '">+ Langkah</button>' +
-            '</div>' : '') +
-          '</article>';
-        }).join('') +
-      '</section></div>';
+      '</aside>' +
+      '<div class="auto-canvas">' +
+        (open
+          ? '<div class="row" style="justify-content:center;margin-bottom:12px">' +
+              '<button type="button" class="btn-sm" data-act="plan-dup" data-id="' + esc(open.id) + '">Salin</button>' +
+              (open.archived
+                ? '<button type="button" class="btn-sm" data-act="plan-unarch" data-id="' + esc(open.id) + '">Kembalikan</button>'
+                : '<button type="button" class="btn-sm" data-act="plan-arch" data-id="' + esc(open.id) + '">Arsip</button>') +
+            '</div>' + autoMapHtml(open)
+          : '<p class="muted" style="text-align:center">Buat rencana dulu.</p>') +
+      '</div></div>';
   }
   function viewJaringan() {
     const mentors = people().filter((s) => s.kind === 'mentor' || crmOf(s.id).stage === 'mentor');
@@ -2371,95 +2465,123 @@
     if (!s) return '<p class="muted">Orang tidak ditemukan.</p><button class="btn" data-act="close-person">Kembali</button>';
     const b = billingOf(id);
     const c = crmOf(id);
-    const notes = db.notes[id] || [];
-    const tl = db.timeline[id] || [];
     const app = db.applications[id];
     const stages = db.pipelineStages || SEED.pipelineStages;
     const p = kurProgress(id);
     const handle = tiktokHandle(s.tiktok);
     const plans = (db.actionPlans || []).filter((x) => !x.archived);
-    const emails = (db.emailQueue || []).filter((x) => x.toId === id);
-    const was = (db.waQueue || []).filter((x) => x.toId === id);
-    const tsk = db.tasks.filter((x) => x.personId === id);
+    const tsk = db.tasks.filter((x) => x.personId === id).slice().sort((a, b) => Number(a.done) - Number(b.done) || new Date(a.dueAt) - new Date(b.dueAt));
     const photoNote = s.photoBlob ? '' : (s.photoFailed
-      ? '<p class="muted">Foto TikTok gagal diambil (CORS/blok). Inisial dipakai. Unggah foto sendiri.</p>'
-      : (handle ? '<p class="muted">Mencoba oEmbed lalu unavatar.io. Tidak scrape tiktok.com.</p>' : ''));
+      ? '<p class="muted">Foto TikTok gagal (CORS/blok). Inisial dipakai.</p>'
+      : (handle ? '<p class="muted">oEmbed → unavatar.io. Tidak scrape tiktok.com.</p>' : ''));
     const lecList = lectures().map((l) => {
       const done = isDone(id, l.id);
       const locked = !canOpenLecture(id, l.id);
       return '<li>' + (done ? '✓ ' : (locked ? '× ' : '· ')) + esc(l.title) +
         (locked ? ' <span class="chip">Terkunci</span>' : '') + '</li>';
     }).join('');
-    const autoRows = emails.map((x) =>
-      '<p class="muted">' + fmtWhen(x.scheduledAt) + ' · email · ' + esc(x.status) + ' — ' + esc(x.subject || x.title) + '</p>'
-    ).concat(was.map((x) =>
-      '<p class="muted">' + fmtWhen(x.scheduledAt) + ' · wa · ' + esc(x.status) + ' — ' + esc(x.title) + '</p>'
-    )).concat(tsk.map((x) =>
-      '<p class="muted">' + fmtWhen(x.dueAt) + ' · tugas · ' + (x.done ? 'selesai' : 'terbuka') + ' — ' + esc(x.title) + '</p>'
-    )).join('') || '<p class="muted">Belum ada antrian otomasi.</p>';
-    return '<div class="person-page">' +
-      '<button class="btn secondary" data-act="close-person">← Roster</button>' +
-      '<header class="person-head">' +
-        '<div class="person-ava">' + avatarHtml(s, 'avatar lg') +
-          '<label class="btn-sm" style="margin-top:8px">Unggah foto<input type="file" hidden data-act="photo-file" data-id="' + esc(id) + '" accept="image/*"></label>' +
+    const feed = personFeed(id);
+    const anton = staffPerson();
+    const left =
+      '<aside class="fub-left">' +
+        '<div class="fub-iden">' + avatarHtml(s, 'avatar lg') +
+          '<div><h2>' + esc(s.name) + '</h2>' +
+            '<p class="muted" style="margin:4px 0 0">' + esc(s.city || '—') + '</p>' +
+            '<label class="btn-sm" style="margin-top:8px">Unggah foto<input type="file" hidden data-act="photo-file" data-id="' + esc(id) + '" accept="image/*"></label>' +
+          '</div></div>' +
+        photoNote +
+        '<dl>' +
+          '<div class="fub-field"><dt>Telepon</dt><dd>' + (s.wa
+            ? '<a class="fub-cell-link" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari Sekolah Anton.')) + '" target="_blank" rel="noopener">' + esc(fmtPhone(s.wa)) + '</a>'
+            : '<span class="muted">Tambah WA</span>') + '</dd></div>' +
+          '<div class="fub-field"><dt>Email</dt><dd>' + (s.email
+            ? '<a class="fub-cell-link" href="' + esc(mailLink(s.email, 'Sekolah Anton', 'Halo ' + s.name)) + '">' + esc(s.email) + '</a>'
+            : '<span class="muted">—</span>') + '</dd></div>' +
+          '<div class="fub-field"><dt>TikTok</dt><dd>' + (handle
+            ? '<a class="fub-cell-link" href="' + esc(tiktokUrl(handle)) + '" target="_blank" rel="noopener">@' + esc(handle) + '</a>'
+            : '<span class="muted">—</span>') + '</dd></div>' +
+          '<div class="fub-field"><dt>Stage</dt><dd><select data-act="crm-stage" data-id="' + esc(id) + '">' +
+            stages.map((st) => '<option value="' + esc(st.id) + '"' + (c.stage === st.id ? ' selected' : '') + '>' + esc(st.label) + '</option>').join('') +
+          '</select></dd></div>' +
+          '<div class="fub-field"><dt>Sumber</dt><dd>' + esc(b.source || app && 'Form' || '—') +
+            (app ? '<div class="muted">' + esc(app.experience || '') + '</div>' : '') + '</dd></div>' +
+          '<div class="fub-field"><dt>Upline</dt><dd>' + esc(s.mentorId ? nameOf(s.mentorId) : 'Anton') + '</dd></div>' +
+          '<div class="fub-field"><dt>Nilai</dt><dd class="money">' + esc(fmtRp(b.amount || 0)) +
+            '<div class="muted">' + payChip(b.status) + ' · ' + esc(termLabel(b.term)) + '</div>' +
+            (canBill() ? '<select data-act="bill-one" data-id="' + esc(id) + '" style="margin-top:6px">' +
+              ['lunas', 'cicilan', 'belum', 'gratis', 'trial'].map((st) =>
+                '<option' + (b.status === st ? ' selected' : '') + ' value="' + st + '">' + st + '</option>').join('') +
+            '</select>' : '') +
+          '</dd></div>' +
+          '<div class="fub-field"><dt>Tag</dt><dd>' + ((s.tags || []).map((t) => '<span class="tag-chip">' + esc(t) + '</span>').join('') || '—') + '</dd></div>' +
+        '</dl>' +
+        '<form class="compose" data-act="save-person" data-id="' + esc(id) + '" style="margin-top:12px">' +
+          '<label class="muted">Email</label><input name="email" type="email" value="' + esc(s.email || '') + '">' +
+          '<label class="muted">Handle TikTok</label><input name="tiktok" value="' + esc(s.tiktok || '') + '" placeholder="ayu.jepit">' +
+          '<label class="muted">WA</label><input name="wa" value="' + esc(s.wa || '') + '">' +
+          '<button class="btn" type="submit">Simpan kontak</button>' +
+        '</form>' +
+        '<div style="margin-top:16px">' + progressBarHtml(id) +
+          '<p class="muted">' + p.n + '/' + p.total + ' materi · ' + p.pct + '%</p>' +
+          lecDotStrip(id) +
+          '<details style="margin-top:8px"><summary class="muted">Checklist materi</summary><ul class="lec-check">' + lecList + '</ul></details>' +
         '</div>' +
-        '<div>' +
-          '<h2 style="margin:0">' + esc(s.name) + '</h2>' +
-          '<p class="muted">' + esc(s.city) + (s.mentorId ? ' · upline ' + esc(nameOf(s.mentorId)) : '') + '</p>' +
-          '<p>' + payChip(b.status) + ' <span class="chip">' + esc(stageLabel(c.stage)) + '</span> <span class="chip">' + esc(termLabel(b.term)) + '</span></p>' +
-          '<p>' + (handle ? '<a href="' + esc(tiktokUrl(handle)) + '" target="_blank" rel="noopener">@' + esc(handle) + '</a>' : '<span class="muted">TikTok —</span>') +
-            (s.email ? ' · ' + esc(s.email) : ' · <span class="muted">email —</span>') +
-            (s.wa ? ' · ' + esc(s.wa) : '') + '</p>' +
-          '<div class="row">' +
-            '<a class="wa" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari Sekolah Anton.')) + '" target="_blank" rel="noopener">Buka WA</a>' +
-            (s.email ? '<a class="btn-sm" href="' + esc(mailLink(s.email, 'Sekolah Anton', 'Halo ' + s.name)) + '">mailto</a>' : '') +
-            '<button class="btn-sm" data-act="task-from" data-id="' + esc(id) + '">+ Tugas</button>' +
+      '</aside>';
+    const center =
+      '<main class="fub-center">' +
+        '<div class="fub-composer">' +
+          '<div class="fub-acts">' +
+            '<span class="btn-sm">Catatan</span>' +
+            (s.email ? '<a class="btn-sm" href="' + esc(mailLink(s.email, 'Sekolah Anton', 'Halo ' + s.name)) + '">Email</a>' : '<span class="btn-sm" style="opacity:.45">Email</span>') +
+            '<a class="btn-sm" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari Sekolah Anton.')) + '" target="_blank" rel="noopener">WA</a>' +
+            '<button type="button" class="btn-sm" data-act="task-from" data-id="' + esc(id) + '">Tugas</button>' +
           '</div>' +
-          photoNote +
+          '<form class="compose" data-act="note" data-id="' + esc(id) + '" style="margin:0">' +
+            '<textarea name="body" required rows="3" placeholder="Tambah catatan…"></textarea>' +
+            '<button class="btn" type="submit">Simpan catatan</button>' +
+          '</form>' +
         '</div>' +
-      '</header>' +
-      '<form class="compose card" data-act="save-person" data-id="' + esc(id) + '">' +
-        '<h3>Kontak</h3>' +
-        '<label class="muted">Email</label><input name="email" type="email" value="' + esc(s.email || '') + '">' +
-        '<label class="muted">Handle TikTok</label><input name="tiktok" value="' + esc(s.tiktok || '') + '" placeholder="ayu.jepit">' +
-        '<label class="muted">WA</label><input name="wa" value="' + esc(s.wa || '') + '">' +
-        '<button class="btn" type="submit">Simpan + ambil foto</button>' +
-      '</form>' +
-      '<section class="card">' + progressBarHtml(id) +
-        '<p class="muted">' + p.n + '/' + p.total + ' materi · ' + p.pct + '%</p>' +
-        lecDotStrip(id) +
-        '<ul class="lec-check">' + lecList + '</ul>' +
-      '</section>' +
-      '<section class="card"><h3>Otomasi pada orang ini</h3>' +
-        '<p class="muted">Centang = ikut rencana. Default onboarding saat lunas. Tidak auto-kirim.</p>' +
-        plans.map((pl) =>
-          '<label class="muted" style="display:block;margin:6px 0"><input type="checkbox" data-act="enroll-plan" data-id="' + esc(id) + '" data-pid="' + esc(pl.id) + '"' +
-          (isEnrolled(id, pl.id) ? ' checked' : '') + '> ' + esc(pl.name) + ' <span class="muted">(' + esc(triggerLabel(pl.trigger)) + ')</span></label>'
-        ).join('') +
-      '</section>' +
-      '<section class="card"><h3>Aktivitas otomasi</h3>' + autoRows + '</section>' +
-      '<section class="card"><h3>Stage &amp; bayar</h3>' +
-        '<label class="muted">Pindah stage</label>' +
-        '<select data-act="crm-stage" data-id="' + esc(id) + '">' +
-          stages.map((st) => '<option value="' + esc(st.id) + '"' + (c.stage === st.id ? ' selected' : '') + '>' + esc(st.label) + '</option>').join('') +
-        '</select>' +
-        (app ? '<p class="muted">Form: ' + esc(app.experience) + ' — ' + esc(app.why) + '</p>' : '<p class="muted">Belum isi form.</p>') +
-        '<p class="muted">' + esc(b.plan || '—') + (b.accessUntil ? ' · sampai ' + fmtWhen(b.accessUntil) : '') +
-        (b.offerExpiresAt ? ' · diskon ' + fmtRemain(b.offerExpiresAt) : '') + '</p>' +
-        '<p class="muted">Ledger ' + fmtRp(b.amount) + ' · ' + esc(b.source) + (b.note ? ' · ' + esc(b.note) : '') + '</p>' +
-        (canBill() ? '<label class="muted">Ubah status</label><select data-act="bill-one" data-id="' + esc(id) + '">' +
-          ['lunas', 'cicilan', 'belum', 'gratis', 'trial'].map((st) =>
-            '<option' + (b.status === st ? ' selected' : '') + ' value="' + st + '">' + st + '</option>').join('') +
-          '</select>' : '<p class="muted">Asisten tidak mengubah pembayaran.</p>') +
-      '</section>' +
-      '<section class="card"><h3>Linimasa</h3>' +
-        (tl.length ? tl.map((n) => '<p class="muted">' + fmtWhen(n.at) + ' · ' + esc(n.kind) + ' — ' + esc(n.body) + '</p>').join('') : '<p class="muted">Belum ada event.</p>') +
-      '</section>' +
-      '<section class="card"><h3>Catatan</h3>' +
-        notes.map((n) => '<p class="muted">' + esc(n.at) + ' — ' + esc(n.body) + '</p>').join('') +
-        '<form class="compose" data-act="note" data-id="' + esc(id) + '"><textarea name="body" required rows="2" placeholder="Catatan internal"></textarea><button class="btn" type="submit">Simpan</button></form>' +
-        '<p class="muted">Kolab siswa ini terpisah (UU PDP).</p>' +
-      '</section></div>';
+        '<div class="fub-tl-label">Linimasa</div>' +
+        (feed.length
+          ? '<div class="fub-feed">' + feed.map((n) =>
+              '<article class="fub-item">' + avatarHtml(n.who === 'Anton' ? anton : s, 'avatar bubble') +
+                '<div><strong>' + esc(n.who) + ' · ' + esc(n.kind) + '</strong>' +
+                  '<div class="muted">' + esc(relWhen(n.at)) + '</div>' +
+                  '<p style="margin:6px 0 0;font-size:.82rem">' + esc(n.body) + '</p></div></article>'
+            ).join('') + '</div>'
+          : '<p class="muted">Belum ada catatan atau event.</p>') +
+      '</main>';
+    const right =
+      '<aside class="fub-right fub-side">' +
+        '<h3>Tugas <button type="button" class="btn-sm" data-act="task-from" data-id="' + esc(id) + '">+</button></h3>' +
+        (tsk.length
+          ? tsk.map((t) =>
+              '<div class="fub-task">' +
+                (t.done
+                  ? '<span class="tick-ok">✓</span>'
+                  : '<button type="button" class="btn-sm" data-act="task-done" data-id="' + esc(t.id) + '">Selesai</button>') +
+                '<div><strong>' + esc(t.title) + '</strong>' +
+                  '<div class="muted">' + esc(relWhen(t.dueAt)) + (t.body ? ' · ' + esc(t.body) : '') + '</div></div></div>'
+            ).join('')
+          : '<p class="muted">Tidak ada tugas.</p>') +
+        '<h3 style="margin-top:22px">Rencana aksi</h3>' +
+        '<p class="muted">Centang = ikut. Tidak auto-kirim.</p>' +
+        plans.map((pl) => {
+          const on = isEnrolled(id, pl.id);
+          return '<label class="fub-plan"><input type="checkbox" data-act="enroll-plan" data-id="' + esc(id) + '" data-pid="' + esc(pl.id) + '"' +
+            (on ? ' checked' : '') + '>' +
+            '<span>' + esc(pl.name) +
+              (on ? ' <span class="chip running">Jalan</span>' : ' <span class="chip idle">Off</span>') +
+              '<div class="muted">' + esc(triggerLabel(pl.trigger)) + '</div></span></label>';
+        }).join('') +
+      '</aside>';
+    return '<div class="fub-page">' +
+      '<div class="fub-page-bar">' +
+        '<button class="btn secondary" data-act="close-person">← Orang</button>' +
+        '<strong>' + esc(s.name) + '</strong>' +
+        payChip(b.status) +
+      '</div>' +
+      '<div class="fub-3">' + left + center + right + '</div></div>';
   }
 
   function viewMentorProgres() {
@@ -3214,6 +3336,7 @@
       ui.pane = btn.getAttribute('data-id');
       render();
     } else if (act === 'open-student') {
+      if (e.target.closest('a')) return;
       const id = btn.getAttribute('data-id');
       if (ui.skipOpen === id) return;
       openPerson(id);
@@ -3222,6 +3345,12 @@
     } else if (act === 'siswa-view') {
       ui.siswaView = btn.getAttribute('data-id');
       ui.hubBack = ui.siswaView;
+      ui.mentorTab = 'siswa';
+      render();
+    } else if (act === 'stage-filter') {
+      ui.stageFilter = btn.getAttribute('data-id') || '';
+      ui.siswaView = 'daftar';
+      ui.hubBack = 'daftar';
       ui.mentorTab = 'siswa';
       render();
     } else if (act === 'queue-kind') {
@@ -3240,8 +3369,7 @@
       save();
       render();
     } else if (act === 'plan-edit') {
-      const id = btn.getAttribute('data-id');
-      ui.editPlanId = ui.editPlanId === id ? null : id;
+      ui.editPlanId = btn.getAttribute('data-id');
       render();
     } else if (act === 'plan-dup') {
       const p = planById(btn.getAttribute('data-id'));
@@ -3566,7 +3694,7 @@
     } else if (act === 'note') {
       const id = form.getAttribute('data-id');
       db.notes[id] = db.notes[id] || [];
-      db.notes[id].push({ at: new Date().toISOString().slice(0, 10), body: String(fd.get('body')) });
+      db.notes[id].push({ at: isoNow(), body: String(fd.get('body')) });
       save();
       render();
     } else if (act === 'save-person') {

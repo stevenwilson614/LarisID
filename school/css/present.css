@@ -1,12 +1,12 @@
 /* Dual-view presenter. Localhost only. */
 
 :root {
-  --ink: #0a0a0a;
-  --ink-2: #141414;
-  --ink-3: #1c1c1c;
-  --line: #2a2a2a;
-  --text: #f3f3f3;
-  --muted: #8a8a8a;
+  --ink: #18181b;
+  --ink-2: #1c1c1f;
+  --ink-3: #27272a;
+  --line: #3f3f46;
+  --text: #e4e4e7;
+  --muted: #a1a1aa;
   --font: "Plus Jakarta Sans", system-ui, sans-serif;
   --bar: 58px;
   --cap: 132px;
@@ -14,7 +14,7 @@
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; background: #050505; color: var(--text); font-family: var(--font); }
+html, body { margin: 0; height: 100%; background: #18181b; color: var(--text); font-family: var(--font); }
 .sr-only {
   position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0);
 }

@@ -31,9 +31,9 @@ This extends [README.md](./README.md). Offline lock unchanged.
 
 ## CRM (roster + profil + otomasi)
 
-Satu tab **Siswa** dengan tiga kamera: **Daftar** (WA, TikTok, progres n/12, bayar, paket) · **Pipa** (kanban drag-and-drop) · **Progres** (heatmap + titik materi). Klik nama membuka **profil penuh** (bukan drawer): foto TikTok (oEmbed → unavatar.io, cache IndexedDB, fallback inisial + unggah), kontak, checklist, enroll otomasi, antrian email/WA/tugas, catatan.
+Satu tab **Siswa** dengan tiga kamera: **Daftar** (baris orang ala CRM: nama+foto, telepon, email, stage, nilai, tag · filter stage) · **Pipa** (kanban drag-and-drop, aksen warna kolom) · **Progres** (heatmap + titik materi). Klik nama membuka **profil 3 kolom** (bukan drawer): kiri kontak, tengah catatan/linimasa, kanan tugas + rencana aksi. Foto TikTok (oEmbed → unavatar.io, cache IndexedDB, fallback inisial + unggah).
 
-**Otomasi** = buat / salin / arsip rencana. Pemicu: bayar lunas, isi form, trial, perpanjangan, manual. Langkah: tunggu jam + email (`mailto`) / WA (`wa.me`) / tugas Anton / pindah stage. Seed **Onboarding bayar**. Tidak auto-kirim.
+**Otomasi** = peta visual (pemicu → tunggu jam → email / WA / tugas / pindah stage → selesai). Buat / salin / arsip. Seed **Onboarding bayar**. Tidak auto-kirim.
 
 **Tugas** dikelompokkan hari ini / mendatang / selesai. **Antrian** = WA | email.
 
