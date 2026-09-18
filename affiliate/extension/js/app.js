@@ -21,12 +21,13 @@
   function uid(prefix) {
     return prefix + '-' + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4);
   }
-  function toast(msg) {
+  function toast(msg, kind, ms) {
     var el = $('toast');
     el.textContent = msg;
+    el.className = 'toast' + (kind ? ' toast-' + kind : '');
     el.hidden = false;
     clearTimeout(toast._t);
-    toast._t = setTimeout(function () { el.hidden = true; }, 2200);
+    toast._t = setTimeout(function () { el.hidden = true; }, ms || (kind === 'ok' ? 4500 : 2400));
   }
   function channelLabel(ch) {
     return ch === 'target_collab' ? 'Kolaborasi Bertarget' : 'Pesan IM';
@@ -82,6 +83,7 @@
     selected: {},
     filter: '',
     jobId: null,
+    importNotice: '',
     conn: { ok: false, shopSession: false, affiliate: false, shopName: '', href: '', recon: {} }
   };
   var runner = { id: null, timer: null, paused: false, busy: false };
@@ -203,6 +205,7 @@
     var selectedN = rows.filter(function (c) { return ui.selected[c.id]; }).length;
     return '<section class="card">' +
       '<h2>Kreator</h2>' +
+      (ui.importNotice ? '<div class="notice-ok" role="status">' + esc(ui.importNotice) + '</div>' : '') +
       '<p class="muted">CSV gaya Kalodata Creator List: <code>Creator Handle</code> + <code>Unique ID</code>. Contoh unduhan di bawah.</p>' +
       '<form data-act="add-handle" class="row" style="margin-top:10px">' +
         '<input name="handle" type="text" placeholder="@handle" required autocomplete="off" style="flex:1;min-width:0">' +
@@ -627,7 +630,8 @@
   function importCsvText(text) {
     var rows = parseCsv(text);
     if (!rows.length) {
-      toast('CSV tidak terbaca. Butuh kolom Creator Handle.');
+      toast('CSV tidak terbaca. Butuh kolom Creator Handle.', 'bad');
+      ui.importNotice = '';
       return;
     }
     var n = 0;
@@ -658,10 +662,21 @@
       n += 1;
     });
     persist();
+    var skipped = rows.length - n - updated;
+    if (n) {
+      ui.importNotice = 'Berhasil: ' + n + ' kreator ditambahkan' +
+        (updated ? ', ' + updated + ' diperbarui' : '') +
+        (skipped > 0 ? ', ' + skipped + ' sudah ada' : '') +
+        '. Total sekarang ' + db.creators.length + '.';
+      toast(ui.importNotice, 'ok', 5000);
+    } else if (updated) {
+      ui.importNotice = 'Berhasil memperbarui ' + updated + ' kreator (handle sudah ada). Total ' + db.creators.length + '.';
+      toast(ui.importNotice, 'ok', 4500);
+    } else {
+      ui.importNotice = 'Tidak ada yang baru. ' + rows.length + ' baris sudah ada di daftar.';
+      toast(ui.importNotice, 'warn', 4000);
+    }
     render();
-    if (n) toast('Import ' + n + ' kreator');
-    else if (updated) toast('Diperbarui ' + updated + ' kreator (sudah ada)');
-    else toast('Semua handle sudah ada (' + rows.length + ' baris)');
   }
 
   function splitCsvLine(line) {
@@ -776,7 +791,7 @@
       if (!confirm('Hapus kampanye dan kreator di ekstensi ini?')) return;
       stopRunner();
       db = defaultState(); persist();
-      ui = { tab: 'kampanye', wizard: null, selected: {}, filter: '', jobId: null, conn: ui.conn };
+      ui = { tab: 'kampanye', wizard: null, selected: {}, filter: '', jobId: null, importNotice: '', conn: ui.conn };
       closeOverlay(); render();
     }
   });

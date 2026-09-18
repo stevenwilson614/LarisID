@@ -174,9 +174,20 @@ label.field {
 .toast {
   position: fixed; left: 50%; bottom: calc(var(--dock-h) + 16px);
   transform: translateX(-50%);
-  z-index: 50; max-width: 90%;
+  z-index: 50; max-width: 92%;
   background: var(--hitam); color: #fff;
-  padding: 10px 14px; border-radius: 12px; font-size: .8rem; font-weight: 650;
+  padding: 12px 16px; border-radius: 12px; font-size: .82rem; font-weight: 650;
+  line-height: 1.35; text-align: center;
+  box-shadow: 0 8px 24px rgba(0,0,0,.18);
+}
+.toast-ok { background: var(--ok); }
+.toast-warn { background: var(--warn); }
+.toast-bad { background: var(--bad); }
+
+.notice-ok {
+  background: var(--ok-bg); border: 1px solid #b7e0c6; color: var(--ok);
+  border-radius: 12px; padding: 10px 12px; font-size: .8rem; font-weight: 700;
+  line-height: 1.4; margin: 0 0 10px;
 }
 
 .empty { text-align: center; padding: 24px 8px; }
