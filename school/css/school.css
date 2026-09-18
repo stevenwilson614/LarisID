@@ -570,3 +570,28 @@ html[data-mode="mentor"] .kur-toolbar {
   .row2, .q-row { grid-template-columns: 1fr; }
   html[data-mode="mentor"] .alat-pick { grid-template-columns: 1fr; }
 }
+
+html.present-pane .topbar-actions { display: none !important; }
+html.present-pane[data-mode="student"] #app {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  box-shadow: none;
+}
+html.present-pane[data-mode="student"] .dock,
+html.present-pane[data-mode="student"] .toast,
+html.present-pane[data-mode="student"] .drawer,
+html.present-pane[data-mode="student"] .scrim {
+  left: 0;
+  right: 0;
+  width: 100%;
+  transform: none;
+}
+html.present-pane[data-mode="student"] .kurikulum-pane {
+  left: 0;
+  width: 100%;
+  transform: translateY(110%);
+}
+html.present-pane[data-mode="student"] .kurikulum-pane.is-open {
+  transform: translateY(0);
+}

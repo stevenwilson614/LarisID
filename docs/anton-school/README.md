@@ -8,6 +8,7 @@ Run locally from the repo root:
 ```bash
 bash school/serve.sh
 # open http://127.0.0.1:8765/school/
+# walkthrough: http://127.0.0.1:8765/school/present.html
 ```
 
 Live Kohort Pertama (`js/laris-cohort.js` + `#view-cohort`) is untouched.
@@ -52,6 +53,8 @@ Finish program → tes + sertifikat → optional mentor with disclosed 20%
 licensing. Laris Affiliate is never bundled. Details:
 [FUNNEL.md](./FUNNEL.md). Draft SQL (do not apply):
 [`school/sql/20260918120000_anton_funnel_crm.sql`](../../school/sql/20260918120000_anton_funnel_crm.sql).
+Walk Anton through it on localhost: [`school/present.html`](../../school/present.html)
+(desktop CRM + HP siswa, two acts). Not in `assemble-site.sh`.
 
 Kurikulum contoh: **12 video** (4 minggu × 3). Tiap video punya lembar kerja,
 poin penting, dan 2 pertanyaan cek pemahaman (bukan ujian). Check hijau + bar

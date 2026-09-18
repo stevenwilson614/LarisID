@@ -4,6 +4,8 @@ _Internal. Localhost prototype only. Do not deploy, do not apply SQL on Contabo.
 
 Run: `bash school/serve.sh` → http://127.0.0.1:8765/school/
 
+Dual-view walkthrough (Anton desktop + student HP): http://127.0.0.1:8765/school/present.html
+
 This extends [README.md](./README.md). Offline lock unchanged.
 
 ## Cycle
@@ -56,3 +58,14 @@ Certified mentors collect from **their** students. CRM **setoran 20%** is expect
 | Kamu / Nina / … | Aktif seperti sebelumnya |
 
 Reset lokal clears `localStorage` key `anton-school-v3`.
+
+## Dual-view presentation
+
+`school/present.html` — localhost only. Laptop (Anton CRM) on the left, phone (siswa) on the right. Two acts with Next/Prev; both frames are the live app. Clicking inside a bezel is allowed; Next resumes the script.
+
+| Bab | Adegan |
+|---|---|
+| 1 Tutup trial | Tamu form → pay 24 jam → Ayu bayar nanti → video 1 → Farah nonton → antrian WA 12 jam → Kamu lunas (Affiliate tetap satuan) |
+| 2 Jaga & luluskan | Hadi perpanjangan → Irma grace → Joko sertifikat → 20% licensing → Jaringan Dewi |
+
+Keyboard: Left/Right. Reset demo returns to the first scene of the current act. Do not deploy.

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Sekolah Anton — presentasi dual-view</title>
+  <link rel="stylesheet" href="/fonts/laris-fonts.css">
+  <link rel="stylesheet" href="./css/present.css?v=20260918c">
+</head>
+<body>
+  <div id="prod-block" hidden>
+    <p>Prototype localhost. Tidak untuk larisid.com.</p>
+  </div>
+  <header class="bar">
+    <div class="bar-brand">
+      <strong>Presentasi</strong>
+      <span class="muted">Anton kiri · siswa HP kanan · localhost</span>
+    </div>
+    <div class="bar-acts" role="tablist" aria-label="Bab">
+      <button type="button" id="btn-act-1" data-act="1" aria-selected="true">Bab 1 · Tutup trial</button>
+      <button type="button" id="btn-act-2" data-act="2" aria-selected="false">Bab 2 · Jaga &amp; luluskan</button>
+    </div>
+    <label class="scene-pick">
+      <span class="sr-only">Adegan</span>
+      <select id="scene-select" aria-label="Adegan"></select>
+    </label>
+    <div class="bar-nav">
+      <button type="button" class="ghost" id="btn-prev">Prev</button>
+      <button type="button" class="ghost" id="btn-next">Next</button>
+      <span id="scene-count" class="muted"></span>
+    </div>
+    <div class="bar-tools">
+      <button type="button" class="ghost" id="btn-reset">Reset demo</button>
+      <button type="button" class="ghost" id="btn-full">Layar penuh</button>
+    </div>
+  </header>
+  <main class="stage">
+    <section class="device laptop" aria-label="Layar Anton, desktop">
+      <p class="device-label">Anton · desktop</p>
+      <div class="laptop-shell">
+        <div class="laptop-lid">
+          <div class="laptop-cam" aria-hidden="true"></div>
+          <div class="laptop-screen">
+            <div class="scale-host" id="mentor-host">
+              <iframe id="frame-mentor" title="CRM Anton" src="./index.html?present=1&amp;pane=mentor"></iframe>
+            </div>
+          </div>
+        </div>
+        <div class="laptop-base" aria-hidden="true"></div>
+      </div>
+    </section>
+    <section class="device phone" aria-label="Layar siswa, HP">
+      <p class="device-label">Siswa · HP</p>
+      <div class="phone-shell">
+        <div class="phone-notch" aria-hidden="true"></div>
+        <div class="phone-screen">
+          <div class="scale-host" id="student-host">
+            <iframe id="frame-student" title="Sekolah siswa" src="./index.html?present=1&amp;pane=student"></iframe>
+          </div>
+        </div>
+        <div class="phone-home" aria-hidden="true"></div>
+      </div>
+    </section>
+  </main>
+  <footer class="captions">
+    <p id="live-note" class="live" hidden>Live — Next untuk lanjut naskah.</p>
+    <div class="cap-grid">
+      <div>
+        <span class="cap-kicker">Anton</span>
+        <p id="say-anton"></p>
+      </div>
+      <div>
+        <span class="cap-kicker">Siswa</span>
+        <p id="say-siswa"></p>
+      </div>
+    </div>
+    <p class="muted hint">← → ganti adegan. Klik di dalam bingkai tetap hidup.</p>
+  </footer>
+  <script src="./js/present.js?v=20260918c"></script>
+</body>
+</html>

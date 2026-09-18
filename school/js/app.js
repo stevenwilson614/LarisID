@@ -4,6 +4,10 @@
   const KEY = 'anton-school-v3';
   const FIRST_LEC = 'v1';
   const TOOL_SANDBOX = 'allow-scripts allow-forms allow-same-origin allow-modals allow-popups';
+  const PRESENT_QS = new URLSearchParams(location.search);
+  const PRESENT = PRESENT_QS.get('present') === '1';
+  const PRESENT_PANE = PRESENT_QS.get('pane') === 'mentor' ? 'mentor' : 'student';
+  const BUS = ('BroadcastChannel' in window) ? new BroadcastChannel('anton-school-v3') : null;
   const $ = (id) => document.getElementById(id);
   const ALL_SKUS = () => (SEED.catalog || []).map((p) => p.id);
   const MENTOR_SKUS = () => (SEED.catalog || []).filter((p) => p.includedInMentoring !== false).map((p) => p.id);
@@ -198,9 +202,9 @@
 
   let db = load();
   const ui = {
-    role: 'student',
+    role: PRESENT && PRESENT_PANE === 'mentor' ? 'owner' : 'student',
     tab: 'home',
-    mentorTab: 'siswa',
+    mentorTab: 'crm',
     personaId: 's-kamu',
     lectureId: db.lastLecture['s-kamu'] || (SEED.lectures[0] && SEED.lectures[0].id),
     pane: 'tanya',
@@ -217,12 +221,22 @@
     payTerm: 'month',
     examAnswers: {},
     payPrompt: false,
-    crmFilter: ''
+    crmFilter: '',
+    present: PRESENT,
+    presentPane: PRESENT_PANE,
+    presentApplying: false,
+    presentReady: false
   };
+  if (PRESENT) document.documentElement.classList.add('present-pane');
 
   function save() {
     const copy = { ...db, kolab: db.kolab };
     localStorage.setItem(KEY, JSON.stringify(copy));
+    if (ui.presentApplying) return;
+    if (BUS) BUS.postMessage({ type: 'db' });
+    if (ui.present && ui.presentReady && parent !== window) {
+      parent.postMessage({ source: 'anton-school', type: 'live' }, location.origin);
+    }
   }
 
   function people() { return SEED.students; }
@@ -809,6 +823,7 @@
   /* ── chrome ──────────────────────────────────────────────────────── */
   function fillChrome() {
     runAutomations();
+    if (ui.present) ui.role = ui.presentPane === 'mentor' ? 'owner' : 'student';
     const mode = isStaff() ? 'mentor' : 'student';
     document.documentElement.dataset.mode = mode;
     document.documentElement.dataset.plan = isStaff()
@@ -822,6 +837,8 @@
       logo.src = SEED.school.photo || SEED.school.logo;
       logo.alt = SEED.school.name;
     }
+    const badge = document.querySelector('.off-badge');
+    if (badge) badge.textContent = ui.present ? 'Offline · demo' : 'Offline · jangan deploy';
     $('role-switch').innerHTML =
       '<option value="student">Siswa</option>' +
       '<option value="owner">Mentor (Anton)</option>' +
@@ -2152,10 +2169,85 @@
     $('drawer-scrim').hidden = true;
   }
 
+  function resolvePresentVal(v) {
+    if (v === 'now') return isoNow();
+    if (v === '+24h') return addMs(isoNow(), 24 * 36e5);
+    return v;
+  }
+  function applyWorld(patch) {
+    if (!patch) return;
+    Object.keys(patch).forEach((key) => {
+      if (key === 'clockOffsetMs') {
+        db.clockOffsetMs = patch.clockOffsetMs;
+        return;
+      }
+      const val = patch[key];
+      if (val && typeof val === 'object' && !Array.isArray(val)) {
+        db[key] = db[key] || {};
+        Object.keys(val).forEach((id) => {
+          const row = val[id];
+          if (row && typeof row === 'object' && !Array.isArray(row)) {
+            const next = {};
+            Object.keys(row).forEach((k) => { next[k] = resolvePresentVal(row[k]); });
+            db[key][id] = Object.assign({}, db[key][id] || {}, next);
+          } else {
+            db[key][id] = row;
+          }
+        });
+      } else {
+        db[key] = val;
+      }
+    });
+  }
+  function applyCamera(cam) {
+    cam = cam || {};
+    closeDrawer();
+    ui.payPrompt = !!cam.payPrompt;
+    ui.kurOpen = !!cam.kurOpen;
+    ui.examAnswers = cam.examAnswers || {};
+    ui.payTerm = cam.payTerm || 'month';
+    ui.skuId = cam.skuId || null;
+    ui.skuPreview = false;
+    ui.skuFrom = 'alat';
+    if (ui.presentPane === 'mentor') {
+      ui.role = 'owner';
+      ui.mentorTab = cam.tab || 'crm';
+      ui.drawerId = cam.drawerId || null;
+    } else {
+      ui.role = 'student';
+      ui.personaId = cam.personaId || ui.personaId;
+      ui.tab = cam.tab || 'home';
+      ui.lectureId = cam.lectureId || db.lastLecture[ui.personaId] || firstLectureId();
+    }
+  }
+  function applyPresent(scene) {
+    if (!scene) return;
+    ui.presentApplying = true;
+    db = defaultState();
+    applyWorld(scene.world);
+    save();
+    applyCamera(ui.presentPane === 'mentor' ? scene.mentor : scene.student);
+    render();
+    if (ui.presentPane === 'mentor' && ui.drawerId) openDrawer(ui.drawerId);
+    clearTimeout(applyPresent._ready);
+    applyPresent._ready = setTimeout(() => {
+      ui.presentApplying = false;
+      ui.presentReady = true;
+    }, 250);
+  }
+  function reloadDb() {
+    if (ui.presentApplying) return;
+    db = load();
+    render();
+    if (ui.drawerId) openDrawer(ui.drawerId);
+  }
+  window.__antonSchool = { applyPresent: applyPresent, reloadDb: reloadDb };
+
   /* ── events ──────────────────────────────────────────────────────── */
   document.addEventListener('change', (e) => {
     const t = e.target;
     if (t.id === 'role-switch') {
+      if (ui.present) return;
       ui.role = t.value;
       ui.tab = 'home';
       ui.mentorTab = 'crm';
@@ -2164,6 +2256,7 @@
       return;
     }
     if (t.id === 'persona-switch') {
+      if (ui.present) return;
       ui.personaId = t.value;
       ui.lectureId = db.lastLecture[ui.personaId] || firstLectureId();
       ui.kolabSel = new Set();
@@ -2878,6 +2971,7 @@
   });
 
   $('btn-reset').addEventListener('click', () => {
+    if (ui.present) return;
     if (!confirm('Hapus data lokal prototype ini?')) return;
     localStorage.removeItem(KEY);
     blobClearAll();
@@ -2890,6 +2984,32 @@
     render();
   });
   $('drawer-scrim').addEventListener('click', closeDrawer);
+
+  window.addEventListener('storage', (e) => {
+    if (e.key !== KEY || ui.presentApplying) return;
+    reloadDb();
+  });
+  if (BUS) {
+    BUS.onmessage = (e) => {
+      if (!e.data || e.data.type !== 'db' || ui.presentApplying) return;
+      reloadDb();
+    };
+  }
+  window.addEventListener('message', (e) => {
+    if (e.origin !== location.origin) return;
+    if (!e.data || e.data.source !== 'anton-present') return;
+    if (e.data.cmd === 'scene') applyPresent(e.data.scene);
+    if (e.data.cmd === 'reload-db') reloadDb();
+  });
+  if (ui.present) {
+    document.addEventListener('keydown', (e) => {
+      if (e.target.closest('input, textarea, select')) return;
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      if (parent === window) return;
+      e.preventDefault();
+      parent.postMessage({ source: 'anton-school', type: 'key', key: e.key }, location.origin);
+    });
+  }
 
   render();
 })();
