@@ -586,9 +586,10 @@
   }
 
   function parseCsv(text) {
-    var lines = String(text || '').trim().split(/\r?\n/).filter(Boolean);
+    var raw = String(text || '').replace(/^\uFEFF/, '');
+    var lines = raw.trim().split(/\r?\n/).filter(Boolean);
     if (!lines.length) return [];
-    var head = lines[0].split(/[,;\t]/).map(function (h) {
+    var head = splitCsvLine(lines[0]).map(function (h) {
       return h.trim().toLowerCase().replace(/['"]/g, '').replace(/\s+/g, ' ');
     });
     var hi = colIndex(head, [
@@ -600,10 +601,6 @@
     var oi = colIndex(head, [
       'unique id', 'unique_id', 'creator id', 'creator_id', 'open_id', 'openid', 'oec_id', 'creator_oecuid', 'uid'
     ]);
-    // Prefer dedicated handle col; Unique ID alone is not a handle.
-    if (hi < 0 && colIndex(head, ['unique id', 'unique_id', 'creator id', 'creator_id']) >= 0) {
-      /* leave hi < 0 so we don't treat Unique ID as handle */
-    }
     var start = (hi >= 0 || ni >= 0 || oi >= 0) ? 1 : 0;
     var out = [];
     for (var i = start; i < lines.length; i++) {
@@ -615,6 +612,56 @@
       if (n) out.push({ handle: n, name: String(name || '').trim(), creatorOpenId: String(openId || '').trim() });
     }
     return out;
+  }
+
+  function readFileText(file) {
+    if (file.text) return file.text();
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () { resolve(String(reader.result || '')); };
+      reader.onerror = function () { reject(reader.error || new Error('read_failed')); };
+      reader.readAsText(file);
+    });
+  }
+
+  function importCsvText(text) {
+    var rows = parseCsv(text);
+    if (!rows.length) {
+      toast('CSV tidak terbaca. Butuh kolom Creator Handle.');
+      return;
+    }
+    var n = 0;
+    var updated = 0;
+    rows.forEach(function (r) {
+      var existing = creatorByHandle(r.handle);
+      if (existing) {
+        var changed = false;
+        if (r.creatorOpenId && !existing.creatorOpenId) {
+          existing.creatorOpenId = r.creatorOpenId;
+          changed = true;
+        }
+        if (r.name && !existing.name) {
+          existing.name = r.name;
+          changed = true;
+        }
+        if (changed) updated += 1;
+        return;
+      }
+      db.creators.push({
+        id: uid('c'),
+        handle: r.handle,
+        name: r.name,
+        creatorOpenId: r.creatorOpenId || '',
+        demo: false,
+        status: 'new'
+      });
+      n += 1;
+    });
+    persist();
+    render();
+    if (n) toast('Import ' + n + ' kreator');
+    else if (updated) toast('Diperbarui ' + updated + ' kreator (sudah ada)');
+    else toast('Semua handle sudah ada (' + rows.length + ' baris)');
   }
 
   function splitCsvLine(line) {
@@ -659,7 +706,10 @@
     var sig = JSON.stringify(ui.conn);
     if (sig === connSig) return;
     connSig = sig;
-    if (ui.jobId) return;
+    if (ui.jobId || ui.wizard) return;
+    // Full re-render kills the CSV file picker mid-select. Only refresh Akun / Kampanye.
+    if (ui.tab === 'kreator') return;
+    if (document.activeElement && document.activeElement.getAttribute && document.activeElement.getAttribute('data-act') === 'csv') return;
     render();
   }
 
@@ -755,27 +805,14 @@
       persist(); render();
     }
     else if (act === 'csv' && t.files && t.files[0]) {
-      t.files[0].text().then(function (text) {
-        var rows = parseCsv(text);
-        var n = 0;
-        rows.forEach(function (r) {
-          var existing = creatorByHandle(r.handle);
-          if (existing) {
-            if (r.creatorOpenId && !existing.creatorOpenId) existing.creatorOpenId = r.creatorOpenId;
-            if (r.name && !existing.name) existing.name = r.name;
-            return;
-          }
-          db.creators.push({
-            id: uid('c'),
-            handle: r.handle,
-            name: r.name,
-            creatorOpenId: r.creatorOpenId || '',
-            demo: false,
-            status: 'new'
-          });
-          n += 1;
-        });
-        persist(); render(); toast('Import ' + n + ' handle');
+      var file = t.files[0];
+      toast('Membaca ' + file.name + '…');
+      readFileText(file).then(function (text) {
+        importCsvText(text);
+        try { t.value = ''; } catch (e) { /* ignore */ }
+      }).catch(function () {
+        toast('Gagal baca file CSV');
+        try { t.value = ''; } catch (e2) { /* ignore */ }
       });
     }
   });
