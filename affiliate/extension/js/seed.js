@@ -17,6 +17,7 @@ window.LARIS_AFFILIATE_SEED = {
   template:
     'Halo @{handle},\n\nAku {name} dari {toko}. Lagi jual {produk} dan undang kolaborasi affiliate. Komisi {komisi}%.\n\nKalau cocok, terima undangan di Affiliate Center ya.\n\n— {toko}',
   demoCreators: [
-    { handle: 'teman.satu', name: 'Teman tes', demo: true }
+    { handle: 'bule_barat', name: 'Steven (tes diri)', demo: false },
+    { handle: 'laris.fake.skin01', name: 'Laris Fake Skin 01', demo: true }
   ]
 };

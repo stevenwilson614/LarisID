@@ -25,7 +25,7 @@ Side panel → Kreator → **Unduh contoh Kalodata**, or open:
 
 `affiliate/extension/sample/Creator_List_ID_Last30Days_sample.csv`
 
-Fake Indonesia Creator List (Last 30 Days) with contact columns. Not a real Kalodata file.
+Fake Indonesia Creator List (Last 30 Days) with contact columns. Row 1 is **@bule_barat** (real self-test). All other handles use `laris.fake.*` and are invented — not real Kalodata rows.
 
 ## Test without sending
 
