@@ -42,13 +42,16 @@
   function defaultState() {
     return {
       account: Object.assign({}, SEED.account),
-      quota: { dailyCap: Send.DAILY, batch: Send.BATCH, weeklyCap: SEED.quota.weeklyCap, used: 0, weekUsed: 0, day: todayKey() },
+      quota: { dailyCap: Send.DAILY, batch: Send.BATCH, used: 0, day: todayKey() },
       creators: SEED.demoCreators.map(function (c) {
         return {
           id: uid('c'),
           handle: Send.normHandle(c.handle),
           name: c.name || '',
           creatorOpenId: c.creatorOpenId || '',
+          followers: c.followers || 0,
+          revenue: c.revenue || 0,
+          source: c.source || '',
           demo: !!c.demo,
           status: 'new'
         };
@@ -71,8 +74,11 @@
     if (!s.template) s.template = SEED.template;
     s.creators.forEach(function (c) {
       if (!c.creatorOpenId) c.creatorOpenId = '';
+      if (c.followers == null) c.followers = 0;
+      if (c.revenue == null) c.revenue = 0;
     });
     if (!s.account.allowLiveSend) s.account.allowLiveSend = false;
+    if (!s.account.allowKalodataRead) s.account.allowKalodataRead = false;
     return s;
   }
 
@@ -84,7 +90,7 @@
     filter: '',
     jobId: null,
     importNotice: '',
-    conn: { ok: false, shopSession: false, affiliate: false, shopName: '', href: '', recon: {} }
+    conn: { ok: false, shopSession: false, affiliate: false, shopName: '', href: '', recon: {}, kalodata: { present: false, count: 0 }, sku: {} }
   };
   var runner = { id: null, timer: null, paused: false, busy: false };
 
@@ -100,10 +106,45 @@
     }
     return Math.max(0, db.quota.dailyCap - db.quota.used);
   }
-  function bumpQuota() {
-    db.quota.used += 1;
-    db.quota.weekUsed = (db.quota.weekUsed || 0) + 1;
+  function bumpQuota(n) {
+    db.quota.used += n || 1;
     persist();
+  }
+  function newCreators() {
+    return db.creators.filter(function (c) { return !c.status || c.status === 'new'; });
+  }
+  function rankedCreators(list) {
+    return list.slice().sort(function (a, b) {
+      return (b.revenue || 0) - (a.revenue || 0) || (b.followers || 0) - (a.followers || 0);
+    });
+  }
+  function skuLine() {
+    var sku = (ui.conn.recon && ui.conn.recon.sku) || ui.conn.sku || {};
+    if (!sku.productId && !sku.productName) {
+      return 'Produk undangan = yang terekam di adapter. Ganti SKU/komisi? Kirim 1 undangan manual lagi.';
+    }
+    var comm = sku.commissionPct != null ? (Math.round(sku.commissionPct * 10) / 10) + '%' : '—';
+    return (sku.productName || ('produk ' + sku.productId)) + ' · komisi ' + comm +
+      (sku.invitationName ? ' · ' + sku.invitationName : '');
+  }
+  function skuFromReconStore(recon) {
+    var sku = { productId: '', productName: '', commissionPct: null, invitationName: '' };
+    ((recon && recon.collab) || []).forEach(function (e) {
+      var body = null;
+      try { body = JSON.parse(e.reqBody || ''); } catch (err) { body = null; }
+      if (!body) return;
+      var g = body.invitation_group;
+      var p = g && g.product_list && g.product_list[0];
+      if (p && p.product_id) {
+        sku.productId = String(p.product_id);
+        if (p.target_commission != null) sku.commissionPct = p.target_commission >= 100 ? p.target_commission / 100 : p.target_commission;
+        if (g.name) sku.invitationName = g.name;
+        if (p.title) sku.productName = p.title;
+      }
+      var inv = body.invitation && body.invitation.product_list && body.invitation.product_list[0];
+      if (inv && inv.title) sku.productName = inv.title;
+    });
+    return sku;
   }
   function creatorById(id) { return db.creators.find(function (c) { return c.id === id; }); }
   function creatorByHandle(handle) {
@@ -180,7 +221,7 @@
     return '<section class="card">' +
       '<p class="preview-banner">Unofficial · sesi Chrome kamu · kirim live terkunci sampai kamu izinkan</p>' +
       '<h2>Kampanye</h2>' +
-      '<p class="muted">' + connChip() + ' Uji cari tidak mengirim undangan. Kirim live butuh centang di Akun.</p>' +
+      '<p class="muted">' + connChip() + ' Satu sesi: panel + tab Affiliate Center terbuka, laptop tidak sleep. 50 kreator / kolaborasi, 1.000 kolaborasi / 24 jam, kuota mingguan toko bisa lebih kecil.</p>' +
       '<button type="button" class="btn" data-act="new-campaign" style="margin-top:10px">Buat kampanye</button>' +
       '</section>' + body;
   }
@@ -206,11 +247,23 @@
     return '<section class="card">' +
       '<h2>Kreator</h2>' +
       (ui.importNotice ? '<div class="notice-ok" role="status">' + esc(ui.importNotice) + '</div>' : '') +
-      '<p class="muted">CSV gaya Kalodata Creator List: <code>Creator Handle</code> + <code>Unique ID</code>. Contoh unduhan di bawah.</p>' +
+      '<p class="muted">Kalodata: tempel baris, ambil halaman yang terlihat, atau CSV. Starter Kalodata tidak bisa ekspor — pakai tempel / Ambil halaman. Professional: kuota ekspor kontak terbatas.</p>' +
       '<form data-act="add-handle" class="row" style="margin-top:10px">' +
         '<input name="handle" type="text" placeholder="@handle" required autocomplete="off" style="flex:1;min-width:0">' +
         '<button class="btn-sm" type="submit">Tambah</button>' +
       '</form>' +
+      '<label class="field">Tempel dari Kalodata</label>' +
+      '<textarea data-act="paste-handles" placeholder="@handle atau Unique ID, satu per baris atau tabel disalin"></textarea>' +
+      '<button type="button" class="btn-ghost" data-act="paste-go" style="margin-top:8px">Masukkan tempelan</button>' +
+      '<p class="muted" style="margin-top:10px">' +
+        (ui.conn.kalodata && ui.conn.kalodata.present
+          ? '<span class="chip ok">Kalodata · ' + (ui.conn.kalodata.count || 0) + ' baris terlihat</span>'
+          : '<span class="chip locked">Kalodata belum tab</span>') +
+      '</p>' +
+      '<button type="button" class="btn" data-act="kalo-read" style="margin-top:8px"' +
+        (db.account.allowKalodataRead && ui.conn.kalodata && ui.conn.kalodata.present ? '' : ' disabled') +
+      '>Ambil dari halaman Kalodata (yang terlihat)</button>' +
+      '<p class="muted">Satu klik = satu halaman. Geser halaman di Kalodata, lalu Ambil lagi. Tidak otomatis.</p>' +
       '<label class="field">Import CSV</label>' +
       '<input type="file" accept=".csv,text/csv" data-act="csv">' +
       '<a class="btn-ghost" href="' + esc(chrome.runtime.getURL('sample/Creator_List_ID_Last30Days_sample.csv')) + '" download="Creator_List_ID_Last30Days_sample.csv" style="margin-top:10px;display:block;text-align:center;text-decoration:none">Unduh contoh Kalodata</a>' +
@@ -230,7 +283,8 @@
       '<input type="checkbox" data-act="sel" data-id="' + esc(c.id) + '"' + (ui.selected[c.id] ? ' checked' : '') + '>' +
       '<span><strong>' + esc(Send.displayHandle(c.handle)) + '</strong>' +
         '<span class="meta">' + esc(c.name || '') +
-        (c.creatorOpenId ? ' · id ' + esc(String(c.creatorOpenId).slice(0, 10)) : ' · handle saja') +
+        (c.creatorOpenId ? ' · id ' + esc(String(c.creatorOpenId).slice(0, 10)) : ' · handle saja · butuh Cari kreator terrekam') +
+        (c.source === 'kalodata-page' ? ' · halaman Kalodata' : '') +
         (c.demo ? ' · <span class="chip warn">contoh</span>' : '') +
         ' · ' + statusChip(c.status) + '</span></span>' +
       '<button type="button" class="btn-ghost" data-act="del-creator" data-id="' + esc(c.id) + '" style="padding:6px 8px;width:auto">Hapus</button>' +
@@ -288,14 +342,31 @@
       '<p class="muted" style="margin-top:8px">Tidak ada kolom password. Pakai login Chrome kamu.</p>' +
       '</section>' +
       '<section class="card">' +
+      '<h2>Siap kirim?</h2>' +
+      '<ul class="checklist">' +
+        reconLine(!!ui.conn.affiliate, 'Affiliate Center terbuka') +
+        reconLine(!!(ui.conn.recon && ui.conn.recon.collab), 'Target Collab terrekam (invitation_group/create)') +
+        reconLine(!!(ui.conn.recon && ui.conn.recon.search), 'Cari kreator terrekam (marketplace/find) — wajib jika Unique ID kosong') +
+        reconLine(!!(ui.conn.recon && ui.conn.recon.sku && ui.conn.recon.sku.productId), skuLine()) +
+        reconLine(!!db.account.allowLiveSend, 'Kirim live diizinkan') +
+      '</ul>' +
+      '<p class="muted">Cap TikTok: 50 kreator / satu kolaborasi, 1.000 kolaborasi / 24 jam. Kuota mingguan unconnected mengikuti GMV toko (Starter Pack 1.000 sekali untuk toko baru). Bukan janji 1.000/hari.</p>' +
+      '<p class="muted">Chrome + panel + tab Affiliate Center tetap terbuka. Laptop tidak sleep.</p>' +
+      '</section>' +
+      '<section class="card">' +
       '<h2>Kirim live</h2>' +
       '<p class="muted">Default terkunci. Saya tidak mengirim dari sini. Hanya jalan jika kamu centang dan konfirmasi di wizard.</p>' +
       '<label class="muted"><input type="checkbox" data-act="arm-live"' + (db.account.allowLiveSend ? ' checked' : '') + '> Izinkan kirim live</label>' +
-      (db.account.allowLiveSend ? '<p class="note">Live terbuka. Tes 1 / Kirim akan minta konfirmasi lagi.</p>' : '') +
+      (db.account.allowLiveSend ? '<p class="note">Live terbuka. Tes 1 / Kirim akan minta konfirmasi lagi. Tes 1 hanya ke akun sendiri. Batch 50 hanya untuk produk yang memang mau dijual.</p>' : '') +
+      '</section>' +
+      '<section class="card">' +
+      '<h2>Baca halaman Kalodata</h2>' +
+      '<p class="muted">Opt-in. Hanya baris yang sudah terlihat di tab Kalodata kamu. Tidak menembus kuota ekspor, tidak kirim data ke LarisID. Kalodata ToS 4.1.7 / 4.1.8: risiko ada di akun Kalodata kamu.</p>' +
+      '<label class="muted"><input type="checkbox" data-act="arm-kalo"' + (db.account.allowKalodataRead ? ' checked' : '') + '> Izinkan baca halaman Kalodata</label>' +
       '</section>' +
       '<section class="card">' +
       '<h2>Adapter (rekaman request)</h2>' +
-      '<p class="muted">Buka <strong>Find Creators / Cari Kreator</strong> dan ketik sebuah handle. Jangan klik undang. Chip Cari kreator harus jadi terrekam.</p>' +
+      '<p class="muted">Buka <strong>Find Creators / Cari Kreator</strong> dan ketik sebuah handle. Jangan klik undang. Chip Cari kreator harus jadi terrekam. Setiap ganti produk atau komisi, kirim 1 undangan manual lagi.</p>' +
       '<ul class="recon-list">' +
         reconLine(!!recon.collab, 'Target Collab') +
         reconLine(!!recon.im, 'Pesan IM') +
@@ -315,11 +386,10 @@
       '<input type="number" min="1" max="80" data-act="acc-komisi" value="' + esc(db.account.commissionPct) + '">' +
       '</section>' +
       '<section class="card">' +
-      '<h2>Kuota toko</h2>' +
-      '<p class="muted">Cap TikTok Shop: ' + Send.BATCH + ' / batch, ' + Send.DAILY + ' / 24 jam. Meter ini di ekstensi, bukan jaminan cap live.</p>' +
+      '<h2>Kuota lokal</h2>' +
+      '<p class="muted">Hitungan di ekstensi, bukan jaminan cap live TikTok. 50 kreator / kolaborasi, 1.000 kolaborasi / 24 jam, plus kuota mingguan toko.</p>' +
       '<div class="bar"><span style="width:' + Math.min(100, db.quota.used / db.quota.dailyCap * 100) + '%"></span></div>' +
-      '<p class="muted" style="margin-top:8px">Hari ini ' + db.quota.used + ' / ' + db.quota.dailyCap +
-        ' · minggu unconnected ' + (db.quota.weekUsed || 0) + ' / ' + db.quota.weeklyCap + '</p>' +
+      '<p class="muted" style="margin-top:8px">Hari ini ' + db.quota.used + ' / ' + db.quota.dailyCap + ' kreator (lokal)</p>' +
       '<button type="button" class="btn-ghost" data-act="reset-quota">Reset kuota lokal</button>' +
       '</section>' +
       '<section class="card">' +
@@ -342,13 +412,22 @@
         '<div class="sticky-actions"><button type="button" class="btn" data-act="wiz-next">Lanjut</button>' +
         '<button type="button" class="btn-ghost" data-act="wiz-cancel">Batal</button></div></section>';
     } else if (w.step === 1) {
-      var rows = db.creators;
+      var rows = rankedCreators(newCreators());
+      var all = db.creators;
+      var nNew = rows.length;
       html += '<section class="card"><h2>Pilih kreator</h2>' +
-        '<label class="muted"><input type="checkbox" data-act="wiz-all"' + (rows.length && rows.every(function (c) { return w.ids[c.id]; }) ? ' checked' : '') + '> Pilih semua</label>' +
-        (rows.length ? rows.map(function (c) {
+        '<p class="muted">Default: status baru saja, diurut omset/pengikut. Take-N: 50 / sisa kuota / max 1000.</p>' +
+        '<div class="row" style="margin:8px 0">' +
+          '<button type="button" class="btn-sm" data-act="wiz-take" data-id="50">Ambil 50</button>' +
+          '<button type="button" class="btn-sm" data-act="wiz-take" data-id="quota">Sisa kuota (' + leftDaily() + ')</button>' +
+          '<button type="button" class="btn-sm" data-act="wiz-take" data-id="1000">Max 1000</button>' +
+        '</div>' +
+        '<label class="muted"><input type="checkbox" data-act="wiz-all"' + (nNew && rows.every(function (c) { return w.ids[c.id]; }) ? ' checked' : '') + '> Pilih semua yang baru (' + nNew + ')</label>' +
+        (all.length ? all.map(function (c) {
           return '<label class="person">' +
             '<input type="checkbox" data-act="wiz-sel" data-id="' + esc(c.id) + '"' + (w.ids[c.id] ? ' checked' : '') + '>' +
             '<span><strong>' + esc(Send.displayHandle(c.handle)) + '</strong><span class="meta">' + esc(c.name || '') +
+            (c.status && c.status !== 'new' ? ' · ' + c.status : '') +
             (c.creatorOpenId ? '' : ' · handle saja') + '</span></span></label>';
         }).join('') : '<p class="muted">Tambah handle di Kreator dulu.</p>') +
         '<div class="sticky-actions"><button type="button" class="btn" data-act="wiz-next">Lanjut</button>' +
@@ -362,10 +441,13 @@
     } else {
       var chosen = selectedCreators(w);
       var cap = leftDaily();
-      var n = Math.min(chosen.length, cap);
-      var batches = Math.max(1, Math.ceil(n / Send.BATCH));
+      var n = Math.min(chosen.length, cap, Send.DAILY);
+      var batches = n ? Math.ceil(n / Send.BATCH) : 0;
       html += '<section class="card"><h2>Kirim</h2>' +
-        '<p><strong>' + n + '</strong> kreator · ' + batches + ' batch × max ' + Send.BATCH + ' · sisa hari ini ' + cap + '.</p>' +
+        '<p class="note">' + esc(skuLine()) + '</p>' +
+        '<p><strong>' + n + '</strong> kreator · ' + batches + ' kolaborasi × max ' + Send.BATCH +
+          ' · sisa hitungan lokal ' + cap + '.</p>' +
+        '<p class="muted">Bukan 1.000/hari. Kuota mingguan toko bisa menghentikan lebih awal. Panel + tab Affiliate Center tetap terbuka.</p>' +
         (ui.conn.ok ? '<p class="muted">' + connChip() + '</p>' :
           '<div class="note">Seller Center belum terhubung. Buka tabnya dulu.</div>') +
         (db.account.allowLiveSend
@@ -387,8 +469,18 @@
   function startWizard() {
     var ids = {};
     Object.keys(ui.selected).forEach(function (id) { if (ui.selected[id]) ids[id] = true; });
-    if (!Object.keys(ids).length) db.creators.forEach(function (c) { ids[c.id] = true; });
+    if (!Object.keys(ids).length) {
+      rankedCreators(newCreators()).slice(0, Send.BATCH).forEach(function (c) { ids[c.id] = true; });
+    }
     ui.wizard = { step: 0, channel: 'target_collab', ids: ids, template: db.template };
+    render();
+  }
+
+  function applyTakeN(n) {
+    if (!ui.wizard) return;
+    var ids = {};
+    rankedCreators(newCreators()).slice(0, n).forEach(function (c) { ids[c.id] = true; });
+    ui.wizard.ids = ids;
     render();
   }
 
@@ -407,7 +499,7 @@
     } else {
       if (!db.account.allowLiveSend) { toast('Kirim live terkunci'); return; }
       var n = chosen.length;
-      if (!confirm('LIVE: kirim ' + (w.channel === 'target_collab' ? 'undangan Target Collab' : 'pesan IM') + ' ke ' + n + ' kreator di toko kamu. Lanjut?')) return;
+      if (!confirm('LIVE: kirim ' + (w.channel === 'target_collab' ? 'undangan Target Collab' : 'pesan IM') + ' ke ' + n + ' kreator di toko kamu (max ' + Send.BATCH + ' per kolaborasi). Tes 1 hanya ke akun sendiri. Lanjut?')) return;
     }
     db.template = w.template;
     var campaign = {
@@ -419,6 +511,7 @@
       status: 'berjalan',
       createdAt: new Date().toISOString(),
       cursor: 0,
+      failStreak: 0,
       rows: chosen.map(function (c) {
         return {
           creatorId: c.id,
@@ -460,6 +553,41 @@
     runner.timer = setTimeout(function () { tickCampaign(); }, ms);
   }
 
+  function nextPendingBatch(campaign, limit) {
+    var out = [];
+    (campaign.rows || []).some(function (r) {
+      if (r.status === 'pending') {
+        out.push(r);
+        if (out.length >= limit) return true;
+      }
+      return false;
+    });
+    return out;
+  }
+
+  function applyRowResult(campaign, row, result, dryRun) {
+    row.at = new Date().toISOString();
+    row.endpoint = result.endpoint || row.endpoint;
+    row.note = result.requestId || result.reason || result.note || '';
+    if (result.creatorOpenId && creatorById(row.creatorId) && !creatorById(row.creatorId).creatorOpenId) {
+      creatorById(row.creatorId).creatorOpenId = result.creatorOpenId;
+      row.creatorOpenId = result.creatorOpenId;
+    }
+    if (result.ok) {
+      campaign.failStreak = 0;
+      if (dryRun) {
+        row.status = 'probed';
+        if (creatorById(row.creatorId)) creatorById(row.creatorId).status = 'probed';
+      } else {
+        row.status = 'sent';
+        if (creatorById(row.creatorId)) creatorById(row.creatorId).status = 'sent';
+      }
+    } else {
+      row.status = 'failed';
+      if (creatorById(row.creatorId)) creatorById(row.creatorId).status = 'failed';
+    }
+  }
+
   async function tickCampaign() {
     if (runner.paused || runner.busy) return;
     var id = runner.id;
@@ -472,17 +600,17 @@
       render();
       return;
     }
-    var done = counts(campaign).sent + counts(campaign).failed + counts(campaign).probed;
-    if (done > 0 && done % Send.BATCH === 0 && nextPending(campaign) && campaign._batchWaited !== done) {
-      campaign._batchWaited = done;
-      campaign.status = 'batch';
+    if ((campaign.failStreak || 0) >= 3) {
+      campaign.status = 'jeda';
+      runner.paused = true;
       persist();
       renderJob(id);
-      queueTick(1400);
+      render();
+      toast('Dijeda: 3 gagal berturut-turut. ' + (campaign.lastFail || ''), 'bad', 6000);
       return;
     }
-    var row = nextPending(campaign);
-    if (!row) {
+    var pending = nextPending(campaign);
+    if (!pending) {
       campaign.status = 'selesai';
       persist();
       stopRunner();
@@ -490,43 +618,62 @@
       render();
       return;
     }
+    var dryRun = !!campaign.dryRun;
+    var batchSize = dryRun ? 1 : Math.min(Send.BATCH, leftDaily());
+    var batch = nextPendingBatch(campaign, batchSize);
     runner.busy = true;
-    row.status = 'sending';
+    batch.forEach(function (r) { r.status = 'sending'; });
     campaign.status = 'berjalan';
     persist();
     renderJob(id);
-    var creator = creatorById(row.creatorId) || { handle: row.handle, creatorOpenId: row.creatorOpenId };
-    var result = await Send.send(creator, {
-      channel: campaign.channel,
-      account: db.account,
-      template: campaign.template,
-      dryRun: !!campaign.dryRun
+    var creators = batch.map(function (r) {
+      return creatorById(r.creatorId) || { handle: r.handle, creatorOpenId: r.creatorOpenId, name: r.name || '' };
     });
-    row.at = new Date().toISOString();
-    row.endpoint = result.endpoint || row.endpoint;
-    row.note = result.requestId || result.reason || '';
-    if (result.creatorOpenId && creatorById(row.creatorId) && !creatorById(row.creatorId).creatorOpenId) {
-      creatorById(row.creatorId).creatorOpenId = result.creatorOpenId;
-      row.creatorOpenId = result.creatorOpenId;
-    }
-    if (result.ok) {
-      if (campaign.dryRun) {
-        row.status = 'probed';
-        if (creatorById(row.creatorId)) creatorById(row.creatorId).status = 'probed';
-      } else {
-        row.status = 'sent';
-        bumpQuota();
-        if (creatorById(row.creatorId)) creatorById(row.creatorId).status = 'sent';
-      }
+    var result = dryRun
+      ? await Send.send(creators[0], {
+          channel: campaign.channel,
+          account: db.account,
+          template: campaign.template,
+          dryRun: true
+        })
+      : await Send.sendBatch(creators, {
+          channel: campaign.channel,
+          account: db.account,
+          template: campaign.template,
+          dryRun: false
+        });
+    var byHandle = {};
+    (result.results || []).forEach(function (r) {
+      if (r && r.handle) byHandle[Send.normHandle(r.handle)] = r;
+    });
+    var sentN = 0;
+    var batchFailed = true;
+    batch.forEach(function (row) {
+      var one = byHandle[Send.normHandle(row.handle)] || {
+        ok: result.ok,
+        reason: result.reason,
+        creatorOpenId: result.creatorOpenId,
+        endpoint: result.endpoint,
+        requestId: result.requestId
+      };
+      applyRowResult(campaign, row, one, dryRun);
+      if (row.status === 'sent') sentN += 1;
+      if (row.status === 'sent' || row.status === 'probed') batchFailed = false;
+    });
+    if (sentN) bumpQuota(sentN);
+    if (batchFailed) {
+      campaign.failStreak = (campaign.failStreak || 0) + 1;
+      campaign.lastFail = result.reason || 'gagal';
     } else {
-      row.status = 'failed';
-      if (creatorById(row.creatorId)) creatorById(row.creatorId).status = 'failed';
+      campaign.failStreak = 0;
     }
     persist();
     runner.busy = false;
     renderJob(id);
     renderQuota();
-    if (!runner.paused && runner.id === id) queueTick(220);
+    if (!runner.paused && runner.id === id) {
+      queueTick(nextPending(campaign) && !dryRun ? 1400 : 220);
+    }
   }
 
   function renderJob(id) {
@@ -549,7 +696,8 @@
           (sending ? ' · mengirim ' + esc(Send.displayHandle(sending.handle)) : '') + '</p>' +
         '<div class="bar" style="margin:10px 0"><span style="width:' + pct + '%"></span></div>' +
         (quotaStop ? '<div class="note">Cap harian lokal penuh.</div>' : '') +
-        (campaign.status === 'batch' ? '<div class="note">Istirahat antar batch ' + Send.BATCH + '.</div>' : '') +
+        ((campaign.failStreak || 0) >= 3 ? '<div class="note">Dijeda otomatis setelah 3 gagal. ' + esc(campaign.lastFail || '') + '</div>' : '') +
+        (campaign.status === 'batch' ? '<div class="note">Istirahat antar kolaborasi ' + Send.BATCH + ' kreator.</div>' : '') +
         (done ? '<p><strong>Selesai.</strong></p>' : '') +
         '<div class="job-actions">' +
           (done ? '' : '<button type="button" class="btn" data-act="job-pause">' + pauseLbl + '</button>') +
@@ -565,7 +713,8 @@
     );
   }
 
-  function addHandle(raw, name, creatorOpenId) {
+  function addHandle(raw, name, creatorOpenId, extra) {
+    extra = extra || {};
     var h = Send.normHandle(raw);
     if (!h) { toast('Handle kosong'); return; }
     if (creatorByHandle(h)) { toast('Sudah ada'); return; }
@@ -574,6 +723,9 @@
       handle: h,
       name: name || '',
       creatorOpenId: creatorOpenId || '',
+      followers: extra.followers || 0,
+      revenue: extra.revenue || 0,
+      source: extra.source || '',
       demo: false,
       status: 'new'
     });
@@ -604,16 +756,30 @@
     var oi = colIndex(head, [
       'unique id', 'unique_id', 'creator id', 'creator_id', 'open_id', 'openid', 'oec_id', 'creator_oecuid', 'uid'
     ]);
+    var fi = colIndex(head, ['followers', 'follower', 'pengikut']);
+    var ri = colIndex(head, ['revenue', 'gmv', 'item sold', 'omset', 'pendapatan']);
     var start = (hi >= 0 || ni >= 0 || oi >= 0) ? 1 : 0;
     var out = [];
+    var missingId = 0;
     for (var i = start; i < lines.length; i++) {
       var cols = splitCsvLine(lines[i]);
       var handle = hi >= 0 ? cols[hi] : (start === 0 ? cols[0] : '');
       var name = ni >= 0 ? cols[ni] : '';
       var openId = oi >= 0 ? cols[oi] : '';
       var n = Send.normHandle(handle);
-      if (n) out.push({ handle: n, name: String(name || '').trim(), creatorOpenId: String(openId || '').trim() });
+      if (!n) continue;
+      var oid = String(openId || '').trim();
+      if (!oid) missingId += 1;
+      out.push({
+        handle: n,
+        name: String(name || '').trim(),
+        creatorOpenId: oid,
+        followers: fi >= 0 ? Number(String(cols[fi] || '').replace(/[^\d.]/g, '')) || 0 : 0,
+        revenue: ri >= 0 ? Number(String(cols[ri] || '').replace(/[^\d.]/g, '')) || 0 : 0,
+        source: 'csv'
+      });
     }
+    out._missingId = missingId;
     return out;
   }
 
@@ -627,17 +793,18 @@
     });
   }
 
-  function importCsvText(text) {
-    var rows = parseCsv(text);
-    if (!rows.length) {
-      toast('CSV tidak terbaca. Butuh kolom Creator Handle.', 'bad');
+  function mergeRows(rows, sourceLabel) {
+    if (!rows || !rows.length) {
+      toast('Tidak ada kreator terbaca.', 'bad');
       ui.importNotice = '';
       return;
     }
     var n = 0;
     var updated = 0;
+    var missingId = 0;
     rows.forEach(function (r) {
       var existing = creatorByHandle(r.handle);
+      if (!r.creatorOpenId) missingId += 1;
       if (existing) {
         var changed = false;
         if (r.creatorOpenId && !existing.creatorOpenId) {
@@ -648,14 +815,26 @@
           existing.name = r.name;
           changed = true;
         }
+        if (r.followers && !existing.followers) {
+          existing.followers = r.followers;
+          changed = true;
+        }
+        if (r.revenue && !existing.revenue) {
+          existing.revenue = r.revenue;
+          changed = true;
+        }
+        if (r.source && !existing.source) existing.source = r.source;
         if (changed) updated += 1;
         return;
       }
       db.creators.push({
         id: uid('c'),
         handle: r.handle,
-        name: r.name,
+        name: r.name || '',
         creatorOpenId: r.creatorOpenId || '',
+        followers: r.followers || 0,
+        revenue: r.revenue || 0,
+        source: r.source || sourceLabel || '',
         demo: false,
         status: 'new'
       });
@@ -663,20 +842,49 @@
     });
     persist();
     var skipped = rows.length - n - updated;
+    var extra = missingId ? ' ' + missingId + ' tanpa Unique ID (perlu Cari kreator terrekam).' : '';
     if (n) {
       ui.importNotice = 'Berhasil: ' + n + ' kreator ditambahkan' +
         (updated ? ', ' + updated + ' diperbarui' : '') +
         (skipped > 0 ? ', ' + skipped + ' sudah ada' : '') +
-        '. Total sekarang ' + db.creators.length + '.';
+        '. Total sekarang ' + db.creators.length + '.' + extra;
       toast(ui.importNotice, 'ok', 5000);
     } else if (updated) {
-      ui.importNotice = 'Berhasil memperbarui ' + updated + ' kreator (handle sudah ada). Total ' + db.creators.length + '.';
+      ui.importNotice = 'Berhasil memperbarui ' + updated + ' kreator. Total ' + db.creators.length + '.' + extra;
       toast(ui.importNotice, 'ok', 4500);
     } else {
-      ui.importNotice = 'Tidak ada yang baru. ' + rows.length + ' baris sudah ada di daftar.';
+      ui.importNotice = 'Tidak ada yang baru. ' + rows.length + ' baris sudah ada di daftar.' + extra;
       toast(ui.importNotice, 'warn', 4000);
     }
     render();
+  }
+
+  function parseHandlesText(text) {
+    var lines = String(text || '').split(/\r?\n/);
+    var out = [];
+    var seen = {};
+    lines.forEach(function (line) {
+      var handle = '';
+      var id = '';
+      var hm = line.match(/@([A-Za-z0-9._]{2,24})/);
+      if (hm) handle = hm[1];
+      if (!handle) {
+        var tok = line.trim().split(/[\s,;\t]+/)[0];
+        if (tok && !/^\d+$/.test(tok)) handle = Send.normHandle(tok);
+      }
+      var idm = line.match(/\b(\d{15,})\b/);
+      if (idm) id = idm[1];
+      handle = Send.normHandle(handle);
+      if (!handle || seen[handle]) return;
+      seen[handle] = true;
+      out.push({ handle: handle, name: '', creatorOpenId: id, source: 'paste' });
+    });
+    return out;
+  }
+
+  function importCsvText(text) {
+    var rows = parseCsv(text);
+    mergeRows(rows, 'csv');
   }
 
   function splitCsvLine(line) {
@@ -707,12 +915,21 @@
       affiliate: !!(ping && ping.affiliate),
       shopName: ping && ping.shopName || '',
       href: ping && ping.href || '',
+      kalodata: (ping && ping.kalodata) || { present: false, count: 0 },
       recon: (ping && ping.recon) || {
         search: !!(recon && recon.search && recon.search.length),
         collab: !!(recon && recon.collab && recon.collab.length),
         im: !!(recon && recon.im && recon.im.length)
-      }
+      },
+      sku: (ping && ping.recon && ping.recon.sku) || {}
     };
+    if (recon) {
+      var parsedSku = skuFromReconStore(recon);
+      if (parsedSku.productId) {
+        ui.conn.sku = parsedSku;
+        ui.conn.recon.sku = Object.assign({}, ui.conn.recon.sku || {}, parsedSku);
+      }
+    }
     if (ui.conn.shopName && ui.conn.shopName !== db.account.shopName) {
       db.account.shopName = ui.conn.shopName;
       persist();
@@ -749,8 +966,11 @@
     } else if (act === 'wiz-ch') { ui.wizard.channel = id; render(); }
     else if (act === 'wiz-sel') { ui.wizard.ids[id] = t.checked; }
     else if (act === 'wiz-all') {
-      db.creators.forEach(function (c) { ui.wizard.ids[c.id] = t.checked; });
+      newCreators().forEach(function (c) { ui.wizard.ids[c.id] = t.checked; });
       render();
+    } else if (act === 'wiz-take') {
+      var take = id === 'quota' ? leftDaily() : +id;
+      applyTakeN(Math.max(0, take));
     }     else if (act === 'wiz-go') { startJobFromWizard(); }
     else if (act === 'wiz-one') { startJobFromWizard({ limit: 1 }); }
     else if (act === 'wiz-probe') { startJobFromWizard({ limit: 1, dryRun: true }); }
@@ -781,7 +1001,29 @@
       ui.wizard.ids[db.creators[0].id] = true;
       startJobFromWizard({ limit: 1, dryRun: true });
     } else if (act === 'reset-quota') {
-      db.quota.used = 0; db.quota.weekUsed = 0; db.quota.day = todayKey(); persist(); render(); toast('Kuota lokal direset');
+      db.quota.used = 0; db.quota.day = todayKey(); persist(); render(); toast('Kuota lokal direset');
+    } else if (act === 'paste-go') {
+      var box = document.querySelector('[data-act="paste-handles"]');
+      mergeRows(parseHandlesText(box && box.value), 'paste');
+    } else if (act === 'kalo-read') {
+      if (!db.account.allowKalodataRead) { toast('Izinkan baca halaman Kalodata di Akun dulu'); return; }
+      Send.kaloRead().then(function (res) {
+        if (!res || !res.ok) {
+          toast((res && res.reason) || 'Kalodata tidak terbaca', 'bad');
+          return;
+        }
+        var rows = (res.rows || []).map(function (r) {
+          return {
+            handle: Send.normHandle(r.handle),
+            name: r.name || '',
+            creatorOpenId: r.creatorOpenId || '',
+            followers: r.followers || 0,
+            revenue: r.revenue || 0,
+            source: 'kalodata-page'
+          };
+        }).filter(function (r) { return r.handle; });
+        mergeRows(rows, 'kalodata-page');
+      });
     } else if (act === 'reset-recon') {
       chrome.storage.local.set({ 'laris-affiliate-recon': { search: [], collab: [], im: [] } }, function () {
         toast('Rekaman adapter dihapus');
@@ -816,6 +1058,18 @@
         db.account.allowLiveSend = true;
       } else {
         db.account.allowLiveSend = false;
+      }
+      persist(); render();
+    }
+    else if (act === 'arm-kalo') {
+      if (t.checked) {
+        if (!confirm('Izinkan ekstensi membaca baris kreator yang sudah terlihat di tab Kalodata kamu? Ini menyentuh Kalodata ToS 4.1.7 dan 4.1.8. Risikonya ke akun Kalodata kamu, bukan server LarisID. Satu klik = satu halaman terlihat. Tidak ada auto-pagination.')) {
+          t.checked = false;
+          return;
+        }
+        db.account.allowKalodataRead = true;
+      } else {
+        db.account.allowKalodataRead = false;
       }
       persist(); render();
     }

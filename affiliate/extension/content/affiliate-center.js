@@ -17,7 +17,7 @@
         if (!pending[id]) return;
         delete pending[id];
         resolve({ ok: false, status: 0, text: '', error: 'timeout' });
-      }, 8000);
+      }, 20000);
     });
   }
 
@@ -160,8 +160,17 @@
     };
   }
 
-  async function sendOne(row, ctx) {
-    if (!ctx || ctx.dryRun) return probeOne(row);
+  function normRow(row) {
+    return {
+      handle: String(row && row.handle || '').replace(/^@/, ''),
+      name: row && row.name || '',
+      creatorOpenId: row && (row.creatorOpenId || row.openId || row.creatorId || row.creator_oec_id) || '',
+      creatorId: row && row.creatorId || ''
+    };
+  }
+
+  async function sendBatch(rows, ctx) {
+    if (!ctx || ctx.dryRun) return probeOne(rows && rows[0]);
     if (!ctx.allowLiveSend) {
       return {
         ok: false,
@@ -171,14 +180,9 @@
         reason: 'Kirim live terkunci. Centang Izinkan kirim live di Akun, lalu konfirmasi.'
       };
     }
-    row = {
-      handle: String(row && row.handle || '').replace(/^@/, ''),
-      name: row && row.name || '',
-      creatorOpenId: row && (row.creatorOpenId || row.openId || row.creatorId) || ''
-    };
-    if (!row.handle && !row.creatorOpenId) {
-      return { ok: false, code: 'no_handle', reason: 'Handle kosong.' };
-    }
+    rows = (rows || []).map(normRow).filter(function (r) { return r.handle || r.creatorOpenId; });
+    if (!rows.length) return { ok: false, code: 'no_handle', reason: 'Handle kosong.' };
+
     var channel = ctx && ctx.channel === 'target_collab' ? 'collab' : 'im';
     var data = await Adapter.loadStore();
     var entry = Adapter.latest(data, channel);
@@ -189,23 +193,42 @@
         method: 'seller-center',
         code: 'needs_recon',
         reason: channel === 'collab'
-          ? 'Belum ada rekaman Target Collab. Kirim 1 undangan manual di Affiliate Center, lalu coba lagi.'
+          ? 'Belum ada rekaman Target Collab (invitation_group/create). Kirim 1 undangan manual di Affiliate Center, lalu coba lagi.'
           : 'Belum ada rekaman IM. Kirim 1 pesan manual di Affiliate Center, lalu coba lagi.'
       };
     }
-    if (Adapter.needsOpenId(entry) && !row.creatorOpenId) {
-      row = await resolveCreator(row, data);
-      if (!row.creatorOpenId) {
-        return {
+
+    var unresolved = [];
+    var ready = [];
+    var i;
+    for (i = 0; i < rows.length; i++) {
+      var row = rows[i];
+      if (Adapter.needsOpenId(entry) && !row.creatorOpenId) {
+        row = await resolveCreator(row, data);
+      }
+      if (Adapter.needsOpenId(entry) && !row.creatorOpenId) {
+        unresolved.push({
+          handle: row.handle,
           ok: false,
-          live: false,
-          method: 'seller-center',
           code: 'handle_only',
-          endpoint: entry.method + ' ' + entry.url,
-          reason: 'Request ini butuh creator_id / open_id. Import CSV yang punya kolom itu, atau rekam search kreator dulu.'
-        };
+          reason: 'Butuh creator_oec_id. Rekam Cari kreator, atau ambil Unique ID dari Kalodata.'
+        });
+      } else {
+        ready.push(row);
       }
     }
+    if (!ready.length) {
+      return {
+        ok: false,
+        live: false,
+        method: 'seller-center',
+        code: 'handle_only',
+        endpoint: entry.method + ' ' + entry.url.split('?')[0],
+        reason: unresolved[0] && unresolved[0].reason,
+        results: unresolved
+      };
+    }
+
     var message = ctx && ctx.body ? String(ctx.body) : '';
     var bodyObj = Adapter.parseMaybe(entry.reqBody);
     if ((entry.method || 'POST') !== 'GET' && !bodyObj) {
@@ -218,11 +241,16 @@
         reason: 'Rekaman request bukan JSON. Kirim 1 undangan manual lagi di Affiliate Center.'
       };
     }
+
+    var filled = channel === 'collab'
+      ? Adapter.fillCollabTemplate(bodyObj, ready, message)
+      : Adapter.fillTemplate(bodyObj, ready[0], message);
+
     var init = {
       method: entry.method || 'POST',
       headers: { 'content-type': 'application/json' }
     };
-    if (bodyObj) init.body = JSON.stringify(Adapter.fillTemplate(bodyObj, row, message));
+    if (bodyObj) init.body = JSON.stringify(filled);
     else if ((entry.method || 'POST') !== 'GET') init.body = entry.reqBody || '';
 
     var res = await pageFetch(entry.url, init);
@@ -232,16 +260,34 @@
     if (!ok) {
       reason = res.error || (parsed && (parsed.message || parsed.msg || parsed.error)) || ('HTTP ' + res.status);
     }
+    var failIds = ok ? Adapter.failIdsFromResponse(parsed) : {};
+    var results = ready.map(function (r) {
+      var failed = !ok || failIds[r.creatorOpenId];
+      return {
+        handle: r.handle,
+        creatorOpenId: r.creatorOpenId,
+        ok: !failed,
+        code: failed ? 'send_failed' : 'sent',
+        reason: failed ? reason : ''
+      };
+    }).concat(unresolved);
+    var anyOk = results.some(function (r) { return r.ok; });
     return {
-      ok: ok,
+      ok: anyOk,
       live: true,
       method: 'seller-center',
-      code: ok ? 'sent' : 'send_failed',
-      endpoint: entry.method + ' ' + entry.url.split('?')[0],
+      code: anyOk ? 'sent' : 'send_failed',
+      endpoint: entry.method + ' ' + (entry.url.split('?')[0]),
       requestId: parsed && (parsed.request_id || parsed.requestId) || '',
-      reason: reason,
-      status: res.status
+      reason: anyOk ? '' : reason,
+      status: res.status,
+      sku: Adapter.collabSku(data),
+      results: results
     };
+  }
+
+  async function sendOne(row, ctx) {
+    return sendBatch([row], ctx);
   }
 
   chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
@@ -251,7 +297,8 @@
       return true;
     }
     if (msg.type !== 'laris-send') return;
-    sendOne(msg.row, msg.ctx).then(sendResponse);
+    var rows = msg.rows && msg.rows.length ? msg.rows : [msg.row];
+    sendBatch(rows, msg.ctx).then(sendResponse);
     return true;
   });
 
