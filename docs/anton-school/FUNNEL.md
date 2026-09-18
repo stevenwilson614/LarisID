@@ -16,28 +16,28 @@ This extends [README.md](./README.md). Offline lock unchanged.
    - Bayar sekarang: monthly **transfer** (rekening in Pengaturan bayar), annual transfer discount, or card autopay discount (Mayar mock).
    - **Bayar nanti:** Home looks like the real school; only video 1 + lembar kerja unlock.
 4. After video 1: in-app pay prompt. At 12 hours left: queued WA to the student + a **task for Anton** to open WA himself (never auto-send as Anton).
-5. Unpaid after 24h → **Nurture**. “Tidak tertarik” → **extended nurture**.
-6. Paid → full class for the term (month / year / autopay). Laris Affiliate stays extra.
-7. Renewal defaults: 5-day warning WA → Anton personal WA task → 1-day grace. Anton edits delays in **Otomasi**. After grace: preview-only + Nurture.
+5. Unpaid after 24h → **Sudah keluar**. “Tidak tertarik” stays its own stage.
+6. Paid → **Mentee**. Full class for the term (month / year / autopay). Laris Affiliate stays extra.
+7. Renewal defaults: 5-day warning WA → Anton personal WA task → 1-day grace. Stage **Akan keluar**. Anton edits delays in **Otomasi**. After grace: preview-only + **Sudah keluar**.
 8. Finish 12 videos → one sitting **tes** → certificate if pass → eligible mentor. Anton (or they) accept with **disclosed 20% licensing**. Not auto-enrol. One downline level.
 
 ## Access
 
 | State | Belajar | Tools lynk | Laris Affiliate | Live / Diskusi / Kolab |
 |---|---|---|---|---|
-| Trial / nurture unpaid | Video 1 + supplies | Dual CTA: satuan or mentoring | Always satuan | Locked |
-| Mentoring lunas / grace / beasiswa | All 12 | Included | Satuan unless bought | Open |
+| Trial / nonton / sudah keluar unpaid | Video 1 + supplies | Dual CTA: satuan or mentoring | Always satuan | Locked |
+| Mentee / akan keluar / beasiswa | All 12 | Included | Satuan unless bought | Open |
 | SKU only | Locked | Owned SKUs | If bought | Locked |
 
 ## CRM (roster + profil + otomasi)
 
-Satu tab **Siswa** dengan tiga kamera: **Daftar** (baris orang: nama+foto, telepon, email, stage, bayar, nilai · klik baris = profil) · **Pipa** (kanban drag-and-drop) · **Progres** (heatmap + titik materi). Profil 3 kolom: kiri kontak **inline-edit** + status/SKU bayar, tengah catatan/linimasa + composer tugas, kanan tugas + rencana aksi. Foto TikTok (oEmbed → unavatar.io, cache IndexedDB, fallback inisial + unggah).
+Satu tab **Siswa** dengan tiga kamera: **Daftar** (baris orang: nama+foto, telepon, email, stage, bayar, nilai · klik baris = profil) · **Pipa** (kanban drag-and-drop) · **Progres** (nama + bar % materi selesai). Stage: WA baru · Form · Nonton belum bayar · 24 jam trial · Mentee · Akan keluar · Sudah keluar · Tidak tertarik · Mentor. Profil 3 kolom: kiri kontak **inline-edit** + status/SKU bayar, tengah catatan/linimasa + composer tugas, kanan tugas + rencana aksi. Foto TikTok (oEmbed → unavatar.io, cache IndexedDB, fallback inisial + unggah).
 
 **Otomasi** = peta visual (pemicu → tunggu jam → email / WA / tugas / pindah stage → selesai). Buat / salin / arsip. Seed **Onboarding bayar**. Tidak auto-kirim.
 
 **Tugas** = inbox Follow Up Boss: jenis WA / Email / Telepon / pengingat, tanggal+jam, kelompok terlambat / hari ini / besok / minggu ini / nanti / selesai. Klik nama → profil. Antrian WA/email (wa.me / mailto, tidak auto-kirim) tampil di sini, bukan halaman terpisah.
 
-**Kurikulum:** drag-and-drop bagian & item (tampilan sama dengan daftar siswa) + preview HP. Cover, file, teks. Blob IndexedDB. Jatuh tempo bagian masuk kalender.
+**Kurikulum:** editor ala Udemy — Bagian N, lecture rows, **+ Item kurikulum** (Lecture / Bacaan / File), **+ Konten** untuk unggah, drag urutan. Cover, file, teks. Blob IndexedDB. Jatuh tempo bagian (Edit) masuk kalender. Tanpa preview HP.
 
 **Perpustakaan:** Anton bisa tambah SKU lokal (lynk URL). Toggle Contoh → File Anton.
 
@@ -63,11 +63,11 @@ Certified mentors collect from **their** students. CRM **setoran 20%** is expect
 | Ayu | Trial, clock running |
 | Farah | Watched v1, unpaid, Anton task |
 | Gilang | Tidak tertarik |
-| Hadi | Perpanjangan 5 hari |
-| Irma | Grace |
-| Joko | Lulus tes, layak mentor |
-| Dewi Mentor | Downline Oki (mentoring) + Putri (SKU + Affiliate) |
-| Kamu / Nina / … | Aktif seperti sebelumnya |
+| Hadi | Akan keluar (peringatan 5 hari) |
+| Irma | Akan keluar (tenggang) |
+| Joko | Mentee, lulus tes, layak mentor |
+| Dewi Mentor | Mentor · downline Oki (mentoring) + Putri (SKU + Affiliate) |
+| Kamu / Nina / … | Mentee |
 
 Reset lokal clears `localStorage` key `anton-school-v3`.
 
@@ -78,6 +78,6 @@ Reset lokal clears `localStorage` key `anton-school-v3`.
 | Bab | Adegan |
 |---|---|
 | 1 Tutup trial | Tamu form → pay 24 jam → Ayu bayar nanti → video 1 → Farah nonton → tugas WA 12 jam → Kamu lunas (Affiliate tetap satuan) |
-| 2 Jaga & luluskan | Hadi perpanjangan → Irma grace → Joko sertifikat → 20% licensing → Jaringan Dewi |
+| 2 Jaga & luluskan | Hadi akan keluar → Irma tenggang → Joko sertifikat → 20% licensing → Jaringan Dewi |
 
 Keyboard: Left/Right. Reset demo returns to the first scene of the current act. Do not deploy.

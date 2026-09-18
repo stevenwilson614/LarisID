@@ -105,15 +105,34 @@
     });
   }
 
+  function migrateCrmStage(st) {
+    return {
+      aktif: 'mentee',
+      perpanjangan: 'akan_keluar',
+      grace: 'akan_keluar',
+      nurture: 'sudah_keluar',
+      lulus: 'mentee'
+    }[st] || st;
+  }
+
   function hydrateFunnel(merged) {
     merged.pricing = Object.assign({}, SEED.pricing, merged.pricing || {});
     merged.bank = Object.assign({}, SEED.bank, merged.bank || {});
     merged.dunning = Object.assign({}, SEED.dunning, merged.dunning || {});
     merged.actionPlans = mergeActionPlans(merged.actionPlans);
-    merged.pipelineStages = (merged.pipelineStages && merged.pipelineStages.length)
-      ? merged.pipelineStages
-      : JSON.parse(JSON.stringify(SEED.pipelineStages || []));
+    merged.pipelineStages = JSON.parse(JSON.stringify(SEED.pipelineStages || []));
     merged.crm = Object.assign({}, JSON.parse(JSON.stringify(SEED.crm || {})), merged.crm || {});
+    Object.keys(merged.crm).forEach((id) => {
+      const c = merged.crm[id];
+      if (!c || !c.stage) return;
+      if (c.stage === 'lulus' && c.acceptedMentorAt) c.stage = 'mentor';
+      else c.stage = migrateCrmStage(c.stage);
+    });
+    (merged.actionPlans || []).forEach((p) => {
+      (p.steps || []).forEach((st) => {
+        if (st.to) st.to = migrateCrmStage(st.to);
+      });
+    });
     merged.applications = Object.assign({}, JSON.parse(JSON.stringify(SEED.applications || {})), merged.applications || {});
     merged.timeline = Object.assign({}, JSON.parse(JSON.stringify(SEED.timelineSeed || {})), merged.timeline || {});
     merged.tasks = Array.isArray(merged.tasks) ? merged.tasks : JSON.parse(JSON.stringify(SEED.tasksSeed || []));
@@ -230,8 +249,9 @@
     taskComposer: '',
     calYM: '',
     calDay: '',
-    kurPreviewId: 's-kamu',
-    kurPreviewLec: '',
+    addItemWeek: '',
+    addSecOpen: false,
+    editSecId: null,
     editPlanId: null,
     kolabSel: new Set(),
     filterSiswa: '',
@@ -357,7 +377,7 @@
     const b = billingOf(id);
     if (b.status === 'trial' || b.plan === 'preview') return true;
     const c = crmOf(id);
-    return c.stage === 'trial' || c.stage === 'nonton' || c.stage === 'nurture';
+    return c.stage === 'trial' || c.stage === 'nonton' || c.stage === 'sudah_keluar';
   }
   function canOpenLecture(id, lid) {
     if (canMentoring(id)) return true;
@@ -611,7 +631,7 @@
       return new Date(b.accessUntil).getTime() - warningMs();
     }
     if (t === 'manual') return en && en.at ? new Date(en.at).getTime() : null;
-    if (t === 'nurture' && crmOf(s.id).stage === 'nurture') return en && en.at ? new Date(en.at).getTime() : nowMs();
+    if (t === 'nurture' && (crmOf(s.id).stage === 'nurture' || crmOf(s.id).stage === 'sudah_keluar')) return en && en.at ? new Date(en.at).getTime() : nowMs();
     if (t === 'tidak_tertarik' && crmOf(s.id).stage === 'tidak_tertarik') return en && en.at ? new Date(en.at).getTime() : nowMs();
     return en && en.at ? new Date(en.at).getTime() : null;
   }
@@ -686,7 +706,7 @@
     b.paidAt = isoNow();
     b.accessUntil = until.toISOString();
     b.note = term === 'year' ? 'Tahunan' : (term === 'autopay' ? 'Kartu autopay (mock)' : 'Bulanan transfer');
-    setStage(id, 'aktif', 'Lunas mentoring · ' + term);
+    setStage(id, 'mentee', 'Lunas mentoring · ' + term);
     pushTimeline(id, 'pay', 'Bayar ' + fmtRp(amount) + ' · ' + (source || 'transfer'));
     enrollPerson(id, 'onboarding', true);
   }
@@ -714,8 +734,8 @@
           c.wa12Sent = true;
           pushTimeline(s.id, 'wa', 'Antrian WA: 12 jam sisa harga perkenalan.');
         }
-        if (left != null && left <= 0 && c.stage !== 'nurture' && c.stage !== 'tidak_tertarik' && c.stage !== 'aktif') {
-          setStage(s.id, 'nurture', '24 jam habis, belum bayar → nurture.');
+        if (left != null && left <= 0 && c.stage !== 'sudah_keluar' && c.stage !== 'tidak_tertarik' && c.stage !== 'mentee') {
+          setStage(s.id, 'sudah_keluar', '24 jam habis, belum bayar → sudah keluar.');
           c.expiredToNurture = true;
         }
       }
@@ -726,7 +746,7 @@
         c.antonWatchTask = true;
         setStage(s.id, 'nonton', 'Nonton video 1, belum bayar.');
       }
-      if (b.plan === 'mentoring' && b.accessUntil && b.status !== 'gratis' && c.stage !== 'tidak_tertarik' && c.stage !== 'lulus' && c.stage !== 'mentor') {
+      if (b.plan === 'mentoring' && b.accessUntil && b.status !== 'gratis' && c.stage !== 'tidak_tertarik' && c.stage !== 'mentor') {
         const end = new Date(b.accessUntil).getTime();
         const t = nowMs();
         const warnStart = end - warningMs();
@@ -735,7 +755,7 @@
           const step = plan && plan.steps.find((x) => x.id === 'r5');
           queueWa(s.id, (step && step.title) || '5 hari sebelum habis', fillTpl((step && step.body) || '', s.id), isoNow());
           c.warn5Sent = true;
-          setStage(s.id, 'perpanjangan', 'Peringatan 5 hari.');
+          setStage(s.id, 'akan_keluar', 'Peringatan 5 hari.');
         }
         if (t >= end && t < end + graceMs()) {
           if (!c.antonRenewTask) {
@@ -750,15 +770,15 @@
             queueWa(s.id, (step && step.title) || 'Grace 1 hari', fillTpl((step && step.body) || '', s.id), isoNow());
             c.grace1Sent = true;
           }
-          setStage(s.id, 'grace', 'Masa tenggang.');
+          setStage(s.id, 'akan_keluar', 'Masa tenggang.');
         }
-        if (t >= end + graceMs() && (c.stage === 'grace' || c.stage === 'perpanjangan' || c.stage === 'aktif')) {
+        if (t >= end + graceMs() && (c.stage === 'akan_keluar' || c.stage === 'mentee' || c.stage === 'perpanjangan' || c.stage === 'grace' || c.stage === 'aktif')) {
           b.status = 'trial';
           b.plan = 'preview';
-          setStage(s.id, 'nurture', 'Grace habis. Kembali ke preview video 1.');
+          setStage(s.id, 'sudah_keluar', 'Akses habis. Kembali ke preview video 1.');
         }
       }
-      if (c.stage === 'nurture' && !c.nurtureQueued) {
+      if ((c.stage === 'sudah_keluar' || c.stage === 'nurture') && !c.nurtureQueued) {
         const plan = planById('nurture');
         const step = plan && plan.steps[0];
         if (step) {
@@ -853,9 +873,19 @@
   function sectionWord() { return sectionStyle() === 'modul' ? 'Modul' : 'Minggu'; }
   function toolsCatalog() { return catalog().filter((p) => p.group === 'alat'); }
   function ensureSecFold() {
-    if (ui.secFold) return;
-    ui.secFold = new Set();
-    (db.weeks || []).forEach((w, i) => { if (i > 0) ui.secFold.add(w.id); });
+    if (!ui.secFold) {
+      ui.secFold = new Set();
+      (db.weeks || []).forEach((w, i) => { if (i > 0) ui.secFold.add(w.id); });
+      ui.secKnown = new Set((db.weeks || []).map((w) => w.id));
+      return;
+    }
+    ui.secKnown = ui.secKnown || new Set();
+    (db.weeks || []).forEach((w) => {
+      if (!ui.secKnown.has(w.id)) {
+        ui.secFold.add(w.id);
+        ui.secKnown.add(w.id);
+      }
+    });
   }
   function isSecOpen(id) {
     ensureSecFold();
@@ -1204,7 +1234,7 @@
       el.addEventListener('dragend', () => el.classList.remove('is-drag'));
     });
     const mark = (el, on) => { if (el) el.classList.toggle('is-drop', on); };
-    root.querySelectorAll('.kur-sec').forEach((sec) => {
+    root.querySelectorAll('.ud-sec, .kur-sec').forEach((sec) => {
       sec.addEventListener('dragover', (ev) => {
         ev.preventDefault();
         mark(sec, true);
@@ -2746,138 +2776,120 @@
   }
 
   function viewMentorProgres() {
-    const ses = nextSession();
-    const behind = belumSiap(ses);
-    const head = '<th class="name">Siswa</th>' + db.weeks.map((w) => '<th>' + esc(w.id) + '</th>').join('') + '<th>Materi</th>';
-    const body = people().map((s) => {
-      const cells = db.weeks.map((w) => {
-        const pct = progressPct(s.id, w.id);
-        const cls = pct >= 75 ? 'p3' : pct >= 40 ? 'p2' : pct > 0 ? 'p1' : 'p0';
-        return '<td class="' + cls + '">' + pct + '</td>';
-      }).join('');
-      return '<tr><td class="name"><button type="button" class="linkish" data-act="open-student" data-id="' + esc(s.id) + '">' + esc(s.name) + '</button></td>' +
-        cells + '<td>' + lecDotStrip(s.id) + '</td></tr>';
-    }).join('');
-    return '<div class="grid-2">' +
-      '<section class="card heat"><h2>Heatmap minggu × siswa</h2>' +
-        '<table><thead><tr>' + head + '</tr></thead><tbody>' + body + '</tbody></table>' +
-        '<p class="muted">Angka = % materi minggu itu yang ditandai selesai. Titik = 12 materi (selesai / terkunci / sisa). Bukan skor buatan.</p>' +
-      '</section>' +
-      '<section class="card"><h2>Belum siap kelas</h2>' +
-        '<p class="muted">Wajib sebelum ' + esc(ses.title) + ': ' + (ses.required || []).map((lid) => esc((lectureById(lid) || {}).title || lid)).join(', ') + '</p>' +
-        (behind.length
-          ? behind.map((s) => '<div class="row" style="justify-content:space-between;margin:8px 0">' +
-              '<button type="button" class="linkish" data-act="open-student" data-id="' + esc(s.id) + '">' + esc(s.name) + '</button>' +
-              '<a class="btn-sm" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', materi wajib sebelum sesi belum selesai ya.')) + '" target="_blank" rel="noopener">WA pengingat</a></div>'
-            ).join('')
-          : '<p>Semua yang lunas sudah siap.</p>') +
-        '<p class="muted">Tautan WA terbuka di perangkatmu. Prototype tidak menembak send-cohort-whatsapp.</p>' +
-      '</section></div>';
+    return '<div class="card"><h2>Progres</h2>' +
+      '<p class="muted">Persen materi yang ditandai selesai. Bukan skor buatan.</p>' +
+      '<div class="prog-list">' +
+      people().map((s) => {
+        const p = kurProgress(s.id);
+        return '<button type="button" class="prog-row" data-act="open-student" data-id="' + esc(s.id) + '">' +
+          avatarHtml(s, 'avatar sm') +
+          '<span class="prog-name">' + esc(s.name) +
+            '<div class="muted">' + p.n + '/' + p.total + ' materi</div></span>' +
+          '<div class="prog-bar-wrap"><div class="bar kur-bar"><span style="width:' + p.pct + '%"></span></div></div>' +
+          '<strong class="prog-pct">' + p.pct + '%</strong></button>';
+      }).join('') +
+      '</div></div>';
+  }
+
+  function lecHasContent(l) {
+    if (!l) return false;
+    if (l.type === 'text') return !!(l.body && String(l.body).trim());
+    if (l.type === 'document') return !!(l.resources && l.resources.length);
+    return !!(l.url || l.videoBlob);
+  }
+  function lecTypeIcon(l) {
+    if (l.type === 'text') return 'Aa';
+    if (l.type === 'document') return '≡';
+    return '▶';
   }
 
   function viewKurikulum() {
     const readonly = ui.role === 'asisten';
     const nVid = lectures().filter((l) => l.type === 'video').length;
     const nTxt = lectures().filter((l) => l.type === 'text').length;
+    const nFile = lectures().filter((l) => l.type === 'document').length;
     ensureSecFold();
-    const toolbar = '<div class="kur-toolbar">' +
+    const toolbar = '<div class="ud-head">' +
       '<div><h2 style="margin:0">Kurikulum</h2>' +
-        '<p class="muted" style="margin:6px 0 0">' + nVid + ' video · ' + nTxt + ' bacaan · geser bagian/item seperti siswa melihatnya. Preview HP di kanan.</p></div>' +
-      (readonly ? '' :
-        '<div class="row kur-toolbar-actions">' +
-          '<button type="button" class="btn-sm' + (sectionStyle() === 'minggu' ? ' on' : '') + '" data-act="sec-style" data-id="minggu">Pakai minggu</button>' +
-          '<button type="button" class="btn-sm' + (sectionStyle() === 'modul' ? ' on' : '') + '" data-act="sec-style" data-id="modul">Pakai modul</button>' +
-          '<button type="button" class="btn" data-act="add-sec">+ Bagian</button>' +
-        '</div>') +
-      '</div>';
-    let n = 0;
-    const sections = db.weeks.map((w) => {
+        '<p class="muted" style="margin:6px 0 0">Susun bagian, lalu tambah lecture. Geser untuk urutan. ' +
+        nVid + ' video · ' + nTxt + ' bacaan · ' + nFile + ' file.</p></div></div>';
+    const sections = db.weeks.map((w, wi) => {
       const items = lecturesInWeek(w.id);
       const open = isSecOpen(w.id);
-      const list = items.map((l) => {
-        n += 1;
-        return lecEditorCard(l, readonly, n);
-      }).join('') ||
-        '<p class="muted kur-empty">Belum ada item. Tarik ke sini atau tambah di bawah.</p>';
-      return '<section class="card kur-sec' + (open ? '' : ' is-collapsed') + '" data-sec="' + esc(w.id) + '">' +
-        '<div class="sec-head">' +
+      const editing = ui.editSecId === w.id;
+      const list = items.map((l, li) => lecEditorCard(l, readonly, li + 1)).join('');
+      const addOpen = ui.addItemWeek === w.id;
+      return '<section class="ud-sec' + (open ? '' : ' is-collapsed') + '" data-sec="' + esc(w.id) + '">' +
+        '<div class="ud-sec-head">' +
           (readonly ? '' : '<span class="drag-handle" draggable="true" data-drag="sec" data-id="' + esc(w.id) + '" title="Geser bagian">⋮⋮</span>') +
-          coverHtml('week', w.id, 'cover-thumb') +
-          '<button type="button" class="sec-caret" data-act="sec-fold" data-id="' + esc(w.id) + '"' +
-            ' aria-expanded="' + open + '" aria-label="' + (open ? 'Tutup' : 'Buka') + ' bagian">' +
-            '<i></i></button>' +
-          (readonly
-            ? '<h3 style="margin:0;flex:1">' + esc(w.title) + '</h3>'
-            : '<input class="sec-title" data-act="sec-title" data-id="' + esc(w.id) + '" value="' + esc(w.title) + '" aria-label="Nama bagian">') +
-          '<span class="muted sec-count">' + items.length + ' item</span>' +
-          (readonly ? '' : '<div class="row sec-actions">' +
-            '<label class="muted">Jatuh tempo <input type="date" data-act="sec-due" data-id="' + esc(w.id) + '" value="' + esc(w.due || '') + '"></label>' +
-            '<label class="btn-sm">Cover<input type="file" hidden data-act="cover-file" data-kind="week" data-id="' + esc(w.id) + '" accept="image/*"></label>' +
+          '<button type="button" class="ud-caret" data-act="sec-fold" data-id="' + esc(w.id) + '"' +
+            ' aria-expanded="' + open + '">' + (open ? '▾' : '▸') + '</button>' +
+          '<span class="ud-kicker">Bagian ' + (wi + 1) + ':</span>' +
+          (editing && !readonly
+            ? '<input class="ud-title-in" data-act="sec-title" data-id="' + esc(w.id) + '" value="' + esc(w.title) + '" aria-label="Nama bagian">'
+            : '<strong class="ud-sec-title">' + esc(w.title) + '</strong>') +
+          '<span class="muted ud-count">' + items.length + ' lecture</span>' +
+          (readonly ? '' : '<div class="ud-actions">' +
+            (editing ? '<input type="date" data-act="sec-due" data-id="' + esc(w.id) + '" value="' + esc(w.due || '') + '" title="Jatuh tempo">' : '') +
+            '<button type="button" class="btn-sm" data-act="edit-sec" data-id="' + esc(w.id) + '">' + (editing ? 'Selesai' : 'Edit') + '</button>' +
             '<button type="button" class="btn-sm" data-act="del-sec" data-id="' + esc(w.id) + '">Hapus</button>' +
           '</div>') +
         '</div>' +
-        '<div class="sec-body">' +
-          list +
-          (readonly ? '' : addLecForm(w.id)) +
+        '<div class="ud-sec-body">' +
+          (list || '<p class="muted ud-empty">Belum ada lecture. Tambah item kurikulum di bawah.</p>') +
+          (readonly ? '' : (addOpen
+            ? addLecForm(w.id)
+            : '<button type="button" class="ud-add" data-act="add-item" data-id="' + esc(w.id) + '">+ Item kurikulum</button>')) +
         '</div>' +
       '</section>';
     }).join('');
-    const previewSid = ui.kurPreviewId || 's-kamu';
-    const preview =
-      '<aside class="kur-phone">' +
-        '<label class="muted">Lihat sebagai siswa ' +
-          '<select data-act="kur-preview-person">' +
-            people().map((s) => '<option value="' + esc(s.id) + '"' + (previewSid === s.id ? ' selected' : '') + '>' + esc(s.name) + '</option>').join('') +
-          '</select></label>' +
-        '<div class="phone-bezel">' +
-          '<div class="phone-notch"></div>' +
-          '<div class="phone-screen kurikulum-pane is-open" style="position:relative;max-height:none;transform:none;left:auto;width:auto">' +
-            renderKurikulumSidebar(previewSid, { preview: true }) +
-          '</div>' +
-        '</div>' +
-        '<p class="muted">Kunci &amp; centang mengikuti akses ' + esc(nameOf(previewSid)) + '.</p>' +
-      '</aside>';
-    return '<div class="kur-split">' + '<div class="kur-editor">' + toolbar + sections + '</div>' + preview + '</div>';
+    const newSec = readonly ? '' : (ui.addSecOpen
+      ? '<form class="ud-new-sec" data-act="add-sec-form">' +
+          '<strong>Bagian baru</strong>' +
+          '<input name="title" required maxlength="140" placeholder="Masukkan judul">' +
+          '<label class="muted">Jatuh tempo (opsional) <input name="due" type="date"></label>' +
+          '<div class="row">' +
+            '<button class="btn" type="submit">Tambah bagian</button>' +
+            '<button type="button" class="btn secondary" data-act="cancel-sec">Batal</button>' +
+          '</div></form>'
+      : '<button type="button" class="ud-add ud-add-sec" data-act="new-sec">+ Bagian</button>');
+    return '<div class="ud-page">' + toolbar + sections + newSec + '</div>';
   }
 
   function addLecForm(weekId) {
-    return '<form class="add-lec" data-act="add-lec" data-week="' + esc(weekId) + '">' +
-      '<strong>Tambah item</strong>' +
-      '<select name="kind">' +
-        '<option value="video">Video</option>' +
-        '<option value="file">File</option>' +
-        '<option value="text">Teks / bacaan</option>' +
-      '</select>' +
-      '<input name="title" required maxlength="140" placeholder="Judul">' +
-      '<label class="muted">Tautan YouTube / Drive / TikTok (video) atau URL file</label>' +
-      '<input name="url" placeholder="https://…">' +
-      '<p class="muted" style="margin:0">Video: MP4 maks 80 MB di browser ini. File lain maks 20 MB. Cover maks 5 MB.</p>' +
-      '<label class="vid-drop" data-act="vid-drop" data-week="' + esc(weekId) + '">' +
-        '<input type="file" name="videoFile" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v" hidden>' +
-        '<span>Drop video ke sini, atau ketuk untuk pilih file</span>' +
-      '</label>' +
+    return '<form class="ud-new-item" data-act="add-lec" data-week="' + esc(weekId) + '">' +
+      '<div class="ud-kinds" role="group" aria-label="Jenis item">' +
+        '<label><input type="radio" name="kind" value="video" checked> Lecture</label>' +
+        '<label><input type="radio" name="kind" value="text"> Bacaan</label>' +
+        '<label><input type="radio" name="kind" value="file"> File</label>' +
+      '</div>' +
+      '<label class="muted">Lecture baru</label>' +
       '<div class="row">' +
-        '<label class="muted"><input type="checkbox" name="req"> Wajib sebelum live class</label>' +
-        '<button class="btn" type="submit">Tambah ke bagian ini</button>' +
+        '<input name="title" required maxlength="140" placeholder="Masukkan judul" style="flex:1">' +
+        '<button class="btn" type="submit">Tambah lecture</button>' +
+        '<button type="button" class="btn secondary" data-act="cancel-item">Batal</button>' +
       '</div></form>';
   }
 
   function lecEditorCard(l, readonly, n) {
     const open = ui.editLecId === l.id;
+    const has = lecHasContent(l);
     const kindNote = l.type === 'video' ? videoKindLabel(l) : (l.type === 'text' ? 'Bacaan' : ((l.resources || []).length + ' file'));
-    const thumb = coverHtml('lec', l.id, 'cover-mini');
-    const head = '<div class="lec-edit-head lec">' +
+    const mins = l.mins ? (l.mins + ' mnt') : '';
+    const head = '<div class="ud-item-head">' +
       (readonly ? '' : '<span class="drag-handle" draggable="true" data-drag="lec" data-id="' + esc(l.id) + '" title="Geser materi">⋮⋮</span>') +
-      (thumb || '<span class="mark" aria-hidden="true"></span>') +
-      '<span><div class="t">' + (n || '') + '. ' + esc(l.title) + '</div>' +
-        '<div class="m">' + esc(typeLabel(l.type)) + ' · ' + esc(kindNote) + (l.requiredBefore ? ' · wajib' : '') +
-        ' · ' + esc(l.mins || 0) + ' mnt</div></span>' +
-      '<div class="row">' +
-        '<button type="button" class="btn-sm" data-act="edit-lec" data-id="' + esc(l.id) + '">' +
-          (open ? 'Tutup' : 'Ubah') + '</button>' +
+      '<span class="ud-icon" aria-hidden="true">' + lecTypeIcon(l) + '</span>' +
+      '<span class="ud-item-copy"><strong>' + (n ? n + '. ' : '') + esc(l.title) + '</strong>' +
+        '<div class="muted">' + esc(kindNote) + (l.requiredBefore ? ' · wajib' : '') + '</div></span>' +
+      (mins ? '<span class="muted ud-mins">' + esc(mins) + '</span>' : '') +
+      '<div class="ud-actions">' +
+        (readonly ? '' : ((open)
+          ? '<button type="button" class="btn-sm" data-act="edit-lec" data-id="' + esc(l.id) + '">Tutup</button>'
+          : '<button type="button" class="btn-sm' + (has ? '' : ' ud-content-btn') + '" data-act="edit-lec" data-id="' + esc(l.id) + '">' +
+            (has ? 'Edit' : '+ Konten') + '</button>')) +
         (readonly ? '' : '<button type="button" class="btn-sm" data-act="del-lec" data-id="' + esc(l.id) + '">Hapus</button>') +
       '</div></div>';
-    if (!open) return '<article class="lec-edit" data-lec-drop="' + esc(l.id) + '">' + head + '</article>';
+    if (!open) return '<article class="ud-item" data-lec-drop="' + esc(l.id) + '">' + head + '</article>';
     const qs = (l.questions || []).concat([{ q: '', hint: '' }]);
     const qHtml = qs.map((q, i) =>
       '<div class="q-row">' +
@@ -2913,6 +2925,8 @@
           '<label class="vid-drop"><input type="file" data-act="cover-file" data-kind="lec" data-id="' + esc(l.id) + '" accept="image/*" hidden><span>Unggah cover (maks 5 MB)</span></label>' +
           (l.type === 'text'
             ? '<h4>Bacaan</h4><textarea data-act="lec-body" data-id="' + esc(l.id) + '" rows="8" placeholder="Teks. **tebal** boleh.">' + esc(l.body || '') + '</textarea>'
+            : l.type === 'document'
+            ? '<p class="muted">Unggah file atau tautan di bagian File di bawah.</p>'
             : '<h4>Video</h4>' +
               '<p class="muted">YouTube paling lancar. Drive juga bisa. Atau unggah MP4.</p>' +
               '<input data-act="lec-field" data-id="' + esc(l.id) + '" data-k="url" value="' + esc(l.url || '') + '" placeholder="https://youtube.com/…">' +
@@ -2934,7 +2948,7 @@
           '<h4>Cek pemahaman</h4>' +
           qHtml +
         '</div>';
-    return '<article class="lec-edit is-open" data-lec-drop="' + esc(l.id) + '">' + head + body + '</article>';
+    return '<article class="ud-item is-open" data-lec-drop="' + esc(l.id) + '">' + head + body + '</article>';
   }
 
   function viewPustaka() {
@@ -3750,6 +3764,23 @@
       retitleDefaultSections();
       save();
       render();
+    } else if (act === 'edit-sec') {
+      const id = btn.getAttribute('data-id');
+      ui.editSecId = ui.editSecId === id ? null : id;
+      render();
+    } else if (act === 'add-item') {
+      ui.addItemWeek = btn.getAttribute('data-id');
+      setSecOpen(ui.addItemWeek, true);
+      render();
+    } else if (act === 'cancel-item') {
+      ui.addItemWeek = '';
+      render();
+    } else if (act === 'new-sec') {
+      ui.addSecOpen = true;
+      render();
+    } else if (act === 'cancel-sec') {
+      ui.addSecOpen = false;
+      render();
     } else if (act === 'add-sec') {
       e.preventDefault();
       ensureSecFold();
@@ -4004,6 +4035,24 @@
         toast(ok ? 'Foto TikTok tersimpan.' : 'Foto gagal. Inisial + unggah.');
         render();
       });
+    } else if (act === 'add-sec-form') {
+      const title = String(fd.get('title') || '').trim();
+      if (!title) return;
+      ensureSecFold();
+      const id = 's-' + Date.now();
+      db.weeks.push({ id: id, title: title, due: String(fd.get('due') || '') });
+      db.weeks.forEach((w) => { if (w.id !== id) ui.secFold.add(w.id); });
+      ui.secFold.delete(id);
+      ui.secKnown = ui.secKnown || new Set();
+      ui.secKnown.add(id);
+      ui.addSecOpen = false;
+      save();
+      toast('Bagian ditambah.');
+      render();
+      requestAnimationFrame(() => {
+        const el = document.querySelector('[data-sec="' + id + '"]');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     } else if (act === 'add-lec') {
       const weekId = form.getAttribute('data-week');
       const title = String(fd.get('title') || '').trim();
@@ -4011,10 +4060,6 @@
       const kind = String(fd.get('kind') || 'video');
       const file = form.querySelector('[name="videoFile"]') && form.querySelector('[name="videoFile"]').files[0];
       if (!title) return;
-      if (kind === 'video' && !url && !file) {
-        toast('Tempel tautan atau unggah file video.');
-        return;
-      }
       const id = 'v-' + Date.now();
       const type = kind === 'text' ? 'text' : (kind === 'file' ? 'document' : 'video');
       db.lectures.push({
@@ -4032,13 +4077,14 @@
         questions: [],
         resources: type === 'document' && url ? [{ name: title, url: url }] : []
       });
-      ui.editLecId = id;
+      ui.editLecId = null;
+      ui.addItemWeek = '';
       setSecOpen(weekId, true);
       save();
       if (kind === 'video' && file) {
         ingestVideoFile(file, { lecId: id });
       } else {
-        toast(type === 'text' ? 'Bacaan ditambah. Isi teks di Ubah.' : (type === 'document' ? 'File ditambah.' : 'Video ditambah.'));
+        toast('Lecture ditambah. Klik + Konten untuk unggah.');
         render();
       }
     } else if (act === 'meet') {
@@ -4135,7 +4181,7 @@
       c.eligibleMentor = score >= SEED.exam.passMark;
       if (c.eligibleMentor) {
         c.certSerial = c.certSerial || ('ANT-' + ui.personaId.replace(/\W/g, '').toUpperCase().slice(0, 8) + '-' + String(nowMs()).slice(-4));
-        setStage(ui.personaId, 'lulus', 'Lulus tes ' + score + '/' + qs.length);
+        setStage(ui.personaId, 'mentee', 'Lulus tes ' + score + '/' + qs.length);
       }
       pushTimeline(ui.personaId, 'exam', 'Tes akhir ' + score + '/' + qs.length);
       save();

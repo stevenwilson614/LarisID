@@ -82,7 +82,7 @@
       id: 'a1-lunas',
       act: 1,
       title: 'Lunas mentoring',
-      sayAnton: 'Kamu (demo) di Aktif. Merchant = Anton. Cek transfer di baris siswa / profil.',
+      sayAnton: 'Kamu (demo) di Mentee. Merchant = Anton. Cek transfer di baris siswa / profil.',
       saySiswa: 'Kelas penuh. Alat lynk ikut mentoring. Laris Affiliate tetap satuan / Contoh.',
       student: { personaId: 's-kamu', tab: 'alat' },
       mentor: { tab: 'orang', personId: 's-kamu', hub: 'pipa' }
@@ -91,7 +91,7 @@
       id: 'a2-renew',
       act: 2,
       title: 'Perpanjangan 5 hari',
-      sayAnton: 'Hadi Kusuma di Perpanjangan. Jeda 5 hari + copy WA di Otomasi, bukan hardcode.',
+      sayAnton: 'Hadi Kusuma akan keluar. Jeda 5 hari + copy WA di Otomasi, bukan hardcode.',
       saySiswa: 'Hadi masih masuk kelas. Akses sampai 23 Sep. Peringatan jujur, bukan ancaman palsu.',
       student: { personaId: 's-hadi', tab: 'home' },
       mentor: { tab: 'orang', personId: 's-hadi', hub: 'pipa' }
@@ -100,7 +100,7 @@
       id: 'a2-grace',
       act: 2,
       title: 'Grace 1 hari',
-      sayAnton: 'Irma Sari: tugas WA pribadi Anton. Setelah grace, preview video 1 saja + Nurture.',
+      sayAnton: 'Irma Sari: tugas WA pribadi Anton. Setelah tenggang, preview video 1 saja + Sudah keluar.',
       saySiswa: 'Irma masih lunas dalam masa tenggang. Bayar hari ini supaya kelas tidak mengunci.',
       student: { personaId: 's-irma', tab: 'home' },
       mentor: { tab: 'tugas', personId: 's-irma' }

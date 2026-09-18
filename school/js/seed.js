@@ -180,14 +180,12 @@ window.ANTON_SEED = {
   pipelineStages: [
     { id: 'wa_baru', label: 'WA baru' },
     { id: 'form', label: 'Form' },
-    { id: 'trial', label: 'Trial 24 jam' },
     { id: 'nonton', label: 'Nonton belum bayar' },
-    { id: 'aktif', label: 'Aktif' },
-    { id: 'perpanjangan', label: 'Perpanjangan' },
-    { id: 'grace', label: 'Grace' },
-    { id: 'nurture', label: 'Nurture' },
+    { id: 'trial', label: '24 jam trial' },
+    { id: 'mentee', label: 'Mentee' },
+    { id: 'akan_keluar', label: 'Akan keluar' },
+    { id: 'sudah_keluar', label: 'Sudah keluar' },
     { id: 'tidak_tertarik', label: 'Tidak tertarik' },
-    { id: 'lulus', label: 'Lulus' },
     { id: 'mentor', label: 'Mentor' }
   ],
   actionPlans: [
@@ -208,7 +206,7 @@ window.ANTON_SEED = {
       steps: [
         { id: 't12', waitHours: 12, kind: 'wa', title: '12 jam sisa diskon', body: 'Halo {name}, sisa 12 jam harga perkenalan mentoring Anton. Bayar transfer atau kartu, atau lanjut coba video 1.' },
         { id: 'twatch', waitHours: 0, kind: 'task', title: 'Anton WA: sudah nonton, belum bayar', body: 'Halo {name}, semoga video 1 kebantu. Kalau mau lanjut kelas bulan ini, transfer / kartu di sekolah ya.' },
-        { id: 'tnurture', waitHours: 24, kind: 'stage', to: 'nurture' }
+        { id: 'tnurture', waitHours: 24, kind: 'stage', to: 'sudah_keluar' }
       ]
     },
     {
@@ -294,25 +292,25 @@ window.ANTON_SEED = {
   },
   crm: {
     's-tamu': { stage: 'wa_baru' },
-    's-kamu': { stage: 'aktif' },
-    's-dina': { stage: 'aktif' },
+    's-kamu': { stage: 'mentee' },
+    's-dina': { stage: 'mentee' },
     's-budi': { stage: 'wa_baru' },
-    's-sari': { stage: 'aktif' },
-    's-eko': { stage: 'aktif' },
-    's-nina': { stage: 'aktif' },
-    's-raka': { stage: 'aktif' },
-    's-maya': { stage: 'aktif' },
-    's-rina': { stage: 'nurture' },
-    's-toni': { stage: 'nurture' },
+    's-sari': { stage: 'mentee' },
+    's-eko': { stage: 'mentee' },
+    's-nina': { stage: 'mentee' },
+    's-raka': { stage: 'mentee' },
+    's-maya': { stage: 'mentee' },
+    's-rina': { stage: 'sudah_keluar' },
+    's-toni': { stage: 'sudah_keluar' },
     's-ayu': { stage: 'trial' },
     's-farah': { stage: 'nonton', watchedFirstAt: '2026-09-18T08:00:00+07:00', antonWatchTask: true, wa12Sent: true },
     's-gilang': { stage: 'tidak_tertarik', notInterestedAt: '2026-09-16T12:00:00+07:00', extendedQueued: true },
-    's-hadi': { stage: 'perpanjangan', warn5Sent: true },
-    's-irma': { stage: 'grace', warn5Sent: true, antonRenewTask: true, grace1Sent: true },
-    's-joko': { stage: 'lulus', examScore: 5, examAt: '2026-09-17T18:00:00+07:00', eligibleMentor: true, certSerial: 'ANT-JOKO-001' },
+    's-hadi': { stage: 'akan_keluar', warn5Sent: true },
+    's-irma': { stage: 'akan_keluar', warn5Sent: true, antonRenewTask: true, grace1Sent: true },
+    's-joko': { stage: 'mentee', examScore: 5, examAt: '2026-09-17T18:00:00+07:00', eligibleMentor: true, certSerial: 'ANT-JOKO-001' },
     's-dewi': { stage: 'mentor', examScore: 5, examAt: '2026-06-20T18:00:00+07:00', eligibleMentor: true, acceptedMentorAt: '2026-07-01T10:00:00+07:00', certSerial: 'ANT-DEWI-001', acceptedOverride: true },
-    's-oki': { stage: 'aktif' },
-    's-putri': { stage: 'aktif' }
+    's-oki': { stage: 'mentee' },
+    's-putri': { stage: 'mentee' }
   },
   applications: {
     's-ayu': { name: 'Ayu Rahma', wa: '628120000011', experience: 'Jualan jepit rambut 2 bulan, omset masih kecil.', why: 'Mau rumus harga dan live yang tahan.', at: '2026-09-18T09:00:00+07:00' },
