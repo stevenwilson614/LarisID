@@ -19,6 +19,14 @@ Affiliate Center ToS still applies. Caps in the UI: **50 / kirim, 1.000 / 24 jam
    (Affiliate Center opens on `affiliate-id.tokopedia.com`)
 7. Akun chip: **Seller Center** or **Affiliate Center**
 
+## Sample CSV
+
+Side panel → Kreator → **Unduh contoh Kalodata**, or open:
+
+`affiliate/extension/sample/Creator_List_ID_Last30Days_sample.csv`
+
+Fake Indonesia Creator List (Last 30 Days) with contact columns. Not a real Kalodata file.
+
 ## Test without sending
 
 1. Open Affiliate Center → **Find Creators / Cari Kreator**.

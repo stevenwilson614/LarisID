@@ -203,13 +203,14 @@
     var selectedN = rows.filter(function (c) { return ui.selected[c.id]; }).length;
     return '<section class="card">' +
       '<h2>Kreator</h2>' +
-      '<p class="muted">CSV Kalodata: kolom <code>handle</code> plus <code>creator_id</code> / <code>open_id</code> kalau ada.</p>' +
+      '<p class="muted">CSV gaya Kalodata Creator List: <code>Creator Handle</code> + <code>Unique ID</code>. Contoh unduhan di bawah.</p>' +
       '<form data-act="add-handle" class="row" style="margin-top:10px">' +
         '<input name="handle" type="text" placeholder="@handle" required autocomplete="off" style="flex:1;min-width:0">' +
         '<button class="btn-sm" type="submit">Tambah</button>' +
       '</form>' +
       '<label class="field">Import CSV</label>' +
       '<input type="file" accept=".csv,text/csv" data-act="csv">' +
+      '<a class="btn-ghost" href="' + esc(chrome.runtime.getURL('sample/Creator_List_ID_Last30Days_sample.csv')) + '" download="Creator_List_ID_Last30Days_sample.csv" style="margin-top:10px;display:block;text-align:center;text-decoration:none">Unduh contoh Kalodata</a>' +
       '</section>' +
       '<section class="card">' +
         '<div class="row" style="justify-content:space-between">' +
@@ -587,20 +588,50 @@
   function parseCsv(text) {
     var lines = String(text || '').trim().split(/\r?\n/).filter(Boolean);
     if (!lines.length) return [];
-    var head = lines[0].split(/[,;\t]/).map(function (h) { return h.trim().toLowerCase().replace(/['"]/g, ''); });
-    var hi = colIndex(head, ['handle', 'username', 'unique_id', 'uniqueid', 'creator_handle']);
-    var ni = colIndex(head, ['name', 'nickname', 'creator_name', 'nick_name']);
-    var oi = colIndex(head, ['creator_id', 'open_id', 'openid', 'oec_id', 'creator_oecuid', 'uid']);
-    var start = hi >= 0 ? 1 : 0;
+    var head = lines[0].split(/[,;\t]/).map(function (h) {
+      return h.trim().toLowerCase().replace(/['"]/g, '').replace(/\s+/g, ' ');
+    });
+    var hi = colIndex(head, [
+      'creator handle', 'creator_handle', 'handle', 'username', 'tiktok handle', 'unique_id(handle)'
+    ]);
+    var ni = colIndex(head, [
+      'nickname', 'creator nickname', 'creator_nickname', 'name', 'creator name', 'creator_name', 'nick_name'
+    ]);
+    var oi = colIndex(head, [
+      'unique id', 'unique_id', 'creator id', 'creator_id', 'open_id', 'openid', 'oec_id', 'creator_oecuid', 'uid'
+    ]);
+    // Prefer dedicated handle col; Unique ID alone is not a handle.
+    if (hi < 0 && colIndex(head, ['unique id', 'unique_id', 'creator id', 'creator_id']) >= 0) {
+      /* leave hi < 0 so we don't treat Unique ID as handle */
+    }
+    var start = (hi >= 0 || ni >= 0 || oi >= 0) ? 1 : 0;
     var out = [];
     for (var i = start; i < lines.length; i++) {
-      var cols = lines[i].split(/[,;\t]/).map(function (c) { return c.replace(/^["']|["']$/g, '').trim(); });
-      var handle = hi >= 0 ? cols[hi] : cols[0];
+      var cols = splitCsvLine(lines[i]);
+      var handle = hi >= 0 ? cols[hi] : (start === 0 ? cols[0] : '');
       var name = ni >= 0 ? cols[ni] : '';
       var openId = oi >= 0 ? cols[oi] : '';
       var n = Send.normHandle(handle);
       if (n) out.push({ handle: n, name: String(name || '').trim(), creatorOpenId: String(openId || '').trim() });
     }
+    return out;
+  }
+
+  function splitCsvLine(line) {
+    var out = [];
+    var cur = '';
+    var q = false;
+    for (var i = 0; i < line.length; i++) {
+      var ch = line[i];
+      if (ch === '"') {
+        if (q && line[i + 1] === '"') { cur += '"'; i += 1; }
+        else q = !q;
+      } else if ((ch === ',' || ch === ';' || ch === '\t') && !q) {
+        out.push(cur.trim());
+        cur = '';
+      } else cur += ch;
+    }
+    out.push(cur.trim());
     return out;
   }
 
