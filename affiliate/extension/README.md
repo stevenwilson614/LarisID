@@ -1,6 +1,6 @@
 # Laris Affiliate — Chrome extension (unpacked)
 
-Local v0.3. **Not** on the Chrome Web Store, **not** on larisid.com, **not** copied into `_site`.
+Local v0.3.1. **Not** on the Chrome Web Store, **not** on larisid.com, **not** copied into `_site`.
 
 Sends Target Collab through **your already-open Seller Center session**. Cookies stay in Chrome. No Partner Center. No password field.
 
@@ -23,12 +23,12 @@ Satu sesi: **panel terbuka + tab Affiliate Center terbuka + laptop tidak sleep**
 1. Chrome → `chrome://extensions`
 2. Developer mode on
 3. **Load unpacked** → this folder (`affiliate/extension`)
-4. After a code pull: **Reload** the extension (version is on the card, now **0.3.0**)
+4. After a code pull: **Reload** the extension (version is on the card, now **0.3.1**)
 5. Pin the icon. Click it to open the side panel.
 6. Log into [Seller Center](https://seller-id.tokopedia.com/) → **Affiliate → Get Started**
 7. Refresh the Affiliate Center tab after reload so the adapter attaches.
 
-Class zip (no git needed): `affiliate/dist/laris-affiliate-0.3.0.zip` — unzip, then Load unpacked on that folder.
+Class zip (no git needed): `affiliate/dist/laris-affiliate-0.3.1.zip` — unzip, then Load unpacked on that folder.
 
 ## Recon (recorded 2026-09-18 on Steven’s shop)
 
@@ -42,16 +42,16 @@ Manual Target Collab to `@bule_barat` recorded:
 
 Tes 1 LIVE: add `@bule_barat` only, Izinkan kirim live, Tes 1 kreator · LIVE. **Do not** run a 50-batch on a test product you do not intend to sell.
 
-Recorded `creator_oec_id` for that self-test: `7495372765352463150`. After reload (0.3.0), click Tes 1 in the panel — Chrome Apple Events are off so the agent cannot press it for you.
+Recorded `creator_oec_id` for that self-test: `7495372765352463150`. After reload (0.3.1), click Tes 1 in the panel — Chrome Apple Events are off so the agent cannot press it for you.
 
-Kalodata pickup selectors live in `content/kalodata.js` (`SELECTORS`). After reload: open `kalodata.com/creator`, Akun → Izinkan baca halaman Kalodata → Kreator → Ambil. Compare one Unique ID to a CSV export of the same creator if you have one.
+Kalodata pickup is mapped to the live ID ranking table (`tr.group.cursor-pointer`, `@handle` in the Info Kreator cell — no Unique ID in that DOM). After reload: open `kalodata.com/creator`, **refresh that tab**, Akun → Izinkan baca halaman Kalodata. Opt-in pulls the visible page onto Kreator. Next pages: Ambil again. Ranking rows are handle-only until Cari kreator is recorded.
 
 Kalodata Unique ID is stored as `creatorOpenId`. It is **not proven** equal to `creator_oec_id` (the sample CSV ids are fake). If send returns handle_only, record Cari kreator then retry.
 
 ## Creators in
 
 1. **Tempel** from a Kalodata table (Starter-safe; no export quota).
-2. **Ambil dari halaman Kalodata** — opt-in on Akun. Reads **visible** rows only. One click = one page. Kalodata ToS 4.1.7 / 4.1.8; risk is to **your Kalodata account**.
+2. **Ambil dari halaman Kalodata** — opt-in on Akun (that first tick **is** the first page). Reads **visible** rows only. Next page: click Ambil. Kalodata ToS 4.1.7 / 4.1.8; risk is to **your Kalodata account**.
 3. **CSV** — Professional export (`Creator Handle` + `Unique ID`). Starter cannot export.
 
 ## Test without sending

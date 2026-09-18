@@ -261,9 +261,9 @@
           : '<span class="chip locked">Kalodata belum tab</span>') +
       '</p>' +
       '<button type="button" class="btn" data-act="kalo-read" style="margin-top:8px"' +
-        (db.account.allowKalodataRead && ui.conn.kalodata && ui.conn.kalodata.present ? '' : ' disabled') +
+        (db.account.allowKalodataRead ? '' : ' disabled') +
       '>Ambil dari halaman Kalodata (yang terlihat)</button>' +
-      '<p class="muted">Satu klik = satu halaman. Geser halaman di Kalodata, lalu Ambil lagi. Tidak otomatis.</p>' +
+      '<p class="muted">Centang di Akun mengambil halaman yang sedang terbuka. Geser halaman di Kalodata, lalu Ambil lagi. Tidak auto-pagination.</p>' +
       '<label class="field">Import CSV</label>' +
       '<input type="file" accept=".csv,text/csv" data-act="csv">' +
       '<a class="btn-ghost" href="' + esc(chrome.runtime.getURL('sample/Creator_List_ID_Last30Days_sample.csv')) + '" download="Creator_List_ID_Last30Days_sample.csv" style="margin-top:10px;display:block;text-align:center;text-decoration:none">Unduh contoh Kalodata</a>' +
@@ -361,7 +361,7 @@
       '</section>' +
       '<section class="card">' +
       '<h2>Baca halaman Kalodata</h2>' +
-      '<p class="muted">Opt-in. Hanya baris yang sudah terlihat di tab Kalodata kamu. Tidak menembus kuota ekspor, tidak kirim data ke LarisID. Kalodata ToS 4.1.7 / 4.1.8: risiko ada di akun Kalodata kamu.</p>' +
+      '<p class="muted">Opt-in. Centang = ambil handle yang sudah terlihat di tab Kalodata. Tidak menembus kuota ekspor, tidak kirim data ke LarisID. Kalodata ToS 4.1.7 / 4.1.8: risiko ada di akun Kalodata kamu.</p>' +
       '<label class="muted"><input type="checkbox" data-act="arm-kalo"' + (db.account.allowKalodataRead ? ' checked' : '') + '> Izinkan baca halaman Kalodata</label>' +
       '</section>' +
       '<section class="card">' +
@@ -793,6 +793,49 @@
     });
   }
 
+  var kaloPulling = false;
+  function pullKalodata(opts) {
+    opts = opts || {};
+    if (!db.account.allowKalodataRead) {
+      toast('Izinkan baca halaman Kalodata di Akun dulu');
+      return;
+    }
+    if (kaloPulling && !opts.retry) return;
+    kaloPulling = true;
+    var left = opts.retries == null ? 0 : opts.retries;
+    if (!opts.retry) toast('Mengambil baris Kalodata…');
+    Send.kaloRead().then(function (res) {
+      var rows = ((res && res.rows) || []).map(function (r) {
+        return {
+          handle: Send.normHandle(r.handle),
+          name: r.name || '',
+          creatorOpenId: r.creatorOpenId || '',
+          followers: r.followers || 0,
+          revenue: r.revenue || 0,
+          source: 'kalodata-page'
+        };
+      }).filter(function (r) { return r.handle; });
+      if (rows.length) {
+        kaloPulling = false;
+        ui.tab = 'kreator';
+        mergeRows(rows, 'kalodata-page');
+        return;
+      }
+      if (left > 0) {
+        setTimeout(function () {
+          kaloPulling = false;
+          pullKalodata({ retries: left - 1, retry: true });
+        }, 700);
+        return;
+      }
+      kaloPulling = false;
+      toast((res && res.reason) || 'Tidak ada @handle di halaman Kalodata. Refresh tab Daftar Kreator, lalu Ambil lagi.', 'bad');
+    }).catch(function () {
+      kaloPulling = false;
+      toast('Kalodata tidak terbaca. Reload ekstensi, refresh kalodata.com/creator, lalu Ambil.', 'bad');
+    });
+  }
+
   function mergeRows(rows, sourceLabel) {
     if (!rows || !rows.length) {
       toast('Tidak ada kreator terbaca.', 'bad');
@@ -1006,24 +1049,7 @@
       var box = document.querySelector('[data-act="paste-handles"]');
       mergeRows(parseHandlesText(box && box.value), 'paste');
     } else if (act === 'kalo-read') {
-      if (!db.account.allowKalodataRead) { toast('Izinkan baca halaman Kalodata di Akun dulu'); return; }
-      Send.kaloRead().then(function (res) {
-        if (!res || !res.ok) {
-          toast((res && res.reason) || 'Kalodata tidak terbaca', 'bad');
-          return;
-        }
-        var rows = (res.rows || []).map(function (r) {
-          return {
-            handle: Send.normHandle(r.handle),
-            name: r.name || '',
-            creatorOpenId: r.creatorOpenId || '',
-            followers: r.followers || 0,
-            revenue: r.revenue || 0,
-            source: 'kalodata-page'
-          };
-        }).filter(function (r) { return r.handle; });
-        mergeRows(rows, 'kalodata-page');
-      });
+      pullKalodata();
     } else if (act === 'reset-recon') {
       chrome.storage.local.set({ 'laris-affiliate-recon': { search: [], collab: [], im: [] } }, function () {
         toast('Rekaman adapter dihapus');
@@ -1063,14 +1089,18 @@
     }
     else if (act === 'arm-kalo') {
       if (t.checked) {
-        if (!confirm('Izinkan ekstensi membaca baris kreator yang sudah terlihat di tab Kalodata kamu? Ini menyentuh Kalodata ToS 4.1.7 dan 4.1.8. Risikonya ke akun Kalodata kamu, bukan server LarisID. Satu klik = satu halaman terlihat. Tidak ada auto-pagination.')) {
+        if (!confirm('Izinkan ekstensi membaca baris kreator yang sudah terlihat di tab Kalodata kamu? Ini menyentuh Kalodata ToS 4.1.7 dan 4.1.8. Risikonya ke akun Kalodata kamu, bukan server LarisID. Centang ini mengambil halaman yang sedang terbuka. Tidak ada auto-pagination.')) {
           t.checked = false;
           return;
         }
         db.account.allowKalodataRead = true;
-      } else {
-        db.account.allowKalodataRead = false;
+        persist();
+        ui.tab = 'kreator';
+        render();
+        pullKalodata({ retries: 6 });
+        return;
       }
+      db.account.allowKalodataRead = false;
       persist(); render();
     }
     else if (act === 'csv' && t.files && t.files[0]) {

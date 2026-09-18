@@ -55,8 +55,8 @@ servers. Accepted with these hard rules:
 - DOM only. Rows the student can already see. **No** MAIN-world hook, **no**
   XHR/response capture, **no** fetch to Kalodata APIs, **no** bypass of plan
   limits (4.1.6 stays untouched).
-- No auto-pagination, no scrolling loop, no scheduler. One click = one visible
-  page. Student pages in Kalodata, then clicks Ambil again.
+- No auto-pagination, no scrolling loop, no scheduler. Opt-in (and each Ambil)
+  reads **one** visible page. Student pages in Kalodata, then clicks Ambil again.
 - Opt-in default off. Confirm names 4.1.7 / 4.1.8 and that the risk is to
   their Kalodata account.
 - Data stays in `chrome.storage.local` on that machine. Never pooled, never

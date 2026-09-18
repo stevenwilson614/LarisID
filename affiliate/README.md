@@ -2,11 +2,11 @@
 
 Local prototype. **Not** on larisid.com, **not** copied into `_site`, **not** applied to Contabo.
 
-## Product (v0.3)
+## Product (v0.3.1)
 
 Unpacked Chrome extension: [`extension/`](./extension/). Side panel campaigns send Target Collab through the **open Affiliate Center tab** (`invitation_group/create`, up to 50 creators per request). Cookies stay in Chrome.
 
-Load: [`extension/README.md`](./extension/README.md). Class zip: [`dist/laris-affiliate-0.3.0.zip`](./dist/laris-affiliate-0.3.0.zip) (rebuild with `bash extension/pack.sh`).
+Load: [`extension/README.md`](./extension/README.md). Class zip: [`dist/laris-affiliate-0.3.1.zip`](./dist/laris-affiliate-0.3.1.zip) (rebuild with `bash extension/pack.sh`).
 
 **Kirim live is locked** until you tick Izinkan kirim live and confirm. Uji cari does not invite.
 

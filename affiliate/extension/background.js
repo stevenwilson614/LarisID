@@ -42,6 +42,11 @@ function injectMatchingTabs() {
 
 chrome.runtime.onInstalled.addListener(injectMatchingTabs);
 chrome.runtime.onStartup.addListener(injectMatchingTabs);
+chrome.tabs.onUpdated.addListener(function (tabId, info, tab) {
+  if (info.status === 'complete' && tab && tab.url && (hostOk(tab.url) || kaloOk(tab.url))) {
+    injectTab(tabId, tab.url);
+  }
+});
 
 function hostOk(url) {
   try { return HOST_RE.test(new URL(url).hostname); } catch (e) { return false; }
@@ -99,6 +104,32 @@ function bestKalo() {
   var list = Object.keys(kaloFrames).map(function (k) { return kaloFrames[k]; });
   list.sort(function (a, b) { return (b.at || 0) - (a.at || 0); });
   return list[0] || null;
+}
+
+function withKaloTab(fn) {
+  var k = bestKalo();
+  if (k) {
+    fn(k);
+    return;
+  }
+  chrome.tabs.query({ url: ['https://www.kalodata.com/*', 'https://kalodata.com/*'] }, function (tabs) {
+    if (!tabs || !tabs.length) {
+      fn(null);
+      return;
+    }
+    var tab = null;
+    for (var i = 0; i < tabs.length; i++) {
+      if (/\/creator/i.test(tabs[i].url || '')) {
+        tab = tabs[i];
+        break;
+      }
+    }
+    tab = tab || tabs[0];
+    injectTab(tab.id, tab.url);
+    setTimeout(function () {
+      fn(bestKalo() || { tabId: tab.id, frameId: 0, href: tab.url });
+    }, 450);
+  });
 }
 
 function pruneFrames() {
@@ -219,17 +250,18 @@ chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
   }
 
   if (msg.type === 'laris-kalodata-read') {
-    var k = bestKalo();
-    if (!k) {
-      sendResponse({ ok: false, code: 'no_kalodata', reason: 'Buka tab Kalodata Daftar Kreator dulu.', rows: [], count: 0 });
-      return;
-    }
-    chrome.tabs.sendMessage(k.tabId, { type: 'laris-kalodata-read' }, { frameId: k.frameId }, function (res) {
-      if (chrome.runtime.lastError) {
-        sendResponse({ ok: false, code: 'no_listener', reason: 'Tab Kalodata belum siap. Refresh halaman, lalu coba lagi.', rows: [], count: 0 });
+    withKaloTab(function (k) {
+      if (!k) {
+        sendResponse({ ok: false, code: 'no_kalodata', reason: 'Buka tab Kalodata Daftar Kreator dulu.', rows: [], count: 0 });
         return;
       }
-      sendResponse(res || { ok: false, rows: [], count: 0 });
+      chrome.tabs.sendMessage(k.tabId, { type: 'laris-kalodata-read' }, { frameId: k.frameId == null ? 0 : k.frameId }, function (res) {
+        if (chrome.runtime.lastError) {
+          sendResponse({ ok: false, code: 'no_listener', reason: 'Tab Kalodata belum siap. Refresh kalodata.com/creator, lalu coba lagi.', rows: [], count: 0 });
+          return;
+        }
+        sendResponse(res || { ok: false, rows: [], count: 0 });
+      });
     });
     return true;
   }
