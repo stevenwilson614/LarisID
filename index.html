@@ -303,6 +303,11 @@ html.session-restoring body::after {
   padding: 12px 10px;
   z-index: 20;
   transition: transform .28s var(--ease);
+  /* Let Riwayat keep a usable height; overflow the rail if nav+foot still
+     exceed the viewport (short laptops, alat banner, My Toko). */
+  overflow-x: hidden;
+  overflow-y: auto;
+  min-height: 0;
 }
 .sidebar-brand {
   display: flex; align-items: flex-end; gap: 6px;
@@ -366,7 +371,7 @@ a.side-btn { text-decoration: none; box-sizing: border-box; color: var(--ink); }
   padding: 4px 12px 8px;
 }
 .chat-list {
-  overflow-y: auto; flex: 1; min-height: 0;
+  overflow-y: auto; flex: 1; min-height: 140px;
   display: flex; flex-direction: column; gap: 1px;
 }
 .chat-row {
@@ -427,8 +432,8 @@ a.side-btn { text-decoration: none; box-sizing: border-box; color: var(--ink); }
   padding-top: 8px;
   display: flex; flex-direction: column; gap: 2px;
 }
-/* Tentang accordion: desktop keeps Harga / FAQ / Tentang
-   flat; mobile collapses them behind one "Tentang" toggle so Riwayat can grow. */
+/* Tentang accordion: tall desktop keeps Harga / FAQ / Tentang flat;
+   mobile + short viewports collapse them so Riwayat stays scrollable. */
 .side-about-toggle { display: none; }
 .side-about-menu {
   display: flex; flex-direction: column; gap: 2px;
@@ -4088,6 +4093,19 @@ body.ddtp-open #btn-tracker svg .ic-f { fill: var(--accent); stroke: none; }
   .side-about-menu .side-btn { padding-left: 22px; }
 }
 
+/* Short laptop / alat banner: same accordion as mobile so Riwayat isn't
+   crushed to ~50px by flat Harga+FAQ+Tentang + Jelajahi links. */
+@media (min-width: 861px) and (max-height: 920px) {
+  .side-about-toggle { display: flex; }
+  .side-about:not(.open) .side-about-menu { display: none; }
+  .side-about.open .side-about-chevron { transform: rotate(180deg); }
+  .side-about.open .side-about-toggle,
+  .side-about-toggle.is-child-active { background: #fff; box-shadow: 0 0 0 1px var(--line); }
+  .side-about-menu .side-btn { padding-left: 22px; }
+  /* Links still live in the main footer; hide here to free ~75px. */
+  .side-links { display: none; }
+}
+
 /* ── Narrow-desktop rail (861–1279px) ───────────────────────────────────────
    Portrait monitors and half-screen windows can't spare 288px for nav, so the
    sidebar collapses to a 72px icon rail and grows back on hover / focus.
@@ -4105,7 +4123,8 @@ body.ddtp-open #btn-tracker svg .ic-f { fill: var(--accent); stroke: none; }
   .sidebar {
     position: fixed; top: 0; bottom: 0; left: 0;
     width: var(--sidebar-w);
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
     /* Above .dir-compare-bar (60), below .modal-overlay (100). Set on the bare
        class, not :hover, so body.ddtp-open .sidebar { z-index: 101 } keeps
        winning while that promo is open. */
