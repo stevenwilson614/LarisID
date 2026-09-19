@@ -304,7 +304,7 @@ html.session-restoring body::after {
   z-index: 20;
   transition: transform .28s var(--ease);
   /* Let Riwayat keep a usable height; overflow the rail if nav+foot still
-     exceed the viewport (short laptops, alat banner, My Toko). */
+     exceed the viewport (short laptops, My Toko). */
   overflow-x: hidden;
   overflow-y: auto;
   min-height: 0;
@@ -4093,8 +4093,8 @@ body.ddtp-open #btn-tracker svg .ic-f { fill: var(--accent); stroke: none; }
   .side-about-menu .side-btn { padding-left: 22px; }
 }
 
-/* Short laptop / alat banner: same accordion as mobile so Riwayat isn't
-   crushed to ~50px by flat Harga+FAQ+Tentang + Jelajahi links. */
+/* Short laptop: same accordion as mobile so Riwayat isn't crushed to ~50px
+   by flat Harga+FAQ+Tentang + Jelajahi links. */
 @media (min-width: 861px) and (max-height: 920px) {
   .side-about-toggle { display: flex; }
   .side-about:not(.open) .side-about-menu { display: none; }
@@ -8008,10 +8008,6 @@ body.view-chat .sfb-card {
   </div>
 </div>
 <div class="app">
-  <div class="alat-preview-banner" id="alat-preview-banner" hidden>
-    <span>My Toko — tempel link Shopee, pantau kompetitor. Cadangan: ekstensi Chrome.</span>
-    <button type="button" id="alat-preview-exit" hidden>Keluar</button>
-  </div>
   <aside class="sidebar" id="sidebar">
     <a class="sidebar-brand" href="/" id="btn-home" title="Beranda LarisID">
       <img class="brand-lockup" src="/images/brand/logo-horizontal-red.webp" alt="LARIS" height="36">
@@ -10642,41 +10638,9 @@ body.view-chat .sfb-card {
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260916d" defer></script>
-<script src="/js/gpt-alat-preview.js?v=20260919ag" defer></script>
+<script src="/js/gpt-alat-preview.js?v=20260919ai" defer></script>
 <script src="/js/gpt-app.js?v=20260919ah" defer></script>
 <style>
-.alat-preview-banner {
-  display: none;
-  position: fixed; top: 0; left: 0; right: 0; z-index: 80;
-  align-items: center; justify-content: space-between; gap: 12px;
-  padding: 8px 16px; background: #1A1A1A; color: #fff; font-size: .78rem;
-  min-height: 36px; box-sizing: border-box;
-  flex-wrap: nowrap;
-}
-html.alat-preview .alat-preview-banner,
-body.alat-preview .alat-preview-banner { display: flex !important; }
-/* Banner is fixed; keep .app clear of it (36px desktop, taller when text wraps). */
-html.alat-preview .app { padding-top: 36px; }
-@media (max-width: 860px) {
-  .alat-preview-banner {
-    gap: 8px;
-    padding: 7px 12px;
-    font-size: .72rem;
-  }
-  .alat-preview-banner > span {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  html.alat-preview .app { padding-top: 44px; }
-}
-.alat-preview-banner code { color: #F3C969; }
-.alat-preview-banner button {
-  background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.35);
-  border-radius: 999px; padding: 4px 10px; cursor: pointer; font: inherit;
-  flex-shrink: 0; white-space: nowrap;
-}
 .hl-hero-ctas-alat { display: none; }
 html.alat-preview #finder-xp-step { display: none; }
 .alat-nav { display: none !important; }
@@ -10684,11 +10648,11 @@ html.alat-preview .alat-nav,
 body.alat-preview .alat-nav { display: flex !important; }
 html.alat-preview,
 body.alat-preview {
-  --alat-chrome: 88px; /* banner + main-top */
+  --alat-chrome: 52px; /* main-top only */
 }
 @media (max-width: 860px) {
   html.alat-preview,
-  body.alat-preview { --alat-chrome: 96px; }
+  body.alat-preview { --alat-chrome: 52px; }
 }
 /* Keep .main-top (logo + Login/Daftar) through sift & wizard; hide chrome only. */
 body.view-sift .sidebar,
@@ -11073,7 +11037,7 @@ body.alat-focus.view-home .home-finder::after {
   padding: 28px 20px 40px;
   box-sizing: border-box;
 }
-/* Wizard steps: fill the frame under banner+header; spacers keep short pages centered. */
+/* Wizard steps: fill the frame under header; spacers keep short pages centered. */
 body.alat-focus.view-audit .alat-page:not(.alat-page--wide) {
   flex: 1;
   display: flex;

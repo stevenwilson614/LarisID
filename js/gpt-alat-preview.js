@@ -2318,23 +2318,6 @@
     $('alat-sift-signup')?.addEventListener('click', function () {
       if (host && host.openAuthModal) host.openAuthModal('signup', 'alat_sift_signup');
     });
-    var exit = $('alat-preview-exit');
-    if (exit) {
-      exit.addEventListener('click', function () {
-        try {
-          sessionStorage.setItem(SS_FLAG, '0');
-          sessionStorage.removeItem(SS_INTENT);
-        } catch (_) {}
-        exitFocus();
-        dismissSignupCta();
-        var u = new URL(location.href);
-        u.searchParams.delete('preview');
-        u.searchParams.delete('claim_shop');
-        u.searchParams.delete('claim_name');
-        u.searchParams.delete('claim_snap');
-        location.href = u.pathname + (u.search || '') + u.hash;
-      });
-    }
   }
 
   function stripExpor() {
@@ -2358,8 +2341,6 @@
     wireLanding();
     rememberedShop(); // hydrate tracked / alerts / wizard flag
     syncNavLabels();
-    var banner = $('alat-preview-banner');
-    if (banner) banner.hidden = false;
     document.querySelectorAll('.alat-nav').forEach(function (el) { el.hidden = false; });
     $('btn-audit')?.addEventListener('click', function () {
       if (isWizardDone()) openSellerCenter();
