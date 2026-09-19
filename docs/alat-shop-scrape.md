@@ -5,6 +5,9 @@ Paste-URL first in `?preview=alat` (Sudah punya toko). Contabo queues the job;
 parallel (~1 min budget). Result is a private `ext_shop_claim_snapshots` row —
 same as the Chrome extension claim. Extension stays the backup.
 
+On the connect step, **Lewati dulu** skips adding a shop — lands on the normal
+home with My Toko in nav so they can paste later.
+
 ## Pieces
 
 | Piece | Where |

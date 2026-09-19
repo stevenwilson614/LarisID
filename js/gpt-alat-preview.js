@@ -152,11 +152,17 @@
   }
 
   function persistProfile() {
-    if (!_shop) return;
     try {
+      var prev = loadProfileBlob() || {};
+      var shopId = _shop && _shop.shop_id != null ? _shop.shop_id : (prev.shop_id || null);
+      var storeName = _shop
+        ? (_shop.store_name || '')
+        : (prev.store_name || '');
+      // Allow wizard_done without a shop (Lewati on connect).
+      if (!shopId && !_wizardDone) return;
       localStorage.setItem(PROFILE_KEY, JSON.stringify({
-        shop_id: _shop.shop_id,
-        store_name: _shop.store_name || '',
+        shop_id: shopId,
+        store_name: storeName,
         ts: Date.now(),
         wizard_done: !!_wizardDone,
         tracked_item_ids: (_trackedIds || []).slice(0, TRACK_MAX),
@@ -179,31 +185,37 @@
     } catch (_) { return null; }
   }
 
+  function hydrateProfileFlags(raw) {
+    if (!raw) return;
+    _wizardDone = !!raw.wizard_done;
+    _trackedIds = Array.isArray(raw.tracked_item_ids)
+      ? raw.tracked_item_ids.map(String).slice(0, TRACK_MAX)
+      : _trackedIds;
+    if (raw.snap_id && /^[0-9a-f-]{36}$/i.test(String(raw.snap_id))) {
+      _claimSnapId = String(raw.snap_id);
+    }
+    if (raw.scrape_job_id && /^[0-9a-f-]{36}$/i.test(String(raw.scrape_job_id))) {
+      _scrapeJobId = String(raw.scrape_job_id);
+    }
+    if (raw.pending_url) _pendingUrl = String(raw.pending_url).slice(0, 600);
+    if (raw.alerts && typeof raw.alerts === 'object') {
+      _alerts = {
+        email: !!raw.alerts.email,
+        wa: !!raw.alerts.wa,
+        wa_number: String(raw.alerts.wa_number || ''),
+        cadence: raw.alerts.cadence === 'weekly' ? 'weekly' : 'daily',
+      };
+    }
+  }
+
   function rememberedShop() {
     if (_shop) return _shop;
     try {
       var raw = loadProfileBlob();
-      if (raw && raw.shop_id) {
+      if (!raw) return null;
+      hydrateProfileFlags(raw);
+      if (raw.shop_id) {
         _shop = { shop_id: raw.shop_id, store_name: raw.store_name || '' };
-        _wizardDone = !!raw.wizard_done;
-        _trackedIds = Array.isArray(raw.tracked_item_ids)
-          ? raw.tracked_item_ids.map(String).slice(0, TRACK_MAX)
-          : [];
-        if (raw.snap_id && /^[0-9a-f-]{36}$/i.test(String(raw.snap_id))) {
-          _claimSnapId = String(raw.snap_id);
-        }
-        if (raw.scrape_job_id && /^[0-9a-f-]{36}$/i.test(String(raw.scrape_job_id))) {
-          _scrapeJobId = String(raw.scrape_job_id);
-        }
-        if (raw.pending_url) _pendingUrl = String(raw.pending_url).slice(0, 600);
-        if (raw.alerts && typeof raw.alerts === 'object') {
-          _alerts = {
-            email: !!raw.alerts.email,
-            wa: !!raw.alerts.wa,
-            wa_number: String(raw.alerts.wa_number || ''),
-            cadence: raw.alerts.cadence === 'weekly' ? 'weekly' : 'daily',
-          };
-        }
         return _shop;
       }
     } catch (_) {}
@@ -219,7 +231,7 @@
   function isWizardDone() {
     if (_wizardDone) return true;
     var raw = loadProfileBlob();
-    return !!(raw && raw.wizard_done && raw.shop_id);
+    return !!(raw && raw.wizard_done);
   }
 
   /** Logged-in, prior onboarding, or My Toko already started — normal app home. */
@@ -370,11 +382,28 @@
         '<p class="alat-err" id="alat-shop-err" hidden></p>' +
         '<div id="alat-shop-picker" class="alat-picker" hidden></div>' +
         '<p class="alat-hint">Sudah punya ekstensi? Di halaman toko Shopee, ketuk “Ini toko saya”.</p>' +
+        '<div class="alat-row alat-row-end" style="margin-top:18px">' +
+          '<button type="button" class="btn-ghost" id="alat-shop-skip">Lewati dulu</button>' +
+        '</div>' +
+        '<p class="alat-hint">Belum mau tambah toko? Lewati — tempel kapan saja di My Toko.</p>' +
       '</section>';
     $('alat-shop-go')?.addEventListener('click', function () { void searchShop(); });
+    $('alat-shop-skip')?.addEventListener('click', skipConnect);
     $('alat-shop-q')?.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') { e.preventDefault(); void searchShop(); }
     });
+  }
+
+  function skipConnect() {
+    log('alat_connect_skipped', {});
+    markWizardDone();
+    exitFocus();
+    dismissSignupCta();
+    if (host && host.showToast) {
+      host.showToast('Oke — tempel toko kapan saja di My Toko.');
+    }
+    if (host && host.renderLanding) host.renderLanding();
+    else if (host && host.setView) host.setView('landing');
   }
 
   function showErr(msg) {
