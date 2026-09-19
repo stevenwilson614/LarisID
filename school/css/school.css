@@ -903,7 +903,11 @@ html[data-mode="mentor"] .main:has(.fub-page) { padding: 0; }
 }
 .prog-row:hover { background: var(--ink-3); }
 .prog-name { font-weight: 650; width: 180px; flex: none; min-width: 0; }
-.prog-bar-wrap .bar { width: 100%; height: 8px; background: var(--line-2); }
+.prog-bar-wrap { flex: 1; min-width: 80px; }
+.prog-bar-wrap .bar {
+  width: 100%; height: 10px; background: #3f3f46; border: 1px solid #52525b;
+}
+.prog-bar-wrap .bar > span { background: #4ade80; }
 .prog-pct { font-size: .82rem; width: 44px; text-align: right; flex: none; }
 .ud-page { max-width: 860px; }
 .ud-head { margin-bottom: 16px; }
