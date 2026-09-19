@@ -23924,14 +23924,7 @@ function goHome(e) {
     void openDirectory();
     return;
   }
-  if (window.LarisAlatPreview?.active()) {
-    if (window.LarisAlatPreview.isWizardDone?.() && window.LarisAlatPreview.intent?.() === 'existing') {
-      window.LarisAlatPreview.openSellerCenter();
-    } else {
-      window.LarisAlatPreview.openSift();
-    }
-    return;
-  }
+  // My Toko stays in the sidebar — logo goes to the normal landing for everyone.
   renderLanding();
 }
 
@@ -25991,8 +25984,19 @@ async function boot() {
   const finderResultsUp = !!$('chat-thread')?.querySelector('[data-lrow-block]');
   const previewResumeProduct = !!(state.pendingDeepdive || state.pendingCompare || state.pendingTracker || state.pendingFinder || _finderResumeInFlight);
   if (window.LarisAlatPreview?.active() && !_offerActive && !previewResumeProduct && !alreadyDeepdive && !alreadyCommunity && !alreadyAdmin) {
-    window.LarisAlatPreview.onBoot();
-    _bootLandingView = state.view;
+    const tookAlat = window.LarisAlatPreview.onBoot();
+    if (tookAlat) {
+      _bootLandingView = state.view;
+    } else if (!pendingResume && !finderResultsUp) {
+      // Returning visitor: normal Laris home; My Toko stays in the sidebar.
+      if (state.activeChatId && activeChat()) {
+        setView('chat');
+        renderChatThread();
+      } else {
+        renderHome();
+        _bootLandingView = state.view;
+      }
+    }
   } else if (isExporPasar() && !_offerActive && !pendingResume && !alreadyDeepdive && !alreadyCommunity && !alreadyAdmin) {
     const ac = state.activeChatId && activeChat();
     if (ac && chatPasar(ac) === 'expor') {

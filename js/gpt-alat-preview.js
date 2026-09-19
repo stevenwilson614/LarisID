@@ -222,6 +222,18 @@
     return !!(raw && raw.wizard_done && raw.shop_id);
   }
 
+  /** Logged-in, prior onboarding, or My Toko already started — normal app home. */
+  function isReturningVisitor() {
+    if (user()) return true;
+    if (isWizardDone() || rememberedShop()) return true;
+    if (intent()) return true;
+    var o = host && host.onboarding && host.onboarding();
+    if (o && (o.completedAnon || o.experience === 'existing' || o.experience === 'first_time')) {
+      return true;
+    }
+    return false;
+  }
+
   /** Existing sellers: Favorit Aku → Product Tracker; Audit → My Toko. */
   function syncNavLabels() {
     if (!active()) return;
@@ -2210,16 +2222,17 @@
     if (document.body.classList.contains('view-audit') && $('alat-root')?.querySelector('.myt-store, #alat-shop-q, .alat-progress')) {
       return true;
     }
-    if ((intent() === 'existing' || isWizardDone()) && isWizardDone() && rememberedShop()) {
-      openSellerCenter();
-      return true;
-    }
+    // Mid first-time questionnaire — keep them in that flow.
     if (intent() === 'first_time' && forceFinder()) {
       openQuest();
       return true;
     }
-    openSift();
-    return true;
+    // Brand-new visitors: choice doors. Returning: normal Laris home + My Toko in nav.
+    if (!isReturningVisitor()) {
+      openSift();
+      return true;
+    }
+    return false;
   }
 
   function hideFinderXp() {
@@ -2320,5 +2333,6 @@
     setFocus: setFocus,
     syncNavLabels: syncNavLabels,
     isWizardDone: isWizardDone,
+    isReturningVisitor: isReturningVisitor,
   };
 })(window);
