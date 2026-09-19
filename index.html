@@ -16,8 +16,12 @@
 (function () {
   try {
     var q = new URLSearchParams(location.search);
-    if (q.get('preview') === 'off') sessionStorage.removeItem('lid_preview_alat');
+    if (q.get('preview') === 'off') sessionStorage.setItem('lid_preview_alat', '0');
     else if (q.get('preview') === 'alat') sessionStorage.setItem('lid_preview_alat', '1');
+    // My Toko doors live by default
+    if (sessionStorage.getItem('lid_preview_alat') !== '0') {
+      sessionStorage.setItem('lid_preview_alat', '1');
+    }
     if (sessionStorage.getItem('lid_preview_alat') === '1') document.documentElement.classList.add('alat-preview');
   } catch (e) {}
 })();
@@ -7984,8 +7988,8 @@ body.view-chat .sfb-card {
 </div>
 <div class="app">
   <div class="alat-preview-banner" id="alat-preview-banner" hidden>
-    <span>Preview alat seller — tidak live. Buka dengan <code>?preview=alat</code>.</span>
-    <button type="button" id="alat-preview-exit">Keluar preview</button>
+    <span>My Toko — tempel link Shopee, pantau kompetitor. Cadangan: ekstensi Chrome.</span>
+    <button type="button" id="alat-preview-exit" hidden>Keluar</button>
   </div>
   <aside class="sidebar" id="sidebar">
     <a class="sidebar-brand" href="/" id="btn-home" title="Beranda LarisID">
@@ -8252,7 +8256,7 @@ body.view-chat .sfb-card {
               </button>
               <button type="button" data-alat-door="existing">
                 <span class="alat-sift-label">Sudah punya toko</span>
-                <span class="alat-sift-hint">Hubungkan toko → pantau kompetitor → analisis listing (3 langkah).</span>
+                <span class="alat-sift-hint">Tempel link toko → kabar kompetitor → pantau &amp; analisis.</span>
               </button>
             </div>
           </div>
@@ -10617,7 +10621,7 @@ body.view-chat .sfb-card {
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260916d" defer></script>
-<script src="/js/gpt-alat-preview.js?v=20260916ae" defer></script>
+<script src="/js/gpt-alat-preview.js?v=20260919aa" defer></script>
 <script src="/js/gpt-app.js?v=20260917b" defer></script>
 <style>
 .alat-preview-banner {

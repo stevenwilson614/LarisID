@@ -1,13 +1,14 @@
 /**
- * Unpublished seller-tools preview. Live visitors never see this unless they
- * open ?preview=alat (session). ?preview=off turns it off.
+ * Seller tools (My Toko). Live on the main app: sift doors → URL scrape /
+ * kabar → kompetitor → analisis. ?preview=off turns the alat chrome off.
  *
  * gpt-app.js calls LarisAlatPreview.attach(host) after boot wiring.
  *
  * Doors:
  *  - Seller baru → questionnaire (no sidebar) → Temukan Produk → Cari Produk
- *  - Sudah punya toko → 1/3 URL → 2/3 pantau kompetitor → 3/3 analisis listing
- *    → My Toko seller center (1 store, track ≤20 produk, kabar harian WA/email)
+ *  - Sudah punya toko → 1/4 URL (enqueue Mac scrape) → 2/4 kabar/kontak
+ *    (while scrape runs) → 3/4 pantau kompetitor → 4/4 analisis → My Toko.
+ *    Extension “Ini toko saya” is the backup if Mac scrape fails.
  */
 (function (global) {
   'use strict';
@@ -15,8 +16,11 @@
   var SS_FLAG = 'lid_preview_alat';
   var SS_INTENT = 'lid_alat_intent';
   var PROFILE_KEY = 'lid_alat_shop_v1';
+  var CLIENT_KEY = 'lid_alat_client_v1';
   var TRACK_MAX = 20;
   var LIST_PREVIEW = 40;
+  var SCRAPE_WAIT_MS = 90000;
+  var SCRAPE_POLL_MS = 2000;
 
   var host = null;
   var _shop = null;
@@ -38,18 +42,42 @@
   var _selectedIdx = -1;
   var _detailTab = 'kompetitor'; // 'kompetitor' | 'analisa'
   var _claimSnapId = '';
+  var _scrapeJobId = '';
+  var _pendingUrl = '';
 
-  function active() {
-    try { return sessionStorage.getItem(SS_FLAG) === '1'; } catch (_) { return false; }
+  function clientId() {
+    try {
+      var id = localStorage.getItem(CLIENT_KEY);
+      if (id && /^[0-9a-f-]{36}$/i.test(id)) return id;
+      id = (global.crypto && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            var r = Math.random() * 16 | 0;
+            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+          });
+      localStorage.setItem(CLIENT_KEY, id);
+      return id;
+    } catch (_) {
+      return '00000000-0000-4000-8000-000000000001';
+    }
+  }
+
+  function cwsExtUrl() {
+    try {
+      if (typeof global.CWS_EXT_URL === 'string' && global.CWS_EXT_URL) return global.CWS_EXT_URL;
+    } catch (_) {}
+    return 'https://chromewebstore.google.com/detail/ldgcjbnecfnpbgenechgfbdagecnloae';
   }
 
   function applyFlag() {
     try {
       var q = new URLSearchParams(location.search);
       if (q.get('preview') === 'off') {
-        sessionStorage.removeItem(SS_FLAG);
-        sessionStorage.removeItem(SS_INTENT);
+        sessionStorage.setItem(SS_FLAG, '0');
       } else if (q.get('preview') === 'alat') {
+        sessionStorage.setItem(SS_FLAG, '1');
+      } else if (sessionStorage.getItem(SS_FLAG) !== '0') {
+        // Live default: My Toko doors on unless explicitly turned off.
         sessionStorage.setItem(SS_FLAG, '1');
       }
     } catch (_) {}
@@ -57,6 +85,10 @@
     document.documentElement.classList.toggle('alat-preview', on);
     if (document.body) document.body.classList.toggle('alat-preview', on);
     return on;
+  }
+
+  function active() {
+    try { return sessionStorage.getItem(SS_FLAG) === '1'; } catch (_) { return false; }
   }
 
   function $(id) { return host && host.$ ? host.$(id) : document.getElementById(id); }
@@ -96,16 +128,21 @@
     var s = String(raw || '').trim();
     if (!s) return null;
     if (/shopee\./i.test(s)) {
+      var url = /^https?:\/\//i.test(s) ? s : ('https://' + s.replace(/^\/\//, ''));
       var byId = s.match(/\/shop\/(\d+)/i);
-      if (byId) return { shopId: Number(byId[1]) };
+      if (byId) return { shopId: Number(byId[1]), url: url };
       var byItem = s.match(/[./-]i\.(\d+)\.(\d+)/i);
-      if (byItem) return { shopId: Number(byItem[1]) };
+      if (byItem) return { shopId: Number(byItem[1]), url: url };
       var bySlug = s.match(/shopee\.[a-z.]+\/([^/?#]+)/i);
       if (bySlug && !/^(product|shop|search)$/i.test(bySlug[1])) {
-        return { q: decodeURIComponent(bySlug[1]).replace(/[-_]+/g, ' ').trim() };
+        return {
+          q: decodeURIComponent(bySlug[1]).replace(/[-_]+/g, ' ').trim(),
+          url: url,
+        };
       }
+      return { url: url };
     }
-    if (/^\d{4,}$/.test(s)) return { shopId: Number(s) };
+    if (/^\d{4,}$/.test(s)) return { shopId: Number(s), url: 'https://shopee.co.id/shop/' + s };
     return { q: s };
   }
 
@@ -124,6 +161,8 @@
         wizard_done: !!_wizardDone,
         tracked_item_ids: (_trackedIds || []).slice(0, TRACK_MAX),
         snap_id: _claimSnapId || '',
+        scrape_job_id: _scrapeJobId || '',
+        pending_url: _pendingUrl || '',
         alerts: {
           email: !!_alerts.email,
           wa: !!_alerts.wa,
@@ -153,6 +192,10 @@
         if (raw.snap_id && /^[0-9a-f-]{36}$/i.test(String(raw.snap_id))) {
           _claimSnapId = String(raw.snap_id);
         }
+        if (raw.scrape_job_id && /^[0-9a-f-]{36}$/i.test(String(raw.scrape_job_id))) {
+          _scrapeJobId = String(raw.scrape_job_id);
+        }
+        if (raw.pending_url) _pendingUrl = String(raw.pending_url).slice(0, 600);
         if (raw.alerts && typeof raw.alerts === 'object') {
           _alerts = {
             email: !!raw.alerts.email,
@@ -220,18 +263,19 @@
   }
 
   function progressHtml(step, title) {
-    var pct = Math.round((step / 3) * 100);
+    var pct = Math.round((step / 4) * 100);
     return (
-      '<div class="alat-progress" aria-label="Langkah ' + step + ' dari 3">' +
+      '<div class="alat-progress" aria-label="Langkah ' + step + ' dari 4">' +
         '<div class="alat-progress-meta">' +
-          '<span class="alat-progress-n">' + step + ' / 3</span>' +
+          '<span class="alat-progress-n">' + step + ' / 4</span>' +
           '<span class="alat-progress-t">' + esc(title) + '</span>' +
         '</div>' +
         '<div class="alat-progress-track"><i style="width:' + pct + '%"></i></div>' +
         '<ol class="alat-progress-steps">' +
           '<li class="' + (step >= 1 ? 'on' : '') + (step === 1 ? ' cur' : '') + '">Toko</li>' +
-          '<li class="' + (step >= 2 ? 'on' : '') + (step === 2 ? ' cur' : '') + '">Kompetitor</li>' +
-          '<li class="' + (step >= 3 ? 'on' : '') + (step === 3 ? ' cur' : '') + '">Analisis</li>' +
+          '<li class="' + (step >= 2 ? 'on' : '') + (step === 2 ? ' cur' : '') + '">Kabar</li>' +
+          '<li class="' + (step >= 3 ? 'on' : '') + (step === 3 ? ' cur' : '') + '">Kompetitor</li>' +
+          '<li class="' + (step >= 4 ? 'on' : '') + (step === 4 ? ' cur' : '') + '">Analisis</li>' +
         '</ol>' +
       '</div>'
     );
@@ -260,7 +304,7 @@
   async function saveStoreProfile(shop) {
     var client = sb();
     var u = user();
-    if (!client || !u) return;
+    if (!client || !u || !shop || !(Number(shop.shop_id) > 0)) return;
     try {
       await client.from('user_store_profiles').upsert({
         user_id: u.id,
@@ -297,16 +341,16 @@
     root.innerHTML =
       progressHtml(1, 'Hubungkan toko') +
       '<section class="alat-card">' +
-        '<h2>Tempel link atau nama toko Shopee</h2>' +
-        '<p class="alat-lead">Contoh: <code>shopee.co.id/shop/123</code> atau nama toko. Kami hanya baca listing yang sudah masuk sapuan keyword — bukan Seller Center.</p>' +
+        '<h2>Tempel link toko Shopee</h2>' +
+        '<p class="alat-lead">Kami ambil produk toko di latar (biasanya &lt;1 menit). Sementara itu kamu isi kabar kompetitor. Kalau gagal, ekstensi Chrome jadi cadangan.</p>' +
         '<label class="alat-label" for="alat-shop-q">Link / nama toko</label>' +
         '<div class="alat-row">' +
-          '<input type="text" id="alat-shop-q" class="alat-input" placeholder="shopee.co.id/… atau nama toko" autocomplete="off">' +
+          '<input type="text" id="alat-shop-q" class="alat-input" placeholder="https://shopee.co.id/… atau nama toko" autocomplete="off">' +
           '<button type="button" class="btn-primary" id="alat-shop-go">Lanjut</button>' +
         '</div>' +
         '<p class="alat-err" id="alat-shop-err" hidden></p>' +
         '<div id="alat-shop-picker" class="alat-picker" hidden></div>' +
-        '<p class="alat-hint">Ekstensi Chrome: di halaman toko atau produkmu, ketuk “Ini toko saya”.</p>' +
+        '<p class="alat-hint">Sudah punya ekstensi? Di halaman toko Shopee, ketuk “Ini toko saya”.</p>' +
       '</section>';
     $('alat-shop-go')?.addEventListener('click', function () { void searchShop(); });
     $('alat-shop-q')?.addEventListener('keydown', function (e) {
@@ -332,21 +376,269 @@
     try {
       if (parsed.shopId) {
         var hit = await lookupShopId(parsed.shopId);
-        if (hit) { await pickShop(hit); return; }
-        showErr('Toko dari link itu belum ada di database LarisID. Toko muncul setelah kami scrape keyword yang relevan.');
+        if (hit) {
+          await beginOnboard(hit, parsed.url || ('https://shopee.co.id/shop/' + parsed.shopId), false);
+          return;
+        }
+        await beginOnboard(
+          { shop_id: parsed.shopId, store_name: 'Toko ' + parsed.shopId },
+          parsed.url || ('https://shopee.co.id/shop/' + parsed.shopId),
+          true
+        );
+        return;
+      }
+      if (parsed.url) {
+        var nameHint = parsed.q || '';
+        await beginOnboard(
+          { shop_id: null, store_name: nameHint || 'Toko Shopee' },
+          parsed.url,
+          true
+        );
         return;
       }
       var rows = await findShopsByName(parsed.q, 8);
       if (!rows.length) {
-        showErr('Toko "' + parsed.q + '" belum ada di data kami. Coba nama lebih pendek, atau tempel link toko.');
+        showErr('Toko "' + parsed.q + '" belum ada di data kami. Tempel link toko Shopee lengkap supaya kami ambil produknya sekarang.');
         return;
       }
       var exact = rows.filter(function (r) { return r.match_kind === 'exact'; });
-      if (exact.length === 1) { await pickShop(exact[0]); return; }
+      if (exact.length === 1) {
+        await beginOnboard(exact[0], 'https://shopee.co.id/shop/' + exact[0].shop_id, false);
+        return;
+      }
       renderPicker(rows);
     } finally {
       if (go) { go.disabled = false; go.textContent = 'Lanjut'; }
     }
+  }
+
+  async function requestShopScrape(url, shop) {
+    var client = sb();
+    if (!client || !url) return null;
+    try {
+      var res = await client.rpc('request_shop_scrape', {
+        p_client: clientId(),
+        p_source_url: url,
+        p_shop_id: shop && shop.shop_id ? Number(shop.shop_id) : null,
+        p_store_name: (shop && shop.store_name) || '',
+      });
+      var d = res && res.data;
+      if (d && d.ok && d.job_id) return d;
+      if (d && d.reason === 'rate_limited') return d;
+    } catch (_) {}
+    return null;
+  }
+
+  async function pollScrapeJob(jobId, onTick) {
+    var client = sb();
+    if (!client || !jobId) return null;
+    var started = Date.now();
+    while (Date.now() - started < SCRAPE_WAIT_MS) {
+      try {
+        var res = await client.rpc('get_shop_scrape_job', {
+          p_job_id: jobId,
+          p_client: clientId(),
+        });
+        var d = res && res.data;
+        if (d && d.ok) {
+          if (typeof onTick === 'function') onTick(d);
+          if (d.status === 'done' || d.status === 'failed') return d;
+        }
+      } catch (_) {}
+      await new Promise(function (r) { setTimeout(r, SCRAPE_POLL_MS); });
+    }
+    return { ok: true, status: 'timeout', job_id: jobId };
+  }
+
+  async function beginOnboard(row, url, needScrape) {
+    var shop = {
+      shop_id: row.shop_id != null ? row.shop_id : null,
+      store_name: row.store_name || (row.shop_id ? ('Toko ' + row.shop_id) : 'Toko Shopee'),
+    };
+    _pendingUrl = url || '';
+    _scrapeJobId = '';
+    if (shop.shop_id) {
+      rememberShop(shop);
+      await saveStoreProfile(shop);
+      log('alat_shop_claimed', { shop_id: shop.shop_id, via: needScrape ? 'url_scrape' : 'db' });
+    } else {
+      _shop = shop;
+      persistProfile();
+    }
+    if (needScrape && url) {
+      var queued = await requestShopScrape(url, shop);
+      if (queued && queued.job_id) {
+        _scrapeJobId = String(queued.job_id);
+        persistProfile();
+      }
+    } else if (url && shop.shop_id) {
+      // Known shop: still queue a soft refresh when URL was pasted (best-effort).
+      var soft = await requestShopScrape(url, shop);
+      if (soft && soft.job_id) {
+        _scrapeJobId = String(soft.job_id);
+        persistProfile();
+      }
+    }
+    renderPersonalInfo(shop);
+  }
+
+  function readAlertsFromForm() {
+    _alerts.email = !!$('alat-alert-email')?.checked;
+    _alerts.wa = !!$('alat-alert-wa')?.checked;
+    _alerts.wa_number = String($('alat-wa-num')?.value || '').replace(/\D/g, '').slice(0, 20);
+    var cad = document.querySelector('input[name="alat-cadence"]:checked');
+    _alerts.cadence = cad && cad.value === 'weekly' ? 'weekly' : 'daily';
+    persistProfile();
+  }
+
+  function renderPersonalInfo(shop) {
+    var root = $('alat-root');
+    if (!root) return;
+    root.className = 'alat-page';
+    _step = 2;
+    var scrapeNote = _scrapeJobId
+      ? '<p class="alat-hint" id="alat-scrape-status">Sedang mengambil produk toko di latar… isi kabar di bawah, tidak perlu menunggu.</p>'
+      : '<p class="alat-hint" id="alat-scrape-status">Toko sudah dikenal di data kami — lanjut isi kabar, lalu pilih produk.</p>';
+    root.innerHTML =
+      progressHtml(2, 'Kabar kompetitor') +
+      '<section class="alat-card">' +
+        '<p class="alat-kicker">' + esc(shop.store_name || 'Toko') + '</p>' +
+        '<h2>Mau dikabari perubahan kompetitor?</h2>' +
+        '<p class="alat-lead">Opsional. Preferensi tersimpan di perangkat ini. Produk toko tetap diambil meski kamu lewati.</p>' +
+        scrapeNote +
+        '<div class="myt-alert-channels" style="margin-top:12px">' +
+          '<label class="myt-alert-card' + (_alerts.email ? ' is-on' : '') + '">' +
+            '<input type="checkbox" id="alat-alert-email"' + (_alerts.email ? ' checked' : '') + '>' +
+            '<span><b>Email</b><small>Ke email akun LarisID</small></span>' +
+          '</label>' +
+          '<label class="myt-alert-card' + (_alerts.wa ? ' is-on' : '') + '">' +
+            '<input type="checkbox" id="alat-alert-wa"' + (_alerts.wa ? ' checked' : '') + '>' +
+            '<span><b>WhatsApp</b><small>Pesan harian singkat</small></span>' +
+          '</label>' +
+        '</div>' +
+        '<div class="alat-row" id="alat-wa-row"' + (_alerts.wa ? '' : ' hidden') + ' style="margin-top:12px">' +
+          '<label class="alat-label" for="alat-wa-num" style="width:100%;margin:0">Nomor WhatsApp</label>' +
+          '<input type="tel" id="alat-wa-num" class="alat-input" inputmode="tel" placeholder="0812xxxxxxxx" value="' + esc(_alerts.wa_number || '') + '">' +
+        '</div>' +
+        '<fieldset class="myt-cadence">' +
+          '<legend>Frekuensi</legend>' +
+          '<label><input type="radio" name="alat-cadence" value="daily"' +
+            (_alerts.cadence !== 'weekly' ? ' checked' : '') + '> Setiap hari</label>' +
+          '<label><input type="radio" name="alat-cadence" value="weekly"' +
+            (_alerts.cadence === 'weekly' ? ' checked' : '') + '> Sekali seminggu</label>' +
+        '</fieldset>' +
+        '<div class="alat-row alat-row-end" style="margin-top:16px">' +
+          '<button type="button" class="btn-ghost" id="alat-kabar-back">Ganti toko</button>' +
+          '<button type="button" class="btn-primary" id="alat-kabar-go">Lanjut</button>' +
+        '</div>' +
+        '<p class="alat-err" id="alat-kabar-err" hidden></p>' +
+      '</section>';
+
+    function syncCards() {
+      document.querySelectorAll('.myt-alert-card').forEach(function (lab) {
+        var on = !!lab.querySelector('input')?.checked;
+        lab.classList.toggle('is-on', on);
+      });
+      var row = $('alat-wa-row');
+      if (row) row.hidden = !$('alat-alert-wa')?.checked;
+    }
+    $('alat-alert-email')?.addEventListener('change', syncCards);
+    $('alat-alert-wa')?.addEventListener('change', syncCards);
+    $('alat-kabar-back')?.addEventListener('click', function () { clearShopAndReconnect(); });
+    $('alat-kabar-go')?.addEventListener('click', function () { void finishPersonalInfo(shop); });
+  }
+
+  async function finishPersonalInfo(shop) {
+    readAlertsFromForm();
+    var go = $('alat-kabar-go');
+    var status = $('alat-scrape-status');
+    var err = $('alat-kabar-err');
+    if (err) { err.hidden = true; err.textContent = ''; }
+    if (go) { go.disabled = true; go.textContent = 'Menyiapkan…'; }
+
+    if (_scrapeJobId) {
+      var already = [];
+      if (shop.shop_id) {
+        try { already = await fetchTokoListings(shop.shop_id); } catch (_) { already = []; }
+      }
+      var waitMs = already.length ? 12000 : SCRAPE_WAIT_MS;
+      if (status) {
+        status.textContent = already.length
+          ? 'Menyegarkan produk toko (opsional)…'
+          : 'Mengambil produk toko… biasanya selesai sebelum kamu baca ini.';
+      }
+      var started = Date.now();
+      var job = null;
+      var client = sb();
+      while (client && Date.now() - started < waitMs) {
+        try {
+          var res = await client.rpc('get_shop_scrape_job', {
+            p_job_id: _scrapeJobId,
+            p_client: clientId(),
+          });
+          job = res && res.data;
+          if (job && job.ok) {
+            if (status) {
+              if (job.status === 'claimed' || job.status === 'pending') {
+                status.textContent = 'Mac kami sedang membuka halaman toko…';
+              } else if (job.status === 'done') {
+                status.textContent = 'Produk toko siap.';
+              } else if (job.status === 'failed') {
+                status.textContent = 'Ambil otomatis gagal — siapin cadangan ekstensi.';
+              }
+            }
+            if (job.status === 'done' || job.status === 'failed') break;
+          }
+        } catch (_) {}
+        await new Promise(function (r) { setTimeout(r, SCRAPE_POLL_MS); });
+      }
+      if (!job || (job.status !== 'done' && job.status !== 'failed')) {
+        job = { ok: true, status: already.length ? 'skip' : 'timeout', job_id: _scrapeJobId };
+      }
+      if (job && job.status === 'done' && job.snap_id) {
+        _claimSnapId = String(job.snap_id);
+        if (job.shop_id) shop.shop_id = job.shop_id;
+        if (job.store_name) shop.store_name = job.store_name;
+        rememberShop(shop);
+        await saveStoreProfile(shop);
+        persistProfile();
+        await loadShopWork(shop, { freshListings: true });
+        return;
+      }
+      if (job && (job.status === 'failed' || job.status === 'timeout') && !already.length) {
+        // Fall through to extension if nothing in DB.
+      } else if (already.length) {
+        rememberShop(shop);
+        await loadShopWork(shop, { freshListings: true });
+        return;
+      }
+    }
+
+    if (!shop.shop_id) {
+      renderExtBackup(shop, 'Belum dapat shop id dari link itu.');
+      return;
+    }
+    rememberShop(shop);
+    await loadShopWork(shop, { freshListings: true });
+  }
+
+  function renderExtBackup(shop, reason) {
+    var root = $('alat-root');
+    if (!root) return;
+    root.className = 'alat-page';
+    root.innerHTML =
+      progressHtml(2, 'Cadangan ekstensi') +
+      '<section class="alat-card">' +
+        '<p class="alat-kicker">' + esc(shop.store_name || 'Toko') + '</p>' +
+        '<h2>Ambil lewat ekstensi LarisID</h2>' +
+        '<p class="alat-lead">' + esc(reason || 'Sapuan otomatis belum berhasil.') +
+          ' Pasang ekstensi, buka halaman toko Shopee-mu, ketuk “Ini toko saya”. Preferensi kabar sudah tersimpan.</p>' +
+        '<div class="alat-row" style="margin-top:12px">' +
+          '<a class="btn-primary" id="alat-ext-cws" href="' + esc(cwsExtUrl()) + '" target="_blank" rel="noopener">Pasang ekstensi</a>' +
+          '<button type="button" class="btn-ghost" id="alat-ext-retry">Coba link lagi</button>' +
+        '</div>' +
+      '</section>';
+    $('alat-ext-retry')?.addEventListener('click', function () { clearShopAndReconnect(); });
   }
 
   async function findShopsByName(q, limit) {
@@ -589,14 +881,7 @@
   }
 
   async function pickShop(row) {
-    var shop = {
-      shop_id: row.shop_id,
-      store_name: row.store_name || ('Toko ' + row.shop_id),
-    };
-    rememberShop(shop);
-    await saveStoreProfile(shop);
-    log('alat_shop_claimed', { shop_id: shop.shop_id });
-    await loadShopWork(shop);
+    await beginOnboard(row, 'https://shopee.co.id/shop/' + row.shop_id, false);
   }
 
   async function loadShopWork(shop, opts) {
@@ -646,15 +931,7 @@
       rememberShop(shop);
     }
     if (!_listings.length) {
-      root.innerHTML =
-        (wantCenter ? '' : progressHtml(1, 'Hubungkan toko')) +
-        '<section class="alat-card">' +
-          '<p class="alat-kicker">' + esc(shop.store_name) + '</p>' +
-          '<h2>Belum ada listing toko ini di sapuan kami</h2>' +
-          '<p class="alat-lead">Pasang ekstensi LarisID, buka halaman toko Shopee-mu, lalu ketuk “Ini toko saya” — kami ambil produk yang terlihat di tab itu sebagai snapshot halaman.</p>' +
-          '<button type="button" class="btn-ghost" id="alat-reconnect">Ganti toko</button>' +
-        '</section>';
-      $('alat-reconnect')?.addEventListener('click', function () { clearShopAndReconnect(); });
+      renderExtBackup(shop, 'Belum ada listing toko ini di sapuan kami, dan ambil otomatis belum mengisi produk.');
       return;
     }
     // Restore tracked selection from profile when revisiting.
@@ -694,6 +971,8 @@
     _listings = [];
     _trackedIds = [];
     _claimSnapId = '';
+    _scrapeJobId = '';
+    _pendingUrl = '';
     _wizardDone = false;
     _trackSelected = [];
     renderConnect();
@@ -763,7 +1042,7 @@
     var root = $('alat-root');
     if (!root) return;
     root.className = 'alat-page';
-    _step = 2;
+    _step = 3;
     var mine = _listings.slice(0, LIST_PREVIEW);
     if (!_trackSelected.length && mine.length) {
       _trackSelected = [0];
@@ -778,7 +1057,7 @@
     }
     if (_trackFocus < 0 && _trackSelected.length) _trackFocus = _trackSelected[0];
 
-    var html = progressHtml(2, 'Pantau kompetitor') +
+    var html = progressHtml(3, 'Pantau kompetitor') +
       '<section class="alat-card">' +
         '<p class="alat-kicker">Toko · ' + esc(shop.store_name) + '</p>' +
         '<h2>Pilih hingga ' + TRACK_MAX + ' produk</h2>' +
@@ -1092,10 +1371,10 @@
     var root = $('alat-root');
     if (!root) return;
     root.className = 'alat-page';
-    _step = 3;
+    _step = 4;
     var products = analyzeProducts();
     root.innerHTML =
-      progressHtml(3, 'Analisis listing') +
+      progressHtml(4, 'Analisis listing') +
       '<section class="alat-card alat-analyze-card">' +
         '<p class="alat-kicker">Analisis Laris · ' + esc(shop.store_name) + '</p>' +
         '<h2>Menganalisis produkmu</h2>' +
@@ -1966,7 +2245,7 @@
     if (exit) {
       exit.addEventListener('click', function () {
         try {
-          sessionStorage.removeItem(SS_FLAG);
+          sessionStorage.setItem(SS_FLAG, '0');
           sessionStorage.removeItem(SS_INTENT);
         } catch (_) {}
         exitFocus();

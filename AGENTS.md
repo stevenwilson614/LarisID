@@ -66,6 +66,7 @@ Canonical docs and dual-laptop agent rules live in the private scraper repo — 
 - https://github.com/stevenwilson614/shopee_scraper  
 - Start at `README.md` → `docs/AGENTS.md` → `docs/ARCHITECTURE.md`  
 - Dual-host day5: `docs/DUAL_LAPTOP.md` (A = batches 1–17, B = 18–34)
+- Alat paste-URL shop scrape (Steven’s Mac poller): **[docs/alat-shop-scrape.md](./docs/alat-shop-scrape.md)** + `~/shopee_scraper/shop_claim_worker.py`
 
 After scraper code/doc changes: commit + push that repo; on the other laptop run `git pull` before scraping. Do not run Chrome CDP scrapes on the Contabo VPS by default.
 
