@@ -110,7 +110,7 @@
     return String(Math.round(x));
   }
 
-  /** Hide app chrome (sidebar / topbar / composer) during sift, quest, audit wizard. */
+  /** Keep logo + Login/Daftar; hide sidebar / composer during sift & wizard. */
   function setFocus(on) {
     if (!document.body) return;
     document.body.classList.toggle('alat-focus', !!on);
@@ -224,13 +224,20 @@
 
   /** Logged-in, prior onboarding, or My Toko already started — normal app home. */
   function isReturningVisitor() {
-    if (user()) return true;
-    if (isWizardDone() || rememberedShop()) return true;
-    if (intent()) return true;
+    var u = user();
+    var wiz = isWizardDone();
+    var shop = rememberedShop();
+    var intentVal = intent();
     var o = host && host.onboarding && host.onboarding();
-    if (o && (o.completedAnon || o.experience === 'existing' || o.experience === 'first_time')) {
-      return true;
-    }
+    var fromOb = !!(o && (o.completedAnon || o.experience === 'existing' || o.experience === 'first_time'));
+    var ret = !!(u || wiz || shop || intentVal || fromOb);
+    // #region agent log
+    fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'28520f'},body:JSON.stringify({sessionId:'28520f',runId:'new-user',hypothesisId:'A',location:'gpt-alat-preview.js:isReturningVisitor',message:'returning check',data:{ret:ret,hasUser:!!u,wiz:wiz,hasShop:!!(shop&&shop.shop_id),intent:intentVal||null,obExp:o&&o.experience||null,obDone:!!(o&&o.completedAnon),obStep:o&&o.step||null},timestamp:Date.now()})}).catch(function(){});
+    // #endregion
+    if (u) return true;
+    if (wiz || shop) return true;
+    if (intentVal) return true;
+    if (fromOb) return true;
     return false;
   }
 
@@ -435,6 +442,9 @@
         p_store_name: (shop && shop.store_name) || '',
       });
       var d = res && res.data;
+      // #region agent log
+      fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'28520f'},body:JSON.stringify({sessionId:'28520f',runId:'new-user',hypothesisId:'E',location:'gpt-alat-preview.js:requestShopScrape',message:'scrape enqueue',data:{ok:!!(d&&d.ok),jobId:d&&d.job_id||null,reason:d&&d.reason||null,err:res&&res.error&&res.error.message||null,url:(url||'').slice(0,80)},timestamp:Date.now()})}).catch(function(){});
+      // #endregion
       if (d && d.ok && d.job_id) return d;
       if (d && d.reason === 'rate_limited') return d;
     } catch (_) {}
@@ -1197,6 +1207,18 @@
     var nProd = 0;
     var nToko = 0;
     var trackedShops = Object.create(null);
+    // Guests: keep selection locally and continue the wizard. Server Favorit /
+    // tracked-store RPCs open auth mid-flow — signup CTA is only after Selesai.
+    if (!user()) {
+      // #region agent log
+      fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'28520f'},body:JSON.stringify({sessionId:'28520f',runId:'post-fix',hypothesisId:'F',location:'gpt-alat-preview.js:confirmTracks',message:'guest skip server track',data:{selected:_trackSelected.length,goNext:!!goNext},timestamp:Date.now()})}).catch(function(){});
+      // #endregion
+      syncTrackedFromSelection();
+      log('alat_tracks_confirmed', { products: 0, stores: 0, guest_local: true });
+      if (goNext) renderAnalyzeStep(shop);
+      else if (btn) { btn.disabled = false; btn.textContent = 'Simpan & lanjut'; }
+      return;
+    }
     for (var i = 0; i < _trackSelected.length; i++) {
       var p = _listings[_trackSelected[i]];
       if (!p) continue;
@@ -2208,10 +2230,19 @@
   function openSift() {
     exitFocus();
     if (host && host.setView) host.setView('sift');
+    // #region agent log
+    var vs = document.getElementById('view-sift');
+    fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'28520f'},body:JSON.stringify({sessionId:'28520f',runId:'new-user',hypothesisId:'D',location:'gpt-alat-preview.js:openSift',message:'openSift called',data:{bodyClass:document.body&&document.body.className||'',viewSiftHidden:vs?vs.hidden:null,viewSiftDisplay:vs?getComputedStyle(vs).display:null,hasDoors:!!document.querySelector('[data-alat-door]')},timestamp:Date.now()})}).catch(function(){});
+    // #endregion
   }
 
   function onBoot() {
-    if (!active()) return false;
+    if (!active()) {
+      // #region agent log
+      fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'28520f'},body:JSON.stringify({sessionId:'28520f',runId:'new-user',hypothesisId:'C',location:'gpt-alat-preview.js:onBoot',message:'alat inactive',data:{flag:(function(){try{return sessionStorage.getItem('lid_preview_alat')}catch(e){return 'err'}})()},timestamp:Date.now()})}).catch(function(){});
+      // #endregion
+      return false;
+    }
     stripExpor();
     rememberedShop(); // hydrate tracked / alerts / wizard flag before gates
     syncNavLabels();
@@ -2228,7 +2259,11 @@
       return true;
     }
     // Brand-new visitors: choice doors. Returning: normal Laris home + My Toko in nav.
-    if (!isReturningVisitor()) {
+    var returning = isReturningVisitor();
+    // #region agent log
+    fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'28520f'},body:JSON.stringify({sessionId:'28520f',runId:'new-user',hypothesisId:'A',location:'gpt-alat-preview.js:onBoot',message:'boot branch',data:{returning:returning,willOpenSift:!returning,bodyClass:document.body&&document.body.className||''},timestamp:Date.now()})}).catch(function(){});
+    // #endregion
+    if (!returning) {
       openSift();
       return true;
     }

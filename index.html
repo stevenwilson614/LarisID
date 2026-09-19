@@ -10621,8 +10621,8 @@ body.view-chat .sfb-card {
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260916d" defer></script>
-<script src="/js/gpt-alat-preview.js?v=20260919ab" defer></script>
-<script src="/js/gpt-app.js?v=20260919ab" defer></script>
+<script src="/js/gpt-alat-preview.js?v=20260919ae" defer></script>
+<script src="/js/gpt-app.js?v=20260919ac" defer></script>
 <style>
 .alat-preview-banner {
   display: none;
@@ -10661,20 +10661,22 @@ html.alat-preview #finder-xp-step { display: none; }
 .alat-nav { display: none !important; }
 html.alat-preview .alat-nav,
 body.alat-preview .alat-nav { display: flex !important; }
+/* Keep .main-top (logo + Login/Daftar) through sift & wizard; hide chrome only. */
 body.view-sift .sidebar,
 body.view-sift .sidebar-backdrop,
-body.view-sift .main-top,
 body.view-sift .composer-dock,
 body.view-sift .menu-btn,
-body.view-sift .topbar-mobile-brand,
 body.view-sift #msg-steven-fab,
 body.alat-focus .sidebar,
 body.alat-focus .sidebar-backdrop,
-body.alat-focus .main-top,
 body.alat-focus .composer-dock,
 body.alat-focus .menu-btn,
-body.alat-focus .topbar-mobile-brand,
 body.alat-focus #msg-steven-fab { display: none !important; }
+/* Sidebar logo is gone — force the topbar brand on all widths. */
+body.view-sift .topbar-mobile-brand,
+body.alat-focus .topbar-mobile-brand { display: flex !important; }
+/* Duplicate logo/auth lived in #view-sift; main-top covers it now. */
+body.view-sift .alat-sift-bar { display: none !important; }
 body.view-sift .panel,
 body.alat-focus.view-home .panel,
 body.alat-focus.view-audit .panel {
@@ -10696,7 +10698,8 @@ body.alat-focus.view-home .home-ask-mascot { display: none !important; }
 body.alat-focus.view-home .home-hero,
 body.alat-focus.view-home .home-scroll,
 body.alat-focus.view-home .home-ask-stage {
-  min-height: calc(100vh - 36px);
+  /* banner (~36px) + main-top (~52px) */
+  min-height: calc(100vh - 88px);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -10909,7 +10912,8 @@ body.alat-focus.view-home .home-finder::after {
 #view-sift.active {
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - 36px);
+  /* banner (~36px) + main-top (~52px) */
+  min-height: calc(100vh - 88px);
 }
 .alat-sift-bar {
   display: flex;
