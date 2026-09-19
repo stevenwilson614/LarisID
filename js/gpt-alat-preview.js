@@ -382,10 +382,10 @@
         '<p class="alat-err" id="alat-shop-err" hidden></p>' +
         '<div id="alat-shop-picker" class="alat-picker" hidden></div>' +
         '<p class="alat-hint">Sudah punya ekstensi? Di halaman toko Shopee, ketuk “Ini toko saya”.</p>' +
-        '<div class="alat-row alat-row-end" style="margin-top:18px">' +
+        '<div class="alat-row-actions">' +
           '<button type="button" class="btn-ghost" id="alat-shop-skip">Lewati dulu</button>' +
         '</div>' +
-        '<p class="alat-hint">Belum mau tambah toko? Lewati — tempel kapan saja di My Toko.</p>' +
+        '<p class="alat-hint" style="margin-top:10px;text-align:right">Bisa tempel kapan saja di My Toko.</p>' +
       '</section>';
     $('alat-shop-go')?.addEventListener('click', function () { void searchShop(); });
     $('alat-shop-skip')?.addEventListener('click', skipConnect);

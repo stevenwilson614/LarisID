@@ -10621,7 +10621,7 @@ body.view-chat .sfb-card {
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260916d" defer></script>
-<script src="/js/gpt-alat-preview.js?v=20260919af" defer></script>
+<script src="/js/gpt-alat-preview.js?v=20260919ag" defer></script>
 <script src="/js/gpt-app.js?v=20260919ac" defer></script>
 <style>
 .alat-preview-banner {
@@ -10661,6 +10661,14 @@ html.alat-preview #finder-xp-step { display: none; }
 .alat-nav { display: none !important; }
 html.alat-preview .alat-nav,
 body.alat-preview .alat-nav { display: flex !important; }
+html.alat-preview,
+body.alat-preview {
+  --alat-chrome: 88px; /* banner + main-top */
+}
+@media (max-width: 860px) {
+  html.alat-preview,
+  body.alat-preview { --alat-chrome: 96px; }
+}
 /* Keep .main-top (logo + Login/Daftar) through sift & wizard; hide chrome only. */
 body.view-sift .sidebar,
 body.view-sift .sidebar-backdrop,
@@ -10685,7 +10693,27 @@ body.alat-focus.view-audit .panel {
 }
 body.view-sift .panel-inner,
 body.alat-focus.view-home .panel-inner,
-body.alat-focus.view-audit .panel-inner { max-width: none; min-height: 100%; }
+body.alat-focus.view-audit .panel-inner {
+  max-width: none;
+  min-height: calc(100vh - var(--alat-chrome));
+  display: flex;
+  flex-direction: column;
+}
+body.view-sift #view-sift.active,
+body.alat-focus.view-audit #view-audit.active {
+  display: flex !important;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+}
+body.alat-focus.view-audit #alat-root {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+}
 /* Seller-baru questionnaire: finder only, no Laris AI chrome. */
 body.alat-focus.view-home .home-ask-intro,
 body.alat-focus.view-home .home-prompts,
@@ -10698,8 +10726,8 @@ body.alat-focus.view-home .home-ask-mascot { display: none !important; }
 body.alat-focus.view-home .home-hero,
 body.alat-focus.view-home .home-scroll,
 body.alat-focus.view-home .home-ask-stage {
-  /* banner (~36px) + main-top (~52px) */
-  min-height: calc(100vh - 88px);
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -10707,7 +10735,7 @@ body.alat-focus.view-home .home-ask-stage {
 body.alat-focus.view-home .home-finder {
   max-width: 560px;
   margin: 0 auto;
-  padding: 24px 20px 48px;
+  padding: 24px 20px 40px;
   width: 100%;
   box-sizing: border-box;
 }
@@ -10725,9 +10753,10 @@ body.alat-focus.view-home .home-finder::after {
   content: none;
 }
 .alat-progress {
-  max-width: 720px;
-  margin: 0 auto 18px;
-  padding: 8px 4px 0;
+  width: 100%;
+  margin: 0 0 16px;
+  padding: 0;
+  flex: none;
 }
 .alat-progress-meta {
   display: flex;
@@ -10910,10 +10939,11 @@ body.alat-focus.view-home .home-finder::after {
 }
 .alat-signup-cta-card h2 { margin: 0 0 8px; font-size: 1.2rem; line-height: 1.3; }
 #view-sift.active {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  /* banner (~36px) + main-top (~52px) */
-  min-height: calc(100vh - 88px);
+  min-height: 0;
+  width: 100%;
 }
 .alat-sift-bar {
   display: flex;
@@ -10945,24 +10975,27 @@ body.alat-focus.view-home .home-finder::after {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 28px;
-  padding: 24px 24px 64px;
+  gap: 24px;
+  padding: 32px 24px 48px;
   text-align: center;
+  width: min(420px, 100%);
+  margin: 0 auto;
+  box-sizing: border-box;
 }
 .alat-sift-q {
   margin: 0;
-  font-size: 1.4rem;
+  font-size: clamp(1.15rem, 2.2vw, 1.35rem);
   font-weight: 650;
   letter-spacing: -0.02em;
   color: #1A1A1A;
-  max-width: 16em;
+  max-width: 18em;
   line-height: 1.35;
 }
 .alat-sift-btns {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  width: min(360px, 100%);
+  width: 100%;
 }
 .alat-sift-btns button {
   width: 100%;
@@ -11011,8 +11044,40 @@ body.alat-focus.view-home .home-finder::after {
   opacity: 1;
   margin-top: 8px;
 }
-.alat-page { max-width: 720px; margin: 0 auto; padding: 20px 16px 64px; box-sizing: border-box; }
-.alat-page--wide { max-width: 920px; width: 100%; box-sizing: border-box; }
+.alat-page {
+  --alat-page-w: 640px;
+  width: min(var(--alat-page-w), 100%);
+  max-width: var(--alat-page-w);
+  margin: 0 auto;
+  padding: 28px 20px 40px;
+  box-sizing: border-box;
+}
+/* Wizard steps: fill the frame under banner+header; spacers keep short pages centered. */
+body.alat-focus.view-audit .alat-page:not(.alat-page--wide) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: min(var(--alat-page-w), 100%);
+}
+body.alat-focus.view-audit .alat-page:not(.alat-page--wide)::before,
+body.alat-focus.view-audit .alat-page:not(.alat-page--wide)::after {
+  content: '';
+  flex: 1 1 0;
+  min-height: 12px;
+}
+.alat-page--wide {
+  --alat-page-w: 920px;
+  width: min(var(--alat-page-w), 100%);
+  max-width: var(--alat-page-w);
+  justify-content: flex-start;
+}
+body.alat-focus.view-audit .alat-page--wide::before,
+body.alat-focus.view-audit .alat-page--wide::after { display: none; }
+@media (max-width: 640px) {
+  .alat-page { padding: 16px 14px 32px; }
+  .alat-sift { padding: 24px 16px 40px; }
+}
 .kalc-page { max-width: 720px; margin: 0 auto; padding: 20px 16px 72px; }
 .kalc-page-head h2 { margin: 0 0 6px; font-size: 1.45rem; letter-spacing: -.02em; }
 .kalc-page-head p { margin: 0 0 18px; color: #666; font-size: .92rem; line-height: 1.45; }
@@ -11364,14 +11429,26 @@ body.alat-focus.view-home .home-finder::after {
 #myt-wa-row[hidden] { display: none !important; }
 .alat-card {
   background: #fff; border: 1px solid var(--line, #E8E8E8); border-radius: 16px;
-  padding: 20px 22px; margin-bottom: 16px;
+  padding: 22px 24px; margin-bottom: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 .alat-kicker { font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted, #8A8A8A); margin: 0 0 6px; }
-.alat-card h2 { margin: 0 0 8px; font-size: 1.25rem; }
+.alat-card h2 { margin: 0 0 8px; font-size: clamp(1.1rem, 2vw, 1.25rem); }
 .alat-h3 { margin: 18px 0 8px; font-size: .92rem; }
 .alat-lead { color: var(--muted, #666); font-size: .9rem; line-height: 1.5; margin: 0 0 16px; }
 .alat-label { display: block; font-size: .78rem; font-weight: 650; margin-bottom: 6px; }
 .alat-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.alat-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid #F1F1F2;
+}
 .alat-input {
   flex: 1 1 220px; min-width: 0; border: 1px solid #E8E8E8; border-radius: 10px;
   padding: 10px 12px; font: inherit;
