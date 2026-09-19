@@ -26020,7 +26020,9 @@ async function boot() {
   void routeCohortHome();
   consumeAdminDeepLink();
   if (window.LarisAlatPreview?.active() && !document.body.className.split(/\s+/).some((c) => c.startsWith('view-'))) {
-    window.LarisAlatPreview.onBoot();
+    if (!window.LarisAlatPreview.onBoot()) {
+      renderHome();
+    }
   }
 }
 
