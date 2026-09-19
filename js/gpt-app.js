@@ -25526,6 +25526,16 @@ function wireUi() {
   }, true);
   $('btn-menu')?.addEventListener('click', openSidebar);
   $('sidebar-backdrop')?.addEventListener('click', closeSidebar);
+  // Narrow-desktop rail (861–1279px) expands on :hover and :focus-within.
+  // A pointer click leaves focus on the side button, so the rail stays open
+  // after the cursor leaves — blur mouse/pen clicks (detail > 0). Keyboard
+  // activation keeps focus so Tab users can still expand the rail.
+  $('sidebar')?.addEventListener('click', (ev) => {
+    if (!ev.detail) return;
+    const el = ev.target.closest('a.sidebar-brand, a.side-btn, button');
+    if (!el || el.closest('.chat-search')) return;
+    requestAnimationFrame(() => { try { el.blur(); } catch (_) {} });
+  });
   $('btn-home')?.addEventListener('click', goHome);
   $('btn-home-mobile')?.addEventListener('click', goHome);
   $('chat-search-input')?.addEventListener('input', () => renderChatList());
@@ -25985,6 +25995,9 @@ async function boot() {
   const previewResumeProduct = !!(state.pendingDeepdive || state.pendingCompare || state.pendingTracker || state.pendingFinder || _finderResumeInFlight);
   if (window.LarisAlatPreview?.active() && !_offerActive && !previewResumeProduct && !alreadyDeepdive && !alreadyCommunity && !alreadyAdmin) {
     const tookAlat = window.LarisAlatPreview.onBoot();
+    // #region agent log
+    fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'28520f'},body:JSON.stringify({sessionId:'28520f',runId:'new-user',hypothesisId:'B',location:'gpt-app.js:boot',message:'alat boot result',data:{tookAlat:!!tookAlat,view:state.view,bodyClass:document.body&&document.body.className||''},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     if (tookAlat) {
       _bootLandingView = state.view;
     } else if (!pendingResume && !finderResultsUp) {
@@ -26018,6 +26031,9 @@ async function boot() {
   renderChatList();
   renderSidebarLocCard();
   void routeCohortHome();
+  // #region agent log
+  fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'28520f'},body:JSON.stringify({sessionId:'28520f',runId:'new-user',hypothesisId:'B',location:'gpt-app.js:boot:afterCohort',message:'after routeCohortHome',data:{view:state.view,bodyClass:document.body&&document.body.className||'',viewSiftHidden:!!$('view-sift')?.hidden},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   consumeAdminDeepLink();
   if (window.LarisAlatPreview?.active() && !document.body.className.split(/\s+/).some((c) => c.startsWith('view-'))) {
     if (!window.LarisAlatPreview.onBoot()) {

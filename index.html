@@ -4117,6 +4117,8 @@ body.ddtp-open #btn-tracker svg .ic-f { fill: var(--accent); stroke: none; }
     width: var(--sidebar-open-w);
     box-shadow: 8px 0 32px rgba(0, 0, 0, .12);
   }
+  /* Pointer clicks blur the side button (see gpt-app wireUi) so :focus-within
+     does not keep the rail open after the cursor leaves. */
 
   /* Rail state = in the tier AND not being hovered/focused. */
   .sidebar:not(:hover):not(:focus-within) .side-btn,
@@ -10622,7 +10624,7 @@ body.view-chat .sfb-card {
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260916d" defer></script>
 <script src="/js/gpt-alat-preview.js?v=20260919ag" defer></script>
-<script src="/js/gpt-app.js?v=20260919ac" defer></script>
+<script src="/js/gpt-app.js?v=20260919ah" defer></script>
 <style>
 .alat-preview-banner {
   display: none;
