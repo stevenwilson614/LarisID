@@ -2,6 +2,38 @@
 (function () {
 'use strict';
 
+/* Native-app gestures on phones: no pinch / double-tap zoom, no iOS edge-swipe
+   back. CSS touch-action + viewport cover Chrome; Safari still needs these. */
+(function lockAppGestures() {
+  const stop = (e) => { e.preventDefault(); };
+  document.addEventListener('gesturestart', stop, { passive: false });
+  document.addEventListener('gesturechange', stop, { passive: false });
+  document.addEventListener('gestureend', stop, { passive: false });
+  let edge = 0;
+  let sx = 0;
+  let sy = 0;
+  document.addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    if (!t) return;
+    sx = t.clientX;
+    sy = t.clientY;
+    const w = window.innerWidth;
+    edge = sx < 24 ? -1 : (sx > w - 24 ? 1 : 0);
+  }, { passive: true });
+  document.addEventListener('touchmove', (e) => {
+    if (e.touches.length > 1) {
+      e.preventDefault();
+      return;
+    }
+    if (!edge || !e.touches[0]) return;
+    const t = e.touches[0];
+    const dx = t.clientX - sx;
+    const dy = t.clientY - sy;
+    if (Math.abs(dx) <= Math.abs(dy) + 6) return;
+    if ((edge < 0 && dx > 0) || (edge > 0 && dx < 0)) e.preventDefault();
+  }, { passive: false });
+})();
+
 // ── Clarity ──────────────────────────────────────────────────────────────
 function _clarity() {
   const w = window;
