@@ -5498,6 +5498,35 @@
     });
   }
 
+  function readEnvInset(side) {
+    const el = document.createElement('div');
+    el.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;' +
+      (side === 'top'
+        ? 'padding-top:env(safe-area-inset-top,0px)'
+        : 'padding-bottom:env(safe-area-inset-bottom,0px)');
+    document.body.appendChild(el);
+    const v = parseFloat(getComputedStyle(el)[side === 'top' ? 'paddingTop' : 'paddingBottom']) || 0;
+    el.remove();
+    return v;
+  }
+  function syncViewportShell() {
+    if (!document.body) return;
+    const root = document.documentElement;
+    const vv = window.visualViewport;
+    const h = Math.round((vv && vv.height) || window.innerHeight || 0);
+    const top = Math.round((vv && vv.offsetTop) || 0);
+    if (h > 0) root.style.setProperty('--app-height', h + 'px');
+    root.style.setProperty('--app-top', top + 'px');
+    const standalone = window.matchMedia('(display-mode: standalone)').matches
+      || window.navigator.standalone === true;
+    const envBottom = readEnvInset('bottom');
+    const envTop = readEnvInset('top');
+    /* Safari's bottom toolbar is not always in safe-area; seat the dock above it. */
+    const browserPad = standalone ? 0 : Math.max(0, Math.min(56, window.innerHeight - h));
+    const bottom = Math.max(envBottom, browserPad, standalone ? 0 : 12);
+    root.style.setProperty('--safe-bottom', bottom + 'px');
+    root.style.setProperty('--safe-top', envTop + 'px');
+  }
   function lockAppGestures() {
     const stop = (e) => { e.preventDefault(); };
     document.addEventListener('gesturestart', stop, { passive: false });
@@ -5528,6 +5557,13 @@
     }, { passive: false });
   }
   lockAppGestures();
+  syncViewportShell();
+  window.addEventListener('resize', syncViewportShell);
+  window.addEventListener('orientationchange', () => setTimeout(syncViewportShell, 120));
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', syncViewportShell);
+    window.visualViewport.addEventListener('scroll', syncViewportShell);
+  }
 
   render();
 })();
