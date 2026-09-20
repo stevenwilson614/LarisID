@@ -60,6 +60,25 @@
     const code = schoolInviteCode();
     return schoolLocalUrl() + (code ? ('?invite=' + encodeURIComponent(code)) : '');
   }
+  function resolveVanitySlug() {
+    const asked = pathSlug() || qsSlug();
+    if (!asked) return true;
+    const known = schoolSlug();
+    if (asked === known) return true;
+    const miss = $('slug-miss');
+    if (miss) {
+      miss.hidden = false;
+      const askedEl = miss.querySelector('[data-asked]');
+      const knownEl = miss.querySelector('[data-known]');
+      const link = miss.querySelector('a');
+      if (askedEl) askedEl.textContent = asked;
+      if (knownEl) knownEl.textContent = known;
+      if (link) link.href = '/s/' + encodeURIComponent(known);
+    }
+    const app = $('app');
+    if (app) app.hidden = true;
+    return false;
+  }
 
   if (/larisid\.com$/i.test(location.hostname) || location.hostname.endsWith('.pages.dev')) {
     $('prod-block').hidden = false;
@@ -67,18 +86,6 @@
     return;
   }
 
-  const PATH_SLUG = pathSlug() || qsSlug();
-  if (PATH_SLUG && PATH_SLUG !== normalizeSlug(SEED.school.slug)) {
-    const miss = $('slug-miss');
-    if (miss) {
-      miss.hidden = false;
-      miss.querySelector('[data-asked]').textContent = PATH_SLUG;
-      miss.querySelector('[data-known]').textContent = SEED.school.slug;
-      miss.querySelector('a').href = '/s/' + encodeURIComponent(SEED.school.slug);
-    }
-    $('app').hidden = true;
-    return;
-  }
   if (PRESENT_QS.get('invite')) {
     try { sessionStorage.setItem('anton-school-invite', String(PRESENT_QS.get('invite'))); } catch (err) { /* private */ }
   }
@@ -2552,7 +2559,6 @@
       : renderCanvas(lec) + renderLecAfter(lec) + payAfterFirst(lec) + renderPanes(lec);
     return '<div class="player-layout">' +
       '<div>' +
-        progressBarHtml(ui.personaId) +
         '<button type="button" class="kur-toggle" data-act="toggle-kur">' +
         (ui.kurOpen ? 'Tutup kurikulum' : 'Kurikulum · ' + kurProgress(ui.personaId).pct + '%') + '</button>' +
         inner + '</div>' +
@@ -3022,10 +3028,7 @@
     const c = crmOf(sid);
     const doneAll = p.n >= p.total && p.total > 0;
     return '<div class="grid-2">' +
-      '<section class="card"><h2>Checklist kurikulum</h2>' +
-        progressBarHtml(sid) +
-        db.weeks.map((w) => '<h3>' + esc(w.title) + ' · ' + progressPct(sid, w.id) + '%</h3>' + weekList(sid, w.id)).join('') +
-      '</section>' +
+      progresKurikulumBlock(sid) +
       '<section class="card">' +
         '<h2>Status</h2>' +
         '<p>Kurikulum: <strong>' + p.n + ' / ' + p.total + '</strong> · ' + p.pct + '%</p>' +
