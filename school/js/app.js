@@ -561,6 +561,118 @@
       '<span>' + p.n + ' / ' + p.total + ' materi · ' + p.pct + '%</span></div>' +
       '<div class="bar kur-bar"><span style="width:' + p.pct + '%"></span></div></div>';
   }
+  function nextKurMilestone(n, total) {
+    if (!total) return null;
+    if (n >= total) return { done: true, need: 0, pct: 100 };
+    const marks = [25, 50, 75, 100];
+    const pct = (n / total) * 100;
+    const next = marks.find((m) => pct < m - 0.01) || 100;
+    const targetN = Math.ceil((next / 100) * total);
+    return { done: false, need: Math.max(1, targetN - n), pct: next };
+  }
+  function svgIcon(name) {
+    if (name === 'play') {
+      return '<svg class="rj-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.2 3.4v9.2L13 8z" fill="currentColor"/></svg>';
+    }
+    if (name === 'book') {
+      return '<svg class="rj-ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
+    }
+    if (name === 'check') {
+      return '<svg class="rj-check" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.4 6.2 4.8 8.6 9.6 3.4" fill="none" stroke="#052e16" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    }
+    if (name === 'target') {
+      return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><path d="M12 2.5v3.2M12 18.3v3.2M2.5 12h3.2M18.3 12h3.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+    }
+    return '';
+  }
+  function resumeMountainSvg() {
+    return '<svg class="rj-mtn" viewBox="0 0 280 130" aria-hidden="true">' +
+      '<defs><linearGradient id="rj-sky" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0" stop-color="#24384a" stop-opacity=".7"/>' +
+      '<stop offset="1" stop-color="#141416" stop-opacity="0"/></linearGradient></defs>' +
+      '<rect width="280" height="130" fill="url(#rj-sky)"/>' +
+      '<circle cx="228" cy="28" r="10" fill="#f4e4c1" opacity=".18"/>' +
+      '<path d="M48 130 118 54l38 32 54-50 70 94z" fill="#101820"/>' +
+      '<path d="M0 130 78 78l42 24 52-44 58 48 50 24z" fill="#0c1218" opacity=".92"/>' +
+      '<path d="M118 54 132 72 148 62z" fill="#d6c7a8" opacity=".22"/>' +
+      '<path d="M210 36 222 52 238 44z" fill="#d6c7a8" opacity=".16"/></svg>';
+  }
+  function resumePathHtml(sid, currentId) {
+    const list = lectures();
+    const p = kurProgress(sid);
+    if (!list.length) return '';
+    const curIdx = Math.max(0, list.findIndex((l) => l.id === currentId));
+    const fill = list.length <= 1 ? 1 : curIdx / (list.length - 1);
+    const remain = Math.max(0, p.total - p.n);
+    const here = Math.round(fill * 100);
+    const nodes = list.map((l, i) => {
+      const done = isDone(sid, l.id);
+      const now = i === curIdx;
+      const locked = !canOpenLecture(sid, l.id) && !isStaff();
+      let cls = 'path-node';
+      if (now) cls += ' is-now';
+      else if (done) cls += ' is-done';
+      else if (locked) cls += ' is-locked';
+      else cls += ' is-todo';
+      const label = (i + 1) + '. ' + l.title + (done ? ' · selesai' : now ? ' · sedang di sini' : locked ? ' · terkunci' : '');
+      return '<button type="button" class="' + cls + '" data-act="open-lec" data-id="' + esc(l.id) + '"' +
+        (now ? ' aria-current="step"' : '') +
+        ' title="' + esc(label) + '" aria-label="' + esc(label) + '">' +
+        (done && !now ? svgIcon('check') : '') +
+        '</button>';
+    }).join('');
+    return '<div class="rj-board" role="group" aria-label="Progress kurikulum, ' + p.n + ' dari ' + p.total + ' selesai">' +
+      '<div class="rj-board-head"><span>Progress kamu</span><span class="rj-pct">' + p.pct + '% selesai</span></div>' +
+      '<div class="path-rail" style="--fill:' + fill.toFixed(4) + '">' +
+        '<span class="path-rail-bg" aria-hidden="true"></span>' +
+        '<span class="path-rail-fill" aria-hidden="true"></span>' +
+        nodes +
+      '</div>' +
+      '<div class="path-foot" style="--here:' + here + '">' +
+        '<div class="path-here"><strong>' + p.n + ' / ' + p.total + ' materi selesai</strong>' +
+        '<span>Kamu sedang di sini</span></div>' +
+        '<p class="path-remain">' + (remain ? (remain + ' materi lagi sampai selesai') : 'Semua materi selesai') + '</p>' +
+      '</div>' +
+      resumeMileHtml(sid, p) +
+      '</div>';
+  }
+  function resumeMileHtml(sid, p) {
+    const mile = nextKurMilestone(p.n, p.total);
+    if (!mile) return '';
+    if (mile.done) {
+      const c = crmOf(sid);
+      const goTes = !c.examScore;
+      return '<button type="button" class="rj-mile" data-act="' + (goTes ? 'tab' : 'lihat-kur') + '" data-id="' + (goTes ? 'tes' : '') + '">' +
+        '<span class="rj-mile-ico" aria-hidden="true">' + svgIcon('target') + '</span>' +
+        '<span class="rj-mile-copy"><em>Kurikulum selesai</em>' +
+        '<strong>' + (goTes ? 'Ambil tes akhir untuk sertifikat' : 'Semua materi sudah ditandai selesai') + '</strong></span>' +
+        '<span class="rj-mile-go" aria-hidden="true">›</span></button>';
+    }
+    return '<button type="button" class="rj-mile" data-act="lihat-kur">' +
+      '<span class="rj-mile-ico" aria-hidden="true">' + svgIcon('target') + '</span>' +
+      '<span class="rj-mile-copy"><em>Milestone berikutnya</em>' +
+      '<strong>Selesaikan ' + mile.need + ' materi lagi untuk mencapai ' + mile.pct + '%</strong></span>' +
+      '<span class="rj-mile-go" aria-hidden="true">›</span></button>';
+  }
+  function resumeJourneyHtml(sid, last, preview) {
+    const p = kurProgress(sid);
+    return '<section class="card resume-journey">' +
+      '<div class="rj-hero">' +
+        resumeMountainSvg() +
+        '<p class="rj-kicker">' + (preview ? 'Coba video 1' : 'Lanjutkan belajar') + '</p>' +
+        '<h2>' + esc(last.title) + '</h2>' +
+        '<p class="rj-meta">' + esc(typeLabel(last.type)) + ' · ' + p.n + '/' + p.total + ' video' +
+        (preview ? ' · video lain terkunci sampai lunas' : '') + '</p>' +
+        '<p class="rj-motto">Step by step, real progress.</p>' +
+      '</div>' +
+      resumePathHtml(sid, last.id) +
+      '<div class="rj-acts">' +
+        '<button type="button" class="btn" data-act="open-lec" data-id="' + esc(last.id) + '">' +
+          svgIcon('play') + ' Buka materi</button>' +
+        '<button type="button" class="btn secondary" data-act="lihat-kur">' +
+          svgIcon('book') + ' Lihat kurikulum</button>' +
+      '</div></section>';
+  }
   function currentWeekId(sid) {
     for (let i = 0; i < db.weeks.length; i += 1) {
       if (progressPct(sid, db.weeks[i].id) < 100) return db.weeks[i].id;
@@ -2227,14 +2339,7 @@
     return (
       (preview ? offerBanner(s.id) : '') +
       '<div class="grid-2">' +
-        '<section class="card resume">' +
-          '<p class="muted">' + (preview ? 'Coba video 1' : 'Lanjutkan') + '</p>' +
-          '<h2>' + esc(last.title) + '</h2>' +
-          '<p class="muted">' + esc(typeLabel(last.type)) + ' · ' + kurProgress(s.id).n + '/' + kurProgress(s.id).total + ' video' +
-          (preview ? ' · video lain terkunci sampai lunas' : '') + '</p>' +
-          progressBarHtml(s.id) +
-          '<button class="btn" data-act="open-lec" data-id="' + esc(last.id) + '">Buka materi</button>' +
-        '</section>' +
+        resumeJourneyHtml(s.id, last, preview) +
         '<section class="card">' +
           '<h2>Sesi berikutnya</h2>' +
           (preview
@@ -4324,6 +4429,11 @@
       }
     } else if (act === 'toggle-kur') {
       ui.kurOpen = !ui.kurOpen;
+      render();
+    } else if (act === 'lihat-kur') {
+      ui.tab = 'belajar';
+      ui.kurOpen = true;
+      ui.lectureId = db.lastLecture[ui.personaId] || firstLectureId();
       render();
     } else if (act === 'scroll-kur') {
       ui.tab = 'belajar';
