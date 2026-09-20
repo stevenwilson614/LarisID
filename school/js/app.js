@@ -585,18 +585,6 @@
     }
     return '';
   }
-  function resumeMountainSvg() {
-    return '<svg class="rj-mtn" viewBox="0 0 280 130" aria-hidden="true">' +
-      '<defs><linearGradient id="rj-sky" x1="0" y1="0" x2="0" y2="1">' +
-      '<stop offset="0" stop-color="#24384a" stop-opacity=".7"/>' +
-      '<stop offset="1" stop-color="#141416" stop-opacity="0"/></linearGradient></defs>' +
-      '<rect width="280" height="130" fill="url(#rj-sky)"/>' +
-      '<circle cx="228" cy="28" r="10" fill="#f4e4c1" opacity=".18"/>' +
-      '<path d="M48 130 118 54l38 32 54-50 70 94z" fill="#101820"/>' +
-      '<path d="M0 130 78 78l42 24 52-44 58 48 50 24z" fill="#0c1218" opacity=".92"/>' +
-      '<path d="M118 54 132 72 148 62z" fill="#d6c7a8" opacity=".22"/>' +
-      '<path d="M210 36 222 52 238 44z" fill="#d6c7a8" opacity=".16"/></svg>';
-  }
   function resumePathHtml(sid, currentId) {
     const list = lectures();
     const p = kurProgress(sid);
@@ -658,12 +646,10 @@
     const p = kurProgress(sid);
     return '<section class="card resume-journey">' +
       '<div class="rj-hero">' +
-        resumeMountainSvg() +
         '<p class="rj-kicker">' + (preview ? 'Coba video 1' : 'Lanjutkan belajar') + '</p>' +
         '<h2>' + esc(last.title) + '</h2>' +
         '<p class="rj-meta">' + esc(typeLabel(last.type)) + ' · ' + p.n + '/' + p.total + ' video' +
         (preview ? ' · video lain terkunci sampai lunas' : '') + '</p>' +
-        '<p class="rj-motto">Step by step, real progress.</p>' +
       '</div>' +
       resumePathHtml(sid, last.id) +
       '<div class="rj-acts">' +

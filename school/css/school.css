@@ -165,15 +165,13 @@ a { color: inherit; }
 .resume-journey {
   position: relative;
   overflow: hidden;
-  background:
-    radial-gradient(120% 80% at 100% 0%, rgba(46, 74, 92, .45), transparent 58%),
-    linear-gradient(180deg, #1a1c20 0%, #141416 42%, #121214 100%);
+  background: #161618;
   border: 1px solid #2e3238;
   border-radius: 16px;
   padding: 16px 16px 14px;
   color: var(--text);
 }
-.rj-hero { position: relative; min-height: 92px; padding-right: 6.2rem; margin-bottom: 12px; }
+.rj-hero { margin-bottom: 12px; }
 .rj-hero h2 {
   margin: 2px 0 4px;
   font-size: 1.18rem;
@@ -188,23 +186,6 @@ a { color: inherit; }
   color: #9aa3ad;
 }
 .rj-meta { margin: 0; color: #9aa3ad; font-size: .74rem; font-weight: 600; }
-.rj-mtn {
-  position: absolute; right: -18px; top: -28px;
-  width: 210px; height: 118px;
-  pointer-events: none;
-}
-.rj-motto {
-  position: absolute; right: 2px; top: 8px;
-  margin: 0;
-  max-width: 7.2rem;
-  font-family: "Protest Revolution", cursive;
-  font-size: .78rem;
-  line-height: 1.25;
-  color: #d6c7a8;
-  transform: rotate(-8deg);
-  text-align: right;
-  opacity: .88;
-}
 .rj-board {
   position: relative;
   background: rgba(12, 12, 14, .55);
