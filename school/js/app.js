@@ -582,8 +582,15 @@
       .replace(/\{anama\}/g, bank.name || 'Anton');
   }
   function termLabel(term) {
-    return { month: 'bulan', autopay: 'autopay', year: 'tahun' }[term] || '—';
+    return {
+      month: '1 bulan',
+      quarter: '3 bulan',
+      half: '6 bulan',
+      autopay: 'autopay',
+      year: 'tahun'
+    }[term] || '—';
   }
+  const HEARD_OPTS = ['Grup WA Anton', 'Teman / murid Anton', 'TikTok', 'Instagram', 'Lainnya'];
   function enrollmentsOf(id) {
     db.enrollments = db.enrollments || {};
     const raw = db.enrollments[id] || [];
@@ -679,12 +686,29 @@
     return (s && s.label) || id;
   }
   function monthlyPrice() { return Number(db.pricing.monthlyIdr) || 500000; }
+  function toolDiscountPct() { return Number(db.pricing.toolDiscountPct) || 50; }
+  function toolMemberPrice(p) {
+    const list = Number(p && p.price) || 0;
+    return Math.round(list * (1 - toolDiscountPct() / 100));
+  }
+  function termMonths(term) {
+    return { month: 1, autopay: 1, quarter: 3, half: 6, year: 12 }[term] || 1;
+  }
+  function termDiscountPct(term) {
+    const p = db.pricing || {};
+    if (term === 'quarter') return Number(p.quarterDiscountPct) || 15;
+    if (term === 'half') return Number(p.halfDiscountPct) || 25;
+    if (term === 'year') return Number(p.annualDiscountPct) || 15;
+    if (term === 'autopay') return Number(p.autopayDiscountPct) || 10;
+    return 0;
+  }
+  function listPriceForTerm(term) { return monthlyPrice() * termMonths(term); }
   function priceForTerm(term, welcome) {
-    const m = monthlyPrice();
-    let n = m;
-    if (term === 'year') n = Math.round(m * 12 * (1 - (Number(db.pricing.annualDiscountPct) || 0) / 100));
-    else if (term === 'autopay') n = Math.round(m * (1 - (Number(db.pricing.autopayDiscountPct) || 0) / 100));
-    if (welcome) n = Math.round(n * (1 - (Number(db.pricing.welcomeDiscountPct) || 0) / 100));
+    const disc = termDiscountPct(term);
+    let n = Math.round(listPriceForTerm(term) * (1 - disc / 100));
+    if (welcome && (term === 'month' || term === 'autopay')) {
+      n = Math.round(n * (1 - (Number(db.pricing.welcomeDiscountPct) || 0) / 100));
+    }
     return n;
   }
   function welcomeOpen(id) {
@@ -695,17 +719,16 @@
     const b = billingOf(id);
     const start = nowDate();
     const until = new Date(start.getTime());
-    if (term === 'year') until.setFullYear(until.getFullYear() + 1);
-    else until.setMonth(until.getMonth() + 1);
+    until.setMonth(until.getMonth() + termMonths(term));
     b.status = 'lunas';
     b.plan = 'mentoring';
-    b.products = MENTOR_SKUS().slice();
+    b.products = Array.isArray(b.products) ? b.products : [];
     b.term = term;
     b.source = source;
     b.amount = amount;
     b.paidAt = isoNow();
     b.accessUntil = until.toISOString();
-    b.note = term === 'year' ? 'Tahunan' : (term === 'autopay' ? 'Kartu autopay (mock)' : 'Bulanan transfer');
+    b.note = term === 'autopay' ? 'Kartu autopay (mock)' : ('Transfer · ' + termLabel(term));
     setStage(id, 'mentee', 'Lunas mentoring · ' + term);
     pushTimeline(id, 'pay', 'Bayar ' + fmtRp(amount) + ' · ' + (source || 'transfer'));
     enrollPerson(id, 'onboarding', true);
@@ -1568,9 +1591,10 @@
     if (!welcomeOpen(sid)) return '';
     return '<section class="card resume" style="margin-bottom:12px">' +
       '<p class="muted">Harga perkenalan · sisa <strong>' + esc(fmtRemain(b.offerExpiresAt)) + '</strong> (jam nyata dari form, bukan sisa kursi)</p>' +
-      '<p>Bulanan transfer ' + fmtRp(priceForTerm('month', true)) +
-      ' · tahunan ' + fmtRp(priceForTerm('year', true)) +
-      ' · kartu autopay ' + fmtRp(priceForTerm('autopay', true)) + '</p>' +
+      '<p>1 bulan ' + fmtRp(priceForTerm('month', true)) +
+      ' · 3 bulan ' + fmtRp(priceForTerm('quarter', false)) +
+      ' · 6 bulan ' + fmtRp(priceForTerm('half', false)) +
+      ' · autopay ' + fmtRp(priceForTerm('autopay', true)) + '</p>' +
       '<div class="row" style="margin-top:10px">' +
         '<button class="btn" data-act="tab" data-id="daftar">Bayar mentoring</button>' +
         '<button class="btn secondary" data-act="not-interested">Tidak tertarik</button>' +
@@ -1582,9 +1606,13 @@
     if (owned) {
       return '<button class="btn" data-act="open-sku" data-from="' + (extraClass || 'pustaka') + '" data-id="' + esc(p.id) + '">Buka</button>';
     }
+    if (canMentoring(sid) && bundled(p)) {
+      return '<button class="btn" data-act="claim-tool" data-from="' + (extraClass || 'pustaka') + '" data-id="' + esc(p.id) + '">Ambil −' + toolDiscountPct() + '%</button>' +
+        '<a class="btn secondary" href="' + esc(p.lynk || SEED.school.lynk) + '" target="_blank" rel="noopener">Harga satuan</a>';
+    }
     const mentorLine = bundled(p)
-      ? '<button class="btn secondary" data-act="tab" data-id="daftar">Ikut mentoring, termasuk</button>'
-      : '<span class="muted">Tidak termasuk mentoring.</span>';
+      ? '<button class="btn secondary" data-act="tab" data-id="daftar">Ikut mentoring, −' + toolDiscountPct() + '% alat</button>'
+      : '<span class="muted">Tidak termasuk mentoring. Harga satuan.</span>';
     return '<a class="btn" href="' + esc(p.lynk || SEED.school.lynk) + '" target="_blank" rel="noopener">Beli satuan</a>' + mentorLine +
       '<button class="btn secondary" data-act="contoh-sku" data-from="' + (extraClass || 'pustaka') + '" data-id="' + esc(p.id) + '">Lihat contoh</button>';
   }
@@ -1594,62 +1622,122 @@
     const step = wizardStep(sid);
     const app = db.applications[sid] || {};
     if (step === 'pay') return viewPayPage(sid);
-    return '<section class="card">' +
+    const hasShop = app.hasShop === true;
+    const heard = app.heard || '';
+    const heardOther = (heard && HEARD_OPTS.indexOf(heard) < 0) ? heard : '';
+    const heardSel = heardOther ? 'Lainnya' : heard;
+    return '<section class="card onboard-page">' +
       '<p class="muted">Dari grup WA · langkah 1 dari 2</p>' +
-      '<h2>Siapa kamu</h2>' +
-      '<p class="muted">Anton baca ini sebelum kelas. Bukan tes. Tidak ada “sisa 3 kursi”.</p>' +
+      '<h2>Isi data dulu</h2>' +
+      '<p class="muted">Anton baca ini sebelum kelas. Bukan tes. Tidak ada “sisa kursi”.</p>' +
       '<form class="compose" data-act="apply">' +
         '<label class="muted">Nama</label>' +
-        '<input name="name" required maxlength="80" value="' + esc(app.name || (s.name.indexOf('Tamu') === 0 ? '' : s.name)) + '">' +
+        '<input name="name" required maxlength="80" value="' + esc(app.name || (s.name.indexOf('Tamu') === 0 ? '' : s.name)) + '" placeholder="Nama lengkap">' +
         '<label class="muted">WhatsApp</label>' +
-        '<input name="wa" required value="' + esc(app.wa || s.wa || '') + '" placeholder="08…">' +
-        '<label class="muted">Pengalaman jualan</label>' +
-        '<textarea name="experience" required rows="3" placeholder="Toko, platform, omset kira-kira, sudah berapa lama.">' + esc(app.experience || '') + '</textarea>' +
-        '<label class="muted">Kenapa mau di-mentor</label>' +
-        '<textarea name="why" required rows="3" placeholder="Yang mau kamu pecahkan bulan ini.">' + esc(app.why || '') + '</textarea>' +
-        '<button class="btn" type="submit">Lanjut ke pembayaran</button>' +
+        '<input name="wa" required value="' + esc(app.wa || s.wa || '') + '" placeholder="08… atau 628…">' +
+        '<p class="muted" style="margin:8px 0 4px">Sudah punya toko belum?</p>' +
+        '<div class="onboard-choice" role="group" aria-label="Sudah punya toko">' +
+          '<label><input type="radio" name="hasShop" value="tidak" data-act="has-shop"' + (hasShop ? '' : ' checked') + '> Belum</label>' +
+          '<label><input type="radio" name="hasShop" value="ya" data-act="has-shop"' + (hasShop ? ' checked' : '') + '> Sudah</label>' +
+        '</div>' +
+        '<div id="shop-fields"' + (hasShop ? '' : ' hidden') + '>' +
+          '<label class="muted">Nama toko</label>' +
+          '<input name="shopName" maxlength="80" value="' + esc(app.shopName || s.shopName || '') + '" placeholder="Nama toko">' +
+          '<label class="muted">Tautan toko</label>' +
+          '<input name="shopUrl" value="' + esc(app.shopUrl || s.shopUrl || '') + '" placeholder="https://…">' +
+        '</div>' +
+        '<label class="muted">Kota apa</label>' +
+        '<input name="city" required maxlength="60" value="' + esc(app.city || (s.city === '—' ? '' : (s.city || ''))) + '" placeholder="Kota">' +
+        '<label class="muted">Dari mana tahu Anton</label>' +
+        '<select name="heard" required data-act="heard-from">' +
+          '<option value="" disabled' + (heardSel ? '' : ' selected') + '>Pilih satu</option>' +
+          HEARD_OPTS.map((opt) =>
+            '<option value="' + esc(opt) + '"' + (heardSel === opt ? ' selected' : '') + '>' + esc(opt) + '</option>'
+          ).join('') +
+        '</select>' +
+        '<div id="heard-other"' + (heardSel === 'Lainnya' || heardOther ? '' : ' hidden') + '>' +
+          '<label class="muted">Cerita singkat</label>' +
+          '<input name="heardOther" maxlength="120" value="' + esc(heardOther) + '" placeholder="Dari mana">' +
+        '</div>' +
+        '<button class="btn" type="submit">Lanjut</button>' +
       '</form></section>';
   }
   function viewPayPage(sid) {
     const welcome = welcomeOpen(sid) || !billingOf(sid).offerExpiresAt;
     const b = billingOf(sid);
     const exp = b.offerExpiresAt || addMs(isoNow(), 24 * 36e5);
+    const inWin = hoursLeft(exp) > 0;
     const term = ui.payTerm || 'month';
-    const price = priceForTerm(term, welcome && hoursLeft(exp) > 0);
-    const list = priceForTerm(term, false);
-    return '<section class="card">' +
+    const price = priceForTerm(term, welcome && inWin);
+    const list = listPriceForTerm(term);
+    const tools = catalog().filter((p) => bundled(p));
+    const toolPct = toolDiscountPct();
+    const include = '<div class="include-box">' +
+      '<h3>Yang masuk mentoring</h3>' +
+      '<ul class="include-list">' +
+        '<li>Kurikulum 12 video + lembar kerja</li>' +
+        '<li>Live class, diskusi kelas, Kolab</li>' +
+        '<li>Undangan grup WA dari Anton</li>' +
+        '<li><strong>−' + toolPct + '% semua alat</strong> di Perpustakaan (harga satuan dicoret, kamu bayar separuh)</li>' +
+        '<li>Laris Affiliate tetap harga satuan — tidak ikut paket</li>' +
+      '</ul>' +
+      '<div class="include-tools">' + tools.map((p) =>
+        '<div class="include-tool">' +
+          '<span>' + esc(p.title) + '</span>' +
+          '<span><span class="price-coret">' + fmtRp(p.price) + '</span> <strong>' + fmtRp(toolMemberPrice(p)) + '</strong></span>' +
+        '</div>'
+      ).join('') + '</div></div>';
+    return '<section class="card onboard-page">' +
       '<p class="muted">Langkah 2 · Anton merchant. LarisID tidak menahan uang.</p>' +
       '<h2>Bayar mentoring</h2>' +
-      (hoursLeft(exp) > 0
-        ? '<p>Diskon 24 jam (dari jam form). Sisa <strong>' + esc(fmtRemain(exp)) + '</strong>.</p>'
-        : '<p class="muted">Jendela 24 jam sudah habis. Harga list di bawah. Tidak ada kelangkaan palsu.</p>') +
+      include +
+      (inWin
+        ? '<p>Harga perkenalan 24 jam (dari jam form) untuk 1 bulan &amp; autopay. Sisa <strong>' + esc(fmtRemain(exp)) + '</strong>. 3 bulan &amp; 6 bulan sudah ada diskon program, tidak ditumpuk.</p>'
+        : '<p class="muted">Jendela 24 jam sudah habis. Harga program di bawah. Tidak ada kelangkaan palsu.</p>') +
       '<div class="pay-terms">' +
-        termCard('month', 'Transfer tiap bulan', monthlyPrice(), priceForTerm('month', hoursLeft(exp) > 0), term) +
-        termCard('year', 'Transfer tahunan (−' + (db.pricing.annualDiscountPct || 15) + '%)', monthlyPrice() * 12, priceForTerm('year', hoursLeft(exp) > 0), term) +
-        termCard('autopay', 'Kartu autopay (−' + (db.pricing.autopayDiscountPct || 10) + '%)', monthlyPrice(), priceForTerm('autopay', hoursLeft(exp) > 0), term) +
+        termCard('month', term, inWin && welcome) +
+        termCard('quarter', term, false) +
+        termCard('half', term, false) +
+        termCard('autopay', term, inWin && welcome) +
       '</div>' +
-      '<div class="card" style="margin-top:12px">' +
+      '<div class="card pay-box" style="margin-top:12px">' +
         '<h3>Transfer ke rekening Anton</h3>' +
         '<p><strong>' + esc(db.bank.bank) + '</strong> ' + esc(db.bank.number) + '<br>' +
         'a.n. ' + esc(db.bank.name) + '</p>' +
         '<p class="muted">Jumlah sekarang: <strong>' + fmtRp(price) + '</strong>' +
-        (price < list ? ' <span class="price-coret">' + fmtRp(list) + '</span>' : '') + '</p>' +
+        (price < list ? ' <span class="price-coret">' + fmtRp(list) + '</span>' : '') +
+        ' · ' + esc(termLabel(term)) + '</p>' +
         '<p class="muted">Kartu autopay = mock Mayar. Prototype tidak menagih sungguhan.</p>' +
         '<div class="row" style="margin-top:10px">' +
           '<button class="btn" data-act="pay-now" data-term="' + esc(term) + '">' +
           (term === 'autopay' ? 'Bayar kartu (mock)' : 'Saya sudah transfer') + '</button>' +
-          '<button class="btn secondary" data-act="pay-later">Bayar nanti</button>' +
-          '<button class="btn secondary" data-act="not-interested">Tidak tertarik</button>' +
         '</div>' +
       '</div>' +
-      '<p class="muted" style="margin-top:12px">Bayar nanti: Home kelihatan utuh, hanya video 1 + lembar kerja yang kebuka. Laris Affiliate tidak termasuk mentoring.</p>' +
-      '</section>';
+      '<div class="pay-look">' +
+        '<button class="btn secondary" data-act="pay-later">Bayar nanti, lihat dulu</button>' +
+        '<p class="muted">Home kelihatan utuh. Hanya video 1 + lembar kerja yang kebuka. Tidak dipaksa bayar dulu.</p>' +
+        '<button type="button" class="btn-sm" data-act="not-interested">Tidak tertarik</button>' +
+      '</div></section>';
   }
-  function termCard(id, label, coret, now, cur) {
+  function termCard(id, cur, welcome) {
+    const list = listPriceForTerm(id);
+    const now = priceForTerm(id, welcome);
+    const months = termMonths(id);
+    const disc = termDiscountPct(id);
+    const titles = {
+      month: '1 bulan · transfer',
+      quarter: '3 bulan',
+      half: '6 bulan',
+      autopay: 'Autopay kartu / bulan'
+    };
+    const per = months > 1 ? Math.round(now / months) : now;
     return '<button type="button" class="card tool-tile' + (cur === id ? ' current-term' : '') + '" data-act="pick-term" data-id="' + id + '">' +
-      '<h3>' + esc(label) + '</h3>' +
-      (now < coret ? '<p class="sku-price"><span class="price-coret">' + fmtRp(coret) + '</span> <strong>' + fmtRp(now) + '</strong></p>'
+      '<h3>' + esc(titles[id] || id) + '</h3>' +
+      (disc ? '<p class="muted">−' + disc + '% dari ' + months + ' × bulanan</p>' : '<p class="muted">Harga list bulanan</p>') +
+      (now < list
+        ? '<p class="sku-price"><span class="price-coret">' + fmtRp(list) + '</span> <strong>' + fmtRp(now) + '</strong></p>'
         : '<p class="sku-price"><strong>' + fmtRp(now) + '</strong></p>') +
+      (months > 1 ? '<p class="muted">Setara ' + fmtRp(per) + ' / bulan</p>' : '') +
       '</button>';
   }
   function viewHome() {
@@ -1957,7 +2045,13 @@
   }
 
   function skuPriceHtml(p) {
-    return '<span class="price-coret">' + fmtRp(p.coret) + '</span> <strong>' + fmtRp(p.price) + '</strong>';
+    const list = Number(p.price) || 0;
+    if (canMentoring(ui.personaId) && bundled(p) && !canSku(ui.personaId, p.id)) {
+      return '<span class="price-coret">' + fmtRp(list) + '</span> <strong>' + fmtRp(toolMemberPrice(p)) + '</strong>' +
+        '<span class="muted"> · mentoring −' + toolDiscountPct() + '%</span>';
+    }
+    if (p.coret) return '<span class="price-coret">' + fmtRp(p.coret) + '</span> <strong>' + fmtRp(list) + '</strong>';
+    return '<strong>' + fmtRp(list) + '</strong>';
   }
 
   function skuCoverHtml(p, cls) {
@@ -2094,7 +2188,7 @@
       '<div class="row" style="justify-content:space-between">' +
         '<h2 style="margin:0">Alat</h2>' +
         '<button type="button" class="btn-sm" data-act="tab" data-id="alat">Lihat semua</button></div>' +
-      '<p class="muted">Kalkulator, AI, Kolab. Yang terkunci: beli satuan atau ikut mentoring (Laris Affiliate selalu terpisah).</p>' +
+      '<p class="muted">Kalkulator, AI, Kolab. Mentoring: alat −' + toolDiscountPct() + '%. Laris Affiliate selalu terpisah.</p>' +
       '<div class="alat-pick">' + tiles + kolab + '</div></section>';
   }
 
@@ -2102,7 +2196,7 @@
     const sid = ui.personaId;
     const tools = toolsCatalog();
     let html = '<h2 style="margin:0 0 4px">Alat</h2>' +
-      '<p class="muted" style="margin:0 0 14px">Mentoring membuka alat lynk + Kolab. Laris Affiliate selalu satuan. Satuan = yang sudah dibeli di lynk.id.</p>' +
+      '<p class="muted" style="margin:0 0 14px">Mentoring: alat −' + toolDiscountPct() + '% dari harga satuan. Laris Affiliate selalu satuan.</p>' +
       '<div class="alat-list">';
     html += tools.map((p) => {
       const owned = canSku(sid, p.id);
@@ -2635,13 +2729,18 @@
     return '<div class="grid-2"><section class="card"><h2>Harga mentoring (placeholder)</h2>' +
       '<form class="compose" data-act="save-pricing">' +
         '<label class="muted">Bulanan (IDR)</label><input name="monthlyIdr" type="number" value="' + esc(p.monthlyIdr) + '">' +
-        '<label class="muted">Diskon tahunan %</label><input name="annualDiscountPct" type="number" value="' + esc(p.annualDiscountPct) + '">' +
+        '<label class="muted">Diskon 3 bulan %</label><input name="quarterDiscountPct" type="number" value="' + esc(p.quarterDiscountPct || 15) + '">' +
+        '<label class="muted">Diskon 6 bulan %</label><input name="halfDiscountPct" type="number" value="' + esc(p.halfDiscountPct || 25) + '">' +
         '<label class="muted">Diskon kartu autopay %</label><input name="autopayDiscountPct" type="number" value="' + esc(p.autopayDiscountPct) + '">' +
-        '<label class="muted">Diskon 24 jam %</label><input name="welcomeDiscountPct" type="number" value="' + esc(p.welcomeDiscountPct) + '">' +
+        '<label class="muted">Diskon 24 jam % (1 bulan &amp; autopay)</label><input name="welcomeDiscountPct" type="number" value="' + esc(p.welcomeDiscountPct) + '">' +
+        '<label class="muted">Diskon alat mentoring %</label><input name="toolDiscountPct" type="number" value="' + esc(p.toolDiscountPct || 50) + '">' +
         '<label class="muted">Licensing mentor %</label><input name="overridePct" type="number" value="' + esc(p.overridePct) + '">' +
         '<button class="btn" type="submit">Simpan harga</button></form>' +
-      '<p class="muted">List bulanan ' + fmtRp(monthlyPrice()) + ' · tahunan ' + fmtRp(priceForTerm('year', false)) +
-      ' · autopay ' + fmtRp(priceForTerm('autopay', false)) + ' · 24 jam ' + fmtRp(priceForTerm('month', true)) + '</p>' +
+      '<p class="muted">1 bulan ' + fmtRp(priceForTerm('month', false)) +
+      ' · 3 bulan ' + fmtRp(priceForTerm('quarter', false)) +
+      ' · 6 bulan ' + fmtRp(priceForTerm('half', false)) +
+      ' · autopay ' + fmtRp(priceForTerm('autopay', false)) +
+      ' · alat −' + toolDiscountPct() + '%</p>' +
       '</section><section class="card"><h2>Rekening transfer</h2>' +
       '<form class="compose" data-act="save-bank">' +
         '<label class="muted">Bank</label><input name="bank" value="' + esc(b.bank) + '">' +
@@ -2697,8 +2796,13 @@
           '<div class="fub-field"><dt>Stage</dt><dd><select data-act="crm-stage" data-id="' + esc(id) + '">' +
             stages.map((st) => '<option value="' + esc(st.id) + '"' + (c.stage === st.id ? ' selected' : '') + '>' + esc(st.label) + '</option>').join('') +
           '</select></dd></div>' +
-          '<div class="fub-field"><dt>Sumber</dt><dd>' + esc(b.source || app && 'Form' || '—') +
-            (app ? '<div class="muted">' + esc(app.experience || '') + '</div>' : '') + '</dd></div>' +
+          '<div class="fub-field"><dt>Toko</dt><dd>' +
+            '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="shopName" value="' + esc(s.shopName || (app && app.shopName) || '') + '" placeholder="Nama toko">' +
+            '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="shopUrl" value="' + esc(s.shopUrl || (app && app.shopUrl) || '') + '" placeholder="https://…">' +
+          '</dd></div>' +
+          '<div class="fub-field"><dt>Sumber</dt><dd>' + esc((app && app.heard) || b.source || '—') +
+            (app && app.hasShop ? '<div class="muted">Sudah punya toko</div>' : (app ? '<div class="muted">Belum punya toko</div>' : '')) +
+          '</dd></div>' +
           '<div class="fub-field"><dt>Upline</dt><dd>' + esc(s.mentorId ? nameOf(s.mentorId) : 'Anton') + '</dd></div>' +
           '<div class="fub-field"><dt>Bayar</dt><dd>' +
             (canBill() ? billStatusSelect(id, b) : payChip(b.status)) +
@@ -3205,6 +3309,25 @@
       render();
       return;
     }
+    if (t.matches('[data-act="has-shop"]')) {
+      const box = document.getElementById('shop-fields');
+      const ya = t.value === 'ya';
+      if (box) {
+        box.hidden = !ya;
+        box.querySelectorAll('input').forEach((inp) => { inp.required = ya; });
+      }
+      return;
+    }
+    if (t.matches('[data-act="heard-from"]')) {
+      const box = document.getElementById('heard-other');
+      const other = t.value === 'Lainnya';
+      if (box) {
+        box.hidden = !other;
+        const inp = box.querySelector('input');
+        if (inp) inp.required = other;
+      }
+      return;
+    }
     if (t.matches('[data-act="filter-crm"]')) {
       ui.crmFilter = t.value;
       render();
@@ -3545,7 +3668,8 @@
     if (act === 'vid-drop' || act === 'vid-file' || act === 'add-lec' || act === 'sec-title' ||
         act === 'lec-field' || act === 'lec-points' || act === 'q-field' || act === 'doc-name' || act === 'doc-url' ||
         act === 'cover-file' || act === 'res-file' || act === 'photo-file' || act === 'lec-body' || act === 'res-name' || act === 'res-url' ||
-        act === 'person-field' || act === 'bill-amount' || act === 'sec-due' || act === 'kur-preview-person') {
+        act === 'person-field' || act === 'bill-amount' || act === 'sec-due' || act === 'kur-preview-person' ||
+        act === 'has-shop' || act === 'heard-from') {
       return;
     }
     if (act === 'tab') {
@@ -3901,6 +4025,18 @@
     } else if (act === 'pick-term') {
       ui.payTerm = btn.getAttribute('data-id');
       render();
+    } else if (act === 'claim-tool') {
+      const pid = btn.getAttribute('data-id');
+      const p = productById(pid);
+      if (!canMentoring(ui.personaId) || !bundled(p)) {
+        toast('Harga mentoring −' + toolDiscountPct() + '% setelah lunas.');
+        return;
+      }
+      const b = billingOf(ui.personaId);
+      if (b.products.indexOf(pid) < 0) b.products.push(pid);
+      save();
+      toast(p.title + ' kebuka di harga mentoring (−' + toolDiscountPct() + '%). Prototype, bukan tagihan lynk.');
+      render();
     } else if (act === 'pay-later') {
       if (!db.applications[ui.personaId]) {
         toast('Isi form dulu.');
@@ -3909,7 +4045,7 @@
       startTrial(ui.personaId);
       save();
       ui.tab = 'home';
-      toast('Trial: video 1 kebuka. Diskon 24 jam dari jam form.');
+      toast('Trial: video 1 kebuka. Boleh lihat dulu, diskon 24 jam dari jam form.');
       render();
     } else if (act === 'pay-now') {
       const term = btn.getAttribute('data-term') || ui.payTerm || 'month';
@@ -4098,16 +4234,43 @@
       const s = student();
       const name = String(fd.get('name') || '').trim();
       const wa = String(fd.get('wa') || '').trim();
+      const city = String(fd.get('city') || '').trim();
+      const hasShop = String(fd.get('hasShop') || '') === 'ya';
+      const shopName = String(fd.get('shopName') || '').trim();
+      const shopUrl = String(fd.get('shopUrl') || '').trim();
+      let heard = String(fd.get('heard') || '').trim();
+      if (heard === 'Lainnya') {
+        heard = String(fd.get('heardOther') || '').trim();
+        if (!heard) {
+          toast('Isi dari mana kamu tahu Anton.');
+          return;
+        }
+      }
+      if (!name || !wa || !city || !heard) {
+        toast('Isi nama, WA, kota, dan dari mana tahu Anton.');
+        return;
+      }
+      if (hasShop && (!shopName || !shopUrl)) {
+        toast('Nama toko dan tautan wajib kalau sudah punya toko.');
+        return;
+      }
       db.applications[sid] = {
         name: name,
         wa: wa,
-        experience: String(fd.get('experience') || '').trim(),
-        why: String(fd.get('why') || '').trim(),
+        city: city,
+        hasShop: hasShop,
+        shopName: hasShop ? shopName : '',
+        shopUrl: hasShop ? shopUrl : '',
+        heard: heard,
         at: isoNow()
       };
-      s.name = name || s.name;
-      s.wa = wa.replace(/\D/g, '') || s.wa;
-      patchPerson(sid, { name: s.name, wa: s.wa });
+      patchPerson(sid, {
+        name: name,
+        wa: wa.replace(/\D/g, '') || s.wa,
+        city: city,
+        shopName: hasShop ? shopName : '',
+        shopUrl: hasShop ? shopUrl : ''
+      });
       const b = billingOf(sid);
       if (!b.offerStartedAt) {
         b.offerStartedAt = isoNow();
@@ -4116,7 +4279,7 @@
       setStage(sid, 'form', 'Form masuk. Jam diskon 24 jam dimulai.');
       save();
       ui.tab = 'daftar';
-      toast('Form tersimpan. Lanjut pilih bayar.');
+      toast('Tersimpan. Lanjut pilih bayar, atau lihat dulu.');
       render();
     } else if (act === 'add-task') {
       const due = joinLocal(fd.get('date'), fd.get('time'));
@@ -4154,9 +4317,11 @@
       render();
     } else if (act === 'save-pricing') {
       db.pricing.monthlyIdr = +fd.get('monthlyIdr') || db.pricing.monthlyIdr;
-      db.pricing.annualDiscountPct = +fd.get('annualDiscountPct') || 0;
+      db.pricing.quarterDiscountPct = +fd.get('quarterDiscountPct') || 0;
+      db.pricing.halfDiscountPct = +fd.get('halfDiscountPct') || 0;
       db.pricing.autopayDiscountPct = +fd.get('autopayDiscountPct') || 0;
       db.pricing.welcomeDiscountPct = +fd.get('welcomeDiscountPct') || 0;
+      db.pricing.toolDiscountPct = Math.min(90, Math.max(0, +fd.get('toolDiscountPct') || 50));
       db.pricing.overridePct = +fd.get('overridePct') || 20;
       save();
       toast('Harga placeholder disimpan');

@@ -367,8 +367,25 @@ html[data-mode="student"] .canvas iframe.tool-frame { min-height: 520px; height:
   background: var(--ink-2);
 }
 .clock-bar[hidden] { display: none !important; }
-.pay-terms { display: grid; gap: 8px; margin-top: 12px; }
+.pay-terms { display: grid; gap: 8px; margin-top: 12px; grid-template-columns: 1fr 1fr; }
 .pay-terms .current-term { border-color: #fff; }
+.onboard-choice { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.onboard-choice label { display: flex; gap: 6px; align-items: center; font-weight: 650; cursor: pointer; }
+.include-box { margin: 12px 0; padding: 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--ink-2); }
+.include-list { margin: 8px 0 12px; padding-left: 18px; font-size: .82rem; line-height: 1.55; }
+.include-tools { display: grid; gap: 6px; }
+.include-tool {
+  display: flex; justify-content: space-between; gap: 10px; align-items: baseline;
+  font-size: .74rem; padding: 6px 0; border-top: 1px solid var(--line);
+}
+.include-tool span:first-child {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+}
+.pay-look {
+  margin-top: 16px; padding: 14px; border: 1px dashed var(--line-2); border-radius: var(--r);
+  display: grid; gap: 8px; justify-items: start;
+}
+.pay-look .btn { width: 100%; }
 .kanban {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 10px; align-items: start;
@@ -467,7 +484,7 @@ html[data-mode="mentor"] .quota { grid-template-columns: 1fr auto; align-items: 
 html[data-mode="mentor"] .inline-form { grid-template-columns: 1fr 1fr auto; align-items: end; }
 html[data-mode="mentor"] .table { font-size: .82rem; }
 html[data-mode="mentor"] .alat-pick { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
-html[data-mode="mentor"] .pay-terms { grid-template-columns: repeat(3, 1fr); }
+html[data-mode="mentor"] .pay-terms { grid-template-columns: repeat(2, 1fr); }
 html[data-mode="mentor"] .kanban {
   display: flex; gap: 12px; overflow-x: auto; align-items: stretch;
   padding-bottom: 8px;

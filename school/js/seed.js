@@ -162,9 +162,12 @@ window.ANTON_SEED = {
   ],
   pricing: {
     monthlyIdr: 500000,
+    quarterDiscountPct: 15,
+    halfDiscountPct: 25,
     annualDiscountPct: 15,
     autopayDiscountPct: 10,
     welcomeDiscountPct: 20,
+    toolDiscountPct: 50,
     overridePct: 20
   },
   bank: {

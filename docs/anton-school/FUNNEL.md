@@ -11,10 +11,11 @@ This extends [README.md](./README.md). Offline lock unchanged.
 ## Cycle
 
 1. Anton adds the person to the class WhatsApp group (manual).
-2. Group CTA → school. **Form first:** nama, WA, pengalaman, kenapa mau di-mentor.
-3. **Payment page.** Clocked 24-hour welcome discount starts at form submit (remaining time is real; no fake seat count).
-   - Bayar sekarang: monthly **transfer** (rekening in Pengaturan bayar), annual transfer discount, or card autopay discount (Mayar mock).
-   - **Bayar nanti:** Home looks like the real school; only video 1 + lembar kerja unlock.
+2. Group CTA → school. **Form first:** nama, WA, sudah punya toko (kalau ya: nama + tautan), kota, dari mana tahu Anton.
+3. **Payment page.** Clocked 24-hour welcome discount starts at form submit (remaining time is real; no fake seat count). Applies to 1-month transfer and autopay only — not stacked on 3/6 month.
+   - Included: kurikulum, live/diskusi/kolab, grup WA, **50% off all tools**. Laris Affiliate stays satuan.
+   - Bayar sekarang: **1 bulan** transfer, **3 bulan** (−15%), **6 bulan** (−25%), or **kartu autopay** (−10%). Rekening in Pengaturan bayar. Mayar mock for autopay.
+   - **Bayar nanti, lihat dulu:** Home looks like the real school; only video 1 + lembar kerja unlock.
 4. After video 1: in-app pay prompt. At 12 hours left: queued WA to the student + a **task for Anton** to open WA himself (never auto-send as Anton).
 5. Unpaid after 24h → **Sudah keluar**. “Tidak tertarik” stays its own stage.
 6. Paid → **Mentee**. Full class for the term (month / year / autopay). Laris Affiliate stays extra.
@@ -51,7 +52,7 @@ Mentor tabs: Siswa · Tugas · Otomasi · Jaringan · Kurikulum · Perpustakaan 
 
 Anton is merchant. LarisID never holds student fees.
 
-Placeholder list (editable): monthly Rp500.000; annual −15%; card autopay −10%; 24h welcome −20%.
+Placeholder list (editable): monthly Rp500.000; 3 months −15%; 6 months −25%; card autopay −10%; 24h welcome −20% on 1-month and autopay; mentee tools −50% vs satuan.
 
 Certified mentors collect from **their** students. CRM **setoran 20%** is expected vs received. Mission: this is a disclosed curriculum/brand licensing fee, one level, no recruit bonuses.
 

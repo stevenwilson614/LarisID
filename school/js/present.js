@@ -13,8 +13,8 @@
       id: 'a1-form',
       act: 1,
       title: 'Form dari grup WA',
-      sayAnton: 'Tamu baru masuk kolom WA baru. Belum ada uang. Baca form dulu — bukan tes, bukan sisa kursi.',
-      saySiswa: 'Tamu Demo isi nama, WA, pengalaman, kenapa mau di-mentor. Baru boleh lihat halaman bayar.',
+      sayAnton: 'Tamu baru isi nama, WA, toko (kalau ada), kota, dari mana tahu kamu. Belum ada uang.',
+      saySiswa: 'Tamu Demo isi form. Baru boleh lihat halaman bayar.',
       student: { personaId: 's-tamu', tab: 'daftar' },
       mentor: { tab: 'orang', personId: 's-tamu', hub: 'pipa' }
     },
@@ -23,14 +23,17 @@
       act: 1,
       title: 'Pay 24 jam',
       sayAnton: 'Jam diskon mulai saat form tersimpan. Rekening kamu. LarisID tidak menahan uang.',
-      saySiswa: 'Bayar sekarang (transfer / tahunan / kartu mock) atau bayar nanti. Sisa waktu nyata, bukan “3 kursi”.',
+      saySiswa: 'Bayar sekarang (1 / 3 / 6 bulan atau kartu) atau bayar nanti lihat dulu. Alat −50%. Sisa waktu nyata, bukan “3 kursi”.',
       world: {
         applications: {
           's-tamu': {
             name: 'Tamu Demo',
             wa: '628120000099',
-            experience: 'Baru dari grup WA. Belum punya rumus harga.',
-            why: 'Mau coba mentoring tanpa janji kosong.',
+            city: 'Bekasi',
+            hasShop: false,
+            shopName: '',
+            shopUrl: '',
+            heard: 'Grup WA Anton',
             at: 'now'
           }
         },
