@@ -528,13 +528,30 @@
     }
     save();
   }
+  function watchHintHtml(lec, done) {
+    const watchFirst = lec && lec.type === 'video' && lec.id === firstLectureId();
+    const dot = '<span class="lec-watch-dot" aria-hidden="true"></span>';
+    if (watchFirst) {
+      if (done) {
+        return '<div class="lec-watch is-done" data-watch-status="done">' + dot +
+          '<span>Selesai ✓</span></div>';
+      }
+      return '<div class="lec-watch" data-watch-status="pending">' + dot +
+        '<span>Tonton minimal 85% untuk menandai video selesai</span>' +
+        '<span class="lec-watch-i" title="Selesai otomatis setelah nonton ≥85%">i</span></div>';
+    }
+    if (!lec) return '';
+    return '<button type="button" class="lec-watch' + (done ? ' is-done' : '') +
+      '" data-act="toggle-done" data-id="' + esc(lec.id) + '">' + dot +
+      '<span>' + (done ? 'Selesai ✓' : 'Tandai selesai') + '</span></button>';
+  }
   function completeByWatch(lecId) {
     if (lecId !== firstLectureId()) return false;
     if (isDone(ui.personaId, lecId)) return false;
     markDone(ui.personaId, lecId, true);
     const slot = document.querySelector('[data-watch-status]');
     if (slot) {
-      slot.outerHTML = '<span class="btn done-ok" data-watch-status="done">Selesai ✓</span>';
+      slot.outerHTML = watchHintHtml(lectureById(lecId) || { id: lecId, type: 'video' }, true);
     }
     refreshProgressPath();
     toast('Video 1 selesai — nonton ≥85%.');
@@ -662,6 +679,40 @@
     }
     if (name === 'target') {
       return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><path d="M12 2.5v3.2M12 18.3v3.2M2.5 12h3.2M18.3 12h3.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+    }
+    if (name === 'doc') {
+      return '<svg class="lec-acc-ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 3.5h7l5 5V20a1.5 1.5 0 0 1-1.5 1.5h-10.5A1.5 1.5 0 0 1 5.5 20V5A1.5 1.5 0 0 1 7 3.5z" stroke="currentColor" stroke-width="1.7"/><path d="M14 3.5V9h5.5" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>';
+    }
+    if (name === 'list') {
+      return '<svg class="lec-acc-ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 7h12M8 12h12M8 17h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="4.2" cy="7" r="1" fill="currentColor"/><circle cx="4.2" cy="12" r="1" fill="currentColor"/><circle cx="4.2" cy="17" r="1" fill="currentColor"/></svg>';
+    }
+    if (name === 'help') {
+      return '<svg class="lec-acc-ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.2 2.4c-.7.3-1.1.8-1.1 1.6V14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="17.2" r="1" fill="currentColor"/></svg>';
+    }
+    if (name === 'chat') {
+      return '<svg class="lec-acc-ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 6.5h14a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H9l-4 3v-3H5A1.5 1.5 0 0 1 3.5 16V8A1.5 1.5 0 0 1 5 6.5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>';
+    }
+    return '';
+  }
+  function dockIcon(id) {
+    const common = ' class="dock-ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"';
+    if (id === 'home') {
+      return '<svg' + common + '><path d="M4.5 11.2 12 4.8l7.5 6.4V20a1 1 0 0 1-1 1h-4.2v-6.2h-4.6V21H5.5a1 1 0 0 1-1-1v-8.8z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>';
+    }
+    if (id === 'belajar') {
+      return '<svg' + common + '><path d="M3.5 10.2 12 6l8.5 4.2L12 14.4 3.5 10.2z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M7 12.2v4.2c2.2 1.6 7.8 1.6 10 0v-4.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M20.5 10.5v5.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+    }
+    if (id === 'alat') {
+      return '<svg' + common + '><path d="M14.2 5.2a4.2 4.2 0 0 0-5.7 5.7L4 15.4l4.6 4.6 4.5-4.5a4.2 4.2 0 0 0 5.7-5.7l-2.8 2.8-1.8-1.8 2.8-2.8z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>';
+    }
+    if (id === 'pustaka') {
+      return '<svg' + common + '><path d="M6.5 4H18v16H7.2A2.2 2.2 0 0 1 5 17.8V6.2A2.2 2.2 0 0 1 7.2 4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 8h6M9 12h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+    }
+    if (id === 'diskusi') {
+      return '<svg' + common + '><path d="M5 6.2h14A1.3 1.3 0 0 1 20.3 7.5v8.2A1.3 1.3 0 0 1 19 17H9.2L5 20.2V6.2z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>';
+    }
+    if (id === 'progres') {
+      return '<svg' + common + '><path d="M5 19V11M10.5 19V6M16 19v-8M21 19H3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
     }
     return '';
   }
@@ -1910,6 +1961,7 @@
     $('app').classList.toggle('is-mentor', isStaff());
     $('app').classList.toggle('is-student', !isStaff());
     $('app').classList.toggle('is-onboard', isOnboardScreen());
+    $('app').classList.toggle('is-belajar', !isStaff() && ui.tab === 'belajar');
     $('school-name').textContent = SEED.school.name;
     const logo = $('school-logo');
     if (logo) {
@@ -2026,7 +2078,8 @@
         dock.className = 'dock cols-' + tabs.length;
         dock.innerHTML = tabs.map((t) =>
           '<button type="button" data-act="tab" data-id="' + t.id + '" aria-selected="' +
-          (t.id === ui.tab || (ui.tab === 'sku' && t.id === skuTab)) + '">' + esc(t.label) + '</button>'
+          (t.id === ui.tab || (ui.tab === 'sku' && t.id === skuTab)) + '">' +
+          dockIcon(t.id) + '<span>' + esc(t.label) + '</span></button>'
         ).join('');
       }
     } else {
@@ -2517,6 +2570,166 @@
       '<button class="btn" data-act="tab" data-id="daftar">Bayar mentoring</button></div>';
   }
 
+  function lectureNeighbors(id) {
+    const list = lectures();
+    const i = list.findIndex((l) => l.id === id);
+    const idx = i < 0 ? 0 : i;
+    return {
+      i: idx,
+      n: idx + 1,
+      total: list.length,
+      prev: idx > 0 ? list[idx - 1] : null,
+      next: idx >= 0 && idx < list.length - 1 ? list[idx + 1] : null
+    };
+  }
+  function weekTitleOf(lec) {
+    const w = db.weeks.find((x) => x.id === lec.weekId);
+    return w ? w.title : '';
+  }
+  function lecAccHtml(icon, title, sub, inner) {
+    if (!inner) return '';
+    return '<details class="lec-acc">' +
+      '<summary>' +
+        svgIcon(icon) +
+        '<span class="lec-acc-copy"><strong>' + esc(title) + '</strong>' +
+        (sub ? '<span>' + esc(sub) + '</span>' : '') + '</span>' +
+        '<span class="lec-acc-chevron" aria-hidden="true">▾</span>' +
+      '</summary>' +
+      '<div class="lec-acc-body">' + inner + '</div></details>';
+  }
+  function lessonVideoHtml(lec) {
+    const cover = coverHtml('lec', lec.id, 'lec-poster');
+    const watchFirst = lec.type === 'video' && lec.id === firstLectureId();
+    const dur = lec.mins ? '<span class="lec-dur">' + esc(String(lec.mins)) + ' mnt</span>' : '';
+    if (lec.videoBlob) {
+      return (cover || '') + '<video class="lec-video" controls playsinline preload="metadata" data-blob="' +
+        esc(lec.id) + '"' + (watchFirst ? ' data-watch-lec="' + esc(lec.id) + '"' : '') + '></video>' + dur;
+    }
+    const e = parseEmbed(lec.url);
+    if (e && e.embed) {
+      return '<div class="lazy-embed' + (cover ? ' has-cover' : '') + '" data-embed="' + esc(e.embed) + '"' +
+        (watchFirst && e.videoId ? ' data-watch-lec="' + esc(lec.id) + '" data-yt-id="' + esc(e.videoId) + '"' : '') + '>' +
+        (cover || '') +
+        '<div class="play-orb" aria-hidden="true">' + svgIcon('play') + '</div>' +
+        dur +
+      '</div>';
+    }
+    if (lec.url) {
+      return '<div class="article">' + (cover || '') + '<p>Video ini tidak bisa diputar di dalam kelas (TikTok / tautan lain).</p>' +
+        '<a class="btn" href="' + esc(lec.url) + '" target="_blank" rel="noopener">Buka video</a></div>';
+    }
+    return '<div class="article">' + (cover || '') + '<p class="muted">Belum ada video. Mentor tempel tautan atau unggah di Kurikulum.</p></div>';
+  }
+  function lessonReadHtml(lec) {
+    const body = (lec.body || '').trim();
+    if (!body) return '';
+    const long = body.length > 160 || body.indexOf('\n\n') >= 0;
+    return '<div class="lec-read' + (long ? '' : ' is-open') + '">' +
+      '<div class="lec-read-text">' + mdish(body) + '</div>' +
+      (long
+        ? '<button type="button" class="lec-more" data-act="lec-more">Baca selengkapnya <span aria-hidden="true">▾</span></button>'
+        : '') +
+      '</div>';
+  }
+  function lessonAskHtml(lec) {
+    const threads = db.threads.filter((t) => t.lectureId === lec.id);
+    return threadList(threads) +
+      '<form class="compose" data-act="ask" data-lec="' + esc(lec.id) + '">' +
+        '<input name="title" required maxlength="140" placeholder="Judul pertanyaan">' +
+        '<textarea name="body" required rows="3" placeholder="Konteks singkat. Jangan sebar supplier atau margin."></textarea>' +
+        '<button class="btn" type="submit">Kirim</button>' +
+      '</form>';
+  }
+  function lessonQuizHtml(lec) {
+    const qs = lec.questions || [];
+    if (!qs.length) return '';
+    return qs.map((q, i) =>
+      '<div class="quiz-q"><p><strong>' + (i + 1) + '.</strong> ' + esc(q.q) + '</p>' +
+      (q.hint
+        ? '<details><summary>Arah jawaban (contoh)</summary><p class="muted">' + esc(q.hint) + '</p></details>'
+        : '') +
+      '</div>'
+    ).join('') +
+    '<p class="muted">Bukan ujian — tidak ada skor.</p>';
+  }
+  function renderLessonPlayer(lec, opts) {
+    opts = opts || {};
+    const sid = ui.personaId;
+    const p = kurProgress(sid);
+    const nb = lectureNeighbors(lec.id);
+    const week = weekTitleOf(lec);
+    const docs = lec.resources || [];
+    const points = lec.points || [];
+    const questions = lec.questions || [];
+    const threads = db.threads.filter((t) => t.lectureId === lec.id);
+    const docSub = docs.map((d) => d.name || 'File').join(', ');
+    const tanyaSub = threads.length
+      ? (threads.length + ' pertanyaan')
+      : 'Belum ada pertanyaan. WhatsApp tetap untuk chat cepat.';
+    const top = opts.phone
+      ? '<div class="lesson-top">' +
+          '<button type="button" class="lesson-back" data-act="tab" data-id="home" aria-label="Kembali">←</button>' +
+          '<strong class="lesson-tab">Belajar</strong>' +
+          '<button type="button" class="lesson-count" data-act="toggle-kur" aria-label="Kurikulum">' +
+            nb.n + ' / ' + nb.total + '</button>' +
+          '<button type="button" class="lesson-chev"' + (nb.prev ? ' data-act="open-lec" data-id="' + esc(nb.prev.id) + '"' : ' disabled') +
+            ' aria-label="Materi sebelumnya">‹</button>' +
+          '<button type="button" class="lesson-chev"' + (nb.next ? ' data-act="open-lec" data-id="' + esc(nb.next.id) + '"' : ' disabled') +
+            ' aria-label="Materi berikutnya">›</button>' +
+        '</div>'
+      : '';
+    const head =
+      '<header class="lesson-head">' +
+        (week ? '<p class="lesson-kicker">' + esc(week) + '</p>' : '') +
+        '<h1>' + esc(lec.title) + '</h1>' +
+        '<p class="lesson-meta">Materi ' + nb.n + ' dari ' + nb.total + ' · ' + p.pct + '% selesai</p>' +
+        '<div class="lesson-bar" aria-hidden="true"><span style="width:' + p.pct + '%"></span></div>' +
+      '</header>';
+    let stage = '';
+    if (opts.lockedNow) {
+      stage = '<div class="locked-blur-card">' +
+        '<div class="locked-blur-bg" aria-hidden="true">' +
+          (coverHtml('lec', lec.id, 'lec-poster') || '<div class="lec-poster lec-poster-empty"></div>') +
+          '<div class="locked-blur-fake">' +
+            '<div class="fake-line"></div><div class="fake-line short"></div>' +
+            '<div class="fake-line"></div><div class="fake-chip"></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="locked-blur-fg">' +
+          '<p class="trial-kicker">Materi terkunci</p>' +
+          '<h2>' + esc(lec.title) + '</h2>' +
+          '<p class="muted">Kurikulum lengkap di bawah — yang blur terkunci sampai mentoring lunas.</p>' +
+          '<button class="btn" data-act="open-lec" data-id="' + esc(firstLectureId()) + '">Ke video selamat datang</button>' +
+          '<button class="btn secondary" data-act="tab" data-id="daftar">Bayar mentoring</button>' +
+        '</div></div>';
+    } else if (lec.tool === 'kolab') {
+      stage = viewKolab();
+    } else if (lec.type === 'video') {
+      stage = '<div class="lesson-stage">' + lessonVideoHtml(lec) + '</div>' +
+        watchHintHtml(lec, isDone(sid, lec.id)) +
+        lessonReadHtml(lec);
+    } else {
+      stage = renderCanvas(lec);
+    }
+    const folds = opts.lockedNow || lec.tool === 'kolab' ? '' :
+      lecAccHtml('doc', 'Dokumen', docSub, docs.length ? resourceListHtml(lec) : '') +
+      lecAccHtml('list', 'Poin penting', points.length ? (points.length + ' poin') : '',
+        points.length ? '<ul class="key-points">' + points.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '') +
+      lecAccHtml('help', 'Cek pemahaman', questions.length ? (questions.length + ' pertanyaan') : '',
+        lessonQuizHtml(lec)) +
+      lecAccHtml('chat', 'Tanya di materi ini', tanyaSub, lessonAskHtml(lec));
+    const nav = (opts.lockedNow || lec.tool === 'kolab') ? '' :
+      '<div class="lec-nav">' +
+        '<button type="button" class="btn lec-prev"' +
+          (nb.prev ? ' data-act="open-lec" data-id="' + esc(nb.prev.id) + '"' : ' disabled') +
+          '>← Materi sebelumnya</button>' +
+        '<button type="button" class="btn lec-next"' +
+          (nb.next ? ' data-act="open-lec" data-id="' + esc(nb.next.id) + '"' : ' disabled') +
+          '>Materi berikutnya →</button>' +
+      '</div>';
+    return '<div class="lesson">' + top + head + stage + folds + nav + (opts.after || '') + '</div>';
+  }
+
   function viewBelajar() {
     if (!canMentoring(ui.personaId) && !canPreview(ui.personaId)) return viewLocked();
     const preview = canPreview(ui.personaId) && !canMentoring(ui.personaId);
@@ -2525,43 +2738,14 @@
     const lockedNow = !canOpenLecture(ui.personaId, lec.id) && !isStaff();
     const payStrip = preview ? offerBanner(ui.personaId) : '';
     const kurInline = preview ? trialKurikulumBlock() : '';
-    if (lockedNow) {
-      return '<div class="player-layout">' +
-        '<div>' + payStrip +
-        '<div class="locked-blur-card">' +
-          '<div class="locked-blur-bg" aria-hidden="true">' +
-            (coverHtml('lec', lec.id, 'lec-poster') || '<div class="lec-poster lec-poster-empty"></div>') +
-            '<div class="locked-blur-fake">' +
-              '<div class="fake-line"></div><div class="fake-line short"></div>' +
-              '<div class="fake-line"></div><div class="fake-chip"></div>' +
-            '</div>' +
-          '</div>' +
-          '<div class="locked-blur-fg">' +
-            '<p class="trial-kicker">Materi terkunci</p>' +
-            '<h2>' + esc(lec.title) + '</h2>' +
-            '<p class="muted">Kurikulum lengkap di bawah — yang blur terkunci sampai mentoring lunas.</p>' +
-            '<button class="btn" data-act="open-lec" data-id="' + esc(firstLectureId()) + '">Ke video selamat datang</button>' +
-            '<button class="btn secondary" data-act="tab" data-id="daftar">Bayar mentoring</button>' +
-          '</div></div>' +
-          kurInline +
-        '</div></div>';
-    }
-    if (preview) {
-      return '<div class="player-layout"><div>' +
-        payStrip +
-        (lec.tool === 'kolab' ? viewKolab() : renderCanvas(lec)) +
-        kurInline +
-        (lec.tool === 'kolab' ? '' : renderLecAfter(lec) + payAfterFirst(lec) + renderPanes(lec)) +
-        '</div></div>';
-    }
-    const inner = lec.tool === 'kolab'
-      ? viewKolab()
-      : renderCanvas(lec) + renderLecAfter(lec) + payAfterFirst(lec) + renderPanes(lec);
+    const after = (preview && !lockedNow && lec.tool !== 'kolab' ? payAfterFirst(lec) : '') + kurInline;
+    const player = (preview ? payStrip : '') + renderLessonPlayer(lec, {
+      phone: !isStaff(),
+      lockedNow: lockedNow,
+      after: after
+    });
     return '<div class="player-layout">' +
-      '<div>' +
-        '<button type="button" class="kur-toggle" data-act="toggle-kur">' +
-        (ui.kurOpen ? 'Tutup kurikulum' : 'Kurikulum · ' + kurProgress(ui.personaId).pct + '%') + '</button>' +
-        inner + '</div>' +
+      '<div>' + player + '</div>' +
       '<aside class="kurikulum-pane' + (ui.kurOpen ? ' is-open' : '') + '">' +
         renderKurikulumSidebar() + '</aside>' +
       '</div>';
@@ -4536,6 +4720,13 @@
     } else if (act === 'toggle-kur') {
       ui.kurOpen = !ui.kurOpen;
       render();
+    } else if (act === 'lec-more') {
+      const box = btn.closest('.lec-read');
+      if (!box) return;
+      const open = box.classList.toggle('is-open');
+      btn.innerHTML = open
+        ? 'Tutup <span aria-hidden="true">▴</span>'
+        : 'Baca selengkapnya <span aria-hidden="true">▾</span>';
     } else if (act === 'lihat-kur') {
       ui.tab = 'belajar';
       ui.kurOpen = true;
