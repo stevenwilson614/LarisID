@@ -25,7 +25,18 @@ create table if not exists public.schools (
   id              uuid primary key default gen_random_uuid(),
   owner_user_id   uuid not null references auth.users (id) on delete restrict,
   name            text not null check (char_length(trim(name)) > 0),
-  slug            text not null unique,
+  -- Vanity path: https://larisid.com/s/{slug}
+  -- Mentors reuse lynk/IG handles (dots allowed). Anton = obrolan.marketing.
+  slug            text not null unique
+                    check (
+                      slug ~ '^[a-z0-9]([a-z0-9._-]{0,62}[a-z0-9])?$'
+                      and position('..' in slug) = 0
+                      and slug not in (
+                        's', 'school', 'sekolah', 'api', 'admin', 'www', 'app',
+                        'harga', 'tentang', 'cara-kerja', 'perbandingan', 'fonts',
+                        'assets', 'js', 'css', 'static', 'invite', 'join'
+                      )
+                    ),
   kind            text not null default 'creator'
                     check (kind in ('creator', 'rise')),
   slogan          text,
@@ -38,7 +49,9 @@ create table if not exists public.schools (
 create index if not exists idx_schools_owner on public.schools (owner_user_id);
 
 comment on table public.schools is
-  'One mentor business. Anton owns a creator school; Kohort Pertama would seed as kind=rise.';
+  'One mentor business. Public student home is /s/{slug}. Anton: obrolan.marketing (lynk handle). Rise kohorts stay separate.';
+comment on column public.schools.slug is
+  'Unique vanity handle for /s/{slug}. Prefer same string as lynk.id/{handle}. Invite codes stay on cohorts.';
 
 create table if not exists public.school_members (
   school_id   uuid not null references public.schools (id) on delete cascade,
@@ -493,5 +506,16 @@ create policy school_entitlements_write on public.school_entitlements
 -- from public.cohorts where slug = 'kohort-pertama' limit 1;
 -- update public.cohorts set school_id = ..., school_kind = 'rise'
 -- where slug = 'kohort-pertama';
+--
+-- Anton creator school (when offline lock lifts):
+-- insert into public.schools (owner_user_id, name, slug, kind, slogan, wa_group_url)
+-- values (
+--   'ANTON_AUTH_UUID',
+--   'MasterMind with Anton GC',
+--   'obrolan.marketing',  -- → https://larisid.com/s/obrolan.marketing
+--   'creator',
+--   'Jualan TikTok Shop yang tahan lama',
+--   'https://chat.whatsapp.com/…'
+-- );
 
 commit;

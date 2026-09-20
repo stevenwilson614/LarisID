@@ -3,7 +3,8 @@ window.ANTON_SEED = {
   school: {
     id: 'sch-anton',
     name: 'MasterMind with Anton GC',
-    slug: 'mastermind-anton-gc',
+    // Public URL: larisid.com/s/{slug} — same handle as lynk.id/obrolan.marketing
+    slug: 'obrolan.marketing',
     kind: 'creator',
     slogan: 'Jualan TikTok Shop yang tahan lama',
     waGroup: 'https://chat.whatsapp.com/anton-batch-sep-demo',

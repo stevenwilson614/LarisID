@@ -6,11 +6,15 @@
   <meta name="robots" content="noindex, nofollow">
   <title>MasterMind with Anton GC — prototype offline</title>
   <link rel="stylesheet" href="/fonts/laris-fonts.css">
-  <link rel="stylesheet" href="./css/school.css?v=20260920r">
+  <link rel="stylesheet" href="./css/school.css?v=20260920s">
 </head>
 <body>
   <div id="prod-block" hidden>
     <p>Prototype localhost. Tidak untuk larisid.com.</p>
+  </div>
+  <div id="slug-miss" class="slug-miss" hidden>
+    <p>Sekolah <strong data-asked></strong> tidak ada di prototype ini.</p>
+    <p class="muted">Demo Anton: <a href="/s/obrolan.marketing"><span data-known>obrolan.marketing</span></a></p>
   </div>
   <div id="app" class="is-student">
     <header class="topbar">
@@ -18,7 +22,8 @@
         <img id="school-logo" src="./assets/obrolan/profile.png" alt="" width="32" height="32">
         <div>
           <strong id="school-name">MasterMind with Anton GC</strong>
-          <span class="off-badge">Offline · jangan deploy</span>
+          <a id="school-handle" class="school-handle" href="/s/obrolan.marketing">obrolan.marketing</a>
+          <span class="off-badge">/s/obrolan.marketing</span>
         </div>
       </div>
       <div class="topbar-actions">
@@ -39,7 +44,7 @@
   <aside id="drawer" class="drawer" hidden></aside>
   <div id="drawer-scrim" class="scrim" hidden></div>
   <div id="toast" class="toast" hidden></div>
-  <script src="./js/seed.js?v=20260920r"></script>
-  <script src="./js/app.js?v=20260920r"></script>
+  <script src="./js/seed.js?v=20260920s"></script>
+  <script src="./js/app.js?v=20260920s"></script>
 </body>
 </html>

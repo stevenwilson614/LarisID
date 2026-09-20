@@ -2,7 +2,8 @@
 
 _Internal. Localhost prototype only. Do not deploy, do not apply SQL on Contabo._
 
-Run: `bash school/serve.sh` → http://127.0.0.1:8765/school/
+Run: `bash school/serve.sh` → http://127.0.0.1:8765/s/obrolan.marketing  
+(dev alias: http://127.0.0.1:8765/school/)
 
 Dual-view walkthrough (Anton desktop + student HP): http://127.0.0.1:8765/school/present.html
 

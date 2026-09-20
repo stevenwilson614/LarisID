@@ -12,10 +12,75 @@
   const ALL_SKUS = () => (SEED.catalog || []).map((p) => p.id);
   const MENTOR_SKUS = () => (SEED.catalog || []).filter((p) => p.includedInMentoring !== false).map((p) => p.id);
 
+  /* Vanity LMS URLs: larisid.com/s/{slug} — mentors reuse lynk handles (dots ok). */
+  const SLUG_RESERVED = {
+    s: 1, school: 1, sekolah: 1, api: 1, admin: 1, www: 1, app: 1,
+    harga: 1, tentang: 1, 'cara-kerja': 1, perbandingan: 1, fonts: 1,
+    assets: 1, js: 1, css: 1, static: 1, invite: 1, join: 1
+  };
+  function normalizeSlug(s) {
+    return String(s == null ? '' : s).trim().toLowerCase();
+  }
+  function isValidSlug(s) {
+    const slug = normalizeSlug(s);
+    if (!slug || slug.length > 64) return false;
+    if (SLUG_RESERVED[slug]) return false;
+    if (slug.indexOf('..') >= 0) return false;
+    return /^[a-z0-9]([a-z0-9._-]{0,62}[a-z0-9])?$/.test(slug);
+  }
+  function pathSlug() {
+    const m = location.pathname.match(/^\/s\/([^/]+)\/?$/i);
+    return m ? normalizeSlug(decodeURIComponent(m[1])) : '';
+  }
+  function qsSlug() {
+    return normalizeSlug(PRESENT_QS.get('s') || PRESENT_QS.get('school') || '');
+  }
+  function schoolSlug() {
+    return normalizeSlug((typeof db !== 'undefined' && db && db.schoolSlug) || SEED.school.slug);
+  }
+  function schoolInviteCode() {
+    const fromDb = (typeof db !== 'undefined' && db && db.inviteCode) ? db.inviteCode : '';
+    return String(fromDb || (SEED.cohort && SEED.cohort.invite) || '').trim();
+  }
+  function schoolPublicPath() {
+    return '/s/' + schoolSlug();
+  }
+  /** Canonical share URL (production host even on localhost demos). */
+  function schoolPublicUrl() {
+    return 'https://larisid.com' + schoolPublicPath();
+  }
+  function schoolLocalUrl() {
+    return location.origin + schoolPublicPath();
+  }
+  function schoolJoinUrl() {
+    const code = schoolInviteCode();
+    return schoolPublicUrl() + (code ? ('?invite=' + encodeURIComponent(code)) : '');
+  }
+  function schoolJoinLocalUrl() {
+    const code = schoolInviteCode();
+    return schoolLocalUrl() + (code ? ('?invite=' + encodeURIComponent(code)) : '');
+  }
+
   if (/larisid\.com$/i.test(location.hostname) || location.hostname.endsWith('.pages.dev')) {
     $('prod-block').hidden = false;
     $('app').hidden = true;
     return;
+  }
+
+  const PATH_SLUG = pathSlug() || qsSlug();
+  if (PATH_SLUG && PATH_SLUG !== normalizeSlug(SEED.school.slug)) {
+    const miss = $('slug-miss');
+    if (miss) {
+      miss.hidden = false;
+      miss.querySelector('[data-asked]').textContent = PATH_SLUG;
+      miss.querySelector('[data-known]').textContent = SEED.school.slug;
+      miss.querySelector('a').href = '/s/' + encodeURIComponent(SEED.school.slug);
+    }
+    $('app').hidden = true;
+    return;
+  }
+  if (PRESENT_QS.get('invite')) {
+    try { sessionStorage.setItem('anton-school-invite', String(PRESENT_QS.get('invite'))); } catch (err) { /* private */ }
   }
 
   function esc(s) {
@@ -127,6 +192,8 @@
   }
 
   function hydrateFunnel(merged) {
+    merged.schoolSlug = isValidSlug(merged.schoolSlug) ? normalizeSlug(merged.schoolSlug) : SEED.school.slug;
+    merged.inviteCode = String(merged.inviteCode || (SEED.cohort && SEED.cohort.invite) || '').trim() || SEED.cohort.invite;
     merged.pricing = Object.assign({}, SEED.pricing, merged.pricing || {});
     merged.bank = Object.assign({}, SEED.bank, merged.bank || {});
     merged.dunning = Object.assign({}, SEED.dunning, merged.dunning || {});
@@ -200,6 +267,8 @@
       emailQueue: JSON.parse(JSON.stringify(SEED.emailQueueSeed || [])),
       enrollments: JSON.parse(JSON.stringify(SEED.enrollmentsSeed || {})),
       people: {},
+      schoolSlug: SEED.school.slug,
+      inviteCode: SEED.cohort.invite,
       pricing: JSON.parse(JSON.stringify(SEED.pricing)),
       bank: JSON.parse(JSON.stringify(SEED.bank)),
       dunning: JSON.parse(JSON.stringify(SEED.dunning)),
@@ -255,6 +324,7 @@
   }
 
   let db = load();
+  if (!resolveVanitySlug()) return;
   const ui = {
     role: PRESENT && PRESENT_PANE === 'mentor' ? 'owner' : 'student',
     tab: 'home',
@@ -459,13 +529,7 @@
     if (slot) {
       slot.outerHTML = '<span class="btn done-ok" data-watch-status="done">Selesai ✓</span>';
     }
-    document.querySelectorAll('.kur-progress-top span').forEach((el) => {
-      const p = kurProgress(ui.personaId);
-      el.textContent = p.n + ' / ' + p.total + ' materi · ' + p.pct + '%';
-    });
-    document.querySelectorAll('.kur-bar > span').forEach((el) => {
-      el.style.width = kurProgress(ui.personaId).pct + '%';
-    });
+    refreshProgressPath();
     toast('Video 1 selesai — nonton ≥85%.');
     return true;
   }
@@ -554,12 +618,21 @@
     const n = list.filter((l) => isDone(sid, l.id)).length;
     return { n: n, total: list.length, pct: list.length ? Math.round((n / list.length) * 100) : 0 };
   }
+  function currentProgressId(sid) {
+    sid = sid || ui.personaId;
+    if (sid === ui.personaId && ui.lectureId && ui.lectureId !== 'kolab' && lectureById(ui.lectureId)) {
+      return ui.lectureId;
+    }
+    return db.lastLecture[sid] || firstLectureId();
+  }
   function progressBarHtml(sid) {
-    const p = kurProgress(sid);
-    return '<div class="kur-progress">' +
-      '<div class="kur-progress-top"><strong>Kurikulum</strong>' +
-      '<span>' + p.n + ' / ' + p.total + ' materi · ' + p.pct + '%</span></div>' +
-      '<div class="bar kur-bar"><span style="width:' + p.pct + '%"></span></div></div>';
+    return resumePathHtml(sid, currentProgressId(sid));
+  }
+  function refreshProgressPath() {
+    document.querySelectorAll('[data-progress-path]').forEach((el) => {
+      const sid = el.getAttribute('data-sid') || ui.personaId;
+      el.outerHTML = resumePathHtml(sid, currentProgressId(sid));
+    });
   }
   function nextKurMilestone(n, total) {
     if (!total) return null;
@@ -589,7 +662,11 @@
     const list = lectures();
     const p = kurProgress(sid);
     if (!list.length) return '';
-    const curIdx = Math.max(0, list.findIndex((l) => l.id === currentId));
+    let curIdx = list.findIndex((l) => l.id === currentId);
+    if (curIdx < 0) {
+      curIdx = list.findIndex((l) => !isDone(sid, l.id));
+      if (curIdx < 0) curIdx = list.length - 1;
+    }
     const fill = list.length <= 1 ? 1 : curIdx / (list.length - 1);
     const remain = Math.max(0, p.total - p.n);
     const here = Math.round(fill * 100);
@@ -609,7 +686,7 @@
         (done && !now ? svgIcon('check') : '') +
         '</button>';
     }).join('');
-    return '<div class="rj-board" role="group" aria-label="Progress kurikulum, ' + p.n + ' dari ' + p.total + ' selesai">' +
+    return '<div class="rj-board" data-progress-path data-sid="' + esc(sid) + '" role="group" aria-label="Progress kurikulum, ' + p.n + ' dari ' + p.total + ' selesai">' +
       '<div class="rj-board-head"><span>Progress kamu</span><span class="rj-pct">' + p.pct + '% selesai</span></div>' +
       '<div class="path-rail" style="--fill:' + fill.toFixed(4) + '">' +
         '<span class="path-rail-bg" aria-hidden="true"></span>' +
@@ -1833,7 +1910,16 @@
       logo.alt = SEED.school.name;
     }
     const badge = document.querySelector('.off-badge');
-    if (badge) badge.textContent = ui.present ? 'Offline · demo' : 'Offline · jangan deploy';
+    if (badge) {
+      badge.textContent = ui.present ? 'Offline · demo' : ('/s/' + schoolSlug());
+      badge.title = schoolPublicUrl();
+    }
+    const handleEl = $('school-handle');
+    if (handleEl) {
+      handleEl.textContent = schoolSlug();
+      handleEl.href = schoolLocalUrl();
+      handleEl.title = schoolPublicUrl();
+    }
     $('role-switch').innerHTML =
       '<option value="student">Siswa</option>' +
       '<option value="owner">Mentor (Anton)</option>' +
@@ -2434,7 +2520,7 @@
     const kurInline = preview ? trialKurikulumBlock() : '';
     if (lockedNow) {
       return '<div class="player-layout">' +
-        '<div>' + payStrip + progressBarHtml(ui.personaId) +
+        '<div>' + payStrip +
         '<div class="locked-blur-card">' +
           '<div class="locked-blur-bg" aria-hidden="true">' +
             (coverHtml('lec', lec.id, 'lec-poster') || '<div class="lec-poster lec-poster-empty"></div>') +
@@ -2456,7 +2542,6 @@
     if (preview) {
       return '<div class="player-layout"><div>' +
         payStrip +
-        progressBarHtml(ui.personaId) +
         (lec.tool === 'kolab' ? viewKolab() : renderCanvas(lec)) +
         kurInline +
         (lec.tool === 'kolab' ? '' : renderLecAfter(lec) + payAfterFirst(lec) + renderPanes(lec)) +
@@ -2486,20 +2571,19 @@
   }
 
   function progresKurikulumBlock(sid) {
-    const p = kurProgress(sid);
     const unpaid = !canMentoring(sid);
     const openN = lectures().filter((l) => canOpenLecture(sid, l.id)).length;
+    const total = lectures().length;
     return '<section class="card kurikulum-inline progres-kur" id="kurikulum-progres">' +
       '<p class="trial-kicker">Kurikulum</p>' +
-      '<h3>Progress kamu · ' + p.n + ' / ' + p.total + ' · ' + p.pct + '%</h3>' +
       (unpaid
         ? '<p class="muted">Modul terkunci tetap kelihatan (blur) dan belum selesai. Mentoring membuka semuanya.</p>'
         : '') +
       progressBarHtml(sid) +
       '<p class="progres-open muted">' + (unpaid
-        ? (openN + ' materi kebuka sekarang · ' + (p.total - openN) + ' masih terkunci')
+        ? (openN + ' materi kebuka sekarang · ' + (total - openN) + ' masih terkunci')
         : 'Semua materi mentoring kebuka') + '</p>' +
-      '<div class="kurikulum-inline-list">' + renderKurikulumSidebar(sid) + '</div></section>';
+      '<div class="kurikulum-inline-list">' + renderKurikulumSidebar(sid, { skipProgress: true }) + '</div></section>';
   }
   function payAfterFirst(lec) {
     if (lec.id !== firstLectureId()) return '';
@@ -2618,7 +2702,8 @@
     const preview = !!opts.preview;
     const currentId = preview ? (ui.kurPreviewLec || '') : ui.lectureId;
     let n = 0;
-    return progressBarHtml(sid) + db.weeks.map((w) => {
+    const head = opts.skipProgress ? '' : progressBarHtml(sid);
+    return head + db.weeks.map((w) => {
       const items = lecturesInWeek(w.id).map((l) => {
         n += 1;
         const cur = l.id === currentId;
@@ -2708,7 +2793,7 @@
           '<img class="catalog-mark" src="' + esc(sch.logo) + '" alt="">' +
           '<div><strong>MasterMind with Anton GC</strong><span>by Coach Anton GC</span></div>' +
         '</div>' +
-        '<p class="muted" style="margin:6px 0 0">@obrolan.marketing · cover &amp; foto dari etalase lynk (salinan lokal).</p>' +
+        '<p class="muted" style="margin:6px 0 0">Kelas: <a href="' + esc(schoolLocalUrl()) + '">larisid.com/s/' + esc(schoolSlug()) + '</a> · etalase: lynk.id/' + esc(schoolSlug()) + '</p>' +
         '<a class="btn secondary" href="' + esc(sch.lynk) + '" target="_blank" rel="noopener" style="margin-top:8px">Etalase lynk.id</a>' +
       '</div></section>';
   }
@@ -2905,18 +2990,15 @@
     const preview = canPreview(sid) && unpaid;
 
     if (unpaid) {
-      const p = kurProgress(sid);
       const owned = catalog().filter((x) => canSku(sid, x.id));
       return '<div class="progres-unpaid">' +
         (preview || db.applications[sid] ? offerBanner(sid) : '') +
         progresKurikulumBlock(sid) +
         '<section class="card">' +
           '<h2>Status kamu</h2>' +
-          '<p>Selesai: <strong>' + p.n + ' / ' + p.total + '</strong> · ' + p.pct + '%</p>' +
-          '<div class="progres-dots">' + lecDotStrip(sid) + '</div>' +
-          '<p class="muted" style="margin-top:10px">' +
+          '<p class="muted" style="margin-top:0">' +
             (isDone(sid, firstLectureId())
-              ? '✓ Video 1 selesai. Modul lain masih blur sampai lunas.'
+              ? 'Video 1 selesai. Modul lain masih blur sampai lunas.'
               : 'Belum selesai video 1 — nonton ≥85% di tab Belajar.') +
           '</p>' +
           '<p>Bayar: ' + payChip(bill.status) +
@@ -3405,7 +3487,34 @@
   function viewHarga() {
     const p = db.pricing;
     const b = db.bank;
-    return '<div class="grid-2"><section class="card"><h2>Harga mentoring (placeholder)</h2>' +
+    const slug = schoolSlug();
+    const pub = schoolPublicUrl();
+    const join = schoolJoinUrl();
+    const local = schoolLocalUrl();
+    return '<section class="card school-url-card">' +
+      '<h2>Alamat sekolah</h2>' +
+      '<p class="muted">Siswa buka kelas di path ini — sama gaya lynk.id/{handle}. Checkout tetap di lynk; undangan pakai kode batch.</p>' +
+      '<form class="compose" data-act="save-school-url">' +
+        '<label class="muted">Handle URL (slug)</label>' +
+        '<div class="slug-row">' +
+          '<span class="slug-prefix">larisid.com/s/</span>' +
+          '<input name="slug" value="' + esc(slug) + '" pattern="[a-z0-9]([a-z0-9._-]{0,62}[a-z0-9])?" maxlength="64" autocomplete="off" spellcheck="false">' +
+        '</div>' +
+        '<label class="muted">Kode undangan batch</label>' +
+        '<input name="invite" value="' + esc(schoolInviteCode()) + '" maxlength="40" autocomplete="off" spellcheck="false">' +
+        '<button class="btn" type="submit">Simpan alamat</button>' +
+      '</form>' +
+      '<dl class="url-share">' +
+        '<div><dt>Rumah siswa</dt><dd><code>' + esc(pub) + '</code>' +
+          '<button type="button" class="btn-sm" data-act="copy-url" data-url="' + esc(pub) + '">Salin</button></dd></div>' +
+        '<div><dt>Gabung + kode</dt><dd><code>' + esc(join) + '</code>' +
+          '<button type="button" class="btn-sm" data-act="copy-url" data-url="' + esc(join) + '">Salin</button></dd></div>' +
+        '<div><dt>Lokal (demo)</dt><dd><code>' + esc(local) + '</code>' +
+          '<button type="button" class="btn-sm" data-act="copy-url" data-url="' + esc(schoolJoinLocalUrl()) + '">Salin + invite</button></dd></div>' +
+      '</dl>' +
+      '<p class="muted">Lynk etalase: <a href="' + esc(SEED.school.lynk) + '" target="_blank" rel="noopener">' + esc(SEED.school.lynk) + '</a> — bukan URL kelas.</p>' +
+      '</section>' +
+      '<div class="grid-2"><section class="card"><h2>Harga mentoring (placeholder)</h2>' +
       '<form class="compose" data-act="save-pricing">' +
         '<label class="muted">Bulanan (IDR)</label><input name="monthlyIdr" type="number" value="' + esc(p.monthlyIdr) + '">' +
         '<label class="muted">Diskon 3 bulan %</label><input name="quarterDiscountPct" type="number" value="' + esc(p.quarterDiscountPct || 15) + '">' +
@@ -3436,7 +3545,6 @@
     const c = crmOf(id);
     const app = db.applications[id];
     const stages = db.pipelineStages || SEED.pipelineStages;
-    const p = kurProgress(id);
     const handle = tiktokHandle(s.tiktok);
     const plans = (db.actionPlans || []).filter((x) => !x.archived);
     const tsk = db.tasks.filter((x) => x.personId === id).slice().sort((a, b) => Number(a.done) - Number(b.done) || new Date(a.dueAt) - new Date(b.dueAt));
@@ -3494,8 +3602,6 @@
           '</dd></div>' +
         '</dl>' +
         '<div style="margin-top:16px">' + progressBarHtml(id) +
-          '<p class="muted">' + p.n + '/' + p.total + ' materi · ' + p.pct + '%</p>' +
-          lecDotStrip(id) +
           '<details style="margin-top:8px"><summary class="muted">Checklist materi</summary><ul class="lec-check">' + lecList + '</ul></details>' +
         '</div>' +
       '</aside>';
@@ -4365,6 +4471,17 @@
     if (act === 'wiz-next') {
       if (btn.matches('form')) return;
       advanceWiz();
+    } else if (act === 'copy-url') {
+      const url = btn.getAttribute('data-url') || '';
+      if (!url) return;
+      const done = () => toast('Tautan disalin');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(done).catch(() => {
+          window.prompt('Salin tautan:', url);
+        });
+      } else {
+        window.prompt('Salin tautan:', url);
+      }
     } else if (act === 'wiz-back') {
       backWiz();
     } else if (act === 'wiz-shop') {
@@ -5017,6 +5134,28 @@
       db.bank.name = String(fd.get('name') || db.bank.name);
       save();
       toast('Rekening disimpan');
+      render();
+    } else if (act === 'save-school-url') {
+      if (!canBill()) return;
+      const nextSlug = normalizeSlug(fd.get('slug'));
+      const nextInvite = String(fd.get('invite') || '').trim().toUpperCase().replace(/\s+/g, '-');
+      if (!isValidSlug(nextSlug)) {
+        toast('Slug tidak valid (huruf/angka/titik/strip, max 64)');
+        return;
+      }
+      const prev = schoolSlug();
+      db.schoolSlug = nextSlug;
+      db.inviteCode = nextInvite || SEED.cohort.invite;
+      save();
+      toast('Alamat sekolah disimpan');
+      if (pathSlug() && nextSlug !== prev) {
+        const q = new URLSearchParams(location.search);
+        q.delete('s');
+        q.delete('school');
+        const qs = q.toString();
+        location.href = '/s/' + encodeURIComponent(nextSlug) + (qs ? ('?' + qs) : '');
+        return;
+      }
       render();
     } else if (act === 'exam') {
       const qs = SEED.exam.questions;
