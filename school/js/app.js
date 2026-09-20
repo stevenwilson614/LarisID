@@ -678,7 +678,7 @@
       return '<svg class="rj-check" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.4 6.2 4.8 8.6 9.6 3.4" fill="none" stroke="#052e16" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     }
     if (name === 'target') {
-      return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><path d="M12 2.5v3.2M12 18.3v3.2M2.5 12h3.2M18.3 12h3.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+      return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>';
     }
     if (name === 'doc') {
       return '<svg class="lec-acc-ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 3.5h7l5 5V20a1.5 1.5 0 0 1-1.5 1.5h-10.5A1.5 1.5 0 0 1 5.5 20V5A1.5 1.5 0 0 1 7 3.5z" stroke="currentColor" stroke-width="1.7"/><path d="M14 3.5V9h5.5" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>';
