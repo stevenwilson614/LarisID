@@ -1,4 +1,4 @@
-/* MasterMind with Anton GC — dark ink + Anton jacket orange accent.
+/* MasterMind with Anton GC — monotone ink (Skool / Udemy-classic / live Laris ink).
    Student chrome is a phone column. Mentor chrome is a desktop rail. */
 
 :root {
@@ -12,10 +12,10 @@
   --card: #27272a;
   --hitam: #18181b;
   --danger: #c4c4c4;
-  --ok: #c47d0a;
-  --ok-soft: #e8a84a;
-  --ok-deep: #3d2a0a;
-  --ok-mid: #5c3d0a;
+  --ok: #4ade80;
+  --ok-soft: #86efac;
+  --ok-deep: #102418;
+  --ok-mid: #14532d;
   --accent: #93c5fd;
   --font: "Plus Jakarta Sans", system-ui, sans-serif;
   --dock-h: 64px;
@@ -538,13 +538,13 @@ html[data-mode="student"] .canvas iframe.tool-frame { min-height: 520px; height:
 
 .trial-cta {
   border: 1px solid #3f3f46;
-  background: linear-gradient(165deg, #1c1917 0%, #18181b 55%, var(--ok-mid)22 100%);
+  background: linear-gradient(165deg, #1c1917 0%, #18181b 55%, #14532d22 100%);
   margin-bottom: 12px;
 }
 .trial-cta h3 { margin: 4px 0 8px; font-size: 1.05rem; letter-spacing: -.02em; }
 .trial-kicker {
   margin: 0; font-size: .68rem; font-weight: 800; letter-spacing: .08em;
-  text-transform: uppercase; color: var(--ok-soft);
+  text-transform: uppercase; color: #86efac;
 }
 .trial-count { margin: 8px 0; font-size: .92rem; }
 .trial-count strong { color: #fbbf24; font-variant-numeric: tabular-nums; }
@@ -1890,7 +1890,7 @@ div.lec-watch { cursor: default; }
 .lec-prev {
   background: transparent; color: #fff; border: 1px solid var(--line);
 }
-.lec-next { background: var(--ok); color: #1a1000; }
+.lec-next { background: var(--ok); color: #052e16; }
 html[data-mode="mentor"] .lesson-top { display: none; }
 html[data-mode="mentor"] .lesson-head h1 { font-size: 1.28rem; }
 
@@ -1911,7 +1911,7 @@ html[data-mode="mentor"] .lesson-head h1 { font-size: 1.28rem; }
   display: block; font-size: .7rem; font-weight: 700; margin: 10px 0 4px;
 }
 .tool-native label .hint {
-  font-weight: 650; color: var(--ok-soft); letter-spacing: .02em; font-size: .62rem;
+  font-weight: 650; color: #c9b227; letter-spacing: .02em; font-size: .62rem;
 }
 .tool-native input,
 .tool-native .calc-input {
@@ -1919,7 +1919,7 @@ html[data-mode="mentor"] .lesson-head h1 { font-size: 1.28rem; }
   font: inherit; font-size: 16px; background: var(--ink-2); color: var(--text);
 }
 .tool-native input.kuning {
-  background: var(--ok-deep); border-color: var(--ok-mid); color: #fff;
+  background: #1c1a10; border-color: #8a7a20; color: #fff;
 }
 .calc-tabs {
   display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0;

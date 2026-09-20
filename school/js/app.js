@@ -2212,7 +2212,7 @@
         $('calc-net-line').textContent = 'Isi modal & sisa, atau Pakai contoh.';
         $('calc-prices-set').innerHTML = '';
         $('calc-fee-sum').textContent = '—';
-        $('calc-out-set').innerHTML = '<div class="calc-empty">Dua kotak oranye di atas dulu. Potongan TikTok bisa diubah di bawah.</div>';
+        $('calc-out-set').innerHTML = '<div class="calc-empty">Dua kotak kuning di atas dulu. Potongan TikTok bisa diubah di bawah.</div>';
         return d;
       }
       $('calc-net-line').innerHTML = 'Supaya sisa ' + pct(d.margin) + ' dari modal ' + fmtRp(d.modal) +
@@ -3296,7 +3296,7 @@
     const empty = preview && false;
     return '<div class="tool-native" id="calc-tool" data-preview="' + (preview ? '1' : '0') + '">' +
       '<h1>Kalkulator harga TikTok Shop</h1>' +
-      '<p class="lead">Isi yang oranye. Sisanya dihitung. Perkiraan — bukan laporan pajak.</p>' +
+      '<p class="lead">Isi yang kuning. Sisanya dihitung. Perkiraan — bukan laporan pajak.</p>' +
       '<label>Nama SKU <span class="hint">kamu isi</span></label>' +
       '<input class="kuning" id="calc-sku" type="text" value="Jepit rambut satin isi 6" autocomplete="off">' +
       '<div class="btns">' +
@@ -3424,7 +3424,7 @@
       esc(owned ? 'Sudah punya' : 'Belum punya') + '" aria-label="' +
       esc(label || (owned ? 'Sudah punya' : 'Belum punya')) + '">' +
       (owned
-        ? '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><rect x="1.5" y="1.5" width="17" height="17" rx="4" fill="#c47d0a"/><path d="M5.5 10.2l2.8 2.8 6-6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+        ? '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><rect x="1.5" y="1.5" width="17" height="17" rx="4" fill="#16a34a"/><path d="M5.5 10.2l2.8 2.8 6-6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
         : '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><rect x="1.5" y="1.5" width="17" height="17" rx="4" fill="none" stroke="#71717a" stroke-width="1.6"/></svg>') +
       '</span>';
   }
@@ -3511,7 +3511,7 @@
         '<p class="muted">Tools praktis untuk bantu kamu jualan di TikTok Shop.</p>' +
         '<div class="alat-stats">' +
           '<span class="alat-stat is-ok">' +
-            '<svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="#c47d0a"/><path d="M3.4 6.2 5.2 8 8.6 4.2" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>' +
+            '<svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="#16a34a"/><path d="M3.4 6.2 5.2 8 8.6 4.2" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>' +
             ownedN + ' alat tersedia</span>' +
           (extraTools.length
             ? '<span class="alat-stat">' +
