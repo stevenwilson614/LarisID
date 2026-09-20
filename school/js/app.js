@@ -398,7 +398,10 @@
     const b = billingOf(id);
     if (b.status === 'trial' || b.plan === 'preview') return true;
     const c = crmOf(id);
-    return c.stage === 'trial' || c.stage === 'nonton' || c.stage === 'sudah_keluar';
+    if (c.stage === 'trial' || c.stage === 'nonton' || c.stage === 'sudah_keluar') return true;
+    // Form sudah masuk — boleh lihat video 1 meski belum klik "Bayar nanti"
+    if (db.applications[id] && (c.stage === 'form' || b.offerStartedAt)) return true;
+    return false;
   }
   function canOpenLecture(id, lid) {
     if (canMentoring(id)) return true;
@@ -623,7 +626,9 @@
   const WIZ_TOTAL = WIZ_PAY + 1;
 
   function isOnboardScreen() {
-    return !isStaff() && (needsWizard(ui.personaId) || ui.tab === 'daftar');
+    // Hanya langkah isi form yang full-screen. Setelah form, dock Belajar/Diskusi harus kelihatan
+    // (halaman bayar tetap bisa dibuka lewat tab daftar / CTA).
+    return !isStaff() && needsWizard(ui.personaId);
   }
   function resetWizForPersona() {
     ui.wizDraft = null;
@@ -769,6 +774,7 @@
       b.offerExpiresAt = addMs(isoNow(), 24 * 36e5);
     }
     setStage(sid, 'form', 'Form masuk. Jam diskon 24 jam dimulai.');
+    startTrial(sid);
     save();
     return true;
   }
@@ -785,7 +791,7 @@
       ui.wizStep = WIZ_PAY;
       ui.wizFocusedStep = null;
       ui.tab = 'daftar';
-      toast('Tersimpan. Lanjut pilih bayar, atau lihat dulu.');
+      toast('Form masuk. Diskon 24 jam jalan — boleh langsung ke Belajar.');
     } else {
       ui.wizStep = wizIdx() + 1;
       ui.wizFocusedStep = null;
@@ -2058,7 +2064,7 @@
       '<button class="btn ob-cta" data-act="pay-now" data-term="' + esc(term) + '">' +
       (term === 'autopay' ? 'Bayar kartu (mock)' : 'Saya sudah transfer / scan') + '</button>' +
       '<button type="button" class="btn secondary ob-cta" data-act="pay-later">Bayar nanti, lihat dulu</button>' +
-      '<p class="ob-look-hint">Home kelihatan utuh. Hanya video 1 + lembar kerja yang kebuka.</p>' +
+      '<p class="ob-look-hint">Form sudah masuk — tab <strong>Belajar</strong> &amp; <strong>Diskusi</strong> di bawah. Video 1 kebuka; sisanya blur sampai lunas.</p>' +
       '<button type="button" class="ob-text" data-act="not-interested">Tidak tertarik</button>';
     return obWrap(WIZ_PAY, inner, foot, true);
   }
@@ -4493,8 +4499,9 @@
       }
       startTrial(ui.personaId);
       save();
-      ui.tab = 'home';
-      toast('Trial: video 1 kebuka. Boleh lihat dulu, diskon 24 jam dari jam form.');
+      ui.lectureId = firstLectureId();
+      ui.tab = 'belajar';
+      toast('Trial: video 1 kebuka. Diskon 24 jam dari jam form.');
       render();
     } else if (act === 'pay-now') {
       if (!ensureApplication()) {
