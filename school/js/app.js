@@ -2129,10 +2129,187 @@
     bindBlobMedia();
     bindKanbanDnD();
     bindKurDnD();
+    bindNativeTools();
     focusWiz();
     placeWaFab();
     tickRemainers();
     ensureRemainTimer();
+  }
+
+  function bindNativeTools() {
+    const root = document.getElementById('calc-tool');
+    if (!root) return;
+    const EXAMPLE_SET = {
+      'calc-sku': 'Jepit rambut satin isi 6',
+      'calc-modal': 60000, 'calc-margin': 20,
+      'calc-fee-admin': 8, 'calc-fee-ongkir': 4, 'calc-fee-cashback': 1.5, 'calc-fee-voucher': 2,
+      'calc-fee-aff': 6, 'calc-fee-ads': 10, 'calc-fee-pajak': 0.5
+    };
+    const EXAMPLE_TOKO = {
+      'calc-prod': 52000, 'calc-pack': 8000, 'calc-jual': 84507,
+      'calc-t-fee': 6, 'calc-t-ongkir': 1.5, 'calc-t-cash': 2, 'calc-t-voucher': 10,
+      'calc-t-ads': 10, 'calc-t-aff': 0, 'calc-t-host': 0, 'calc-t-kreator': 0,
+      'calc-t-admin': 0, 'calc-t-gaji': 0, 'calc-t-lain': 0, 'calc-t-pajak': 0.5
+    };
+    const num = (id) => {
+      const el = $(id);
+      if (!el || el.value === '' || el.value == null) return null;
+      return +el.value;
+    };
+    const n0 = (id) => num(id) || 0;
+    const pct = (n) => (n == null || !isFinite(n)) ? '—' : ((Math.round(n * 10) / 10).toLocaleString('id-ID') + '%');
+    const line = (label, a, b) => '<div class="line"><span>' + label + '</span><strong>' + a +
+      (b ? ' <span class="muted">' + b + '</span>' : '') + '</strong></div>';
+    const cards = (items) => items.map((c, i) =>
+      '<div class="calc-price' + (i === 0 ? ' main' : '') + '"><span>' + c.label + '</span><strong>' + c.value + '</strong></div>'
+    ).join('');
+    function fill(map) {
+      Object.keys(map).forEach((k) => { const el = $(k); if (el) el.value = map[k]; });
+    }
+    function setData() {
+      const modal = num('calc-modal');
+      const margin = num('calc-margin');
+      if (modal == null || margin == null || margin >= 100) return { ok: false };
+      const net = modal / (1 - margin / 100);
+      const fees = [
+        ['Admin TikTok', n0('calc-fee-admin')],
+        ['Bebas ongkir', n0('calc-fee-ongkir')],
+        ['Cashback bonus', n0('calc-fee-cashback')],
+        ['Voucher extra', n0('calc-fee-voucher')],
+        ['Komisi affiliate', n0('calc-fee-aff')],
+        ['Biaya ads', n0('calc-fee-ads')],
+        ['Pajak UMKM', n0('calc-fee-pajak')]
+      ];
+      const totalPct = fees.reduce((s, f) => s + f[1], 0);
+      const denom = 1 - totalPct / 100;
+      const promo = denom > 0 ? net / denom : null;
+      return {
+        ok: true, modal, margin, net, fees, totalPct,
+        promo, coret: promo != null ? promo / 0.9 : null, awal: promo != null ? promo * 2 : null
+      };
+    }
+    function tokoData() {
+      const prod = num('calc-prod');
+      const pack = n0('calc-pack');
+      const jual = num('calc-jual');
+      if (prod == null || jual == null || jual <= 0) return { ok: false };
+      const modalBarang = prod + pack;
+      const hpp = modalBarang / jual * 100;
+      const pctFees = n0('calc-t-fee') + n0('calc-t-ongkir') + n0('calc-t-cash') + n0('calc-t-voucher') +
+        n0('calc-t-ads') + n0('calc-t-aff') + n0('calc-t-pajak');
+      const feeRp = jual * pctFees / 100;
+      const tetap = n0('calc-t-host') + n0('calc-t-kreator') + n0('calc-t-admin') + n0('calc-t-gaji') + n0('calc-t-lain');
+      const totCost = modalBarang + feeRp + tetap;
+      const marginRp = jual - totCost;
+      return {
+        ok: true, prod, pack, jual, modalBarang, hpp, pctFees, feeRp, tetap, totCost, marginRp,
+        marginPct: marginRp / jual * 100
+      };
+    }
+    function renderSet() {
+      const d = setData();
+      if (!d.ok) {
+        $('calc-net-line').textContent = 'Isi modal & sisa, atau Pakai contoh.';
+        $('calc-prices-set').innerHTML = '';
+        $('calc-fee-sum').textContent = '—';
+        $('calc-out-set').innerHTML = '<div class="calc-empty">Dua kotak oranye di atas dulu. Potongan TikTok bisa diubah di bawah.</div>';
+        return d;
+      }
+      $('calc-net-line').innerHTML = 'Supaya sisa ' + pct(d.margin) + ' dari modal ' + fmtRp(d.modal) +
+        ', yang harus masuk kas = <strong>' + fmtRp(d.net) + '</strong>';
+      $('calc-fee-sum').textContent = pct(d.totalPct);
+      $('calc-prices-set').innerHTML = cards([
+        { label: 'Harga promo', value: fmtRp(d.promo) },
+        { label: 'Harga coret', value: fmtRp(d.coret) },
+        { label: 'Harga awal', value: fmtRp(d.awal) }
+      ]);
+      $('calc-out-set').innerHTML =
+        d.fees.map((f) => line(f[0], pct(f[1]), d.promo != null ? fmtRp(d.promo * f[1] / 100) : '')).join('') +
+        '<div class="line hl"><span>Total potongan</span><strong>' + pct(d.totalPct) + '</strong></div>' +
+        '<p class="muted" style="margin:10px 0 0">Coret = promo / 0,9. Awal = 2 × promo. Perkiraan.</p>';
+      return d;
+    }
+    function renderToko() {
+      const d = tokoData();
+      if (!d.ok) {
+        $('calc-prices-toko').innerHTML = '';
+        $('calc-toko-sum').textContent = '—';
+        $('calc-out-toko').innerHTML = '<div class="calc-empty">Isi produksi + harga jual, atau Pakai contoh.</div>';
+        return d;
+      }
+      $('calc-toko-sum').textContent = fmtRp(d.totCost);
+      $('calc-prices-toko').innerHTML = cards([
+        { label: 'Sisa / unit', value: fmtRp(d.marginRp) },
+        { label: 'Margin', value: pct(d.marginPct) },
+        { label: 'Tot cost', value: fmtRp(d.totCost) }
+      ]);
+      $('calc-out-toko').innerHTML =
+        line('Total modal barang', fmtRp(d.modalBarang), fmtRp(d.prod) + ' + packing') +
+        line('HPP', pct(d.hpp), fmtRp(d.modalBarang) + ' / harga jual') +
+        line('Potongan % toko', pct(d.pctFees), fmtRp(d.feeRp)) +
+        line('Biaya tetap', fmtRp(d.tetap), '') +
+        '<p class="muted" style="margin:10px 0 0">Perkiraan unit economics. Bukan laporan pajak UMKM.</p>';
+      return d;
+    }
+    function run() { renderSet(); renderToko(); }
+    function printHtml() {
+      const sku = (($('calc-sku') && $('calc-sku').value) || 'SKU').replace(/</g, '');
+      const s = setData();
+      const t = tokoData();
+      const when = new Date().toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' });
+      let body = '<h1 style="margin:0 0 4px">Kalkulator harga TikTok Shop</h1>' +
+        '<p style="margin:0 0 16px;color:#555;font-size:13px">Obrolan Marketing · ' + sku + ' · ' + when + '</p>';
+      body += '<h2 style="font-size:15px">Harga jual</h2>';
+      if (s.ok) {
+        body += '<p>Modal ' + fmtRp(s.modal) + ' · sisa ' + pct(s.margin) + ' · net ke kas ' + fmtRp(s.net) + '</p>' +
+          '<p><strong>Promo ' + fmtRp(s.promo) + '</strong> · coret ' + fmtRp(s.coret) + ' · awal ' + fmtRp(s.awal) + '</p>' +
+          '<p>Total potongan ' + pct(s.totalPct) + '</p>';
+      } else body += '<p>Belum diisi.</p>';
+      body += '<h2 style="font-size:15px;margin-top:18px">Toko / HPP</h2>';
+      if (t.ok) {
+        body += '<p>Harga jual ' + fmtRp(t.jual) + ' · tot cost ' + fmtRp(t.totCost) + '</p>' +
+          '<p><strong>Sisa ' + fmtRp(t.marginRp) + ' (' + pct(t.marginPct) + ')</strong> · HPP ' + pct(t.hpp) + '</p>';
+      } else body += '<p>Belum diisi.</p>';
+      body += '<p style="margin-top:24px;color:#555;font-size:12px">Perkiraan. Bukan laporan pajak.</p>';
+      return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + sku + ' — harga</title>' +
+        '<style>body{font-family:system-ui,sans-serif;color:#111;padding:18px;max-width:640px}</style></head><body>' +
+        body + '</body></html>';
+    }
+    root.__calc = {
+      run,
+      contoh() { fill(EXAMPLE_SET); fill(EXAMPLE_TOKO); run(); },
+      kosong() {
+        root.querySelectorAll('input').forEach((i) => { i.value = ''; });
+        if ($('calc-sku')) $('calc-sku').value = '';
+        run();
+      },
+      pdf() {
+        try {
+          const w = window.open('', 'harga-pdf');
+          if (w) {
+            w.document.open();
+            w.document.write(printHtml());
+            w.document.close();
+            w.focus();
+            setTimeout(() => { w.print(); }, 250);
+            return;
+          }
+        } catch (err) { /* popup blocked */ }
+        window.print();
+      },
+      tab(pane) {
+        const setOn = pane === 'set';
+        root.querySelectorAll('.calc-tabs button').forEach((b) => {
+          b.classList.toggle('on', b.getAttribute('data-pane') === pane);
+        });
+        $('calc-pane-set').hidden = !setOn;
+        $('calc-pane-toko').hidden = setOn;
+      }
+    };
+    root.querySelectorAll('input').forEach((i) => i.addEventListener('input', run));
+    fill(EXAMPLE_SET);
+    fill(EXAMPLE_TOKO);
+    run();
   }
 
   function focusWiz() {
@@ -2832,10 +3009,16 @@
       }
       if (lec.body) body += '<div class="article lec-read">' + mdish(lec.body) + '</div>';
     } else if (lec.type === 'tool') {
-      let src = lec.iframe || '';
       const sku = lec.skuId ? productById(lec.skuId) : null;
-      if (sku && sku.example && src) src += (src.indexOf('?') >= 0 ? '&' : '?') + 'contoh=1';
-      body = '<iframe class="tool-frame" sandbox="' + TOOL_SANDBOX + '" src="' + esc(src) + '" title="' + esc(lec.title) + '"></iframe>';
+      if (sku && (sku.id === 'calc' || sku.id === 'ai-creative' || sku.id === 'ai-data')) {
+        body = nativeToolHtml(sku, !!(sku.example));
+      } else {
+        let src = lec.iframe || (sku && sku.iframe) || '';
+        if (sku && sku.example && src) src += (src.indexOf('?') >= 0 ? '&' : '?') + 'contoh=1';
+        body = src
+          ? '<iframe class="tool-frame" sandbox="' + TOOL_SANDBOX + '" src="' + esc(src) + '" title="' + esc(lec.title) + '"></iframe>'
+          : '<div class="article"><p class="muted">Alat belum siap.</p></div>';
+      }
     } else if (lec.type === 'document') {
       body = '<div class="article">' + (cover || '') + '<h3>' + esc(lec.title) + '</h3>' +
         ((lec.resources || []).length ? resourceListHtml(lec) : '<p>File kelas: <a href="' + esc(lec.url || '#') + '" target="_blank" rel="noopener">' + esc(lec.title) + '</a></p>') +
@@ -3059,18 +3242,18 @@
     const owned = canSku(ui.personaId, p.id);
     const preview = !!ui.skuPreview && !owned;
     if (!owned && !preview) return viewStudentPustaka();
-    let canvas = '';
+    let body = '';
     let extra = '';
     if (p.kind === 'tool') {
-      canvas = '<iframe class="tool-frame" sandbox="' + TOOL_SANDBOX + '" src="' +
-        esc(iframeSrc(p, preview)) + '" title="' + esc(p.title) + '"></iframe>';
+      body = nativeToolHtml(p, preview);
     } else {
       const e = parseEmbed(p.url);
-      canvas = '<div class="lazy-embed' + (p.cover ? ' has-cover' : '') + '"' +
+      body = '<div class="card" style="padding:0;overflow:hidden;margin-top:10px"><div class="canvas">' +
+        '<div class="lazy-embed' + (p.cover ? ' has-cover' : '') + '"' +
         (p.cover ? ' style="background-image:url(\'' + esc(p.cover) + '\')"' : '') +
         ' data-embed="' + esc(e ? e.embed : '') + '">' +
         '<div class="play-orb">▶</div>' +
-        '<div class="lazy-note">Ketuk untuk memuat · hemat data</div></div>';
+        '<div class="lazy-note">Ketuk untuk memuat · hemat data</div></div></div></div>';
       if (p.outline && p.outline.length) {
         extra = '<div class="card" style="margin-top:10px"><h3>Isi rekaman</h3><ul class="muted">' +
           p.outline.map((x) => '<li>' + esc(x) + '</li>').join('') +
@@ -3082,19 +3265,154 @@
         '<p class="muted">Tangkapan layar rumus Set harga. Pakai tombol contoh di kalkulator.</p>' +
         '<img class="sheet-shot" src="' + esc(p.sheet) + '" alt="Spreadsheet kalkulator TikTok"></div>';
     }
+    const bar = '<div class="sku-tool-bar">' +
+      '<div><strong>' + esc(alatName(p)) + '</strong>' +
+      '<div class="muted">' + (owned ? 'Punya kamu' : 'Contoh sampai Anton isi file') +
+      (p.id === 'calc' ? ' · Unduh PDF di dalam kalkulator' : '') + '</div></div>' +
+      (owned
+        ? '<a class="btn secondary" href="' + esc(p.lynk) + '" target="_blank" rel="noopener">Halaman lynk</a>'
+        : '<a class="btn" href="' + esc(p.lynk) + '" target="_blank" rel="noopener">Beli di lynk.id</a>') +
+      '</div>';
     return '<button type="button" class="kur-toggle" data-act="tab" data-id="' + esc(ui.skuFrom || 'alat') + '">← ' +
       (ui.skuFrom === 'home' ? 'Home' : 'Alat') + '</button>' +
       exampleBanner(p, preview) +
-      '<div class="card" style="padding:0;overflow:hidden;margin-top:10px">' +
-        '<div class="canvas">' + canvas + '</div>' +
-        '<div class="canvas-bar">' +
-          '<div><strong>' + esc(alatName(p)) + '</strong>' +
-          '<div class="muted">' + (owned ? 'Punya kamu' : 'Contoh sampai Anton isi file') +
-          (p.id === 'calc' ? ' · Unduh PDF di dalam kalkulator' : '') + '</div></div>' +
-          (owned
-            ? '<a class="btn secondary" href="' + esc(p.lynk) + '" target="_blank" rel="noopener">Halaman lynk</a>'
-            : '<a class="btn" href="' + esc(p.lynk) + '" target="_blank" rel="noopener">Beli di lynk.id</a>') +
-        '</div></div>' + extra;
+      body + bar + extra;
+  }
+
+  function nativeToolHtml(p, preview) {
+    if (p.id === 'calc') return calcToolHtml(preview);
+    if (p.id === 'ai-creative') return creativeToolHtml(preview);
+    if (p.id === 'ai-data') return analisaToolHtml(preview);
+    if (p.iframe) {
+      return '<div class="card tool-native" style="margin-top:10px">' +
+        '<h1>' + esc(alatName(p)) + '</h1>' +
+        '<p class="lead">' + esc(p.job || '') + '</p>' +
+        '<a class="btn" href="' + esc(iframeSrc(p, preview) || p.lynk) + '" target="_blank" rel="noopener">Buka alat</a></div>';
+    }
+    return '<div class="card tool-native" style="margin-top:10px"><p class="muted">Alat belum siap di prototype.</p></div>';
+  }
+
+  function calcToolHtml(preview) {
+    const empty = preview && false;
+    return '<div class="tool-native" id="calc-tool" data-preview="' + (preview ? '1' : '0') + '">' +
+      '<h1>Kalkulator harga TikTok Shop</h1>' +
+      '<p class="lead">Isi yang oranye. Sisanya dihitung. Perkiraan — bukan laporan pajak.</p>' +
+      '<label>Nama SKU <span class="hint">kamu isi</span></label>' +
+      '<input class="kuning" id="calc-sku" type="text" value="Jepit rambut satin isi 6" autocomplete="off">' +
+      '<div class="btns">' +
+        '<button type="button" class="btn" data-act="calc-contoh">Pakai contoh</button>' +
+        '<button type="button" class="btn secondary" data-act="calc-kosong">Kosongkan</button>' +
+        '<button type="button" class="btn secondary" data-act="calc-pdf">Unduh PDF</button>' +
+      '</div>' +
+      '<div class="calc-tabs">' +
+        '<button type="button" class="on" data-act="calc-tab" data-pane="set">1. Cari harga jual</button>' +
+        '<button type="button" data-act="calc-tab" data-pane="toko">2. Cek toko / HPP</button>' +
+      '</div>' +
+      '<section id="calc-pane-set">' +
+        '<p class="muted" style="margin:0 0 8px">Mulai dari modal. Pilih sisa yang kamu mau, lalu lihat tiga harga etalase.</p>' +
+        '<div class="calc-row2">' +
+          '<div><label>Modal barang (Rp) <span class="hint">kamu isi</span></label>' +
+            '<input class="kuning" id="calc-modal" type="number" min="0" inputmode="decimal" placeholder="contoh 60000"></div>' +
+          '<div><label>Sisa yang mau (%) <span class="hint">kamu isi</span></label>' +
+            '<input class="kuning" id="calc-margin" type="number" min="0" max="99" step="0.1" inputmode="decimal" placeholder="contoh 20"></div>' +
+        '</div>' +
+        '<p class="calc-net" id="calc-net-line">Isi modal &amp; sisa, atau Pakai contoh.</p>' +
+        '<div class="calc-prices" id="calc-prices-set"></div>' +
+        '<details class="calc-fees">' +
+          '<summary>Ubah potongan TikTok · total <span id="calc-fee-sum">—</span></summary>' +
+          '<p class="muted">Default dari spreadsheet Anton. Ubah kalau toko kamu beda.</p>' +
+          '<div class="calc-row2">' +
+            '<div><label>Admin TikTok (%)</label><input class="kuning" id="calc-fee-admin" type="number" step="0.1" min="0" inputmode="decimal"></div>' +
+            '<div><label>Bebas ongkir (%)</label><input class="kuning" id="calc-fee-ongkir" type="number" step="0.1" min="0" inputmode="decimal"></div>' +
+          '</div>' +
+          '<div class="calc-row2">' +
+            '<div><label>Cashback bonus (%)</label><input class="kuning" id="calc-fee-cashback" type="number" step="0.1" min="0" inputmode="decimal"></div>' +
+            '<div><label>Voucher extra (%)</label><input class="kuning" id="calc-fee-voucher" type="number" step="0.1" min="0" inputmode="decimal"></div>' +
+          '</div>' +
+          '<div class="calc-row2">' +
+            '<div><label>Komisi affiliate (%)</label><input class="kuning" id="calc-fee-aff" type="number" step="0.1" min="0" inputmode="decimal"></div>' +
+            '<div><label>Biaya ads (%)</label><input class="kuning" id="calc-fee-ads" type="number" step="0.1" min="0" inputmode="decimal"></div>' +
+          '</div>' +
+          '<div><label>Pajak UMKM (%)</label><input class="kuning" id="calc-fee-pajak" type="number" step="0.1" min="0" inputmode="decimal"></div>' +
+        '</details>' +
+        '<div class="calc-out" id="calc-out-set"></div>' +
+      '</section>' +
+      '<section id="calc-pane-toko" hidden>' +
+        '<p class="muted" style="margin:0 0 8px">Sudah punya harga jual? Cek apakah toko masih sisa setelah fee, ads, dan biaya tetap.</p>' +
+        '<div class="calc-row2">' +
+          '<div><label>Modal produksi (Rp) <span class="hint">kamu isi</span></label>' +
+            '<input class="kuning" id="calc-prod" type="number" min="0" inputmode="decimal" placeholder="—"></div>' +
+          '<div><label>Packaging (Rp) <span class="hint">kamu isi</span></label>' +
+            '<input class="kuning" id="calc-pack" type="number" min="0" inputmode="decimal" placeholder="—"></div>' +
+        '</div>' +
+        '<label>Harga jual (Rp) <span class="hint">kamu isi</span></label>' +
+        '<input class="kuning" id="calc-jual" type="number" min="0" inputmode="decimal" placeholder="—">' +
+        '<div class="calc-prices" id="calc-prices-toko"></div>' +
+        '<details class="calc-fees">' +
+          '<summary>Ubah biaya toko · tot cost <span id="calc-toko-sum">—</span></summary>' +
+          '<div class="calc-row2">' +
+            '<div><label>Fee TikTok (%)</label><input class="kuning" id="calc-t-fee" type="number" step="0.1" min="0" inputmode="decimal"></div>' +
+            '<div><label>Bebas ongkir (%)</label><input class="kuning" id="calc-t-ongkir" type="number" step="0.1" min="0" inputmode="decimal"></div>' +
+          '</div>' +
+          '<div class="calc-row2">' +
+            '<div><label>Cashback (%)</label><input class="kuning" id="calc-t-cash" type="number" step="0.1" min="0" inputmode="decimal"></div>' +
+            '<div><label>Voucher extra (%)</label><input class="kuning" id="calc-t-voucher" type="number" step="0.1" min="0" inputmode="decimal"></div>' +
+          '</div>' +
+          '<div class="calc-row2">' +
+            '<div><label>Biaya ads (%)</label><input class="kuning" id="calc-t-ads" type="number" step="0.1" min="0" inputmode="decimal"></div>' +
+            '<div><label>Komisi aff (%)</label><input class="kuning" id="calc-t-aff" type="number" step="0.1" min="0" inputmode="decimal"></div>' +
+          '</div>' +
+          '<div class="calc-row2">' +
+            '<div><label>Host (Rp)</label><input class="kuning" id="calc-t-host" type="number" min="0" inputmode="decimal"></div>' +
+            '<div><label>Kreator (Rp)</label><input class="kuning" id="calc-t-kreator" type="number" min="0" inputmode="decimal"></div>' +
+          '</div>' +
+          '<div class="calc-row2">' +
+            '<div><label>Packing / admin (Rp)</label><input class="kuning" id="calc-t-admin" type="number" min="0" inputmode="decimal"></div>' +
+            '<div><label>Gaji owner (Rp)</label><input class="kuning" id="calc-t-gaji" type="number" min="0" inputmode="decimal"></div>' +
+          '</div>' +
+          '<div class="calc-row2">' +
+            '<div><label>Lain-lain (Rp)</label><input class="kuning" id="calc-t-lain" type="number" min="0" inputmode="decimal"></div>' +
+            '<div><label>Pajak UMKM (%)</label><input class="kuning" id="calc-t-pajak" type="number" step="0.1" min="0" inputmode="decimal"></div>' +
+          '</div>' +
+        '</details>' +
+        '<div class="calc-out" id="calc-out-toko"></div>' +
+      '</section>' +
+      (empty ? '' : '') +
+    '</div>';
+  }
+
+  function creativeToolHtml() {
+    return '<div class="tool-native" id="creative-tool">' +
+      '<h1>AI Seller Creative Assistant</h1>' +
+      '<p class="lead">Contoh pack prompt untuk SKU jepit rambut satin. Bukan generate gambar live.</p>' +
+      '<button type="button" class="btn" data-act="tool-reveal" data-target="creative-body">Lihat contoh</button>' +
+      '<div id="creative-body" hidden>' +
+        '<h3 style="margin:16px 0 8px;font-size:.82rem">Prompt etalase</h3>' +
+        '<div class="tool-example-card"><strong>Foto 1 — hero</strong>Close-up jepit rambut satin isi 6 di tangan, cahaya jendela, background kamar rapi, teks “isi 6 · tidak cubit kulit”.</div>' +
+        '<div class="tool-example-card"><strong>Foto 2 — pakai</strong>Rambut terikat setengah, jepit terlihat dari samping, warna nude. Jangan stock China.</div>' +
+        '<div class="tool-example-card"><strong>Foto 3 — isi paket</strong>Enam jepit di atas kain, label ukuran, bukan pile kacau.</div>' +
+        '<h3 style="margin:16px 0 8px;font-size:.82rem">Prompt video 15 detik</h3>' +
+        '<div class="tool-example-card">0–3s ambil dari tas. 3–8s pasang di rambut. 8–12s goyang kepala. 12–15s harga + “isi 6”.</div>' +
+        '<div class="tool-example-card">Hook: “Jepit Rp8rb yang cubit kulit vs yang ini.” Jangan sebut kompetitor merek.</div>' +
+        '<div class="tool-example-card">Live hook: “Sisa 40 pcs, yang kemarin habis 9 menit.” Hanya kalau stok memang sisa.</div>' +
+      '</div></div>';
+  }
+
+  function analisaToolHtml() {
+    return '<div class="tool-native" id="analisa-tool">' +
+      '<h1>Asisten AI Analisa Data</h1>' +
+      '<p class="lead">Contoh bacaan atas CSV Kalodata dummy. Bukan API Kalodata.</p>' +
+      '<button type="button" class="btn" data-act="tool-reveal" data-target="analisa-body">Lihat contoh</button>' +
+      '<div id="analisa-body" hidden>' +
+        '<div class="tool-example-card"><strong>Yang dilihat dari export</strong>' +
+          '<ol class="muted" style="margin:8px 0 0;padding-left:18px;font-size:.8rem;line-height:1.5">' +
+            '<li>GMV 30 hari besar belum berarti komisi aman — cek typical_commission_pct.</li>' +
+            '<li>Niche hair-video lebih cocok SKU jepit daripada fashion-live.</li>' +
+            '<li>Creator comedy (skor rendah) jangan diantrikan dulu.</li>' +
+            '<li>Yang sudah connected tidak makan kuota unconnected.</li>' +
+            '<li>Jangan scrape Kalodata. Pakai CSV yang kamu unduh sendiri.</li>' +
+          '</ol></div>' +
+      '</div></div>';
   }
 
   function alatName(p) {
@@ -3106,7 +3424,7 @@
       esc(owned ? 'Sudah punya' : 'Belum punya') + '" aria-label="' +
       esc(label || (owned ? 'Sudah punya' : 'Belum punya')) + '">' +
       (owned
-        ? '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><rect x="1.5" y="1.5" width="17" height="17" rx="4" fill="#16a34a"/><path d="M5.5 10.2l2.8 2.8 6-6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+        ? '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><rect x="1.5" y="1.5" width="17" height="17" rx="4" fill="#c47d0a"/><path d="M5.5 10.2l2.8 2.8 6-6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
         : '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><rect x="1.5" y="1.5" width="17" height="17" rx="4" fill="none" stroke="#71717a" stroke-width="1.6"/></svg>') +
       '</span>';
   }
@@ -3130,7 +3448,7 @@
       '<div class="row" style="justify-content:space-between">' +
         '<h2 style="margin:0">Alat</h2>' +
         '<button type="button" class="btn-sm" data-act="tab" data-id="alat">Lihat semua</button></div>' +
-      '<p class="muted">Centang hijau = sudah punya. Kosong = belum. Mentoring: alat −' + toolDiscountPct() + '%.</p>' +
+      '<p class="muted">Centang = sudah punya. Kosong = belum. Mentoring: alat −' + toolDiscountPct() + '%.</p>' +
       '<div class="alat-pick">' + tiles + kolab + '</div></section>';
   }
 
@@ -3193,7 +3511,7 @@
         '<p class="muted">Tools praktis untuk bantu kamu jualan di TikTok Shop.</p>' +
         '<div class="alat-stats">' +
           '<span class="alat-stat is-ok">' +
-            '<svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="#16a34a"/><path d="M3.4 6.2 5.2 8 8.6 4.2" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>' +
+            '<svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="#c47d0a"/><path d="M3.4 6.2 5.2 8 8.6 4.2" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>' +
             ownedN + ' alat tersedia</span>' +
           (extraTools.length
             ? '<span class="alat-stat">' +
@@ -4787,6 +5105,25 @@
       ui.skuFrom = btn.getAttribute('data-from') || 'alat';
       ui.tab = 'sku';
       render();
+    } else if (act === 'calc-contoh') {
+      const c = document.getElementById('calc-tool');
+      if (c && c.__calc) c.__calc.contoh();
+    } else if (act === 'calc-kosong') {
+      const c = document.getElementById('calc-tool');
+      if (c && c.__calc) c.__calc.kosong();
+    } else if (act === 'calc-pdf') {
+      const c = document.getElementById('calc-tool');
+      if (c && c.__calc) c.__calc.pdf();
+    } else if (act === 'calc-tab') {
+      const c = document.getElementById('calc-tool');
+      if (c && c.__calc) c.__calc.tab(btn.getAttribute('data-pane') || 'set');
+    } else if (act === 'tool-reveal') {
+      const id = btn.getAttribute('data-target');
+      const el = id ? document.getElementById(id) : null;
+      if (el) {
+        el.hidden = false;
+        btn.hidden = true;
+      }
     } else if (act === 'toggle-example') {
       const p = productById(btn.getAttribute('data-id'));
       if (p && canBill()) {
