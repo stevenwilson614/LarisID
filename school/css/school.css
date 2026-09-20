@@ -634,6 +634,19 @@ html[data-mode="student"] .canvas iframe.tool-frame { min-height: 520px; height:
   color: #fef3c7; background: rgba(0,0,0,.72); border: 1px solid #52525b;
   padding: 3px 7px; border-radius: 99px; z-index: 1;
 }
+.lec-lock.is-seq {
+  color: #e4e4e7; background: rgba(39,39,42,.9); border-color: #52525b;
+}
+.seq-lock-banner {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px;
+  margin: 0 0 12px; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: 12px;
+  background: var(--ink-2); font-size: .78rem; line-height: 1.4; color: var(--muted);
+}
+.seq-lock-banner strong { color: var(--text); font-weight: 750; }
+.lec-watch.is-seq { color: var(--muted); cursor: default; }
+.list-check li.is-seq .list-blur { filter: none; opacity: 1; }
+.kurikulum-inline .lec.is-seq .lec-face { filter: none; }
 .list-check li.is-locked .list-blur {
   filter: blur(3px); opacity: .75; user-select: none;
 }

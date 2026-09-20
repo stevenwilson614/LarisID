@@ -494,6 +494,19 @@
     if (canPreview(id) && lid === firstLectureId()) return true;
     return false;
   }
+  /** Paid mentees may read ahead; trial still paywalls later videos. */
+  function canViewLecture(id, lid) {
+    if (isStaff()) return true;
+    if (lid === 'kolab') return canMentoring(id);
+    if (canMentoring(id)) return !!lectureById(lid);
+    return canOpenLecture(id, lid);
+  }
+  function isSeqLocked(id, lid) {
+    return canMentoring(id) && !canOpenLecture(id, lid) && lid !== 'kolab';
+  }
+  function isPaywalled(id, lid) {
+    return !canMentoring(id) && !canOpenLecture(id, lid) && lid !== 'kolab';
+  }
   function canSku(id, skuId) {
     const p = productById(skuId);
     if (canMentoring(id) && bundled(p)) return true;
@@ -539,6 +552,7 @@
   }
   function watchHintHtml(lec, done) {
     const watchFirst = lec && lec.type === 'video' && lec.id === firstLectureId();
+    const seq = lec && isSeqLocked(ui.personaId, lec.id);
     const dot = '<span class="lec-watch-dot" aria-hidden="true"></span>';
     if (watchFirst) {
       if (done) {
@@ -550,6 +564,10 @@
         '<span class="lec-watch-i" title="Selesai otomatis setelah nonton ≥85%">i</span></div>';
     }
     if (!lec) return '';
+    if (seq) {
+      return '<div class="lec-watch is-seq" title="Selesaikan materi sebelumnya dulu">' + dot +
+        '<span>Selesaikan materi sebelumnya dulu</span></div>';
+    }
     return '<button type="button" class="lec-watch' + (done ? ' is-done' : '') +
       '" data-act="toggle-done" data-id="' + esc(lec.id) + '">' + dot +
       '<span>' + (done ? 'Selesai ✓' : 'Tandai selesai') + '</span></button>';
@@ -746,7 +764,8 @@
       else if (done) cls += ' is-done';
       else if (locked) cls += ' is-locked';
       else cls += ' is-todo';
-      const label = (i + 1) + '. ' + l.title + (done ? ' · selesai' : now ? ' · sedang di sini' : locked ? ' · terkunci' : '');
+      const label = (i + 1) + '. ' + l.title + (done ? ' · selesai' : now ? ' · sedang di sini' :
+        (locked && canMentoring(sid) ? ' · lihat dulu' : locked ? ' · terkunci' : ''));
       return '<button type="button" class="' + cls + '" data-act="open-lec" data-id="' + esc(l.id) + '"' +
         (now ? ' aria-current="step"' : '') +
         ' title="' + esc(label) + '" aria-label="' + esc(label) + '">' +
@@ -2721,14 +2740,17 @@
 
   function weekList(sid, weekId) {
     return '<ul class="list-check">' + lecturesInWeek(weekId).map((l) => {
-      const locked = !canOpenLecture(sid, l.id) && !isStaff();
+      const paywall = isPaywalled(sid, l.id) && !isStaff();
+      const seq = isSeqLocked(sid, l.id) && !isStaff();
+      const locked = paywall || seq;
       const done = !locked && isDone(sid, l.id);
-      return '<li class="' + (locked ? 'is-locked' : '') + (done ? ' is-done' : '') + '"><span>' +
+      return '<li class="' + (locked ? 'is-locked' : '') + (done ? ' is-done' : '') +
+        (seq ? ' is-seq' : '') + '"><span>' +
         (done ? '<span class="tick-ok" aria-hidden="true">✓</span> ' : '<span class="tick-off" aria-hidden="true"></span> ') +
-        '<span class="' + (locked ? 'list-blur' : '') + '">' + esc(l.title) + '</span>' +
-        (locked ? ' <span class="chip">Terkunci</span>' : '') + '</span>' +
+        '<span class="' + (paywall ? 'list-blur' : '') + '">' + esc(l.title) + '</span>' +
+        (paywall ? ' <span class="chip">Terkunci</span>' : (seq ? ' <span class="chip">Urutan</span>' : '')) + '</span>' +
         '<button class="btn-sm" data-act="open-lec" data-id="' + esc(l.id) + '">' +
-        (locked ? 'Lihat' : 'Buka') + '</button></li>';
+        (paywall ? 'Lihat' : 'Buka') + '</button></li>';
     }).join('') + '</ul>';
   }
 
@@ -2846,6 +2868,8 @@
       ? (threads.length + ' pertanyaan')
       : 'Belum ada pertanyaan. WhatsApp tetap untuk chat cepat.';
     const canNext = !!(nb.next && (isStaff() || canOpenLecture(sid, nb.next.id)));
+    const paywalled = !!opts.paywalled;
+    const seqLocked = !!opts.seqLocked;
     const top = opts.phone
       ? '<div class="lesson-top">' +
           '<button type="button" class="lesson-back" data-act="tab" data-id="home" aria-label="Kembali">←</button>' +
@@ -2865,9 +2889,15 @@
         '<p class="lesson-meta">Materi ' + nb.n + ' dari ' + nb.total + ' · ' + p.pct + '% selesai</p>' +
         '<div class="lesson-bar" aria-hidden="true"><span style="width:' + p.pct + '%"></span></div>' +
       '</header>';
+    const seqBanner = seqLocked
+      ? '<div class="seq-lock-banner" role="status">' +
+          '<strong>Bisa dibaca</strong> — tandai selesai &amp; lanjut setelah materi sebelumnya selesai.' +
+          '<button type="button" class="btn-sm" data-act="open-lec" data-id="' +
+            esc((nb.prev && nb.prev.id) || firstLectureId()) + '">Ke materi sebelumnya</button>' +
+        '</div>'
+      : '';
     let stage = '';
-    if (opts.lockedNow) {
-      const mentorLock = canMentoring(sid);
+    if (paywalled) {
       stage = '<div class="locked-blur-card">' +
         '<div class="locked-blur-bg" aria-hidden="true">' +
           (coverHtml('lec', lec.id, 'lec-poster') || '<div class="lec-poster lec-poster-empty"></div>') +
@@ -2879,12 +2909,9 @@
         '<div class="locked-blur-fg">' +
           '<p class="trial-kicker">Materi terkunci</p>' +
           '<h2>' + esc(lec.title) + '</h2>' +
-          (mentorLock
-            ? '<p class="muted">Selesaikan materi sebelumnya dulu, baru lanjut ke sini.</p>' +
-              '<button class="btn" data-act="open-lec" data-id="' + esc((nb.prev && nb.prev.id) || firstLectureId()) + '">Ke materi sebelumnya</button>'
-            : '<p class="muted">Kurikulum lengkap di bawah — yang blur terkunci sampai mentoring lunas.</p>' +
-              '<button class="btn" data-act="open-lec" data-id="' + esc(firstLectureId()) + '">Ke video selamat datang</button>' +
-              '<button class="btn secondary" data-act="tab" data-id="daftar">Bayar mentoring</button>') +
+          '<p class="muted">Kurikulum lengkap di bawah — yang blur terkunci sampai mentoring lunas.</p>' +
+          '<button class="btn" data-act="open-lec" data-id="' + esc(firstLectureId()) + '">Ke video selamat datang</button>' +
+          '<button class="btn secondary" data-act="tab" data-id="daftar">Bayar mentoring</button>' +
         '</div></div>';
     } else if (lec.tool === 'kolab') {
       stage = viewKolab();
@@ -2895,14 +2922,14 @@
     } else {
       stage = renderCanvas(lec);
     }
-    const folds = opts.lockedNow || lec.tool === 'kolab' ? '' :
+    const folds = paywalled || lec.tool === 'kolab' ? '' :
       lecAccHtml('doc', 'Dokumen', docSub, docs.length ? resourceListHtml(lec) : '') +
       lecAccHtml('list', 'Poin penting', points.length ? (points.length + ' poin') : '',
         points.length ? '<ul class="key-points">' + points.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '') +
       lecAccHtml('help', 'Cek pemahaman', questions.length ? (questions.length + ' pertanyaan') : '',
         lessonQuizHtml(lec)) +
       lecAccHtml('chat', 'Tanya di materi ini', tanyaSub, lessonAskHtml(lec));
-    const nav = (opts.lockedNow || lec.tool === 'kolab') ? '' :
+    const nav = (paywalled || lec.tool === 'kolab') ? '' :
       '<div class="lec-nav">' +
         '<button type="button" class="btn lec-prev"' +
           (nb.prev ? ' data-act="open-lec" data-id="' + esc(nb.prev.id) + '"' : ' disabled') +
@@ -2912,25 +2939,29 @@
           (canNext ? '' : ' title="Selesaikan materi ini dulu"') +
           '>Materi berikutnya →</button>' +
       '</div>';
-    return '<div class="lesson">' + top + head + stage + folds + nav + (opts.after || '') + '</div>';
+    return '<div class="lesson">' + top + head + seqBanner + stage + folds + nav + (opts.after || '') + '</div>';
   }
 
   function viewBelajar() {
     if (!canMentoring(ui.personaId) && !canPreview(ui.personaId)) return viewLocked();
     const preview = canPreview(ui.personaId) && !canMentoring(ui.personaId);
     let lec = lectureById(ui.lectureId) || lectures()[0];
-    if (!isStaff() && lec && lec.id !== 'kolab' && !canOpenLecture(ui.personaId, lec.id)) {
-      const open = lectures().filter((l) => canOpenLecture(ui.personaId, l.id));
-      lec = open.find((l) => !isDone(ui.personaId, l.id)) || open[open.length - 1] || lectures()[0];
+    if (!isStaff() && lec && lec.id !== 'kolab' && !canViewLecture(ui.personaId, lec.id)) {
+      const open = lectures().filter((l) => canViewLecture(ui.personaId, l.id));
+      lec = open.find((l) => !isDone(ui.personaId, l.id) && canOpenLecture(ui.personaId, l.id))
+        || open.find((l) => canOpenLecture(ui.personaId, l.id))
+        || open[open.length - 1] || lectures()[0];
     }
     ui.lectureId = lec.id;
-    const lockedNow = !canOpenLecture(ui.personaId, lec.id) && !isStaff();
+    const paywalled = isPaywalled(ui.personaId, lec.id) && !isStaff();
+    const seqLocked = isSeqLocked(ui.personaId, lec.id) && !isStaff();
     const payStrip = preview ? offerBanner(ui.personaId) : '';
     const kurInline = preview ? trialKurikulumBlock() : '';
-    const after = (preview && !lockedNow && lec.tool !== 'kolab' ? payAfterFirst(lec) : '') + kurInline;
+    const after = (preview && !paywalled && lec.tool !== 'kolab' ? payAfterFirst(lec) : '') + kurInline;
     const player = (preview ? payStrip : '') + renderLessonPlayer(lec, {
       phone: !isStaff(),
-      lockedNow: lockedNow,
+      paywalled: paywalled,
+      seqLocked: seqLocked,
       after: after
     });
     return '<div class="player-layout">' +
@@ -2957,11 +2988,11 @@
       '<p class="trial-kicker">Kurikulum</p>' +
       (unpaid
         ? '<p class="muted">Modul terkunci tetap kelihatan (blur) dan belum selesai. Mentoring membuka semuanya.</p>'
-        : '') +
+        : '<p class="muted">Bisa dibaca semua. Tandai selesai berurutan supaya materi berikutnya kebuka.</p>') +
       progressBarHtml(sid) +
       '<p class="progres-open muted">' + (unpaid
         ? (openN + ' materi kebuka sekarang · ' + (total - openN) + ' masih terkunci')
-        : 'Semua materi mentoring kebuka') + '</p>' +
+        : (openN + ' / ' + total + ' siap ditandai selesai · sisanya bisa dibaca dulu')) + '</p>' +
       '<div class="kurikulum-inline-list">' + renderKurikulumSidebar(sid, { skipProgress: true }) + '</div></section>';
   }
   function payAfterFirst(lec) {
@@ -3092,19 +3123,23 @@
       const items = lecturesInWeek(w.id).map((l) => {
         n += 1;
         const cur = l.id === currentId;
-        const locked = preview ? !canOpenLecture(sid, l.id) : (!isStaff() && !canOpenLecture(sid, l.id));
+        const paywall = preview ? !canOpenLecture(sid, l.id) : isPaywalled(sid, l.id);
+        const seq = !preview && !isStaff() && isSeqLocked(sid, l.id);
+        const locked = paywall || seq;
         const thumb = coverHtml('lec', l.id, 'cover-mini');
         const act = preview ? 'kur-prev-lec' : 'open-lec';
-        return '<button type="button" class="lec' + (cur ? ' current' : '') + (locked ? ' locked' : '') + '" data-act="' +
+        return '<button type="button" class="lec' + (cur ? ' current' : '') + (locked ? ' locked' : '') +
+          (seq ? ' is-seq' : '') + '" data-act="' +
           act + '" data-id="' + esc(l.id) + '">' +
-          '<span class="lec-face' + (locked ? ' is-blur' : '') + '">' +
+          '<span class="lec-face' + (paywall ? ' is-blur' : '') + '">' +
             (thumb || '<span class="mark' + (isDone(sid, l.id) ? ' done' : '') + '" aria-hidden="true">' +
             (isDone(sid, l.id) ? '✓' : '') + '</span>') +
             '<span><div class="t">' + n + '. ' + esc(l.title) + '</div>' +
             '<div class="m">' + esc(typeLabel(l.type)) + ' · ' + esc(l.mins) + ' mnt' +
             (l.requiredBefore ? ' · wajib' : '') + '</div></span>' +
           '</span>' +
-          (locked ? '<span class="lec-lock">Terkunci</span>' : '') +
+          (paywall ? '<span class="lec-lock">Terkunci</span>' :
+            (seq ? '<span class="lec-lock is-seq">Urutan</span>' : '')) +
           '</button>';
       }).join('');
       return '<div class="week-label">' + coverHtml('week', w.id, 'cover-mini') + esc(w.title) + ' · ' + progressPct(sid, w.id) + '%</div>' + items;
@@ -5171,16 +5206,12 @@
     } else if (act === 'open-lec') {
       const id = btn.getAttribute('data-id');
       const lec = lectureById(id);
-      if (!canOpenLecture(ui.personaId, id) && !isStaff()) {
+      if (!canViewLecture(ui.personaId, id) && !isStaff()) {
         if (lec && lec.skuId && canSku(ui.personaId, lec.skuId)) {
           ui.skuId = lec.skuId;
           ui.skuPreview = false;
           ui.tab = 'sku';
           render();
-          return;
-        }
-        if (canMentoring(ui.personaId)) {
-          toast('Selesaikan materi sebelumnya dulu.');
           return;
         }
         ui.lectureId = id;
@@ -5190,13 +5221,19 @@
         return;
       }
       ui.lectureId = id;
-      db.lastLecture[ui.personaId] = ui.lectureId;
-      save();
       ui.tab = 'belajar';
       ui.kurOpen = false;
+      if (canOpenLecture(ui.personaId, id) || isStaff()) {
+        db.lastLecture[ui.personaId] = ui.lectureId;
+        save();
+      }
       render();
     } else if (act === 'toggle-done') {
       const id = btn.getAttribute('data-id');
+      if (!canOpenLecture(ui.personaId, id) && !isStaff()) {
+        toast('Selesaikan materi sebelumnya dulu.');
+        return;
+      }
       markDone(ui.personaId, id, !isDone(ui.personaId, id));
       render();
     } else if (act === 'pane') {
