@@ -2385,11 +2385,30 @@
       '</div>';
   }
   function trialKurikulumBlock() {
+    const p = kurProgress(ui.personaId);
+    const openN = lectures().filter((l) => canOpenLecture(ui.personaId, l.id)).length;
     return '<section class="card kurikulum-inline" id="kurikulum-trial">' +
       '<p class="trial-kicker">Kurikulum lengkap</p>' +
-      '<h3>12 video + bacaan · hanya video 1 kebuka</h3>' +
+      '<h3>' + p.total + ' materi · ' + openN + ' kebuka di trial</h3>' +
       '<p class="muted">Yang blur = terkunci sampai mentoring lunas. Ketuk untuk lihat teaser.</p>' +
       '<div class="kurikulum-inline-list">' + renderKurikulumSidebar() + '</div></section>';
+  }
+
+  function progresKurikulumBlock(sid) {
+    const p = kurProgress(sid);
+    const unpaid = !canMentoring(sid);
+    const openN = lectures().filter((l) => canOpenLecture(sid, l.id)).length;
+    return '<section class="card kurikulum-inline progres-kur" id="kurikulum-progres">' +
+      '<p class="trial-kicker">Kurikulum</p>' +
+      '<h3>Progress kamu · ' + p.n + ' / ' + p.total + ' · ' + p.pct + '%</h3>' +
+      (unpaid
+        ? '<p class="muted">Modul terkunci tetap kelihatan (blur) dan belum selesai. Mentoring membuka semuanya.</p>'
+        : '') +
+      progressBarHtml(sid) +
+      '<p class="progres-open muted">' + (unpaid
+        ? (openN + ' materi kebuka sekarang · ' + (p.total - openN) + ' masih terkunci')
+        : 'Semua materi mentoring kebuka') + '</p>' +
+      '<div class="kurikulum-inline-list">' + renderKurikulumSidebar(sid) + '</div></section>';
   }
   function payAfterFirst(lec) {
     if (lec.id !== firstLectureId()) return '';
@@ -2791,66 +2810,74 @@
   function viewProgres() {
     const sid = ui.personaId;
     const bill = billingOf(sid);
-    const preview = canPreview(sid) && !canMentoring(sid);
-    if (!canMentoring(sid) && !canPreview(sid)) {
-      const owned = catalog().filter((p) => canSku(sid, p.id));
-      return '<section class="card"><h2>Pustaka kamu</h2>' +
-        (owned.length
-          ? '<ul class="list-check">' + owned.map((p) =>
-              '<li><span class="row">' + (p.cover ? '<img class="thumb" src="' + esc(p.cover) + '" alt="">' : '') +
-              esc(p.title) + (p.example ? ' · contoh' : '') + '</span>' +
-              '<button class="btn-sm" data-act="open-sku" data-id="' + esc(p.id) + '">Buka</button></li>'
-            ).join('') + '</ul>'
-          : '<p class="muted">Belum ada SKU. Beli di lynk.id atau lihat contoh di Pustaka.</p>') +
-        '<p style="margin-top:12px">Bayar: ' + payChip(bill.status) +
-          ' <span class="muted">' + esc(bill.note || 'satuan') + '</span></p>' +
-        '<p class="muted">Mentoring membuka live class + alat lynk. Laris Affiliate tetap satuan.</p></section>';
+    const unpaid = !canMentoring(sid);
+    const preview = canPreview(sid) && unpaid;
+
+    if (unpaid) {
+      const p = kurProgress(sid);
+      const owned = catalog().filter((x) => canSku(sid, x.id));
+      return '<div class="progres-unpaid">' +
+        (preview || db.applications[sid] ? offerBanner(sid) : '') +
+        progresKurikulumBlock(sid) +
+        '<section class="card">' +
+          '<h2>Status kamu</h2>' +
+          '<p>Selesai: <strong>' + p.n + ' / ' + p.total + '</strong> · ' + p.pct + '%</p>' +
+          '<div class="progres-dots">' + lecDotStrip(sid) + '</div>' +
+          '<p class="muted" style="margin-top:10px">' +
+            (isDone(sid, firstLectureId())
+              ? '✓ Video 1 selesai. Modul lain masih blur sampai lunas.'
+              : 'Belum selesai video 1 — nonton ≥85% di tab Belajar.') +
+          '</p>' +
+          '<p>Bayar: ' + payChip(bill.status) +
+            ' <span class="muted">' + esc(bill.note || bill.plan || crmOf(sid).stage) + '</span></p>' +
+          (owned.length
+            ? '<p class="muted" style="margin-top:8px">Alat punya: ' +
+              owned.map((x) => esc(alatName(x))).join(', ') + '</p>'
+            : '') +
+          '<div class="row" style="margin-top:14px">' +
+            '<button class="btn" data-act="tab" data-id="daftar">Bayar mentoring</button>' +
+            '<button class="btn secondary" data-act="tab" data-id="belajar">' +
+              (isDone(sid, firstLectureId()) ? 'Buka Belajar' : 'Lanjut video 1') +
+            '</button>' +
+          '</div>' +
+        '</section></div>';
     }
+
     const hadir = hadirPct(sid);
     const p = kurProgress(sid);
     const kolabOpened = !!(db.kolab[sid] && db.kolab[sid].jobs && db.kolab[sid].jobs.length);
     const c = crmOf(sid);
     const doneAll = p.n >= p.total && p.total > 0;
     return '<div class="grid-2">' +
-      (preview ? offerBanner(sid) : '') +
       '<section class="card"><h2>Checklist kurikulum</h2>' +
-        (preview
-          ? '<p class="muted">Video 1 bisa diselesaikan. Modul berikutnya kelihatan (blur) tapi belum bisa dicentang sampai mentoring lunas.</p>'
-          : '') +
         progressBarHtml(sid) +
         db.weeks.map((w) => '<h3>' + esc(w.title) + ' · ' + progressPct(sid, w.id) + '%</h3>' + weekList(sid, w.id)).join('') +
       '</section>' +
       '<section class="card">' +
         '<h2>Status</h2>' +
         '<p>Kurikulum: <strong>' + p.n + ' / ' + p.total + '</strong> · ' + p.pct + '%</p>' +
-        (preview
-          ? '<p class="muted">Trial: progress tetap dihitung. Materi terkunci = belum selesai.</p>'
-          : '<p>Hadir: <strong>' + hadir + '%</strong></p>') +
+        '<p>Hadir: <strong>' + hadir + '%</strong></p>' +
         '<p>Bayar: ' + payChip(bill.status) + ' <span class="muted">' + esc(bill.note || bill.plan || '') +
         (bill.accessUntil ? ' · sampai ' + fmtWhen(bill.accessUntil) : '') + '</span></p>' +
         '<h3 style="margin-top:16px">Lencana (kejadian nyata)</h3>' +
         '<p class="muted">' +
           (isDone(sid, firstLectureId()) ? '✓ Masuk kelas (video 1 ≥85%). ' : 'Belum mulai video 1. ') +
-          (!preview && kolabOpened ? '✓ Antri Kolab. ' : '') +
-          (!preview ? (hadir >= 50 ? '✓ Hadir ≥ setengah sesi.' : 'Hadir masih di bawah setengah sesi.') : 'Live class setelah mentoring lunas.') +
+          (kolabOpened ? '✓ Antri Kolab. ' : '') +
+          (hadir >= 50 ? '✓ Hadir ≥ setengah sesi.' : 'Hadir masih di bawah setengah sesi.') +
         '</p>' +
-        (preview
-          ? '<div class="row" style="margin-top:14px"><button class="btn" data-act="tab" data-id="daftar">Bayar mentoring</button>' +
-            '<button class="btn secondary" data-act="tab" data-id="belajar">Lanjut video 1</button></div>'
-          : '') +
-        (!preview && doneAll && !c.examScore
-          ? '<h3 style="margin-top:16px">Tes akhir</h3><p class="muted">Satu duduk. Lulus = sertifikat. Bukan mesin kuiz Canvas.</p>' +
+        (doneAll && !c.examScore
+          ? '<h3 style="margin-top:16px">Tes akhir</h3><p class="muted">Satu duduk. Lulus = sertifikat.</p>' +
             '<button class="btn" data-act="tab" data-id="tes">Mulai tes</button>'
           : '') +
-        (!preview && c.examScore != null
+        (c.examScore != null
           ? '<p style="margin-top:12px">Tes: <strong>' + c.examScore + ' / ' + (SEED.exam.questions.length) + '</strong>' +
             (c.eligibleMentor ? ' · lulus, layak jadi mentor' : ' · belum lulus') + '</p>' +
             (c.certSerial ? '<button class="btn secondary" data-act="tab" data-id="sertifikat">Lihat sertifikat</button>' : '')
           : '') +
-        (!preview && c.eligibleMentor && c.stage !== 'mentor'
+        (c.eligibleMentor && c.stage !== 'mentor'
           ? '<div class="card" style="margin-top:12px"><h3>Jadi mentor</h3>' +
             '<p class="muted">Pakai kurikulum dan nama Anton. Kamu tarik bayaran muridmu sendiri. Anton menerima <strong>' +
-            (db.pricing.overridePct || 20) + '% licensing</strong> dari pendapatan mentoring + alat + Laris Affiliate yang kamu jual. Satu tingkat, bukan piramida rekrut. Tidak ada bonus karena mengajak orang.</p>' +
+            (db.pricing.overridePct || 20) + '% licensing</strong>. Satu tingkat, bukan piramida.</p>' +
             '<button class="btn" data-act="accept-mentor">Saya paham, terima peran mentor</button></div>'
           : '') +
       '</section></div>';

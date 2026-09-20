@@ -400,6 +400,17 @@ html[data-mode="student"] .canvas iframe.tool-frame { min-height: 520px; height:
   background: #222;
   border: 1px solid #3f3f46;
 }
+.progres-unpaid { display: grid; gap: 12px; }
+.progres-kur { margin-top: 0; }
+.progres-open { margin: 8px 0 4px; font-size: .78rem; }
+.progres-dots { margin-top: 10px; }
+.progres-dots .lec-dots { display: flex; flex-wrap: wrap; gap: 4px; }
+.kurikulum-inline .lec-face.is-blur .cover-mini,
+.kurikulum-inline .lec-face.is-blur .t,
+.kurikulum-inline .lec-face.is-blur .m,
+.kurikulum-inline .lec-face.is-blur .mark {
+  filter: blur(4.5px); opacity: .65;
+}
 .lec-lock {
   position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
   font-size: .58rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
