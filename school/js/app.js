@@ -481,7 +481,16 @@
     return false;
   }
   function canOpenLecture(id, lid) {
-    if (canMentoring(id)) return true;
+    if (lid === 'kolab') return canMentoring(id);
+    if (canMentoring(id)) {
+      const list = lectures();
+      const idx = list.findIndex((l) => l.id === lid);
+      if (idx < 0) return false;
+      for (let i = 0; i < idx; i += 1) {
+        if (!isDone(id, list[i].id)) return false;
+      }
+      return true;
+    }
     if (canPreview(id) && lid === firstLectureId()) return true;
     return false;
   }
@@ -2659,6 +2668,7 @@
     const tanyaSub = threads.length
       ? (threads.length + ' pertanyaan')
       : 'Belum ada pertanyaan. WhatsApp tetap untuk chat cepat.';
+    const canNext = !!(nb.next && (isStaff() || canOpenLecture(sid, nb.next.id)));
     const top = opts.phone
       ? '<div class="lesson-top">' +
           '<button type="button" class="lesson-back" data-act="tab" data-id="home" aria-label="Kembali">←</button>' +
@@ -2667,7 +2677,7 @@
             nb.n + ' / ' + nb.total + '</button>' +
           '<button type="button" class="lesson-chev"' + (nb.prev ? ' data-act="open-lec" data-id="' + esc(nb.prev.id) + '"' : ' disabled') +
             ' aria-label="Materi sebelumnya">‹</button>' +
-          '<button type="button" class="lesson-chev"' + (nb.next ? ' data-act="open-lec" data-id="' + esc(nb.next.id) + '"' : ' disabled') +
+          '<button type="button" class="lesson-chev"' + (canNext ? ' data-act="open-lec" data-id="' + esc(nb.next.id) + '"' : ' disabled') +
             ' aria-label="Materi berikutnya">›</button>' +
         '</div>'
       : '';
@@ -2680,6 +2690,7 @@
       '</header>';
     let stage = '';
     if (opts.lockedNow) {
+      const mentorLock = canMentoring(sid);
       stage = '<div class="locked-blur-card">' +
         '<div class="locked-blur-bg" aria-hidden="true">' +
           (coverHtml('lec', lec.id, 'lec-poster') || '<div class="lec-poster lec-poster-empty"></div>') +
@@ -2691,9 +2702,12 @@
         '<div class="locked-blur-fg">' +
           '<p class="trial-kicker">Materi terkunci</p>' +
           '<h2>' + esc(lec.title) + '</h2>' +
-          '<p class="muted">Kurikulum lengkap di bawah — yang blur terkunci sampai mentoring lunas.</p>' +
-          '<button class="btn" data-act="open-lec" data-id="' + esc(firstLectureId()) + '">Ke video selamat datang</button>' +
-          '<button class="btn secondary" data-act="tab" data-id="daftar">Bayar mentoring</button>' +
+          (mentorLock
+            ? '<p class="muted">Selesaikan materi sebelumnya dulu, baru lanjut ke sini.</p>' +
+              '<button class="btn" data-act="open-lec" data-id="' + esc((nb.prev && nb.prev.id) || firstLectureId()) + '">Ke materi sebelumnya</button>'
+            : '<p class="muted">Kurikulum lengkap di bawah — yang blur terkunci sampai mentoring lunas.</p>' +
+              '<button class="btn" data-act="open-lec" data-id="' + esc(firstLectureId()) + '">Ke video selamat datang</button>' +
+              '<button class="btn secondary" data-act="tab" data-id="daftar">Bayar mentoring</button>') +
         '</div></div>';
     } else if (lec.tool === 'kolab') {
       stage = viewKolab();
@@ -2717,7 +2731,8 @@
           (nb.prev ? ' data-act="open-lec" data-id="' + esc(nb.prev.id) + '"' : ' disabled') +
           '>← Materi sebelumnya</button>' +
         '<button type="button" class="btn lec-next"' +
-          (nb.next ? ' data-act="open-lec" data-id="' + esc(nb.next.id) + '"' : ' disabled') +
+          (canNext ? ' data-act="open-lec" data-id="' + esc(nb.next.id) + '"' : ' disabled') +
+          (canNext ? '' : ' title="Selesaikan materi ini dulu"') +
           '>Materi berikutnya →</button>' +
       '</div>';
     return '<div class="lesson">' + top + head + stage + folds + nav + (opts.after || '') + '</div>';
@@ -2726,7 +2741,11 @@
   function viewBelajar() {
     if (!canMentoring(ui.personaId) && !canPreview(ui.personaId)) return viewLocked();
     const preview = canPreview(ui.personaId) && !canMentoring(ui.personaId);
-    const lec = lectureById(ui.lectureId) || lectures()[0];
+    let lec = lectureById(ui.lectureId) || lectures()[0];
+    if (!isStaff() && lec && lec.id !== 'kolab' && !canOpenLecture(ui.personaId, lec.id)) {
+      const open = lectures().filter((l) => canOpenLecture(ui.personaId, l.id));
+      lec = open.find((l) => !isDone(ui.personaId, l.id)) || open[open.length - 1] || lectures()[0];
+    }
     ui.lectureId = lec.id;
     const lockedNow = !canOpenLecture(ui.personaId, lec.id) && !isStaff();
     const payStrip = preview ? offerBanner(ui.personaId) : '';
@@ -4821,6 +4840,10 @@
           ui.skuPreview = false;
           ui.tab = 'sku';
           render();
+          return;
+        }
+        if (canMentoring(ui.personaId)) {
+          toast('Selesaikan materi sebelumnya dulu.');
           return;
         }
         ui.lectureId = id;
