@@ -2525,12 +2525,14 @@
 
   function skuTile(p, sid) {
     const owned = canSku(sid, p.id);
-    return '<div class="card tool-tile sku">' +
+    return '<div class="card tool-tile sku' + (owned ? ' is-owned' : '') + '">' +
       skuCoverHtml(p) +
       '<div class="sku-body">' +
-      (owned ? '<span class="chip lunas">Punya</span>' : '<span class="chip">Satuan</span>') +
+      '<div class="own-row">' + ownCheckHtml(owned, p.title) +
+      '<span class="own-label">' + (owned ? 'Sudah punya' : 'Belum punya') + '</span>' +
       (!bundled(p) ? ' <span class="chip warn">Bukan mentoring</span>' : '') +
-      (p.example ? ' <span class="chip warn">Contoh</span>' : '') +
+      (p.example && !owned ? ' <span class="chip warn">Contoh</span>' : '') +
+      '</div>' +
       '<h3>' + esc(p.title) + '</h3>' +
       '<p class="muted">' + esc(p.job) + '</p>' +
       '<p class="sku-price">' + skuPriceHtml(p) + '</p>' +
@@ -2585,39 +2587,55 @@
     return { calc: 'Kalkulator harga', 'ai-creative': 'AI Creative', 'ai-data': 'AI Analisa', 'laris-aff': 'Laris Affiliate' }[p.id] || p.title;
   }
 
+  function ownCheckHtml(owned, label) {
+    return '<span class="own-check' + (owned ? ' is-on' : '') + '" title="' +
+      esc(owned ? 'Sudah punya' : 'Belum punya') + '" aria-label="' +
+      esc(label || (owned ? 'Sudah punya' : 'Belum punya')) + '">' +
+      (owned
+        ? '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><rect x="1.5" y="1.5" width="17" height="17" rx="4" fill="#16a34a"/><path d="M5.5 10.2l2.8 2.8 6-6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+        : '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><rect x="1.5" y="1.5" width="17" height="17" rx="4" fill="none" stroke="#71717a" stroke-width="1.6"/></svg>') +
+      '</span>';
+  }
+
   function alatHomeStrip(sid) {
     const tools = toolsCatalog();
     const tiles = tools.map((p) => {
       const owned = canSku(sid, p.id);
-      return '<button type="button" class="alat-chip' + (owned ? '' : ' locked') + '" data-act="' +
+      return '<button type="button" class="alat-chip' + (owned ? ' is-owned' : ' locked') + '" data-act="' +
         (owned ? 'open-sku' : 'contoh-sku') + '" data-from="alat" data-id="' + esc(p.id) + '">' +
+        ownCheckHtml(owned, alatName(p)) +
         '<span><strong>' + esc(alatName(p)) + '</strong>' +
-        '<em>' + (owned ? 'Buka' : 'Contoh') + '</em></span></button>';
+        '<em>' + (owned ? 'Sudah punya · Buka' : 'Belum punya · Contoh') + '</em></span></button>';
     }).join('');
     const kolab = canMentoring(sid)
-      ? '<button type="button" class="alat-chip" data-act="open-kolab"><span><strong>Kolab</strong><em>Cari kreator</em></span></button>'
+      ? '<button type="button" class="alat-chip is-owned" data-act="open-kolab">' +
+        ownCheckHtml(true, 'Kolab') +
+        '<span><strong>Kolab</strong><em>Sudah punya · Cari kreator</em></span></button>'
       : '';
     return '<section class="card" style="margin-top:14px">' +
       '<div class="row" style="justify-content:space-between">' +
         '<h2 style="margin:0">Alat</h2>' +
         '<button type="button" class="btn-sm" data-act="tab" data-id="alat">Lihat semua</button></div>' +
-      '<p class="muted">Kalkulator, AI, Kolab. Mentoring: alat −' + toolDiscountPct() + '%. Laris Affiliate selalu terpisah.</p>' +
+      '<p class="muted">Centang hijau = sudah punya. Kosong = belum. Mentoring: alat −' + toolDiscountPct() + '%.</p>' +
       '<div class="alat-pick">' + tiles + kolab + '</div></section>';
   }
 
   function viewAlat() {
     const sid = ui.personaId;
     const tools = toolsCatalog();
+    const ownedN = tools.filter((p) => canSku(sid, p.id)).length;
     let html = '<h2 style="margin:0 0 4px">Alat</h2>' +
-      '<p class="muted" style="margin:0 0 14px">Mentoring: alat −' + toolDiscountPct() + '% dari harga satuan. Laris Affiliate selalu satuan.</p>' +
+      '<p class="muted" style="margin:0 0 14px">' + ownedN + '/' + tools.length +
+      ' sudah punya. Mentoring: alat −' + toolDiscountPct() + '%. Laris Affiliate selalu satuan.</p>' +
       '<div class="alat-list">';
     html += tools.map((p) => {
       const owned = canSku(sid, p.id);
-      return '<div class="card alat-row">' +
+      return '<div class="card alat-row' + (owned ? ' is-owned' : '') + '">' +
+        ownCheckHtml(owned, alatName(p)) +
         '<div class="sku-body">' +
-        (owned ? '<span class="chip lunas">Bisa dipakai</span>' : '<span class="chip">Terkunci</span>') +
-        (p.example ? ' <span class="chip warn">Contoh</span>' : '') +
         '<h3>' + esc(alatName(p)) + '</h3>' +
+        '<p class="own-label">' + (owned ? 'Sudah punya' : 'Belum punya') +
+        (p.example && !owned ? ' · contoh' : '') + '</p>' +
         (!bundled(p) ? '<p class="muted">Tidak termasuk mentoring.</p>' : '') +
         '<p class="muted">' + esc(p.job) + '</p></div>' +
         '<div class="alat-row-act">' + dualCta(p, 'alat') + '</div></div>';
@@ -2625,8 +2643,10 @@
     html += '</div>';
     if (canMentoring(sid)) {
       html += '<h3 class="week-label">Khusus kelas</h3>' +
-        '<button type="button" class="card alat-row" data-act="open-kolab" style="width:100%;text-align:left">' +
+        '<button type="button" class="card alat-row is-owned" data-act="open-kolab" style="width:100%;text-align:left">' +
+          ownCheckHtml(true, 'Kolab') +
           '<div class="sku-body" style="padding:0"><h3>Kolab — cari kreator</h3>' +
+          '<p class="own-label">Sudah punya · mentoring</p>' +
           '<p class="muted">Contoh Kalodata + DM dari ' + esc(shopTiktok().display) + '. Bukan produk lynk.</p></div>' +
         '</button>';
     }

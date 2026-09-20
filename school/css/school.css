@@ -772,13 +772,31 @@ html[data-mode="mentor"] .kur-toolbar {
 .alat-chip strong { display: block; font-size: .8rem; font-weight: 700; }
 .alat-chip em { display: block; font-style: normal; font-size: .7rem; color: var(--muted); font-weight: 650; }
 .alat-chip.locked { opacity: .88; }
+.alat-chip.is-owned { border-color: #166534; }
+.own-check {
+  flex: none; width: 18px; height: 18px; display: grid; place-items: center;
+  line-height: 0;
+}
+.own-check svg { display: block; }
+.own-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;
+}
+.own-label {
+  margin: 0; font-size: .68rem; font-weight: 750; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--muted);
+}
+.alat-row.is-owned .own-label,
+.alat-chip.is-owned em,
+.tool-tile.is-owned .own-label { color: #86efac; }
 .alat-list { display: grid; gap: 8px; }
 .alat-row {
   display: flex; gap: 12px; align-items: center; justify-content: space-between;
   flex-wrap: wrap; padding: 12px 14px;
 }
+.alat-row .own-check { align-self: flex-start; margin-top: 2px; }
+.alat-row.is-owned { border-color: #166534; }
 .alat-row .sku-body { padding: 0; min-width: 0; flex: 1; }
-.alat-row h3 { margin: 6px 0 2px; font-size: .92rem; }
+.alat-row h3 { margin: 2px 0; font-size: .92rem; }
 .alat-row-act { display: flex; gap: 8px; flex-wrap: wrap; }
 .tt-thread { display: grid; gap: 8px; margin-top: 10px; }
 .tt-bubble {
