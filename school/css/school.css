@@ -1,16 +1,16 @@
-/* MasterMind with Anton GC — slate grey (lighter than midnight).
+/* MasterMind with Anton GC — dark ink + Anton jacket orange accent.
    Student chrome is a phone column. Mentor chrome is a desktop rail. */
 
 :root {
-  --ink: #3a404c;
-  --ink-2: #454b58;
-  --ink-3: #525965;
-  --line: #656c7a;
-  --line-2: #7a8290;
-  --text: #f1f3f5;
-  --muted: #b4bac4;
-  --card: #4a5160;
-  --hitam: #3a404c;
+  --ink: #18181b;
+  --ink-2: #1c1c1f;
+  --ink-3: #27272a;
+  --line: #3f3f46;
+  --line-2: #52525b;
+  --text: #e4e4e7;
+  --muted: #a1a1aa;
+  --card: #27272a;
+  --hitam: #18181b;
   --danger: #c4c4c4;
   --ok: #c47d0a;
   --ok-soft: #e8a84a;
@@ -234,7 +234,7 @@ a { color: inherit; }
 .rj-meta { margin: 0; color: #9aa3ad; font-size: .74rem; font-weight: 600; }
 .rj-board {
   position: relative;
-  background: rgba(35, 39, 48, .55);
+  background: rgba(12, 12, 14, .55);
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 12px 12px 10px;
@@ -784,7 +784,7 @@ html[data-mode="student"] .ob-flow { min-height: 100%; }
   position: sticky; bottom: 0; z-index: 4;
   display: grid; gap: 8px; justify-items: stretch;
   padding: 18px 0 calc(16px + var(--safe-bottom));
-  background: linear-gradient(180deg, rgba(58,64,76,0), var(--ink) 28%);
+  background: linear-gradient(180deg, rgba(24,24,27,0), var(--ink) 28%);
 }
 .ob-foot.is-end {
   position: static;
@@ -879,7 +879,7 @@ html[data-mode="student"] body {
   overflow: hidden;
   overscroll-behavior: none;
   touch-action: pan-y;
-  background: #2e333d;
+  background: #111113;
 }
 html[data-mode="student"] #app {
   position: fixed;
