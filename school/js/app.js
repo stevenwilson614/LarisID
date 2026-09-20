@@ -358,7 +358,7 @@
     kurOpen: false,
     skuId: null,
     skuPreview: false,
-    skuFrom: 'pustaka',
+    skuFrom: 'alat',
     editLecId: null,
     secFold: null,
     wizard: null,
@@ -2030,15 +2030,12 @@
         { id: 'home', label: 'Home' },
         { id: 'belajar', label: 'Belajar' },
         { id: 'alat', label: 'Alat' },
-        { id: 'pustaka', label: 'Pustaka' },
-        { id: 'diskusi', label: 'Diskusi' },
         { id: 'progres', label: 'Progres' }
       ];
     }
     return [
       { id: 'home', label: 'Home' },
       { id: 'alat', label: 'Alat' },
-      { id: 'pustaka', label: 'Pustaka' },
       { id: 'progres', label: 'Progres' }
     ];
   }
@@ -2067,8 +2064,6 @@
     const dock = $('dock');
     if (!isStaff()) {
       const tabs = studentTabs();
-      const sku = ui.tab === 'sku' ? productById(ui.skuId) : null;
-      const skuTab = ui.skuFrom || (sku && sku.group === 'alat' ? 'alat' : 'pustaka');
       if (isOnboardScreen()) {
         dock.hidden = true;
         dock.className = 'dock';
@@ -2078,7 +2073,7 @@
         dock.className = 'dock cols-' + tabs.length;
         dock.innerHTML = tabs.map((t) =>
           '<button type="button" data-act="tab" data-id="' + t.id + '" aria-selected="' +
-          (t.id === ui.tab || (ui.tab === 'sku' && t.id === skuTab)) + '">' +
+          (t.id === ui.tab || (ui.tab === 'sku' && t.id === 'alat')) + '">' +
           dockIcon(t.id) + '<span>' + esc(t.label) + '</span></button>'
         ).join('');
       }
@@ -2113,9 +2108,7 @@
         if (tab === 'home') main.innerHTML = viewHome();
         else if (tab === 'belajar') main.innerHTML = viewBelajar();
         else if (tab === 'alat') main.innerHTML = viewAlat();
-        else if (tab === 'pustaka') main.innerHTML = viewStudentPustaka();
         else if (tab === 'sku') main.innerHTML = viewSkuPage();
-        else if (tab === 'diskusi') main.innerHTML = canMentoring(ui.personaId) ? viewDiskusi(false) : viewLockedDiskusi();
         else if (tab === 'progres') main.innerHTML = viewProgres();
         else if (tab === 'kolab') main.innerHTML = viewKolab();
         else if (tab === 'tes') main.innerHTML = viewExam();
@@ -2265,17 +2258,17 @@
     const sid = ui.personaId;
     const owned = canSku(sid, p.id);
     if (owned) {
-      return '<button class="btn" data-act="open-sku" data-from="' + (extraClass || 'pustaka') + '" data-id="' + esc(p.id) + '">Buka</button>';
+      return '<button class="btn" data-act="open-sku" data-from="' + (extraClass || 'alat') + '" data-id="' + esc(p.id) + '">Buka</button>';
     }
     if (canMentoring(sid) && bundled(p)) {
-      return '<button class="btn" data-act="claim-tool" data-from="' + (extraClass || 'pustaka') + '" data-id="' + esc(p.id) + '">Ambil −' + toolDiscountPct() + '%</button>' +
+      return '<button class="btn" data-act="claim-tool" data-from="' + (extraClass || 'alat') + '" data-id="' + esc(p.id) + '">Ambil −' + toolDiscountPct() + '%</button>' +
         '<a class="btn secondary" href="' + esc(p.lynk || SEED.school.lynk) + '" target="_blank" rel="noopener">Harga satuan</a>';
     }
     const mentorLine = bundled(p)
       ? '<button class="btn secondary" data-act="tab" data-id="daftar">Ikut mentoring, −' + toolDiscountPct() + '% alat</button>'
       : '<span class="muted">Tidak termasuk mentoring. Harga satuan.</span>';
     return '<a class="btn" href="' + esc(p.lynk || SEED.school.lynk) + '" target="_blank" rel="noopener">Beli satuan</a>' + mentorLine +
-      '<button class="btn secondary" data-act="contoh-sku" data-from="' + (extraClass || 'pustaka') + '" data-id="' + esc(p.id) + '">Lihat contoh</button>';
+      '<button class="btn secondary" data-act="contoh-sku" data-from="' + (extraClass || 'alat') + '" data-id="' + esc(p.id) + '">Lihat contoh</button>';
   }
   function obChrome(step) {
     const back = step > 0
@@ -3070,8 +3063,8 @@
         '<p class="muted">Tangkapan layar rumus Set harga. Pakai tombol contoh di kalkulator.</p>' +
         '<img class="sheet-shot" src="' + esc(p.sheet) + '" alt="Spreadsheet kalkulator TikTok"></div>';
     }
-    return '<button type="button" class="kur-toggle" data-act="tab" data-id="' + esc(ui.skuFrom || 'pustaka') + '">← ' +
-      (ui.skuFrom === 'alat' ? 'Alat' : 'Pustaka') + '</button>' +
+    return '<button type="button" class="kur-toggle" data-act="tab" data-id="' + esc(ui.skuFrom || 'alat') + '">← ' +
+      (ui.skuFrom === 'home' ? 'Home' : 'Alat') + '</button>' +
       exampleBanner(p, preview) +
       '<div class="card" style="padding:0;overflow:hidden;margin-top:10px">' +
         '<div class="canvas">' + canvas + '</div>' +
@@ -3122,38 +3115,104 @@
       '<div class="alat-pick">' + tiles + kolab + '</div></section>';
   }
 
+  function alatBadgeHtml(p, owned) {
+    if (owned) {
+      return '<span class="alat-badge is-ok">' +
+        '<svg viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M2.2 6.2 4.8 8.7 9.8 3.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+        'Tersedia</span>';
+    }
+    if (!bundled(p)) {
+      return '<span class="alat-badge is-extra">Alat tambahan</span>';
+    }
+    return '<span class="alat-badge is-lock">Mentoring</span>';
+  }
+  function alatCardHtml(p, sid) {
+    const owned = canSku(sid, p.id);
+    const extra = !bundled(p);
+    const thumb = p.cover
+      ? '<img class="alat-card-cover" src="' + esc(p.cover) + '" alt="">'
+      : '<span class="alat-card-cover is-empty" aria-hidden="true"></span>';
+    let act = '';
+    if (owned) {
+      act = '<button type="button" class="btn-sm alat-open" data-act="open-sku" data-from="alat" data-id="' + esc(p.id) + '">Buka →</button>';
+    } else if (extra) {
+      act = '<div class="alat-buy">' +
+        '<span class="alat-price">' + fmtRp(p.price) + ' / satuan</span>' +
+        '<a class="btn alat-buy-btn" href="' + esc(p.lynk || SEED.school.lynk) + '" target="_blank" rel="noopener">Beli alat</a>' +
+        '<button type="button" class="alat-contoh" data-act="contoh-sku" data-from="alat" data-id="' + esc(p.id) + '">Lihat contoh</button>' +
+        '</div>';
+    } else if (canMentoring(sid)) {
+      act = '<button type="button" class="btn-sm alat-open" data-act="claim-tool" data-from="alat" data-id="' + esc(p.id) + '">Ambil →</button>';
+    } else {
+      act = '<div class="alat-buy">' +
+        '<button type="button" class="btn-sm alat-open" data-act="tab" data-id="daftar">Ikut mentoring</button>' +
+        '<button type="button" class="alat-contoh" data-act="contoh-sku" data-from="alat" data-id="' + esc(p.id) + '">Lihat contoh</button>' +
+        '</div>';
+    }
+    return '<article class="alat-card' + (owned ? ' is-owned' : '') + (extra ? ' is-extra' : '') + '">' +
+      thumb +
+      '<div class="alat-card-body">' +
+        '<div class="alat-card-title">' +
+          '<h3>' + esc(alatName(p)) + '</h3>' +
+          alatBadgeHtml(p, owned) +
+        '</div>' +
+        '<p class="alat-card-job">' + esc(p.job) + '</p>' +
+      '</div>' +
+      '<div class="alat-card-act">' + act + '</div></article>';
+  }
   function viewAlat() {
     const sid = ui.personaId;
     const tools = toolsCatalog();
-    const ownedN = tools.filter((p) => canSku(sid, p.id)).length;
-    let html = '<h2 style="margin:0 0 4px">Alat</h2>' +
-      '<p class="muted" style="margin:0 0 14px">' + ownedN + '/' + tools.length +
-      ' sudah punya. Mentoring: alat −' + toolDiscountPct() + '%. Laris Affiliate selalu satuan.</p>' +
-      '<div class="alat-list">';
-    html += tools.map((p) => {
-      const owned = canSku(sid, p.id);
-      return '<div class="card alat-row' + (owned ? ' is-owned' : '') + '">' +
-        ownCheckHtml(owned, alatName(p)) +
-        '<div class="sku-body">' +
-        '<h3>' + esc(alatName(p)) + '</h3>' +
-        '<p class="own-label">' + (owned ? 'Sudah punya' : 'Belum punya') +
-        (p.example && !owned ? ' · contoh' : '') + '</p>' +
-        (!bundled(p) ? '<p class="muted">Tidak termasuk mentoring.</p>' : '') +
-        '<p class="muted">' + esc(p.job) + '</p></div>' +
-        '<div class="alat-row-act">' + dualCta(p, 'alat') + '</div></div>';
-    }).join('');
-    html += '</div>';
-    if (canMentoring(sid)) {
-      html += '<h3 class="week-label">Khusus kelas</h3>' +
-        '<button type="button" class="card alat-row is-owned" data-act="open-kolab" style="width:100%;text-align:left">' +
-          ownCheckHtml(true, 'Kolab') +
-          '<div class="sku-body" style="padding:0"><h3>Kolab — cari kreator</h3>' +
-          '<p class="own-label">Sudah punya · mentoring</p>' +
-          '<p class="muted">Contoh Kalodata + DM dari ' + esc(shopTiktok().display) + '. Bukan produk lynk.</p></div>' +
-        '</button>';
-    }
-    html += '<p class="muted" style="margin-top:16px">Rekaman webinar ada di Pustaka. Checkout tetap lynk.id.</p>';
-    return html;
+    const mentorTools = tools.filter((p) => bundled(p));
+    const extraTools = tools.filter((p) => !bundled(p));
+    const ownedN = mentorTools.filter((p) => canSku(sid, p.id)).length;
+    const anton = SEED.staff.find((s) => s.id === 'u-anton') || { wa: '628111000001' };
+    const waText = 'Halo Anton, mau tanya alat mana yang cocok buat toko saya.';
+    return '<div class="alat-page">' +
+      '<header class="alat-head">' +
+        '<h1>Alat</h1>' +
+        '<p class="muted">Tools praktis untuk bantu kamu jualan di TikTok Shop.</p>' +
+        '<div class="alat-stats">' +
+          '<span class="alat-stat is-ok">' +
+            '<svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="#16a34a"/><path d="M3.4 6.2 5.2 8 8.6 4.2" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>' +
+            ownedN + ' alat tersedia</span>' +
+          (extraTools.length
+            ? '<span class="alat-stat">' +
+              '<span class="alat-stat-dot" aria-hidden="true"></span>' +
+              extraTools.length + ' alat tambahan</span>'
+            : '') +
+        '</div>' +
+      '</header>' +
+      '<section class="alat-sec">' +
+        '<h2>Alat yang termasuk mentoring</h2>' +
+        '<p class="muted">' + (canMentoring(sid)
+          ? 'Sudah bisa kamu akses sekarang.'
+          : 'Buka dengan mentoring. Bisa lihat contoh dulu.') + '</p>' +
+        '<div class="alat-cards">' + mentorTools.map((p) => alatCardHtml(p, sid)).join('') + '</div>' +
+      '</section>' +
+      (extraTools.length
+        ? '<section class="alat-sec">' +
+            '<h2>Alat tambahan</h2>' +
+            '<p class="muted">Tersedia terpisah. Bisa dibeli kapan saja.</p>' +
+            '<div class="alat-cards">' + extraTools.map((p) => alatCardHtml(p, sid)).join('') + '</div>' +
+          '</section>'
+        : '') +
+      (canMentoring(sid)
+        ? '<button type="button" class="alat-card alat-kolab" data-act="open-kolab">' +
+            '<span class="alat-card-cover is-empty" aria-hidden="true"></span>' +
+            '<div class="alat-card-body">' +
+              '<div class="alat-card-title"><h3>Kolab</h3>' +
+                '<span class="alat-badge is-ok">Tersedia</span></div>' +
+              '<p class="alat-card-job">Cari kreator dari CSV Kalodata. Bukan produk lynk — khusus mentoring.</p>' +
+            '</div>' +
+            '<div class="alat-card-act"><span class="btn-sm alat-open">Buka →</span></div>' +
+          '</button>'
+        : '') +
+      '<a class="alat-help" href="' + esc(waLink(anton.wa, waText)) + '" target="_blank" rel="noopener">' +
+        '<span class="alat-help-ico" aria-hidden="true">?</span>' +
+        '<span>Masih bingung alat mana yang cocok? Tanya Anton di WhatsApp.</span>' +
+        '<span class="alat-help-go" aria-hidden="true">›</span></a>' +
+      '</div>';
   }
 
   function viewDiskusi(staff) {
@@ -4689,7 +4748,7 @@
         if (id !== 'orang') ui.personId = null;
       } else {
         ui.tab = id;
-        if (id === 'pustaka' || id === 'alat') { ui.skuId = null; ui.skuPreview = false; }
+        if (id === 'alat') { ui.skuId = null; ui.skuPreview = false; }
         if (id === 'belajar' && canPreview(ui.personaId) && !canMentoring(ui.personaId)) {
           ui.lectureId = firstLectureId();
         }
@@ -4700,13 +4759,13 @@
       if (!canSku(ui.personaId, id) && !isStaff()) return;
       ui.skuId = id;
       ui.skuPreview = false;
-      ui.skuFrom = btn.getAttribute('data-from') || (ui.tab === 'alat' ? 'alat' : 'pustaka');
+      ui.skuFrom = btn.getAttribute('data-from') || 'alat';
       ui.tab = 'sku';
       render();
     } else if (act === 'contoh-sku') {
       ui.skuId = btn.getAttribute('data-id');
       ui.skuPreview = true;
-      ui.skuFrom = btn.getAttribute('data-from') || (ui.tab === 'alat' ? 'alat' : 'pustaka');
+      ui.skuFrom = btn.getAttribute('data-from') || 'alat';
       ui.tab = 'sku';
       render();
     } else if (act === 'toggle-example') {
@@ -4745,7 +4804,7 @@
     } else if (act === 'open-kolab') {
       if (!canMentoring(ui.personaId) && !isStaff()) {
         toast('Live class hanya mentoring.');
-        ui.tab = 'pustaka';
+        ui.tab = 'alat';
         render();
         return;
       }
@@ -5383,7 +5442,7 @@
     ui.kolabSel = new Set();
     ui.editLecId = null;
     ui.secFold = null;
-    ui.skuFrom = 'pustaka';
+    ui.skuFrom = 'alat';
     resetWizForPersona();
     closeDrawer();
     render();

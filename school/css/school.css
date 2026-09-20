@@ -1023,6 +1023,114 @@ html[data-mode="mentor"] .kur-toolbar {
 .alat-row .sku-body { padding: 0; min-width: 0; flex: 1; }
 .alat-row h3 { margin: 2px 0; font-size: .92rem; }
 .alat-row-act { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.alat-page { display: grid; gap: 18px; }
+.alat-head h1 {
+  margin: 0 0 4px; font-size: 1.55rem; letter-spacing: -.03em; font-weight: 800;
+}
+.alat-head .muted { margin: 0; }
+.alat-stats {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;
+}
+.alat-stat {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 10px; border-radius: 999px;
+  background: #1a1a1e; border: 1px solid #2a2a30;
+  font-size: .72rem; font-weight: 650; color: #a1a1aa;
+}
+.alat-stat.is-ok { color: #86efac; border-color: #166534; background: #102418; }
+.alat-stat-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  border: 1.5px solid #71717a;
+}
+.alat-sec h2 {
+  margin: 0 0 2px; font-size: .95rem; letter-spacing: -.01em; font-weight: 750;
+}
+.alat-sec > .muted { margin: 0 0 10px; }
+.alat-cards { display: grid; gap: 10px; }
+.alat-card {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  gap: 12px; align-items: center;
+  padding: 12px; border-radius: 14px;
+  background: #1a1a1e; border: 1px solid #2a2a30;
+  color: inherit; text-align: left; font: inherit;
+}
+button.alat-card { width: 100%; cursor: pointer; }
+.alat-card-cover {
+  width: 72px; height: 72px; border-radius: 12px;
+  object-fit: cover; background: #111; display: block;
+}
+.alat-card-cover.is-empty {
+  background: linear-gradient(145deg, #27272a, #111);
+  border: 1px solid #3f3f46;
+}
+.alat-card-body { min-width: 0; }
+.alat-card-title {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px;
+}
+.alat-card-title h3 {
+  margin: 0; font-size: .92rem; font-weight: 750; letter-spacing: -.01em;
+}
+.alat-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 7px; border-radius: 999px;
+  font-size: .62rem; font-weight: 750; letter-spacing: .02em;
+}
+.alat-badge.is-ok { background: #14532d; color: #86efac; }
+.alat-badge.is-extra { background: #3f2a1a; color: #fbbf24; }
+.alat-badge.is-lock { background: #27272a; color: #a1a1aa; }
+.alat-card-job {
+  margin: 4px 0 0; font-size: .72rem; line-height: 1.4;
+  color: #9aa3ad; font-weight: 550;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.alat-card-act { flex: none; display: grid; justify-items: end; gap: 4px; }
+.alat-open {
+  white-space: nowrap; border-radius: 999px; padding: 8px 12px;
+  border-color: #3f3f46;
+}
+.alat-buy { display: grid; justify-items: end; gap: 4px; }
+.alat-price {
+  font-size: .68rem; font-weight: 700; color: #e4e4e7; white-space: nowrap;
+}
+.alat-buy-btn {
+  border-radius: 999px; padding: 8px 12px; font-size: .72rem;
+  background: #e4e4e7; color: #18181b;
+}
+.alat-contoh {
+  border: 0; background: transparent; color: #9aa3ad;
+  font: inherit; font-size: .68rem; font-weight: 650;
+  padding: 0; cursor: pointer; text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.alat-help {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px; border-radius: 14px;
+  background: #1a1a1e; border: 1px solid #2a2a30;
+  text-decoration: none; color: inherit;
+}
+.alat-help-ico {
+  width: 28px; height: 28px; border-radius: 50%; flex: none;
+  display: grid; place-items: center;
+  border: 1.5px solid #52525b; color: #d4d4d8;
+  font-size: .85rem; font-weight: 800;
+}
+.alat-help span:nth-child(2) {
+  flex: 1; min-width: 0; font-size: .78rem; line-height: 1.4; font-weight: 600;
+  color: #d4d4d8;
+}
+.alat-help-go { color: #71717a; font-size: 1.1rem; }
+@media (max-width: 420px) {
+  .alat-card {
+    grid-template-columns: 64px minmax(0, 1fr);
+    grid-template-areas: "cover body" "cover act";
+  }
+  .alat-card-cover { width: 64px; height: 64px; grid-area: cover; }
+  .alat-card-body { grid-area: body; }
+  .alat-card-act { grid-area: act; justify-items: start; margin-top: 2px; }
+}
 .tt-thread { display: grid; gap: 8px; margin-top: 10px; }
 .tt-bubble {
   max-width: 94%; padding: 10px 12px; border-radius: 12px;
