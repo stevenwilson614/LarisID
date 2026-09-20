@@ -1,4 +1,4 @@
-# Sekolah Anton — offline prototype
+# MasterMind with Anton GC — offline prototype
 
 _Internal. Not a public product. Do not deploy, do not apply SQL on Contabo,
 do not push this work to `main`._

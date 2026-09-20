@@ -1,4 +1,4 @@
-# Sekolah Anton — decisions parked (not for this offline slice)
+# MasterMind with Anton GC — decisions parked (not for this offline slice)
 
 Raise these with Steven before anything leaves localhost. None of them is implied
 by the mock.

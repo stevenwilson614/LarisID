@@ -1,9 +1,9 @@
-/* Dummy Sekolah Anton. Local prototype only. */
+/* Dummy MasterMind with Anton GC. Local prototype only. */
 window.ANTON_SEED = {
   school: {
     id: 'sch-anton',
-    name: 'Sekolah Anton',
-    slug: 'sekolah-anton',
+    name: 'MasterMind with Anton GC',
+    slug: 'mastermind-anton-gc',
     kind: 'creator',
     slogan: 'Jualan TikTok Shop yang tahan lama',
     waGroup: 'https://chat.whatsapp.com/anton-batch-sep-demo',
@@ -197,7 +197,7 @@ window.ANTON_SEED = {
       name: 'Onboarding bayar',
       trigger: 'bayar',
       steps: [
-        { id: 'ob-mail', waitHours: 0, kind: 'email', title: 'Selamat datang + kuitansi', subject: 'Selamat datang di Sekolah Anton', body: 'Halo {name},\n\nTerima kasih. Mentoring sudah aktif.\nJumlah: {amount}\nPaket: {term}\nTransfer ke {bank} {rekening} a.n. {anama}.\n\nIni kuitansi mock — LarisID tidak menahan uang.' },
+        { id: 'ob-mail', waitHours: 0, kind: 'email', title: 'Selamat datang + kuitansi', subject: 'Selamat datang di MasterMind with Anton GC', body: 'Halo {name},\n\nTerima kasih. Mentoring sudah aktif.\nJumlah: {amount}\nPaket: {term}\nTransfer ke {bank} {rekening} a.n. {anama}.\n\nIni kuitansi mock — LarisID tidak menahan uang.' },
         { id: 'ob-wa', waitHours: 24, kind: 'wa', title: 'WA selamat datang', body: 'Halo {name}, Anton di sini. Selamat datang di kelas. Video 1 + lembar kerja sudah kebuka. Kalau bingung, WA aja.' },
         { id: 'ob-task', waitHours: 0, kind: 'task', title: 'Anton cek {name} sudah masuk kelas', body: 'Follow-up {name}: sudah nonton? Ada yang macet di harga?' }
       ]
@@ -484,7 +484,7 @@ window.ANTON_SEED = {
     { id: 'wa-farah-12', toId: 's-farah', scheduledAt: '2026-09-18T11:00:00+07:00', status: 'queued', title: '12 jam sisa diskon', body: 'Halo Farah Nisa, sisa 12 jam harga perkenalan mentoring Anton. Bayar transfer atau kartu, atau lanjut coba video 1.' }
   ],
   emailQueueSeed: [
-    { id: 'em-kamu-ob', toId: 's-kamu', scheduledAt: '2026-09-01T10:05:00+07:00', status: 'sent', title: 'Selamat datang + kuitansi', subject: 'Selamat datang di Sekolah Anton', body: 'Halo Kamu (demo),\n\nTerima kasih. Mentoring sudah aktif.\nJumlah: Rp400.000\nPaket: bulan\nTransfer ke BCA 123456789 a.n. Anton.\n\nIni kuitansi mock — LarisID tidak menahan uang.' }
+    { id: 'em-kamu-ob', toId: 's-kamu', scheduledAt: '2026-09-01T10:05:00+07:00', status: 'sent', title: 'Selamat datang + kuitansi', subject: 'Selamat datang di MasterMind with Anton GC', body: 'Halo Kamu (demo),\n\nTerima kasih. Mentoring sudah aktif.\nJumlah: Rp400.000\nPaket: bulan\nTransfer ke BCA 123456789 a.n. Anton.\n\nIni kuitansi mock — LarisID tidak menahan uang.' }
   ],
   enrollmentsSeed: {
     's-kamu': [{ planId: 'onboarding' }],

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Lembar kerja — Sekolah Anton</title>
+  <title>Lembar kerja — MasterMind with Anton GC</title>
   <style>
     :root { --ink:#0a0a0a; --text:#f3f3f3; --muted:#8a8a8a; --line:#2a2a2a; --card:#161616; --r:8px; }
     * { box-sizing: border-box; }
@@ -40,7 +40,7 @@
       <li>________________________________</li>
     </ul>
   </div>
-  <p class="muted">Prototype Sekolah Anton · localhost · bukan file produksi.</p>
+  <p class="muted">Prototype MasterMind with Anton GC · localhost · bukan file produksi.</p>
   <script>
     var titles = {
       v1: '01 — Cara pakai kelas',
@@ -59,7 +59,7 @@
     var id = new URLSearchParams(location.search).get('id') || 'v1';
     document.getElementById('num').textContent = 'Lembar kerja ' + (titles[id] || id);
     document.getElementById('title').textContent = titles[id] || 'Lembar kerja';
-    document.title = (titles[id] || 'Lembar kerja') + ' — Sekolah Anton';
+    document.title = (titles[id] || 'Lembar kerja') + ' — MasterMind with Anton GC';
   </script>
 </body>
 </html>

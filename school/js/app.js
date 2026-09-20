@@ -1,4 +1,4 @@
-/* Sekolah Anton localhost prototype. No live WhatsApp, TikTok, Mayar, or Contabo. */
+/* MasterMind with Anton GC localhost prototype. No live WhatsApp, TikTok, Mayar, or Contabo. */
 (function () {
   const SEED = window.ANTON_SEED;
   const KEY = 'anton-school-v3';
@@ -450,6 +450,98 @@
       }
     }
     save();
+  }
+  function completeByWatch(lecId) {
+    if (lecId !== firstLectureId()) return false;
+    if (isDone(ui.personaId, lecId)) return false;
+    markDone(ui.personaId, lecId, true);
+    const slot = document.querySelector('[data-watch-status]');
+    if (slot) {
+      slot.outerHTML = '<span class="btn done-ok" data-watch-status="done">Selesai ✓</span>';
+    }
+    document.querySelectorAll('.kur-progress-top span').forEach((el) => {
+      const p = kurProgress(ui.personaId);
+      el.textContent = p.n + ' / ' + p.total + ' materi · ' + p.pct + '%';
+    });
+    document.querySelectorAll('.kur-bar > span').forEach((el) => {
+      el.style.width = kurProgress(ui.personaId).pct + '%';
+    });
+    toast('Video 1 selesai — nonton ≥85%.');
+    return true;
+  }
+  function bindWatchProgress() {
+    const WATCH_PCT = 0.85;
+    $('main').querySelectorAll('video[data-watch-lec]').forEach((vid) => {
+      if (vid._watchBound) return;
+      vid._watchBound = true;
+      const lecId = vid.getAttribute('data-watch-lec');
+      const onTick = () => {
+        if (!vid.duration || !isFinite(vid.duration)) return;
+        if (vid.currentTime / vid.duration >= WATCH_PCT) {
+          if (completeByWatch(lecId)) vid.removeEventListener('timeupdate', onTick);
+        }
+      };
+      vid.addEventListener('timeupdate', onTick);
+    });
+  }
+  let _ytApiPromise = null;
+  function loadYtApi() {
+    if (window.YT && window.YT.Player) return Promise.resolve();
+    if (_ytApiPromise) return _ytApiPromise;
+    _ytApiPromise = new Promise((resolve) => {
+      const prev = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = function () {
+        if (typeof prev === 'function') prev();
+        resolve();
+      };
+      if (!document.getElementById('yt-iframe-api')) {
+        const s = document.createElement('script');
+        s.id = 'yt-iframe-api';
+        s.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(s);
+      }
+      if (window.YT && window.YT.Player) resolve();
+    });
+    return _ytApiPromise;
+  }
+  function mountYtWatchPlayer(hostId, videoId, lecId) {
+    const WATCH_PCT = 0.85;
+    loadYtApi().then(() => {
+      if (!document.getElementById(hostId)) return;
+      let poll = null;
+      const stop = () => { if (poll) { clearInterval(poll); poll = null; } };
+      const player = new window.YT.Player(hostId, {
+        videoId: videoId,
+        playerVars: {
+          autoplay: 1,
+          rel: 0,
+          modestbranding: 1,
+          playsinline: 1,
+          origin: location.origin
+        },
+        events: {
+          onStateChange: (ev) => {
+            if (ev.data === window.YT.PlayerState.PLAYING) {
+              stop();
+              poll = setInterval(() => {
+                try {
+                  const t = player.getCurrentTime();
+                  const d = player.getDuration();
+                  if (d > 0 && t / d >= WATCH_PCT) {
+                    stop();
+                    completeByWatch(lecId);
+                  }
+                } catch (err) { /* player gone */ }
+              }, 800);
+            } else if (ev.data === window.YT.PlayerState.PAUSED ||
+              ev.data === window.YT.PlayerState.ENDED) {
+              if (ev.data === window.YT.PlayerState.ENDED) completeByWatch(lecId);
+              stop();
+            }
+          }
+        }
+      });
+    }).catch(() => { /* offline / blocked */ });
   }
   function progressPct(sid, weekId) {
     const list = weekId ? lecturesInWeek(weekId) : lectures();
@@ -1060,7 +1152,10 @@
     if (yt) {
       return {
         kind: 'youtube',
-        embed: 'https://www.youtube-nocookie.com/embed/' + yt[1] + '?autoplay=1&rel=0&modestbranding=1',
+        videoId: yt[1],
+        embed: 'https://www.youtube-nocookie.com/embed/' + yt[1] +
+          '?autoplay=1&rel=0&modestbranding=1&enablejsapi=1&playsinline=1&origin=' +
+          encodeURIComponent(location.origin || ''),
         thumb: 'https://i.ytimg.com/vi/' + yt[1] + '/hqdefault.jpg'
       };
     }
@@ -1835,6 +1930,14 @@
   function bindLazy() {
     $('main').querySelectorAll('[data-embed]').forEach((el) => {
       el.addEventListener('click', () => {
+        const watchLec = el.getAttribute('data-watch-lec');
+        const videoId = el.getAttribute('data-yt-id');
+        if (watchLec && videoId) {
+          const hostId = 'yt-watch-' + watchLec + '-' + Date.now();
+          el.outerHTML = '<div class="yt-watch-host" id="' + hostId + '"></div>';
+          mountYtWatchPlayer(hostId, videoId, watchLec);
+          return;
+        }
         const src = el.getAttribute('data-embed');
         if (!src) return;
         el.outerHTML = '<iframe src="' + esc(src) + '" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen title="Video materi"></iframe>';
@@ -1858,6 +1961,7 @@
         if (file.name) el.setAttribute('download', file.name);
       });
     });
+    bindWatchProgress();
   }
 
   /* ── student views ───────────────────────────────────────────────── */
@@ -1887,7 +1991,7 @@
     if (canMentoring(ui.personaId)) return '';
     const anton = SEED.staff.find((s) => s.id === 'u-anton') || { wa: '628111000001' };
     const s = student();
-    const text = 'Halo Anton, saya ' + (s.name || 'siswa') + ' dari Sekolah Anton.';
+    const text = 'Halo Anton, saya ' + (s.name || 'siswa') + ' dari MasterMind with Anton GC.';
     return '<a class="wa-fab" href="' + esc(waLink(anton.wa, text)) + '" target="_blank" rel="noopener" aria-label="WhatsApp Anton">' +
       '<span class="wa-fab-ico" aria-hidden="true">' + waFabIcon() + '</span>' +
       '<span>WA Anton</span></a>';
@@ -2202,8 +2306,9 @@
   function weekList(sid, weekId) {
     return '<ul class="list-check">' + lecturesInWeek(weekId).map((l) => {
       const locked = !canOpenLecture(sid, l.id) && !isStaff();
-      return '<li class="' + (locked ? 'is-locked' : '') + '"><span>' +
-        (isDone(sid, l.id) ? '<span class="tick-ok" aria-hidden="true">✓</span> ' : '<span class="tick-off" aria-hidden="true"></span> ') +
+      const done = !locked && isDone(sid, l.id);
+      return '<li class="' + (locked ? 'is-locked' : '') + (done ? ' is-done' : '') + '"><span>' +
+        (done ? '<span class="tick-ok" aria-hidden="true">✓</span> ' : '<span class="tick-off" aria-hidden="true"></span> ') +
         '<span class="' + (locked ? 'list-blur' : '') + '">' + esc(l.title) + '</span>' +
         (locked ? ' <span class="chip">Terkunci</span>' : '') + '</span>' +
         '<button class="btn-sm" data-act="open-lec" data-id="' + esc(l.id) + '">' +
@@ -2307,16 +2412,20 @@
   function renderCanvas(lec) {
     let body = '';
     const cover = coverHtml('lec', lec.id, 'lec-poster');
+    const watchFirst = lec.type === 'video' && lec.id === firstLectureId();
     if (lec.type === 'video') {
       if (lec.videoBlob) {
-        body = (cover || '') + '<video class="lec-video" controls playsinline preload="metadata" data-blob="' + esc(lec.id) + '"></video>';
+        body = (cover || '') + '<video class="lec-video" controls playsinline preload="metadata" data-blob="' +
+          esc(lec.id) + '"' + (watchFirst ? ' data-watch-lec="' + esc(lec.id) + '"' : '') + '></video>';
       } else {
         const e = parseEmbed(lec.url);
         if (e && e.embed) {
-          body = '<div class="lazy-embed" data-embed="' + esc(e.embed) + '">' +
+          body = '<div class="lazy-embed" data-embed="' + esc(e.embed) + '"' +
+            (watchFirst && e.videoId ? ' data-watch-lec="' + esc(lec.id) + '" data-yt-id="' + esc(e.videoId) + '"' : '') + '>' +
             (cover || '') +
             '<div class="play-orb">▶</div>' +
-            '<div class="lazy-note">Ketuk untuk memuat · ' + (e.kind === 'drive' ? 'Google Drive' : 'hemat data') + '</div></div>';
+            '<div class="lazy-note">Ketuk untuk memuat · ' + (e.kind === 'drive' ? 'Google Drive' : 'hemat data') +
+            (watchFirst ? ' · selesai otomatis ≥85%' : '') + '</div></div>';
         } else if (lec.url) {
           body = '<div class="article">' + (cover || '') + '<p>Video ini tidak bisa diputar di dalam kelas (TikTok / tautan lain).</p>' +
             '<a class="btn" href="' + esc(lec.url) + '" target="_blank" rel="noopener">Buka video</a>' +
@@ -2339,13 +2448,21 @@
       body = '<div class="article">' + (cover || '') + '<h3>' + esc(lec.title) + '</h3>' + mdish(lec.body || '') + '</div>';
     }
     const done = isDone(ui.personaId, lec.id);
+    let doneCtrl = '';
+    if (watchFirst) {
+      doneCtrl = done
+        ? '<span class="btn done-ok" data-watch-status="done">Selesai ✓</span>'
+        : '<span class="watch-hint" data-watch-status="pending">Selesai otomatis setelah nonton ≥85%</span>';
+    } else {
+      doneCtrl = '<button class="btn' + (done ? ' done-ok' : '') + '" data-act="toggle-done" data-id="' + esc(lec.id) + '">' +
+        (done ? 'Selesai ✓' : 'Tandai selesai') + '</button>';
+    }
     return '<div class="card" style="padding:0;overflow:hidden">' +
       '<div class="canvas">' + body + '</div>' +
       '<div class="canvas-bar">' +
         '<div><strong>' + esc(lec.title) + '</strong><div class="muted">' + esc(typeLabel(lec.type)) +
         (lec.requiredBefore ? ' · wajib sebelum kelas' : '') + '</div></div>' +
-        '<button class="btn' + (done ? ' done-ok' : '') + '" data-act="toggle-done" data-id="' + esc(lec.id) + '">' +
-        (done ? 'Selesai ✓' : 'Tandai selesai') + '</button>' +
+        doneCtrl +
       '</div></div>';
   }
 
@@ -2380,7 +2497,7 @@
             : '') +
           '</div>'
         ).join('') +
-        '<p class="muted">Bukan ujian — tidak ada skor. Tandai selesai setelah nonton dan baca.</p></div>';
+        '<p class="muted">Bukan ujian — tidak ada skor. Video 1 selesai otomatis setelah nonton ≥85%.</p></div>';
     }
     return html;
   }
@@ -2479,7 +2596,7 @@
       '<div>' +
         '<div class="catalog-brand">' +
           '<img class="catalog-mark" src="' + esc(sch.logo) + '" alt="">' +
-          '<div><strong>Obrolan Marketing</strong><span>by Coach Anton GC</span></div>' +
+          '<div><strong>MasterMind with Anton GC</strong><span>by Coach Anton GC</span></div>' +
         '</div>' +
         '<p class="muted" style="margin:6px 0 0">@obrolan.marketing · cover &amp; foto dari etalase lynk (salinan lokal).</p>' +
         '<a class="btn secondary" href="' + esc(sch.lynk) + '" target="_blank" rel="noopener" style="margin-top:8px">Etalase lynk.id</a>' +
@@ -2674,7 +2791,8 @@
   function viewProgres() {
     const sid = ui.personaId;
     const bill = billingOf(sid);
-    if (!canMentoring(sid)) {
+    const preview = canPreview(sid) && !canMentoring(sid);
+    if (!canMentoring(sid) && !canPreview(sid)) {
       const owned = catalog().filter((p) => canSku(sid, p.id));
       return '<section class="card"><h2>Pustaka kamu</h2>' +
         (owned.length
@@ -2694,32 +2812,42 @@
     const c = crmOf(sid);
     const doneAll = p.n >= p.total && p.total > 0;
     return '<div class="grid-2">' +
-      '<section class="card"><h2>Checklist</h2>' +
+      (preview ? offerBanner(sid) : '') +
+      '<section class="card"><h2>Checklist kurikulum</h2>' +
+        (preview
+          ? '<p class="muted">Video 1 bisa diselesaikan. Modul berikutnya kelihatan (blur) tapi belum bisa dicentang sampai mentoring lunas.</p>'
+          : '') +
         progressBarHtml(sid) +
         db.weeks.map((w) => '<h3>' + esc(w.title) + ' · ' + progressPct(sid, w.id) + '%</h3>' + weekList(sid, w.id)).join('') +
       '</section>' +
       '<section class="card">' +
         '<h2>Status</h2>' +
         '<p>Kurikulum: <strong>' + p.n + ' / ' + p.total + '</strong> · ' + p.pct + '%</p>' +
-        '<p>Hadir: <strong>' + hadir + '%</strong></p>' +
+        (preview
+          ? '<p class="muted">Trial: progress tetap dihitung. Materi terkunci = belum selesai.</p>'
+          : '<p>Hadir: <strong>' + hadir + '%</strong></p>') +
         '<p>Bayar: ' + payChip(bill.status) + ' <span class="muted">' + esc(bill.note || bill.plan || '') +
         (bill.accessUntil ? ' · sampai ' + fmtWhen(bill.accessUntil) : '') + '</span></p>' +
         '<h3 style="margin-top:16px">Lencana (kejadian nyata)</h3>' +
         '<p class="muted">' +
-          (isDone(sid, firstLectureId()) ? '✓ Masuk kelas. ' : 'Belum mulai. ') +
-          (kolabOpened ? '✓ Antri Kolab. ' : '') +
-          (hadir >= 50 ? '✓ Hadir ≥ setengah sesi.' : 'Hadir masih di bawah setengah sesi.') +
+          (isDone(sid, firstLectureId()) ? '✓ Masuk kelas (video 1 ≥85%). ' : 'Belum mulai video 1. ') +
+          (!preview && kolabOpened ? '✓ Antri Kolab. ' : '') +
+          (!preview ? (hadir >= 50 ? '✓ Hadir ≥ setengah sesi.' : 'Hadir masih di bawah setengah sesi.') : 'Live class setelah mentoring lunas.') +
         '</p>' +
-        (doneAll && !c.examScore
-          ? '<h3 style="margin-top:16px">Tes akhir</h3><p class="muted">Satu duduk. Lulus = sertifikat. Bukan mesin kuis Canvas.</p>' +
+        (preview
+          ? '<div class="row" style="margin-top:14px"><button class="btn" data-act="tab" data-id="daftar">Bayar mentoring</button>' +
+            '<button class="btn secondary" data-act="tab" data-id="belajar">Lanjut video 1</button></div>'
+          : '') +
+        (!preview && doneAll && !c.examScore
+          ? '<h3 style="margin-top:16px">Tes akhir</h3><p class="muted">Satu duduk. Lulus = sertifikat. Bukan mesin kuiz Canvas.</p>' +
             '<button class="btn" data-act="tab" data-id="tes">Mulai tes</button>'
           : '') +
-        (c.examScore != null
+        (!preview && c.examScore != null
           ? '<p style="margin-top:12px">Tes: <strong>' + c.examScore + ' / ' + (SEED.exam.questions.length) + '</strong>' +
             (c.eligibleMentor ? ' · lulus, layak jadi mentor' : ' · belum lulus') + '</p>' +
             (c.certSerial ? '<button class="btn secondary" data-act="tab" data-id="sertifikat">Lihat sertifikat</button>' : '')
           : '') +
-        (c.eligibleMentor && c.stage !== 'mentor'
+        (!preview && c.eligibleMentor && c.stage !== 'mentor'
           ? '<div class="card" style="margin-top:12px"><h3>Jadi mentor</h3>' +
             '<p class="muted">Pakai kurikulum dan nama Anton. Kamu tarik bayaran muridmu sendiri. Anton menerima <strong>' +
             (db.pricing.overridePct || 20) + '% licensing</strong> dari pendapatan mentoring + alat + Laris Affiliate yang kamu jual. Satu tingkat, bukan piramida rekrut. Tidak ada bonus karena mengajak orang.</p>' +
@@ -2833,7 +2961,7 @@
     if (!c.certSerial) return '<p class="muted">Belum ada sertifikat.</p>';
     return '<section class="card cert-sheet">' +
       '<p class="muted">Sertifikat kelas · serial ' + esc(c.certSerial) + '</p>' +
-      '<h2>Sekolah Anton</h2>' +
+      '<h2>MasterMind with Anton GC</h2>' +
       '<p>Menerangkan bahwa</p>' +
       '<h3>' + esc(s.name) + '</h3>' +
       '<p>menyelesaikan kurikulum mentoring dan lulus tes akhir (' + esc(c.examScore) + '/' + SEED.exam.questions.length + ').</p>' +
@@ -2899,10 +3027,10 @@
             '<div class="muted">' + esc(s.city || '—') +
             (tags.length ? ' · ' + tags.map((t) => esc(t)).join(', ') : '') + '</div></span></button></td>' +
           '<td>' + (s.wa
-            ? '<a class="fub-cell-link" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari Sekolah Anton.')) + '" target="_blank" rel="noopener">' + esc(fmtPhone(s.wa)) + '</a>'
+            ? '<a class="fub-cell-link" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari MasterMind with Anton GC.')) + '" target="_blank" rel="noopener">' + esc(fmtPhone(s.wa)) + '</a>'
             : '<span class="muted">—</span>') + '</td>' +
           '<td>' + (s.email
-            ? '<a class="fub-cell-link" href="' + esc(mailLink(s.email, 'Sekolah Anton', 'Halo ' + s.name)) + '">' + esc(s.email) + '</a>'
+            ? '<a class="fub-cell-link" href="' + esc(mailLink(s.email, 'MasterMind with Anton GC', 'Halo ' + s.name)) + '">' + esc(s.email) + '</a>'
             : '<span class="muted">—</span>') + '</td>' +
           '<td>' + esc(stageLabel(c.stage)) + '</td>' +
           '<td>' + (canBill() ? billStatusSelect(s.id, b) : payChip(b.status)) + '</td>' +
@@ -3216,11 +3344,11 @@
         '<dl>' +
           '<div class="fub-field"><dt>Telepon</dt><dd>' +
             '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="wa" value="' + esc(s.wa || '') + '" placeholder="62812…">' +
-            (s.wa ? '<a class="fub-cell-link" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari Sekolah Anton.')) + '" target="_blank" rel="noopener">Buka WA</a>' : '') +
+            (s.wa ? '<a class="fub-cell-link" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari MasterMind with Anton GC.')) + '" target="_blank" rel="noopener">Buka WA</a>' : '') +
           '</dd></div>' +
           '<div class="fub-field"><dt>Email</dt><dd>' +
             '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="email" type="email" value="' + esc(s.email || '') + '" placeholder="email">' +
-            (s.email ? '<a class="fub-cell-link" href="' + esc(mailLink(s.email, 'Sekolah Anton', 'Halo ' + s.name)) + '">mailto</a>' : '') +
+            (s.email ? '<a class="fub-cell-link" href="' + esc(mailLink(s.email, 'MasterMind with Anton GC', 'Halo ' + s.name)) + '">mailto</a>' : '') +
           '</dd></div>' +
           '<div class="fub-field"><dt>TikTok</dt><dd>' +
             '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="tiktok" value="' + esc(s.tiktok || '') + '" placeholder="handle">' +
@@ -3258,8 +3386,8 @@
         '<div class="fub-composer">' +
           '<div class="fub-acts">' +
             '<span class="btn-sm">Catatan</span>' +
-            (s.email ? '<a class="btn-sm" href="' + esc(mailLink(s.email, 'Sekolah Anton', 'Halo ' + s.name)) + '">Email</a>' : '<span class="btn-sm" style="opacity:.45">Email</span>') +
-            '<a class="btn-sm" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari Sekolah Anton.')) + '" target="_blank" rel="noopener">WA</a>' +
+            (s.email ? '<a class="btn-sm" href="' + esc(mailLink(s.email, 'MasterMind with Anton GC', 'Halo ' + s.name)) + '">Email</a>' : '<span class="btn-sm" style="opacity:.45">Email</span>') +
+            '<a class="btn-sm" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari MasterMind with Anton GC.')) + '" target="_blank" rel="noopener">WA</a>' +
             '<button type="button" class="btn-sm" data-act="task-compose" data-id="' + esc(id) + '">Tugas</button>' +
           '</div>' +
           (ui.taskComposer === id

@@ -1,4 +1,4 @@
-# Sekolah Anton — mentoring funnel + CRM
+# MasterMind with Anton GC — mentoring funnel + CRM
 
 _Internal. Localhost prototype only. Do not deploy, do not apply SQL on Contabo._
 
