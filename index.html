@@ -309,6 +309,9 @@ html.session-restoring body::after {
   overflow-y: auto;
   min-height: 0;
 }
+/* Desktop: children stay sidebar flex items (rail hover, mentor ~ siblings).
+   Mobile overrides this to a scrollable top zone. */
+.sidebar-nav { display: contents; }
 .sidebar-brand {
   display: flex; align-items: flex-end; gap: 6px;
   padding: 12px 12px 16px;
@@ -4097,18 +4100,40 @@ body.ddtp-open #btn-tracker svg .ic-f { fill: var(--accent); stroke: none; }
   .side-about.open .side-about-toggle,
   .side-about-toggle.is-child-active { background: #fff; box-shadow: 0 0 0 1px var(--line); }
   .side-about-menu .side-btn { padding-left: 22px; }
-  /* Keep chrome + foot visible; only Riwayat absorbs the short viewport. */
-  .sidebar-brand,
-  .sidebar > .side-btn,
-  .sidebar > .side-seller,
-  .sidebar > .mentor-nav { flex-shrink: 0; }
-  /* Pin Tentang/Admin above the home-indicator while the rail scrolls. */
+  /* Three zones so Riwayat is visible AND cannot paint over Tentang/Admin:
+     1) top nav scrolls if it is taller than leftover space
+     2) Riwayat keeps a reserved slot and scrolls inside it
+     3) lokasi + foot stay pinned */
+  .sidebar { overflow: hidden; }
+  .sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+  .side-section {
+    flex: 0 0 auto;
+    height: min(30vh, 200px);
+    min-height: 120px;
+    overflow: hidden;
+  }
+  .chat-list { min-height: 0; }
+  .side-loc-card,
+  .sidebar-foot { flex-shrink: 0; }
   .sidebar-foot {
-    position: sticky;
-    bottom: 0;
-    z-index: 2;
+    position: static;
     background: var(--bg-side);
     padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  }
+  /* Crawlable but off-screen — same intent as the footer comment. */
+  .side-links {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
   }
 }
 
@@ -7689,8 +7714,10 @@ body.mentor-shell .side-seller-menu .side-btn { padding-left: 22px; }
 body.mentor-shell #btn-cohort,
 body.mentor-shell #btn-set-lokasi,
 body.mentor-shell .sidebar > .side-section { display: none !important; }
-body.mentor-shell .side-seller.open ~ #btn-set-lokasi { display: flex !important; }
-body.mentor-shell .side-seller.open ~ .side-section { display: flex !important; }
+body.mentor-shell .side-seller.open ~ #btn-set-lokasi,
+body.mentor-shell .sidebar-nav:has(.side-seller.open) ~ #btn-set-lokasi { display: flex !important; }
+body.mentor-shell .side-seller.open ~ .side-section,
+body.mentor-shell .sidebar-nav:has(.side-seller.open) ~ .side-section { display: flex !important; }
 
 /* Role menu. Same chrome as .adm-filter-pop, the site's existing popover. */
 .viewas { position: relative; display: inline-flex; }
@@ -8031,6 +8058,7 @@ body.view-chat .sfb-card {
 </div>
 <div class="app">
   <aside class="sidebar" id="sidebar">
+    <div class="sidebar-nav">
     <a class="sidebar-brand" href="/" id="btn-home" title="Beranda LarisID">
       <img class="brand-lockup" src="/images/brand/logo-horizontal-red.webp" alt="LARIS" height="36">
       <img class="brand-mark" src="/images/brand/appicon-bird-48.png" alt="" width="28" height="28" decoding="async">
@@ -8087,6 +8115,7 @@ body.view-chat .sfb-card {
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8.6" cy="7.4" r="3.2"/><path d="M2.6 20.4v-1.2a4.8 4.8 0 0 1 4.8-4.8h2.4a4.8 4.8 0 0 1 4.8 4.8v1.2"/><path class="ic-a" d="M16.6 11.2 19.2 8.6l2.6 2.6"/><path class="ic-a" d="M19.2 9v6.4"/></svg>
       <span class="side-btn-label">Kohort</span>
     </button>
+    </div>
     <div class="side-section">
       <div class="side-label">Riwayat</div>
       <div class="chat-search" id="chat-search" role="search">
