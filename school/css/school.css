@@ -481,6 +481,26 @@ html[data-mode="student"] .canvas iframe.tool-frame { min-height: 520px; height:
   padding: 12px 0 8px; border-top: 1px solid var(--line);
   font-size: .86rem; line-height: 1.5;
 }
+.ob-pay-ways {
+  display: grid; gap: 16px; justify-items: center; text-align: center;
+  margin-top: 4px;
+}
+.ob-qris {
+  display: grid; gap: 6px; justify-items: center;
+  padding: 14px 16px 12px; border: 1px dashed var(--line-2); border-radius: 16px;
+  background: var(--ink-2); width: 100%; max-width: 220px;
+}
+.ob-qris-svg { display: block; border-radius: 8px; }
+.ob-qris-badge {
+  font-size: .62rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted);
+}
+.ob-qris-nm { font-weight: 700; font-size: .86rem; }
+.ob-tf { width: 100%; text-align: left; }
+.ob-tf-kicker {
+  margin: 0 0 6px; font-size: .68rem; font-weight: 800;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--muted);
+}
 .ob-look-hint { margin: 0; text-align: center; color: var(--muted); font-size: .74rem; line-height: 1.4; }
 .ob-text {
   border: 0; background: transparent; color: var(--muted);

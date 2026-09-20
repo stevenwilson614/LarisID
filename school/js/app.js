@@ -749,16 +749,23 @@
     save();
     return true;
   }
+  function ensureApplication() {
+    if (db.applications[ui.personaId]) return true;
+    captureWizFields();
+    return commitWizApplication();
+  }
   function advanceWiz() {
     captureWizFields();
     if (!validateWizStep()) return;
     if (wizIdx() >= WIZ_FORM.length - 1) {
       if (!commitWizApplication()) return;
       ui.wizStep = WIZ_PAY;
+      ui.wizFocusedStep = null;
       ui.tab = 'daftar';
       toast('Tersimpan. Lanjut pilih bayar, atau lihat dulu.');
     } else {
       ui.wizStep = wizIdx() + 1;
+      ui.wizFocusedStep = null;
     }
     render();
   }
@@ -767,6 +774,7 @@
     const i = wizIdx();
     if (i <= 0) return;
     ui.wizStep = i - 1;
+    ui.wizFocusedStep = null;
     render();
   }
   function enrollmentsOf(id) {
@@ -1871,8 +1879,16 @@
   }
   function viewWizard() {
     const step = wizIdx();
-    if (step >= WIZ_PAY) return viewPayPage(ui.personaId);
-    if (wizardStep(ui.personaId) === 'pay' && (ui.wizStep == null)) return viewPayPage(ui.personaId);
+    const wantPay = step >= WIZ_PAY || (wizardStep(ui.personaId) === 'pay' && ui.wizStep == null);
+    if (wantPay) {
+      if (!db.applications[ui.personaId]) {
+        ui.wizStep = Math.min(typeof ui.wizStep === 'number' ? ui.wizStep : WIZ_FORM.length - 1, WIZ_FORM.length - 1);
+        if (ui.wizStep >= WIZ_PAY) ui.wizStep = WIZ_FORM.length - 1;
+        ui.wizFocusedStep = null;
+        return viewWizForm(ui.wizStep);
+      }
+      return viewPayPage(ui.personaId);
+    }
     return viewWizForm(step);
   }
   function viewWizForm(step) {
@@ -1957,19 +1973,50 @@
         termCard('autopay', term, inWin && welcome) +
       '</div>' +
       '<div class="ob-bank">' +
-        '<p><strong>' + esc(db.bank.bank) + '</strong> ' + esc(db.bank.number) + '<br>a.n. ' + esc(db.bank.name) + '</p>' +
-        '<p class="muted">Jumlah sekarang: <strong>' + fmtRp(price) + '</strong>' +
-        (price < list ? ' <span class="price-coret">' + fmtRp(list) + '</span>' : '') +
-        ' · ' + esc(termLabel(term)) + '</p>' +
-        '<p class="muted">Kartu autopay = mock Mayar. Prototype tidak menagih sungguhan.</p>' +
+        '<div class="ob-pay-ways">' +
+          '<div class="ob-qris" aria-label="Contoh QRIS">' +
+            qrisPlaceholderSvg() +
+            '<span class="ob-qris-badge">QRIS · contoh</span>' +
+            '<span class="ob-qris-nm">' + esc(db.bank.name) + '</span>' +
+            '<span class="muted">Placeholder — bukan kode bayar sungguhan</span>' +
+          '</div>' +
+          '<div class="ob-tf">' +
+            '<p class="ob-tf-kicker">Atau transfer bank</p>' +
+            '<p><strong>' + esc(db.bank.bank) + '</strong> ' + esc(db.bank.number) + '<br>a.n. ' + esc(db.bank.name) + '</p>' +
+            '<p class="muted">Jumlah sekarang: <strong>' + fmtRp(price) + '</strong>' +
+            (price < list ? ' <span class="price-coret">' + fmtRp(list) + '</span>' : '') +
+            ' · ' + esc(termLabel(term)) + '</p>' +
+            '<p class="muted">Kartu autopay = mock Mayar. Prototype tidak menagih sungguhan.</p>' +
+          '</div>' +
+        '</div>' +
       '</div>';
     const foot =
       '<button class="btn ob-cta" data-act="pay-now" data-term="' + esc(term) + '">' +
-      (term === 'autopay' ? 'Bayar kartu (mock)' : 'Saya sudah transfer') + '</button>' +
+      (term === 'autopay' ? 'Bayar kartu (mock)' : 'Saya sudah transfer / scan') + '</button>' +
       '<button type="button" class="btn secondary ob-cta" data-act="pay-later">Bayar nanti, lihat dulu</button>' +
       '<p class="ob-look-hint">Home kelihatan utuh. Hanya video 1 + lembar kerja yang kebuka.</p>' +
       '<button type="button" class="ob-text" data-act="not-interested">Tidak tertarik</button>';
     return obWrap(WIZ_PAY, inner, foot, true);
+  }
+  function qrisPlaceholderSvg() {
+    const cells = [];
+    const n = 11;
+    for (let y = 0; y < n; y += 1) {
+      for (let x = 0; x < n; x += 1) {
+        const finder = (x < 3 && y < 3) || (x > n - 4 && y < 3) || (x < 3 && y > n - 4);
+        const mid = x > 3 && x < n - 4 && y > 3 && y < n - 4 && ((x + y * 3) % 2 === 0);
+        if (finder || mid || ((x * 7 + y * 13) % 5 === 0 && x > 2 && y > 2)) {
+          cells.push('<rect x="' + (x * 8 + 8) + '" y="' + (y * 8 + 8) + '" width="7" height="7" fill="#18181b"/>');
+        }
+      }
+    }
+    return '<svg class="ob-qris-svg" viewBox="0 0 104 104" width="148" height="148" aria-hidden="true">' +
+      '<rect width="104" height="104" fill="#fff" rx="8"/>' +
+      cells.join('') +
+      '<rect x="8" y="8" width="24" height="24" fill="none" stroke="#18181b" stroke-width="4"/>' +
+      '<rect x="72" y="8" width="24" height="24" fill="none" stroke="#18181b" stroke-width="4"/>' +
+      '<rect x="8" y="72" width="24" height="24" fill="none" stroke="#18181b" stroke-width="4"/>' +
+      '</svg>';
   }
   function termCard(id, cur, welcome) {
     const list = listPriceForTerm(id);
@@ -4317,8 +4364,12 @@
       toast(p.title + ' kebuka di harga mentoring (−' + toolDiscountPct() + '%). Prototype, bukan tagihan lynk.');
       render();
     } else if (act === 'pay-later') {
-      if (!db.applications[ui.personaId]) {
+      if (!ensureApplication()) {
         toast('Isi form dulu.');
+        ui.wizStep = 0;
+        ui.wizFocusedStep = null;
+        ui.tab = 'daftar';
+        render();
         return;
       }
       startTrial(ui.personaId);
@@ -4327,6 +4378,14 @@
       toast('Trial: video 1 kebuka. Boleh lihat dulu, diskon 24 jam dari jam form.');
       render();
     } else if (act === 'pay-now') {
+      if (!ensureApplication()) {
+        toast('Isi form dulu.');
+        ui.wizStep = 0;
+        ui.wizFocusedStep = null;
+        ui.tab = 'daftar';
+        render();
+        return;
+      }
       const term = btn.getAttribute('data-term') || ui.payTerm || 'month';
       const welcome = welcomeOpen(ui.personaId) || hoursLeft(billingOf(ui.personaId).offerExpiresAt) > 0;
       const amount = priceForTerm(term, welcome);
