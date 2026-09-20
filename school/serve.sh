@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Localhost-only. Do not deploy. Do not expose past this machine.
+# Offline prototype. Do not deploy. Not for larisid.com / Contabo.
+# Binds the LAN so a phone on the same Wi-Fi can open it.
 #
 # Vanity LMS URLs (creator-mentor schools):
 #   http://127.0.0.1:8765/s/obrolan.marketing
@@ -10,13 +11,18 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PORT="${PORT:-8765}"
+HOST="${HOST:-0.0.0.0}"
+LAN_IP="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)"
 cd "$ROOT"
 echo "MasterMind with Anton GC prototype"
+echo "  This Mac              → http://127.0.0.1:${PORT}/s/obrolan.marketing"
+if [ -n "$LAN_IP" ]; then
+  echo "  Phone (same Wi-Fi)    → http://${LAN_IP}:${PORT}/s/obrolan.marketing"
+fi
 echo "  School (dev path)     → http://127.0.0.1:${PORT}/school/"
-echo "  Anton vanity URL      → http://127.0.0.1:${PORT}/s/obrolan.marketing"
 echo "  Presentasi dual-view  → http://127.0.0.1:${PORT}/school/present.html"
 echo "Offline lock: not on larisid.com, not in _site, not applied to Contabo."
-exec python3 - "$PORT" <<'PY'
+exec python3 - "$PORT" "$HOST" <<'PY'
 import re
 import sys
 from functools import partial
@@ -25,6 +31,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 PORT = int(sys.argv[1])
+HOST = sys.argv[2] if len(sys.argv) > 2 else "127.0.0.1"
 ROOT = Path.cwd()
 SCHOOL_INDEX = ROOT / "school" / "index.html"
 # Same rules as schools.slug check (draft SQL) + path segment.
@@ -69,7 +76,7 @@ class SchoolHandler(SimpleHTTPRequestHandler):
         sys.stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
 
 
-httpd = ThreadingHTTPServer(("127.0.0.1", PORT), partial(SchoolHandler, directory=str(ROOT)))
+httpd = ThreadingHTTPServer((HOST, PORT), partial(SchoolHandler, directory=str(ROOT)))
 try:
     httpd.serve_forever()
 except KeyboardInterrupt:
