@@ -23,12 +23,18 @@
 }
 
 * { box-sizing: border-box; }
+html {
+  color-scheme: dark;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
 html, body { margin: 0; min-height: 100%; }
 body {
   font-family: var(--font);
   background: var(--ink);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
 }
 a { color: inherit; }
 .sr-only {
@@ -625,15 +631,18 @@ html[data-mode="student"] .canvas iframe.tool-frame { min-height: 520px; height:
   filter: blur(3px); opacity: .75; user-select: none;
 }
 
+#wa-fab-host { pointer-events: none; }
 .wa-fab {
-  position: fixed; z-index: 40;
-  right: max(12px, calc(50% - var(--phone) / 2 + 12px));
-  bottom: calc(var(--dock-h) + 14px);
+  position: absolute; z-index: 40;
+  right: 12px;
+  bottom: calc(var(--dock-h) + 14px + env(safe-area-inset-bottom, 0px));
   display: inline-flex; align-items: center; gap: 8px;
   padding: 10px 14px 10px 12px; border-radius: 999px;
   background: #25d366; color: #052e16; text-decoration: none;
   font-weight: 800; font-size: .78rem; letter-spacing: -.01em;
   box-shadow: 0 8px 24px rgba(0,0,0,.45);
+  pointer-events: auto;
+  touch-action: manipulation;
 }
 .wa-fab-ico {
   display: grid; place-items: center; width: 28px; height: 28px;
@@ -717,6 +726,7 @@ html[data-mode="mentor"] #wa-fab-host { display: none; }
   min-height: calc(100dvh - var(--top-h));
   padding: 10px 22px 0;
 }
+html[data-mode="student"] .ob-flow { min-height: 100%; }
 .ob-top { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
 .ob-back {
   width: 40px; height: 40px; border-radius: 50%; flex: none;
@@ -853,38 +863,111 @@ html[data-mode="mentor"] #wa-fab-host { display: none; }
 }
 
 /* ── student: phone column ─────────────────────────────────────────── */
-html[data-mode="student"] body { background: #111113; }
-html[data-mode="student"] #app {
-  max-width: var(--phone); margin: 0 auto;
-  min-height: 100vh; background: var(--ink);
-  box-shadow: 0 0 0 1px #222;
+html[data-mode="student"],
+html[data-mode="student"] body {
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: pan-y;
+  background: #111113;
 }
+html[data-mode="student"] #app {
+  position: fixed;
+  left: 50%;
+  top: 0;
+  z-index: 1;
+  width: min(var(--phone), 100%);
+  max-width: var(--phone);
+  height: 100%;
+  height: 100dvh;
+  margin: 0;
+  padding-top: env(safe-area-inset-top, 0px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: pan-y;
+  background: var(--ink);
+  box-shadow: 0 0 0 1px #222;
+  transform: translateX(-50%);
+}
+html[data-mode="student"] .topbar {
+  flex: none;
+  flex-wrap: nowrap;
+  position: relative;
+  z-index: 20;
+}
+html[data-mode="student"] .topbar-actions { flex-wrap: nowrap; flex: none; }
+html[data-mode="student"] .brand strong {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 11.5rem;
+}
+html[data-mode="student"] .clock-bar { flex: none; }
 html[data-mode="student"] .tabs { display: none; }
-html[data-mode="student"] .workspace { display: block; }
+html[data-mode="student"] .workspace {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+html[data-mode="student"] .main {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  padding-bottom: calc(var(--dock-h) + 24px + env(safe-area-inset-bottom, 0px));
+}
 html[data-mode="student"] .grid-2,
 html[data-mode="student"] .grid-3,
 html[data-mode="student"] .tool-grid { grid-template-columns: 1fr; }
 html[data-mode="student"] .player-layout { grid-template-columns: 1fr; }
 html[data-mode="student"] .kurikulum-pane {
-  position: fixed; left: 50%; bottom: 0; z-index: 25;
-  width: min(var(--phone), 100%); transform: translateX(-50%) translateY(110%);
-  max-height: 72vh; border-radius: 16px 16px 0 0;
-  padding: 8px 8px calc(var(--dock-h) + 12px);
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 25;
+  width: 100%; transform: translateY(110%);
+  max-height: min(72vh, calc(100% - 48px)); border-radius: 16px 16px 0 0;
+  padding: 8px 8px calc(var(--dock-h) + 12px + env(safe-area-inset-bottom, 0px));
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   transition: transform .2s ease;
   box-shadow: 0 -12px 40px rgba(0,0,0,.5);
 }
-html[data-mode="student"] .kurikulum-pane.is-open { transform: translateX(-50%) translateY(0); }
+html[data-mode="student"] .kurikulum-pane.is-open { transform: translateY(0); }
 html[data-mode="student"] .kur-toggle { display: block; }
 html[data-mode="student"] .quota { grid-template-columns: 1fr; }
-html[data-mode="student"] .table { display: block; overflow-x: auto; }
-html[data-mode="student"] .dock,
+html[data-mode="student"] .table,
+html[data-mode="student"] .heat {
+  display: block;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+html[data-mode="student"] .dock {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  width: 100%;
+  transform: none;
+}
 html[data-mode="student"] .toast {
-  left: 50%; right: auto; width: min(var(--phone), 100%);
+  left: 50%; right: auto; width: min(var(--phone) - 32px, calc(100% - 32px));
   transform: translateX(-50%);
+  bottom: calc(var(--dock-h) + 16px + env(safe-area-inset-bottom, 0px));
 }
 html[data-mode="student"] .drawer {
   left: 50%; right: auto; width: min(var(--phone), 100%);
   transform: translateX(-50%); border-left: 0;
+  padding-top: calc(18px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 html[data-mode="student"] .scrim {
   left: 50%; right: auto; width: min(var(--phone), 100%);
@@ -1181,6 +1264,8 @@ html.present-pane .topbar-actions { display: none !important; }
 html.present-pane[data-mode="student"] #app {
   max-width: none;
   width: 100%;
+  left: 0;
+  transform: none;
   margin: 0;
   box-shadow: none;
 }
@@ -1195,6 +1280,7 @@ html.present-pane[data-mode="student"] .scrim {
 }
 html.present-pane[data-mode="student"] .kurikulum-pane {
   left: 0;
+  right: 0;
   width: 100%;
   transform: translateY(110%);
 }
@@ -1614,7 +1700,7 @@ html[data-mode="student"] #app.is-belajar {
 }
 html[data-mode="student"] #app.is-belajar .topbar { display: none; }
 html[data-mode="student"] #app.is-belajar .main {
-  padding: 10px 16px 132px;
+  padding: 10px 16px calc(var(--dock-h) + 48px + env(safe-area-inset-bottom, 0px));
   overflow-x: clip;
   max-width: 100%;
 }
@@ -1793,4 +1879,57 @@ div.lec-watch { cursor: default; }
 .lec-next { background: #4ade80; color: #052e16; }
 html[data-mode="mentor"] .lesson-top { display: none; }
 html[data-mode="mentor"] .lesson-head h1 { font-size: 1.28rem; }
+
+/* ── mobile app chrome (student) ───────────────────────────────────── */
+html[data-mode="student"] button,
+html[data-mode="student"] a,
+html[data-mode="student"] summary,
+html[data-mode="student"] .path-node,
+html[data-mode="student"] .dock button,
+html[data-mode="student"] .ghost,
+html[data-mode="student"] .btn,
+html[data-mode="student"] .btn-sm {
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+}
+html[data-mode="student"] .dock button {
+  min-height: 48px;
+  min-width: 44px;
+  padding: 8px 4px;
+}
+html[data-mode="student"] .path-node::after {
+  content: "";
+  position: absolute;
+  inset: -12px;
+}
+html[data-mode="student"] .lesson-top {
+  grid-template-columns: 40px auto 1fr 40px 40px;
+  touch-action: manipulation;
+}
+html[data-mode="student"] .lesson-back,
+html[data-mode="student"] .lesson-chev {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+}
+html[data-mode="student"] .lesson-back { width: 40px; }
+html[data-mode="student"] textarea,
+html[data-mode="student"] .main input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+html[data-mode="student"] .main select {
+  font-size: 16px;
+}
+html[data-mode="student"] img,
+html[data-mode="student"] svg,
+html[data-mode="student"] video {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+html[data-mode="student"] .topbar,
+html[data-mode="student"] .dock {
+  user-select: none;
+  -webkit-user-select: none;
+}
+@media (hover: none) {
+  .path-node:hover { transform: none; }
+}
 
