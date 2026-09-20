@@ -11,7 +11,7 @@
   gtag('config', 'AW-862519971');
 </script>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=overlays-content">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=overlays-content">
 <script>
 (function () {
   try {
@@ -159,6 +159,12 @@
 }
 </script>
 <meta name="theme-color" content="#212121">
+<meta name="color-scheme" content="light">
+<meta name="format-detection" content="telephone=no, email=no, address=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LarisID">
 <!-- 48px for the tab, 180px for iOS. This used to point a 512x512 PNG (137KB)
      at a 16px slot, fetched at high priority on every page load. -->
 <link rel="icon" type="image/png" sizes="48x48" href="/images/brand/appicon-bird-48.png">
@@ -260,14 +266,26 @@
   --emas-hi: #B07E33;
 }
 *, *::before, *::after { box-sizing: border-box; }
-html, body { height: 100%; margin: 0; max-width: 100%; overscroll-behavior-x: none; }
-html { overflow-x: hidden; }
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overflow: hidden;
+}
+html, body {
+  height: 100%;
+  height: 100dvh;
+  margin: 0;
+  max-width: 100%;
+  overscroll-behavior: none;
+  touch-action: pan-x pan-y;
+}
 body {
   font-family: var(--font);
   color: var(--ink);
   background: var(--bg);
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
 }
 button, input, textarea { font: inherit; }
 button { cursor: pointer; border: none; background: none; color: inherit; }
@@ -293,7 +311,15 @@ html.session-restoring body::after {
   50% { opacity: 1; }
 }
 
-.app { display: flex; height: 100%; width: 100%; overflow-x: hidden; }
+.app {
+  display: flex;
+  height: 100%;
+  height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: pan-x pan-y;
+}
 
 /* Sidebar — Gemini/ChatGPT quiet rail */
 .sidebar {
@@ -301,6 +327,7 @@ html.session-restoring body::after {
   background: var(--bg-side);
   display: flex; flex-direction: column;
   padding: 12px 10px;
+  padding-top: max(12px, env(safe-area-inset-top, 0px));
   z-index: 20;
   transition: transform .28s var(--ease);
   /* Let Riwayat keep a usable height; overflow the rail if nav+foot still
@@ -469,13 +496,16 @@ a.side-btn { text-decoration: none; box-sizing: border-box; color: var(--ink); }
 /* Main */
 .main {
   flex: 1; min-width: 0; display: flex; flex-direction: column;
-  position: relative; background: var(--bg); min-height: 0; overflow-x: hidden;
+  position: relative; background: var(--bg); min-height: 0; overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: pan-x pan-y;
 }
 .main-top {
   flex-shrink: 0;
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px;
   padding: 10px 18px 8px;
+  padding-top: max(10px, env(safe-area-inset-top, 0px));
   min-height: 52px;
   z-index: 5;
 }
@@ -880,6 +910,7 @@ body.view-directory .panel {
   padding: 8px 20px calc(var(--composer-h) + 28px);
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  touch-action: pan-x pan-y;
 }
 .panel-inner {
   max-width: 720px; margin: 0 auto;
@@ -3487,7 +3518,7 @@ body.view-harga .panel-inner { max-width: 1180px; }
 /* Composer — floating pill like Gemini */
 .composer-dock {
   position: absolute; left: 0; right: 0; bottom: 0;
-  padding: 8px 16px 10px;
+  padding: 8px 16px max(10px, env(safe-area-inset-bottom, 0px));
   background: linear-gradient(180deg, transparent, var(--bg) 36%);
   z-index: 10;
 }
@@ -4088,11 +4119,14 @@ body.ddtp-open #btn-tracker svg .ic-f { fill: var(--accent); stroke: none; }
   .menu-btn { display: grid; }
   .topbar-mobile-brand { display: flex; }
   #beta-badge-mobile { display: inline-flex; }
-  .main-top { padding: 8px 12px; }
-  /* Keep focused controls ≥16px so iOS Safari does not auto-zoom */
-  .composer textarea,
-  .field input,
-  .dir-filters select { font-size: 16px; }
+  .main-top {
+    padding: 8px 12px;
+    padding-top: max(8px, env(safe-area-inset-top, 0px));
+  }
+  /* Keep focused controls ≥16px so iOS Safari does not auto-zoom the app. */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+  select,
+  textarea { font-size: 16px !important; }
   /* Mobile: one Tentang row; expand to reveal meta pages. */
   .side-about-toggle { display: flex; }
   .side-about:not(.open) .side-about-menu { display: none; }
@@ -4604,6 +4638,7 @@ body.home-finder-done .home-hero {
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+    touch-action: pan-y;
     padding-bottom: 8px;
     display: flex;
     flex-direction: column;
@@ -10690,7 +10725,7 @@ body.view-chat .sfb-card {
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260916d" defer></script>
 <script src="/js/gpt-alat-preview.js?v=20260919ai" defer></script>
-<script src="/js/gpt-app.js?v=20260919ah" defer></script>
+<script src="/js/gpt-app.js?v=20260920a" defer></script>
 <style>
 .hl-hero-ctas-alat { display: none; }
 html.alat-preview #finder-xp-step { display: none; }
