@@ -284,7 +284,7 @@ window.ANTON_SEED = {
     's-rina': { status: 'lunas', plan: 'sku', products: ['calc'], amount: 99000, source: 'lynk', paidAt: '2026-09-12T10:00:00+07:00', note: 'Kalkulator saja', term: '', accessUntil: null },
     's-toni': { status: 'lunas', plan: 'sku', products: ['algo'], amount: 59900, source: 'lynk', paidAt: '2026-09-11T10:00:00+07:00', note: 'Rekaman algoritma', term: '', accessUntil: null },
     's-ayu': { status: 'trial', plan: 'preview', products: [], amount: 0, source: 'manual', paidAt: null, note: 'Bayar nanti · 24 jam', term: '', accessUntil: null, offerStartedAt: '2026-09-18T09:00:00+07:00', offerExpiresAt: '2026-09-19T09:00:00+07:00' },
-    's-farah': { status: 'trial', plan: 'preview', products: [], amount: 0, source: 'manual', paidAt: null, note: 'Nonton v1, belum bayar', term: '', accessUntil: null, offerStartedAt: '2026-09-17T23:00:00+07:00', offerExpiresAt: '2026-09-18T23:00:00+07:00' },
+    's-farah': { status: 'trial', plan: 'preview', products: [], amount: 0, source: 'manual', paidAt: null, note: 'Nonton v1, belum bayar', term: '', accessUntil: null, offerStartedAt: '2026-09-20T10:00:00+07:00', offerExpiresAt: '2026-09-21T10:00:00+07:00' },
     's-gilang': { status: 'belum', plan: '', products: [], amount: 0, source: 'manual', paidAt: null, note: 'Tidak tertarik', term: '', accessUntil: null },
     's-hadi': { status: 'lunas', plan: 'mentoring', products: ['calc', 'ai-creative', 'ai-data', 'naik-harga', 'algo', 'ads'], amount: 500000, source: 'transfer', paidAt: '2026-08-23T10:00:00+07:00', note: 'Habis 23 Sep', term: 'month', accessUntil: '2026-09-23T10:00:00+07:00' },
     's-irma': { status: 'lunas', plan: 'mentoring', products: ['calc', 'ai-creative', 'ai-data', 'naik-harga', 'algo', 'ads'], amount: 500000, source: 'transfer', paidAt: '2026-08-18T08:00:00+07:00', note: 'Grace', term: 'month', accessUntil: '2026-09-18T08:00:00+07:00' },
@@ -333,8 +333,8 @@ window.ANTON_SEED = {
   ],
   lectures: (function () {
     const yt = 'https://www.youtube.com/watch?v=jNQXAC9IVRw';
-    function v(id, weekId, title, mins, doc, points, questions, required) {
-      return {
+    function v(id, weekId, title, mins, doc, points, questions, required, extra) {
+      return Object.assign({
         id: id,
         weekId: weekId,
         type: 'video',
@@ -346,13 +346,28 @@ window.ANTON_SEED = {
         resources: [{ name: doc, url: './tools/handout.html?id=' + id }],
         points: points,
         questions: questions
-      };
+      }, extra || {});
     }
     return [
       v('v1', 'w1', 'Selamat datang di kelas', 12, 'Lembar kerja 01 — Cara pakai kelas.pdf',
-        ['Kurikulum 12 video. Tandai selesai sendiri — bukan auto-skor.', 'Live class terpisah di Home. Pustaka = alat & rekaman lynk.', 'Jangan sebar supplier atau margin di Tanya.'],
-        [{ q: 'Bedanya mentoring vs beli satuan di lynk?', hint: 'Mentoring = 12 video + live + alat lynk. Laris Affiliate selalu satuan. Satuan = SKU yang dibayar saja.' },
-         { q: 'Kalau bingung cepat, WA atau Tanya di materi?', hint: 'WA untuk chat cepat. Tanya di sini supaya jawaban nempel di video yang sama.' }], true),
+        [
+          'Ini video 1. Trial: materi ini + checklist kebuka. Sisanya setelah mentoring lunas.',
+          'Isi pertanyaan jujur di bawah — buat kamu, bukan untuk Anton nilai.',
+          'Live class, diskusi kelas, dan alat −50% ikut paket mentoring.'
+        ],
+        [
+          { q: 'GMV toko / akun kamu sekarang berapa (perkiraan 30 hari)?', hint: 'Tulis angka kasar dari Seller Center. Nol juga boleh — jujur lebih berguna.' },
+          { q: 'GMV yang kamu mau dalam 90 hari ke depan?', hint: 'Satu target realistis. Bukan “jadi viral”, tapi omset yang masih masuk logika stok & harga.' },
+          { q: 'Satu SKU yang mau kamu unggulkan dulu apa?', hint: 'Satu produk. Bukan 20 SKU sekaligus. Contoh kelas: jepit rambut satin isi 6.' },
+          { q: 'Hal apa yang masih gelap di toko (foto, harga, live, kreator)?', hint: 'Pilih satu yang paling menghambat. Itu yang dikerjakan minggu ini.' }
+        ], true, {
+          coverUrl: './assets/kurikulum/welcome-cover.jpg',
+          body: 'Selamat datang. Anton bantu kamu jualan TikTok Shop yang tahan — bukan janji kaya semalam.\n\nDi trial ini kamu boleh nonton video 1, unduh checklist toko, dan jawab pertanyaan di bawah. Materi berikutnya kelihatan di kurikulum tapi terkunci sampai mentoring lunas.',
+          resources: [
+            { name: 'Checklist toko TikTok (contoh)', url: './tools/checklist-toko-tiktok.html' },
+            { name: 'Lembar kerja 01 — Cara pakai kelas.pdf', url: './tools/handout.html?id=v1' }
+          ]
+        }),
       v('v2', 'w1', 'Etalase yang tidak gelap', 11, 'Lembar kerja 02 — Audit etalase.pdf',
         ['Foto 5 sudut, cahaya jendela atau lampu, bukan stock gelap.', 'Nama SKU menyebut isi/manfaat, bukan “produk 01”.', 'WA bisnis nyala sebelum iklan.'],
         [{ q: 'Apa 3 hal yang harus ada sebelum iklan?', hint: 'Foto jelas, nama SKU kebaca, etalase 3 koleksi + WA bisnis.' },

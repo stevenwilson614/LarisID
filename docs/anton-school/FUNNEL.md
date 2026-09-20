@@ -15,7 +15,7 @@ This extends [README.md](./README.md). Offline lock unchanged.
 3. **Payment page** (last onboarding screen). Clocked 24-hour welcome discount starts at form submit (remaining time is real; no fake seat count). Applies to 1-month transfer and autopay only — not stacked on 3/6 month.
    - Included: kurikulum, live/diskusi/kolab, grup WA, **50% off all tools**. Laris Affiliate stays satuan.
    - Bayar sekarang: **1 bulan** transfer, **3 bulan** (−15%), **6 bulan** (−25%), or **kartu autopay** (−10%). Rekening in Pengaturan bayar. Mayar mock for autopay.
-   - **Bayar nanti, lihat dulu:** Home looks like the real school; only video 1 + lembar kerja unlock.
+   - **Bayar nanti, lihat dulu:** Home + kurikulum penuh kelihatan; hanya video 1 (cover + checklist + pertanyaan GMV) kebuka, sisanya blur. CTA bayar + countdown 24 jam + FAB **WA Anton**.
 4. After video 1: in-app pay prompt. At 12 hours left: queued WA to the student + a **task for Anton** to open WA himself (never auto-send as Anton).
 5. Unpaid after 24h → **Sudah keluar**. “Tidak tertarik” stays its own stage.
 6. Paid → **Mentee**. Full class for the term (month / year / autopay). Laris Affiliate stays extra.
