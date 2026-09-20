@@ -1609,18 +1609,31 @@ html[data-mode="mentor"] .main:has(.fub-page) { padding: 0; }
 .add-sku { margin: 12px 0 18px; padding: 12px; border: 1px dashed var(--line-2); border-radius: 12px; }
 
 /* ── student lesson player (Belajar) ───────────────────────────────── */
+html[data-mode="student"] #app.is-belajar {
+  overflow-x: clip;
+}
 html[data-mode="student"] #app.is-belajar .topbar { display: none; }
 html[data-mode="student"] #app.is-belajar .main {
   padding: 10px 16px 132px;
+  overflow-x: clip;
+  max-width: 100%;
 }
-.lesson { max-width: 100%; }
+html[data-mode="student"] #app.is-belajar .player-layout,
+html[data-mode="student"] #app.is-belajar .player-layout > div,
+.lesson {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+}
 .lesson-top {
   position: sticky; top: 0; z-index: 6;
   display: grid;
   grid-template-columns: 28px auto 1fr 32px 32px;
   align-items: center; gap: 4px;
-  margin: 0 -4px 14px; padding: 4px 4px 10px;
+  margin: 0 0 14px; padding: 4px 0 10px;
   background: var(--ink);
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .lesson-back,
 .lesson-chev {
@@ -1658,6 +1671,14 @@ html[data-mode="student"] #app.is-belajar .main {
 }
 .lesson-stage {
   position: relative; border-radius: 14px; overflow: hidden; background: #000;
+  max-width: 100%;
+}
+.lesson-head,
+.lec-nav,
+.lec-watch,
+.lesson .lec-read {
+  max-width: 100%;
+  min-width: 0;
 }
 .lesson-stage .lec-poster,
 .lesson-stage .lec-video,
@@ -1734,10 +1755,16 @@ div.lec-watch { cursor: default; }
 .lec-acc {
   background: #1a1a1e; border: 1px solid #2a2a30; border-radius: 14px;
   margin-top: 10px;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 .lec-acc summary {
   list-style: none; display: flex; align-items: center; gap: 12px;
   padding: 14px; cursor: pointer;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .lec-acc summary::-webkit-details-marker { display: none; }
 .lec-acc-ico { width: 22px; height: 22px; flex: none; color: #d4d4d8; }
