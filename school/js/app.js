@@ -2229,11 +2229,10 @@
     ui.lectureId = lec.id;
     const lockedNow = !canOpenLecture(ui.personaId, lec.id) && !isStaff();
     const payStrip = preview ? offerBanner(ui.personaId) : '';
+    const kurInline = preview ? trialKurikulumBlock() : '';
     if (lockedNow) {
       return '<div class="player-layout">' +
         '<div>' + payStrip + progressBarHtml(ui.personaId) +
-        '<button type="button" class="kur-toggle" data-act="toggle-kur">' +
-        (ui.kurOpen ? 'Tutup kurikulum' : 'Kurikulum · lihat semua') + '</button>' +
         '<div class="locked-blur-card">' +
           '<div class="locked-blur-bg" aria-hidden="true">' +
             (coverHtml('lec', lec.id, 'lec-poster') || '<div class="lec-poster lec-poster-empty"></div>') +
@@ -2245,18 +2244,27 @@
           '<div class="locked-blur-fg">' +
             '<p class="trial-kicker">Materi terkunci</p>' +
             '<h2>' + esc(lec.title) + '</h2>' +
-            '<p class="muted">Kurikulum kelihatan semua. Video 1 + checklist gratis di trial. Sisanya setelah mentoring lunas.</p>' +
+            '<p class="muted">Kurikulum lengkap di bawah — yang blur terkunci sampai mentoring lunas.</p>' +
             '<button class="btn" data-act="open-lec" data-id="' + esc(firstLectureId()) + '">Ke video selamat datang</button>' +
             '<button class="btn secondary" data-act="tab" data-id="daftar">Bayar mentoring</button>' +
-          '</div></div></div>' +
-        '<aside class="kurikulum-pane' + (ui.kurOpen ? ' is-open' : '') + '">' + renderKurikulumSidebar() + '</aside></div>';
+          '</div></div>' +
+          kurInline +
+        '</div></div>';
+    }
+    if (preview) {
+      return '<div class="player-layout"><div>' +
+        payStrip +
+        progressBarHtml(ui.personaId) +
+        (lec.tool === 'kolab' ? viewKolab() : renderCanvas(lec)) +
+        kurInline +
+        (lec.tool === 'kolab' ? '' : renderLecAfter(lec) + payAfterFirst(lec) + renderPanes(lec)) +
+        '</div></div>';
     }
     const inner = lec.tool === 'kolab'
       ? viewKolab()
       : renderCanvas(lec) + renderLecAfter(lec) + payAfterFirst(lec) + renderPanes(lec);
     return '<div class="player-layout">' +
       '<div>' +
-        payStrip +
         progressBarHtml(ui.personaId) +
         '<button type="button" class="kur-toggle" data-act="toggle-kur">' +
         (ui.kurOpen ? 'Tutup kurikulum' : 'Kurikulum · ' + kurProgress(ui.personaId).pct + '%') + '</button>' +
@@ -2264,6 +2272,13 @@
       '<aside class="kurikulum-pane' + (ui.kurOpen ? ' is-open' : '') + '">' +
         renderKurikulumSidebar() + '</aside>' +
       '</div>';
+  }
+  function trialKurikulumBlock() {
+    return '<section class="card kurikulum-inline" id="kurikulum-trial">' +
+      '<p class="trial-kicker">Kurikulum lengkap</p>' +
+      '<h3>12 video + bacaan · hanya video 1 kebuka</h3>' +
+      '<p class="muted">Yang blur = terkunci sampai mentoring lunas. Ketuk untuk lihat teaser.</p>' +
+      '<div class="kurikulum-inline-list">' + renderKurikulumSidebar() + '</div></section>';
   }
   function payAfterFirst(lec) {
     if (lec.id !== firstLectureId()) return '';
@@ -2278,6 +2293,7 @@
         : '') +
       '<div class="row">' +
         '<button class="btn" data-act="tab" data-id="daftar">Bayar mentoring</button>' +
+        '<button class="btn secondary" data-act="scroll-kur">Lihat kurikulum terkunci</button>' +
         '<button class="btn secondary" data-act="not-interested">Tidak tertarik</button>' +
       '</div></section>';
   }
@@ -4128,6 +4144,16 @@
     } else if (act === 'toggle-kur') {
       ui.kurOpen = !ui.kurOpen;
       render();
+    } else if (act === 'scroll-kur') {
+      ui.tab = 'belajar';
+      if (canPreview(ui.personaId) && !canMentoring(ui.personaId)) {
+        ui.lectureId = firstLectureId();
+      }
+      render();
+      requestAnimationFrame(() => {
+        const el = document.getElementById('kurikulum-trial');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     } else if (act === 'open-kolab') {
       if (!canMentoring(ui.personaId) && !isStaff()) {
         toast('Live class hanya mentoring.');

@@ -374,7 +374,32 @@ html[data-mode="student"] .canvas iframe.tool-frame { min-height: 520px; height:
 .lec-face.is-blur .mark {
   filter: blur(3.5px); opacity: .72; user-select: none;
 }
-.lec.locked { cursor: pointer; }
+.kurikulum-inline {
+  margin-top: 14px;
+  padding: 14px 12px 8px;
+  border: 1px solid #3f3f46;
+  background: linear-gradient(180deg, #18181b, #121214);
+}
+.kurikulum-inline h3 {
+  margin: 4px 0 6px;
+  font-size: 1rem;
+  letter-spacing: -.02em;
+}
+.kurikulum-inline-list {
+  margin-top: 10px;
+  max-height: none;
+  overflow: visible;
+}
+.kurikulum-inline .kur-progress { margin-bottom: 6px; }
+.kurikulum-inline .lec.locked {
+  border: 1px dashed #3f3f46;
+  margin-bottom: 4px;
+  background: #0c0c0e;
+}
+.kurikulum-inline .lec.current:not(.locked) {
+  background: #222;
+  border: 1px solid #3f3f46;
+}
 .lec-lock {
   position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
   font-size: .58rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
