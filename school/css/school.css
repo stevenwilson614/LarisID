@@ -373,7 +373,7 @@ html[data-mode="student"] .canvas iframe.tool-frame { min-height: 520px; height:
 .onboard-choice label { display: flex; gap: 6px; align-items: center; font-weight: 650; cursor: pointer; }
 .include-box { margin: 12px 0; padding: 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--ink-2); }
 .include-list { margin: 8px 0 12px; padding-left: 18px; font-size: .82rem; line-height: 1.55; }
-.include-tools { display: grid; gap: 6px; }
+.include-tools { display: grid; gap: 6px; margin: 10px 0 4px; }
 .include-tool {
   display: flex; justify-content: space-between; gap: 10px; align-items: baseline;
   font-size: .74rem; padding: 6px 0; border-top: 1px solid var(--line);
@@ -386,6 +386,107 @@ html[data-mode="student"] .canvas iframe.tool-frame { min-height: 520px; height:
   display: grid; gap: 8px; justify-items: start;
 }
 .pay-look .btn { width: 100%; }
+
+#app.is-onboard .main { padding: 0; }
+.ob-flow {
+  display: flex; flex-direction: column;
+  min-height: calc(100dvh - var(--top-h));
+  padding: 10px 22px 0;
+}
+.ob-top { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.ob-back {
+  width: 40px; height: 40px; border-radius: 50%; flex: none;
+  border: 1px solid var(--line); background: var(--ink-2); color: var(--text);
+  font-size: 1.45rem; line-height: 1; cursor: pointer;
+  display: grid; place-items: center; padding: 0 0 2px;
+}
+.ob-back.is-ghost { border-color: transparent; background: transparent; }
+.ob-segs { flex: 1; display: flex; gap: 5px; }
+.ob-segs i {
+  flex: 1; height: 4px; border-radius: 99px; background: var(--ink-3);
+}
+.ob-segs i.is-on { background: #e4e4e7; }
+.ob-body { flex: 1; padding-bottom: 120px; }
+.ob-flow.is-pay .ob-body { padding-bottom: 12px; }
+.ob-kicker {
+  margin: 12px 0 0; font-size: .68rem; font-weight: 800;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+}
+.ob-q {
+  margin: 10px 0 8px; font-size: 1.72rem; line-height: 1.15;
+  letter-spacing: -.04em; font-weight: 750;
+}
+.ob-sub {
+  margin: 0 0 28px; font-size: .92rem; line-height: 1.45; color: var(--muted); font-weight: 500;
+}
+.main .ob-input,
+#app.is-onboard .ob-input {
+  width: 100%; font-size: 1.12rem; line-height: 1.4; font-weight: 600;
+  padding: 14px 2px 12px; margin: 0;
+  border: 0; border-bottom: 2px solid var(--line-2); border-radius: 0;
+  background: transparent; color: var(--text);
+}
+.main .ob-input:focus,
+#app.is-onboard .ob-input:focus {
+  outline: 0; border-bottom-color: #fff;
+}
+.ob-pills { display: grid; gap: 8px; }
+.ob-pill {
+  width: 100%; min-height: 48px; text-align: left;
+  padding: 12px 16px; border: 1px solid var(--line); border-radius: 16px;
+  background: var(--ink-2); color: inherit; font: inherit;
+  font-size: 1rem; font-weight: 650; cursor: pointer;
+}
+.ob-pill.is-on { border-color: #fff; background: var(--ink-3); }
+.ob-extra { display: grid; gap: 8px; margin-top: 16px; }
+.ob-foot {
+  position: sticky; bottom: 0; z-index: 4;
+  display: grid; gap: 8px; justify-items: stretch;
+  padding: 18px 0 calc(16px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(24,24,27,0), var(--ink) 28%);
+}
+.ob-foot.is-end {
+  position: static;
+  background: transparent;
+  padding-top: 8px;
+}
+.ob-cta { width: 100%; min-height: 52px; border-radius: 16px; font-size: 1rem; }
+.ob-checks {
+  list-style: none; margin: 0 0 12px; padding: 0;
+  display: grid; gap: 10px; font-size: .92rem; line-height: 1.4;
+}
+.ob-checks li {
+  display: flex; gap: 10px; align-items: flex-start;
+}
+.ob-checks li::before {
+  content: "✓"; flex: none; color: var(--ok); font-weight: 800; margin-top: 1px;
+}
+.ob-checks li.is-mute { color: var(--muted); font-size: .82rem; }
+.ob-checks li.is-mute::before { content: "–"; color: var(--muted); }
+.ob-link {
+  border: 0; background: transparent; color: var(--accent);
+  font: inherit; font-size: .86rem; font-weight: 700;
+  padding: 0; cursor: pointer; text-align: left;
+}
+.ob-note { font-size: .8rem; color: var(--muted); line-height: 1.5; margin: 16px 0 12px; }
+.ob-terms { grid-template-columns: 1fr; gap: 8px; margin: 0 0 16px; }
+.ob-term {
+  width: 100%; text-align: left; display: grid; gap: 2px;
+  padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px;
+  background: var(--ink-2); color: inherit; font: inherit; cursor: pointer;
+}
+.ob-term.is-on { border-color: #fff; background: var(--ink-3); }
+.ob-term-title { font-weight: 750; font-size: .92rem; }
+.ob-bank {
+  padding: 12px 0 8px; border-top: 1px solid var(--line);
+  font-size: .86rem; line-height: 1.5;
+}
+.ob-look-hint { margin: 0; text-align: center; color: var(--muted); font-size: .74rem; line-height: 1.4; }
+.ob-text {
+  border: 0; background: transparent; color: var(--muted);
+  font: inherit; font-size: .78rem; font-weight: 650;
+  cursor: pointer; padding: 4px; text-align: center;
+}
 .kanban {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 10px; align-items: start;

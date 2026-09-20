@@ -262,6 +262,9 @@
     editLecId: null,
     secFold: null,
     wizard: null,
+    wizStep: null,
+    wizDraft: null,
+    wizTools: false,
     payTerm: 'month',
     examAnswers: {},
     payPrompt: false,
@@ -591,6 +594,185 @@
     }[term] || '—';
   }
   const HEARD_OPTS = ['Grup WA Anton', 'Teman / murid Anton', 'TikTok', 'Instagram', 'Lainnya'];
+  const WIZ_FORM = [
+    { id: 'name', kicker: 'Kenalan', q: 'Siapa namamu?', sub: 'Nama yang Anton panggil di grup. Bukan tes.' },
+    { id: 'wa', kicker: 'Kontak', q: 'Nomor WhatsApp-mu?', sub: 'Anton chat ke sini. Prototype tidak kirim otomatis.' },
+    { id: 'shop', kicker: 'Toko', q: 'Sudah punya toko?', sub: 'Belum juga boleh. Jujur aja.' },
+    { id: 'city', kicker: 'Tempat', q: 'Kota mana?', sub: 'Biar Anton tahu kamu dari mana.' },
+    { id: 'heard', kicker: 'Cerita', q: 'Dari mana kenal Anton?', sub: 'Satu jawaban. Bukan syarat masuk.' }
+  ];
+  const WIZ_PAY = WIZ_FORM.length;
+  const WIZ_TOTAL = WIZ_PAY + 1;
+
+  function isOnboardScreen() {
+    return !isStaff() && (needsWizard(ui.personaId) || ui.tab === 'daftar');
+  }
+  function resetWizForPersona() {
+    ui.wizDraft = null;
+    ui.wizTools = false;
+    ui.wizStep = db.applications[ui.personaId] ? WIZ_PAY : 0;
+  }
+  function wizIdx() {
+    if (typeof ui.wizStep === 'number') return ui.wizStep;
+    return db.applications[ui.personaId] ? WIZ_PAY : 0;
+  }
+  function wizDraft() {
+    const sid = ui.personaId;
+    const s = student();
+    const app = db.applications[sid] || {};
+    const prev = (ui.wizDraft && ui.wizDraft.sid === sid) ? ui.wizDraft : {};
+    const heardRaw = prev.heardPick != null || prev.heardOther != null
+      ? ''
+      : (app.heard || '');
+    const known = HEARD_OPTS.indexOf(heardRaw) >= 0;
+    const heardPick = prev.heardPick != null
+      ? prev.heardPick
+      : (known ? heardRaw : (heardRaw ? 'Lainnya' : ''));
+    const heardOther = prev.heardOther != null
+      ? prev.heardOther
+      : (known ? '' : heardRaw);
+    const nameSeed = (s.name || '').indexOf('Tamu') >= 0 ? '' : (s.name || '');
+    let shopPick = prev.shopPick;
+    if (shopPick == null) {
+      if (app.hasShop === true) shopPick = 'ya';
+      else if (app.at) shopPick = 'tidak';
+      else shopPick = '';
+    }
+    return {
+      sid: sid,
+      name: prev.name != null ? prev.name : (app.name || nameSeed),
+      wa: prev.wa != null ? prev.wa : (app.wa || s.wa || ''),
+      shopPick: shopPick,
+      shopName: prev.shopName != null ? prev.shopName : (app.shopName || s.shopName || ''),
+      shopUrl: prev.shopUrl != null ? prev.shopUrl : (app.shopUrl || s.shopUrl || ''),
+      city: prev.city != null ? prev.city : (app.city || (s.city === '—' ? '' : (s.city || ''))),
+      heardPick: heardPick,
+      heardOther: heardOther
+    };
+  }
+  function wizMerge(patch) {
+    ui.wizDraft = Object.assign({}, wizDraft(), patch, { sid: ui.personaId });
+  }
+  function captureWizFields() {
+    const root = document.querySelector('.ob-flow');
+    if (!root) return;
+    const d = {};
+    const name = root.querySelector('[name=name]');
+    const wa = root.querySelector('[name=wa]');
+    const city = root.querySelector('[name=city]');
+    const shopName = root.querySelector('[name=shopName]');
+    const shopUrl = root.querySelector('[name=shopUrl]');
+    const heardOther = root.querySelector('[name=heardOther]');
+    if (name) d.name = String(name.value || '').trim();
+    if (wa) d.wa = String(wa.value || '').trim();
+    if (city) d.city = String(city.value || '').trim();
+    if (shopName) d.shopName = String(shopName.value || '').trim();
+    if (shopUrl) d.shopUrl = String(shopUrl.value || '').trim();
+    if (heardOther) d.heardOther = String(heardOther.value || '').trim();
+    if (Object.keys(d).length) wizMerge(d);
+  }
+  function wizHeardValue(d) {
+    if (d.heardPick === 'Lainnya') return String(d.heardOther || '').trim();
+    return String(d.heardPick || '').trim();
+  }
+  function validateWizStep() {
+    const spec = WIZ_FORM[wizIdx()];
+    if (!spec) return true;
+    const d = wizDraft();
+    if (spec.id === 'name' && !d.name) {
+      toast('Isi nama dulu.');
+      return false;
+    }
+    if (spec.id === 'wa' && !d.wa) {
+      toast('Isi nomor WhatsApp dulu.');
+      return false;
+    }
+    if (spec.id === 'shop') {
+      if (d.shopPick !== 'ya' && d.shopPick !== 'tidak') {
+        toast('Pilih sudah atau belum.');
+        return false;
+      }
+      if (d.shopPick === 'ya' && (!d.shopName || !d.shopUrl)) {
+        toast('Nama toko dan tautan wajib kalau sudah punya toko.');
+        return false;
+      }
+    }
+    if (spec.id === 'city' && !d.city) {
+      toast('Isi kota dulu.');
+      return false;
+    }
+    if (spec.id === 'heard') {
+      if (!d.heardPick) {
+        toast('Pilih dari mana kamu kenal Anton.');
+        return false;
+      }
+      if (d.heardPick === 'Lainnya' && !String(d.heardOther || '').trim()) {
+        toast('Cerita singkat dari mana, ya.');
+        return false;
+      }
+    }
+    return true;
+  }
+  function commitWizApplication() {
+    const d = wizDraft();
+    const sid = ui.personaId;
+    const s = student();
+    const hasShop = d.shopPick === 'ya';
+    const heard = wizHeardValue(d);
+    if (!d.name || !d.wa || !d.city || !heard) {
+      toast('Isi nama, WA, kota, dan dari mana tahu Anton.');
+      return false;
+    }
+    if (hasShop && (!d.shopName || !d.shopUrl)) {
+      toast('Nama toko dan tautan wajib kalau sudah punya toko.');
+      return false;
+    }
+    db.applications[sid] = {
+      name: d.name,
+      wa: d.wa,
+      city: d.city,
+      hasShop: hasShop,
+      shopName: hasShop ? d.shopName : '',
+      shopUrl: hasShop ? d.shopUrl : '',
+      heard: heard,
+      at: isoNow()
+    };
+    patchPerson(sid, {
+      name: d.name,
+      wa: String(d.wa).replace(/\D/g, '') || s.wa,
+      city: d.city,
+      shopName: hasShop ? d.shopName : '',
+      shopUrl: hasShop ? d.shopUrl : ''
+    });
+    const b = billingOf(sid);
+    if (!b.offerStartedAt) {
+      b.offerStartedAt = isoNow();
+      b.offerExpiresAt = addMs(isoNow(), 24 * 36e5);
+    }
+    setStage(sid, 'form', 'Form masuk. Jam diskon 24 jam dimulai.');
+    save();
+    return true;
+  }
+  function advanceWiz() {
+    captureWizFields();
+    if (!validateWizStep()) return;
+    if (wizIdx() >= WIZ_FORM.length - 1) {
+      if (!commitWizApplication()) return;
+      ui.wizStep = WIZ_PAY;
+      ui.tab = 'daftar';
+      toast('Tersimpan. Lanjut pilih bayar, atau lihat dulu.');
+    } else {
+      ui.wizStep = wizIdx() + 1;
+    }
+    render();
+  }
+  function backWiz() {
+    captureWizFields();
+    const i = wizIdx();
+    if (i <= 0) return;
+    ui.wizStep = i - 1;
+    render();
+  }
   function enrollmentsOf(id) {
     db.enrollments = db.enrollments || {};
     const raw = db.enrollments[id] || [];
@@ -1401,6 +1583,7 @@
       : (canMentoring(ui.personaId) ? 'mentoring' : (canPreview(ui.personaId) ? 'trial' : (billingOf(ui.personaId).products.length ? 'sku' : 'none')));
     $('app').classList.toggle('is-mentor', isStaff());
     $('app').classList.toggle('is-student', !isStaff());
+    $('app').classList.toggle('is-onboard', isOnboardScreen());
     $('school-name').textContent = SEED.school.name;
     const logo = $('school-logo');
     if (logo) {
@@ -1486,12 +1669,18 @@
       const tabs = studentTabs();
       const sku = ui.tab === 'sku' ? productById(ui.skuId) : null;
       const skuTab = ui.skuFrom || (sku && sku.group === 'alat' ? 'alat' : 'pustaka');
-      dock.hidden = false;
-      dock.className = 'dock cols-' + tabs.length;
-      dock.innerHTML = tabs.map((t) =>
-        '<button type="button" data-act="tab" data-id="' + t.id + '" aria-selected="' +
-        (t.id === ui.tab || (ui.tab === 'sku' && t.id === skuTab)) + '">' + esc(t.label) + '</button>'
-      ).join('');
+      if (isOnboardScreen()) {
+        dock.hidden = true;
+        dock.className = 'dock';
+        dock.innerHTML = '';
+      } else {
+        dock.hidden = false;
+        dock.className = 'dock cols-' + tabs.length;
+        dock.innerHTML = tabs.map((t) =>
+          '<button type="button" data-act="tab" data-id="' + t.id + '" aria-selected="' +
+          (t.id === ui.tab || (ui.tab === 'sku' && t.id === skuTab)) + '">' + esc(t.label) + '</button>'
+        ).join('');
+      }
     } else {
       dock.hidden = true;
       dock.className = 'dock';
@@ -1537,6 +1726,20 @@
     bindBlobMedia();
     bindKanbanDnD();
     bindKurDnD();
+    focusWiz();
+  }
+
+  function focusWiz() {
+    if (isStaff() || !isOnboardScreen()) return;
+    const el = document.querySelector('.ob-input[data-focus="1"]');
+    if (!el) return;
+    requestAnimationFrame(() => {
+      el.focus({ preventScroll: true });
+      if (typeof el.setSelectionRange === 'function') {
+        const n = (el.value || '').length;
+        try { el.setSelectionRange(n, n); } catch (err) { /* type=tel */ }
+      }
+    });
   }
 
   function normalizeMentorTab(tab) {
@@ -1616,51 +1819,73 @@
     return '<a class="btn" href="' + esc(p.lynk || SEED.school.lynk) + '" target="_blank" rel="noopener">Beli satuan</a>' + mentorLine +
       '<button class="btn secondary" data-act="contoh-sku" data-from="' + (extraClass || 'pustaka') + '" data-id="' + esc(p.id) + '">Lihat contoh</button>';
   }
+  function obChrome(step) {
+    const back = step > 0
+      ? '<button type="button" class="ob-back" data-act="wiz-back" aria-label="Kembali">‹</button>'
+      : '<span class="ob-back is-ghost" aria-hidden="true"></span>';
+    let segs = '';
+    for (let i = 0; i < WIZ_TOTAL; i += 1) {
+      segs += '<i' + (i <= step ? ' class="is-on"' : '') + '></i>';
+    }
+    return '<header class="ob-top">' + back +
+      '<div class="ob-segs" role="progressbar" aria-valuemin="1" aria-valuemax="' + WIZ_TOTAL +
+      '" aria-valuenow="' + (step + 1) + '" aria-label="Langkah ' + (step + 1) + ' dari ' + WIZ_TOTAL + '">' +
+      segs + '</div></header>';
+  }
+  function obWrap(step, inner, foot, pay) {
+    return '<section class="ob-flow' + (pay ? ' is-pay' : '') + '">' + obChrome(step) +
+      '<div class="ob-body">' + inner + '</div>' +
+      '<div class="ob-foot' + (pay ? ' is-end' : '') + '">' + foot + '</div></section>';
+  }
   function viewWizard() {
-    const sid = ui.personaId;
-    const s = student();
-    const step = wizardStep(sid);
-    const app = db.applications[sid] || {};
-    if (step === 'pay') return viewPayPage(sid);
-    const hasShop = app.hasShop === true;
-    const heard = app.heard || '';
-    const heardOther = (heard && HEARD_OPTS.indexOf(heard) < 0) ? heard : '';
-    const heardSel = heardOther ? 'Lainnya' : heard;
-    return '<section class="card onboard-page">' +
-      '<p class="muted">Dari grup WA · langkah 1 dari 2</p>' +
-      '<h2>Isi data dulu</h2>' +
-      '<p class="muted">Anton baca ini sebelum kelas. Bukan tes. Tidak ada “sisa kursi”.</p>' +
-      '<form class="compose" data-act="apply">' +
-        '<label class="muted">Nama</label>' +
-        '<input name="name" required maxlength="80" value="' + esc(app.name || (s.name.indexOf('Tamu') === 0 ? '' : s.name)) + '" placeholder="Nama lengkap">' +
-        '<label class="muted">WhatsApp</label>' +
-        '<input name="wa" required value="' + esc(app.wa || s.wa || '') + '" placeholder="08… atau 628…">' +
-        '<p class="muted" style="margin:8px 0 4px">Sudah punya toko belum?</p>' +
-        '<div class="onboard-choice" role="group" aria-label="Sudah punya toko">' +
-          '<label><input type="radio" name="hasShop" value="tidak" data-act="has-shop"' + (hasShop ? '' : ' checked') + '> Belum</label>' +
-          '<label><input type="radio" name="hasShop" value="ya" data-act="has-shop"' + (hasShop ? ' checked' : '') + '> Sudah</label>' +
+    const step = wizIdx();
+    if (step >= WIZ_PAY) return viewPayPage(ui.personaId);
+    if (wizardStep(ui.personaId) === 'pay' && (ui.wizStep == null)) return viewPayPage(ui.personaId);
+    return viewWizForm(step);
+  }
+  function viewWizForm(step) {
+    const spec = WIZ_FORM[step] || WIZ_FORM[0];
+    const d = wizDraft();
+    const last = step >= WIZ_FORM.length - 1;
+    let fields = '';
+    if (spec.id === 'name') {
+      fields = '<input class="ob-input" data-focus="1" name="name" maxlength="80" autocomplete="name" value="' +
+        esc(d.name) + '" placeholder="Nama kamu">';
+    } else if (spec.id === 'wa') {
+      fields = '<input class="ob-input" data-focus="1" name="wa" type="tel" inputmode="numeric" autocomplete="tel" value="' +
+        esc(d.wa) + '" placeholder="08… atau 628…">';
+    } else if (spec.id === 'shop') {
+      fields = '<div class="ob-pills" role="group" aria-label="Sudah punya toko">' +
+        '<button type="button" class="ob-pill' + (d.shopPick === 'tidak' ? ' is-on' : '') + '" data-act="wiz-shop" data-id="tidak">Belum, masih mau mulai</button>' +
+        '<button type="button" class="ob-pill' + (d.shopPick === 'ya' ? ' is-on' : '') + '" data-act="wiz-shop" data-id="ya">Sudah punya toko</button>' +
         '</div>' +
-        '<div id="shop-fields"' + (hasShop ? '' : ' hidden') + '>' +
-          '<label class="muted">Nama toko</label>' +
-          '<input name="shopName" maxlength="80" value="' + esc(app.shopName || s.shopName || '') + '" placeholder="Nama toko">' +
-          '<label class="muted">Tautan toko</label>' +
-          '<input name="shopUrl" value="' + esc(app.shopUrl || s.shopUrl || '') + '" placeholder="https://…">' +
-        '</div>' +
-        '<label class="muted">Kota apa</label>' +
-        '<input name="city" required maxlength="60" value="' + esc(app.city || (s.city === '—' ? '' : (s.city || ''))) + '" placeholder="Kota">' +
-        '<label class="muted">Dari mana tahu Anton</label>' +
-        '<select name="heard" required data-act="heard-from">' +
-          '<option value="" disabled' + (heardSel ? '' : ' selected') + '>Pilih satu</option>' +
-          HEARD_OPTS.map((opt) =>
-            '<option value="' + esc(opt) + '"' + (heardSel === opt ? ' selected' : '') + '>' + esc(opt) + '</option>'
-          ).join('') +
-        '</select>' +
-        '<div id="heard-other"' + (heardSel === 'Lainnya' || heardOther ? '' : ' hidden') + '>' +
-          '<label class="muted">Cerita singkat</label>' +
-          '<input name="heardOther" maxlength="120" value="' + esc(heardOther) + '" placeholder="Dari mana">' +
-        '</div>' +
-        '<button class="btn" type="submit">Lanjut</button>' +
-      '</form></section>';
+        (d.shopPick === 'ya'
+          ? '<div class="ob-extra">' +
+            '<input class="ob-input" data-focus="1" name="shopName" maxlength="80" value="' + esc(d.shopName) + '" placeholder="Nama toko">' +
+            '<input class="ob-input" name="shopUrl" inputmode="url" autocomplete="url" value="' + esc(d.shopUrl) + '" placeholder="https://…">' +
+            '</div>'
+          : '');
+    } else if (spec.id === 'city') {
+      fields = '<input class="ob-input" data-focus="1" name="city" maxlength="60" autocomplete="address-level2" value="' +
+        esc(d.city) + '" placeholder="Kota">';
+    } else {
+      fields = '<div class="ob-pills" role="group" aria-label="Dari mana kenal Anton">' +
+        HEARD_OPTS.map((opt) =>
+          '<button type="button" class="ob-pill' + (d.heardPick === opt ? ' is-on' : '') +
+          '" data-act="wiz-heard" data-id="' + esc(opt) + '">' + esc(opt) + '</button>'
+        ).join('') + '</div>' +
+        (d.heardPick === 'Lainnya'
+          ? '<input class="ob-input ob-extra" data-focus="1" name="heardOther" maxlength="120" value="' +
+            esc(d.heardOther) + '" placeholder="Dari mana, singkat saja">'
+          : '');
+    }
+    return obWrap(step,
+      '<p class="ob-kicker">' + esc(spec.kicker) + '</p>' +
+      '<h1 class="ob-q">' + esc(spec.q) + '</h1>' +
+      '<p class="ob-sub">' + spec.sub + '</p>' +
+      '<form id="ob-form" data-act="wiz-next">' + fields + '</form>',
+      '<button class="btn ob-cta" type="button" data-act="wiz-next">' + (last ? 'Lihat paket' : 'Lanjut') + '</button>'
+    );
   }
   function viewPayPage(sid) {
     const welcome = welcomeOpen(sid) || !billingOf(sid).offerExpiresAt;
@@ -1672,52 +1897,47 @@
     const list = listPriceForTerm(term);
     const tools = catalog().filter((p) => bundled(p));
     const toolPct = toolDiscountPct();
-    const include = '<div class="include-box">' +
-      '<h3>Yang masuk mentoring</h3>' +
-      '<ul class="include-list">' +
-        '<li>Kurikulum 12 video + lembar kerja</li>' +
-        '<li>Live class, diskusi kelas, Kolab</li>' +
-        '<li>Undangan grup WA dari Anton</li>' +
-        '<li><strong>−' + toolPct + '% semua alat</strong> di Perpustakaan (harga satuan dicoret, kamu bayar separuh)</li>' +
-        '<li>Laris Affiliate tetap harga satuan — tidak ikut paket</li>' +
-      '</ul>' +
-      '<div class="include-tools">' + tools.map((p) =>
-        '<div class="include-tool">' +
-          '<span>' + esc(p.title) + '</span>' +
-          '<span><span class="price-coret">' + fmtRp(p.price) + '</span> <strong>' + fmtRp(toolMemberPrice(p)) + '</strong></span>' +
-        '</div>'
-      ).join('') + '</div></div>';
-    return '<section class="card onboard-page">' +
-      '<p class="muted">Langkah 2 · Anton merchant. LarisID tidak menahan uang.</p>' +
-      '<h2>Bayar mentoring</h2>' +
+    const include = '<ul class="ob-checks">' +
+      '<li>Kurikulum 12 video + lembar kerja</li>' +
+      '<li>Live class, diskusi, Kolab</li>' +
+      '<li>Undangan grup WA dari Anton</li>' +
+      '<li><strong>−' + toolPct + '% semua alat</strong> di Perpustakaan</li>' +
+      '<li class="is-mute">Laris Affiliate tetap harga satuan</li></ul>' +
+      '<button type="button" class="ob-link" data-act="wiz-tools">' +
+      (ui.wizTools ? 'Sembunyikan harga alat' : 'Lihat harga alat −' + toolPct + '%') + '</button>' +
+      (ui.wizTools
+        ? '<div class="include-tools">' + tools.map((p) =>
+          '<div class="include-tool"><span>' + esc(p.title) + '</span>' +
+          '<span><span class="price-coret">' + fmtRp(p.price) + '</span> <strong>' + fmtRp(toolMemberPrice(p)) + '</strong></span></div>'
+        ).join('') + '</div>'
+        : '');
+    const inner = '<p class="ob-kicker">Paket</p>' +
+      '<h1 class="ob-q">Yang kamu dapat</h1>' +
+      '<p class="ob-sub">Bayar ke rekening Anton. LarisID tidak menahan uang. Tidak ada sisa kursi.</p>' +
       include +
-      (inWin
-        ? '<p>Harga perkenalan 24 jam (dari jam form) untuk 1 bulan &amp; autopay. Sisa <strong>' + esc(fmtRemain(exp)) + '</strong>. 3 bulan &amp; 6 bulan sudah ada diskon program, tidak ditumpuk.</p>'
-        : '<p class="muted">Jendela 24 jam sudah habis. Harga program di bawah. Tidak ada kelangkaan palsu.</p>') +
-      '<div class="pay-terms">' +
+      '<p class="ob-note">' + (inWin
+        ? 'Harga perkenalan 24 jam untuk 1 bulan &amp; autopay · sisa <strong>' + esc(fmtRemain(exp)) + '</strong>. 3 &amp; 6 bulan sudah diskon program, tidak ditumpuk.'
+        : 'Jendela 24 jam sudah habis. Harga program di bawah.') + '</p>' +
+      '<div class="pay-terms ob-terms">' +
         termCard('month', term, inWin && welcome) +
         termCard('quarter', term, false) +
         termCard('half', term, false) +
         termCard('autopay', term, inWin && welcome) +
       '</div>' +
-      '<div class="card pay-box" style="margin-top:12px">' +
-        '<h3>Transfer ke rekening Anton</h3>' +
-        '<p><strong>' + esc(db.bank.bank) + '</strong> ' + esc(db.bank.number) + '<br>' +
-        'a.n. ' + esc(db.bank.name) + '</p>' +
+      '<div class="ob-bank">' +
+        '<p><strong>' + esc(db.bank.bank) + '</strong> ' + esc(db.bank.number) + '<br>a.n. ' + esc(db.bank.name) + '</p>' +
         '<p class="muted">Jumlah sekarang: <strong>' + fmtRp(price) + '</strong>' +
         (price < list ? ' <span class="price-coret">' + fmtRp(list) + '</span>' : '') +
         ' · ' + esc(termLabel(term)) + '</p>' +
         '<p class="muted">Kartu autopay = mock Mayar. Prototype tidak menagih sungguhan.</p>' +
-        '<div class="row" style="margin-top:10px">' +
-          '<button class="btn" data-act="pay-now" data-term="' + esc(term) + '">' +
-          (term === 'autopay' ? 'Bayar kartu (mock)' : 'Saya sudah transfer') + '</button>' +
-        '</div>' +
-      '</div>' +
-      '<div class="pay-look">' +
-        '<button class="btn secondary" data-act="pay-later">Bayar nanti, lihat dulu</button>' +
-        '<p class="muted">Home kelihatan utuh. Hanya video 1 + lembar kerja yang kebuka. Tidak dipaksa bayar dulu.</p>' +
-        '<button type="button" class="btn-sm" data-act="not-interested">Tidak tertarik</button>' +
-      '</div></section>';
+      '</div>';
+    const foot =
+      '<button class="btn ob-cta" data-act="pay-now" data-term="' + esc(term) + '">' +
+      (term === 'autopay' ? 'Bayar kartu (mock)' : 'Saya sudah transfer') + '</button>' +
+      '<button type="button" class="btn secondary ob-cta" data-act="pay-later">Bayar nanti, lihat dulu</button>' +
+      '<p class="ob-look-hint">Home kelihatan utuh. Hanya video 1 + lembar kerja yang kebuka.</p>' +
+      '<button type="button" class="ob-text" data-act="not-interested">Tidak tertarik</button>';
+    return obWrap(WIZ_PAY, inner, foot, true);
   }
   function termCard(id, cur, welcome) {
     const list = listPriceForTerm(id);
@@ -1731,13 +1951,13 @@
       autopay: 'Autopay kartu / bulan'
     };
     const per = months > 1 ? Math.round(now / months) : now;
-    return '<button type="button" class="card tool-tile' + (cur === id ? ' current-term' : '') + '" data-act="pick-term" data-id="' + id + '">' +
-      '<h3>' + esc(titles[id] || id) + '</h3>' +
-      (disc ? '<p class="muted">−' + disc + '% dari ' + months + ' × bulanan</p>' : '<p class="muted">Harga list bulanan</p>') +
+    return '<button type="button" class="ob-term' + (cur === id ? ' is-on' : '') + '" data-act="pick-term" data-id="' + id + '">' +
+      '<span class="ob-term-title">' + esc(titles[id] || id) + '</span>' +
+      (disc ? '<span class="muted">−' + disc + '% dari ' + months + ' × bulanan</span>' : '<span class="muted">Harga list bulanan</span>') +
       (now < list
-        ? '<p class="sku-price"><span class="price-coret">' + fmtRp(list) + '</span> <strong>' + fmtRp(now) + '</strong></p>'
-        : '<p class="sku-price"><strong>' + fmtRp(now) + '</strong></p>') +
-      (months > 1 ? '<p class="muted">Setara ' + fmtRp(per) + ' / bulan</p>' : '') +
+        ? '<span class="sku-price"><span class="price-coret">' + fmtRp(list) + '</span> <strong>' + fmtRp(now) + '</strong></span>'
+        : '<span class="sku-price"><strong>' + fmtRp(now) + '</strong></span>') +
+      (months > 1 ? '<span class="muted">Setara ' + fmtRp(per) + ' / bulan</span>' : '') +
       '</button>';
   }
   function viewHome() {
@@ -3270,6 +3490,7 @@
     applyWorld(scene.world);
     save();
     applyCamera(ui.presentPane === 'mentor' ? scene.mentor : scene.student);
+    resetWizForPersona();
     render();
     clearTimeout(applyPresent._ready);
     applyPresent._ready = setTimeout(() => {
@@ -3293,6 +3514,10 @@
       ui.tab = 'home';
       ui.mentorTab = 'siswa';
       closeDrawer();
+      if (!isStaff()) {
+        ui.tab = needsWizard(ui.personaId) ? 'daftar' : 'home';
+        resetWizForPersona();
+      }
       render();
       return;
     }
@@ -3306,6 +3531,7 @@
       ui.payPrompt = false;
       ui.examAnswers = {};
       ui.tab = needsWizard(ui.personaId) ? 'daftar' : 'home';
+      resetWizForPersona();
       render();
       return;
     }
@@ -3669,10 +3895,26 @@
         act === 'lec-field' || act === 'lec-points' || act === 'q-field' || act === 'doc-name' || act === 'doc-url' ||
         act === 'cover-file' || act === 'res-file' || act === 'photo-file' || act === 'lec-body' || act === 'res-name' || act === 'res-url' ||
         act === 'person-field' || act === 'bill-amount' || act === 'sec-due' || act === 'kur-preview-person' ||
-        act === 'has-shop' || act === 'heard-from') {
+        act === 'has-shop' || act === 'heard-from' || act === 'apply') {
       return;
     }
-    if (act === 'tab') {
+    if (act === 'wiz-next') {
+      if (btn.matches('form')) return;
+      advanceWiz();
+    } else if (act === 'wiz-back') {
+      backWiz();
+    } else if (act === 'wiz-shop') {
+      captureWizFields();
+      wizMerge({ shopPick: btn.getAttribute('data-id') });
+      render();
+    } else if (act === 'wiz-heard') {
+      captureWizFields();
+      wizMerge({ heardPick: btn.getAttribute('data-id') });
+      render();
+    } else if (act === 'wiz-tools') {
+      ui.wizTools = !ui.wizTools;
+      render();
+    } else if (act === 'tab') {
       const id = btn.getAttribute('data-id');
       if (isStaff()) {
         ui.mentorTab = id;
@@ -4229,58 +4471,8 @@
       save();
       toast('Tautan Meet disimpan');
       render();
-    } else if (act === 'apply') {
-      const sid = ui.personaId;
-      const s = student();
-      const name = String(fd.get('name') || '').trim();
-      const wa = String(fd.get('wa') || '').trim();
-      const city = String(fd.get('city') || '').trim();
-      const hasShop = String(fd.get('hasShop') || '') === 'ya';
-      const shopName = String(fd.get('shopName') || '').trim();
-      const shopUrl = String(fd.get('shopUrl') || '').trim();
-      let heard = String(fd.get('heard') || '').trim();
-      if (heard === 'Lainnya') {
-        heard = String(fd.get('heardOther') || '').trim();
-        if (!heard) {
-          toast('Isi dari mana kamu tahu Anton.');
-          return;
-        }
-      }
-      if (!name || !wa || !city || !heard) {
-        toast('Isi nama, WA, kota, dan dari mana tahu Anton.');
-        return;
-      }
-      if (hasShop && (!shopName || !shopUrl)) {
-        toast('Nama toko dan tautan wajib kalau sudah punya toko.');
-        return;
-      }
-      db.applications[sid] = {
-        name: name,
-        wa: wa,
-        city: city,
-        hasShop: hasShop,
-        shopName: hasShop ? shopName : '',
-        shopUrl: hasShop ? shopUrl : '',
-        heard: heard,
-        at: isoNow()
-      };
-      patchPerson(sid, {
-        name: name,
-        wa: wa.replace(/\D/g, '') || s.wa,
-        city: city,
-        shopName: hasShop ? shopName : '',
-        shopUrl: hasShop ? shopUrl : ''
-      });
-      const b = billingOf(sid);
-      if (!b.offerStartedAt) {
-        b.offerStartedAt = isoNow();
-        b.offerExpiresAt = addMs(isoNow(), 24 * 36e5);
-      }
-      setStage(sid, 'form', 'Form masuk. Jam diskon 24 jam dimulai.');
-      save();
-      ui.tab = 'daftar';
-      toast('Tersimpan. Lanjut pilih bayar, atau lihat dulu.');
-      render();
+    } else if (act === 'apply' || act === 'wiz-next') {
+      advanceWiz();
     } else if (act === 'add-task') {
       const due = joinLocal(fd.get('date'), fd.get('time'));
       addTask(String(fd.get('personId')), String(fd.get('title')), String(fd.get('body') || ''), due, String(fd.get('kind') || 'wa'));
@@ -4366,6 +4558,7 @@
     ui.editLecId = null;
     ui.secFold = null;
     ui.skuFrom = 'pustaka';
+    resetWizForPersona();
     closeDrawer();
     render();
   });

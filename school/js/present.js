@@ -13,8 +13,8 @@
       id: 'a1-form',
       act: 1,
       title: 'Form dari grup WA',
-      sayAnton: 'Tamu baru isi nama, WA, toko (kalau ada), kota, dari mana tahu kamu. Belum ada uang.',
-      saySiswa: 'Tamu Demo isi form. Baru boleh lihat halaman bayar.',
+      sayAnton: 'Tamu baru isi satu pertanyaan per layar: nama, WA, toko, kota, dari mana. Belum ada uang.',
+      saySiswa: 'Tamu Demo kenalan dulu. Baru boleh lihat halaman bayar.',
       student: { personaId: 's-tamu', tab: 'daftar' },
       mentor: { tab: 'orang', personId: 's-tamu', hub: 'pipa' }
     },
