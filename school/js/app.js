@@ -279,7 +279,7 @@
   function save() {
     const copy = { ...db, kolab: db.kolab };
     localStorage.setItem(KEY, JSON.stringify(copy));
-    if (ui.presentApplying) return;
+    if (ui.presentApplying || ui.reloading) return;
     if (BUS) BUS.postMessage({ type: 'db' });
     if (ui.present && ui.presentReady && parent !== window) {
       parent.postMessage({ source: 'anton-school', type: 'live' }, location.origin);
@@ -300,16 +300,11 @@
   }
   function people() {
     db.people = db.people || {};
-    return SEED.students.map((s) => {
-      if (db.people[s.id]) Object.assign(s, db.people[s.id]);
-      return s;
-    });
+    return SEED.students.map((s) => Object.assign({}, s, db.people[s.id] || {}));
   }
   function patchPerson(id, fields) {
     db.people = db.people || {};
     db.people[id] = Object.assign({}, db.people[id] || {}, fields);
-    const s = SEED.students.find((x) => x.id === id);
-    if (s) Object.assign(s, db.people[id]);
   }
   function student() {
     return people().find((s) => s.id === ui.personaId) || people()[0];
@@ -610,6 +605,7 @@
   function resetWizForPersona() {
     ui.wizDraft = null;
     ui.wizTools = false;
+    ui.wizFocusedStep = null;
     ui.wizStep = db.applications[ui.personaId] ? WIZ_PAY : 0;
   }
   function wizIdx() {
@@ -927,6 +923,14 @@
     pushTimeline(id, 'offer', 'Trial: video 1 + lembar kerja. Jam diskon sampai ' + fmtWhen(b.offerExpiresAt));
   }
   function runAutomations() {
+    const before = JSON.stringify({
+      crm: db.crm,
+      billing: db.billing,
+      tasks: db.tasks,
+      waQueue: db.waQueue,
+      emailQueue: db.emailQueue,
+      timeline: db.timeline
+    });
     people().forEach((s) => {
       const b = billingOf(s.id);
       const c = crmOf(s.id);
@@ -1001,7 +1005,15 @@
       }
     });
     runEnrolledPlans();
-    save();
+    const after = JSON.stringify({
+      crm: db.crm,
+      billing: db.billing,
+      tasks: db.tasks,
+      waQueue: db.waQueue,
+      emailQueue: db.emailQueue,
+      timeline: db.timeline
+    });
+    if (before !== after) save();
   }
 
   function parseEmbed(url) {
@@ -1596,12 +1608,25 @@
       '<option value="student">Siswa</option>' +
       '<option value="owner">Mentor (Anton)</option>' +
       '<option value="asisten">Asisten (Lia)</option>';
+    ui.chromeSync = true;
     $('role-switch').value = ui.role;
     const pers = $('persona-switch');
-    pers.innerHTML = people().map((s) =>
-      '<option value="' + esc(s.id) + '">' + esc(s.name) + (s.kind === 'mentor' ? ' · mentor' : '') + '</option>').join('');
+    const wantOpts = people().map((s) => {
+      const seed = SEED.students.find((x) => x.id === s.id);
+      const label = (s.id === 's-tamu' && seed)
+        ? seed.name
+        : (s.name + (s.kind === 'mentor' ? ' · mentor' : ''));
+      return { id: s.id, label: label };
+    });
+    const curOpts = Array.from(pers.options).map((o) => o.value + '\0' + o.textContent).join('|');
+    const nextOpts = wantOpts.map((o) => o.id + '\0' + o.label).join('|');
+    if (curOpts !== nextOpts) {
+      pers.innerHTML = wantOpts.map((o) =>
+        '<option value="' + esc(o.id) + '">' + esc(o.label) + '</option>').join('');
+    }
     pers.value = ui.personaId;
     pers.hidden = isStaff();
+    ui.chromeSync = false;
     const clock = $('clock-bar');
     if (clock) {
       clock.hidden = !isStaff();
@@ -1731,9 +1756,16 @@
 
   function focusWiz() {
     if (isStaff() || !isOnboardScreen()) return;
+    const step = wizIdx();
+    if (ui.wizFocusedStep === step) return;
     const el = document.querySelector('.ob-input[data-focus="1"]');
-    if (!el) return;
+    if (!el) {
+      ui.wizFocusedStep = step;
+      return;
+    }
+    ui.wizFocusedStep = step;
     requestAnimationFrame(() => {
+      if (ui.wizFocusedStep !== step) return;
       el.focus({ preventScroll: true });
       if (typeof el.setSelectionRange === 'function') {
         const n = (el.value || '').length;
@@ -3499,9 +3531,14 @@
     }, 250);
   }
   function reloadDb() {
-    if (ui.presentApplying) return;
+    if (ui.presentApplying || ui.reloading) return;
+    ui.reloading = true;
     db = load();
-    render();
+    try {
+      render();
+    } finally {
+      ui.reloading = false;
+    }
   }
   window.__antonSchool = { applyPresent: applyPresent, reloadDb: reloadDb };
 
@@ -3509,7 +3546,7 @@
   document.addEventListener('change', (e) => {
     const t = e.target;
     if (t.id === 'role-switch') {
-      if (ui.present) return;
+      if (ui.present || ui.chromeSync) return;
       ui.role = t.value;
       ui.tab = 'home';
       ui.mentorTab = 'siswa';
@@ -3522,7 +3559,7 @@
       return;
     }
     if (t.id === 'persona-switch') {
-      if (ui.present) return;
+      if (ui.present || ui.chromeSync) return;
       ui.personaId = t.value;
       ui.lectureId = db.lastLecture[ui.personaId] || firstLectureId();
       ui.kolabSel = new Set();
