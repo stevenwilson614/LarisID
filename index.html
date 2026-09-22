@@ -11,7 +11,7 @@
   gtag('config', 'AW-862519971');
 </script>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=overlays-content">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=overlays-content">
 <script>
 (function () {
   try {
@@ -159,6 +159,12 @@
 }
 </script>
 <meta name="theme-color" content="#212121">
+<meta name="color-scheme" content="light">
+<meta name="format-detection" content="telephone=no, email=no, address=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LarisID">
 <!-- 48px for the tab, 180px for iOS. This used to point a 512x512 PNG (137KB)
      at a 16px slot, fetched at high priority on every page load. -->
 <link rel="icon" type="image/png" sizes="48x48" href="/images/brand/appicon-bird-48.png">
@@ -260,14 +266,26 @@
   --emas-hi: #B07E33;
 }
 *, *::before, *::after { box-sizing: border-box; }
-html, body { height: 100%; margin: 0; max-width: 100%; overscroll-behavior-x: none; }
-html { overflow-x: hidden; }
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overflow: hidden;
+}
+html, body {
+  height: 100%;
+  height: 100dvh;
+  margin: 0;
+  max-width: 100%;
+  overscroll-behavior: none;
+  touch-action: pan-x pan-y;
+}
 body {
   font-family: var(--font);
   color: var(--ink);
   background: var(--bg);
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
 }
 button, input, textarea { font: inherit; }
 button { cursor: pointer; border: none; background: none; color: inherit; }
@@ -293,7 +311,15 @@ html.session-restoring body::after {
   50% { opacity: 1; }
 }
 
-.app { display: flex; height: 100%; width: 100%; overflow-x: hidden; }
+.app {
+  display: flex;
+  height: 100%;
+  height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: pan-x pan-y;
+}
 
 /* Sidebar — Gemini/ChatGPT quiet rail */
 .sidebar {
@@ -301,6 +327,7 @@ html.session-restoring body::after {
   background: var(--bg-side);
   display: flex; flex-direction: column;
   padding: 12px 10px;
+  padding-top: max(12px, env(safe-area-inset-top, 0px));
   z-index: 20;
   transition: transform .28s var(--ease);
   /* Let Riwayat keep a usable height; overflow the rail if nav+foot still
@@ -309,6 +336,9 @@ html.session-restoring body::after {
   overflow-y: auto;
   min-height: 0;
 }
+/* Desktop: children stay sidebar flex items (rail hover, mentor ~ siblings).
+   Mobile overrides this to a scrollable top zone. */
+.sidebar-nav { display: contents; }
 .sidebar-brand {
   display: flex; align-items: flex-end; gap: 6px;
   padding: 12px 12px 16px;
@@ -364,14 +394,19 @@ a.side-btn { text-decoration: none; box-sizing: border-box; color: var(--ink); }
 .side-section {
   margin-top: 10px; padding-top: 8px;
   flex: 1; min-height: 0; display: flex; flex-direction: column;
+  /* Contain chat-list so a tall Riwayat cannot paint over lokasi / foot. */
+  overflow: hidden;
 }
 .side-label {
   font-size: .7rem; font-weight: 500;
   color: var(--muted);
   padding: 4px 12px 8px;
+  flex-shrink: 0;
 }
 .chat-list {
-  overflow-y: auto; flex: 1; min-height: 140px;
+  /* Default 0 so mobile can shrink Riwayat instead of covering Tentang/Admin.
+     Short-desktop media query below restores a usable 140px floor. */
+  overflow-y: auto; flex: 1; min-height: 0;
   display: flex; flex-direction: column; gap: 1px;
 }
 .chat-row {
@@ -431,6 +466,7 @@ a.side-btn { text-decoration: none; box-sizing: border-box; color: var(--ink); }
 .sidebar-foot {
   padding-top: 8px;
   display: flex; flex-direction: column; gap: 2px;
+  flex-shrink: 0;
 }
 /* Tentang accordion: tall desktop keeps Harga / FAQ / Tentang flat;
    mobile + short viewports collapse them so Riwayat stays scrollable. */
@@ -460,13 +496,16 @@ a.side-btn { text-decoration: none; box-sizing: border-box; color: var(--ink); }
 /* Main */
 .main {
   flex: 1; min-width: 0; display: flex; flex-direction: column;
-  position: relative; background: var(--bg); min-height: 0; overflow-x: hidden;
+  position: relative; background: var(--bg); min-height: 0; overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: pan-x pan-y;
 }
 .main-top {
   flex-shrink: 0;
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px;
   padding: 10px 18px 8px;
+  padding-top: max(10px, env(safe-area-inset-top, 0px));
   min-height: 52px;
   z-index: 5;
 }
@@ -871,6 +910,7 @@ body.view-directory .panel {
   padding: 8px 20px calc(var(--composer-h) + 28px);
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  touch-action: pan-x pan-y;
 }
 .panel-inner {
   max-width: 720px; margin: 0 auto;
@@ -3478,7 +3518,7 @@ body.view-harga .panel-inner { max-width: 1180px; }
 /* Composer — floating pill like Gemini */
 .composer-dock {
   position: absolute; left: 0; right: 0; bottom: 0;
-  padding: 8px 16px 10px;
+  padding: 8px 16px max(10px, env(safe-area-inset-bottom, 0px));
   background: linear-gradient(180deg, transparent, var(--bg) 36%);
   z-index: 10;
 }
@@ -4079,11 +4119,14 @@ body.ddtp-open #btn-tracker svg .ic-f { fill: var(--accent); stroke: none; }
   .menu-btn { display: grid; }
   .topbar-mobile-brand { display: flex; }
   #beta-badge-mobile { display: inline-flex; }
-  .main-top { padding: 8px 12px; }
-  /* Keep focused controls ≥16px so iOS Safari does not auto-zoom */
-  .composer textarea,
-  .field input,
-  .dir-filters select { font-size: 16px; }
+  .main-top {
+    padding: 8px 12px;
+    padding-top: max(8px, env(safe-area-inset-top, 0px));
+  }
+  /* Keep focused controls ≥16px so iOS Safari does not auto-zoom the app. */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+  select,
+  textarea { font-size: 16px !important; }
   /* Mobile: one Tentang row; expand to reveal meta pages. */
   .side-about-toggle { display: flex; }
   .side-about:not(.open) .side-about-menu { display: none; }
@@ -4091,6 +4134,41 @@ body.ddtp-open #btn-tracker svg .ic-f { fill: var(--accent); stroke: none; }
   .side-about.open .side-about-toggle,
   .side-about-toggle.is-child-active { background: #fff; box-shadow: 0 0 0 1px var(--line); }
   .side-about-menu .side-btn { padding-left: 22px; }
+  /* Three zones so Riwayat is visible AND cannot paint over Tentang/Admin:
+     1) top nav scrolls if it is taller than leftover space
+     2) Riwayat keeps a reserved slot and scrolls inside it
+     3) lokasi + foot stay pinned */
+  .sidebar { overflow: hidden; }
+  .sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+  .side-section {
+    flex: 0 0 auto;
+    height: min(30vh, 200px);
+    min-height: 120px;
+    overflow: hidden;
+  }
+  .chat-list { min-height: 0; }
+  .side-loc-card,
+  .sidebar-foot { flex-shrink: 0; }
+  .sidebar-foot {
+    position: static;
+    background: var(--bg-side);
+    padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  }
+  /* Crawlable but off-screen — same intent as the footer comment. */
+  .side-links {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
 }
 
 /* Short laptop: same accordion as mobile so Riwayat isn't crushed to ~50px
@@ -4104,6 +4182,8 @@ body.ddtp-open #btn-tracker svg .ic-f { fill: var(--accent); stroke: none; }
   .side-about-menu .side-btn { padding-left: 22px; }
   /* Links still live in the main footer; hide here to free ~75px. */
   .side-links { display: none; }
+  /* Desktop-only floor: mobile must stay at min-height:0 or Riwayat covers foot. */
+  .chat-list { min-height: 140px; }
 }
 
 /* ── Narrow-desktop rail (861–1279px) ───────────────────────────────────────
@@ -4558,6 +4638,7 @@ body.home-finder-done .home-hero {
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+    touch-action: pan-y;
     padding-bottom: 8px;
     display: flex;
     flex-direction: column;
@@ -7062,6 +7143,7 @@ body.thread-wide .composer-chips { max-width: 1080px; }
   margin: 8px 0 6px; padding: 12px;
   border: 1px solid var(--line); border-radius: 14px; background: #fff;
   transition: background .12s;
+  flex-shrink: 0;
 }
 .side-loc-card:hover { background: var(--bg-hover); }
 /* .side-loc-card svg is covered by the .side-btn svg rule above. */
@@ -7667,8 +7749,10 @@ body.mentor-shell .side-seller-menu .side-btn { padding-left: 22px; }
 body.mentor-shell #btn-cohort,
 body.mentor-shell #btn-set-lokasi,
 body.mentor-shell .sidebar > .side-section { display: none !important; }
-body.mentor-shell .side-seller.open ~ #btn-set-lokasi { display: flex !important; }
-body.mentor-shell .side-seller.open ~ .side-section { display: flex !important; }
+body.mentor-shell .side-seller.open ~ #btn-set-lokasi,
+body.mentor-shell .sidebar-nav:has(.side-seller.open) ~ #btn-set-lokasi { display: flex !important; }
+body.mentor-shell .side-seller.open ~ .side-section,
+body.mentor-shell .sidebar-nav:has(.side-seller.open) ~ .side-section { display: flex !important; }
 
 /* Role menu. Same chrome as .adm-filter-pop, the site's existing popover. */
 .viewas { position: relative; display: inline-flex; }
@@ -8009,6 +8093,7 @@ body.view-chat .sfb-card {
 </div>
 <div class="app">
   <aside class="sidebar" id="sidebar">
+    <div class="sidebar-nav">
     <a class="sidebar-brand" href="/" id="btn-home" title="Beranda LarisID">
       <img class="brand-lockup" src="/images/brand/logo-horizontal-red.webp" alt="LARIS" height="36">
       <img class="brand-mark" src="/images/brand/appicon-bird-48.png" alt="" width="28" height="28" decoding="async">
@@ -8065,6 +8150,7 @@ body.view-chat .sfb-card {
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8.6" cy="7.4" r="3.2"/><path d="M2.6 20.4v-1.2a4.8 4.8 0 0 1 4.8-4.8h2.4a4.8 4.8 0 0 1 4.8 4.8v1.2"/><path class="ic-a" d="M16.6 11.2 19.2 8.6l2.6 2.6"/><path class="ic-a" d="M19.2 9v6.4"/></svg>
       <span class="side-btn-label">Kohort</span>
     </button>
+    </div>
     <div class="side-section">
       <div class="side-label">Riwayat</div>
       <div class="chat-search" id="chat-search" role="search">
@@ -10639,7 +10725,7 @@ body.view-chat .sfb-card {
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260916d" defer></script>
 <script src="/js/gpt-alat-preview.js?v=20260919ai" defer></script>
-<script src="/js/gpt-app.js?v=20260919ah" defer></script>
+<script src="/js/gpt-app.js?v=20260920a" defer></script>
 <style>
 .hl-hero-ctas-alat { display: none; }
 html.alat-preview #finder-xp-step { display: none; }

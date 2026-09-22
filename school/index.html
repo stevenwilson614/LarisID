@@ -2,24 +2,43 @@
 <html lang="id" data-mode="student">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
   <meta name="robots" content="noindex, nofollow">
-  <title>Sekolah Anton — prototype offline</title>
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#18181b">
+  <meta name="format-detection" content="telephone=no, email=no, address=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Anton">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./assets/obrolan/profile.png">
+  <title>MasterMind with Anton GC — prototype offline</title>
   <link rel="stylesheet" href="/fonts/laris-fonts.css">
-  <link rel="stylesheet" href="./css/school.css?v=20260918p">
+  <link rel="stylesheet" href="./css/school.css?v=20260920ao">
 </head>
 <body>
   <div id="prod-block" hidden>
     <p>Prototype localhost. Tidak untuk larisid.com.</p>
+  </div>
+  <div id="slug-miss" class="slug-miss" hidden>
+    <p>Sekolah <strong data-asked></strong> tidak ada di prototype ini.</p>
+    <p class="muted">Demo Anton: <a href="/s/obrolan.marketing"><span data-known>obrolan.marketing</span></a></p>
   </div>
   <div id="app" class="is-student">
     <header class="topbar">
       <div class="brand">
         <img id="school-logo" src="./assets/obrolan/profile.png" alt="" width="32" height="32">
         <div>
-          <strong id="school-name">Sekolah Anton</strong>
-          <span class="off-badge">Offline · jangan deploy</span>
+          <strong id="school-name">MasterMind with Anton GC</strong>
+          <a id="school-handle" class="school-handle" href="/s/obrolan.marketing">obrolan.marketing</a>
+          <span class="off-badge">/s/obrolan.marketing</span>
         </div>
+      </div>
+      <div class="topbar-search" id="topbar-search" hidden>
+        <label class="sr-only" for="cari-siswa">Cari siswa</label>
+        <input type="search" id="cari-siswa" placeholder="Cari siswa…" data-act="cari-siswa" autocomplete="off" enterkeyhint="search">
+        <div id="cari-siswa-drop" class="cari-drop" hidden></div>
       </div>
       <div class="topbar-actions">
         <label class="sr-only" for="role-switch">Peran</label>
@@ -39,7 +58,7 @@
   <aside id="drawer" class="drawer" hidden></aside>
   <div id="drawer-scrim" class="scrim" hidden></div>
   <div id="toast" class="toast" hidden></div>
-  <script src="./js/seed.js?v=20260918p"></script>
-  <script src="./js/app.js?v=20260918p"></script>
+  <script src="./js/seed.js?v=20260920ao"></script>
+  <script src="./js/app.js?v=20260920ao"></script>
 </body>
 </html>

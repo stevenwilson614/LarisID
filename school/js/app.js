@@ -1,4 +1,4 @@
-/* Sekolah Anton localhost prototype. No live WhatsApp, TikTok, Mayar, or Contabo. */
+/* MasterMind with Anton GC localhost prototype. No live WhatsApp, TikTok, Mayar, or Contabo. */
 (function () {
   const SEED = window.ANTON_SEED;
   const KEY = 'anton-school-v3';
@@ -12,10 +12,82 @@
   const ALL_SKUS = () => (SEED.catalog || []).map((p) => p.id);
   const MENTOR_SKUS = () => (SEED.catalog || []).filter((p) => p.includedInMentoring !== false).map((p) => p.id);
 
+  /* Vanity LMS URLs: larisid.com/s/{slug} — mentors reuse lynk handles (dots ok). */
+  const SLUG_RESERVED = {
+    s: 1, school: 1, sekolah: 1, api: 1, admin: 1, www: 1, app: 1,
+    harga: 1, tentang: 1, 'cara-kerja': 1, perbandingan: 1, fonts: 1,
+    assets: 1, js: 1, css: 1, static: 1, invite: 1, join: 1
+  };
+  function normalizeSlug(s) {
+    return String(s == null ? '' : s).trim().toLowerCase();
+  }
+  function isValidSlug(s) {
+    const slug = normalizeSlug(s);
+    if (!slug || slug.length > 64) return false;
+    if (SLUG_RESERVED[slug]) return false;
+    if (slug.indexOf('..') >= 0) return false;
+    return /^[a-z0-9]([a-z0-9._-]{0,62}[a-z0-9])?$/.test(slug);
+  }
+  function pathSlug() {
+    const m = location.pathname.match(/^\/s\/([^/]+)\/?$/i);
+    return m ? normalizeSlug(decodeURIComponent(m[1])) : '';
+  }
+  function qsSlug() {
+    return normalizeSlug(PRESENT_QS.get('s') || PRESENT_QS.get('school') || '');
+  }
+  function schoolSlug() {
+    return normalizeSlug((typeof db !== 'undefined' && db && db.schoolSlug) || SEED.school.slug);
+  }
+  function schoolInviteCode() {
+    const fromDb = (typeof db !== 'undefined' && db && db.inviteCode) ? db.inviteCode : '';
+    return String(fromDb || (SEED.cohort && SEED.cohort.invite) || '').trim();
+  }
+  function schoolPublicPath() {
+    return '/s/' + schoolSlug();
+  }
+  /** Canonical share URL (production host even on localhost demos). */
+  function schoolPublicUrl() {
+    return 'https://larisid.com' + schoolPublicPath();
+  }
+  function schoolLocalUrl() {
+    return location.origin + schoolPublicPath();
+  }
+  function schoolJoinUrl() {
+    const code = schoolInviteCode();
+    return schoolPublicUrl() + (code ? ('?invite=' + encodeURIComponent(code)) : '');
+  }
+  function schoolJoinLocalUrl() {
+    const code = schoolInviteCode();
+    return schoolLocalUrl() + (code ? ('?invite=' + encodeURIComponent(code)) : '');
+  }
+  function resolveVanitySlug() {
+    const asked = pathSlug() || qsSlug();
+    if (!asked) return true;
+    const known = schoolSlug();
+    if (asked === known) return true;
+    const miss = $('slug-miss');
+    if (miss) {
+      miss.hidden = false;
+      const askedEl = miss.querySelector('[data-asked]');
+      const knownEl = miss.querySelector('[data-known]');
+      const link = miss.querySelector('a');
+      if (askedEl) askedEl.textContent = asked;
+      if (knownEl) knownEl.textContent = known;
+      if (link) link.href = '/s/' + encodeURIComponent(known);
+    }
+    const app = $('app');
+    if (app) app.hidden = true;
+    return false;
+  }
+
   if (/larisid\.com$/i.test(location.hostname) || location.hostname.endsWith('.pages.dev')) {
     $('prod-block').hidden = false;
     $('app').hidden = true;
     return;
+  }
+
+  if (PRESENT_QS.get('invite')) {
+    try { sessionStorage.setItem('anton-school-invite', String(PRESENT_QS.get('invite'))); } catch (err) { /* private */ }
   }
 
   function esc(s) {
@@ -102,6 +174,17 @@
       if (!l.resources) l.resources = [];
       if (l.body == null) l.body = l.body || '';
       if (l.coverBlob == null) l.coverBlob = false;
+      const seed = (SEED.lectures || []).find((x) => x.id === l.id);
+      if (!seed) return;
+      if (!l.coverUrl && seed.coverUrl) l.coverUrl = seed.coverUrl;
+      if (l.id === 'v1') {
+        if (seed.coverUrl) l.coverUrl = seed.coverUrl;
+        if (seed.body) l.body = seed.body;
+        if (seed.resources && seed.resources.length) l.resources = JSON.parse(JSON.stringify(seed.resources));
+        if (seed.questions && seed.questions.length) l.questions = JSON.parse(JSON.stringify(seed.questions));
+        if (seed.points && seed.points.length) l.points = JSON.parse(JSON.stringify(seed.points));
+        if (seed.title) l.title = seed.title;
+      }
     });
   }
 
@@ -115,7 +198,179 @@
     }[st] || st;
   }
 
+  const DAFTAR_COL_DEFS = [
+    { id: 'name', label: 'Nama', locked: true },
+    { id: 'phone', label: 'Telepon' },
+    { id: 'email', label: 'Email' },
+    { id: 'tiktok', label: 'TikTok' },
+    { id: 'city', label: 'Kota' },
+    { id: 'stage', label: 'Stage' },
+    { id: 'bayar', label: 'Bayar' },
+    { id: 'nilai', label: 'Nilai' },
+    { id: 'tags', label: 'Tags' },
+    { id: 'toko', label: 'Toko' },
+    { id: 'sumber', label: 'Sumber' },
+    { id: 'progres', label: 'Progres' },
+    { id: 'upline', label: 'Assigned' },
+    { id: 'aktif', label: 'Aktif terakhir' }
+  ];
+  const DAFTAR_DEFAULT_COLS = ['name', 'phone', 'email', 'stage', 'bayar', 'nilai'];
+
+  function defaultDaftarCols() {
+    return DAFTAR_DEFAULT_COLS.slice();
+  }
+  function daftarCustomList(store) {
+    const src = store || db;
+    return Array.isArray(src.daftarCustom) ? src.daftarCustom.filter((c) => c && c.id && c.label) : [];
+  }
+  function daftarColDef(id, store) {
+    const built = DAFTAR_COL_DEFS.find((c) => c.id === id);
+    if (built) return built;
+    const custom = daftarCustomList(store).find((c) => c.id === id);
+    return custom ? { id: custom.id, label: custom.label, custom: true } : null;
+  }
+  function hydrateDaftarCols(merged) {
+    merged.daftarCustom = Array.isArray(merged.daftarCustom)
+      ? merged.daftarCustom.filter((c) => c && c.id && String(c.label || '').trim()).map((c) => ({
+          id: String(c.id),
+          label: String(c.label).trim().slice(0, 40)
+        }))
+      : [];
+    const known = new Set(DAFTAR_COL_DEFS.map((c) => c.id).concat(merged.daftarCustom.map((c) => c.id)));
+    let cols = Array.isArray(merged.daftarCols) ? merged.daftarCols.filter((id) => known.has(id)) : [];
+    if (!cols.length || cols.indexOf('name') < 0) cols = defaultDaftarCols();
+    if (cols[0] !== 'name') cols = ['name'].concat(cols.filter((id) => id !== 'name'));
+    merged.daftarCols = cols;
+  }
+  function daftarCols() {
+    hydrateDaftarCols(db);
+    return db.daftarCols.slice();
+  }
+  function personCustomVal(sid, colId) {
+    const p = (db.people && db.people[sid]) || {};
+    const fields = p.fields || {};
+    return fields[colId] != null ? String(fields[colId]) : '';
+  }
+  function setPersonCustomVal(sid, colId, val) {
+    db.people = db.people || {};
+    const cur = Object.assign({}, db.people[sid] || {});
+    cur.fields = Object.assign({}, cur.fields || {});
+    cur.fields[colId] = String(val || '').trim();
+    db.people[sid] = cur;
+  }
+  function daftarCellHtml(colId, s) {
+    const b = billingOf(s.id);
+    const c = crmOf(s.id);
+    const app = db.applications[s.id];
+    const def = daftarColDef(colId);
+    if (!def) return '<span class="muted">—</span>';
+    if (def.custom) {
+      return '<input class="inline-edit daftar-custom-in" data-act="daftar-custom-val" data-id="' + esc(s.id) +
+        '" data-col="' + esc(colId) + '" value="' + esc(personCustomVal(s.id, colId)) + '" placeholder="—">';
+    }
+    if (colId === 'name') {
+      const tags = (s.tags || []).slice(0, 2);
+      return '<button type="button" class="linkish roster-name" data-act="open-student" data-id="' + esc(s.id) + '">' +
+        avatarHtml(s, 'avatar sm') + '<span>' + esc(s.name) +
+        '<div class="muted">' + esc(s.city || '—') +
+        (tags.length ? ' · ' + tags.map((t) => esc(t)).join(', ') : '') +
+        '</div></span></button>';
+    }
+    if (colId === 'phone') {
+      return s.wa
+        ? '<a class="fub-cell-link" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari MasterMind with Anton GC.')) +
+          '" target="_blank" rel="noopener">' + esc(fmtPhone(s.wa)) + '</a>'
+        : '<span class="muted">—</span>';
+    }
+    if (colId === 'email') {
+      return s.email
+        ? '<a class="fub-cell-link" href="' + esc(mailLink(s.email, 'MasterMind with Anton GC', 'Halo ' + s.name)) + '">' +
+          esc(s.email) + '</a>'
+        : '<span class="muted">—</span>';
+    }
+    if (colId === 'tiktok') {
+      const handle = tiktokHandle(s.tiktok);
+      return handle
+        ? '<a class="fub-cell-link" href="' + esc(tiktokUrl(handle)) + '" target="_blank" rel="noopener">@' + esc(handle) + '</a>'
+        : '<span class="muted">—</span>';
+    }
+    if (colId === 'city') return esc(s.city || '—');
+    if (colId === 'stage') return esc(stageLabel(c.stage));
+    if (colId === 'bayar') return canBill() ? billStatusSelect(s.id, b) : payChip(b.status);
+    if (colId === 'nilai') {
+      return canBill()
+        ? billAmountInput(s.id, b)
+        : (b.amount ? '<span class="money">' + esc(fmtRp(b.amount)) + '</span>' : '<span class="muted">—</span>');
+    }
+    if (colId === 'tags') {
+      const tags = s.tags || [];
+      return tags.length
+        ? tags.slice(0, 4).map((t) => '<span class="tag-chip">' + esc(t) + '</span>').join('')
+        : '<span class="muted">—</span>';
+    }
+    if (colId === 'toko') {
+      const name = s.shopName || (app && app.shopName) || '';
+      return name ? esc(name) : '<span class="muted">—</span>';
+    }
+    if (colId === 'sumber') {
+      return esc((app && app.heard) || b.source || '—');
+    }
+    if (colId === 'progres') {
+      const p = kurProgress(s.id);
+      return '<span title="' + p.n + '/' + p.total + '">' + p.pct + '%</span>';
+    }
+    if (colId === 'upline') return esc(s.mentorId ? nameOf(s.mentorId) : 'Anton');
+    if (colId === 'aktif') return esc(relWhen(s.lastActive) || '—');
+    return '<span class="muted">—</span>';
+  }
+  function daftarColsPanelHtml() {
+    const cols = daftarCols();
+    const custom = daftarCustomList();
+    const on = new Set(cols);
+    const item = (def, opts) => {
+      opts = opts || {};
+      const checked = on.has(def.id);
+      const i = cols.indexOf(def.id);
+      return '<div class="cols-dd-item' + (def.locked ? ' is-locked' : '') + (opts.custom ? ' is-custom' : '') + '">' +
+        '<label class="cols-dd-check">' +
+          '<input type="checkbox" data-act="daftar-col-toggle" data-id="' + esc(def.id) + '"' +
+            (checked ? ' checked' : '') + (def.locked ? ' disabled' : '') + '>' +
+          '<span>' + esc(def.label) +
+            (def.locked ? ' <em class="muted">wajib</em>' : '') +
+            (opts.custom ? ' <em class="muted">kustom</em>' : '') +
+          '</span>' +
+        '</label>' +
+        (opts.custom || (checked && !def.locked)
+          ? '<span class="cols-dd-actions">' +
+              (checked && !def.locked
+                ? '<button type="button" class="cols-dd-ico" data-act="daftar-col-up" data-id="' + esc(def.id) + '"' +
+                    (i <= 1 ? ' disabled' : '') + ' title="Naik">↑</button>' +
+                  '<button type="button" class="cols-dd-ico" data-act="daftar-col-down" data-id="' + esc(def.id) + '"' +
+                    (i < 0 || i >= cols.length - 1 ? ' disabled' : '') + ' title="Turun">↓</button>'
+                : '') +
+              (opts.custom
+                ? '<button type="button" class="cols-dd-ico" data-act="daftar-col-del" data-id="' + esc(def.id) + '" title="Hapus">×</button>'
+                : '') +
+            '</span>'
+          : '') +
+      '</div>';
+    };
+    const builtins = DAFTAR_COL_DEFS.map((def) => item(def)).join('');
+    const customs = custom.map((def) => item(def, { custom: true })).join('');
+    return '<div class="cols-dd" id="daftar-cols-dd" role="menu">' +
+      '<div class="cols-dd-title">Tampilkan kolom</div>' +
+      '<div class="cols-dd-scroll">' + builtins + (customs ? '<div class="cols-dd-sep"></div>' + customs : '') + '</div>' +
+      '<form class="cols-dd-add" data-act="daftar-col-add">' +
+        '<input name="label" required maxlength="40" placeholder="Kolom kustom baru…">' +
+        '<button class="btn-sm" type="submit">+</button>' +
+      '</form>' +
+      '<button type="button" class="cols-dd-reset" data-act="daftar-cols-reset">Reset default</button>' +
+    '</div>';
+  }
+
   function hydrateFunnel(merged) {
+    merged.schoolSlug = isValidSlug(merged.schoolSlug) ? normalizeSlug(merged.schoolSlug) : SEED.school.slug;
+    merged.inviteCode = String(merged.inviteCode || (SEED.cohort && SEED.cohort.invite) || '').trim() || SEED.cohort.invite;
     merged.pricing = Object.assign({}, SEED.pricing, merged.pricing || {});
     merged.bank = Object.assign({}, SEED.bank, merged.bank || {});
     merged.dunning = Object.assign({}, SEED.dunning, merged.dunning || {});
@@ -133,6 +388,7 @@
         if (st.to) st.to = migrateCrmStage(st.to);
       });
     });
+    hydrateDaftarCols(merged);
     merged.applications = Object.assign({}, JSON.parse(JSON.stringify(SEED.applications || {})), merged.applications || {});
     merged.timeline = Object.assign({}, JSON.parse(JSON.stringify(SEED.timelineSeed || {})), merged.timeline || {});
     merged.tasks = Array.isArray(merged.tasks) ? merged.tasks : JSON.parse(JSON.stringify(SEED.tasksSeed || []));
@@ -143,7 +399,19 @@
     merged.remittances = Array.isArray(merged.remittances) ? merged.remittances : JSON.parse(JSON.stringify(SEED.remittances || []));
     if (typeof merged.clockOffsetMs !== 'number') merged.clockOffsetMs = 0;
     Object.keys(SEED.billing || {}).forEach((id) => {
-      if (!merged.billing[id]) merged.billing[id] = JSON.parse(JSON.stringify(SEED.billing[id]));
+      if (!merged.billing[id]) {
+        merged.billing[id] = JSON.parse(JSON.stringify(SEED.billing[id]));
+        return;
+      }
+      const seed = SEED.billing[id];
+      const b = merged.billing[id];
+      if (seed && seed.status === 'trial' && seed.offerExpiresAt && b.status === 'trial') {
+        const seedLeft = new Date(seed.offerExpiresAt).getTime() - Date.now();
+        if (seedLeft > 0) {
+          b.offerStartedAt = seed.offerStartedAt || b.offerStartedAt;
+          b.offerExpiresAt = seed.offerExpiresAt;
+        }
+      }
     });
     Object.entries(SEED.progressSeed || {}).forEach(([sid, ids]) => {
       if (!merged.progress[sid]) {
@@ -177,6 +445,8 @@
       emailQueue: JSON.parse(JSON.stringify(SEED.emailQueueSeed || [])),
       enrollments: JSON.parse(JSON.stringify(SEED.enrollmentsSeed || {})),
       people: {},
+      schoolSlug: SEED.school.slug,
+      inviteCode: SEED.cohort.invite,
       pricing: JSON.parse(JSON.stringify(SEED.pricing)),
       bank: JSON.parse(JSON.stringify(SEED.bank)),
       dunning: JSON.parse(JSON.stringify(SEED.dunning)),
@@ -191,7 +461,9 @@
       progress,
       lastLecture: last,
       kolab: {},
-      sectionStyle: 'minggu'
+      sectionStyle: 'minggu',
+      daftarCols: defaultDaftarCols(),
+      daftarCustom: []
     };
   }
 
@@ -232,6 +504,7 @@
   }
 
   let db = load();
+  if (!resolveVanitySlug()) return;
   const ui = {
     role: PRESENT && PRESENT_PANE === 'mentor' ? 'owner' : 'student',
     tab: 'home',
@@ -258,10 +531,19 @@
     kurOpen: false,
     skuId: null,
     skuPreview: false,
-    skuFrom: 'pustaka',
+    skuFrom: 'alat',
     editLecId: null,
+    kurEdit: false,
+    composeMode: 'note',
+    daftarColsOpen: false,
+    pustakaAddOpen: false,
+    cariSiswa: '',
+    cariOpen: false,
     secFold: null,
     wizard: null,
+    wizStep: null,
+    wizDraft: null,
+    wizTools: false,
     payTerm: 'month',
     examAnswers: {},
     payPrompt: false,
@@ -276,7 +558,7 @@
   function save() {
     const copy = { ...db, kolab: db.kolab };
     localStorage.setItem(KEY, JSON.stringify(copy));
-    if (ui.presentApplying) return;
+    if (ui.presentApplying || ui.reloading) return;
     if (BUS) BUS.postMessage({ type: 'db' });
     if (ui.present && ui.presentReady && parent !== window) {
       parent.postMessage({ source: 'anton-school', type: 'live' }, location.origin);
@@ -297,16 +579,11 @@
   }
   function people() {
     db.people = db.people || {};
-    return SEED.students.map((s) => {
-      if (db.people[s.id]) Object.assign(s, db.people[s.id]);
-      return s;
-    });
+    return SEED.students.map((s) => Object.assign({}, s, db.people[s.id] || {}));
   }
   function patchPerson(id, fields) {
     db.people = db.people || {};
     db.people[id] = Object.assign({}, db.people[id] || {}, fields);
-    const s = SEED.students.find((x) => x.id === id);
-    if (s) Object.assign(s, db.people[id]);
   }
   function student() {
     return people().find((s) => s.id === ui.personaId) || people()[0];
@@ -377,12 +654,37 @@
     const b = billingOf(id);
     if (b.status === 'trial' || b.plan === 'preview') return true;
     const c = crmOf(id);
-    return c.stage === 'trial' || c.stage === 'nonton' || c.stage === 'sudah_keluar';
+    if (c.stage === 'trial' || c.stage === 'nonton' || c.stage === 'sudah_keluar') return true;
+    // Form sudah masuk — boleh lihat video 1 meski belum klik "Bayar nanti"
+    if (db.applications[id] && (c.stage === 'form' || b.offerStartedAt)) return true;
+    return false;
   }
   function canOpenLecture(id, lid) {
-    if (canMentoring(id)) return true;
+    if (lid === 'kolab') return canMentoring(id);
+    if (canMentoring(id)) {
+      const list = lectures();
+      const idx = list.findIndex((l) => l.id === lid);
+      if (idx < 0) return false;
+      for (let i = 0; i < idx; i += 1) {
+        if (!isDone(id, list[i].id)) return false;
+      }
+      return true;
+    }
     if (canPreview(id) && lid === firstLectureId()) return true;
     return false;
+  }
+  /** Paid mentees may read ahead; trial still paywalls later videos. */
+  function canViewLecture(id, lid) {
+    if (isStaff()) return true;
+    if (lid === 'kolab') return canMentoring(id);
+    if (canMentoring(id)) return !!lectureById(lid);
+    return canOpenLecture(id, lid);
+  }
+  function isSeqLocked(id, lid) {
+    return canMentoring(id) && !canOpenLecture(id, lid) && lid !== 'kolab';
+  }
+  function isPaywalled(id, lid) {
+    return !canMentoring(id) && !canOpenLecture(id, lid) && lid !== 'kolab';
   }
   function canSku(id, skuId) {
     const p = productById(skuId);
@@ -427,6 +729,114 @@
     }
     save();
   }
+  function watchHintHtml(lec, done) {
+    const watchFirst = lec && lec.type === 'video' && lec.id === firstLectureId();
+    const seq = lec && isSeqLocked(ui.personaId, lec.id);
+    const dot = '<span class="lec-watch-dot" aria-hidden="true"></span>';
+    if (watchFirst) {
+      if (done) {
+        return '<div class="lec-watch is-done" data-watch-status="done">' + dot +
+          '<span>Selesai ✓</span></div>';
+      }
+      return '<div class="lec-watch" data-watch-status="pending">' + dot +
+        '<span>Tonton minimal 85% untuk menandai video selesai</span>' +
+        '<span class="lec-watch-i" title="Selesai otomatis setelah nonton ≥85%">i</span></div>';
+    }
+    if (!lec) return '';
+    if (seq) {
+      return '<div class="lec-watch is-seq" title="Selesaikan materi sebelumnya dulu">' + dot +
+        '<span>Selesaikan materi sebelumnya dulu</span></div>';
+    }
+    return '<button type="button" class="lec-watch' + (done ? ' is-done' : '') +
+      '" data-act="toggle-done" data-id="' + esc(lec.id) + '">' + dot +
+      '<span>' + (done ? 'Selesai ✓' : 'Tandai selesai') + '</span></button>';
+  }
+  function completeByWatch(lecId) {
+    if (lecId !== firstLectureId()) return false;
+    if (isDone(ui.personaId, lecId)) return false;
+    markDone(ui.personaId, lecId, true);
+    const slot = document.querySelector('[data-watch-status]');
+    if (slot) {
+      slot.outerHTML = watchHintHtml(lectureById(lecId) || { id: lecId, type: 'video' }, true);
+    }
+    refreshProgressPath();
+    toast('Video 1 selesai — nonton ≥85%.');
+    return true;
+  }
+  function bindWatchProgress() {
+    const WATCH_PCT = 0.85;
+    $('main').querySelectorAll('video[data-watch-lec]').forEach((vid) => {
+      if (vid._watchBound) return;
+      vid._watchBound = true;
+      const lecId = vid.getAttribute('data-watch-lec');
+      const onTick = () => {
+        if (!vid.duration || !isFinite(vid.duration)) return;
+        if (vid.currentTime / vid.duration >= WATCH_PCT) {
+          if (completeByWatch(lecId)) vid.removeEventListener('timeupdate', onTick);
+        }
+      };
+      vid.addEventListener('timeupdate', onTick);
+    });
+  }
+  let _ytApiPromise = null;
+  function loadYtApi() {
+    if (window.YT && window.YT.Player) return Promise.resolve();
+    if (_ytApiPromise) return _ytApiPromise;
+    _ytApiPromise = new Promise((resolve) => {
+      const prev = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = function () {
+        if (typeof prev === 'function') prev();
+        resolve();
+      };
+      if (!document.getElementById('yt-iframe-api')) {
+        const s = document.createElement('script');
+        s.id = 'yt-iframe-api';
+        s.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(s);
+      }
+      if (window.YT && window.YT.Player) resolve();
+    });
+    return _ytApiPromise;
+  }
+  function mountYtWatchPlayer(hostId, videoId, lecId) {
+    const WATCH_PCT = 0.85;
+    loadYtApi().then(() => {
+      if (!document.getElementById(hostId)) return;
+      let poll = null;
+      const stop = () => { if (poll) { clearInterval(poll); poll = null; } };
+      const player = new window.YT.Player(hostId, {
+        videoId: videoId,
+        playerVars: {
+          autoplay: 1,
+          rel: 0,
+          modestbranding: 1,
+          playsinline: 1,
+          origin: location.origin
+        },
+        events: {
+          onStateChange: (ev) => {
+            if (ev.data === window.YT.PlayerState.PLAYING) {
+              stop();
+              poll = setInterval(() => {
+                try {
+                  const t = player.getCurrentTime();
+                  const d = player.getDuration();
+                  if (d > 0 && t / d >= WATCH_PCT) {
+                    stop();
+                    completeByWatch(lecId);
+                  }
+                } catch (err) { /* player gone */ }
+              }, 800);
+            } else if (ev.data === window.YT.PlayerState.PAUSED ||
+              ev.data === window.YT.PlayerState.ENDED) {
+              if (ev.data === window.YT.PlayerState.ENDED) completeByWatch(lecId);
+              stop();
+            }
+          }
+        }
+      });
+    }).catch(() => { /* offline / blocked */ });
+  }
   function progressPct(sid, weekId) {
     const list = weekId ? lecturesInWeek(weekId) : lectures();
     if (!list.length) return 0;
@@ -438,12 +848,158 @@
     const n = list.filter((l) => isDone(sid, l.id)).length;
     return { n: n, total: list.length, pct: list.length ? Math.round((n / list.length) * 100) : 0 };
   }
+  function currentProgressId(sid) {
+    sid = sid || ui.personaId;
+    if (sid === ui.personaId && ui.lectureId && ui.lectureId !== 'kolab' && lectureById(ui.lectureId)) {
+      return ui.lectureId;
+    }
+    return db.lastLecture[sid] || firstLectureId();
+  }
   function progressBarHtml(sid) {
+    return resumePathHtml(sid, currentProgressId(sid));
+  }
+  function refreshProgressPath() {
+    document.querySelectorAll('[data-progress-path]').forEach((el) => {
+      const sid = el.getAttribute('data-sid') || ui.personaId;
+      el.outerHTML = resumePathHtml(sid, currentProgressId(sid));
+    });
+  }
+  function nextKurMilestone(n, total) {
+    if (!total) return null;
+    if (n >= total) return { done: true, need: 0, pct: 100 };
+    const marks = [25, 50, 75, 100];
+    const pct = (n / total) * 100;
+    const next = marks.find((m) => pct < m - 0.01) || 100;
+    const targetN = Math.ceil((next / 100) * total);
+    return { done: false, need: Math.max(1, targetN - n), pct: next };
+  }
+  function svgIcon(name) {
+    if (name === 'play') {
+      return '<svg class="rj-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.2 3.4v9.2L13 8z" fill="currentColor"/></svg>';
+    }
+    if (name === 'book') {
+      return '<svg class="rj-ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
+    }
+    if (name === 'check') {
+      return '<svg class="rj-check" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.4 6.2 4.8 8.6 9.6 3.4" fill="none" stroke="#052e16" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    }
+    if (name === 'target') {
+      return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>';
+    }
+    if (name === 'doc') {
+      return '<svg class="lec-acc-ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 3.5h7l5 5V20a1.5 1.5 0 0 1-1.5 1.5h-10.5A1.5 1.5 0 0 1 5.5 20V5A1.5 1.5 0 0 1 7 3.5z" stroke="currentColor" stroke-width="1.7"/><path d="M14 3.5V9h5.5" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>';
+    }
+    if (name === 'list') {
+      return '<svg class="lec-acc-ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 7h12M8 12h12M8 17h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="4.2" cy="7" r="1" fill="currentColor"/><circle cx="4.2" cy="12" r="1" fill="currentColor"/><circle cx="4.2" cy="17" r="1" fill="currentColor"/></svg>';
+    }
+    if (name === 'help') {
+      return '<svg class="lec-acc-ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.2 2.4c-.7.3-1.1.8-1.1 1.6V14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="17.2" r="1" fill="currentColor"/></svg>';
+    }
+    if (name === 'chat') {
+      return '<svg class="lec-acc-ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 6.5h14a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H9l-4 3v-3H5A1.5 1.5 0 0 1 3.5 16V8A1.5 1.5 0 0 1 5 6.5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>';
+    }
+    return '';
+  }
+  function dockIcon(id) {
+    const common = ' class="dock-ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"';
+    if (id === 'home') {
+      return '<svg' + common + '><path d="M4.5 11.2 12 4.8l7.5 6.4V20a1 1 0 0 1-1 1h-4.2v-6.2h-4.6V21H5.5a1 1 0 0 1-1-1v-8.8z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>';
+    }
+    if (id === 'belajar') {
+      return '<svg' + common + '><path d="M3.5 10.2 12 6l8.5 4.2L12 14.4 3.5 10.2z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M7 12.2v4.2c2.2 1.6 7.8 1.6 10 0v-4.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M20.5 10.5v5.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+    }
+    if (id === 'alat') {
+      return '<svg' + common + '><path d="M14.2 5.2a4.2 4.2 0 0 0-5.7 5.7L4 15.4l4.6 4.6 4.5-4.5a4.2 4.2 0 0 0 5.7-5.7l-2.8 2.8-1.8-1.8 2.8-2.8z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>';
+    }
+    if (id === 'pustaka') {
+      return '<svg' + common + '><path d="M6.5 4H18v16H7.2A2.2 2.2 0 0 1 5 17.8V6.2A2.2 2.2 0 0 1 7.2 4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 8h6M9 12h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+    }
+    if (id === 'diskusi') {
+      return '<svg' + common + '><path d="M5 6.2h14A1.3 1.3 0 0 1 20.3 7.5v8.2A1.3 1.3 0 0 1 19 17H9.2L5 20.2V6.2z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>';
+    }
+    if (id === 'progres') {
+      return '<svg' + common + '><path d="M5 19V11M10.5 19V6M16 19v-8M21 19H3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+    }
+    return '';
+  }
+  function resumePathHtml(sid, currentId) {
+    const list = lectures();
     const p = kurProgress(sid);
-    return '<div class="kur-progress">' +
-      '<div class="kur-progress-top"><strong>Kurikulum</strong>' +
-      '<span>' + p.n + ' / ' + p.total + ' materi · ' + p.pct + '%</span></div>' +
-      '<div class="bar kur-bar"><span style="width:' + p.pct + '%"></span></div></div>';
+    if (!list.length) return '';
+    let curIdx = list.findIndex((l) => l.id === currentId);
+    if (curIdx < 0) {
+      curIdx = list.findIndex((l) => !isDone(sid, l.id));
+      if (curIdx < 0) curIdx = list.length - 1;
+    }
+    const fill = list.length <= 1 ? 1 : curIdx / (list.length - 1);
+    const remain = Math.max(0, p.total - p.n);
+    const here = Math.round(fill * 100);
+    const nodes = list.map((l, i) => {
+      const done = isDone(sid, l.id);
+      const now = i === curIdx;
+      const locked = !canOpenLecture(sid, l.id) && !isStaff();
+      let cls = 'path-node';
+      if (now) cls += ' is-now';
+      else if (done) cls += ' is-done';
+      else if (locked) cls += ' is-locked';
+      else cls += ' is-todo';
+      const label = (i + 1) + '. ' + l.title + (done ? ' · selesai' : now ? ' · sedang di sini' :
+        (locked && canMentoring(sid) ? ' · lihat dulu' : locked ? ' · terkunci' : ''));
+      return '<button type="button" class="' + cls + '" data-act="open-lec" data-id="' + esc(l.id) + '"' +
+        (now ? ' aria-current="step"' : '') +
+        ' title="' + esc(label) + '" aria-label="' + esc(label) + '">' +
+        (done && !now ? svgIcon('check') : '') +
+        '</button>';
+    }).join('');
+    return '<div class="rj-board" data-progress-path data-sid="' + esc(sid) + '" role="group" aria-label="Progress kurikulum, ' + p.n + ' dari ' + p.total + ' selesai">' +
+      '<div class="rj-board-head"><span>Progress kamu</span><span class="rj-pct">' + p.pct + '% selesai</span></div>' +
+      '<div class="path-rail" style="--fill:' + fill.toFixed(4) + '">' +
+        '<span class="path-rail-bg" aria-hidden="true"></span>' +
+        '<span class="path-rail-fill" aria-hidden="true"></span>' +
+        nodes +
+      '</div>' +
+      '<div class="path-foot" style="--here:' + here + '">' +
+        '<div class="path-here"><strong>' + p.n + ' / ' + p.total + ' materi selesai</strong>' +
+        '<span>Kamu sedang di sini</span></div>' +
+        '<p class="path-remain">' + (remain ? (remain + ' materi lagi sampai selesai') : 'Semua materi selesai') + '</p>' +
+      '</div>' +
+      resumeMileHtml(sid, p) +
+      '</div>';
+  }
+  function resumeMileHtml(sid, p) {
+    const mile = nextKurMilestone(p.n, p.total);
+    if (!mile) return '';
+    if (mile.done) {
+      const c = crmOf(sid);
+      const goTes = !c.examScore;
+      return '<button type="button" class="rj-mile" data-act="' + (goTes ? 'tab' : 'lihat-kur') + '" data-id="' + (goTes ? 'tes' : '') + '">' +
+        '<span class="rj-mile-ico" aria-hidden="true">' + svgIcon('target') + '</span>' +
+        '<span class="rj-mile-copy"><em>Kurikulum selesai</em>' +
+        '<strong>' + (goTes ? 'Ambil tes akhir untuk sertifikat' : 'Semua materi sudah ditandai selesai') + '</strong></span>' +
+        '<span class="rj-mile-go" aria-hidden="true">›</span></button>';
+    }
+    return '<button type="button" class="rj-mile" data-act="lihat-kur">' +
+      '<span class="rj-mile-ico" aria-hidden="true">' + svgIcon('target') + '</span>' +
+      '<span class="rj-mile-copy"><em>Milestone berikutnya</em>' +
+      '<strong>Selesaikan ' + mile.need + ' materi lagi untuk mencapai ' + mile.pct + '%</strong></span>' +
+      '<span class="rj-mile-go" aria-hidden="true">›</span></button>';
+  }
+  function resumeJourneyHtml(sid, last, preview) {
+    const p = kurProgress(sid);
+    return '<section class="card resume-journey">' +
+      '<div class="rj-hero">' +
+        '<p class="rj-kicker">' + (preview ? 'Coba video 1' : 'Lanjutkan belajar') + '</p>' +
+        '<h2>' + esc(last.title) + '</h2>' +
+        '<p class="rj-meta">' + esc(typeLabel(last.type)) + ' · ' + p.n + '/' + p.total + ' video' +
+        (preview ? ' · video lain terkunci sampai lunas' : '') + '</p>' +
+      '</div>' +
+      resumePathHtml(sid, last.id) +
+      '<div class="rj-acts">' +
+        '<button type="button" class="btn" data-act="open-lec" data-id="' + esc(last.id) + '">' +
+          svgIcon('play') + ' Buka materi</button>' +
+        '<button type="button" class="btn secondary" data-act="lihat-kur">' +
+          svgIcon('book') + ' Lihat kurikulum</button>' +
+      '</div></section>';
   }
   function currentWeekId(sid) {
     for (let i = 0; i < db.weeks.length; i += 1) {
@@ -582,7 +1138,205 @@
       .replace(/\{anama\}/g, bank.name || 'Anton');
   }
   function termLabel(term) {
-    return { month: 'bulan', autopay: 'autopay', year: 'tahun' }[term] || '—';
+    return {
+      month: '1 bulan',
+      quarter: '3 bulan',
+      half: '6 bulan',
+      autopay: 'autopay',
+      year: 'tahun'
+    }[term] || '—';
+  }
+  const HEARD_OPTS = ['Grup WA Anton', 'Teman / murid Anton', 'TikTok', 'Instagram', 'Lainnya'];
+  const WIZ_FORM = [
+    { id: 'name', kicker: 'Kenalan', q: 'Siapa namamu?', sub: 'Nama yang Anton panggil di grup. Bukan tes.' },
+    { id: 'wa', kicker: 'Kontak', q: 'Nomor WhatsApp-mu?', sub: 'Anton chat ke sini. Prototype tidak kirim otomatis.' },
+    { id: 'shop', kicker: 'Toko', q: 'Sudah punya toko?', sub: 'Belum juga boleh. Jujur aja.' },
+    { id: 'city', kicker: 'Tempat', q: 'Kota mana?', sub: 'Biar Anton tahu kamu dari mana.' },
+    { id: 'heard', kicker: 'Cerita', q: 'Dari mana kenal Anton?', sub: 'Satu jawaban. Bukan syarat masuk.' }
+  ];
+  const WIZ_PAY = WIZ_FORM.length;
+  const WIZ_TOTAL = WIZ_PAY + 1;
+
+  function isOnboardScreen() {
+    // Hanya langkah isi form yang full-screen. Setelah form, dock Belajar/Diskusi harus kelihatan
+    // (halaman bayar tetap bisa dibuka lewat tab daftar / CTA).
+    return !isStaff() && needsWizard(ui.personaId);
+  }
+  function resetWizForPersona() {
+    ui.wizDraft = null;
+    ui.wizTools = false;
+    ui.wizFocusedStep = null;
+    ui.wizStep = db.applications[ui.personaId] ? WIZ_PAY : 0;
+  }
+  function wizIdx() {
+    if (typeof ui.wizStep === 'number') return ui.wizStep;
+    return db.applications[ui.personaId] ? WIZ_PAY : 0;
+  }
+  function wizDraft() {
+    const sid = ui.personaId;
+    const s = student();
+    const app = db.applications[sid] || {};
+    const prev = (ui.wizDraft && ui.wizDraft.sid === sid) ? ui.wizDraft : {};
+    const heardRaw = prev.heardPick != null || prev.heardOther != null
+      ? ''
+      : (app.heard || '');
+    const known = HEARD_OPTS.indexOf(heardRaw) >= 0;
+    const heardPick = prev.heardPick != null
+      ? prev.heardPick
+      : (known ? heardRaw : (heardRaw ? 'Lainnya' : ''));
+    const heardOther = prev.heardOther != null
+      ? prev.heardOther
+      : (known ? '' : heardRaw);
+    const nameSeed = (s.name || '').indexOf('Tamu') >= 0 ? '' : (s.name || '');
+    let shopPick = prev.shopPick;
+    if (shopPick == null) {
+      if (app.hasShop === true) shopPick = 'ya';
+      else if (app.at) shopPick = 'tidak';
+      else shopPick = '';
+    }
+    return {
+      sid: sid,
+      name: prev.name != null ? prev.name : (app.name || nameSeed),
+      wa: prev.wa != null ? prev.wa : (app.wa || s.wa || ''),
+      shopPick: shopPick,
+      shopName: prev.shopName != null ? prev.shopName : (app.shopName || s.shopName || ''),
+      shopUrl: prev.shopUrl != null ? prev.shopUrl : (app.shopUrl || s.shopUrl || ''),
+      city: prev.city != null ? prev.city : (app.city || (s.city === '—' ? '' : (s.city || ''))),
+      heardPick: heardPick,
+      heardOther: heardOther
+    };
+  }
+  function wizMerge(patch) {
+    ui.wizDraft = Object.assign({}, wizDraft(), patch, { sid: ui.personaId });
+  }
+  function captureWizFields() {
+    const root = document.querySelector('.ob-flow');
+    if (!root) return;
+    const d = {};
+    const name = root.querySelector('[name=name]');
+    const wa = root.querySelector('[name=wa]');
+    const city = root.querySelector('[name=city]');
+    const shopName = root.querySelector('[name=shopName]');
+    const shopUrl = root.querySelector('[name=shopUrl]');
+    const heardOther = root.querySelector('[name=heardOther]');
+    if (name) d.name = String(name.value || '').trim();
+    if (wa) d.wa = String(wa.value || '').trim();
+    if (city) d.city = String(city.value || '').trim();
+    if (shopName) d.shopName = String(shopName.value || '').trim();
+    if (shopUrl) d.shopUrl = String(shopUrl.value || '').trim();
+    if (heardOther) d.heardOther = String(heardOther.value || '').trim();
+    if (Object.keys(d).length) wizMerge(d);
+  }
+  function wizHeardValue(d) {
+    if (d.heardPick === 'Lainnya') return String(d.heardOther || '').trim();
+    return String(d.heardPick || '').trim();
+  }
+  function validateWizStep() {
+    const spec = WIZ_FORM[wizIdx()];
+    if (!spec) return true;
+    const d = wizDraft();
+    if (spec.id === 'name' && !d.name) {
+      toast('Isi nama dulu.');
+      return false;
+    }
+    if (spec.id === 'wa' && !d.wa) {
+      toast('Isi nomor WhatsApp dulu.');
+      return false;
+    }
+    if (spec.id === 'shop') {
+      if (d.shopPick !== 'ya' && d.shopPick !== 'tidak') {
+        toast('Pilih sudah atau belum.');
+        return false;
+      }
+      if (d.shopPick === 'ya' && (!d.shopName || !d.shopUrl)) {
+        toast('Nama toko dan tautan wajib kalau sudah punya toko.');
+        return false;
+      }
+    }
+    if (spec.id === 'city' && !d.city) {
+      toast('Isi kota dulu.');
+      return false;
+    }
+    if (spec.id === 'heard') {
+      if (!d.heardPick) {
+        toast('Pilih dari mana kamu kenal Anton.');
+        return false;
+      }
+      if (d.heardPick === 'Lainnya' && !String(d.heardOther || '').trim()) {
+        toast('Cerita singkat dari mana, ya.');
+        return false;
+      }
+    }
+    return true;
+  }
+  function commitWizApplication() {
+    const d = wizDraft();
+    const sid = ui.personaId;
+    const s = student();
+    const hasShop = d.shopPick === 'ya';
+    const heard = wizHeardValue(d);
+    if (!d.name || !d.wa || !d.city || !heard) {
+      toast('Isi nama, WA, kota, dan dari mana tahu Anton.');
+      return false;
+    }
+    if (hasShop && (!d.shopName || !d.shopUrl)) {
+      toast('Nama toko dan tautan wajib kalau sudah punya toko.');
+      return false;
+    }
+    db.applications[sid] = {
+      name: d.name,
+      wa: d.wa,
+      city: d.city,
+      hasShop: hasShop,
+      shopName: hasShop ? d.shopName : '',
+      shopUrl: hasShop ? d.shopUrl : '',
+      heard: heard,
+      at: isoNow()
+    };
+    patchPerson(sid, {
+      name: d.name,
+      wa: String(d.wa).replace(/\D/g, '') || s.wa,
+      city: d.city,
+      shopName: hasShop ? d.shopName : '',
+      shopUrl: hasShop ? d.shopUrl : ''
+    });
+    const b = billingOf(sid);
+    if (!b.offerStartedAt) {
+      b.offerStartedAt = isoNow();
+      b.offerExpiresAt = addMs(isoNow(), 24 * 36e5);
+    }
+    setStage(sid, 'form', 'Form masuk. Jam diskon 24 jam dimulai.');
+    startTrial(sid);
+    save();
+    return true;
+  }
+  function ensureApplication() {
+    if (db.applications[ui.personaId]) return true;
+    captureWizFields();
+    return commitWizApplication();
+  }
+  function advanceWiz() {
+    captureWizFields();
+    if (!validateWizStep()) return;
+    if (wizIdx() >= WIZ_FORM.length - 1) {
+      if (!commitWizApplication()) return;
+      ui.wizStep = WIZ_PAY;
+      ui.wizFocusedStep = null;
+      ui.tab = 'daftar';
+      toast('Form masuk. Diskon 24 jam jalan — boleh langsung ke Belajar.');
+    } else {
+      ui.wizStep = wizIdx() + 1;
+      ui.wizFocusedStep = null;
+    }
+    render();
+  }
+  function backWiz() {
+    captureWizFields();
+    const i = wizIdx();
+    if (i <= 0) return;
+    ui.wizStep = i - 1;
+    ui.wizFocusedStep = null;
+    render();
   }
   function enrollmentsOf(id) {
     db.enrollments = db.enrollments || {};
@@ -679,12 +1433,29 @@
     return (s && s.label) || id;
   }
   function monthlyPrice() { return Number(db.pricing.monthlyIdr) || 500000; }
+  function toolDiscountPct() { return Number(db.pricing.toolDiscountPct) || 50; }
+  function toolMemberPrice(p) {
+    const list = Number(p && p.price) || 0;
+    return Math.round(list * (1 - toolDiscountPct() / 100));
+  }
+  function termMonths(term) {
+    return { month: 1, autopay: 1, quarter: 3, half: 6, year: 12 }[term] || 1;
+  }
+  function termDiscountPct(term) {
+    const p = db.pricing || {};
+    if (term === 'quarter') return Number(p.quarterDiscountPct) || 15;
+    if (term === 'half') return Number(p.halfDiscountPct) || 25;
+    if (term === 'year') return Number(p.annualDiscountPct) || 15;
+    if (term === 'autopay') return Number(p.autopayDiscountPct) || 10;
+    return 0;
+  }
+  function listPriceForTerm(term) { return monthlyPrice() * termMonths(term); }
   function priceForTerm(term, welcome) {
-    const m = monthlyPrice();
-    let n = m;
-    if (term === 'year') n = Math.round(m * 12 * (1 - (Number(db.pricing.annualDiscountPct) || 0) / 100));
-    else if (term === 'autopay') n = Math.round(m * (1 - (Number(db.pricing.autopayDiscountPct) || 0) / 100));
-    if (welcome) n = Math.round(n * (1 - (Number(db.pricing.welcomeDiscountPct) || 0) / 100));
+    const disc = termDiscountPct(term);
+    let n = Math.round(listPriceForTerm(term) * (1 - disc / 100));
+    if (welcome && (term === 'month' || term === 'autopay')) {
+      n = Math.round(n * (1 - (Number(db.pricing.welcomeDiscountPct) || 0) / 100));
+    }
     return n;
   }
   function welcomeOpen(id) {
@@ -695,17 +1466,16 @@
     const b = billingOf(id);
     const start = nowDate();
     const until = new Date(start.getTime());
-    if (term === 'year') until.setFullYear(until.getFullYear() + 1);
-    else until.setMonth(until.getMonth() + 1);
+    until.setMonth(until.getMonth() + termMonths(term));
     b.status = 'lunas';
     b.plan = 'mentoring';
-    b.products = MENTOR_SKUS().slice();
+    b.products = Array.isArray(b.products) ? b.products : [];
     b.term = term;
     b.source = source;
     b.amount = amount;
     b.paidAt = isoNow();
     b.accessUntil = until.toISOString();
-    b.note = term === 'year' ? 'Tahunan' : (term === 'autopay' ? 'Kartu autopay (mock)' : 'Bulanan transfer');
+    b.note = term === 'autopay' ? 'Kartu autopay (mock)' : ('Transfer · ' + termLabel(term));
     setStage(id, 'mentee', 'Lunas mentoring · ' + term);
     pushTimeline(id, 'pay', 'Bayar ' + fmtRp(amount) + ' · ' + (source || 'transfer'));
     enrollPerson(id, 'onboarding', true);
@@ -722,6 +1492,14 @@
     pushTimeline(id, 'offer', 'Trial: video 1 + lembar kerja. Jam diskon sampai ' + fmtWhen(b.offerExpiresAt));
   }
   function runAutomations() {
+    const before = JSON.stringify({
+      crm: db.crm,
+      billing: db.billing,
+      tasks: db.tasks,
+      waQueue: db.waQueue,
+      emailQueue: db.emailQueue,
+      timeline: db.timeline
+    });
     people().forEach((s) => {
       const b = billingOf(s.id);
       const c = crmOf(s.id);
@@ -796,7 +1574,15 @@
       }
     });
     runEnrolledPlans();
-    save();
+    const after = JSON.stringify({
+      crm: db.crm,
+      billing: db.billing,
+      tasks: db.tasks,
+      waQueue: db.waQueue,
+      emailQueue: db.emailQueue,
+      timeline: db.timeline
+    });
+    if (before !== after) save();
   }
 
   function parseEmbed(url) {
@@ -806,7 +1592,10 @@
     if (yt) {
       return {
         kind: 'youtube',
-        embed: 'https://www.youtube-nocookie.com/embed/' + yt[1] + '?autoplay=1&rel=0&modestbranding=1',
+        videoId: yt[1],
+        embed: 'https://www.youtube-nocookie.com/embed/' + yt[1] +
+          '?autoplay=1&rel=0&modestbranding=1&enablejsapi=1&playsinline=1&origin=' +
+          encodeURIComponent(location.origin || ''),
         thumb: 'https://i.ytimg.com/vi/' + yt[1] + '/hqdefault.jpg'
       };
     }
@@ -1137,6 +1926,36 @@
       handle.toLowerCase().indexOf(q) >= 0 || billingOf(s.id).status.indexOf(q) >= 0 ||
       stageLabel(crmOf(s.id).stage).toLowerCase().indexOf(q) >= 0;
   }
+  function paintCariDrop() {
+    const drop = $('cari-siswa-drop');
+    if (!drop) return;
+    const q = String(ui.cariSiswa || '').trim().toLowerCase();
+    if (!isStaff() || !ui.cariOpen || !q) {
+      drop.hidden = true;
+      drop.innerHTML = '';
+      return;
+    }
+    const hits = people().filter((s) => matchPerson(s, q)).slice(0, 8);
+    drop.hidden = false;
+    drop.innerHTML = hits.length
+      ? hits.map((s) =>
+          '<button type="button" class="cari-hit" data-act="open-student" data-id="' + esc(s.id) + '">' +
+            avatarHtml(s, 'avatar sm') +
+            '<span><strong>' + esc(s.name) + '</strong>' +
+              '<span class="muted">' + esc(stageLabel(crmOf(s.id).stage)) + ' · ' + esc(billingOf(s.id).status) + '</span>' +
+            '</span></button>'
+        ).join('')
+      : '<p class="cari-empty muted">Tidak ketemu “‘ + esc(ui.cariSiswa) + ’”</p>';
+  }
+  function feedKindMeta(kind) {
+    const k = String(kind || 'note').toLowerCase();
+    if (k === 'wa' || k === 'whatsapp' || k === 'text') return { cls: 'is-wa', label: 'WA' };
+    if (k === 'email' || k === 'mail') return { cls: 'is-email', label: 'Email' };
+    if (k === 'call' || k === 'telepon') return { cls: 'is-call', label: 'Telepon' };
+    if (k === 'task' || k === 'tugas') return { cls: 'is-task', label: 'Tugas' };
+    if (k === 'event' || k === 'stage') return { cls: 'is-event', label: 'Event' };
+    return { cls: 'is-note', label: 'Catatan' };
+  }
   function lecDotStrip(sid) {
     const list = lectures();
     return '<span class="lec-dots" title="' + kurProgress(sid).n + '/' + list.length + ' materi">' +
@@ -1378,6 +2197,8 @@
       : (canMentoring(ui.personaId) ? 'mentoring' : (canPreview(ui.personaId) ? 'trial' : (billingOf(ui.personaId).products.length ? 'sku' : 'none')));
     $('app').classList.toggle('is-mentor', isStaff());
     $('app').classList.toggle('is-student', !isStaff());
+    $('app').classList.toggle('is-onboard', isOnboardScreen());
+    $('app').classList.toggle('is-belajar', !isStaff() && ui.tab === 'belajar');
     $('school-name').textContent = SEED.school.name;
     const logo = $('school-logo');
     if (logo) {
@@ -1385,17 +2206,46 @@
       logo.alt = SEED.school.name;
     }
     const badge = document.querySelector('.off-badge');
-    if (badge) badge.textContent = ui.present ? 'Offline · demo' : 'Offline · jangan deploy';
+    if (badge) {
+      badge.textContent = ui.present ? 'Offline · demo' : ('/s/' + schoolSlug());
+      badge.title = schoolPublicUrl();
+    }
+    const handleEl = $('school-handle');
+    if (handleEl) {
+      handleEl.textContent = schoolSlug();
+      handleEl.href = schoolLocalUrl();
+      handleEl.title = schoolPublicUrl();
+    }
     $('role-switch').innerHTML =
       '<option value="student">Siswa</option>' +
       '<option value="owner">Mentor (Anton)</option>' +
       '<option value="asisten">Asisten (Lia)</option>';
+    ui.chromeSync = true;
     $('role-switch').value = ui.role;
     const pers = $('persona-switch');
-    pers.innerHTML = people().map((s) =>
-      '<option value="' + esc(s.id) + '">' + esc(s.name) + (s.kind === 'mentor' ? ' · mentor' : '') + '</option>').join('');
+    const wantOpts = people().map((s) => {
+      const seed = SEED.students.find((x) => x.id === s.id);
+      const label = (s.id === 's-tamu' && seed)
+        ? seed.name
+        : (s.name + (s.kind === 'mentor' ? ' · mentor' : ''));
+      return { id: s.id, label: label };
+    });
+    const curOpts = Array.from(pers.options).map((o) => o.value + '\0' + o.textContent).join('|');
+    const nextOpts = wantOpts.map((o) => o.id + '\0' + o.label).join('|');
+    if (curOpts !== nextOpts) {
+      pers.innerHTML = wantOpts.map((o) =>
+        '<option value="' + esc(o.id) + '">' + esc(o.label) + '</option>').join('');
+    }
     pers.value = ui.personaId;
     pers.hidden = isStaff();
+    ui.chromeSync = false;
+    const searchWrap = $('topbar-search');
+    if (searchWrap) {
+      searchWrap.hidden = !isStaff();
+      const inp = $('cari-siswa');
+      if (inp && document.activeElement !== inp) inp.value = ui.cariSiswa || '';
+      paintCariDrop();
+    }
     const clock = $('clock-bar');
     if (clock) {
       clock.hidden = !isStaff();
@@ -1424,15 +2274,12 @@
         { id: 'home', label: 'Home' },
         { id: 'belajar', label: 'Belajar' },
         { id: 'alat', label: 'Alat' },
-        { id: 'pustaka', label: 'Pustaka' },
-        { id: 'diskusi', label: 'Diskusi' },
         { id: 'progres', label: 'Progres' }
       ];
     }
     return [
       { id: 'home', label: 'Home' },
       { id: 'alat', label: 'Alat' },
-      { id: 'pustaka', label: 'Pustaka' },
       { id: 'progres', label: 'Progres' }
     ];
   }
@@ -1441,7 +2288,6 @@
       { id: 'siswa', label: 'Siswa' },
       { id: 'tugas', label: 'Tugas' },
       { id: 'otomasi', label: 'Otomasi' },
-      { id: 'jaringan', label: 'Jaringan' },
       { id: 'kurikulum', label: 'Kurikulum' },
       { id: 'pustaka', label: 'Perpustakaan' },
       { id: 'jadwal', label: 'Jadwal' },
@@ -1461,14 +2307,19 @@
     const dock = $('dock');
     if (!isStaff()) {
       const tabs = studentTabs();
-      const sku = ui.tab === 'sku' ? productById(ui.skuId) : null;
-      const skuTab = ui.skuFrom || (sku && sku.group === 'alat' ? 'alat' : 'pustaka');
-      dock.hidden = false;
-      dock.className = 'dock cols-' + tabs.length;
-      dock.innerHTML = tabs.map((t) =>
-        '<button type="button" data-act="tab" data-id="' + t.id + '" aria-selected="' +
-        (t.id === ui.tab || (ui.tab === 'sku' && t.id === skuTab)) + '">' + esc(t.label) + '</button>'
-      ).join('');
+      if (isOnboardScreen()) {
+        dock.hidden = true;
+        dock.className = 'dock';
+        dock.innerHTML = '';
+      } else {
+        dock.hidden = false;
+        dock.className = 'dock cols-' + tabs.length;
+        dock.innerHTML = tabs.map((t) =>
+          '<button type="button" data-act="tab" data-id="' + t.id + '" aria-selected="' +
+          (t.id === ui.tab || (ui.tab === 'sku' && t.id === 'alat')) + '">' +
+          dockIcon(t.id) + '<span>' + esc(t.label) + '</span></button>'
+        ).join('');
+      }
     } else {
       dock.hidden = true;
       dock.className = 'dock';
@@ -1485,7 +2336,6 @@
       else if (tab === 'orang') main.innerHTML = viewPerson(ui.personId);
       else if (tab === 'tugas') main.innerHTML = viewTugas();
       else if (tab === 'otomasi') main.innerHTML = viewOtomasi();
-      else if (tab === 'jaringan') main.innerHTML = viewJaringan();
       else if (tab === 'kurikulum') main.innerHTML = viewKurikulum();
       else if (tab === 'pustaka') main.innerHTML = viewPustaka();
       else if (tab === 'jadwal') main.innerHTML = viewJadwal(true);
@@ -1500,9 +2350,7 @@
         if (tab === 'home') main.innerHTML = viewHome();
         else if (tab === 'belajar') main.innerHTML = viewBelajar();
         else if (tab === 'alat') main.innerHTML = viewAlat();
-        else if (tab === 'pustaka') main.innerHTML = viewStudentPustaka();
         else if (tab === 'sku') main.innerHTML = viewSkuPage();
-        else if (tab === 'diskusi') main.innerHTML = canMentoring(ui.personaId) ? viewDiskusi(false) : viewLockedDiskusi();
         else if (tab === 'progres') main.innerHTML = viewProgres();
         else if (tab === 'kolab') main.innerHTML = viewKolab();
         else if (tab === 'tes') main.innerHTML = viewExam();
@@ -1514,6 +2362,207 @@
     bindBlobMedia();
     bindKanbanDnD();
     bindKurDnD();
+    bindNativeTools();
+    focusWiz();
+    placeWaFab();
+    tickRemainers();
+    ensureRemainTimer();
+  }
+
+  function bindNativeTools() {
+    const root = document.getElementById('calc-tool');
+    if (!root) return;
+    const EXAMPLE_SET = {
+      'calc-sku': 'Jepit rambut satin isi 6',
+      'calc-modal': 60000, 'calc-margin': 20,
+      'calc-fee-admin': 8, 'calc-fee-ongkir': 4, 'calc-fee-cashback': 1.5, 'calc-fee-voucher': 2,
+      'calc-fee-aff': 6, 'calc-fee-ads': 10, 'calc-fee-pajak': 0.5
+    };
+    const EXAMPLE_TOKO = {
+      'calc-prod': 52000, 'calc-pack': 8000, 'calc-jual': 84507,
+      'calc-t-fee': 6, 'calc-t-ongkir': 1.5, 'calc-t-cash': 2, 'calc-t-voucher': 10,
+      'calc-t-ads': 10, 'calc-t-aff': 0, 'calc-t-host': 0, 'calc-t-kreator': 0,
+      'calc-t-admin': 0, 'calc-t-gaji': 0, 'calc-t-lain': 0, 'calc-t-pajak': 0.5
+    };
+    const num = (id) => {
+      const el = $(id);
+      if (!el || el.value === '' || el.value == null) return null;
+      return +el.value;
+    };
+    const n0 = (id) => num(id) || 0;
+    const pct = (n) => (n == null || !isFinite(n)) ? '—' : ((Math.round(n * 10) / 10).toLocaleString('id-ID') + '%');
+    const line = (label, a, b) => '<div class="line"><span>' + label + '</span><strong>' + a +
+      (b ? ' <span class="muted">' + b + '</span>' : '') + '</strong></div>';
+    const cards = (items) => items.map((c, i) =>
+      '<div class="calc-price' + (i === 0 ? ' main' : '') + '"><span>' + c.label + '</span><strong>' + c.value + '</strong></div>'
+    ).join('');
+    function fill(map) {
+      Object.keys(map).forEach((k) => { const el = $(k); if (el) el.value = map[k]; });
+    }
+    function setData() {
+      const modal = num('calc-modal');
+      const margin = num('calc-margin');
+      if (modal == null || margin == null || margin >= 100) return { ok: false };
+      const net = modal / (1 - margin / 100);
+      const fees = [
+        ['Admin TikTok', n0('calc-fee-admin')],
+        ['Bebas ongkir', n0('calc-fee-ongkir')],
+        ['Cashback bonus', n0('calc-fee-cashback')],
+        ['Voucher extra', n0('calc-fee-voucher')],
+        ['Komisi affiliate', n0('calc-fee-aff')],
+        ['Biaya ads', n0('calc-fee-ads')],
+        ['Pajak UMKM', n0('calc-fee-pajak')]
+      ];
+      const totalPct = fees.reduce((s, f) => s + f[1], 0);
+      const denom = 1 - totalPct / 100;
+      const promo = denom > 0 ? net / denom : null;
+      return {
+        ok: true, modal, margin, net, fees, totalPct,
+        promo, coret: promo != null ? promo / 0.9 : null, awal: promo != null ? promo * 2 : null
+      };
+    }
+    function tokoData() {
+      const prod = num('calc-prod');
+      const pack = n0('calc-pack');
+      const jual = num('calc-jual');
+      if (prod == null || jual == null || jual <= 0) return { ok: false };
+      const modalBarang = prod + pack;
+      const hpp = modalBarang / jual * 100;
+      const pctFees = n0('calc-t-fee') + n0('calc-t-ongkir') + n0('calc-t-cash') + n0('calc-t-voucher') +
+        n0('calc-t-ads') + n0('calc-t-aff') + n0('calc-t-pajak');
+      const feeRp = jual * pctFees / 100;
+      const tetap = n0('calc-t-host') + n0('calc-t-kreator') + n0('calc-t-admin') + n0('calc-t-gaji') + n0('calc-t-lain');
+      const totCost = modalBarang + feeRp + tetap;
+      const marginRp = jual - totCost;
+      return {
+        ok: true, prod, pack, jual, modalBarang, hpp, pctFees, feeRp, tetap, totCost, marginRp,
+        marginPct: marginRp / jual * 100
+      };
+    }
+    function renderSet() {
+      const d = setData();
+      if (!d.ok) {
+        $('calc-net-line').textContent = 'Isi modal & sisa, atau Pakai contoh.';
+        $('calc-prices-set').innerHTML = '';
+        $('calc-fee-sum').textContent = '—';
+        $('calc-out-set').innerHTML = '<div class="calc-empty">Dua kotak kuning di atas dulu. Potongan TikTok bisa diubah di bawah.</div>';
+        return d;
+      }
+      $('calc-net-line').innerHTML = 'Supaya sisa ' + pct(d.margin) + ' dari modal ' + fmtRp(d.modal) +
+        ', yang harus masuk kas = <strong>' + fmtRp(d.net) + '</strong>';
+      $('calc-fee-sum').textContent = pct(d.totalPct);
+      $('calc-prices-set').innerHTML = cards([
+        { label: 'Harga promo', value: fmtRp(d.promo) },
+        { label: 'Harga coret', value: fmtRp(d.coret) },
+        { label: 'Harga awal', value: fmtRp(d.awal) }
+      ]);
+      $('calc-out-set').innerHTML =
+        d.fees.map((f) => line(f[0], pct(f[1]), d.promo != null ? fmtRp(d.promo * f[1] / 100) : '')).join('') +
+        '<div class="line hl"><span>Total potongan</span><strong>' + pct(d.totalPct) + '</strong></div>' +
+        '<p class="muted" style="margin:10px 0 0">Coret = promo / 0,9. Awal = 2 × promo. Perkiraan.</p>';
+      return d;
+    }
+    function renderToko() {
+      const d = tokoData();
+      if (!d.ok) {
+        $('calc-prices-toko').innerHTML = '';
+        $('calc-toko-sum').textContent = '—';
+        $('calc-out-toko').innerHTML = '<div class="calc-empty">Isi produksi + harga jual, atau Pakai contoh.</div>';
+        return d;
+      }
+      $('calc-toko-sum').textContent = fmtRp(d.totCost);
+      $('calc-prices-toko').innerHTML = cards([
+        { label: 'Sisa / unit', value: fmtRp(d.marginRp) },
+        { label: 'Margin', value: pct(d.marginPct) },
+        { label: 'Tot cost', value: fmtRp(d.totCost) }
+      ]);
+      $('calc-out-toko').innerHTML =
+        line('Total modal barang', fmtRp(d.modalBarang), fmtRp(d.prod) + ' + packing') +
+        line('HPP', pct(d.hpp), fmtRp(d.modalBarang) + ' / harga jual') +
+        line('Potongan % toko', pct(d.pctFees), fmtRp(d.feeRp)) +
+        line('Biaya tetap', fmtRp(d.tetap), '') +
+        '<p class="muted" style="margin:10px 0 0">Perkiraan unit economics. Bukan laporan pajak UMKM.</p>';
+      return d;
+    }
+    function run() { renderSet(); renderToko(); }
+    function printHtml() {
+      const sku = (($('calc-sku') && $('calc-sku').value) || 'SKU').replace(/</g, '');
+      const s = setData();
+      const t = tokoData();
+      const when = new Date().toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' });
+      let body = '<h1 style="margin:0 0 4px">Kalkulator harga TikTok Shop</h1>' +
+        '<p style="margin:0 0 16px;color:#555;font-size:13px">Obrolan Marketing · ' + sku + ' · ' + when + '</p>';
+      body += '<h2 style="font-size:15px">Harga jual</h2>';
+      if (s.ok) {
+        body += '<p>Modal ' + fmtRp(s.modal) + ' · sisa ' + pct(s.margin) + ' · net ke kas ' + fmtRp(s.net) + '</p>' +
+          '<p><strong>Promo ' + fmtRp(s.promo) + '</strong> · coret ' + fmtRp(s.coret) + ' · awal ' + fmtRp(s.awal) + '</p>' +
+          '<p>Total potongan ' + pct(s.totalPct) + '</p>';
+      } else body += '<p>Belum diisi.</p>';
+      body += '<h2 style="font-size:15px;margin-top:18px">Toko / HPP</h2>';
+      if (t.ok) {
+        body += '<p>Harga jual ' + fmtRp(t.jual) + ' · tot cost ' + fmtRp(t.totCost) + '</p>' +
+          '<p><strong>Sisa ' + fmtRp(t.marginRp) + ' (' + pct(t.marginPct) + ')</strong> · HPP ' + pct(t.hpp) + '</p>';
+      } else body += '<p>Belum diisi.</p>';
+      body += '<p style="margin-top:24px;color:#555;font-size:12px">Perkiraan. Bukan laporan pajak.</p>';
+      return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + sku + ' — harga</title>' +
+        '<style>body{font-family:system-ui,sans-serif;color:#111;padding:18px;max-width:640px}</style></head><body>' +
+        body + '</body></html>';
+    }
+    root.__calc = {
+      run,
+      contoh() { fill(EXAMPLE_SET); fill(EXAMPLE_TOKO); run(); },
+      kosong() {
+        root.querySelectorAll('input').forEach((i) => { i.value = ''; });
+        if ($('calc-sku')) $('calc-sku').value = '';
+        run();
+      },
+      pdf() {
+        try {
+          const w = window.open('', 'harga-pdf');
+          if (w) {
+            w.document.open();
+            w.document.write(printHtml());
+            w.document.close();
+            w.focus();
+            setTimeout(() => { w.print(); }, 250);
+            return;
+          }
+        } catch (err) { /* popup blocked */ }
+        window.print();
+      },
+      tab(pane) {
+        const setOn = pane === 'set';
+        root.querySelectorAll('.calc-tabs button').forEach((b) => {
+          b.classList.toggle('on', b.getAttribute('data-pane') === pane);
+        });
+        $('calc-pane-set').hidden = !setOn;
+        $('calc-pane-toko').hidden = setOn;
+      }
+    };
+    root.querySelectorAll('input').forEach((i) => i.addEventListener('input', run));
+    fill(EXAMPLE_SET);
+    fill(EXAMPLE_TOKO);
+    run();
+  }
+
+  function focusWiz() {
+    if (isStaff() || !isOnboardScreen()) return;
+    const step = wizIdx();
+    if (ui.wizFocusedStep === step) return;
+    const el = document.querySelector('.ob-input[data-focus="1"]');
+    if (!el) {
+      ui.wizFocusedStep = step;
+      return;
+    }
+    ui.wizFocusedStep = step;
+    requestAnimationFrame(() => {
+      if (ui.wizFocusedStep !== step) return;
+      el.focus({ preventScroll: true });
+      if (typeof el.setSelectionRange === 'function') {
+        const n = (el.value || '').length;
+        try { el.setSelectionRange(n, n); } catch (err) { /* type=tel */ }
+      }
+    });
   }
 
   function normalizeMentorTab(tab) {
@@ -1527,6 +2576,7 @@
     }
     if (tab === 'orang' && !ui.personId) return 'siswa';
     if (tab === 'waq') return 'tugas';
+    if (tab === 'jaringan') return 'siswa';
     if (tab === 'bayar') {
       ui.siswaView = 'daftar';
       return 'siswa';
@@ -1537,6 +2587,14 @@
   function bindLazy() {
     $('main').querySelectorAll('[data-embed]').forEach((el) => {
       el.addEventListener('click', () => {
+        const watchLec = el.getAttribute('data-watch-lec');
+        const videoId = el.getAttribute('data-yt-id');
+        if (watchLec && videoId) {
+          const hostId = 'yt-watch-' + watchLec + '-' + Date.now();
+          el.outerHTML = '<div class="yt-watch-host" id="' + hostId + '"></div>';
+          mountYtWatchPlayer(hostId, videoId, watchLec);
+          return;
+        }
         const src = el.getAttribute('data-embed');
         if (!src) return;
         el.outerHTML = '<iframe src="' + esc(src) + '" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen title="Video materi"></iframe>';
@@ -1560,96 +2618,256 @@
         if (file.name) el.setAttribute('download', file.name);
       });
     });
+    bindWatchProgress();
   }
 
   /* ── student views ───────────────────────────────────────────────── */
   function offerBanner(sid) {
     const b = billingOf(sid);
-    if (!welcomeOpen(sid)) return '';
-    return '<section class="card resume" style="margin-bottom:12px">' +
-      '<p class="muted">Harga perkenalan · sisa <strong>' + esc(fmtRemain(b.offerExpiresAt)) + '</strong> (jam nyata dari form, bukan sisa kursi)</p>' +
-      '<p>Bulanan transfer ' + fmtRp(priceForTerm('month', true)) +
-      ' · tahunan ' + fmtRp(priceForTerm('year', true)) +
-      ' · kartu autopay ' + fmtRp(priceForTerm('autopay', true)) + '</p>' +
+    const exp = b.offerExpiresAt;
+    const open = welcomeOpen(sid);
+    const left = exp ? fmtRemain(exp) : '—';
+    return '<section class="card trial-cta">' +
+      '<p class="trial-kicker">Mentoring belum aktif</p>' +
+      '<h3>Buka semua 12 video + live + alat −' + toolDiscountPct() + '%</h3>' +
+      (open
+        ? '<p class="trial-count">Diskon 24 jam · sisa <strong data-remain="' + esc(exp) + '">' + esc(left) + '</strong></p>' +
+          '<p class="muted">Jam nyata dari form. Bukan sisa kursi.</p>'
+        : '<p class="muted">Jendela diskon 24 jam sudah habis. Harga program tetap jujur di halaman bayar.</p>') +
+      '<p class="trial-prices">1 bln ' + fmtRp(priceForTerm('month', open)) +
+      ' · 3 bln ' + fmtRp(priceForTerm('quarter', false)) +
+      ' · 6 bln ' + fmtRp(priceForTerm('half', false)) + '</p>' +
       '<div class="row" style="margin-top:10px">' +
         '<button class="btn" data-act="tab" data-id="daftar">Bayar mentoring</button>' +
-        '<button class="btn secondary" data-act="not-interested">Tidak tertarik</button>' +
+        '<button class="btn secondary" data-act="tab" data-id="belajar">Lanjut video 1</button>' +
       '</div></section>';
+  }
+  function waAntonFab() {
+    if (isStaff()) return '';
+    if (isOnboardScreen()) return '';
+    if (canMentoring(ui.personaId)) return '';
+    const anton = SEED.staff.find((s) => s.id === 'u-anton') || { wa: '628111000001' };
+    const s = student();
+    const text = 'Halo Anton, saya ' + (s.name || 'siswa') + ' dari MasterMind with Anton GC.';
+    return '<a class="wa-fab" href="' + esc(waLink(anton.wa, text)) + '" target="_blank" rel="noopener" aria-label="WhatsApp Anton">' +
+      '<span class="wa-fab-ico" aria-hidden="true">' + waFabIcon() + '</span>' +
+      '<span>WA Anton</span></a>';
+  }
+  function placeWaFab() {
+    let host = document.getElementById('wa-fab-host');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'wa-fab-host';
+      ($('app') || document.body).appendChild(host);
+    }
+    host.innerHTML = waAntonFab();
+  }
+  function tickRemainers() {
+    document.querySelectorAll('[data-remain]').forEach((el) => {
+      el.textContent = fmtRemain(el.getAttribute('data-remain'));
+    });
+  }
+  function ensureRemainTimer() {
+    if (window.__antonRemainTimer) return;
+    window.__antonRemainTimer = setInterval(tickRemainers, 15000);
+  }
+  function waFabIcon() {
+    return '<svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M16.01 3C9.39 3 4 8.3 4 14.8c0 2.1.56 4.1 1.62 5.88L4 29l8.53-2.2A12.3 12.3 0 0 0 16 26.6c6.62 0 12-5.3 12-11.8C28 8.3 22.63 3 16.01 3zm6.9 16.7c-.29.8-1.67 1.47-2.34 1.56-.6.08-1.36.12-2.2-.13-.5-.16-1.15-.34-1.98-.67-3.48-1.5-5.74-4.98-5.91-5.21-.17-.24-1.4-1.86-1.4-3.55 0-1.69.89-2.52 1.2-2.86.32-.34.7-.43.93-.43h.68c.22 0 .5-.05.78.6.29.68.99 2.4 1.08 2.58.09.17.14.38.03.6-.12.24-.18.38-.35.59-.17.2-.36.45-.51.6-.17.17-.35.36-.15.7.2.34.9 1.48 1.93 2.4 1.33 1.18 2.45 1.55 2.8 1.72.34.17.54.14.74-.09.2-.22.84-.98 1.07-1.31.22-.34.45-.28.76-.17.31.12 1.97.93 2.3 1.1.34.17.56.26.64.4.09.14.09.82-.2 1.62z"/></svg>';
   }
   function dualCta(p, extraClass) {
     const sid = ui.personaId;
     const owned = canSku(sid, p.id);
     if (owned) {
-      return '<button class="btn" data-act="open-sku" data-from="' + (extraClass || 'pustaka') + '" data-id="' + esc(p.id) + '">Buka</button>';
+      return '<button class="btn" data-act="open-sku" data-from="' + (extraClass || 'alat') + '" data-id="' + esc(p.id) + '">Buka</button>';
+    }
+    if (canMentoring(sid) && bundled(p)) {
+      return '<button class="btn" data-act="claim-tool" data-from="' + (extraClass || 'alat') + '" data-id="' + esc(p.id) + '">Ambil −' + toolDiscountPct() + '%</button>' +
+        '<a class="btn secondary" href="' + esc(p.lynk || SEED.school.lynk) + '" target="_blank" rel="noopener">Harga satuan</a>';
     }
     const mentorLine = bundled(p)
-      ? '<button class="btn secondary" data-act="tab" data-id="daftar">Ikut mentoring, termasuk</button>'
-      : '<span class="muted">Tidak termasuk mentoring.</span>';
+      ? '<button class="btn secondary" data-act="tab" data-id="daftar">Ikut mentoring, −' + toolDiscountPct() + '% alat</button>'
+      : '<span class="muted">Tidak termasuk mentoring. Harga satuan.</span>';
     return '<a class="btn" href="' + esc(p.lynk || SEED.school.lynk) + '" target="_blank" rel="noopener">Beli satuan</a>' + mentorLine +
-      '<button class="btn secondary" data-act="contoh-sku" data-from="' + (extraClass || 'pustaka') + '" data-id="' + esc(p.id) + '">Lihat contoh</button>';
+      '<button class="btn secondary" data-act="contoh-sku" data-from="' + (extraClass || 'alat') + '" data-id="' + esc(p.id) + '">Lihat contoh</button>';
+  }
+  function obChrome(step) {
+    const back = step > 0
+      ? '<button type="button" class="ob-back" data-act="wiz-back" aria-label="Kembali">‹</button>'
+      : '<span class="ob-back is-ghost" aria-hidden="true"></span>';
+    let segs = '';
+    for (let i = 0; i < WIZ_TOTAL; i += 1) {
+      segs += '<i' + (i <= step ? ' class="is-on"' : '') + '></i>';
+    }
+    return '<header class="ob-top">' + back +
+      '<div class="ob-segs" role="progressbar" aria-valuemin="1" aria-valuemax="' + WIZ_TOTAL +
+      '" aria-valuenow="' + (step + 1) + '" aria-label="Langkah ' + (step + 1) + ' dari ' + WIZ_TOTAL + '">' +
+      segs + '</div></header>';
+  }
+  function obWrap(step, inner, foot, pay) {
+    return '<section class="ob-flow' + (pay ? ' is-pay' : '') + '">' + obChrome(step) +
+      '<div class="ob-body">' + inner + '</div>' +
+      '<div class="ob-foot' + (pay ? ' is-end' : '') + '">' + foot + '</div></section>';
   }
   function viewWizard() {
-    const sid = ui.personaId;
-    const s = student();
-    const step = wizardStep(sid);
-    const app = db.applications[sid] || {};
-    if (step === 'pay') return viewPayPage(sid);
-    return '<section class="card">' +
-      '<p class="muted">Dari grup WA · langkah 1 dari 2</p>' +
-      '<h2>Siapa kamu</h2>' +
-      '<p class="muted">Anton baca ini sebelum kelas. Bukan tes. Tidak ada “sisa 3 kursi”.</p>' +
-      '<form class="compose" data-act="apply">' +
-        '<label class="muted">Nama</label>' +
-        '<input name="name" required maxlength="80" value="' + esc(app.name || (s.name.indexOf('Tamu') === 0 ? '' : s.name)) + '">' +
-        '<label class="muted">WhatsApp</label>' +
-        '<input name="wa" required value="' + esc(app.wa || s.wa || '') + '" placeholder="08…">' +
-        '<label class="muted">Pengalaman jualan</label>' +
-        '<textarea name="experience" required rows="3" placeholder="Toko, platform, omset kira-kira, sudah berapa lama.">' + esc(app.experience || '') + '</textarea>' +
-        '<label class="muted">Kenapa mau di-mentor</label>' +
-        '<textarea name="why" required rows="3" placeholder="Yang mau kamu pecahkan bulan ini.">' + esc(app.why || '') + '</textarea>' +
-        '<button class="btn" type="submit">Lanjut ke pembayaran</button>' +
-      '</form></section>';
+    const step = wizIdx();
+    const wantPay = step >= WIZ_PAY || (wizardStep(ui.personaId) === 'pay' && ui.wizStep == null);
+    if (wantPay) {
+      if (!db.applications[ui.personaId]) {
+        ui.wizStep = Math.min(typeof ui.wizStep === 'number' ? ui.wizStep : WIZ_FORM.length - 1, WIZ_FORM.length - 1);
+        if (ui.wizStep >= WIZ_PAY) ui.wizStep = WIZ_FORM.length - 1;
+        ui.wizFocusedStep = null;
+        return viewWizForm(ui.wizStep);
+      }
+      return viewPayPage(ui.personaId);
+    }
+    return viewWizForm(step);
+  }
+  function viewWizForm(step) {
+    const spec = WIZ_FORM[step] || WIZ_FORM[0];
+    const d = wizDraft();
+    const last = step >= WIZ_FORM.length - 1;
+    let fields = '';
+    if (spec.id === 'name') {
+      fields = '<input class="ob-input" data-focus="1" name="name" maxlength="80" autocomplete="name" value="' +
+        esc(d.name) + '" placeholder="Nama kamu">';
+    } else if (spec.id === 'wa') {
+      fields = '<input class="ob-input" data-focus="1" name="wa" type="tel" inputmode="numeric" autocomplete="tel" value="' +
+        esc(d.wa) + '" placeholder="08… atau 628…">';
+    } else if (spec.id === 'shop') {
+      fields = '<div class="ob-pills" role="group" aria-label="Sudah punya toko">' +
+        '<button type="button" class="ob-pill' + (d.shopPick === 'tidak' ? ' is-on' : '') + '" data-act="wiz-shop" data-id="tidak">Belum, masih mau mulai</button>' +
+        '<button type="button" class="ob-pill' + (d.shopPick === 'ya' ? ' is-on' : '') + '" data-act="wiz-shop" data-id="ya">Sudah punya toko</button>' +
+        '</div>' +
+        (d.shopPick === 'ya'
+          ? '<div class="ob-extra">' +
+            '<input class="ob-input" data-focus="1" name="shopName" maxlength="80" value="' + esc(d.shopName) + '" placeholder="Nama toko">' +
+            '<input class="ob-input" name="shopUrl" inputmode="url" autocomplete="url" value="' + esc(d.shopUrl) + '" placeholder="https://…">' +
+            '</div>'
+          : '');
+    } else if (spec.id === 'city') {
+      fields = '<input class="ob-input" data-focus="1" name="city" maxlength="60" autocomplete="address-level2" value="' +
+        esc(d.city) + '" placeholder="Kota">';
+    } else {
+      fields = '<div class="ob-pills" role="group" aria-label="Dari mana kenal Anton">' +
+        HEARD_OPTS.map((opt) =>
+          '<button type="button" class="ob-pill' + (d.heardPick === opt ? ' is-on' : '') +
+          '" data-act="wiz-heard" data-id="' + esc(opt) + '">' + esc(opt) + '</button>'
+        ).join('') + '</div>' +
+        (d.heardPick === 'Lainnya'
+          ? '<input class="ob-input ob-extra" data-focus="1" name="heardOther" maxlength="120" value="' +
+            esc(d.heardOther) + '" placeholder="Dari mana, singkat saja">'
+          : '');
+    }
+    return obWrap(step,
+      '<p class="ob-kicker">' + esc(spec.kicker) + '</p>' +
+      '<h1 class="ob-q">' + esc(spec.q) + '</h1>' +
+      '<p class="ob-sub">' + spec.sub + '</p>' +
+      '<form id="ob-form" data-act="wiz-next">' + fields + '</form>',
+      '<button class="btn ob-cta" type="button" data-act="wiz-next">' + (last ? 'Lihat paket' : 'Lanjut') + '</button>'
+    );
   }
   function viewPayPage(sid) {
     const welcome = welcomeOpen(sid) || !billingOf(sid).offerExpiresAt;
     const b = billingOf(sid);
     const exp = b.offerExpiresAt || addMs(isoNow(), 24 * 36e5);
+    const inWin = hoursLeft(exp) > 0;
     const term = ui.payTerm || 'month';
-    const price = priceForTerm(term, welcome && hoursLeft(exp) > 0);
-    const list = priceForTerm(term, false);
-    return '<section class="card">' +
-      '<p class="muted">Langkah 2 · Anton merchant. LarisID tidak menahan uang.</p>' +
-      '<h2>Bayar mentoring</h2>' +
-      (hoursLeft(exp) > 0
-        ? '<p>Diskon 24 jam (dari jam form). Sisa <strong>' + esc(fmtRemain(exp)) + '</strong>.</p>'
-        : '<p class="muted">Jendela 24 jam sudah habis. Harga list di bawah. Tidak ada kelangkaan palsu.</p>') +
-      '<div class="pay-terms">' +
-        termCard('month', 'Transfer tiap bulan', monthlyPrice(), priceForTerm('month', hoursLeft(exp) > 0), term) +
-        termCard('year', 'Transfer tahunan (−' + (db.pricing.annualDiscountPct || 15) + '%)', monthlyPrice() * 12, priceForTerm('year', hoursLeft(exp) > 0), term) +
-        termCard('autopay', 'Kartu autopay (−' + (db.pricing.autopayDiscountPct || 10) + '%)', monthlyPrice(), priceForTerm('autopay', hoursLeft(exp) > 0), term) +
+    const price = priceForTerm(term, welcome && inWin);
+    const list = listPriceForTerm(term);
+    const tools = catalog().filter((p) => bundled(p));
+    const toolPct = toolDiscountPct();
+    const include = '<ul class="ob-checks">' +
+      '<li>Kurikulum 12 video + lembar kerja</li>' +
+      '<li>Live class, diskusi, Kolab</li>' +
+      '<li>Undangan grup WA dari Anton</li>' +
+      '<li><strong>−' + toolPct + '% semua alat</strong> di Perpustakaan</li>' +
+      '<li class="is-mute">Laris Affiliate tetap harga satuan</li></ul>' +
+      '<button type="button" class="ob-link" data-act="wiz-tools">' +
+      (ui.wizTools ? 'Sembunyikan harga alat' : 'Lihat harga alat −' + toolPct + '%') + '</button>' +
+      (ui.wizTools
+        ? '<div class="include-tools">' + tools.map((p) =>
+          '<div class="include-tool"><span>' + esc(p.title) + '</span>' +
+          '<span><span class="price-coret">' + fmtRp(p.price) + '</span> <strong>' + fmtRp(toolMemberPrice(p)) + '</strong></span></div>'
+        ).join('') + '</div>'
+        : '');
+    const inner = '<p class="ob-kicker">Paket</p>' +
+      '<h1 class="ob-q">Yang kamu dapat</h1>' +
+      '<p class="ob-sub">Bayar ke rekening Anton. LarisID tidak menahan uang. Tidak ada sisa kursi.</p>' +
+      include +
+      '<p class="ob-note">' + (inWin
+        ? 'Harga perkenalan 24 jam untuk 1 bulan &amp; autopay · sisa <strong>' + esc(fmtRemain(exp)) + '</strong>. 3 &amp; 6 bulan sudah diskon program, tidak ditumpuk.'
+        : 'Jendela 24 jam sudah habis. Harga program di bawah.') + '</p>' +
+      '<div class="pay-terms ob-terms">' +
+        termCard('month', term, inWin && welcome) +
+        termCard('quarter', term, false) +
+        termCard('half', term, false) +
+        termCard('autopay', term, inWin && welcome) +
       '</div>' +
-      '<div class="card" style="margin-top:12px">' +
-        '<h3>Transfer ke rekening Anton</h3>' +
-        '<p><strong>' + esc(db.bank.bank) + '</strong> ' + esc(db.bank.number) + '<br>' +
-        'a.n. ' + esc(db.bank.name) + '</p>' +
-        '<p class="muted">Jumlah sekarang: <strong>' + fmtRp(price) + '</strong>' +
-        (price < list ? ' <span class="price-coret">' + fmtRp(list) + '</span>' : '') + '</p>' +
-        '<p class="muted">Kartu autopay = mock Mayar. Prototype tidak menagih sungguhan.</p>' +
-        '<div class="row" style="margin-top:10px">' +
-          '<button class="btn" data-act="pay-now" data-term="' + esc(term) + '">' +
-          (term === 'autopay' ? 'Bayar kartu (mock)' : 'Saya sudah transfer') + '</button>' +
-          '<button class="btn secondary" data-act="pay-later">Bayar nanti</button>' +
-          '<button class="btn secondary" data-act="not-interested">Tidak tertarik</button>' +
+      '<div class="ob-bank">' +
+        '<div class="ob-pay-ways">' +
+          '<div class="ob-qris" aria-label="Contoh QRIS">' +
+            qrisPlaceholderSvg() +
+            '<span class="ob-qris-badge">QRIS · contoh</span>' +
+            '<span class="ob-qris-nm">' + esc(db.bank.name) + '</span>' +
+            '<span class="muted">Placeholder — bukan kode bayar sungguhan</span>' +
+          '</div>' +
+          '<div class="ob-tf">' +
+            '<p class="ob-tf-kicker">Atau transfer bank</p>' +
+            '<p><strong>' + esc(db.bank.bank) + '</strong> ' + esc(db.bank.number) + '<br>a.n. ' + esc(db.bank.name) + '</p>' +
+            '<p class="muted">Jumlah sekarang: <strong>' + fmtRp(price) + '</strong>' +
+            (price < list ? ' <span class="price-coret">' + fmtRp(list) + '</span>' : '') +
+            ' · ' + esc(termLabel(term)) + '</p>' +
+            '<p class="muted">Kartu autopay = mock Mayar. Prototype tidak menagih sungguhan.</p>' +
+          '</div>' +
         '</div>' +
-      '</div>' +
-      '<p class="muted" style="margin-top:12px">Bayar nanti: Home kelihatan utuh, hanya video 1 + lembar kerja yang kebuka. Laris Affiliate tidak termasuk mentoring.</p>' +
-      '</section>';
+      '</div>';
+    const foot =
+      '<button class="btn ob-cta" data-act="pay-now" data-term="' + esc(term) + '">' +
+      (term === 'autopay' ? 'Bayar kartu (mock)' : 'Saya sudah transfer / scan') + '</button>' +
+      '<button type="button" class="btn secondary ob-cta" data-act="pay-later">Bayar nanti, lihat dulu</button>' +
+      '<p class="ob-look-hint">Form sudah masuk — tab <strong>Belajar</strong> &amp; <strong>Diskusi</strong> di bawah. Video 1 kebuka; sisanya blur sampai lunas.</p>' +
+      '<button type="button" class="ob-text" data-act="not-interested">Tidak tertarik</button>';
+    return obWrap(WIZ_PAY, inner, foot, true);
   }
-  function termCard(id, label, coret, now, cur) {
-    return '<button type="button" class="card tool-tile' + (cur === id ? ' current-term' : '') + '" data-act="pick-term" data-id="' + id + '">' +
-      '<h3>' + esc(label) + '</h3>' +
-      (now < coret ? '<p class="sku-price"><span class="price-coret">' + fmtRp(coret) + '</span> <strong>' + fmtRp(now) + '</strong></p>'
-        : '<p class="sku-price"><strong>' + fmtRp(now) + '</strong></p>') +
+  function qrisPlaceholderSvg() {
+    const cells = [];
+    const n = 11;
+    for (let y = 0; y < n; y += 1) {
+      for (let x = 0; x < n; x += 1) {
+        const finder = (x < 3 && y < 3) || (x > n - 4 && y < 3) || (x < 3 && y > n - 4);
+        const mid = x > 3 && x < n - 4 && y > 3 && y < n - 4 && ((x + y * 3) % 2 === 0);
+        if (finder || mid || ((x * 7 + y * 13) % 5 === 0 && x > 2 && y > 2)) {
+          cells.push('<rect x="' + (x * 8 + 8) + '" y="' + (y * 8 + 8) + '" width="7" height="7" fill="#18181b"/>');
+        }
+      }
+    }
+    return '<svg class="ob-qris-svg" viewBox="0 0 104 104" width="148" height="148" aria-hidden="true">' +
+      '<rect width="104" height="104" fill="#fff" rx="8"/>' +
+      cells.join('') +
+      '<rect x="8" y="8" width="24" height="24" fill="none" stroke="#18181b" stroke-width="4"/>' +
+      '<rect x="72" y="8" width="24" height="24" fill="none" stroke="#18181b" stroke-width="4"/>' +
+      '<rect x="8" y="72" width="24" height="24" fill="none" stroke="#18181b" stroke-width="4"/>' +
+      '</svg>';
+  }
+  function termCard(id, cur, welcome) {
+    const list = listPriceForTerm(id);
+    const now = priceForTerm(id, welcome);
+    const months = termMonths(id);
+    const disc = termDiscountPct(id);
+    const titles = {
+      month: '1 bulan · transfer',
+      quarter: '3 bulan',
+      half: '6 bulan',
+      autopay: 'Autopay kartu / bulan'
+    };
+    const per = months > 1 ? Math.round(now / months) : now;
+    return '<button type="button" class="ob-term' + (cur === id ? ' is-on' : '') + '" data-act="pick-term" data-id="' + id + '">' +
+      '<span class="ob-term-title">' + esc(titles[id] || id) + '</span>' +
+      (disc ? '<span class="muted">−' + disc + '% dari ' + months + ' × bulanan</span>' : '<span class="muted">Harga list bulanan</span>') +
+      (now < list
+        ? '<span class="sku-price"><span class="price-coret">' + fmtRp(list) + '</span> <strong>' + fmtRp(now) + '</strong></span>'
+        : '<span class="sku-price"><strong>' + fmtRp(now) + '</strong></span>') +
+      (months > 1 ? '<span class="muted">Setara ' + fmtRp(per) + ' / bulan</span>' : '') +
       '</button>';
   }
   function viewHome() {
@@ -1666,14 +2884,7 @@
     return (
       (preview ? offerBanner(s.id) : '') +
       '<div class="grid-2">' +
-        '<section class="card resume">' +
-          '<p class="muted">' + (preview ? 'Coba video 1' : 'Lanjutkan') + '</p>' +
-          '<h2>' + esc(last.title) + '</h2>' +
-          '<p class="muted">' + esc(typeLabel(last.type)) + ' · ' + kurProgress(s.id).n + '/' + kurProgress(s.id).total + ' video' +
-          (preview ? ' · video lain terkunci sampai lunas' : '') + '</p>' +
-          progressBarHtml(s.id) +
-          '<button class="btn" data-act="open-lec" data-id="' + esc(last.id) + '">Buka materi</button>' +
-        '</section>' +
+        resumeJourneyHtml(s.id, last, preview) +
         '<section class="card">' +
           '<h2>Sesi berikutnya</h2>' +
           (preview
@@ -1688,6 +2899,12 @@
               : '<a class="btn" href="' + esc(ses.meetUrl) + '" target="_blank" rel="noopener">Buka Meet</a>') +
             '<a class="wa" href="' + esc(waLink(SEED.staff[0].wa, 'Halo Anton, saya dari Batch September.')) + '" target="_blank" rel="noopener">Chat Anton di WA</a>' +
           '</div>' +
+          calSyncButtons(ses) +
+          (!preview
+            ? '<div class="row" style="margin-top:8px">' +
+                '<button type="button" class="btn-sm" data-act="cal-ics-all">Unduh semua sesi (.ics)</button>' +
+              '</div>'
+            : '') +
           '<p class="muted" style="margin-top:10px">Grup WA kelas: undangan hanya lewat Anton. Prototype tidak mengirim WA sungguhan.</p>' +
         '</section>' +
       '</div>' +
@@ -1744,12 +2961,17 @@
 
   function weekList(sid, weekId) {
     return '<ul class="list-check">' + lecturesInWeek(weekId).map((l) => {
-      const locked = !canOpenLecture(sid, l.id) && !isStaff();
-      return '<li><span>' + (isDone(sid, l.id) ? '<span class="tick-ok" aria-hidden="true">✓</span> ' : '<span class="tick-off" aria-hidden="true"></span> ') +
-      esc(l.title) + (locked ? ' <span class="chip">Terkunci</span>' : '') + '</span>' +
-      (locked
-        ? '<button class="btn-sm" data-act="tab" data-id="daftar">Lanjut mentoring</button>'
-        : '<button class="btn-sm" data-act="open-lec" data-id="' + esc(l.id) + '">Buka</button>') + '</li>';
+      const paywall = isPaywalled(sid, l.id) && !isStaff();
+      const seq = isSeqLocked(sid, l.id) && !isStaff();
+      const locked = paywall || seq;
+      const done = !locked && isDone(sid, l.id);
+      return '<li class="' + (locked ? 'is-locked' : '') + (done ? ' is-done' : '') +
+        (seq ? ' is-seq' : '') + '"><span>' +
+        (done ? '<span class="tick-ok" aria-hidden="true">✓</span> ' : '<span class="tick-off" aria-hidden="true"></span> ') +
+        '<span class="' + (paywall ? 'list-blur' : '') + '">' + esc(l.title) + '</span>' +
+        (paywall ? ' <span class="chip">Terkunci</span>' : (seq ? ' <span class="chip">Urutan</span>' : '')) + '</span>' +
+        '<button class="btn-sm" data-act="open-lec" data-id="' + esc(l.id) + '">' +
+        (paywall ? 'Lihat' : 'Buka') + '</button></li>';
     }).join('') + '</ul>';
   }
 
@@ -1770,39 +2992,242 @@
       '<button class="btn" data-act="tab" data-id="daftar">Bayar mentoring</button></div>';
   }
 
+  function lectureNeighbors(id) {
+    const list = lectures();
+    const i = list.findIndex((l) => l.id === id);
+    const idx = i < 0 ? 0 : i;
+    return {
+      i: idx,
+      n: idx + 1,
+      total: list.length,
+      prev: idx > 0 ? list[idx - 1] : null,
+      next: idx >= 0 && idx < list.length - 1 ? list[idx + 1] : null
+    };
+  }
+  function weekTitleOf(lec) {
+    const w = db.weeks.find((x) => x.id === lec.weekId);
+    return w ? w.title : '';
+  }
+  function lecAccHtml(icon, title, sub, inner) {
+    if (!inner) return '';
+    return '<details class="lec-acc">' +
+      '<summary>' +
+        svgIcon(icon) +
+        '<span class="lec-acc-copy"><strong>' + esc(title) + '</strong>' +
+        (sub ? '<span>' + esc(sub) + '</span>' : '') + '</span>' +
+        '<span class="lec-acc-chevron" aria-hidden="true">▾</span>' +
+      '</summary>' +
+      '<div class="lec-acc-body">' + inner + '</div></details>';
+  }
+  function lessonVideoHtml(lec) {
+    const cover = coverHtml('lec', lec.id, 'lec-poster');
+    const watchFirst = lec.type === 'video' && lec.id === firstLectureId();
+    if (lec.videoBlob) {
+      return (cover || '') + '<video class="lec-video" controls playsinline preload="metadata" data-blob="' +
+        esc(lec.id) + '"' + (watchFirst ? ' data-watch-lec="' + esc(lec.id) + '"' : '') + '></video>';
+    }
+    const e = parseEmbed(lec.url);
+    if (e && e.embed) {
+      return '<div class="lazy-embed' + (cover ? ' has-cover' : '') + '" data-embed="' + esc(e.embed) + '"' +
+        (watchFirst && e.videoId ? ' data-watch-lec="' + esc(lec.id) + '" data-yt-id="' + esc(e.videoId) + '"' : '') + '>' +
+        (cover || '') +
+        '<div class="play-orb" aria-hidden="true">' + svgIcon('play') + '</div>' +
+      '</div>';
+    }
+    if (lec.url) {
+      return '<div class="article">' + (cover || '') + '<p>Video ini tidak bisa diputar di dalam kelas (TikTok / tautan lain).</p>' +
+        '<a class="btn" href="' + esc(lec.url) + '" target="_blank" rel="noopener">Buka video</a></div>';
+    }
+    return '<div class="article">' + (cover || '') + '<p class="muted">Belum ada video. Mentor tempel tautan atau unggah di Kurikulum.</p></div>';
+  }
+  function lessonReadHtml(lec) {
+    const body = (lec.body || '').trim();
+    if (!body) return '';
+    const long = body.length > 160 || body.indexOf('\n\n') >= 0;
+    return '<div class="lec-read' + (long ? '' : ' is-open') + '">' +
+      '<div class="lec-read-text">' + mdish(body) + '</div>' +
+      (long
+        ? '<button type="button" class="lec-more" data-act="lec-more">Baca selengkapnya <span aria-hidden="true">▾</span></button>'
+        : '') +
+      '</div>';
+  }
+  function lessonAskHtml(lec) {
+    const threads = db.threads.filter((t) => t.lectureId === lec.id);
+    return threadList(threads) +
+      '<form class="compose" data-act="ask" data-lec="' + esc(lec.id) + '">' +
+        '<input name="title" required maxlength="140" placeholder="Judul pertanyaan">' +
+        '<textarea name="body" required rows="3" placeholder="Konteks singkat. Jangan sebar supplier atau margin."></textarea>' +
+        '<button class="btn" type="submit">Kirim</button>' +
+      '</form>';
+  }
+  function lessonQuizHtml(lec) {
+    const qs = lec.questions || [];
+    if (!qs.length) return '';
+    return qs.map((q, i) =>
+      '<div class="quiz-q"><p><strong>' + (i + 1) + '.</strong> ' + esc(q.q) + '</p>' +
+      (q.hint
+        ? '<details><summary>Catatan</summary><p class="muted">' + esc(q.hint) + '</p></details>'
+        : '') +
+      '</div>'
+    ).join('') +
+    '<p class="muted">Untuk dipikirkan — bukan ujian, tidak perlu kirim jawaban.</p>';
+  }
+  function renderLessonPlayer(lec, opts) {
+    opts = opts || {};
+    const sid = ui.personaId;
+    const p = kurProgress(sid);
+    const nb = lectureNeighbors(lec.id);
+    const week = weekTitleOf(lec);
+    const docs = lec.resources || [];
+    const points = lec.points || [];
+    const questions = lec.questions || [];
+    const threads = db.threads.filter((t) => t.lectureId === lec.id);
+    const docSub = docs.map((d) => d.name || 'File').join(', ');
+    const tanyaSub = threads.length
+      ? (threads.length + ' pertanyaan')
+      : 'Belum ada pertanyaan. WhatsApp tetap untuk chat cepat.';
+    const canNext = !!(nb.next && (isStaff() || canOpenLecture(sid, nb.next.id)));
+    const paywalled = !!opts.paywalled;
+    const seqLocked = !!opts.seqLocked;
+    const top = opts.phone
+      ? '<div class="lesson-top">' +
+          '<button type="button" class="lesson-back" data-act="tab" data-id="home" aria-label="Kembali">←</button>' +
+          '<strong class="lesson-tab">Belajar</strong>' +
+          '<button type="button" class="lesson-count" data-act="toggle-kur" aria-label="Kurikulum">' +
+            nb.n + ' / ' + nb.total + '</button>' +
+          '<button type="button" class="lesson-chev"' + (nb.prev ? ' data-act="open-lec" data-id="' + esc(nb.prev.id) + '"' : ' disabled') +
+            ' aria-label="Materi sebelumnya">‹</button>' +
+          '<button type="button" class="lesson-chev"' + (canNext ? ' data-act="open-lec" data-id="' + esc(nb.next.id) + '"' : ' disabled') +
+            ' aria-label="Materi berikutnya">›</button>' +
+        '</div>'
+      : '';
+    const head =
+      '<header class="lesson-head">' +
+        (week ? '<p class="lesson-kicker">' + esc(week) + '</p>' : '') +
+        '<h1>' + esc(lec.title) + '</h1>' +
+        '<p class="lesson-meta">Materi ' + nb.n + ' dari ' + nb.total + ' · ' + p.pct + '% selesai</p>' +
+        '<div class="lesson-bar" aria-hidden="true"><span style="width:' + p.pct + '%"></span></div>' +
+      '</header>';
+    const seqBanner = seqLocked
+      ? '<div class="seq-lock-banner" role="status">' +
+          '<strong>Bisa dibaca</strong> — tandai selesai &amp; lanjut setelah materi sebelumnya selesai.' +
+          '<button type="button" class="btn-sm" data-act="open-lec" data-id="' +
+            esc((nb.prev && nb.prev.id) || firstLectureId()) + '">Ke materi sebelumnya</button>' +
+        '</div>'
+      : '';
+    let stage = '';
+    if (paywalled) {
+      stage = '<div class="locked-blur-card">' +
+        '<div class="locked-blur-bg" aria-hidden="true">' +
+          (coverHtml('lec', lec.id, 'lec-poster') || '<div class="lec-poster lec-poster-empty"></div>') +
+          '<div class="locked-blur-fake">' +
+            '<div class="fake-line"></div><div class="fake-line short"></div>' +
+            '<div class="fake-line"></div><div class="fake-chip"></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="locked-blur-fg">' +
+          '<p class="trial-kicker">Materi terkunci</p>' +
+          '<h2>' + esc(lec.title) + '</h2>' +
+          '<p class="muted">Kurikulum lengkap di bawah — yang blur terkunci sampai mentoring lunas.</p>' +
+          '<button class="btn" data-act="open-lec" data-id="' + esc(firstLectureId()) + '">Ke video selamat datang</button>' +
+          '<button class="btn secondary" data-act="tab" data-id="daftar">Bayar mentoring</button>' +
+        '</div></div>';
+    } else if (lec.tool === 'kolab') {
+      stage = viewKolab();
+    } else if (lec.type === 'video') {
+      stage = '<div class="lesson-stage">' + lessonVideoHtml(lec) + '</div>' +
+        watchHintHtml(lec, isDone(sid, lec.id)) +
+        lessonReadHtml(lec);
+    } else {
+      stage = renderCanvas(lec);
+    }
+    const folds = paywalled || lec.tool === 'kolab' ? '' :
+      lecAccHtml('doc', 'Dokumen', docSub, docs.length ? resourceListHtml(lec) : '') +
+      lecAccHtml('list', 'Poin penting', points.length ? (points.length + ' poin') : '',
+        points.length ? '<ul class="key-points">' + points.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '') +
+      lecAccHtml('help', 'Cek pemahaman', questions.length ? (questions.length + ' prompt') : '',
+        lessonQuizHtml(lec)) +
+      lecAccHtml('chat', 'Tanya di materi ini', tanyaSub, lessonAskHtml(lec));
+    const nav = (paywalled || lec.tool === 'kolab') ? '' :
+      '<div class="lec-nav">' +
+        '<button type="button" class="btn lec-prev"' +
+          (nb.prev ? ' data-act="open-lec" data-id="' + esc(nb.prev.id) + '"' : ' disabled') +
+          '>← Materi sebelumnya</button>' +
+        '<button type="button" class="btn lec-next"' +
+          (canNext ? ' data-act="open-lec" data-id="' + esc(nb.next.id) + '"' : ' disabled') +
+          (canNext ? '' : ' title="Selesaikan materi ini dulu"') +
+          '>Materi berikutnya →</button>' +
+      '</div>';
+    return '<div class="lesson">' + top + head + seqBanner + stage + folds + nav + (opts.after || '') + '</div>';
+  }
+
   function viewBelajar() {
     if (!canMentoring(ui.personaId) && !canPreview(ui.personaId)) return viewLocked();
-    const lec = lectureById(ui.lectureId) || lectures()[0];
-    ui.lectureId = lec.id;
-    if (!canOpenLecture(ui.personaId, lec.id) && !isStaff()) {
-      return '<div class="player-layout"><div>' +
-        progressBarHtml(ui.personaId) +
-        '<div class="locked"><h2>Materi terkunci</h2>' +
-        '<p class="muted">Trial = video 1 + lembar kerja. Sisanya setelah mentoring lunas.</p>' +
-        '<button class="btn" data-act="tab" data-id="daftar">Bayar mentoring</button></div></div>' +
-        '<aside class="kurikulum-pane' + (ui.kurOpen ? ' is-open' : '') + '">' + renderKurikulumSidebar() + '</aside></div>';
+    const preview = canPreview(ui.personaId) && !canMentoring(ui.personaId);
+    let lec = lectureById(ui.lectureId) || lectures()[0];
+    if (!isStaff() && lec && lec.id !== 'kolab' && !canViewLecture(ui.personaId, lec.id)) {
+      const open = lectures().filter((l) => canViewLecture(ui.personaId, l.id));
+      lec = open.find((l) => !isDone(ui.personaId, l.id) && canOpenLecture(ui.personaId, l.id))
+        || open.find((l) => canOpenLecture(ui.personaId, l.id))
+        || open[open.length - 1] || lectures()[0];
     }
-    const inner = lec.tool === 'kolab'
-      ? viewKolab()
-      : renderCanvas(lec) + renderLecAfter(lec) + payAfterFirst(lec) + renderPanes(lec);
+    ui.lectureId = lec.id;
+    const paywalled = isPaywalled(ui.personaId, lec.id) && !isStaff();
+    const seqLocked = isSeqLocked(ui.personaId, lec.id) && !isStaff();
+    const payStrip = preview ? offerBanner(ui.personaId) : '';
+    const kurInline = preview ? trialKurikulumBlock() : '';
+    const after = (preview && !paywalled && lec.tool !== 'kolab' ? payAfterFirst(lec) : '') + kurInline;
+    const player = (preview ? payStrip : '') + renderLessonPlayer(lec, {
+      phone: !isStaff(),
+      paywalled: paywalled,
+      seqLocked: seqLocked,
+      after: after
+    });
     return '<div class="player-layout">' +
-      '<div>' +
-        progressBarHtml(ui.personaId) +
-        '<button type="button" class="kur-toggle" data-act="toggle-kur">' +
-        (ui.kurOpen ? 'Tutup kurikulum' : 'Kurikulum · ' + kurProgress(ui.personaId).pct + '%') + '</button>' +
-        inner + '</div>' +
+      '<div>' + player + '</div>' +
       '<aside class="kurikulum-pane' + (ui.kurOpen ? ' is-open' : '') + '">' +
         renderKurikulumSidebar() + '</aside>' +
       '</div>';
   }
+  function trialKurikulumBlock() {
+    const p = kurProgress(ui.personaId);
+    const openN = lectures().filter((l) => canOpenLecture(ui.personaId, l.id)).length;
+    return '<section class="card kurikulum-inline" id="kurikulum-trial">' +
+      '<p class="trial-kicker">Kurikulum lengkap</p>' +
+      '<h3>' + p.total + ' materi · ' + openN + ' kebuka di trial</h3>' +
+      '<p class="muted">Yang blur = terkunci sampai mentoring lunas. Ketuk untuk lihat teaser.</p>' +
+      '<div class="kurikulum-inline-list">' + renderKurikulumSidebar() + '</div></section>';
+  }
+
+  function progresKurikulumBlock(sid) {
+    const unpaid = !canMentoring(sid);
+    const openN = lectures().filter((l) => canOpenLecture(sid, l.id)).length;
+    const total = lectures().length;
+    return '<section class="card kurikulum-inline progres-kur" id="kurikulum-progres">' +
+      '<p class="trial-kicker">Kurikulum</p>' +
+      (unpaid
+        ? '<p class="muted">Modul terkunci tetap kelihatan (blur) dan belum selesai. Mentoring membuka semuanya.</p>'
+        : '<p class="muted">Bisa dibaca semua. Tandai selesai berurutan supaya materi berikutnya kebuka.</p>') +
+      progressBarHtml(sid) +
+      '<p class="progres-open muted">' + (unpaid
+        ? (openN + ' materi kebuka sekarang · ' + (total - openN) + ' masih terkunci')
+        : (openN + ' / ' + total + ' siap ditandai selesai · sisanya bisa dibaca dulu')) + '</p>' +
+      '<div class="kurikulum-inline-list">' + renderKurikulumSidebar(sid, { skipProgress: true }) + '</div></section>';
+  }
   function payAfterFirst(lec) {
     if (lec.id !== firstLectureId()) return '';
     if (canMentoring(ui.personaId)) return '';
-    if (!isDone(ui.personaId, lec.id) && !ui.payPrompt) return '';
-    return '<section class="card resume lec-after"><h3>Lanjut mentoring?</h3>' +
-      '<p class="muted">Video 1 selesai. Tools satuan di Pustaka, atau mentoring supaya kelas + alat lynk kebuka (bukan Laris Affiliate).</p>' +
+    const b = billingOf(ui.personaId);
+    const open = welcomeOpen(ui.personaId);
+    return '<section class="card trial-cta lec-after">' +
+      '<h3>Lanjut mentoring?</h3>' +
+      '<p class="muted">Video 1 + checklist kebuka. 11 video lain, live, diskusi, dan alat −' + toolDiscountPct() + '% setelah lunas.</p>' +
+      (open
+        ? '<p class="trial-count">Diskon 24 jam · sisa <strong data-remain="' + esc(b.offerExpiresAt) + '">' + esc(fmtRemain(b.offerExpiresAt)) + '</strong></p>'
+        : '') +
       '<div class="row">' +
-        '<button class="btn" data-act="tab" data-id="daftar">Bayar sekarang</button>' +
+        '<button class="btn" data-act="tab" data-id="daftar">Bayar mentoring</button>' +
+        '<button class="btn secondary" data-act="scroll-kur">Lihat kurikulum terkunci</button>' +
         '<button class="btn secondary" data-act="not-interested">Tidak tertarik</button>' +
       '</div></section>';
   }
@@ -1810,16 +3235,20 @@
   function renderCanvas(lec) {
     let body = '';
     const cover = coverHtml('lec', lec.id, 'lec-poster');
+    const watchFirst = lec.type === 'video' && lec.id === firstLectureId();
     if (lec.type === 'video') {
       if (lec.videoBlob) {
-        body = (cover || '') + '<video class="lec-video" controls playsinline preload="metadata" data-blob="' + esc(lec.id) + '"></video>';
+        body = (cover || '') + '<video class="lec-video" controls playsinline preload="metadata" data-blob="' +
+          esc(lec.id) + '"' + (watchFirst ? ' data-watch-lec="' + esc(lec.id) + '"' : '') + '></video>';
       } else {
         const e = parseEmbed(lec.url);
         if (e && e.embed) {
-          body = '<div class="lazy-embed" data-embed="' + esc(e.embed) + '">' +
+          body = '<div class="lazy-embed" data-embed="' + esc(e.embed) + '"' +
+            (watchFirst && e.videoId ? ' data-watch-lec="' + esc(lec.id) + '" data-yt-id="' + esc(e.videoId) + '"' : '') + '>' +
             (cover || '') +
             '<div class="play-orb">▶</div>' +
-            '<div class="lazy-note">Ketuk untuk memuat · ' + (e.kind === 'drive' ? 'Google Drive' : 'hemat data') + '</div></div>';
+            '<div class="lazy-note">Ketuk untuk memuat · ' + (e.kind === 'drive' ? 'Google Drive' : 'hemat data') +
+            (watchFirst ? ' · selesai otomatis ≥85%' : '') + '</div></div>';
         } else if (lec.url) {
           body = '<div class="article">' + (cover || '') + '<p>Video ini tidak bisa diputar di dalam kelas (TikTok / tautan lain).</p>' +
             '<a class="btn" href="' + esc(lec.url) + '" target="_blank" rel="noopener">Buka video</a>' +
@@ -1830,10 +3259,16 @@
       }
       if (lec.body) body += '<div class="article lec-read">' + mdish(lec.body) + '</div>';
     } else if (lec.type === 'tool') {
-      let src = lec.iframe || '';
       const sku = lec.skuId ? productById(lec.skuId) : null;
-      if (sku && sku.example && src) src += (src.indexOf('?') >= 0 ? '&' : '?') + 'contoh=1';
-      body = '<iframe class="tool-frame" sandbox="' + TOOL_SANDBOX + '" src="' + esc(src) + '" title="' + esc(lec.title) + '"></iframe>';
+      if (sku && (sku.id === 'calc' || sku.id === 'ai-creative' || sku.id === 'ai-data')) {
+        body = nativeToolHtml(sku, !!(sku.example));
+      } else {
+        let src = lec.iframe || (sku && sku.iframe) || '';
+        if (sku && sku.example && src) src += (src.indexOf('?') >= 0 ? '&' : '?') + 'contoh=1';
+        body = src
+          ? '<iframe class="tool-frame" sandbox="' + TOOL_SANDBOX + '" src="' + esc(src) + '" title="' + esc(lec.title) + '"></iframe>'
+          : '<div class="article"><p class="muted">Alat belum siap.</p></div>';
+      }
     } else if (lec.type === 'document') {
       body = '<div class="article">' + (cover || '') + '<h3>' + esc(lec.title) + '</h3>' +
         ((lec.resources || []).length ? resourceListHtml(lec) : '<p>File kelas: <a href="' + esc(lec.url || '#') + '" target="_blank" rel="noopener">' + esc(lec.title) + '</a></p>') +
@@ -1842,13 +3277,21 @@
       body = '<div class="article">' + (cover || '') + '<h3>' + esc(lec.title) + '</h3>' + mdish(lec.body || '') + '</div>';
     }
     const done = isDone(ui.personaId, lec.id);
+    let doneCtrl = '';
+    if (watchFirst) {
+      doneCtrl = done
+        ? '<span class="btn done-ok" data-watch-status="done">Selesai ✓</span>'
+        : '<span class="watch-hint" data-watch-status="pending">Selesai otomatis setelah nonton ≥85%</span>';
+    } else {
+      doneCtrl = '<button class="btn' + (done ? ' done-ok' : '') + '" data-act="toggle-done" data-id="' + esc(lec.id) + '">' +
+        (done ? 'Selesai ✓' : 'Tandai selesai') + '</button>';
+    }
     return '<div class="card" style="padding:0;overflow:hidden">' +
       '<div class="canvas">' + body + '</div>' +
       '<div class="canvas-bar">' +
         '<div><strong>' + esc(lec.title) + '</strong><div class="muted">' + esc(typeLabel(lec.type)) +
         (lec.requiredBefore ? ' · wajib sebelum kelas' : '') + '</div></div>' +
-        '<button class="btn' + (done ? ' done-ok' : '') + '" data-act="toggle-done" data-id="' + esc(lec.id) + '">' +
-        (done ? 'Selesai ✓' : 'Tandai selesai') + '</button>' +
+        doneCtrl +
       '</div></div>';
   }
 
@@ -1879,11 +3322,11 @@
         lec.questions.map((q, i) =>
           '<div class="quiz-q"><p><strong>' + (i + 1) + '.</strong> ' + esc(q.q) + '</p>' +
           (q.hint
-            ? '<details><summary>Arah jawaban (contoh)</summary><p class="muted">' + esc(q.hint) + '</p></details>'
+            ? '<details><summary>Catatan</summary><p class="muted">' + esc(q.hint) + '</p></details>'
             : '') +
           '</div>'
         ).join('') +
-        '<p class="muted">Bukan ujian — tidak ada skor. Tandai selesai setelah nonton dan baca.</p></div>';
+        '<p class="muted">Untuk dipikirkan — bukan ujian, tidak perlu kirim jawaban. Video 1 selesai otomatis setelah nonton ≥85%.</p></div>';
     }
     return html;
   }
@@ -1894,20 +3337,29 @@
     const preview = !!opts.preview;
     const currentId = preview ? (ui.kurPreviewLec || '') : ui.lectureId;
     let n = 0;
-    return progressBarHtml(sid) + db.weeks.map((w) => {
+    const head = opts.skipProgress ? '' : progressBarHtml(sid);
+    return head + db.weeks.map((w) => {
       const items = lecturesInWeek(w.id).map((l) => {
         n += 1;
         const cur = l.id === currentId;
-        const locked = preview ? !canOpenLecture(sid, l.id) : (!isStaff() && !canOpenLecture(sid, l.id));
+        const paywall = preview ? !canOpenLecture(sid, l.id) : isPaywalled(sid, l.id);
+        const seq = !preview && !isStaff() && isSeqLocked(sid, l.id);
+        const locked = paywall || seq;
         const thumb = coverHtml('lec', l.id, 'cover-mini');
-        const act = preview ? 'kur-prev-lec' : (locked ? 'tab' : 'open-lec');
-        const dataId = preview ? l.id : (locked ? 'daftar' : l.id);
-        return '<button type="button" class="lec' + (cur ? ' current' : '') + (locked ? ' locked' : '') + '" data-act="' +
-          act + '" data-id="' + esc(dataId) + '">' +
-          (thumb || '<span class="mark' + (isDone(sid, l.id) ? ' done' : '') + '" aria-hidden="true">' +
-          (isDone(sid, l.id) ? '✓' : (locked ? '×' : '')) + '</span>') +
-          '<span><div class="t">' + n + '. ' + esc(l.title) + (locked ? ' · terkunci' : '') + '</div>' +
-          '<div class="m">' + esc(typeLabel(l.type)) + ' · ' + esc(l.mins) + ' mnt' + (l.requiredBefore ? ' · wajib' : '') + '</div></span></button>';
+        const act = preview ? 'kur-prev-lec' : 'open-lec';
+        return '<button type="button" class="lec' + (cur ? ' current' : '') + (locked ? ' locked' : '') +
+          (seq ? ' is-seq' : '') + '" data-act="' +
+          act + '" data-id="' + esc(l.id) + '">' +
+          '<span class="lec-face' + (paywall ? ' is-blur' : '') + '">' +
+            (thumb || '<span class="mark' + (isDone(sid, l.id) ? ' done' : '') + '" aria-hidden="true">' +
+            (isDone(sid, l.id) ? '✓' : '') + '</span>') +
+            '<span><div class="t">' + n + '. ' + esc(l.title) + '</div>' +
+            '<div class="m">' + esc(typeLabel(l.type)) +
+            (l.requiredBefore ? ' · wajib' : '') + '</div></span>' +
+          '</span>' +
+          (paywall ? '<span class="lec-lock">Terkunci</span>' :
+            (seq ? '<span class="lec-lock is-seq">Urutan</span>' : '')) +
+          '</button>';
       }).join('');
       return '<div class="week-label">' + coverHtml('week', w.id, 'cover-mini') + esc(w.title) + ' · ' + progressPct(sid, w.id) + '%</div>' + items;
     }).join('');
@@ -1957,7 +3409,13 @@
   }
 
   function skuPriceHtml(p) {
-    return '<span class="price-coret">' + fmtRp(p.coret) + '</span> <strong>' + fmtRp(p.price) + '</strong>';
+    const list = Number(p.price) || 0;
+    if (canMentoring(ui.personaId) && bundled(p) && !canSku(ui.personaId, p.id)) {
+      return '<span class="price-coret">' + fmtRp(list) + '</span> <strong>' + fmtRp(toolMemberPrice(p)) + '</strong>' +
+        '<span class="muted"> · mentoring −' + toolDiscountPct() + '%</span>';
+    }
+    if (p.coret) return '<span class="price-coret">' + fmtRp(p.coret) + '</span> <strong>' + fmtRp(list) + '</strong>';
+    return '<strong>' + fmtRp(list) + '</strong>';
   }
 
   function skuCoverHtml(p, cls) {
@@ -1972,9 +3430,9 @@
       '<div>' +
         '<div class="catalog-brand">' +
           '<img class="catalog-mark" src="' + esc(sch.logo) + '" alt="">' +
-          '<div><strong>Obrolan Marketing</strong><span>by Coach Anton GC</span></div>' +
+          '<div><strong>MasterMind with Anton GC</strong><span>by Coach Anton GC</span></div>' +
         '</div>' +
-        '<p class="muted" style="margin:6px 0 0">@obrolan.marketing · cover &amp; foto dari etalase lynk (salinan lokal).</p>' +
+        '<p class="muted" style="margin:6px 0 0">Kelas: <a href="' + esc(schoolLocalUrl()) + '">larisid.com/s/' + esc(schoolSlug()) + '</a> · etalase: lynk.id/' + esc(schoolSlug()) + '</p>' +
         '<a class="btn secondary" href="' + esc(sch.lynk) + '" target="_blank" rel="noopener" style="margin-top:8px">Etalase lynk.id</a>' +
       '</div></section>';
   }
@@ -2018,12 +3476,14 @@
 
   function skuTile(p, sid) {
     const owned = canSku(sid, p.id);
-    return '<div class="card tool-tile sku">' +
+    return '<div class="card tool-tile sku' + (owned ? ' is-owned' : '') + '">' +
       skuCoverHtml(p) +
       '<div class="sku-body">' +
-      (owned ? '<span class="chip lunas">Punya</span>' : '<span class="chip">Satuan</span>') +
+      '<div class="own-row">' + ownCheckHtml(owned, p.title) +
+      '<span class="own-label">' + (owned ? 'Sudah punya' : 'Belum punya') + '</span>' +
       (!bundled(p) ? ' <span class="chip warn">Bukan mentoring</span>' : '') +
-      (p.example ? ' <span class="chip warn">Contoh</span>' : '') +
+      (p.example && !owned ? ' <span class="chip warn">Contoh</span>' : '') +
+      '</div>' +
       '<h3>' + esc(p.title) + '</h3>' +
       '<p class="muted">' + esc(p.job) + '</p>' +
       '<p class="sku-price">' + skuPriceHtml(p) + '</p>' +
@@ -2036,18 +3496,18 @@
     const owned = canSku(ui.personaId, p.id);
     const preview = !!ui.skuPreview && !owned;
     if (!owned && !preview) return viewStudentPustaka();
-    let canvas = '';
+    let body = '';
     let extra = '';
     if (p.kind === 'tool') {
-      canvas = '<iframe class="tool-frame" sandbox="' + TOOL_SANDBOX + '" src="' +
-        esc(iframeSrc(p, preview)) + '" title="' + esc(p.title) + '"></iframe>';
+      body = nativeToolHtml(p, preview);
     } else {
       const e = parseEmbed(p.url);
-      canvas = '<div class="lazy-embed' + (p.cover ? ' has-cover' : '') + '"' +
+      body = '<div class="card" style="padding:0;overflow:hidden;margin-top:10px"><div class="canvas">' +
+        '<div class="lazy-embed' + (p.cover ? ' has-cover' : '') + '"' +
         (p.cover ? ' style="background-image:url(\'' + esc(p.cover) + '\')"' : '') +
         ' data-embed="' + esc(e ? e.embed : '') + '">' +
         '<div class="play-orb">▶</div>' +
-        '<div class="lazy-note">Ketuk untuk memuat · hemat data</div></div>';
+        '<div class="lazy-note">Ketuk untuk memuat · hemat data</div></div></div></div>';
       if (p.outline && p.outline.length) {
         extra = '<div class="card" style="margin-top:10px"><h3>Isi rekaman</h3><ul class="muted">' +
           p.outline.map((x) => '<li>' + esc(x) + '</li>').join('') +
@@ -2059,72 +3519,291 @@
         '<p class="muted">Tangkapan layar rumus Set harga. Pakai tombol contoh di kalkulator.</p>' +
         '<img class="sheet-shot" src="' + esc(p.sheet) + '" alt="Spreadsheet kalkulator TikTok"></div>';
     }
-    return '<button type="button" class="kur-toggle" data-act="tab" data-id="' + esc(ui.skuFrom || 'pustaka') + '">← ' +
-      (ui.skuFrom === 'alat' ? 'Alat' : 'Pustaka') + '</button>' +
+    const bar = '<div class="sku-tool-bar">' +
+      '<div><strong>' + esc(alatName(p)) + '</strong>' +
+      '<div class="muted">' + (owned ? 'Punya kamu' : 'Contoh sampai Anton isi file') +
+      (p.id === 'calc' ? ' · Unduh PDF di dalam kalkulator' : '') + '</div></div>' +
+      (owned
+        ? '<a class="btn secondary" href="' + esc(p.lynk) + '" target="_blank" rel="noopener">Halaman lynk</a>'
+        : '<a class="btn" href="' + esc(p.lynk) + '" target="_blank" rel="noopener">Beli di lynk.id</a>') +
+      '</div>';
+    return '<button type="button" class="kur-toggle" data-act="tab" data-id="' + esc(ui.skuFrom || 'alat') + '">← ' +
+      (ui.skuFrom === 'home' ? 'Home' : 'Alat') + '</button>' +
       exampleBanner(p, preview) +
-      '<div class="card" style="padding:0;overflow:hidden;margin-top:10px">' +
-        '<div class="canvas">' + canvas + '</div>' +
-        '<div class="canvas-bar">' +
-          '<div><strong>' + esc(alatName(p)) + '</strong>' +
-          '<div class="muted">' + (owned ? 'Punya kamu' : 'Contoh sampai Anton isi file') +
-          (p.id === 'calc' ? ' · Unduh PDF di dalam kalkulator' : '') + '</div></div>' +
-          (owned
-            ? '<a class="btn secondary" href="' + esc(p.lynk) + '" target="_blank" rel="noopener">Halaman lynk</a>'
-            : '<a class="btn" href="' + esc(p.lynk) + '" target="_blank" rel="noopener">Beli di lynk.id</a>') +
-        '</div></div>' + extra;
+      body + bar + extra;
+  }
+
+  function nativeToolHtml(p, preview) {
+    if (p.id === 'calc') return calcToolHtml(preview);
+    if (p.id === 'ai-creative') return creativeToolHtml(preview);
+    if (p.id === 'ai-data') return analisaToolHtml(preview);
+    if (p.iframe) {
+      return '<div class="card tool-native" style="margin-top:10px">' +
+        '<h1>' + esc(alatName(p)) + '</h1>' +
+        '<p class="lead">' + esc(p.job || '') + '</p>' +
+        '<a class="btn" href="' + esc(iframeSrc(p, preview) || p.lynk) + '" target="_blank" rel="noopener">Buka alat</a></div>';
+    }
+    return '<div class="card tool-native" style="margin-top:10px"><p class="muted">Alat belum siap di prototype.</p></div>';
+  }
+
+  function calcToolHtml(preview) {
+    const empty = preview && false;
+    return '<div class="tool-native" id="calc-tool" data-preview="' + (preview ? '1' : '0') + '">' +
+      '<h1>Kalkulator harga TikTok Shop</h1>' +
+      '<p class="lead">Isi yang kuning. Sisanya dihitung. Perkiraan — bukan laporan pajak.</p>' +
+      '<label>Nama SKU <span class="hint">kamu isi</span></label>' +
+      '<input class="kuning" id="calc-sku" type="text" value="Jepit rambut satin isi 6" autocomplete="off">' +
+      '<div class="btns">' +
+        '<button type="button" class="btn" data-act="calc-contoh">Pakai contoh</button>' +
+        '<button type="button" class="btn secondary" data-act="calc-kosong">Kosongkan</button>' +
+        '<button type="button" class="btn secondary" data-act="calc-pdf">Unduh PDF</button>' +
+      '</div>' +
+      '<div class="calc-tabs">' +
+        '<button type="button" class="on" data-act="calc-tab" data-pane="set">1. Cari harga jual</button>' +
+        '<button type="button" data-act="calc-tab" data-pane="toko">2. Cek toko / HPP</button>' +
+      '</div>' +
+      '<section id="calc-pane-set">' +
+        '<p class="muted" style="margin:0 0 8px">Mulai dari modal. Pilih sisa yang kamu mau, lalu lihat tiga harga etalase.</p>' +
+        '<div class="calc-row2">' +
+          '<div><label>Modal barang (Rp) <span class="hint">kamu isi</span></label>' +
+            '<input class="kuning" id="calc-modal" type="number" min="0" inputmode="decimal" placeholder="contoh 60000"></div>' +
+          '<div><label>Sisa yang mau (%) <span class="hint">kamu isi</span></label>' +
+            '<input class="kuning" id="calc-margin" type="number" min="0" max="99" step="0.1" inputmode="decimal" placeholder="contoh 20"></div>' +
+        '</div>' +
+        '<p class="calc-net" id="calc-net-line">Isi modal &amp; sisa, atau Pakai contoh.</p>' +
+        '<div class="calc-prices" id="calc-prices-set"></div>' +
+        '<details class="calc-fees">' +
+          '<summary>Ubah potongan TikTok · total <span id="calc-fee-sum">—</span></summary>' +
+          '<p class="muted">Default dari spreadsheet Anton. Ubah kalau toko kamu beda.</p>' +
+          '<div class="calc-row2">' +
+            '<div><label>Admin TikTok (%)</label><input class="kuning" id="calc-fee-admin" type="number" step="0.1" min="0" inputmode="decimal"></div>' +
+            '<div><label>Bebas ongkir (%)</label><input class="kuning" id="calc-fee-ongkir" type="number" step="0.1" min="0" inputmode="decimal"></div>' +
+          '</div>' +
+          '<div class="calc-row2">' +
+            '<div><label>Cashback bonus (%)</label><input class="kuning" id="calc-fee-cashback" type="number" step="0.1" min="0" inputmode="decimal"></div>' +
+            '<div><label>Voucher extra (%)</label><input class="kuning" id="calc-fee-voucher" type="number" step="0.1" min="0" inputmode="decimal"></div>' +
+          '</div>' +
+          '<div class="calc-row2">' +
+            '<div><label>Komisi affiliate (%)</label><input class="kuning" id="calc-fee-aff" type="number" step="0.1" min="0" inputmode="decimal"></div>' +
+            '<div><label>Biaya ads (%)</label><input class="kuning" id="calc-fee-ads" type="number" step="0.1" min="0" inputmode="decimal"></div>' +
+          '</div>' +
+          '<div><label>Pajak UMKM (%)</label><input class="kuning" id="calc-fee-pajak" type="number" step="0.1" min="0" inputmode="decimal"></div>' +
+        '</details>' +
+        '<div class="calc-out" id="calc-out-set"></div>' +
+      '</section>' +
+      '<section id="calc-pane-toko" hidden>' +
+        '<p class="muted" style="margin:0 0 8px">Sudah punya harga jual? Cek apakah toko masih sisa setelah fee, ads, dan biaya tetap.</p>' +
+        '<div class="calc-row2">' +
+          '<div><label>Modal produksi (Rp) <span class="hint">kamu isi</span></label>' +
+            '<input class="kuning" id="calc-prod" type="number" min="0" inputmode="decimal" placeholder="—"></div>' +
+          '<div><label>Packaging (Rp) <span class="hint">kamu isi</span></label>' +
+            '<input class="kuning" id="calc-pack" type="number" min="0" inputmode="decimal" placeholder="—"></div>' +
+        '</div>' +
+        '<label>Harga jual (Rp) <span class="hint">kamu isi</span></label>' +
+        '<input class="kuning" id="calc-jual" type="number" min="0" inputmode="decimal" placeholder="—">' +
+        '<div class="calc-prices" id="calc-prices-toko"></div>' +
+        '<details class="calc-fees">' +
+          '<summary>Ubah biaya toko · tot cost <span id="calc-toko-sum">—</span></summary>' +
+          '<div class="calc-row2">' +
+            '<div><label>Fee TikTok (%)</label><input class="kuning" id="calc-t-fee" type="number" step="0.1" min="0" inputmode="decimal"></div>' +
+            '<div><label>Bebas ongkir (%)</label><input class="kuning" id="calc-t-ongkir" type="number" step="0.1" min="0" inputmode="decimal"></div>' +
+          '</div>' +
+          '<div class="calc-row2">' +
+            '<div><label>Cashback (%)</label><input class="kuning" id="calc-t-cash" type="number" step="0.1" min="0" inputmode="decimal"></div>' +
+            '<div><label>Voucher extra (%)</label><input class="kuning" id="calc-t-voucher" type="number" step="0.1" min="0" inputmode="decimal"></div>' +
+          '</div>' +
+          '<div class="calc-row2">' +
+            '<div><label>Biaya ads (%)</label><input class="kuning" id="calc-t-ads" type="number" step="0.1" min="0" inputmode="decimal"></div>' +
+            '<div><label>Komisi aff (%)</label><input class="kuning" id="calc-t-aff" type="number" step="0.1" min="0" inputmode="decimal"></div>' +
+          '</div>' +
+          '<div class="calc-row2">' +
+            '<div><label>Host (Rp)</label><input class="kuning" id="calc-t-host" type="number" min="0" inputmode="decimal"></div>' +
+            '<div><label>Kreator (Rp)</label><input class="kuning" id="calc-t-kreator" type="number" min="0" inputmode="decimal"></div>' +
+          '</div>' +
+          '<div class="calc-row2">' +
+            '<div><label>Packing / admin (Rp)</label><input class="kuning" id="calc-t-admin" type="number" min="0" inputmode="decimal"></div>' +
+            '<div><label>Gaji owner (Rp)</label><input class="kuning" id="calc-t-gaji" type="number" min="0" inputmode="decimal"></div>' +
+          '</div>' +
+          '<div class="calc-row2">' +
+            '<div><label>Lain-lain (Rp)</label><input class="kuning" id="calc-t-lain" type="number" min="0" inputmode="decimal"></div>' +
+            '<div><label>Pajak UMKM (%)</label><input class="kuning" id="calc-t-pajak" type="number" step="0.1" min="0" inputmode="decimal"></div>' +
+          '</div>' +
+        '</details>' +
+        '<div class="calc-out" id="calc-out-toko"></div>' +
+      '</section>' +
+      (empty ? '' : '') +
+    '</div>';
+  }
+
+  function creativeToolHtml() {
+    return '<div class="tool-native" id="creative-tool">' +
+      '<h1>AI Seller Creative Assistant</h1>' +
+      '<p class="lead">Contoh pack prompt untuk SKU jepit rambut satin. Bukan generate gambar live.</p>' +
+      '<button type="button" class="btn" data-act="tool-reveal" data-target="creative-body">Lihat contoh</button>' +
+      '<div id="creative-body" hidden>' +
+        '<h3 style="margin:16px 0 8px;font-size:.82rem">Prompt etalase</h3>' +
+        '<div class="tool-example-card"><strong>Foto 1 — hero</strong>Close-up jepit rambut satin isi 6 di tangan, cahaya jendela, background kamar rapi, teks “isi 6 · tidak cubit kulit”.</div>' +
+        '<div class="tool-example-card"><strong>Foto 2 — pakai</strong>Rambut terikat setengah, jepit terlihat dari samping, warna nude. Jangan stock China.</div>' +
+        '<div class="tool-example-card"><strong>Foto 3 — isi paket</strong>Enam jepit di atas kain, label ukuran, bukan pile kacau.</div>' +
+        '<h3 style="margin:16px 0 8px;font-size:.82rem">Prompt video 15 detik</h3>' +
+        '<div class="tool-example-card">0–3s ambil dari tas. 3–8s pasang di rambut. 8–12s goyang kepala. 12–15s harga + “isi 6”.</div>' +
+        '<div class="tool-example-card">Hook: “Jepit Rp8rb yang cubit kulit vs yang ini.” Jangan sebut kompetitor merek.</div>' +
+        '<div class="tool-example-card">Live hook: “Sisa 40 pcs, yang kemarin habis 9 menit.” Hanya kalau stok memang sisa.</div>' +
+      '</div></div>';
+  }
+
+  function analisaToolHtml() {
+    return '<div class="tool-native" id="analisa-tool">' +
+      '<h1>Asisten AI Analisa Data</h1>' +
+      '<p class="lead">Contoh bacaan atas CSV Kalodata dummy. Bukan API Kalodata.</p>' +
+      '<button type="button" class="btn" data-act="tool-reveal" data-target="analisa-body">Lihat contoh</button>' +
+      '<div id="analisa-body" hidden>' +
+        '<div class="tool-example-card"><strong>Yang dilihat dari export</strong>' +
+          '<ol class="muted" style="margin:8px 0 0;padding-left:18px;font-size:.8rem;line-height:1.5">' +
+            '<li>GMV 30 hari besar belum berarti komisi aman — cek typical_commission_pct.</li>' +
+            '<li>Niche hair-video lebih cocok SKU jepit daripada fashion-live.</li>' +
+            '<li>Creator comedy (skor rendah) jangan diantrikan dulu.</li>' +
+            '<li>Yang sudah connected tidak makan kuota unconnected.</li>' +
+            '<li>Jangan scrape Kalodata. Pakai CSV yang kamu unduh sendiri.</li>' +
+          '</ol></div>' +
+      '</div></div>';
   }
 
   function alatName(p) {
     return { calc: 'Kalkulator harga', 'ai-creative': 'AI Creative', 'ai-data': 'AI Analisa', 'laris-aff': 'Laris Affiliate' }[p.id] || p.title;
   }
 
+  function ownCheckHtml(owned, label) {
+    return '<span class="own-check' + (owned ? ' is-on' : '') + '" title="' +
+      esc(owned ? 'Sudah punya' : 'Belum punya') + '" aria-label="' +
+      esc(label || (owned ? 'Sudah punya' : 'Belum punya')) + '">' +
+      (owned
+        ? '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><rect x="1.5" y="1.5" width="17" height="17" rx="4" fill="#16a34a"/><path d="M5.5 10.2l2.8 2.8 6-6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+        : '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><rect x="1.5" y="1.5" width="17" height="17" rx="4" fill="none" stroke="#71717a" stroke-width="1.6"/></svg>') +
+      '</span>';
+  }
+
   function alatHomeStrip(sid) {
     const tools = toolsCatalog();
     const tiles = tools.map((p) => {
       const owned = canSku(sid, p.id);
-      return '<button type="button" class="alat-chip' + (owned ? '' : ' locked') + '" data-act="' +
+      return '<button type="button" class="alat-chip' + (owned ? ' is-owned' : ' locked') + '" data-act="' +
         (owned ? 'open-sku' : 'contoh-sku') + '" data-from="alat" data-id="' + esc(p.id) + '">' +
+        ownCheckHtml(owned, alatName(p)) +
         '<span><strong>' + esc(alatName(p)) + '</strong>' +
-        '<em>' + (owned ? 'Buka' : 'Contoh') + '</em></span></button>';
+        '<em>' + (owned ? 'Sudah punya · Buka' : 'Belum punya · Contoh') + '</em></span></button>';
     }).join('');
     const kolab = canMentoring(sid)
-      ? '<button type="button" class="alat-chip" data-act="open-kolab"><span><strong>Kolab</strong><em>Cari kreator</em></span></button>'
+      ? '<button type="button" class="alat-chip is-owned" data-act="open-kolab">' +
+        ownCheckHtml(true, 'Kolab') +
+        '<span><strong>Kolab</strong><em>Sudah punya · Cari kreator</em></span></button>'
       : '';
     return '<section class="card" style="margin-top:14px">' +
       '<div class="row" style="justify-content:space-between">' +
         '<h2 style="margin:0">Alat</h2>' +
         '<button type="button" class="btn-sm" data-act="tab" data-id="alat">Lihat semua</button></div>' +
-      '<p class="muted">Kalkulator, AI, Kolab. Yang terkunci: beli satuan atau ikut mentoring (Laris Affiliate selalu terpisah).</p>' +
+      '<p class="muted">Centang = sudah punya. Kosong = belum. Mentoring: alat −' + toolDiscountPct() + '%.</p>' +
       '<div class="alat-pick">' + tiles + kolab + '</div></section>';
   }
 
+  function alatBadgeHtml(p, owned) {
+    if (owned) {
+      return '<span class="alat-badge is-ok">' +
+        '<svg viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M2.2 6.2 4.8 8.7 9.8 3.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+        'Tersedia</span>';
+    }
+    if (!bundled(p)) {
+      return '<span class="alat-badge is-extra">Alat tambahan</span>';
+    }
+    return '<span class="alat-badge is-lock">Mentoring</span>';
+  }
+  function alatCardHtml(p, sid) {
+    const owned = canSku(sid, p.id);
+    const extra = !bundled(p);
+    const thumb = p.cover
+      ? '<img class="alat-card-cover" src="' + esc(p.cover) + '" alt="">'
+      : '<span class="alat-card-cover is-empty" aria-hidden="true"></span>';
+    let act = '';
+    if (owned) {
+      act = '<button type="button" class="btn-sm alat-open" data-act="open-sku" data-from="alat" data-id="' + esc(p.id) + '">Buka →</button>';
+    } else if (extra) {
+      act = '<div class="alat-buy">' +
+        '<span class="alat-price">' + fmtRp(p.price) + ' / satuan</span>' +
+        '<a class="btn alat-buy-btn" href="' + esc(p.lynk || SEED.school.lynk) + '" target="_blank" rel="noopener">Beli alat</a>' +
+        '<button type="button" class="alat-contoh" data-act="contoh-sku" data-from="alat" data-id="' + esc(p.id) + '">Lihat contoh</button>' +
+        '</div>';
+    } else if (canMentoring(sid)) {
+      act = '<button type="button" class="btn-sm alat-open" data-act="claim-tool" data-from="alat" data-id="' + esc(p.id) + '">Ambil →</button>';
+    } else {
+      act = '<div class="alat-buy">' +
+        '<button type="button" class="btn-sm alat-open" data-act="tab" data-id="daftar">Ikut mentoring</button>' +
+        '<button type="button" class="alat-contoh" data-act="contoh-sku" data-from="alat" data-id="' + esc(p.id) + '">Lihat contoh</button>' +
+        '</div>';
+    }
+    return '<article class="alat-card' + (owned ? ' is-owned' : '') + (extra ? ' is-extra' : '') + '">' +
+      thumb +
+      '<div class="alat-card-body">' +
+        '<div class="alat-card-title">' +
+          '<h3>' + esc(alatName(p)) + '</h3>' +
+          alatBadgeHtml(p, owned) +
+        '</div>' +
+        '<p class="alat-card-job">' + esc(p.job) + '</p>' +
+      '</div>' +
+      '<div class="alat-card-act">' + act + '</div></article>';
+  }
   function viewAlat() {
     const sid = ui.personaId;
     const tools = toolsCatalog();
-    let html = '<h2 style="margin:0 0 4px">Alat</h2>' +
-      '<p class="muted" style="margin:0 0 14px">Mentoring membuka alat lynk + Kolab. Laris Affiliate selalu satuan. Satuan = yang sudah dibeli di lynk.id.</p>' +
-      '<div class="alat-list">';
-    html += tools.map((p) => {
-      const owned = canSku(sid, p.id);
-      return '<div class="card alat-row">' +
-        '<div class="sku-body">' +
-        (owned ? '<span class="chip lunas">Bisa dipakai</span>' : '<span class="chip">Terkunci</span>') +
-        (p.example ? ' <span class="chip warn">Contoh</span>' : '') +
-        '<h3>' + esc(alatName(p)) + '</h3>' +
-        (!bundled(p) ? '<p class="muted">Tidak termasuk mentoring.</p>' : '') +
-        '<p class="muted">' + esc(p.job) + '</p></div>' +
-        '<div class="alat-row-act">' + dualCta(p, 'alat') + '</div></div>';
-    }).join('');
-    html += '</div>';
-    if (canMentoring(sid)) {
-      html += '<h3 class="week-label">Khusus kelas</h3>' +
-        '<button type="button" class="card alat-row" data-act="open-kolab" style="width:100%;text-align:left">' +
-          '<div class="sku-body" style="padding:0"><h3>Kolab — cari kreator</h3>' +
-          '<p class="muted">Contoh Kalodata + DM dari ' + esc(shopTiktok().display) + '. Bukan produk lynk.</p></div>' +
-        '</button>';
-    }
-    html += '<p class="muted" style="margin-top:16px">Rekaman webinar ada di Pustaka. Checkout tetap lynk.id.</p>';
-    return html;
+    const mentorTools = tools.filter((p) => bundled(p));
+    const extraTools = tools.filter((p) => !bundled(p));
+    const ownedN = mentorTools.filter((p) => canSku(sid, p.id)).length;
+    const anton = SEED.staff.find((s) => s.id === 'u-anton') || { wa: '628111000001' };
+    const waText = 'Halo Anton, mau tanya alat mana yang cocok buat toko saya.';
+    return '<div class="alat-page">' +
+      '<header class="alat-head">' +
+        '<h1>Alat</h1>' +
+        '<p class="muted">Tools praktis untuk bantu kamu jualan di TikTok Shop.</p>' +
+        '<div class="alat-stats">' +
+          '<span class="alat-stat is-ok">' +
+            '<svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="#16a34a"/><path d="M3.4 6.2 5.2 8 8.6 4.2" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>' +
+            ownedN + ' alat tersedia</span>' +
+          (extraTools.length
+            ? '<span class="alat-stat">' +
+              '<span class="alat-stat-dot" aria-hidden="true"></span>' +
+              extraTools.length + ' alat tambahan</span>'
+            : '') +
+        '</div>' +
+      '</header>' +
+      '<section class="alat-sec">' +
+        '<h2>Alat yang termasuk mentoring</h2>' +
+        '<p class="muted">' + (canMentoring(sid)
+          ? 'Sudah bisa kamu akses sekarang.'
+          : 'Buka dengan mentoring. Bisa lihat contoh dulu.') + '</p>' +
+        '<div class="alat-cards">' + mentorTools.map((p) => alatCardHtml(p, sid)).join('') + '</div>' +
+      '</section>' +
+      (extraTools.length
+        ? '<section class="alat-sec">' +
+            '<h2>Alat tambahan</h2>' +
+            '<p class="muted">Tersedia terpisah. Bisa dibeli kapan saja.</p>' +
+            '<div class="alat-cards">' + extraTools.map((p) => alatCardHtml(p, sid)).join('') + '</div>' +
+          '</section>'
+        : '') +
+      (canMentoring(sid)
+        ? '<button type="button" class="alat-card alat-kolab" data-act="open-kolab">' +
+            '<span class="alat-card-cover is-empty" aria-hidden="true"></span>' +
+            '<div class="alat-card-body">' +
+              '<div class="alat-card-title"><h3>Kolab</h3>' +
+                '<span class="alat-badge is-ok">Tersedia</span></div>' +
+              '<p class="alat-card-job">Cari kreator dari CSV Kalodata. Bukan produk lynk — khusus mentoring.</p>' +
+            '</div>' +
+            '<div class="alat-card-act"><span class="btn-sm alat-open">Buka →</span></div>' +
+          '</button>'
+        : '') +
+      '<a class="alat-help" href="' + esc(waLink(anton.wa, waText)) + '" target="_blank" rel="noopener">' +
+        '<span class="alat-help-ico" aria-hidden="true">?</span>' +
+        '<span>Masih bingung alat mana yang cocok? Tanya Anton di WhatsApp.</span>' +
+        '<span class="alat-help-go" aria-hidden="true">›</span></a>' +
+      '</div>';
   }
 
   function viewDiskusi(staff) {
@@ -2147,30 +3826,43 @@
   function viewProgres() {
     const sid = ui.personaId;
     const bill = billingOf(sid);
-    if (!canMentoring(sid)) {
-      const owned = catalog().filter((p) => canSku(sid, p.id));
-      return '<section class="card"><h2>Pustaka kamu</h2>' +
-        (owned.length
-          ? '<ul class="list-check">' + owned.map((p) =>
-              '<li><span class="row">' + (p.cover ? '<img class="thumb" src="' + esc(p.cover) + '" alt="">' : '') +
-              esc(p.title) + (p.example ? ' · contoh' : '') + '</span>' +
-              '<button class="btn-sm" data-act="open-sku" data-id="' + esc(p.id) + '">Buka</button></li>'
-            ).join('') + '</ul>'
-          : '<p class="muted">Belum ada SKU. Beli di lynk.id atau lihat contoh di Pustaka.</p>') +
-        '<p style="margin-top:12px">Bayar: ' + payChip(bill.status) +
-          ' <span class="muted">' + esc(bill.note || 'satuan') + '</span></p>' +
-        '<p class="muted">Mentoring membuka live class + alat lynk. Laris Affiliate tetap satuan.</p></section>';
+    const unpaid = !canMentoring(sid);
+    const preview = canPreview(sid) && unpaid;
+
+    if (unpaid) {
+      const owned = catalog().filter((x) => canSku(sid, x.id));
+      return '<div class="progres-unpaid">' +
+        (preview || db.applications[sid] ? offerBanner(sid) : '') +
+        progresKurikulumBlock(sid) +
+        '<section class="card">' +
+          '<h2>Status kamu</h2>' +
+          '<p class="muted" style="margin-top:0">' +
+            (isDone(sid, firstLectureId())
+              ? 'Video 1 selesai. Modul lain masih blur sampai lunas.'
+              : 'Belum selesai video 1 — nonton ≥85% di tab Belajar.') +
+          '</p>' +
+          '<p>Bayar: ' + payChip(bill.status) +
+            ' <span class="muted">' + esc(bill.note || bill.plan || crmOf(sid).stage) + '</span></p>' +
+          (owned.length
+            ? '<p class="muted" style="margin-top:8px">Alat punya: ' +
+              owned.map((x) => esc(alatName(x))).join(', ') + '</p>'
+            : '') +
+          '<div class="row" style="margin-top:14px">' +
+            '<button class="btn" data-act="tab" data-id="daftar">Bayar mentoring</button>' +
+            '<button class="btn secondary" data-act="tab" data-id="belajar">' +
+              (isDone(sid, firstLectureId()) ? 'Buka Belajar' : 'Lanjut video 1') +
+            '</button>' +
+          '</div>' +
+        '</section></div>';
     }
+
     const hadir = hadirPct(sid);
     const p = kurProgress(sid);
     const kolabOpened = !!(db.kolab[sid] && db.kolab[sid].jobs && db.kolab[sid].jobs.length);
     const c = crmOf(sid);
     const doneAll = p.n >= p.total && p.total > 0;
     return '<div class="grid-2">' +
-      '<section class="card"><h2>Checklist</h2>' +
-        progressBarHtml(sid) +
-        db.weeks.map((w) => '<h3>' + esc(w.title) + ' · ' + progressPct(sid, w.id) + '%</h3>' + weekList(sid, w.id)).join('') +
-      '</section>' +
+      progresKurikulumBlock(sid) +
       '<section class="card">' +
         '<h2>Status</h2>' +
         '<p>Kurikulum: <strong>' + p.n + ' / ' + p.total + '</strong> · ' + p.pct + '%</p>' +
@@ -2179,12 +3871,12 @@
         (bill.accessUntil ? ' · sampai ' + fmtWhen(bill.accessUntil) : '') + '</span></p>' +
         '<h3 style="margin-top:16px">Lencana (kejadian nyata)</h3>' +
         '<p class="muted">' +
-          (isDone(sid, firstLectureId()) ? '✓ Masuk kelas. ' : 'Belum mulai. ') +
+          (isDone(sid, firstLectureId()) ? '✓ Masuk kelas (video 1 ≥85%). ' : 'Belum mulai video 1. ') +
           (kolabOpened ? '✓ Antri Kolab. ' : '') +
           (hadir >= 50 ? '✓ Hadir ≥ setengah sesi.' : 'Hadir masih di bawah setengah sesi.') +
         '</p>' +
         (doneAll && !c.examScore
-          ? '<h3 style="margin-top:16px">Tes akhir</h3><p class="muted">Satu duduk. Lulus = sertifikat. Bukan mesin kuis Canvas.</p>' +
+          ? '<h3 style="margin-top:16px">Tes akhir</h3><p class="muted">Satu duduk. Lulus = sertifikat.</p>' +
             '<button class="btn" data-act="tab" data-id="tes">Mulai tes</button>'
           : '') +
         (c.examScore != null
@@ -2195,7 +3887,7 @@
         (c.eligibleMentor && c.stage !== 'mentor'
           ? '<div class="card" style="margin-top:12px"><h3>Jadi mentor</h3>' +
             '<p class="muted">Pakai kurikulum dan nama Anton. Kamu tarik bayaran muridmu sendiri. Anton menerima <strong>' +
-            (db.pricing.overridePct || 20) + '% licensing</strong> dari pendapatan mentoring + alat + Laris Affiliate yang kamu jual. Satu tingkat, bukan piramida rekrut. Tidak ada bonus karena mengajak orang.</p>' +
+            (db.pricing.overridePct || 20) + '% licensing</strong>. Satu tingkat, bukan piramida.</p>' +
             '<button class="btn" data-act="accept-mentor">Saya paham, terima peran mentor</button></div>'
           : '') +
       '</section></div>';
@@ -2306,7 +3998,7 @@
     if (!c.certSerial) return '<p class="muted">Belum ada sertifikat.</p>';
     return '<section class="card cert-sheet">' +
       '<p class="muted">Sertifikat kelas · serial ' + esc(c.certSerial) + '</p>' +
-      '<h2>Sekolah Anton</h2>' +
+      '<h2>MasterMind with Anton GC</h2>' +
       '<p>Menerangkan bahwa</p>' +
       '<h3>' + esc(s.name) + '</h3>' +
       '<p>menyelesaikan kurikulum mentoring dan lulus tes akhir (' + esc(c.examScore) + '/' + SEED.exam.questions.length + ').</p>' +
@@ -2353,36 +4045,40 @@
   }
   function viewSiswaDaftar(q) {
     const stage = ui.stageFilter || '';
+    const cols = daftarCols();
     const rows = people().filter((s) => {
       if (stage && crmOf(s.id).stage !== stage) return false;
       return matchPerson(s, q);
     });
     return stageTabsHtml(q) +
       '<div class="fub-list">' +
-      '<div class="fub-toolbar"><span class="muted">Menampilkan ' + rows.length + ' orang</span>' +
-        '<span class="muted">Klik baris untuk profil · bayar di kolom</span></div>' +
-      '<table class="table roster"><thead><tr><th>Nama</th><th>Telepon</th><th>Email</th><th>Stage</th><th>Bayar</th><th>Nilai</th></tr></thead><tbody>' +
-      (rows.length ? rows.map((s) => {
-        const b = billingOf(s.id);
-        const c = crmOf(s.id);
-        const tags = (s.tags || []).slice(0, 3);
-        return '<tr class="roster-row" data-act="open-student" data-id="' + esc(s.id) + '">' +
-          '<td><button type="button" class="linkish roster-name" data-act="open-student" data-id="' + esc(s.id) + '">' +
-            avatarHtml(s, 'avatar sm') + '<span>' + esc(s.name) +
-            '<div class="muted">' + esc(s.city || '—') +
-            (tags.length ? ' · ' + tags.map((t) => esc(t)).join(', ') : '') + '</div></span></button></td>' +
-          '<td>' + (s.wa
-            ? '<a class="fub-cell-link" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari Sekolah Anton.')) + '" target="_blank" rel="noopener">' + esc(fmtPhone(s.wa)) + '</a>'
-            : '<span class="muted">—</span>') + '</td>' +
-          '<td>' + (s.email
-            ? '<a class="fub-cell-link" href="' + esc(mailLink(s.email, 'Sekolah Anton', 'Halo ' + s.name)) + '">' + esc(s.email) + '</a>'
-            : '<span class="muted">—</span>') + '</td>' +
-          '<td>' + esc(stageLabel(c.stage)) + '</td>' +
-          '<td>' + (canBill() ? billStatusSelect(s.id, b) : payChip(b.status)) + '</td>' +
-          '<td class="money">' + (canBill()
-            ? billAmountInput(s.id, b)
-            : (b.amount ? esc(fmtRp(b.amount)) : '—')) + '</td></tr>';
-      }).join('') : '<tr><td colspan="6" class="muted">Tidak ada orang di filter ini.</td></tr>') +
+      '<div class="fub-toolbar">' +
+        '<span class="muted">Menampilkan ' + rows.length + ' orang</span>' +
+        '<div class="fub-toolbar-acts">' +
+          '<div class="cols-dd-wrap' + (ui.daftarColsOpen ? ' is-open' : '') + '" id="daftar-cols-wrap">' +
+            '<button type="button" class="cols-dd-btn' + (ui.daftarColsOpen ? ' is-on' : '') +
+              '" data-act="daftar-cols-toggle" aria-expanded="' + !!ui.daftarColsOpen + '" aria-haspopup="menu">' +
+              '<span class="cols-dd-btn-ico" aria-hidden="true">' +
+                '<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 4h9M2 8h12M2 12h7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="13" cy="4" r="1.4" fill="currentColor"/><circle cx="7" cy="8" r="1.4" fill="currentColor"/><circle cx="11" cy="12" r="1.4" fill="currentColor"/></svg>' +
+              '</span>' +
+              'Kolom' +
+              '<span class="cols-dd-chev" aria-hidden="true">▾</span>' +
+            '</button>' +
+            (ui.daftarColsOpen ? daftarColsPanelHtml() : '') +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<table class="table roster"><thead><tr>' +
+        cols.map((id) => {
+          const def = daftarColDef(id);
+          return '<th>' + esc((def && def.label) || id) + '</th>';
+        }).join('') +
+      '</tr></thead><tbody>' +
+      (rows.length ? rows.map((s) =>
+        '<tr class="roster-row" data-act="open-student" data-id="' + esc(s.id) + '">' +
+          cols.map((id) => '<td>' + daftarCellHtml(id, s) + '</td>').join('') +
+        '</tr>'
+      ).join('') : '<tr><td colspan="' + cols.length + '" class="muted">Tidak ada orang di filter ini.</td></tr>') +
       '</tbody></table></div>';
   }
   function viewCrm(q) {
@@ -2632,16 +4328,48 @@
   function viewHarga() {
     const p = db.pricing;
     const b = db.bank;
-    return '<div class="grid-2"><section class="card"><h2>Harga mentoring (placeholder)</h2>' +
+    const slug = schoolSlug();
+    const pub = schoolPublicUrl();
+    const join = schoolJoinUrl();
+    const local = schoolLocalUrl();
+    return '<section class="card school-url-card">' +
+      '<h2>Alamat sekolah</h2>' +
+      '<p class="muted">Siswa buka kelas di path ini — sama gaya lynk.id/{handle}. Checkout tetap di lynk; undangan pakai kode batch.</p>' +
+      '<form class="compose" data-act="save-school-url">' +
+        '<label class="muted">Handle URL (slug)</label>' +
+        '<div class="slug-row">' +
+          '<span class="slug-prefix">larisid.com/s/</span>' +
+          '<input name="slug" value="' + esc(slug) + '" pattern="[a-z0-9]([a-z0-9._-]{0,62}[a-z0-9])?" maxlength="64" autocomplete="off" spellcheck="false">' +
+        '</div>' +
+        '<label class="muted">Kode undangan batch</label>' +
+        '<input name="invite" value="' + esc(schoolInviteCode()) + '" maxlength="40" autocomplete="off" spellcheck="false">' +
+        '<button class="btn" type="submit">Simpan alamat</button>' +
+      '</form>' +
+      '<dl class="url-share">' +
+        '<div><dt>Rumah siswa</dt><dd><code>' + esc(pub) + '</code>' +
+          '<button type="button" class="btn-sm" data-act="copy-url" data-url="' + esc(pub) + '">Salin</button></dd></div>' +
+        '<div><dt>Gabung + kode</dt><dd><code>' + esc(join) + '</code>' +
+          '<button type="button" class="btn-sm" data-act="copy-url" data-url="' + esc(join) + '">Salin</button></dd></div>' +
+        '<div><dt>Lokal (demo)</dt><dd><code>' + esc(local) + '</code>' +
+          '<button type="button" class="btn-sm" data-act="copy-url" data-url="' + esc(schoolJoinLocalUrl()) + '">Salin + invite</button></dd></div>' +
+      '</dl>' +
+      '<p class="muted">Lynk etalase: <a href="' + esc(SEED.school.lynk) + '" target="_blank" rel="noopener">' + esc(SEED.school.lynk) + '</a> — bukan URL kelas.</p>' +
+      '</section>' +
+      '<div class="grid-2"><section class="card"><h2>Harga mentoring (placeholder)</h2>' +
       '<form class="compose" data-act="save-pricing">' +
         '<label class="muted">Bulanan (IDR)</label><input name="monthlyIdr" type="number" value="' + esc(p.monthlyIdr) + '">' +
-        '<label class="muted">Diskon tahunan %</label><input name="annualDiscountPct" type="number" value="' + esc(p.annualDiscountPct) + '">' +
+        '<label class="muted">Diskon 3 bulan %</label><input name="quarterDiscountPct" type="number" value="' + esc(p.quarterDiscountPct || 15) + '">' +
+        '<label class="muted">Diskon 6 bulan %</label><input name="halfDiscountPct" type="number" value="' + esc(p.halfDiscountPct || 25) + '">' +
         '<label class="muted">Diskon kartu autopay %</label><input name="autopayDiscountPct" type="number" value="' + esc(p.autopayDiscountPct) + '">' +
-        '<label class="muted">Diskon 24 jam %</label><input name="welcomeDiscountPct" type="number" value="' + esc(p.welcomeDiscountPct) + '">' +
+        '<label class="muted">Diskon 24 jam % (1 bulan &amp; autopay)</label><input name="welcomeDiscountPct" type="number" value="' + esc(p.welcomeDiscountPct) + '">' +
+        '<label class="muted">Diskon alat mentoring %</label><input name="toolDiscountPct" type="number" value="' + esc(p.toolDiscountPct || 50) + '">' +
         '<label class="muted">Licensing mentor %</label><input name="overridePct" type="number" value="' + esc(p.overridePct) + '">' +
         '<button class="btn" type="submit">Simpan harga</button></form>' +
-      '<p class="muted">List bulanan ' + fmtRp(monthlyPrice()) + ' · tahunan ' + fmtRp(priceForTerm('year', false)) +
-      ' · autopay ' + fmtRp(priceForTerm('autopay', false)) + ' · 24 jam ' + fmtRp(priceForTerm('month', true)) + '</p>' +
+      '<p class="muted">1 bulan ' + fmtRp(priceForTerm('month', false)) +
+      ' · 3 bulan ' + fmtRp(priceForTerm('quarter', false)) +
+      ' · 6 bulan ' + fmtRp(priceForTerm('half', false)) +
+      ' · autopay ' + fmtRp(priceForTerm('autopay', false)) +
+      ' · alat −' + toolDiscountPct() + '%</p>' +
       '</section><section class="card"><h2>Rekening transfer</h2>' +
       '<form class="compose" data-act="save-bank">' +
         '<label class="muted">Bank</label><input name="bank" value="' + esc(b.bank) + '">' +
@@ -2658,119 +4386,171 @@
     const c = crmOf(id);
     const app = db.applications[id];
     const stages = db.pipelineStages || SEED.pipelineStages;
-    const p = kurProgress(id);
     const handle = tiktokHandle(s.tiktok);
     const plans = (db.actionPlans || []).filter((x) => !x.archived);
     const tsk = db.tasks.filter((x) => x.personId === id).slice().sort((a, b) => Number(a.done) - Number(b.done) || new Date(a.dueAt) - new Date(b.dueAt));
-    const photoNote = s.photoBlob ? '' : (s.photoFailed
-      ? '<p class="muted">Foto TikTok gagal (CORS/blok). Inisial dipakai.</p>'
-      : (handle ? '<p class="muted">oEmbed → unavatar.io. Tidak scrape tiktok.com.</p>' : ''));
-    const lecList = lectures().map((l) => {
-      const done = isDone(id, l.id);
-      const locked = !canOpenLecture(id, l.id);
-      return '<li>' + (done ? '✓ ' : (locked ? '× ' : '· ')) + esc(l.title) +
-        (locked ? ' <span class="chip">Terkunci</span>' : '') + '</li>';
-    }).join('');
+    const openTasks = tsk.filter((t) => !t.done).length;
+    const prog = kurProgress(id);
+    const mode = ui.composeMode || 'note';
+    const tags = (s.tags || []).filter(Boolean);
     const feed = personFeed(id);
-    const anton = staffPerson();
     const left =
       '<aside class="fub-left">' +
-        '<div class="fub-iden">' + avatarHtml(s, 'avatar lg') +
-          '<div><input class="inline-edit name-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="name" value="' + esc(s.name) + '">' +
+        '<div class="fub-iden">' +
+          avatarHtml(s, 'avatar lg') +
+          '<div class="fub-iden-copy">' +
+            '<input class="inline-edit name-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="name" value="' + esc(s.name) + '">' +
             '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="city" value="' + esc(s.city || '') + '" placeholder="Kota">' +
-            '<label class="btn-sm" style="margin-top:8px">Unggah foto<input type="file" hidden data-act="photo-file" data-id="' + esc(id) + '" accept="image/*"></label>' +
-          '</div></div>' +
-        photoNote +
-        '<dl>' +
-          '<div class="fub-field"><dt>Telepon</dt><dd>' +
+            '<label class="btn-sm fub-photo-btn">Unggah foto<input type="file" hidden data-act="photo-file" data-id="' + esc(id) + '" accept="image/*"></label>' +
+          '</div>' +
+        '</div>' +
+        '<div class="fub-contact">' +
+          '<div class="fub-contact-row">' +
+            '<span class="fub-ico" aria-hidden="true">☎</span>' +
             '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="wa" value="' + esc(s.wa || '') + '" placeholder="62812…">' +
-            (s.wa ? '<a class="fub-cell-link" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari Sekolah Anton.')) + '" target="_blank" rel="noopener">Buka WA</a>' : '') +
-          '</dd></div>' +
-          '<div class="fub-field"><dt>Email</dt><dd>' +
+            (s.wa ? '<a class="fub-cell-link" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari MasterMind with Anton GC.')) + '" target="_blank" rel="noopener">WA</a>' : '') +
+          '</div>' +
+          '<div class="fub-contact-row">' +
+            '<span class="fub-ico" aria-hidden="true">✉</span>' +
             '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="email" type="email" value="' + esc(s.email || '') + '" placeholder="email">' +
-            (s.email ? '<a class="fub-cell-link" href="' + esc(mailLink(s.email, 'Sekolah Anton', 'Halo ' + s.name)) + '">mailto</a>' : '') +
-          '</dd></div>' +
-          '<div class="fub-field"><dt>TikTok</dt><dd>' +
-            '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="tiktok" value="' + esc(s.tiktok || '') + '" placeholder="handle">' +
-            (handle ? '<a class="fub-cell-link" href="' + esc(tiktokUrl(handle)) + '" target="_blank" rel="noopener">@' + esc(handle) + '</a>' : '') +
-          '</dd></div>' +
+            (s.email ? '<a class="fub-cell-link" href="' + esc(mailLink(s.email, 'MasterMind with Anton GC', 'Halo ' + s.name)) + '">✉</a>' : '') +
+          '</div>' +
+          '<div class="fub-contact-row">' +
+            '<span class="fub-ico" aria-hidden="true">♪</span>' +
+            '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="tiktok" value="' + esc(s.tiktok || '') + '" placeholder="handle TikTok">' +
+            (handle ? '<a class="fub-cell-link" href="' + esc(tiktokUrl(handle)) + '" target="_blank" rel="noopener">@</a>' : '') +
+          '</div>' +
+        '</div>' +
+        '<dl class="fub-meta">' +
           '<div class="fub-field"><dt>Stage</dt><dd><select data-act="crm-stage" data-id="' + esc(id) + '">' +
             stages.map((st) => '<option value="' + esc(st.id) + '"' + (c.stage === st.id ? ' selected' : '') + '>' + esc(st.label) + '</option>').join('') +
           '</select></dd></div>' +
-          '<div class="fub-field"><dt>Sumber</dt><dd>' + esc(b.source || app && 'Form' || '—') +
-            (app ? '<div class="muted">' + esc(app.experience || '') + '</div>' : '') + '</dd></div>' +
-          '<div class="fub-field"><dt>Upline</dt><dd>' + esc(s.mentorId ? nameOf(s.mentorId) : 'Anton') + '</dd></div>' +
+          '<div class="fub-field"><dt>Assigned</dt><dd>' + esc(s.mentorId ? nameOf(s.mentorId) : 'Anton') + '</dd></div>' +
+          '<div class="fub-field"><dt>Tags</dt><dd class="fub-tags">' +
+            tags.map((t) => '<span class="tag-chip">' + esc(t) + '</span>').join('') +
+            '<input class="inline-edit tag-in" data-act="person-field" data-id="' + esc(id) + '" data-k="tags" value="' +
+              esc(tags.join(', ')) + '" placeholder="+ tag">' +
+          '</dd></div>' +
+          '<div class="fub-field"><dt>Sumber</dt><dd>' + esc((app && app.heard) || b.source || '—') +
+            (app ? '<div class="muted">' + (app.hasShop ? 'Sudah punya toko' : 'Belum punya toko') + '</div>' : '') +
+          '</dd></div>' +
+          '<div class="fub-field"><dt>Toko</dt><dd>' +
+            '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="shopName" value="' +
+              esc(s.shopName || (app && app.shopName) || '') + '" placeholder="Nama toko">' +
+            '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="shopUrl" value="' +
+              esc(s.shopUrl || (app && app.shopUrl) || '') + '" placeholder="https://…">' +
+          '</dd></div>' +
           '<div class="fub-field"><dt>Bayar</dt><dd>' +
             (canBill() ? billStatusSelect(id, b) : payChip(b.status)) +
             '<div class="muted" style="margin-top:6px">' + esc(termLabel(b.term)) + '</div>' +
             (canBill() ? '<div style="margin-top:6px">' + billAmountInput(id, b) + '</div>' : '<div class="money">' + esc(fmtRp(b.amount || 0)) + '</div>') +
           '</dd></div>' +
           personEntitlementsHtml(id) +
-          '<div class="fub-field"><dt>Tag</dt><dd>' +
-            '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="tags" value="' + esc((s.tags || []).join(', ')) + '" placeholder="tag, tag">' +
-          '</dd></div>' +
         '</dl>' +
-        '<div style="margin-top:16px">' + progressBarHtml(id) +
-          '<p class="muted">' + p.n + '/' + p.total + ' materi · ' + p.pct + '%</p>' +
-          lecDotStrip(id) +
-          '<details style="margin-top:8px"><summary class="muted">Checklist materi</summary><ul class="lec-check">' + lecList + '</ul></details>' +
-        '</div>' +
       '</aside>';
+
+    let composerBody = '';
+    if (mode === 'task' || ui.taskComposer === id) {
+      composerBody = taskComposerHtml(id);
+    } else if (mode === 'email') {
+      composerBody = s.email
+        ? '<p class="muted">Buka email di aplikasi kamu, lalu catat ringkasannya di bawah jika perlu.</p>' +
+          '<a class="btn" href="' + esc(mailLink(s.email, 'MasterMind with Anton GC', 'Halo ' + s.name)) + '">Buka Email</a>' +
+          '<form class="compose" data-act="note" data-id="' + esc(id) + '" style="margin-top:10px">' +
+            '<textarea name="body" required rows="3" placeholder="Catatan setelah email…"></textarea>' +
+            '<button class="btn" type="submit">Simpan catatan</button></form>'
+        : '<p class="muted">Belum ada email. Isi di kolom kiri dulu.</p>';
+    } else if (mode === 'wa') {
+      composerBody = s.wa
+        ? '<p class="muted">Buka WhatsApp, lalu catat hasil chat jika perlu.</p>' +
+          '<a class="btn" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari MasterMind with Anton GC.')) +
+            '" target="_blank" rel="noopener">Buka WA</a>' +
+          '<form class="compose" data-act="note" data-id="' + esc(id) + '" style="margin-top:10px">' +
+            '<textarea name="body" required rows="3" placeholder="Catatan setelah chat WA…"></textarea>' +
+            '<button class="btn" type="submit">Simpan catatan</button></form>'
+        : '<p class="muted">Belum ada nomor WA. Isi di kolom kiri dulu.</p>';
+    } else if (mode === 'call') {
+      composerBody = '<form class="compose" data-act="log-call" data-id="' + esc(id) + '">' +
+        '<textarea name="body" required rows="3" placeholder="Ringkas panggilan…"></textarea>' +
+        '<button class="btn" type="submit">Catat panggilan</button></form>';
+    } else {
+      composerBody = '<form class="compose" data-act="note" data-id="' + esc(id) + '" style="margin:0">' +
+        '<textarea name="body" required rows="3" placeholder="Tambah catatan…"></textarea>' +
+        '<button class="btn" type="submit">Simpan catatan</button></form>';
+    }
+
     const center =
       '<main class="fub-center">' +
         '<div class="fub-composer">' +
-          '<div class="fub-acts">' +
-            '<span class="btn-sm">Catatan</span>' +
-            (s.email ? '<a class="btn-sm" href="' + esc(mailLink(s.email, 'Sekolah Anton', 'Halo ' + s.name)) + '">Email</a>' : '<span class="btn-sm" style="opacity:.45">Email</span>') +
-            '<a class="btn-sm" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari Sekolah Anton.')) + '" target="_blank" rel="noopener">WA</a>' +
-            '<button type="button" class="btn-sm" data-act="task-compose" data-id="' + esc(id) + '">Tugas</button>' +
+          '<div class="fub-acts" role="tablist">' +
+            '<button type="button" class="btn-sm' + (mode === 'note' ? ' is-on' : '') + '" data-act="compose-mode" data-id="note">Catatan</button>' +
+            '<button type="button" class="btn-sm' + (mode === 'email' ? ' is-on' : '') + '" data-act="compose-mode" data-id="email">Email</button>' +
+            '<button type="button" class="btn-sm' + (mode === 'wa' ? ' is-on' : '') + '" data-act="compose-mode" data-id="wa">WA</button>' +
+            '<button type="button" class="btn-sm' + (mode === 'call' ? ' is-on' : '') + '" data-act="compose-mode" data-id="call">Panggilan</button>' +
+            '<button type="button" class="btn-sm' + (mode === 'task' ? ' is-on' : '') + '" data-act="compose-mode" data-id="task">Tugas</button>' +
           '</div>' +
-          (ui.taskComposer === id
-            ? taskComposerHtml(id)
-            : '<form class="compose" data-act="note" data-id="' + esc(id) + '" style="margin:0">' +
-                '<textarea name="body" required rows="3" placeholder="Tambah catatan…"></textarea>' +
-                '<button class="btn" type="submit">Simpan catatan</button>' +
-              '</form>') +
+          composerBody +
         '</div>' +
         '<div class="fub-tl-label">Linimasa</div>' +
         (feed.length
-          ? '<div class="fub-feed">' + feed.map((n) =>
-              '<article class="fub-item">' + avatarHtml(n.who === 'Anton' ? anton : s, 'avatar bubble') +
-                '<div><strong>' + esc(n.who) + ' · ' + esc(n.kind) + '</strong>' +
-                  '<div class="muted">' + esc(relWhen(n.at)) + '</div>' +
-                  '<p style="margin:6px 0 0;font-size:.82rem">' + esc(n.body) + '</p></div></article>'
-            ).join('') + '</div>'
+          ? '<div class="fub-feed">' + feed.map((n) => {
+              const meta = feedKindMeta(n.kind);
+              return '<article class="fub-item">' +
+                '<span class="fub-tl-ico ' + meta.cls + '" aria-hidden="true">' + esc(meta.label.charAt(0)) + '</span>' +
+                '<div>' +
+                  '<div class="fub-item-head"><strong>' + esc(n.who) + ' · ' + esc(meta.label) + '</strong>' +
+                    '<span class="muted">' + esc(relWhen(n.at)) + '</span></div>' +
+                  '<div class="fub-item-body">' + esc(n.body) + '</div>' +
+                '</div></article>';
+            }).join('') + '</div>'
           : '<p class="muted">Belum ada catatan atau event.</p>') +
       '</main>';
+
     const right =
-      '<aside class="fub-right fub-side">' +
-        '<h3>Tugas <button type="button" class="btn-sm" data-act="task-compose" data-id="' + esc(id) + '">+</button></h3>' +
-        (tsk.length
-          ? tsk.map((t) =>
-              '<div class="fub-task">' +
-                (t.done
-                  ? '<span class="tick-ok">✓</span>'
-                  : '<button type="button" class="btn-sm" data-act="task-done" data-id="' + esc(t.id) + '">Selesai</button>') +
-                '<div><strong>' + esc(taskKindLabel(t.kind)) + ' · ' + esc(t.title) + '</strong>' +
-                  '<div class="muted">' + esc(relWhen(t.dueAt)) + (t.body ? ' · ' + esc(t.body) : '') + '</div></div></div>'
-            ).join('')
-          : '<p class="muted">Tidak ada tugas.</p>') +
-        '<h3 style="margin-top:22px">Rencana aksi</h3>' +
-        '<p class="muted">Centang = ikut. Tidak auto-kirim.</p>' +
-        plans.map((pl) => {
-          const on = isEnrolled(id, pl.id);
-          return '<label class="fub-plan"><input type="checkbox" data-act="enroll-plan" data-id="' + esc(id) + '" data-pid="' + esc(pl.id) + '"' +
-            (on ? ' checked' : '') + '>' +
-            '<span>' + esc(pl.name) +
-              (on ? ' <span class="chip running">Jalan</span>' : ' <span class="chip idle">Off</span>') +
-              '<div class="muted">' + esc(triggerLabel(pl.trigger)) + '</div></span></label>';
-        }).join('') +
+      '<aside class="fub-right">' +
+        '<section class="fub-widget">' +
+          '<h3>Tugas <button type="button" class="btn-sm" data-act="compose-mode" data-id="task">+</button></h3>' +
+          (tsk.length
+            ? tsk.slice(0, 8).map((t) =>
+                '<div class="fub-task">' +
+                  (t.done
+                    ? '<span class="tick-ok">✓</span>'
+                    : '<button type="button" class="task-check" data-act="task-done" data-id="' + esc(t.id) + '" aria-label="Selesai"></button>') +
+                  '<div><strong>' + esc(t.title) + '</strong>' +
+                    '<div class="muted">' + esc(taskKindLabel(t.kind)) + ' · ' + esc(relWhen(t.dueAt)) + '</div></div></div>'
+              ).join('')
+            : '<p class="muted">Tidak ada tugas.</p>') +
+        '</section>' +
+        '<section class="fub-widget">' +
+          '<h3>Rencana aksi</h3>' +
+          (plans.length
+            ? plans.map((pl) => {
+                const on = isEnrolled(id, pl.id);
+                return '<label class="fub-plan"><input type="checkbox" data-act="enroll-plan" data-id="' + esc(id) + '" data-pid="' + esc(pl.id) + '"' +
+                  (on ? ' checked' : '') + '>' +
+                  '<span>' + esc(pl.name) +
+                    (on ? ' <span class="chip running">Jalan</span>' : ' <span class="chip idle">Off</span>') +
+                    '<div class="muted">' + esc(triggerLabel(pl.trigger)) + '</div></span></label>';
+              }).join('')
+            : '<p class="muted">Belum ada rencana.</p>') +
+        '</section>' +
+        '<section class="fub-widget">' +
+          '<h3>Aktivitas kelas</h3>' +
+          '<div class="fub-stats">' +
+            '<div><strong>' + prog.n + '</strong><span class="muted">Materi selesai</span></div>' +
+            '<div><strong>' + prog.pct + '%</strong><span class="muted">Progres</span></div>' +
+            '<div><strong>' + openTasks + '</strong><span class="muted">Tugas open</span></div>' +
+          '</div>' +
+          '<div style="margin-top:12px">' + progressBarHtml(id) + '</div>' +
+        '</section>' +
       '</aside>';
+
     return '<div class="fub-page">' +
       '<div class="fub-page-bar">' +
         '<button class="btn secondary" data-act="close-person">← Orang</button>' +
         '<strong>' + esc(s.name) + '</strong>' +
         payChip(b.status) +
+        '<span class="chip">' + esc(stageLabel(c.stage)) + '</span>' +
       '</div>' +
       '<div class="fub-3">' + left + center + right + '</div></div>';
   }
@@ -2804,15 +4584,48 @@
   }
 
   function viewKurikulum() {
+    if (!ui.kurEdit) return viewKurikulumStudent();
+    return viewKurikulumEditor();
+  }
+
+  function viewKurikulumStudent() {
+    const lec = lectureById(ui.lectureId) || lectures()[0];
+    if (!lec) {
+      return '<div class="card"><h2>Kurikulum</h2><p class="muted">Belum ada materi.</p>' +
+        (ui.role === 'asisten' ? '' : '<button type="button" class="btn" data-act="kur-edit-on">Edit kurikulum</button>') +
+        '</div>';
+    }
+    ui.lectureId = lec.id;
+    const canEdit = ui.role !== 'asisten';
+    const bar = '<div class="kur-mode-bar">' +
+      '<div><strong>Tampilan siswa</strong>' +
+        '<p class="muted" style="margin:2px 0 0">Begini materi terlihat di Belajar. ' +
+        (canEdit ? 'Klik Edit kalau mau ubah konten.' : 'Asisten hanya lihat.') + '</p></div>' +
+      '<div class="row">' +
+        (canEdit
+          ? '<button type="button" class="btn secondary" data-act="kur-edit-lec" data-id="' + esc(lec.id) + '">Edit materi ini</button>' +
+            '<button type="button" class="btn" data-act="kur-edit-on">Edit kurikulum</button>'
+          : '') +
+      '</div></div>';
+    return '<div class="kur-student-wrap">' + bar +
+      '<div class="player-layout">' +
+        '<div>' + renderLessonPlayer(lec, { phone: false, paywalled: false, seqLocked: false }) + '</div>' +
+        '<aside class="kurikulum-pane is-open">' + renderKurikulumSidebar() + '</aside>' +
+      '</div></div>';
+  }
+
+  function viewKurikulumEditor() {
     const readonly = ui.role === 'asisten';
     const nVid = lectures().filter((l) => l.type === 'video').length;
     const nTxt = lectures().filter((l) => l.type === 'text').length;
     const nFile = lectures().filter((l) => l.type === 'document').length;
     ensureSecFold();
     const toolbar = '<div class="ud-head">' +
-      '<div><h2 style="margin:0">Kurikulum</h2>' +
+      '<div><h2 style="margin:0">Edit kurikulum</h2>' +
         '<p class="muted" style="margin:6px 0 0">Susun bagian, lalu tambah lecture. Geser untuk urutan. ' +
-        nVid + ' video · ' + nTxt + ' bacaan · ' + nFile + ' file.</p></div></div>';
+        nVid + ' video · ' + nTxt + ' bacaan · ' + nFile + ' file.</p></div>' +
+      '<button type="button" class="btn secondary" data-act="kur-edit-off">← Lihat seperti siswa</button>' +
+      '</div>';
     const sections = db.weeks.map((w, wi) => {
       const items = lecturesInWeek(w.id);
       const open = isSecOpen(w.id);
@@ -2871,17 +4684,45 @@
       '</div></form>';
   }
 
+  function lecEditorPreviewHtml(l) {
+    const cover = coverHtml('lec', l.id, 'ud-preview-cover');
+    const coverBlock = '<div class="ud-preview-block">' +
+      '<span class="muted">Preview cover</span>' +
+      (cover || '<div class="ud-preview-cover is-empty">Belum ada cover</div>') +
+      '</div>';
+    if (l.type !== 'video') return '<div class="ud-media-preview">' + coverBlock + '</div>';
+    let vid = '';
+    if (l.videoBlob) {
+      vid = '<video class="ud-preview-vid" controls playsinline preload="metadata" data-blob="' + esc(l.id) + '"></video>';
+    } else {
+      const e = parseEmbed(l.url);
+      if (e && e.kind === 'youtube' && e.videoId) {
+        vid = '<div class="ud-preview-embed"><iframe src="https://www.youtube-nocookie.com/embed/' +
+          esc(e.videoId) + '?rel=0&modestbranding=1" title="Preview video" allowfullscreen loading="lazy"></iframe></div>';
+      } else if (e && e.embed) {
+        const src = String(e.embed).replace(/autoplay=1&?/g, '');
+        vid = '<div class="ud-preview-embed"><iframe src="' + esc(src) +
+          '" title="Preview video" allowfullscreen loading="lazy"></iframe></div>';
+      } else if (l.url) {
+        vid = '<p class="muted">Preview inline tidak tersedia. <a href="' + esc(l.url) +
+          '" target="_blank" rel="noopener">Buka tautan</a></p>';
+      } else {
+        vid = '<p class="muted">Belum ada video untuk dipreview.</p>';
+      }
+    }
+    return '<div class="ud-media-preview">' + coverBlock +
+      '<div class="ud-preview-block"><span class="muted">Preview video</span>' + vid + '</div></div>';
+  }
+
   function lecEditorCard(l, readonly, n) {
     const open = ui.editLecId === l.id;
     const has = lecHasContent(l);
     const kindNote = l.type === 'video' ? videoKindLabel(l) : (l.type === 'text' ? 'Bacaan' : ((l.resources || []).length + ' file'));
-    const mins = l.mins ? (l.mins + ' mnt') : '';
     const head = '<div class="ud-item-head">' +
       (readonly ? '' : '<span class="drag-handle" draggable="true" data-drag="lec" data-id="' + esc(l.id) + '" title="Geser materi">⋮⋮</span>') +
       '<span class="ud-icon" aria-hidden="true">' + lecTypeIcon(l) + '</span>' +
       '<span class="ud-item-copy"><strong>' + (n ? n + '. ' : '') + esc(l.title) + '</strong>' +
         '<div class="muted">' + esc(kindNote) + (l.requiredBefore ? ' · wajib' : '') + '</div></span>' +
-      (mins ? '<span class="muted ud-mins">' + esc(mins) + '</span>' : '') +
       '<div class="ud-actions">' +
         (readonly ? '' : ((open)
           ? '<button type="button" class="btn-sm" data-act="edit-lec" data-id="' + esc(l.id) + '">Tutup</button>'
@@ -2893,8 +4734,10 @@
     const qs = (l.questions || []).concat([{ q: '', hint: '' }]);
     const qHtml = qs.map((q, i) =>
       '<div class="q-row">' +
-        '<input data-act="q-field" data-id="' + esc(l.id) + '" data-i="' + i + '" data-k="q" value="' + esc(q.q || '') + '" placeholder="Pertanyaan ' + (i + 1) + '">' +
-        '<input data-act="q-field" data-id="' + esc(l.id) + '" data-i="' + i + '" data-k="hint" value="' + esc(q.hint || '') + '" placeholder="Arah jawaban (opsional)">' +
+        '<input data-act="q-field" data-id="' + esc(l.id) + '" data-i="' + i + '" data-k="q" value="' + esc(q.q || '') +
+          '" placeholder="Prompt / pertanyaan (boleh retoris)">' +
+        '<input data-act="q-field" data-id="' + esc(l.id) + '" data-i="' + i + '" data-k="hint" value="' + esc(q.hint || '') +
+          '" placeholder="Catatan opsional (bukan kunci jawaban)">' +
       '</div>'
     ).join('');
     const resHtml = (l.resources || []).map((r, i) =>
@@ -2906,27 +4749,27 @@
         '<button type="button" class="btn-sm" data-act="res-del" data-id="' + esc(l.id) + '" data-i="' + i + '">Hapus</button>' +
       '</div>'
     ).join('');
+    const descLabel = l.type === 'text' ? 'Bacaan' : (l.type === 'video' ? 'Deskripsi video' : 'Deskripsi');
+    const descPh = l.type === 'text'
+      ? 'Teks bacaan. **tebal** boleh.'
+      : 'Tulis deskripsi singkat tentang materi ini. **tebal** boleh.';
     const body = readonly
       ? '<p class="muted">Asisten hanya lihat. Anton yang unggah.</p>'
       : '<div class="lec-edit-body">' +
           '<label>Judul</label>' +
           '<input data-act="lec-field" data-id="' + esc(l.id) + '" data-k="title" value="' + esc(l.title) + '">' +
-          '<div class="row2">' +
-            '<div><label>Durasi (menit)</label>' +
-              '<input data-act="lec-field" data-id="' + esc(l.id) + '" data-k="mins" type="number" min="1" value="' + esc(l.mins || 5) + '"></div>' +
-            '<div><label>Pindah ke bagian</label>' +
-              '<select data-act="lec-week" data-id="' + esc(l.id) + '">' +
-                db.weeks.map((w) => '<option value="' + esc(w.id) + '"' + (w.id === l.weekId ? ' selected' : '') + '>' + esc(w.title) + '</option>').join('') +
-              '</select></div>' +
-          '</div>' +
+          '<label>Pindah ke bagian</label>' +
+          '<select data-act="lec-week" data-id="' + esc(l.id) + '">' +
+            db.weeks.map((w) => '<option value="' + esc(w.id) + '"' + (w.id === l.weekId ? ' selected' : '') + '>' + esc(w.title) + '</option>').join('') +
+          '</select>' +
           '<label class="muted"><input type="checkbox" data-act="lec-req" data-id="' + esc(l.id) + '"' +
             (l.requiredBefore ? ' checked' : '') + '> Wajib sebelum live class</label>' +
           '<h4>Cover</h4>' +
           '<label class="vid-drop"><input type="file" data-act="cover-file" data-kind="lec" data-id="' + esc(l.id) + '" accept="image/*" hidden><span>Unggah cover (maks 5 MB)</span></label>' +
-          (l.type === 'text'
-            ? '<h4>Bacaan</h4><textarea data-act="lec-body" data-id="' + esc(l.id) + '" rows="8" placeholder="Teks. **tebal** boleh.">' + esc(l.body || '') + '</textarea>'
-            : l.type === 'document'
+          (l.type === 'document'
             ? '<p class="muted">Unggah file atau tautan di bagian File di bawah.</p>'
+            : l.type === 'text'
+            ? ''
             : '<h4>Video</h4>' +
               '<p class="muted">YouTube paling lancar. Drive juga bisa. Atau unggah MP4.</p>' +
               '<input data-act="lec-field" data-id="' + esc(l.id) + '" data-k="url" value="' + esc(l.url || '') + '" placeholder="https://youtube.com/…">' +
@@ -2935,6 +4778,10 @@
                 '<span>' + (l.videoBlob ? ('Ganti file · sekarang: ' + esc(l.videoName || 'video')) : 'Drop / pilih file MP4') + '</span>' +
               '</label>' +
               (l.videoBlob ? '<button type="button" class="btn-sm" data-act="clear-vid" data-id="' + esc(l.id) + '">Hapus file, pakai tautan</button>' : '')) +
+          lecEditorPreviewHtml(l) +
+          '<h4>' + descLabel + '</h4>' +
+          '<textarea data-act="lec-body" data-id="' + esc(l.id) + '" rows="6" placeholder="' + esc(descPh) + '">' +
+            esc(l.body || '') + '</textarea>' +
           '<h4>File / lembar kerja</h4>' +
           resHtml +
           '<div class="row" style="margin-top:8px">' +
@@ -2946,16 +4793,26 @@
           '<textarea data-act="lec-points" data-id="' + esc(l.id) + '" rows="4" placeholder="Satu poin per baris">' +
             esc((l.points || []).join('\n')) + '</textarea>' +
           '<h4>Cek pemahaman</h4>' +
+          '<p class="muted">Prompt atau pertanyaan retoris. Murid tidak mengirim jawaban — hanya dipikirkan.</p>' +
           qHtml +
         '</div>';
     return '<article class="ud-item is-open" data-lec-drop="' + esc(l.id) + '">' + head + body + '</article>';
   }
 
   function viewPustaka() {
+    const canAdd = canBill();
+    const addOpen = canAdd && ui.pustakaAddOpen;
     return catalogHero() +
-      '<div class="card" style="margin-top:12px"><h2>Perpustakaan</h2>' +
-      '<p class="muted">Produk lynk Anton. Toggle Contoh → File Anton setelah dia isi. Tambah SKU baru di bawah — tidak mengubah checkout lynk.id.</p>' +
-      (canBill()
+      '<div class="card" style="margin-top:12px">' +
+      '<div class="pustaka-head">' +
+        '<div><h2 style="margin:0">Perpustakaan</h2>' +
+          '<p class="muted" style="margin:6px 0 0">Produk lynk Anton. Toggle Contoh → File Anton setelah dia isi.</p></div>' +
+        (canAdd
+          ? '<button type="button" class="btn' + (addOpen ? ' secondary' : '') + '" data-act="pustaka-add-toggle">' +
+              (addOpen ? 'Tutup' : '+ Tambah') + '</button>'
+          : '') +
+      '</div>' +
+      (addOpen
         ? '<form class="compose add-sku" data-act="add-sku">' +
             '<strong>Tambah produk</strong>' +
             '<div class="row2">' +
@@ -2976,6 +4833,7 @@
               '<label class="muted"><input type="checkbox" name="example" checked> Contoh dulu</label>' +
               '<label class="muted"><input type="checkbox" name="mentor" checked> Termasuk mentoring</label>' +
               '<button class="btn" type="submit">Tambah ke perpustakaan</button>' +
+              '<button type="button" class="btn secondary" data-act="pustaka-add-toggle">Batal</button>' +
             '</div></form>'
         : '') +
       '<div class="tool-grid">' + catalog().map((p) =>
@@ -3003,7 +4861,8 @@
   function calEvents() {
     const ev = [];
     (db.sessions || []).forEach((s) => ev.push({
-      kind: 'meet', at: s.startsAt, title: s.title, id: s.id, loc: s.location, url: s.meetUrl
+      kind: 'meet', at: s.startsAt, title: s.title, id: s.id, loc: s.location, url: s.meetUrl,
+      notes: s.notes || ''
     }));
     (db.weeks || []).forEach((w) => {
       if (w.due) ev.push({ kind: 'kur', at: joinLocal(w.due, '09:00'), title: w.title, id: w.id });
@@ -3016,6 +4875,84 @@
     }));
     return ev;
   }
+
+  function icsEscape(s) {
+    return String(s == null ? '' : s)
+      .replace(/\\/g, '\\\\')
+      .replace(/;/g, '\\;')
+      .replace(/,/g, '\\,')
+      .replace(/\r?\n/g, '\\n');
+  }
+  function icsUtcStamp(d) {
+    const x = d instanceof Date ? d : new Date(d);
+    if (!isFinite(x.getTime())) return '';
+    const p = (n) => String(n).padStart(2, '0');
+    return x.getUTCFullYear() + p(x.getUTCMonth() + 1) + p(x.getUTCDate()) + 'T' +
+      p(x.getUTCHours()) + p(x.getUTCMinutes()) + p(x.getUTCSeconds()) + 'Z';
+  }
+  function sessionDurationMins(s) {
+    return Math.max(30, +(s && s.mins) || 90);
+  }
+  function sessionIcsEvent(s) {
+    const start = new Date(s.startsAt);
+    const end = new Date(start.getTime() + sessionDurationMins(s) * 60e3);
+    const desc = [s.notes, s.meetUrl ? ('Meet: ' + s.meetUrl) : ''].filter(Boolean).join('\n');
+    return [
+      'BEGIN:VEVENT',
+      'UID:' + String(s.id || 'ses') + '@' + schoolSlug(),
+      'DTSTAMP:' + icsUtcStamp(new Date()),
+      'DTSTART:' + icsUtcStamp(start),
+      'DTEND:' + icsUtcStamp(end),
+      'SUMMARY:' + icsEscape(s.title || 'Sesi kelas'),
+      'DESCRIPTION:' + icsEscape(desc),
+      'LOCATION:' + icsEscape(s.location || 'Online'),
+      (s.meetUrl ? ('URL:' + String(s.meetUrl).replace(/\s/g, '')) : ''),
+      'END:VEVENT'
+    ].filter(Boolean).join('\r\n');
+  }
+  function buildSessionsIcs(list) {
+    const body = (list || db.sessions || []).map(sessionIcsEvent).join('\r\n');
+    return 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//MasterMind with Anton GC//' +
+      icsEscape(SEED.cohort.name || 'Batch') + '//ID\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nX-WR-CALNAME:' +
+      icsEscape((SEED.school.name || 'Anton') + ' · ' + (SEED.cohort.name || 'Jadwal')) +
+      '\r\n' + body + '\r\nEND:VCALENDAR\r\n';
+  }
+  function downloadIcs(filename, icsText) {
+    const blob = new Blob([icsText], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename || 'jadwal-anton.ics';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
+  function googleCalUrl(s) {
+    const start = new Date(s.startsAt);
+    const end = new Date(start.getTime() + sessionDurationMins(s) * 60e3);
+    const dates = icsUtcStamp(start) + '/' + icsUtcStamp(end);
+    const q = new URLSearchParams({
+      action: 'TEMPLATE',
+      text: s.title || 'Sesi kelas',
+      dates: dates,
+      details: [s.notes || '', s.meetUrl || ''].filter(Boolean).join('\n'),
+      location: s.location || 'Online'
+    });
+    return 'https://calendar.google.com/calendar/render?' + q.toString();
+  }
+  function calSyncButtons(s, compact) {
+    if (!s || !s.startsAt) return '';
+    const icsBtn = '<button type="button" class="btn-sm" data-act="cal-ics-one" data-id="' + esc(s.id) +
+      '" title="Unduh .ics — buka di Apple Calendar atau impor di Google">Apple / .ics</button>';
+    const gBtn = '<a class="btn-sm" href="' + esc(googleCalUrl(s)) +
+      '" target="_blank" rel="noopener">Google Calendar</a>';
+    if (compact) {
+      return '<div class="row cal-sync">' + gBtn + icsBtn + '</div>';
+    }
+    return '<div class="row cal-sync" style="margin-top:8px">' + gBtn + icsBtn + '</div>';
+  }
+
   function viewJadwal(staff) {
     const today = splitLocal().date;
     const ym = ui.calYM || today.slice(0, 7);
@@ -3052,11 +4989,13 @@
       (dayEv.length
         ? dayEv.map((ev) => {
             if (ev.kind === 'meet') {
+              const ses = (db.sessions || []).find((s) => s.id === ev.id) || ev;
               return '<article class="thread"><h4>' + esc(kindLabel.meet) + ' · ' + esc(ev.title) + '</h4>' +
                 '<p class="muted">' + fmtWhen(ev.at) + (ev.loc ? ' · ' + esc(ev.loc) : '') + '</p>' +
                 (staff && canBill()
                   ? '<form class="compose" data-act="meet" data-id="' + esc(ev.id) + '"><input name="meetUrl" value="' + esc(ev.url || '') + '" placeholder="https://meet.google.com/..."><button class="btn" type="submit">Simpan tautan Meet</button></form>'
                   : (ev.url ? '<a class="btn" href="' + esc(ev.url) + '" target="_blank" rel="noopener">Buka Meet</a>' : '')) +
+                calSyncButtons(ses) +
                 '</article>';
             }
             if (ev.kind === 'kur') {
@@ -3072,9 +5011,13 @@
     const prevM = mm === 1 ? (yy - 1) + '-12' : yy + '-' + String(mm - 1).padStart(2, '0');
     const nextM = mm === 12 ? (yy + 1) + '-01' : yy + '-' + String(mm + 1).padStart(2, '0');
     const monthLabel = new Date(Date.UTC(yy, mm - 1, 1)).toLocaleDateString('id-ID', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+    const nSes = (db.sessions || []).length;
     return '<div class="card"><h2>Jadwal</h2>' +
-      '<p class="muted">Kalender: kurikulum (jatuh tempo bagian), Meet/Zoom, tugas. ICS token prototype: ' +
-      esc(SEED.cohort.calendarToken) + '.</p>' +
+      '<p class="muted">Kalender kelas: Meet live, jatuh tempo kurikulum, tugas. Sinkron lewat Google Calendar atau file .ics (Apple Calendar).</p>' +
+      '<div class="cal-sync-bar">' +
+        '<button type="button" class="btn" data-act="cal-ics-all">Unduh semua sesi (.ics)</button>' +
+        '<span class="muted">' + nSes + ' live session · buka di Apple Calendar, atau Google Calendar → Settings → Import</span>' +
+      '</div>' +
       '<div class="cal-nav">' +
         '<button type="button" class="btn-sm" data-act="cal-ym" data-id="' + esc(prevM) + '">←</button>' +
         '<strong>' + esc(monthLabel) + '</strong>' +
@@ -3166,6 +5109,7 @@
     applyWorld(scene.world);
     save();
     applyCamera(ui.presentPane === 'mentor' ? scene.mentor : scene.student);
+    resetWizForPersona();
     render();
     clearTimeout(applyPresent._ready);
     applyPresent._ready = setTimeout(() => {
@@ -3174,9 +5118,14 @@
     }, 250);
   }
   function reloadDb() {
-    if (ui.presentApplying) return;
+    if (ui.presentApplying || ui.reloading) return;
+    ui.reloading = true;
     db = load();
-    render();
+    try {
+      render();
+    } finally {
+      ui.reloading = false;
+    }
   }
   window.__antonSchool = { applyPresent: applyPresent, reloadDb: reloadDb };
 
@@ -3184,16 +5133,20 @@
   document.addEventListener('change', (e) => {
     const t = e.target;
     if (t.id === 'role-switch') {
-      if (ui.present) return;
+      if (ui.present || ui.chromeSync) return;
       ui.role = t.value;
       ui.tab = 'home';
       ui.mentorTab = 'siswa';
       closeDrawer();
+      if (!isStaff()) {
+        ui.tab = needsWizard(ui.personaId) ? 'daftar' : 'home';
+        resetWizForPersona();
+      }
       render();
       return;
     }
     if (t.id === 'persona-switch') {
-      if (ui.present) return;
+      if (ui.present || ui.chromeSync) return;
       ui.personaId = t.value;
       ui.lectureId = db.lastLecture[ui.personaId] || firstLectureId();
       ui.kolabSel = new Set();
@@ -3202,7 +5155,27 @@
       ui.payPrompt = false;
       ui.examAnswers = {};
       ui.tab = needsWizard(ui.personaId) ? 'daftar' : 'home';
+      resetWizForPersona();
       render();
+      return;
+    }
+    if (t.matches('[data-act="has-shop"]')) {
+      const box = document.getElementById('shop-fields');
+      const ya = t.value === 'ya';
+      if (box) {
+        box.hidden = !ya;
+        box.querySelectorAll('input').forEach((inp) => { inp.required = ya; });
+      }
+      return;
+    }
+    if (t.matches('[data-act="heard-from"]')) {
+      const box = document.getElementById('heard-other');
+      const other = t.value === 'Lainnya';
+      if (box) {
+        box.hidden = !other;
+        const inp = box.querySelector('input');
+        if (inp) inp.required = other;
+      }
       return;
     }
     if (t.matches('[data-act="filter-crm"]')) {
@@ -3497,8 +5470,46 @@
     ingestVideoFile(file, { lecId: z.getAttribute('data-id'), weekId: z.getAttribute('data-week'), title: title });
   });
 
+  document.addEventListener('change', (e) => {
+    const t = e.target;
+    if (t.matches('[data-act="daftar-col-toggle"]')) {
+      const id = t.getAttribute('data-id');
+      if (!id || id === 'name') return;
+      const cols = daftarCols();
+      const i = cols.indexOf(id);
+      if (t.checked) {
+        if (i < 0) cols.push(id);
+      } else if (i >= 0) {
+        cols.splice(i, 1);
+      }
+      db.daftarCols = cols[0] === 'name' ? cols : ['name'].concat(cols.filter((x) => x !== 'name'));
+      save();
+      render();
+      return;
+    }
+    if (t.matches('[data-act="lec-field"][data-k="url"]')) {
+      const l = lectureById(t.getAttribute('data-id'));
+      if (!l) return;
+      l.url = t.value;
+      if (t.value) l.videoBlob = false;
+      save();
+      render();
+    }
+  });
+
   document.addEventListener('input', (e) => {
     const t = e.target;
+    if (t.matches('[data-act="cari-siswa"]')) {
+      ui.cariSiswa = t.value;
+      ui.cariOpen = true;
+      paintCariDrop();
+      return;
+    }
+    if (t.matches('[data-act="daftar-custom-val"]')) {
+      setPersonCustomVal(t.getAttribute('data-id'), t.getAttribute('data-col'), t.value);
+      save();
+      return;
+    }
     if (t.matches('[data-act="filter-siswa"]') || t.matches('[data-act="filter-crm"]')) {
       ui.filterSiswa = t.value;
       ui.crmFilter = t.value;
@@ -3538,6 +5549,37 @@
     }
   });
 
+  document.addEventListener('focusin', (e) => {
+    if (e.target.matches('[data-act="cari-siswa"]')) {
+      ui.cariOpen = true;
+      paintCariDrop();
+    }
+  });
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#topbar-search')) {
+      if (ui.cariOpen) {
+        ui.cariOpen = false;
+        paintCariDrop();
+      }
+    }
+    if (ui.daftarColsOpen && !e.target.closest('#daftar-cols-wrap')) {
+      ui.daftarColsOpen = false;
+      const wrap = document.getElementById('daftar-cols-wrap');
+      if (wrap) {
+        wrap.classList.remove('is-open');
+        const dd = document.getElementById('daftar-cols-dd');
+        if (dd) dd.remove();
+        const btn = wrap.querySelector('[data-act="daftar-cols-toggle"]');
+        if (btn) {
+          btn.classList.remove('is-on');
+          btn.setAttribute('aria-expanded', 'false');
+        }
+      } else {
+        render();
+      }
+    }
+  }, true);
+
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-act]');
     if (!btn) return;
@@ -3545,36 +5587,110 @@
     if (act === 'vid-drop' || act === 'vid-file' || act === 'add-lec' || act === 'sec-title' ||
         act === 'lec-field' || act === 'lec-points' || act === 'q-field' || act === 'doc-name' || act === 'doc-url' ||
         act === 'cover-file' || act === 'res-file' || act === 'photo-file' || act === 'lec-body' || act === 'res-name' || act === 'res-url' ||
-        act === 'person-field' || act === 'bill-amount' || act === 'sec-due' || act === 'kur-preview-person') {
+        act === 'person-field' || act === 'bill-amount' || act === 'sec-due' || act === 'kur-preview-person' ||
+        act === 'has-shop' || act === 'heard-from' || act === 'apply' || act === 'cari-siswa' ||
+        act === 'daftar-custom-val') {
       return;
     }
-    if (act === 'tab') {
+    if (act === 'wiz-next') {
+      if (btn.matches('form')) return;
+      advanceWiz();
+    } else if (act === 'copy-url') {
+      const url = btn.getAttribute('data-url') || '';
+      if (!url) return;
+      const done = () => toast('Tautan disalin');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(done).catch(() => {
+          window.prompt('Salin tautan:', url);
+        });
+      } else {
+        window.prompt('Salin tautan:', url);
+      }
+    } else if (act === 'wiz-back') {
+      backWiz();
+    } else if (act === 'wiz-shop') {
+      captureWizFields();
+      wizMerge({ shopPick: btn.getAttribute('data-id') });
+      render();
+    } else if (act === 'wiz-heard') {
+      captureWizFields();
+      wizMerge({ heardPick: btn.getAttribute('data-id') });
+      render();
+    } else if (act === 'wiz-tools') {
+      ui.wizTools = !ui.wizTools;
+      render();
+    } else if (act === 'tab') {
       const id = btn.getAttribute('data-id');
       if (isStaff()) {
         ui.mentorTab = id;
         if (id !== 'orang') ui.personId = null;
+        if (id === 'kurikulum') ui.kurEdit = false;
+        if (id === 'pustaka') ui.pustakaAddOpen = false;
       } else {
         ui.tab = id;
-        if (id === 'pustaka' || id === 'alat') { ui.skuId = null; ui.skuPreview = false; }
+        if (id === 'alat') { ui.skuId = null; ui.skuPreview = false; }
         if (id === 'belajar' && canPreview(ui.personaId) && !canMentoring(ui.personaId)) {
           ui.lectureId = firstLectureId();
         }
       }
+      render();
+    } else if (act === 'kur-edit-on') {
+      ui.kurEdit = true;
+      ui.mentorTab = 'kurikulum';
+      render();
+    } else if (act === 'kur-edit-off') {
+      ui.kurEdit = false;
+      ui.editLecId = null;
+      render();
+    } else if (act === 'kur-edit-lec') {
+      const id = btn.getAttribute('data-id');
+      const lec = lectureById(id);
+      ui.kurEdit = true;
+      ui.editLecId = id;
+      if (lec) setSecOpen(lec.weekId, true);
+      ui.mentorTab = 'kurikulum';
+      render();
+      requestAnimationFrame(() => {
+        const el = document.querySelector('[data-lec-drop="' + id + '"]');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    } else if (act === 'compose-mode') {
+      ui.composeMode = btn.getAttribute('data-id') || 'note';
+      ui.taskComposer = ui.composeMode === 'task' ? (ui.personId || '') : '';
       render();
     } else if (act === 'open-sku') {
       const id = btn.getAttribute('data-id');
       if (!canSku(ui.personaId, id) && !isStaff()) return;
       ui.skuId = id;
       ui.skuPreview = false;
-      ui.skuFrom = btn.getAttribute('data-from') || (ui.tab === 'alat' ? 'alat' : 'pustaka');
+      ui.skuFrom = btn.getAttribute('data-from') || 'alat';
       ui.tab = 'sku';
       render();
     } else if (act === 'contoh-sku') {
       ui.skuId = btn.getAttribute('data-id');
       ui.skuPreview = true;
-      ui.skuFrom = btn.getAttribute('data-from') || (ui.tab === 'alat' ? 'alat' : 'pustaka');
+      ui.skuFrom = btn.getAttribute('data-from') || 'alat';
       ui.tab = 'sku';
       render();
+    } else if (act === 'calc-contoh') {
+      const c = document.getElementById('calc-tool');
+      if (c && c.__calc) c.__calc.contoh();
+    } else if (act === 'calc-kosong') {
+      const c = document.getElementById('calc-tool');
+      if (c && c.__calc) c.__calc.kosong();
+    } else if (act === 'calc-pdf') {
+      const c = document.getElementById('calc-tool');
+      if (c && c.__calc) c.__calc.pdf();
+    } else if (act === 'calc-tab') {
+      const c = document.getElementById('calc-tool');
+      if (c && c.__calc) c.__calc.tab(btn.getAttribute('data-pane') || 'set');
+    } else if (act === 'tool-reveal') {
+      const id = btn.getAttribute('data-target');
+      const el = id ? document.getElementById(id) : null;
+      if (el) {
+        el.hidden = false;
+        btn.hidden = true;
+      }
     } else if (act === 'toggle-example') {
       const p = productById(btn.getAttribute('data-id'));
       if (p && canBill()) {
@@ -3586,10 +5702,32 @@
     } else if (act === 'toggle-kur') {
       ui.kurOpen = !ui.kurOpen;
       render();
+    } else if (act === 'lec-more') {
+      const box = btn.closest('.lec-read');
+      if (!box) return;
+      const open = box.classList.toggle('is-open');
+      btn.innerHTML = open
+        ? 'Tutup <span aria-hidden="true">▴</span>'
+        : 'Baca selengkapnya <span aria-hidden="true">▾</span>';
+    } else if (act === 'lihat-kur') {
+      ui.tab = 'belajar';
+      ui.kurOpen = true;
+      ui.lectureId = db.lastLecture[ui.personaId] || firstLectureId();
+      render();
+    } else if (act === 'scroll-kur') {
+      ui.tab = 'belajar';
+      if (canPreview(ui.personaId) && !canMentoring(ui.personaId)) {
+        ui.lectureId = firstLectureId();
+      }
+      render();
+      requestAnimationFrame(() => {
+        const el = document.getElementById('kurikulum-trial');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     } else if (act === 'open-kolab') {
       if (!canMentoring(ui.personaId) && !isStaff()) {
         toast('Live class hanya mentoring.');
-        ui.tab = 'pustaka';
+        ui.tab = 'alat';
         render();
         return;
       }
@@ -3600,7 +5738,13 @@
     } else if (act === 'open-lec') {
       const id = btn.getAttribute('data-id');
       const lec = lectureById(id);
-      if (!canOpenLecture(ui.personaId, id) && !isStaff()) {
+      if (isStaff() && ui.mentorTab === 'kurikulum') {
+        ui.lectureId = id;
+        ui.kurEdit = false;
+        render();
+        return;
+      }
+      if (!canViewLecture(ui.personaId, id) && !isStaff()) {
         if (lec && lec.skuId && canSku(ui.personaId, lec.skuId)) {
           ui.skuId = lec.skuId;
           ui.skuPreview = false;
@@ -3608,32 +5752,46 @@
           render();
           return;
         }
-        toast('Video ini kebuka setelah mentoring lunas.');
-        ui.tab = 'daftar';
+        ui.lectureId = id;
+        ui.tab = 'belajar';
+        ui.kurOpen = true;
         render();
         return;
       }
       ui.lectureId = id;
-      db.lastLecture[ui.personaId] = ui.lectureId;
-      save();
       ui.tab = 'belajar';
       ui.kurOpen = false;
+      if (canOpenLecture(ui.personaId, id) || isStaff()) {
+        db.lastLecture[ui.personaId] = ui.lectureId;
+        save();
+      }
       render();
     } else if (act === 'toggle-done') {
       const id = btn.getAttribute('data-id');
+      if (!canOpenLecture(ui.personaId, id) && !isStaff()) {
+        toast('Selesaikan materi sebelumnya dulu.');
+        return;
+      }
       markDone(ui.personaId, id, !isDone(ui.personaId, id));
       render();
     } else if (act === 'pane') {
       ui.pane = btn.getAttribute('data-id');
       render();
     } else if (act === 'open-student') {
-      if (e.target.closest('a, select, input, textarea, label, .btn-sm')) return;
+      if (e.target.closest('a, select, input, textarea, label, .btn-sm, .cols-dd, .cols-dd-btn')) return;
       const id = btn.getAttribute('data-id');
       if (ui.skipOpen === id) return;
+      ui.cariOpen = false;
+      ui.cariSiswa = '';
       openPerson(id);
     } else if (act === 'task-compose') {
       const id = btn.getAttribute('data-id') || 'new';
-      ui.taskComposer = ui.taskComposer === id ? '' : id;
+      if (id === 'new') {
+        ui.taskComposer = ui.taskComposer === 'new' ? '' : 'new';
+      } else {
+        ui.composeMode = 'task';
+        ui.taskComposer = id;
+      }
       render();
     } else if (act === 'cal-day') {
       ui.calDay = btn.getAttribute('data-id');
@@ -3641,6 +5799,23 @@
     } else if (act === 'cal-ym') {
       ui.calYM = btn.getAttribute('data-id');
       render();
+    } else if (act === 'cal-ics-all') {
+      const list = db.sessions || [];
+      if (!list.length) {
+        toast('Belum ada sesi live di jadwal.');
+        return;
+      }
+      downloadIcs('jadwal-' + schoolSlug() + '.ics', buildSessionsIcs(list));
+      toast('File .ics diunduh — buka di Apple Calendar, atau impor di Google Calendar.');
+    } else if (act === 'cal-ics-one') {
+      const id = btn.getAttribute('data-id');
+      const ses = (db.sessions || []).find((s) => s.id === id);
+      if (!ses) {
+        toast('Sesi tidak ditemukan.');
+        return;
+      }
+      downloadIcs((ses.id || 'sesi') + '.ics', buildSessionsIcs([ses]));
+      toast('File .ics diunduh — Apple Calendar / Google Import.');
     } else if (act === 'kur-prev-lec') {
       ui.kurPreviewLec = btn.getAttribute('data-id');
       render();
@@ -3650,6 +5825,9 @@
       db.catalog = catalog().filter((p) => p.id !== id);
       save();
       toast('SKU dihapus dari perpustakaan lokal');
+      render();
+    } else if (act === 'pustaka-add-toggle') {
+      ui.pustakaAddOpen = !ui.pustakaAddOpen;
       render();
     } else if (act === 'close-drawer' || act === 'close-person') {
       closePerson();
@@ -3663,6 +5841,42 @@
       ui.siswaView = 'daftar';
       ui.hubBack = 'daftar';
       ui.mentorTab = 'siswa';
+      render();
+    } else if (act === 'daftar-cols-toggle') {
+      ui.daftarColsOpen = !ui.daftarColsOpen;
+      render();
+    } else if (act === 'daftar-cols-close') {
+      ui.daftarColsOpen = false;
+      render();
+    } else if (act === 'daftar-cols-reset') {
+      db.daftarCols = defaultDaftarCols();
+      save();
+      toast('Kolom dikembalikan ke default.');
+      render();
+    } else if (act === 'daftar-col-up' || act === 'daftar-col-down') {
+      const id = btn.getAttribute('data-id');
+      const cols = daftarCols();
+      const i = cols.indexOf(id);
+      if (i < 1) return;
+      const j = act === 'daftar-col-up' ? i - 1 : i + 1;
+      if (j < 1 || j >= cols.length) return;
+      const tmp = cols[i];
+      cols[i] = cols[j];
+      cols[j] = tmp;
+      db.daftarCols = cols;
+      save();
+      render();
+    } else if (act === 'daftar-col-del') {
+      const id = btn.getAttribute('data-id');
+      db.daftarCustom = daftarCustomList().filter((c) => c.id !== id);
+      db.daftarCols = daftarCols().filter((x) => x !== id);
+      Object.keys(db.people || {}).forEach((sid) => {
+        if (db.people[sid] && db.people[sid].fields) {
+          delete db.people[sid].fields[id];
+        }
+      });
+      save();
+      toast('Kolom kustom dihapus.');
       render();
     } else if (act === 'queue-kind') {
       ui.queueKind = btn.getAttribute('data-id');
@@ -3901,17 +6115,42 @@
     } else if (act === 'pick-term') {
       ui.payTerm = btn.getAttribute('data-id');
       render();
+    } else if (act === 'claim-tool') {
+      const pid = btn.getAttribute('data-id');
+      const p = productById(pid);
+      if (!canMentoring(ui.personaId) || !bundled(p)) {
+        toast('Harga mentoring −' + toolDiscountPct() + '% setelah lunas.');
+        return;
+      }
+      const b = billingOf(ui.personaId);
+      if (b.products.indexOf(pid) < 0) b.products.push(pid);
+      save();
+      toast(p.title + ' kebuka di harga mentoring (−' + toolDiscountPct() + '%). Prototype, bukan tagihan lynk.');
+      render();
     } else if (act === 'pay-later') {
-      if (!db.applications[ui.personaId]) {
+      if (!ensureApplication()) {
         toast('Isi form dulu.');
+        ui.wizStep = 0;
+        ui.wizFocusedStep = null;
+        ui.tab = 'daftar';
+        render();
         return;
       }
       startTrial(ui.personaId);
       save();
-      ui.tab = 'home';
+      ui.lectureId = firstLectureId();
+      ui.tab = 'belajar';
       toast('Trial: video 1 kebuka. Diskon 24 jam dari jam form.');
       render();
     } else if (act === 'pay-now') {
+      if (!ensureApplication()) {
+        toast('Isi form dulu.');
+        ui.wizStep = 0;
+        ui.wizFocusedStep = null;
+        ui.tab = 'daftar';
+        render();
+        return;
+      }
       const term = btn.getAttribute('data-term') || ui.payTerm || 'month';
       const welcome = welcomeOpen(ui.personaId) || hoursLeft(billingOf(ui.personaId).offerExpiresAt) > 0;
       const amount = priceForTerm(term, welcome);
@@ -4023,6 +6262,26 @@
       db.notes[id].push({ at: isoNow(), body: String(fd.get('body')) });
       save();
       render();
+    } else if (act === 'daftar-col-add') {
+      const label = String(fd.get('label') || '').trim().slice(0, 40);
+      if (!label) return;
+      const id = 'cf-' + Date.now().toString(36);
+      db.daftarCustom = daftarCustomList().concat([{ id: id, label: label }]);
+      const cols = daftarCols();
+      if (cols.indexOf(id) < 0) cols.push(id);
+      db.daftarCols = cols;
+      ui.daftarColsOpen = true;
+      save();
+      toast('Kolom “' + label + '” ditambah.');
+      render();
+    } else if (act === 'log-call') {
+      const id = form.getAttribute('data-id');
+      db.notes[id] = db.notes[id] || [];
+      db.notes[id].push({ at: isoNow(), body: 'Panggilan: ' + String(fd.get('body')) });
+      pushTimeline(id, 'call', 'Anton mencatat panggilan dengan ' + nameOf(id));
+      save();
+      toast('Panggilan dicatat.');
+      render();
     } else if (act === 'save-person') {
       const id = form.getAttribute('data-id');
       const email = String(fd.get('email') || '').trim();
@@ -4093,31 +6352,8 @@
       save();
       toast('Tautan Meet disimpan');
       render();
-    } else if (act === 'apply') {
-      const sid = ui.personaId;
-      const s = student();
-      const name = String(fd.get('name') || '').trim();
-      const wa = String(fd.get('wa') || '').trim();
-      db.applications[sid] = {
-        name: name,
-        wa: wa,
-        experience: String(fd.get('experience') || '').trim(),
-        why: String(fd.get('why') || '').trim(),
-        at: isoNow()
-      };
-      s.name = name || s.name;
-      s.wa = wa.replace(/\D/g, '') || s.wa;
-      patchPerson(sid, { name: s.name, wa: s.wa });
-      const b = billingOf(sid);
-      if (!b.offerStartedAt) {
-        b.offerStartedAt = isoNow();
-        b.offerExpiresAt = addMs(isoNow(), 24 * 36e5);
-      }
-      setStage(sid, 'form', 'Form masuk. Jam diskon 24 jam dimulai.');
-      save();
-      ui.tab = 'daftar';
-      toast('Form tersimpan. Lanjut pilih bayar.');
-      render();
+    } else if (act === 'apply' || act === 'wiz-next') {
+      advanceWiz();
     } else if (act === 'add-task') {
       const due = joinLocal(fd.get('date'), fd.get('time'));
       addTask(String(fd.get('personId')), String(fd.get('title')), String(fd.get('body') || ''), due, String(fd.get('kind') || 'wa'));
@@ -4145,6 +6381,7 @@
       });
       save();
       toast('Produk masuk perpustakaan (lokal)');
+      ui.pustakaAddOpen = false;
       render();
     } else if (act === 'save-dunning') {
       db.dunning.warningDays = Math.max(1, +fd.get('warningDays') || 5);
@@ -4154,9 +6391,11 @@
       render();
     } else if (act === 'save-pricing') {
       db.pricing.monthlyIdr = +fd.get('monthlyIdr') || db.pricing.monthlyIdr;
-      db.pricing.annualDiscountPct = +fd.get('annualDiscountPct') || 0;
+      db.pricing.quarterDiscountPct = +fd.get('quarterDiscountPct') || 0;
+      db.pricing.halfDiscountPct = +fd.get('halfDiscountPct') || 0;
       db.pricing.autopayDiscountPct = +fd.get('autopayDiscountPct') || 0;
       db.pricing.welcomeDiscountPct = +fd.get('welcomeDiscountPct') || 0;
+      db.pricing.toolDiscountPct = Math.min(90, Math.max(0, +fd.get('toolDiscountPct') || 50));
       db.pricing.overridePct = +fd.get('overridePct') || 20;
       save();
       toast('Harga placeholder disimpan');
@@ -4167,6 +6406,28 @@
       db.bank.name = String(fd.get('name') || db.bank.name);
       save();
       toast('Rekening disimpan');
+      render();
+    } else if (act === 'save-school-url') {
+      if (!canBill()) return;
+      const nextSlug = normalizeSlug(fd.get('slug'));
+      const nextInvite = String(fd.get('invite') || '').trim().toUpperCase().replace(/\s+/g, '-');
+      if (!isValidSlug(nextSlug)) {
+        toast('Slug tidak valid (huruf/angka/titik/strip, max 64)');
+        return;
+      }
+      const prev = schoolSlug();
+      db.schoolSlug = nextSlug;
+      db.inviteCode = nextInvite || SEED.cohort.invite;
+      save();
+      toast('Alamat sekolah disimpan');
+      if (pathSlug() && nextSlug !== prev) {
+        const q = new URLSearchParams(location.search);
+        q.delete('s');
+        q.delete('school');
+        const qs = q.toString();
+        location.href = '/s/' + encodeURIComponent(nextSlug) + (qs ? ('?' + qs) : '');
+        return;
+      }
       render();
     } else if (act === 'exam') {
       const qs = SEED.exam.questions;
@@ -4200,7 +6461,8 @@
     ui.kolabSel = new Set();
     ui.editLecId = null;
     ui.secFold = null;
-    ui.skuFrom = 'pustaka';
+    ui.skuFrom = 'alat';
+    resetWizForPersona();
     closeDrawer();
     render();
   });
@@ -4230,6 +6492,73 @@
       e.preventDefault();
       parent.postMessage({ source: 'anton-school', type: 'key', key: e.key }, location.origin);
     });
+  }
+
+  function readEnvInset(side) {
+    const el = document.createElement('div');
+    el.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;' +
+      (side === 'top'
+        ? 'padding-top:env(safe-area-inset-top,0px)'
+        : 'padding-bottom:env(safe-area-inset-bottom,0px)');
+    document.body.appendChild(el);
+    const v = parseFloat(getComputedStyle(el)[side === 'top' ? 'paddingTop' : 'paddingBottom']) || 0;
+    el.remove();
+    return v;
+  }
+  function syncViewportShell() {
+    if (!document.body) return;
+    const root = document.documentElement;
+    const vv = window.visualViewport;
+    const h = Math.round((vv && vv.height) || window.innerHeight || 0);
+    const top = Math.round((vv && vv.offsetTop) || 0);
+    if (h > 0) root.style.setProperty('--app-height', h + 'px');
+    root.style.setProperty('--app-top', top + 'px');
+    const standalone = window.matchMedia('(display-mode: standalone)').matches
+      || window.navigator.standalone === true;
+    const envBottom = readEnvInset('bottom');
+    const envTop = readEnvInset('top');
+    /* Safari's bottom toolbar is not always in safe-area; seat the dock above it. */
+    const browserPad = standalone ? 0 : Math.max(0, Math.min(56, window.innerHeight - h));
+    const bottom = Math.max(envBottom, browserPad, standalone ? 0 : 12);
+    root.style.setProperty('--safe-bottom', bottom + 'px');
+    root.style.setProperty('--safe-top', envTop + 'px');
+  }
+  function lockAppGestures() {
+    const stop = (e) => { e.preventDefault(); };
+    document.addEventListener('gesturestart', stop, { passive: false });
+    document.addEventListener('gesturechange', stop, { passive: false });
+    document.addEventListener('gestureend', stop, { passive: false });
+    let edge = 0;
+    let sx = 0;
+    let sy = 0;
+    document.addEventListener('touchstart', (e) => {
+      const t = e.touches[0];
+      if (!t) return;
+      sx = t.clientX;
+      sy = t.clientY;
+      const w = window.innerWidth;
+      edge = sx < 24 ? -1 : (sx > w - 24 ? 1 : 0);
+    }, { passive: true });
+    document.addEventListener('touchmove', (e) => {
+      if (e.touches.length > 1) {
+        e.preventDefault();
+        return;
+      }
+      if (!edge || !e.touches[0]) return;
+      const t = e.touches[0];
+      const dx = t.clientX - sx;
+      const dy = t.clientY - sy;
+      if (Math.abs(dx) <= Math.abs(dy) + 6) return;
+      if ((edge < 0 && dx > 0) || (edge > 0 && dx < 0)) e.preventDefault();
+    }, { passive: false });
+  }
+  lockAppGestures();
+  syncViewportShell();
+  window.addEventListener('resize', syncViewportShell);
+  window.addEventListener('orientationchange', () => setTimeout(syncViewportShell, 120));
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', syncViewportShell);
+    window.visualViewport.addEventListener('scroll', syncViewportShell);
   }
 
   render();

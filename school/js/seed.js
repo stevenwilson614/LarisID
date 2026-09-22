@@ -1,9 +1,10 @@
-/* Dummy Sekolah Anton. Local prototype only. */
+/* Dummy MasterMind with Anton GC. Local prototype only. */
 window.ANTON_SEED = {
   school: {
     id: 'sch-anton',
-    name: 'Sekolah Anton',
-    slug: 'sekolah-anton',
+    name: 'MasterMind with Anton GC',
+    // Public URL: larisid.com/s/{slug} — same handle as lynk.id/obrolan.marketing
+    slug: 'obrolan.marketing',
     kind: 'creator',
     slogan: 'Jualan TikTok Shop yang tahan lama',
     waGroup: 'https://chat.whatsapp.com/anton-batch-sep-demo',
@@ -162,9 +163,12 @@ window.ANTON_SEED = {
   ],
   pricing: {
     monthlyIdr: 500000,
+    quarterDiscountPct: 15,
+    halfDiscountPct: 25,
     annualDiscountPct: 15,
     autopayDiscountPct: 10,
     welcomeDiscountPct: 20,
+    toolDiscountPct: 50,
     overridePct: 20
   },
   bank: {
@@ -194,7 +198,7 @@ window.ANTON_SEED = {
       name: 'Onboarding bayar',
       trigger: 'bayar',
       steps: [
-        { id: 'ob-mail', waitHours: 0, kind: 'email', title: 'Selamat datang + kuitansi', subject: 'Selamat datang di Sekolah Anton', body: 'Halo {name},\n\nTerima kasih. Mentoring sudah aktif.\nJumlah: {amount}\nPaket: {term}\nTransfer ke {bank} {rekening} a.n. {anama}.\n\nIni kuitansi mock — LarisID tidak menahan uang.' },
+        { id: 'ob-mail', waitHours: 0, kind: 'email', title: 'Selamat datang + kuitansi', subject: 'Selamat datang di MasterMind with Anton GC', body: 'Halo {name},\n\nTerima kasih. Mentoring sudah aktif.\nJumlah: {amount}\nPaket: {term}\nTransfer ke {bank} {rekening} a.n. {anama}.\n\nIni kuitansi mock — LarisID tidak menahan uang.' },
         { id: 'ob-wa', waitHours: 24, kind: 'wa', title: 'WA selamat datang', body: 'Halo {name}, Anton di sini. Selamat datang di kelas. Video 1 + lembar kerja sudah kebuka. Kalau bingung, WA aja.' },
         { id: 'ob-task', waitHours: 0, kind: 'task', title: 'Anton cek {name} sudah masuk kelas', body: 'Follow-up {name}: sudah nonton? Ada yang macet di harga?' }
       ]
@@ -281,7 +285,7 @@ window.ANTON_SEED = {
     's-rina': { status: 'lunas', plan: 'sku', products: ['calc'], amount: 99000, source: 'lynk', paidAt: '2026-09-12T10:00:00+07:00', note: 'Kalkulator saja', term: '', accessUntil: null },
     's-toni': { status: 'lunas', plan: 'sku', products: ['algo'], amount: 59900, source: 'lynk', paidAt: '2026-09-11T10:00:00+07:00', note: 'Rekaman algoritma', term: '', accessUntil: null },
     's-ayu': { status: 'trial', plan: 'preview', products: [], amount: 0, source: 'manual', paidAt: null, note: 'Bayar nanti · 24 jam', term: '', accessUntil: null, offerStartedAt: '2026-09-18T09:00:00+07:00', offerExpiresAt: '2026-09-19T09:00:00+07:00' },
-    's-farah': { status: 'trial', plan: 'preview', products: [], amount: 0, source: 'manual', paidAt: null, note: 'Nonton v1, belum bayar', term: '', accessUntil: null, offerStartedAt: '2026-09-17T23:00:00+07:00', offerExpiresAt: '2026-09-18T23:00:00+07:00' },
+    's-farah': { status: 'trial', plan: 'preview', products: [], amount: 0, source: 'manual', paidAt: null, note: 'Nonton v1, belum bayar', term: '', accessUntil: null, offerStartedAt: '2026-09-20T10:00:00+07:00', offerExpiresAt: '2026-09-21T10:00:00+07:00' },
     's-gilang': { status: 'belum', plan: '', products: [], amount: 0, source: 'manual', paidAt: null, note: 'Tidak tertarik', term: '', accessUntil: null },
     's-hadi': { status: 'lunas', plan: 'mentoring', products: ['calc', 'ai-creative', 'ai-data', 'naik-harga', 'algo', 'ads'], amount: 500000, source: 'transfer', paidAt: '2026-08-23T10:00:00+07:00', note: 'Habis 23 Sep', term: 'month', accessUntil: '2026-09-23T10:00:00+07:00' },
     's-irma': { status: 'lunas', plan: 'mentoring', products: ['calc', 'ai-creative', 'ai-data', 'naik-harga', 'algo', 'ads'], amount: 500000, source: 'transfer', paidAt: '2026-08-18T08:00:00+07:00', note: 'Grace', term: 'month', accessUntil: '2026-09-18T08:00:00+07:00' },
@@ -330,8 +334,8 @@ window.ANTON_SEED = {
   ],
   lectures: (function () {
     const yt = 'https://www.youtube.com/watch?v=jNQXAC9IVRw';
-    function v(id, weekId, title, mins, doc, points, questions, required) {
-      return {
+    function v(id, weekId, title, mins, doc, points, questions, required, extra) {
+      return Object.assign({
         id: id,
         weekId: weekId,
         type: 'video',
@@ -343,13 +347,28 @@ window.ANTON_SEED = {
         resources: [{ name: doc, url: './tools/handout.html?id=' + id }],
         points: points,
         questions: questions
-      };
+      }, extra || {});
     }
     return [
       v('v1', 'w1', 'Selamat datang di kelas', 12, 'Lembar kerja 01 — Cara pakai kelas.pdf',
-        ['Kurikulum 12 video. Tandai selesai sendiri — bukan auto-skor.', 'Live class terpisah di Home. Pustaka = alat & rekaman lynk.', 'Jangan sebar supplier atau margin di Tanya.'],
-        [{ q: 'Bedanya mentoring vs beli satuan di lynk?', hint: 'Mentoring = 12 video + live + alat lynk. Laris Affiliate selalu satuan. Satuan = SKU yang dibayar saja.' },
-         { q: 'Kalau bingung cepat, WA atau Tanya di materi?', hint: 'WA untuk chat cepat. Tanya di sini supaya jawaban nempel di video yang sama.' }], true),
+        [
+          'Ini video 1. Trial: materi ini + checklist kebuka. Sisanya setelah mentoring lunas.',
+          'Isi pertanyaan jujur di bawah — buat kamu, bukan untuk Anton nilai.',
+          'Live class, diskusi kelas, dan alat −50% ikut paket mentoring.'
+        ],
+        [
+          { q: 'GMV toko / akun kamu sekarang berapa (perkiraan 30 hari)?', hint: 'Tulis angka kasar dari Seller Center. Nol juga boleh — jujur lebih berguna.' },
+          { q: 'GMV yang kamu mau dalam 90 hari ke depan?', hint: 'Satu target realistis. Bukan “jadi viral”, tapi omset yang masih masuk logika stok & harga.' },
+          { q: 'Satu SKU yang mau kamu unggulkan dulu apa?', hint: 'Satu produk. Bukan 20 SKU sekaligus. Contoh kelas: jepit rambut satin isi 6.' },
+          { q: 'Hal apa yang masih gelap di toko (foto, harga, live, kreator)?', hint: 'Pilih satu yang paling menghambat. Itu yang dikerjakan minggu ini.' }
+        ], true, {
+          coverUrl: './assets/kurikulum/welcome-cover.jpg',
+          body: 'Selamat datang. Anton bantu kamu jualan TikTok Shop yang tahan — bukan janji kaya semalam.\n\nDi trial ini kamu boleh nonton video 1, unduh checklist toko, dan jawab pertanyaan di bawah. Materi berikutnya kelihatan di kurikulum tapi terkunci sampai mentoring lunas.',
+          resources: [
+            { name: 'Checklist toko TikTok (contoh)', url: './tools/checklist-toko-tiktok.html' },
+            { name: 'Lembar kerja 01 — Cara pakai kelas.pdf', url: './tools/handout.html?id=v1' }
+          ]
+        }),
       v('v2', 'w1', 'Etalase yang tidak gelap', 11, 'Lembar kerja 02 — Audit etalase.pdf',
         ['Foto 5 sudut, cahaya jendela atau lampu, bukan stock gelap.', 'Nama SKU menyebut isi/manfaat, bukan “produk 01”.', 'WA bisnis nyala sebelum iklan.'],
         [{ q: 'Apa 3 hal yang harus ada sebelum iklan?', hint: 'Foto jelas, nama SKU kebaca, etalase 3 koleksi + WA bisnis.' },
@@ -466,7 +485,7 @@ window.ANTON_SEED = {
     { id: 'wa-farah-12', toId: 's-farah', scheduledAt: '2026-09-18T11:00:00+07:00', status: 'queued', title: '12 jam sisa diskon', body: 'Halo Farah Nisa, sisa 12 jam harga perkenalan mentoring Anton. Bayar transfer atau kartu, atau lanjut coba video 1.' }
   ],
   emailQueueSeed: [
-    { id: 'em-kamu-ob', toId: 's-kamu', scheduledAt: '2026-09-01T10:05:00+07:00', status: 'sent', title: 'Selamat datang + kuitansi', subject: 'Selamat datang di Sekolah Anton', body: 'Halo Kamu (demo),\n\nTerima kasih. Mentoring sudah aktif.\nJumlah: Rp400.000\nPaket: bulan\nTransfer ke BCA 123456789 a.n. Anton.\n\nIni kuitansi mock — LarisID tidak menahan uang.' }
+    { id: 'em-kamu-ob', toId: 's-kamu', scheduledAt: '2026-09-01T10:05:00+07:00', status: 'sent', title: 'Selamat datang + kuitansi', subject: 'Selamat datang di MasterMind with Anton GC', body: 'Halo Kamu (demo),\n\nTerima kasih. Mentoring sudah aktif.\nJumlah: Rp400.000\nPaket: bulan\nTransfer ke BCA 123456789 a.n. Anton.\n\nIni kuitansi mock — LarisID tidak menahan uang.' }
   ],
   enrollmentsSeed: {
     's-kamu': [{ planId: 'onboarding' }],

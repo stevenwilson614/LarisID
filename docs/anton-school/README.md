@@ -1,4 +1,4 @@
-# Sekolah Anton — offline prototype
+# MasterMind with Anton GC — offline prototype
 
 _Internal. Not a public product. Do not deploy, do not apply SQL on Contabo,
 do not push this work to `main`._
@@ -7,9 +7,26 @@ Run locally from the repo root:
 
 ```bash
 bash school/serve.sh
-# open http://127.0.0.1:8765/school/
-# walkthrough: http://127.0.0.1:8765/school/present.html
+# vanity (Anton): http://127.0.0.1:8765/s/obrolan.marketing
+# join + invite:  http://127.0.0.1:8765/s/obrolan.marketing?invite=ANTON-SEP26
+# legacy path:    http://127.0.0.1:8765/school/
+# walkthrough:    http://127.0.0.1:8765/school/present.html
 ```
+
+## School URLs (creator-mentor LMS)
+
+Same pattern as lynk / Skool / Whop: one **slug** per school on a shared domain.
+
+| | |
+|---|---|
+| Production target | `https://larisid.com/s/{slug}` |
+| Anton | `https://larisid.com/s/obrolan.marketing` (same handle as `lynk.id/obrolan.marketing`) |
+| Join | `…/s/{slug}?invite={batch-code}` |
+| Display name | Free-form (`MasterMind with Anton GC`) — not in the path |
+
+Slug rules (draft `schools.slug`): lowercase, letters/digits/`.`/`-`/`_`, no `..`, max 64, reserved path segments blocked. Mentors edit slug + invite under **Pengaturan bayar → Alamat sekolah**. Lynk stays the paid storefront; `/s/{slug}` is the class after they’re in.
+
+Future mentors get their own `schools` row + slug (e.g. `/s/dewi-live`). Do not put Rise kohorts on this path until an explicit go.
 
 Live Kohort Pertama (`js/laris-cohort.js` + `#view-cohort`) is untouched.
 This folder is not copied by `scripts/assemble-site.sh`.
