@@ -1664,6 +1664,29 @@ html[data-mode="mentor"] .main:has(.fub-page) { padding: 0; }
   display: grid; place-items: center; font-size: .62rem; flex: none; color: var(--muted);
 }
 .ud-mins { font-size: .72rem; white-space: nowrap; }
+.ud-media-preview {
+  display: grid; gap: 12px; margin: 4px 0 8px;
+  padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--ink-2);
+}
+.ud-preview-block { display: grid; gap: 6px; }
+.ud-preview-block > .muted { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.ud-preview-cover {
+  display: block; width: 100%; max-width: 360px; aspect-ratio: 16 / 9;
+  object-fit: cover; border-radius: 8px; background: #111;
+}
+.ud-preview-cover.is-empty {
+  display: grid; place-items: center; color: var(--muted); font-size: .75rem;
+  border: 1px dashed var(--line); background: transparent;
+}
+.ud-preview-vid {
+  display: block; width: 100%; max-width: 480px; aspect-ratio: 16 / 9;
+  border-radius: 8px; background: #000;
+}
+.ud-preview-embed {
+  width: 100%; max-width: 480px; aspect-ratio: 16 / 9;
+  border-radius: 8px; overflow: hidden; background: #000;
+}
+.ud-preview-embed iframe { width: 100%; height: 100%; border: 0; display: block; }
 .ud-content-btn { border-style: dashed; }
 .ud-item.is-open .lec-edit-body { padding: 0 12px 14px 36px; }
 .ud-empty { padding: 12px 12px 4px 36px; }

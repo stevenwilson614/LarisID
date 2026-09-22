@@ -2806,10 +2806,9 @@
   function lessonVideoHtml(lec) {
     const cover = coverHtml('lec', lec.id, 'lec-poster');
     const watchFirst = lec.type === 'video' && lec.id === firstLectureId();
-    const dur = lec.mins ? '<span class="lec-dur">' + esc(String(lec.mins)) + ' mnt</span>' : '';
     if (lec.videoBlob) {
       return (cover || '') + '<video class="lec-video" controls playsinline preload="metadata" data-blob="' +
-        esc(lec.id) + '"' + (watchFirst ? ' data-watch-lec="' + esc(lec.id) + '"' : '') + '></video>' + dur;
+        esc(lec.id) + '"' + (watchFirst ? ' data-watch-lec="' + esc(lec.id) + '"' : '') + '></video>';
     }
     const e = parseEmbed(lec.url);
     if (e && e.embed) {
@@ -2817,7 +2816,6 @@
         (watchFirst && e.videoId ? ' data-watch-lec="' + esc(lec.id) + '" data-yt-id="' + esc(e.videoId) + '"' : '') + '>' +
         (cover || '') +
         '<div class="play-orb" aria-hidden="true">' + svgIcon('play') + '</div>' +
-        dur +
       '</div>';
     }
     if (lec.url) {
@@ -2852,11 +2850,11 @@
     return qs.map((q, i) =>
       '<div class="quiz-q"><p><strong>' + (i + 1) + '.</strong> ' + esc(q.q) + '</p>' +
       (q.hint
-        ? '<details><summary>Arah jawaban (contoh)</summary><p class="muted">' + esc(q.hint) + '</p></details>'
+        ? '<details><summary>Catatan</summary><p class="muted">' + esc(q.hint) + '</p></details>'
         : '') +
       '</div>'
     ).join('') +
-    '<p class="muted">Bukan ujian — tidak ada skor.</p>';
+    '<p class="muted">Untuk dipikirkan — bukan ujian, tidak perlu kirim jawaban.</p>';
   }
   function renderLessonPlayer(lec, opts) {
     opts = opts || {};
@@ -2931,7 +2929,7 @@
       lecAccHtml('doc', 'Dokumen', docSub, docs.length ? resourceListHtml(lec) : '') +
       lecAccHtml('list', 'Poin penting', points.length ? (points.length + ' poin') : '',
         points.length ? '<ul class="key-points">' + points.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '') +
-      lecAccHtml('help', 'Cek pemahaman', questions.length ? (questions.length + ' pertanyaan') : '',
+      lecAccHtml('help', 'Cek pemahaman', questions.length ? (questions.length + ' prompt') : '',
         lessonQuizHtml(lec)) +
       lecAccHtml('chat', 'Tanya di materi ini', tanyaSub, lessonAskHtml(lec));
     const nav = (paywalled || lec.tool === 'kolab') ? '' :
@@ -3108,11 +3106,11 @@
         lec.questions.map((q, i) =>
           '<div class="quiz-q"><p><strong>' + (i + 1) + '.</strong> ' + esc(q.q) + '</p>' +
           (q.hint
-            ? '<details><summary>Arah jawaban (contoh)</summary><p class="muted">' + esc(q.hint) + '</p></details>'
+            ? '<details><summary>Catatan</summary><p class="muted">' + esc(q.hint) + '</p></details>'
             : '') +
           '</div>'
         ).join('') +
-        '<p class="muted">Bukan ujian — tidak ada skor. Video 1 selesai otomatis setelah nonton ≥85%.</p></div>';
+        '<p class="muted">Untuk dipikirkan — bukan ujian, tidak perlu kirim jawaban. Video 1 selesai otomatis setelah nonton ≥85%.</p></div>';
     }
     return html;
   }
@@ -3140,7 +3138,7 @@
             (thumb || '<span class="mark' + (isDone(sid, l.id) ? ' done' : '') + '" aria-hidden="true">' +
             (isDone(sid, l.id) ? '✓' : '') + '</span>') +
             '<span><div class="t">' + n + '. ' + esc(l.title) + '</div>' +
-            '<div class="m">' + esc(typeLabel(l.type)) + ' · ' + esc(l.mins) + ' mnt' +
+            '<div class="m">' + esc(typeLabel(l.type)) +
             (l.requiredBefore ? ' · wajib' : '') + '</div></span>' +
           '</span>' +
           (paywall ? '<span class="lec-lock">Terkunci</span>' :
@@ -4383,17 +4381,45 @@
       '</div></form>';
   }
 
+  function lecEditorPreviewHtml(l) {
+    const cover = coverHtml('lec', l.id, 'ud-preview-cover');
+    const coverBlock = '<div class="ud-preview-block">' +
+      '<span class="muted">Preview cover</span>' +
+      (cover || '<div class="ud-preview-cover is-empty">Belum ada cover</div>') +
+      '</div>';
+    if (l.type !== 'video') return '<div class="ud-media-preview">' + coverBlock + '</div>';
+    let vid = '';
+    if (l.videoBlob) {
+      vid = '<video class="ud-preview-vid" controls playsinline preload="metadata" data-blob="' + esc(l.id) + '"></video>';
+    } else {
+      const e = parseEmbed(l.url);
+      if (e && e.kind === 'youtube' && e.videoId) {
+        vid = '<div class="ud-preview-embed"><iframe src="https://www.youtube-nocookie.com/embed/' +
+          esc(e.videoId) + '?rel=0&modestbranding=1" title="Preview video" allowfullscreen loading="lazy"></iframe></div>';
+      } else if (e && e.embed) {
+        const src = String(e.embed).replace(/autoplay=1&?/g, '');
+        vid = '<div class="ud-preview-embed"><iframe src="' + esc(src) +
+          '" title="Preview video" allowfullscreen loading="lazy"></iframe></div>';
+      } else if (l.url) {
+        vid = '<p class="muted">Preview inline tidak tersedia. <a href="' + esc(l.url) +
+          '" target="_blank" rel="noopener">Buka tautan</a></p>';
+      } else {
+        vid = '<p class="muted">Belum ada video untuk dipreview.</p>';
+      }
+    }
+    return '<div class="ud-media-preview">' + coverBlock +
+      '<div class="ud-preview-block"><span class="muted">Preview video</span>' + vid + '</div></div>';
+  }
+
   function lecEditorCard(l, readonly, n) {
     const open = ui.editLecId === l.id;
     const has = lecHasContent(l);
     const kindNote = l.type === 'video' ? videoKindLabel(l) : (l.type === 'text' ? 'Bacaan' : ((l.resources || []).length + ' file'));
-    const mins = l.mins ? (l.mins + ' mnt') : '';
     const head = '<div class="ud-item-head">' +
       (readonly ? '' : '<span class="drag-handle" draggable="true" data-drag="lec" data-id="' + esc(l.id) + '" title="Geser materi">⋮⋮</span>') +
       '<span class="ud-icon" aria-hidden="true">' + lecTypeIcon(l) + '</span>' +
       '<span class="ud-item-copy"><strong>' + (n ? n + '. ' : '') + esc(l.title) + '</strong>' +
         '<div class="muted">' + esc(kindNote) + (l.requiredBefore ? ' · wajib' : '') + '</div></span>' +
-      (mins ? '<span class="muted ud-mins">' + esc(mins) + '</span>' : '') +
       '<div class="ud-actions">' +
         (readonly ? '' : ((open)
           ? '<button type="button" class="btn-sm" data-act="edit-lec" data-id="' + esc(l.id) + '">Tutup</button>'
@@ -4405,8 +4431,10 @@
     const qs = (l.questions || []).concat([{ q: '', hint: '' }]);
     const qHtml = qs.map((q, i) =>
       '<div class="q-row">' +
-        '<input data-act="q-field" data-id="' + esc(l.id) + '" data-i="' + i + '" data-k="q" value="' + esc(q.q || '') + '" placeholder="Pertanyaan ' + (i + 1) + '">' +
-        '<input data-act="q-field" data-id="' + esc(l.id) + '" data-i="' + i + '" data-k="hint" value="' + esc(q.hint || '') + '" placeholder="Arah jawaban (opsional)">' +
+        '<input data-act="q-field" data-id="' + esc(l.id) + '" data-i="' + i + '" data-k="q" value="' + esc(q.q || '') +
+          '" placeholder="Prompt / pertanyaan (boleh retoris)">' +
+        '<input data-act="q-field" data-id="' + esc(l.id) + '" data-i="' + i + '" data-k="hint" value="' + esc(q.hint || '') +
+          '" placeholder="Catatan opsional (bukan kunci jawaban)">' +
       '</div>'
     ).join('');
     const resHtml = (l.resources || []).map((r, i) =>
@@ -4418,27 +4446,27 @@
         '<button type="button" class="btn-sm" data-act="res-del" data-id="' + esc(l.id) + '" data-i="' + i + '">Hapus</button>' +
       '</div>'
     ).join('');
+    const descLabel = l.type === 'text' ? 'Bacaan' : (l.type === 'video' ? 'Deskripsi video' : 'Deskripsi');
+    const descPh = l.type === 'text'
+      ? 'Teks bacaan. **tebal** boleh.'
+      : 'Tulis deskripsi singkat tentang materi ini. **tebal** boleh.';
     const body = readonly
       ? '<p class="muted">Asisten hanya lihat. Anton yang unggah.</p>'
       : '<div class="lec-edit-body">' +
           '<label>Judul</label>' +
           '<input data-act="lec-field" data-id="' + esc(l.id) + '" data-k="title" value="' + esc(l.title) + '">' +
-          '<div class="row2">' +
-            '<div><label>Durasi (menit)</label>' +
-              '<input data-act="lec-field" data-id="' + esc(l.id) + '" data-k="mins" type="number" min="1" value="' + esc(l.mins || 5) + '"></div>' +
-            '<div><label>Pindah ke bagian</label>' +
-              '<select data-act="lec-week" data-id="' + esc(l.id) + '">' +
-                db.weeks.map((w) => '<option value="' + esc(w.id) + '"' + (w.id === l.weekId ? ' selected' : '') + '>' + esc(w.title) + '</option>').join('') +
-              '</select></div>' +
-          '</div>' +
+          '<label>Pindah ke bagian</label>' +
+          '<select data-act="lec-week" data-id="' + esc(l.id) + '">' +
+            db.weeks.map((w) => '<option value="' + esc(w.id) + '"' + (w.id === l.weekId ? ' selected' : '') + '>' + esc(w.title) + '</option>').join('') +
+          '</select>' +
           '<label class="muted"><input type="checkbox" data-act="lec-req" data-id="' + esc(l.id) + '"' +
             (l.requiredBefore ? ' checked' : '') + '> Wajib sebelum live class</label>' +
           '<h4>Cover</h4>' +
           '<label class="vid-drop"><input type="file" data-act="cover-file" data-kind="lec" data-id="' + esc(l.id) + '" accept="image/*" hidden><span>Unggah cover (maks 5 MB)</span></label>' +
-          (l.type === 'text'
-            ? '<h4>Bacaan</h4><textarea data-act="lec-body" data-id="' + esc(l.id) + '" rows="8" placeholder="Teks. **tebal** boleh.">' + esc(l.body || '') + '</textarea>'
-            : l.type === 'document'
+          (l.type === 'document'
             ? '<p class="muted">Unggah file atau tautan di bagian File di bawah.</p>'
+            : l.type === 'text'
+            ? ''
             : '<h4>Video</h4>' +
               '<p class="muted">YouTube paling lancar. Drive juga bisa. Atau unggah MP4.</p>' +
               '<input data-act="lec-field" data-id="' + esc(l.id) + '" data-k="url" value="' + esc(l.url || '') + '" placeholder="https://youtube.com/…">' +
@@ -4447,6 +4475,10 @@
                 '<span>' + (l.videoBlob ? ('Ganti file · sekarang: ' + esc(l.videoName || 'video')) : 'Drop / pilih file MP4') + '</span>' +
               '</label>' +
               (l.videoBlob ? '<button type="button" class="btn-sm" data-act="clear-vid" data-id="' + esc(l.id) + '">Hapus file, pakai tautan</button>' : '')) +
+          lecEditorPreviewHtml(l) +
+          '<h4>' + descLabel + '</h4>' +
+          '<textarea data-act="lec-body" data-id="' + esc(l.id) + '" rows="6" placeholder="' + esc(descPh) + '">' +
+            esc(l.body || '') + '</textarea>' +
           '<h4>File / lembar kerja</h4>' +
           resHtml +
           '<div class="row" style="margin-top:8px">' +
@@ -4458,6 +4490,7 @@
           '<textarea data-act="lec-points" data-id="' + esc(l.id) + '" rows="4" placeholder="Satu poin per baris">' +
             esc((l.points || []).join('\n')) + '</textarea>' +
           '<h4>Cek pemahaman</h4>' +
+          '<p class="muted">Prompt atau pertanyaan retoris. Murid tidak mengirim jawaban — hanya dipikirkan.</p>' +
           qHtml +
         '</div>';
     return '<article class="ud-item is-open" data-lec-drop="' + esc(l.id) + '">' + head + body + '</article>';
@@ -5122,6 +5155,18 @@
     const titleInp = form && form.querySelector('[name="title"]');
     const title = titleInp ? String(titleInp.value || '').trim() : '';
     ingestVideoFile(file, { lecId: z.getAttribute('data-id'), weekId: z.getAttribute('data-week'), title: title });
+  });
+
+  document.addEventListener('change', (e) => {
+    const t = e.target;
+    if (t.matches('[data-act="lec-field"][data-k="url"]')) {
+      const l = lectureById(t.getAttribute('data-id'));
+      if (!l) return;
+      l.url = t.value;
+      if (t.value) l.videoBlob = false;
+      save();
+      render();
+    }
   });
 
   document.addEventListener('input', (e) => {
