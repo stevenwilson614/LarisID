@@ -360,6 +360,10 @@
     skuPreview: false,
     skuFrom: 'alat',
     editLecId: null,
+    kurEdit: false,
+    composeMode: 'note',
+    cariSiswa: '',
+    cariOpen: false,
     secFold: null,
     wizard: null,
     wizStep: null,
@@ -1747,6 +1751,36 @@
       handle.toLowerCase().indexOf(q) >= 0 || billingOf(s.id).status.indexOf(q) >= 0 ||
       stageLabel(crmOf(s.id).stage).toLowerCase().indexOf(q) >= 0;
   }
+  function paintCariDrop() {
+    const drop = $('cari-siswa-drop');
+    if (!drop) return;
+    const q = String(ui.cariSiswa || '').trim().toLowerCase();
+    if (!isStaff() || !ui.cariOpen || !q) {
+      drop.hidden = true;
+      drop.innerHTML = '';
+      return;
+    }
+    const hits = people().filter((s) => matchPerson(s, q)).slice(0, 8);
+    drop.hidden = false;
+    drop.innerHTML = hits.length
+      ? hits.map((s) =>
+          '<button type="button" class="cari-hit" data-act="open-student" data-id="' + esc(s.id) + '">' +
+            avatarHtml(s, 'avatar sm') +
+            '<span><strong>' + esc(s.name) + '</strong>' +
+              '<span class="muted">' + esc(stageLabel(crmOf(s.id).stage)) + ' · ' + esc(billingOf(s.id).status) + '</span>' +
+            '</span></button>'
+        ).join('')
+      : '<p class="cari-empty muted">Tidak ketemu “‘ + esc(ui.cariSiswa) + ’”</p>';
+  }
+  function feedKindMeta(kind) {
+    const k = String(kind || 'note').toLowerCase();
+    if (k === 'wa' || k === 'whatsapp' || k === 'text') return { cls: 'is-wa', label: 'WA' };
+    if (k === 'email' || k === 'mail') return { cls: 'is-email', label: 'Email' };
+    if (k === 'call' || k === 'telepon') return { cls: 'is-call', label: 'Telepon' };
+    if (k === 'task' || k === 'tugas') return { cls: 'is-task', label: 'Tugas' };
+    if (k === 'event' || k === 'stage') return { cls: 'is-event', label: 'Event' };
+    return { cls: 'is-note', label: 'Catatan' };
+  }
   function lecDotStrip(sid) {
     const list = lectures();
     return '<span class="lec-dots" title="' + kurProgress(sid).n + '/' + list.length + ' materi">' +
@@ -2030,6 +2064,13 @@
     pers.value = ui.personaId;
     pers.hidden = isStaff();
     ui.chromeSync = false;
+    const searchWrap = $('topbar-search');
+    if (searchWrap) {
+      searchWrap.hidden = !isStaff();
+      const inp = $('cari-siswa');
+      if (inp && document.activeElement !== inp) inp.value = ui.cariSiswa || '';
+      paintCariDrop();
+    }
     const clock = $('clock-bar');
     if (clock) {
       clock.hidden = !isStaff();
@@ -4169,118 +4210,168 @@
     const handle = tiktokHandle(s.tiktok);
     const plans = (db.actionPlans || []).filter((x) => !x.archived);
     const tsk = db.tasks.filter((x) => x.personId === id).slice().sort((a, b) => Number(a.done) - Number(b.done) || new Date(a.dueAt) - new Date(b.dueAt));
-    const photoNote = s.photoBlob ? '' : (s.photoFailed
-      ? '<p class="muted">Foto TikTok gagal (CORS/blok). Inisial dipakai.</p>'
-      : (handle ? '<p class="muted">oEmbed → unavatar.io. Tidak scrape tiktok.com.</p>' : ''));
-    const lecList = lectures().map((l) => {
-      const done = isDone(id, l.id);
-      const locked = !canOpenLecture(id, l.id);
-      return '<li>' + (done ? '✓ ' : (locked ? '× ' : '· ')) + esc(l.title) +
-        (locked ? ' <span class="chip">Terkunci</span>' : '') + '</li>';
-    }).join('');
+    const openTasks = tsk.filter((t) => !t.done).length;
+    const prog = kurProgress(id);
+    const mode = ui.composeMode || 'note';
+    const tags = (s.tags || []).filter(Boolean);
     const feed = personFeed(id);
-    const anton = staffPerson();
     const left =
       '<aside class="fub-left">' +
-        '<div class="fub-iden">' + avatarHtml(s, 'avatar lg') +
-          '<div><input class="inline-edit name-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="name" value="' + esc(s.name) + '">' +
+        '<div class="fub-iden">' +
+          avatarHtml(s, 'avatar lg') +
+          '<div class="fub-iden-copy">' +
+            '<input class="inline-edit name-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="name" value="' + esc(s.name) + '">' +
             '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="city" value="' + esc(s.city || '') + '" placeholder="Kota">' +
-            '<label class="btn-sm" style="margin-top:8px">Unggah foto<input type="file" hidden data-act="photo-file" data-id="' + esc(id) + '" accept="image/*"></label>' +
-          '</div></div>' +
-        photoNote +
-        '<dl>' +
-          '<div class="fub-field"><dt>Telepon</dt><dd>' +
+            '<label class="btn-sm fub-photo-btn">Unggah foto<input type="file" hidden data-act="photo-file" data-id="' + esc(id) + '" accept="image/*"></label>' +
+          '</div>' +
+        '</div>' +
+        '<div class="fub-contact">' +
+          '<div class="fub-contact-row">' +
+            '<span class="fub-ico" aria-hidden="true">☎</span>' +
             '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="wa" value="' + esc(s.wa || '') + '" placeholder="62812…">' +
-            (s.wa ? '<a class="fub-cell-link" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari MasterMind with Anton GC.')) + '" target="_blank" rel="noopener">Buka WA</a>' : '') +
-          '</dd></div>' +
-          '<div class="fub-field"><dt>Email</dt><dd>' +
+            (s.wa ? '<a class="fub-cell-link" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari MasterMind with Anton GC.')) + '" target="_blank" rel="noopener">WA</a>' : '') +
+          '</div>' +
+          '<div class="fub-contact-row">' +
+            '<span class="fub-ico" aria-hidden="true">✉</span>' +
             '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="email" type="email" value="' + esc(s.email || '') + '" placeholder="email">' +
-            (s.email ? '<a class="fub-cell-link" href="' + esc(mailLink(s.email, 'MasterMind with Anton GC', 'Halo ' + s.name)) + '">mailto</a>' : '') +
-          '</dd></div>' +
-          '<div class="fub-field"><dt>TikTok</dt><dd>' +
-            '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="tiktok" value="' + esc(s.tiktok || '') + '" placeholder="handle">' +
-            (handle ? '<a class="fub-cell-link" href="' + esc(tiktokUrl(handle)) + '" target="_blank" rel="noopener">@' + esc(handle) + '</a>' : '') +
-          '</dd></div>' +
+            (s.email ? '<a class="fub-cell-link" href="' + esc(mailLink(s.email, 'MasterMind with Anton GC', 'Halo ' + s.name)) + '">✉</a>' : '') +
+          '</div>' +
+          '<div class="fub-contact-row">' +
+            '<span class="fub-ico" aria-hidden="true">♪</span>' +
+            '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="tiktok" value="' + esc(s.tiktok || '') + '" placeholder="handle TikTok">' +
+            (handle ? '<a class="fub-cell-link" href="' + esc(tiktokUrl(handle)) + '" target="_blank" rel="noopener">@</a>' : '') +
+          '</div>' +
+        '</div>' +
+        '<dl class="fub-meta">' +
           '<div class="fub-field"><dt>Stage</dt><dd><select data-act="crm-stage" data-id="' + esc(id) + '">' +
             stages.map((st) => '<option value="' + esc(st.id) + '"' + (c.stage === st.id ? ' selected' : '') + '>' + esc(st.label) + '</option>').join('') +
           '</select></dd></div>' +
-          '<div class="fub-field"><dt>Toko</dt><dd>' +
-            '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="shopName" value="' + esc(s.shopName || (app && app.shopName) || '') + '" placeholder="Nama toko">' +
-            '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="shopUrl" value="' + esc(s.shopUrl || (app && app.shopUrl) || '') + '" placeholder="https://…">' +
+          '<div class="fub-field"><dt>Assigned</dt><dd>' + esc(s.mentorId ? nameOf(s.mentorId) : 'Anton') + '</dd></div>' +
+          '<div class="fub-field"><dt>Tags</dt><dd class="fub-tags">' +
+            tags.map((t) => '<span class="tag-chip">' + esc(t) + '</span>').join('') +
+            '<input class="inline-edit tag-in" data-act="person-field" data-id="' + esc(id) + '" data-k="tags" value="' +
+              esc(tags.join(', ')) + '" placeholder="+ tag">' +
           '</dd></div>' +
           '<div class="fub-field"><dt>Sumber</dt><dd>' + esc((app && app.heard) || b.source || '—') +
-            (app && app.hasShop ? '<div class="muted">Sudah punya toko</div>' : (app ? '<div class="muted">Belum punya toko</div>' : '')) +
+            (app ? '<div class="muted">' + (app.hasShop ? 'Sudah punya toko' : 'Belum punya toko') + '</div>' : '') +
           '</dd></div>' +
-          '<div class="fub-field"><dt>Upline</dt><dd>' + esc(s.mentorId ? nameOf(s.mentorId) : 'Anton') + '</dd></div>' +
+          '<div class="fub-field"><dt>Toko</dt><dd>' +
+            '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="shopName" value="' +
+              esc(s.shopName || (app && app.shopName) || '') + '" placeholder="Nama toko">' +
+            '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="shopUrl" value="' +
+              esc(s.shopUrl || (app && app.shopUrl) || '') + '" placeholder="https://…">' +
+          '</dd></div>' +
           '<div class="fub-field"><dt>Bayar</dt><dd>' +
             (canBill() ? billStatusSelect(id, b) : payChip(b.status)) +
             '<div class="muted" style="margin-top:6px">' + esc(termLabel(b.term)) + '</div>' +
             (canBill() ? '<div style="margin-top:6px">' + billAmountInput(id, b) + '</div>' : '<div class="money">' + esc(fmtRp(b.amount || 0)) + '</div>') +
           '</dd></div>' +
           personEntitlementsHtml(id) +
-          '<div class="fub-field"><dt>Tag</dt><dd>' +
-            '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="tags" value="' + esc((s.tags || []).join(', ')) + '" placeholder="tag, tag">' +
-          '</dd></div>' +
         '</dl>' +
-        '<div style="margin-top:16px">' + progressBarHtml(id) +
-          '<details style="margin-top:8px"><summary class="muted">Checklist materi</summary><ul class="lec-check">' + lecList + '</ul></details>' +
-        '</div>' +
       '</aside>';
+
+    let composerBody = '';
+    if (mode === 'task' || ui.taskComposer === id) {
+      composerBody = taskComposerHtml(id);
+    } else if (mode === 'email') {
+      composerBody = s.email
+        ? '<p class="muted">Buka email di aplikasi kamu, lalu catat ringkasannya di bawah jika perlu.</p>' +
+          '<a class="btn" href="' + esc(mailLink(s.email, 'MasterMind with Anton GC', 'Halo ' + s.name)) + '">Buka Email</a>' +
+          '<form class="compose" data-act="note" data-id="' + esc(id) + '" style="margin-top:10px">' +
+            '<textarea name="body" required rows="3" placeholder="Catatan setelah email…"></textarea>' +
+            '<button class="btn" type="submit">Simpan catatan</button></form>'
+        : '<p class="muted">Belum ada email. Isi di kolom kiri dulu.</p>';
+    } else if (mode === 'wa') {
+      composerBody = s.wa
+        ? '<p class="muted">Buka WhatsApp, lalu catat hasil chat jika perlu.</p>' +
+          '<a class="btn" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari MasterMind with Anton GC.')) +
+            '" target="_blank" rel="noopener">Buka WA</a>' +
+          '<form class="compose" data-act="note" data-id="' + esc(id) + '" style="margin-top:10px">' +
+            '<textarea name="body" required rows="3" placeholder="Catatan setelah chat WA…"></textarea>' +
+            '<button class="btn" type="submit">Simpan catatan</button></form>'
+        : '<p class="muted">Belum ada nomor WA. Isi di kolom kiri dulu.</p>';
+    } else if (mode === 'call') {
+      composerBody = '<form class="compose" data-act="log-call" data-id="' + esc(id) + '">' +
+        '<textarea name="body" required rows="3" placeholder="Ringkas panggilan…"></textarea>' +
+        '<button class="btn" type="submit">Catat panggilan</button></form>';
+    } else {
+      composerBody = '<form class="compose" data-act="note" data-id="' + esc(id) + '" style="margin:0">' +
+        '<textarea name="body" required rows="3" placeholder="Tambah catatan…"></textarea>' +
+        '<button class="btn" type="submit">Simpan catatan</button></form>';
+    }
+
     const center =
       '<main class="fub-center">' +
         '<div class="fub-composer">' +
-          '<div class="fub-acts">' +
-            '<span class="btn-sm">Catatan</span>' +
-            (s.email ? '<a class="btn-sm" href="' + esc(mailLink(s.email, 'MasterMind with Anton GC', 'Halo ' + s.name)) + '">Email</a>' : '<span class="btn-sm" style="opacity:.45">Email</span>') +
-            '<a class="btn-sm" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari MasterMind with Anton GC.')) + '" target="_blank" rel="noopener">WA</a>' +
-            '<button type="button" class="btn-sm" data-act="task-compose" data-id="' + esc(id) + '">Tugas</button>' +
+          '<div class="fub-acts" role="tablist">' +
+            '<button type="button" class="btn-sm' + (mode === 'note' ? ' is-on' : '') + '" data-act="compose-mode" data-id="note">Catatan</button>' +
+            '<button type="button" class="btn-sm' + (mode === 'email' ? ' is-on' : '') + '" data-act="compose-mode" data-id="email">Email</button>' +
+            '<button type="button" class="btn-sm' + (mode === 'wa' ? ' is-on' : '') + '" data-act="compose-mode" data-id="wa">WA</button>' +
+            '<button type="button" class="btn-sm' + (mode === 'call' ? ' is-on' : '') + '" data-act="compose-mode" data-id="call">Panggilan</button>' +
+            '<button type="button" class="btn-sm' + (mode === 'task' ? ' is-on' : '') + '" data-act="compose-mode" data-id="task">Tugas</button>' +
           '</div>' +
-          (ui.taskComposer === id
-            ? taskComposerHtml(id)
-            : '<form class="compose" data-act="note" data-id="' + esc(id) + '" style="margin:0">' +
-                '<textarea name="body" required rows="3" placeholder="Tambah catatan…"></textarea>' +
-                '<button class="btn" type="submit">Simpan catatan</button>' +
-              '</form>') +
+          composerBody +
         '</div>' +
         '<div class="fub-tl-label">Linimasa</div>' +
         (feed.length
-          ? '<div class="fub-feed">' + feed.map((n) =>
-              '<article class="fub-item">' + avatarHtml(n.who === 'Anton' ? anton : s, 'avatar bubble') +
-                '<div><strong>' + esc(n.who) + ' · ' + esc(n.kind) + '</strong>' +
-                  '<div class="muted">' + esc(relWhen(n.at)) + '</div>' +
-                  '<p style="margin:6px 0 0;font-size:.82rem">' + esc(n.body) + '</p></div></article>'
-            ).join('') + '</div>'
+          ? '<div class="fub-feed">' + feed.map((n) => {
+              const meta = feedKindMeta(n.kind);
+              return '<article class="fub-item">' +
+                '<span class="fub-tl-ico ' + meta.cls + '" aria-hidden="true">' + esc(meta.label.charAt(0)) + '</span>' +
+                '<div>' +
+                  '<div class="fub-item-head"><strong>' + esc(n.who) + ' · ' + esc(meta.label) + '</strong>' +
+                    '<span class="muted">' + esc(relWhen(n.at)) + '</span></div>' +
+                  '<div class="fub-item-body">' + esc(n.body) + '</div>' +
+                '</div></article>';
+            }).join('') + '</div>'
           : '<p class="muted">Belum ada catatan atau event.</p>') +
       '</main>';
+
     const right =
-      '<aside class="fub-right fub-side">' +
-        '<h3>Tugas <button type="button" class="btn-sm" data-act="task-compose" data-id="' + esc(id) + '">+</button></h3>' +
-        (tsk.length
-          ? tsk.map((t) =>
-              '<div class="fub-task">' +
-                (t.done
-                  ? '<span class="tick-ok">✓</span>'
-                  : '<button type="button" class="btn-sm" data-act="task-done" data-id="' + esc(t.id) + '">Selesai</button>') +
-                '<div><strong>' + esc(taskKindLabel(t.kind)) + ' · ' + esc(t.title) + '</strong>' +
-                  '<div class="muted">' + esc(relWhen(t.dueAt)) + (t.body ? ' · ' + esc(t.body) : '') + '</div></div></div>'
-            ).join('')
-          : '<p class="muted">Tidak ada tugas.</p>') +
-        '<h3 style="margin-top:22px">Rencana aksi</h3>' +
-        '<p class="muted">Centang = ikut. Tidak auto-kirim.</p>' +
-        plans.map((pl) => {
-          const on = isEnrolled(id, pl.id);
-          return '<label class="fub-plan"><input type="checkbox" data-act="enroll-plan" data-id="' + esc(id) + '" data-pid="' + esc(pl.id) + '"' +
-            (on ? ' checked' : '') + '>' +
-            '<span>' + esc(pl.name) +
-              (on ? ' <span class="chip running">Jalan</span>' : ' <span class="chip idle">Off</span>') +
-              '<div class="muted">' + esc(triggerLabel(pl.trigger)) + '</div></span></label>';
-        }).join('') +
+      '<aside class="fub-right">' +
+        '<section class="fub-widget">' +
+          '<h3>Tugas <button type="button" class="btn-sm" data-act="compose-mode" data-id="task">+</button></h3>' +
+          (tsk.length
+            ? tsk.slice(0, 8).map((t) =>
+                '<div class="fub-task">' +
+                  (t.done
+                    ? '<span class="tick-ok">✓</span>'
+                    : '<button type="button" class="task-check" data-act="task-done" data-id="' + esc(t.id) + '" aria-label="Selesai"></button>') +
+                  '<div><strong>' + esc(t.title) + '</strong>' +
+                    '<div class="muted">' + esc(taskKindLabel(t.kind)) + ' · ' + esc(relWhen(t.dueAt)) + '</div></div></div>'
+              ).join('')
+            : '<p class="muted">Tidak ada tugas.</p>') +
+        '</section>' +
+        '<section class="fub-widget">' +
+          '<h3>Rencana aksi</h3>' +
+          (plans.length
+            ? plans.map((pl) => {
+                const on = isEnrolled(id, pl.id);
+                return '<label class="fub-plan"><input type="checkbox" data-act="enroll-plan" data-id="' + esc(id) + '" data-pid="' + esc(pl.id) + '"' +
+                  (on ? ' checked' : '') + '>' +
+                  '<span>' + esc(pl.name) +
+                    (on ? ' <span class="chip running">Jalan</span>' : ' <span class="chip idle">Off</span>') +
+                    '<div class="muted">' + esc(triggerLabel(pl.trigger)) + '</div></span></label>';
+              }).join('')
+            : '<p class="muted">Belum ada rencana.</p>') +
+        '</section>' +
+        '<section class="fub-widget">' +
+          '<h3>Aktivitas kelas</h3>' +
+          '<div class="fub-stats">' +
+            '<div><strong>' + prog.n + '</strong><span class="muted">Materi selesai</span></div>' +
+            '<div><strong>' + prog.pct + '%</strong><span class="muted">Progres</span></div>' +
+            '<div><strong>' + openTasks + '</strong><span class="muted">Tugas open</span></div>' +
+          '</div>' +
+          '<div style="margin-top:12px">' + progressBarHtml(id) + '</div>' +
+        '</section>' +
       '</aside>';
+
     return '<div class="fub-page">' +
       '<div class="fub-page-bar">' +
         '<button class="btn secondary" data-act="close-person">← Orang</button>' +
         '<strong>' + esc(s.name) + '</strong>' +
         payChip(b.status) +
+        '<span class="chip">' + esc(stageLabel(c.stage)) + '</span>' +
       '</div>' +
       '<div class="fub-3">' + left + center + right + '</div></div>';
   }
@@ -4314,15 +4405,48 @@
   }
 
   function viewKurikulum() {
+    if (!ui.kurEdit) return viewKurikulumStudent();
+    return viewKurikulumEditor();
+  }
+
+  function viewKurikulumStudent() {
+    const lec = lectureById(ui.lectureId) || lectures()[0];
+    if (!lec) {
+      return '<div class="card"><h2>Kurikulum</h2><p class="muted">Belum ada materi.</p>' +
+        (ui.role === 'asisten' ? '' : '<button type="button" class="btn" data-act="kur-edit-on">Edit kurikulum</button>') +
+        '</div>';
+    }
+    ui.lectureId = lec.id;
+    const canEdit = ui.role !== 'asisten';
+    const bar = '<div class="kur-mode-bar">' +
+      '<div><strong>Tampilan siswa</strong>' +
+        '<p class="muted" style="margin:2px 0 0">Begini materi terlihat di Belajar. ' +
+        (canEdit ? 'Klik Edit kalau mau ubah konten.' : 'Asisten hanya lihat.') + '</p></div>' +
+      '<div class="row">' +
+        (canEdit
+          ? '<button type="button" class="btn secondary" data-act="kur-edit-lec" data-id="' + esc(lec.id) + '">Edit materi ini</button>' +
+            '<button type="button" class="btn" data-act="kur-edit-on">Edit kurikulum</button>'
+          : '') +
+      '</div></div>';
+    return '<div class="kur-student-wrap">' + bar +
+      '<div class="player-layout">' +
+        '<div>' + renderLessonPlayer(lec, { phone: false, paywalled: false, seqLocked: false }) + '</div>' +
+        '<aside class="kurikulum-pane is-open">' + renderKurikulumSidebar() + '</aside>' +
+      '</div></div>';
+  }
+
+  function viewKurikulumEditor() {
     const readonly = ui.role === 'asisten';
     const nVid = lectures().filter((l) => l.type === 'video').length;
     const nTxt = lectures().filter((l) => l.type === 'text').length;
     const nFile = lectures().filter((l) => l.type === 'document').length;
     ensureSecFold();
     const toolbar = '<div class="ud-head">' +
-      '<div><h2 style="margin:0">Kurikulum</h2>' +
+      '<div><h2 style="margin:0">Edit kurikulum</h2>' +
         '<p class="muted" style="margin:6px 0 0">Susun bagian, lalu tambah lecture. Geser untuk urutan. ' +
-        nVid + ' video · ' + nTxt + ' bacaan · ' + nFile + ' file.</p></div></div>';
+        nVid + ' video · ' + nTxt + ' bacaan · ' + nFile + ' file.</p></div>' +
+      '<button type="button" class="btn secondary" data-act="kur-edit-off">← Lihat seperti siswa</button>' +
+      '</div>';
     const sections = db.weeks.map((w, wi) => {
       const items = lecturesInWeek(w.id);
       const open = isSecOpen(w.id);
@@ -5171,6 +5295,12 @@
 
   document.addEventListener('input', (e) => {
     const t = e.target;
+    if (t.matches('[data-act="cari-siswa"]')) {
+      ui.cariSiswa = t.value;
+      ui.cariOpen = true;
+      paintCariDrop();
+      return;
+    }
     if (t.matches('[data-act="filter-siswa"]') || t.matches('[data-act="filter-crm"]')) {
       ui.filterSiswa = t.value;
       ui.crmFilter = t.value;
@@ -5210,6 +5340,21 @@
     }
   });
 
+  document.addEventListener('focusin', (e) => {
+    if (e.target.matches('[data-act="cari-siswa"]')) {
+      ui.cariOpen = true;
+      paintCariDrop();
+    }
+  });
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#topbar-search')) {
+      if (ui.cariOpen) {
+        ui.cariOpen = false;
+        paintCariDrop();
+      }
+    }
+  }, true);
+
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-act]');
     if (!btn) return;
@@ -5218,7 +5363,7 @@
         act === 'lec-field' || act === 'lec-points' || act === 'q-field' || act === 'doc-name' || act === 'doc-url' ||
         act === 'cover-file' || act === 'res-file' || act === 'photo-file' || act === 'lec-body' || act === 'res-name' || act === 'res-url' ||
         act === 'person-field' || act === 'bill-amount' || act === 'sec-due' || act === 'kur-preview-person' ||
-        act === 'has-shop' || act === 'heard-from' || act === 'apply') {
+        act === 'has-shop' || act === 'heard-from' || act === 'apply' || act === 'cari-siswa') {
       return;
     }
     if (act === 'wiz-next') {
@@ -5253,6 +5398,7 @@
       if (isStaff()) {
         ui.mentorTab = id;
         if (id !== 'orang') ui.personId = null;
+        if (id === 'kurikulum') ui.kurEdit = false;
       } else {
         ui.tab = id;
         if (id === 'alat') { ui.skuId = null; ui.skuPreview = false; }
@@ -5260,6 +5406,30 @@
           ui.lectureId = firstLectureId();
         }
       }
+      render();
+    } else if (act === 'kur-edit-on') {
+      ui.kurEdit = true;
+      ui.mentorTab = 'kurikulum';
+      render();
+    } else if (act === 'kur-edit-off') {
+      ui.kurEdit = false;
+      ui.editLecId = null;
+      render();
+    } else if (act === 'kur-edit-lec') {
+      const id = btn.getAttribute('data-id');
+      const lec = lectureById(id);
+      ui.kurEdit = true;
+      ui.editLecId = id;
+      if (lec) setSecOpen(lec.weekId, true);
+      ui.mentorTab = 'kurikulum';
+      render();
+      requestAnimationFrame(() => {
+        const el = document.querySelector('[data-lec-drop="' + id + '"]');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    } else if (act === 'compose-mode') {
+      ui.composeMode = btn.getAttribute('data-id') || 'note';
+      ui.taskComposer = ui.composeMode === 'task' ? (ui.personId || '') : '';
       render();
     } else if (act === 'open-sku') {
       const id = btn.getAttribute('data-id');
@@ -5341,6 +5511,12 @@
     } else if (act === 'open-lec') {
       const id = btn.getAttribute('data-id');
       const lec = lectureById(id);
+      if (isStaff() && ui.mentorTab === 'kurikulum') {
+        ui.lectureId = id;
+        ui.kurEdit = false;
+        render();
+        return;
+      }
       if (!canViewLecture(ui.personaId, id) && !isStaff()) {
         if (lec && lec.skuId && canSku(ui.personaId, lec.skuId)) {
           ui.skuId = lec.skuId;
@@ -5378,10 +5554,17 @@
       if (e.target.closest('a, select, input, textarea, label, .btn-sm')) return;
       const id = btn.getAttribute('data-id');
       if (ui.skipOpen === id) return;
+      ui.cariOpen = false;
+      ui.cariSiswa = '';
       openPerson(id);
     } else if (act === 'task-compose') {
       const id = btn.getAttribute('data-id') || 'new';
-      ui.taskComposer = ui.taskComposer === id ? '' : id;
+      if (id === 'new') {
+        ui.taskComposer = ui.taskComposer === 'new' ? '' : 'new';
+      } else {
+        ui.composeMode = 'task';
+        ui.taskComposer = id;
+      }
       render();
     } else if (act === 'cal-day') {
       ui.calDay = btn.getAttribute('data-id');
@@ -5812,6 +5995,14 @@
       db.notes[id] = db.notes[id] || [];
       db.notes[id].push({ at: isoNow(), body: String(fd.get('body')) });
       save();
+      render();
+    } else if (act === 'log-call') {
+      const id = form.getAttribute('data-id');
+      db.notes[id] = db.notes[id] || [];
+      db.notes[id].push({ at: isoNow(), body: 'Panggilan: ' + String(fd.get('body')) });
+      pushTimeline(id, 'call', 'Anton mencatat panggilan dengan ' + nameOf(id));
+      save();
+      toast('Panggilan dicatat.');
       render();
     } else if (act === 'save-person') {
       const id = form.getAttribute('data-id');

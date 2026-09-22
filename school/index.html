@@ -15,7 +15,7 @@
   <link rel="apple-touch-icon" href="./assets/obrolan/profile.png">
   <title>MasterMind with Anton GC — prototype offline</title>
   <link rel="stylesheet" href="/fonts/laris-fonts.css">
-  <link rel="stylesheet" href="./css/school.css?v=20260920ak">
+  <link rel="stylesheet" href="./css/school.css?v=20260920al">
 </head>
 <body>
   <div id="prod-block" hidden>
@@ -35,6 +35,11 @@
           <span class="off-badge">/s/obrolan.marketing</span>
         </div>
       </div>
+      <div class="topbar-search" id="topbar-search" hidden>
+        <label class="sr-only" for="cari-siswa">Cari siswa</label>
+        <input type="search" id="cari-siswa" placeholder="Cari siswa…" data-act="cari-siswa" autocomplete="off" enterkeyhint="search">
+        <div id="cari-siswa-drop" class="cari-drop" hidden></div>
+      </div>
       <div class="topbar-actions">
         <label class="sr-only" for="role-switch">Peran</label>
         <select id="role-switch" aria-label="Peran"></select>
@@ -53,7 +58,7 @@
   <aside id="drawer" class="drawer" hidden></aside>
   <div id="drawer-scrim" class="scrim" hidden></div>
   <div id="toast" class="toast" hidden></div>
-  <script src="./js/seed.js?v=20260920ak"></script>
-  <script src="./js/app.js?v=20260920ak"></script>
+  <script src="./js/seed.js?v=20260920al"></script>
+  <script src="./js/app.js?v=20260920al"></script>
 </body>
 </html>
