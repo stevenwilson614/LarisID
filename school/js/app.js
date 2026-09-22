@@ -2683,6 +2683,12 @@
               : '<a class="btn" href="' + esc(ses.meetUrl) + '" target="_blank" rel="noopener">Buka Meet</a>') +
             '<a class="wa" href="' + esc(waLink(SEED.staff[0].wa, 'Halo Anton, saya dari Batch September.')) + '" target="_blank" rel="noopener">Chat Anton di WA</a>' +
           '</div>' +
+          calSyncButtons(ses) +
+          (!preview
+            ? '<div class="row" style="margin-top:8px">' +
+                '<button type="button" class="btn-sm" data-act="cal-ics-all">Unduh semua sesi (.ics)</button>' +
+              '</div>'
+            : '') +
           '<p class="muted" style="margin-top:10px">Grup WA kelas: undangan hanya lewat Anton. Prototype tidak mengirim WA sungguhan.</p>' +
         '</section>' +
       '</div>' +
@@ -4509,7 +4515,8 @@
   function calEvents() {
     const ev = [];
     (db.sessions || []).forEach((s) => ev.push({
-      kind: 'meet', at: s.startsAt, title: s.title, id: s.id, loc: s.location, url: s.meetUrl
+      kind: 'meet', at: s.startsAt, title: s.title, id: s.id, loc: s.location, url: s.meetUrl,
+      notes: s.notes || ''
     }));
     (db.weeks || []).forEach((w) => {
       if (w.due) ev.push({ kind: 'kur', at: joinLocal(w.due, '09:00'), title: w.title, id: w.id });
@@ -4522,6 +4529,84 @@
     }));
     return ev;
   }
+
+  function icsEscape(s) {
+    return String(s == null ? '' : s)
+      .replace(/\\/g, '\\\\')
+      .replace(/;/g, '\\;')
+      .replace(/,/g, '\\,')
+      .replace(/\r?\n/g, '\\n');
+  }
+  function icsUtcStamp(d) {
+    const x = d instanceof Date ? d : new Date(d);
+    if (!isFinite(x.getTime())) return '';
+    const p = (n) => String(n).padStart(2, '0');
+    return x.getUTCFullYear() + p(x.getUTCMonth() + 1) + p(x.getUTCDate()) + 'T' +
+      p(x.getUTCHours()) + p(x.getUTCMinutes()) + p(x.getUTCSeconds()) + 'Z';
+  }
+  function sessionDurationMins(s) {
+    return Math.max(30, +(s && s.mins) || 90);
+  }
+  function sessionIcsEvent(s) {
+    const start = new Date(s.startsAt);
+    const end = new Date(start.getTime() + sessionDurationMins(s) * 60e3);
+    const desc = [s.notes, s.meetUrl ? ('Meet: ' + s.meetUrl) : ''].filter(Boolean).join('\n');
+    return [
+      'BEGIN:VEVENT',
+      'UID:' + String(s.id || 'ses') + '@' + schoolSlug(),
+      'DTSTAMP:' + icsUtcStamp(new Date()),
+      'DTSTART:' + icsUtcStamp(start),
+      'DTEND:' + icsUtcStamp(end),
+      'SUMMARY:' + icsEscape(s.title || 'Sesi kelas'),
+      'DESCRIPTION:' + icsEscape(desc),
+      'LOCATION:' + icsEscape(s.location || 'Online'),
+      (s.meetUrl ? ('URL:' + String(s.meetUrl).replace(/\s/g, '')) : ''),
+      'END:VEVENT'
+    ].filter(Boolean).join('\r\n');
+  }
+  function buildSessionsIcs(list) {
+    const body = (list || db.sessions || []).map(sessionIcsEvent).join('\r\n');
+    return 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//MasterMind with Anton GC//' +
+      icsEscape(SEED.cohort.name || 'Batch') + '//ID\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nX-WR-CALNAME:' +
+      icsEscape((SEED.school.name || 'Anton') + ' · ' + (SEED.cohort.name || 'Jadwal')) +
+      '\r\n' + body + '\r\nEND:VCALENDAR\r\n';
+  }
+  function downloadIcs(filename, icsText) {
+    const blob = new Blob([icsText], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename || 'jadwal-anton.ics';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
+  function googleCalUrl(s) {
+    const start = new Date(s.startsAt);
+    const end = new Date(start.getTime() + sessionDurationMins(s) * 60e3);
+    const dates = icsUtcStamp(start) + '/' + icsUtcStamp(end);
+    const q = new URLSearchParams({
+      action: 'TEMPLATE',
+      text: s.title || 'Sesi kelas',
+      dates: dates,
+      details: [s.notes || '', s.meetUrl || ''].filter(Boolean).join('\n'),
+      location: s.location || 'Online'
+    });
+    return 'https://calendar.google.com/calendar/render?' + q.toString();
+  }
+  function calSyncButtons(s, compact) {
+    if (!s || !s.startsAt) return '';
+    const icsBtn = '<button type="button" class="btn-sm" data-act="cal-ics-one" data-id="' + esc(s.id) +
+      '" title="Unduh .ics — buka di Apple Calendar atau impor di Google">Apple / .ics</button>';
+    const gBtn = '<a class="btn-sm" href="' + esc(googleCalUrl(s)) +
+      '" target="_blank" rel="noopener">Google Calendar</a>';
+    if (compact) {
+      return '<div class="row cal-sync">' + gBtn + icsBtn + '</div>';
+    }
+    return '<div class="row cal-sync" style="margin-top:8px">' + gBtn + icsBtn + '</div>';
+  }
+
   function viewJadwal(staff) {
     const today = splitLocal().date;
     const ym = ui.calYM || today.slice(0, 7);
@@ -4558,11 +4643,13 @@
       (dayEv.length
         ? dayEv.map((ev) => {
             if (ev.kind === 'meet') {
+              const ses = (db.sessions || []).find((s) => s.id === ev.id) || ev;
               return '<article class="thread"><h4>' + esc(kindLabel.meet) + ' · ' + esc(ev.title) + '</h4>' +
                 '<p class="muted">' + fmtWhen(ev.at) + (ev.loc ? ' · ' + esc(ev.loc) : '') + '</p>' +
                 (staff && canBill()
                   ? '<form class="compose" data-act="meet" data-id="' + esc(ev.id) + '"><input name="meetUrl" value="' + esc(ev.url || '') + '" placeholder="https://meet.google.com/..."><button class="btn" type="submit">Simpan tautan Meet</button></form>'
                   : (ev.url ? '<a class="btn" href="' + esc(ev.url) + '" target="_blank" rel="noopener">Buka Meet</a>' : '')) +
+                calSyncButtons(ses) +
                 '</article>';
             }
             if (ev.kind === 'kur') {
@@ -4578,9 +4665,13 @@
     const prevM = mm === 1 ? (yy - 1) + '-12' : yy + '-' + String(mm - 1).padStart(2, '0');
     const nextM = mm === 12 ? (yy + 1) + '-01' : yy + '-' + String(mm + 1).padStart(2, '0');
     const monthLabel = new Date(Date.UTC(yy, mm - 1, 1)).toLocaleDateString('id-ID', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+    const nSes = (db.sessions || []).length;
     return '<div class="card"><h2>Jadwal</h2>' +
-      '<p class="muted">Kalender: kurikulum (jatuh tempo bagian), Meet/Zoom, tugas. ICS token prototype: ' +
-      esc(SEED.cohort.calendarToken) + '.</p>' +
+      '<p class="muted">Kalender kelas: Meet live, jatuh tempo kurikulum, tugas. Sinkron lewat Google Calendar atau file .ics (Apple Calendar).</p>' +
+      '<div class="cal-sync-bar">' +
+        '<button type="button" class="btn" data-act="cal-ics-all">Unduh semua sesi (.ics)</button>' +
+        '<span class="muted">' + nSes + ' live session · buka di Apple Calendar, atau Google Calendar → Settings → Import</span>' +
+      '</div>' +
       '<div class="cal-nav">' +
         '<button type="button" class="btn-sm" data-act="cal-ym" data-id="' + esc(prevM) + '">←</button>' +
         '<strong>' + esc(monthLabel) + '</strong>' +
@@ -5253,6 +5344,23 @@
     } else if (act === 'cal-ym') {
       ui.calYM = btn.getAttribute('data-id');
       render();
+    } else if (act === 'cal-ics-all') {
+      const list = db.sessions || [];
+      if (!list.length) {
+        toast('Belum ada sesi live di jadwal.');
+        return;
+      }
+      downloadIcs('jadwal-' + schoolSlug() + '.ics', buildSessionsIcs(list));
+      toast('File .ics diunduh — buka di Apple Calendar, atau impor di Google Calendar.');
+    } else if (act === 'cal-ics-one') {
+      const id = btn.getAttribute('data-id');
+      const ses = (db.sessions || []).find((s) => s.id === id);
+      if (!ses) {
+        toast('Sesi tidak ditemukan.');
+        return;
+      }
+      downloadIcs((ses.id || 'sesi') + '.ics', buildSessionsIcs([ses]));
+      toast('File .ics diunduh — Apple Calendar / Google Import.');
     } else if (act === 'kur-prev-lec') {
       ui.kurPreviewLec = btn.getAttribute('data-id');
       render();
