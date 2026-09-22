@@ -327,50 +327,44 @@
     const cols = daftarCols();
     const custom = daftarCustomList();
     const on = new Set(cols);
-    const builtins = DAFTAR_COL_DEFS.map((def) => {
+    const item = (def, opts) => {
+      opts = opts || {};
       const checked = on.has(def.id);
       const i = cols.indexOf(def.id);
-      return '<div class="daftar-col-row' + (def.locked ? ' is-locked' : '') + '">' +
-        '<label><input type="checkbox" data-act="daftar-col-toggle" data-id="' + esc(def.id) + '"' +
-          (checked ? ' checked' : '') + (def.locked ? ' disabled' : '') + '> ' + esc(def.label) +
-          (def.locked ? ' <span class="muted">wajib</span>' : '') + '</label>' +
-        (checked && !def.locked
-          ? '<span class="daftar-col-move">' +
-              '<button type="button" class="btn-sm" data-act="daftar-col-up" data-id="' + esc(def.id) + '"' +
-                (i <= 1 ? ' disabled' : '') + '>↑</button>' +
-              '<button type="button" class="btn-sm" data-act="daftar-col-down" data-id="' + esc(def.id) + '"' +
-                (i < 0 || i >= cols.length - 1 ? ' disabled' : '') + '>↓</button>' +
+      return '<div class="cols-dd-item' + (def.locked ? ' is-locked' : '') + (opts.custom ? ' is-custom' : '') + '">' +
+        '<label class="cols-dd-check">' +
+          '<input type="checkbox" data-act="daftar-col-toggle" data-id="' + esc(def.id) + '"' +
+            (checked ? ' checked' : '') + (def.locked ? ' disabled' : '') + '>' +
+          '<span>' + esc(def.label) +
+            (def.locked ? ' <em class="muted">wajib</em>' : '') +
+            (opts.custom ? ' <em class="muted">kustom</em>' : '') +
+          '</span>' +
+        '</label>' +
+        (opts.custom || (checked && !def.locked)
+          ? '<span class="cols-dd-actions">' +
+              (checked && !def.locked
+                ? '<button type="button" class="cols-dd-ico" data-act="daftar-col-up" data-id="' + esc(def.id) + '"' +
+                    (i <= 1 ? ' disabled' : '') + ' title="Naik">↑</button>' +
+                  '<button type="button" class="cols-dd-ico" data-act="daftar-col-down" data-id="' + esc(def.id) + '"' +
+                    (i < 0 || i >= cols.length - 1 ? ' disabled' : '') + ' title="Turun">↓</button>'
+                : '') +
+              (opts.custom
+                ? '<button type="button" class="cols-dd-ico" data-act="daftar-col-del" data-id="' + esc(def.id) + '" title="Hapus">×</button>'
+                : '') +
             '</span>'
           : '') +
       '</div>';
-    }).join('');
-    const customs = custom.map((def) => {
-      const checked = on.has(def.id);
-      const i = cols.indexOf(def.id);
-      return '<div class="daftar-col-row is-custom">' +
-        '<label><input type="checkbox" data-act="daftar-col-toggle" data-id="' + esc(def.id) + '"' +
-          (checked ? ' checked' : '') + '> ' + esc(def.label) +
-          ' <span class="muted">kustom</span></label>' +
-        '<span class="daftar-col-move">' +
-          (checked
-            ? '<button type="button" class="btn-sm" data-act="daftar-col-up" data-id="' + esc(def.id) + '"' +
-                (i <= 1 ? ' disabled' : '') + '>↑</button>' +
-              '<button type="button" class="btn-sm" data-act="daftar-col-down" data-id="' + esc(def.id) + '"' +
-                (i < 0 || i >= cols.length - 1 ? ' disabled' : '') + '>↓</button>'
-            : '') +
-          '<button type="button" class="btn-sm" data-act="daftar-col-del" data-id="' + esc(def.id) + '">Hapus</button>' +
-        '</span></div>';
-    }).join('');
-    return '<div class="daftar-cols-panel">' +
-      '<div class="daftar-cols-head"><strong>Kolom daftar</strong>' +
-        '<button type="button" class="btn-sm" data-act="daftar-cols-close">Tutup</button></div>' +
-      '<p class="muted">Centang yang mau ditampilkan. Geser ↑↓ untuk urutan. Kolom kustom bisa diisi per siswa di tabel.</p>' +
-      '<div class="daftar-cols-list">' + builtins + customs + '</div>' +
-      '<form class="daftar-cols-add" data-act="daftar-col-add">' +
-        '<input name="label" required maxlength="40" placeholder="Nama kolom kustom">' +
-        '<button class="btn" type="submit">+ Kolom</button>' +
+    };
+    const builtins = DAFTAR_COL_DEFS.map((def) => item(def)).join('');
+    const customs = custom.map((def) => item(def, { custom: true })).join('');
+    return '<div class="cols-dd" id="daftar-cols-dd" role="menu">' +
+      '<div class="cols-dd-title">Tampilkan kolom</div>' +
+      '<div class="cols-dd-scroll">' + builtins + (customs ? '<div class="cols-dd-sep"></div>' + customs : '') + '</div>' +
+      '<form class="cols-dd-add" data-act="daftar-col-add">' +
+        '<input name="label" required maxlength="40" placeholder="Kolom kustom baru…">' +
+        '<button class="btn-sm" type="submit">+</button>' +
       '</form>' +
-      '<button type="button" class="btn-sm" data-act="daftar-cols-reset">Reset default</button>' +
+      '<button type="button" class="cols-dd-reset" data-act="daftar-cols-reset">Reset default</button>' +
     '</div>';
   }
 
@@ -4055,16 +4049,24 @@
       if (stage && crmOf(s.id).stage !== stage) return false;
       return matchPerson(s, q);
     });
-    const panel = ui.daftarColsOpen ? daftarColsPanelHtml() : '';
     return stageTabsHtml(q) +
       '<div class="fub-list">' +
-      '<div class="fub-toolbar"><span class="muted">Menampilkan ' + rows.length + ' orang</span>' +
-        '<div class="row">' +
-          '<button type="button" class="btn-sm' + (ui.daftarColsOpen ? ' is-on' : '') +
-            '" data-act="daftar-cols-toggle">Kolom (' + cols.length + ')</button>' +
-          '<span class="muted">Klik nama untuk profil</span>' +
-        '</div></div>' +
-      panel +
+      '<div class="fub-toolbar">' +
+        '<span class="muted">Menampilkan ' + rows.length + ' orang</span>' +
+        '<div class="fub-toolbar-acts">' +
+          '<div class="cols-dd-wrap' + (ui.daftarColsOpen ? ' is-open' : '') + '" id="daftar-cols-wrap">' +
+            '<button type="button" class="cols-dd-btn' + (ui.daftarColsOpen ? ' is-on' : '') +
+              '" data-act="daftar-cols-toggle" aria-expanded="' + !!ui.daftarColsOpen + '" aria-haspopup="menu">' +
+              '<span class="cols-dd-btn-ico" aria-hidden="true">' +
+                '<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 4h9M2 8h12M2 12h7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="13" cy="4" r="1.4" fill="currentColor"/><circle cx="7" cy="8" r="1.4" fill="currentColor"/><circle cx="11" cy="12" r="1.4" fill="currentColor"/></svg>' +
+              '</span>' +
+              'Kolom' +
+              '<span class="cols-dd-chev" aria-hidden="true">▾</span>' +
+            '</button>' +
+            (ui.daftarColsOpen ? daftarColsPanelHtml() : '') +
+          '</div>' +
+        '</div>' +
+      '</div>' +
       '<table class="table roster"><thead><tr>' +
         cols.map((id) => {
           const def = daftarColDef(id);
@@ -5549,6 +5551,22 @@
         paintCariDrop();
       }
     }
+    if (ui.daftarColsOpen && !e.target.closest('#daftar-cols-wrap')) {
+      ui.daftarColsOpen = false;
+      const wrap = document.getElementById('daftar-cols-wrap');
+      if (wrap) {
+        wrap.classList.remove('is-open');
+        const dd = document.getElementById('daftar-cols-dd');
+        if (dd) dd.remove();
+        const btn = wrap.querySelector('[data-act="daftar-cols-toggle"]');
+        if (btn) {
+          btn.classList.remove('is-on');
+          btn.setAttribute('aria-expanded', 'false');
+        }
+      } else {
+        render();
+      }
+    }
   }, true);
 
   document.addEventListener('click', (e) => {
@@ -5748,7 +5766,7 @@
       ui.pane = btn.getAttribute('data-id');
       render();
     } else if (act === 'open-student') {
-      if (e.target.closest('a, select, input, textarea, label, .btn-sm, .daftar-cols-panel')) return;
+      if (e.target.closest('a, select, input, textarea, label, .btn-sm, .cols-dd, .cols-dd-btn')) return;
       const id = btn.getAttribute('data-id');
       if (ui.skipOpen === id) return;
       ui.cariOpen = false;

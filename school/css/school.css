@@ -1385,30 +1385,63 @@ html.present-pane[data-mode="student"] .kurikulum-pane.is-open {
   display: flex; justify-content: space-between; gap: 10px; align-items: center;
   padding: 10px 14px; border-bottom: 1px solid var(--line);
 }
-.daftar-cols-panel {
-  padding: 12px 14px 14px; border-bottom: 1px solid var(--line);
-  background: var(--ink);
+.fub-toolbar-acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cols-dd-wrap { position: relative; }
+.cols-dd-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 10px; font-size: .74rem; font-weight: 650; font-family: inherit;
+  color: var(--text); background: var(--ink-3); border: 1px solid var(--line-2);
+  border-radius: 8px; cursor: pointer;
 }
-.daftar-cols-head {
-  display: flex; justify-content: space-between; gap: 10px; align-items: center;
-  margin-bottom: 6px;
+.cols-dd-btn:hover { border-color: var(--muted); }
+.cols-dd-btn.is-on {
+  border-color: var(--accent); background: var(--ink-2);
 }
-.daftar-cols-list {
-  display: grid; gap: 4px; margin: 10px 0 12px;
-  max-height: 280px; overflow: auto;
+.cols-dd-btn-ico { display: grid; place-items: center; color: var(--muted); }
+.cols-dd-chev { font-size: .62rem; color: var(--muted); margin-left: 2px; }
+.cols-dd {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 30;
+  width: min(280px, calc(100vw - 32px));
+  background: var(--ink-2); border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: 0 14px 36px rgba(0,0,0,.4); overflow: hidden;
 }
-.daftar-col-row {
-  display: flex; justify-content: space-between; gap: 8px; align-items: center;
-  padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px;
-  font-size: .78rem; background: var(--ink-2);
+.cols-dd-title {
+  padding: 10px 12px 6px; font-size: .68rem; font-weight: 800;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--muted);
 }
-.daftar-col-row.is-custom { border-style: dashed; }
-.daftar-col-row label { display: flex; gap: 8px; align-items: center; min-width: 0; cursor: pointer; }
-.daftar-col-move { display: flex; gap: 4px; flex: none; }
-.daftar-cols-add {
-  display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px;
+.cols-dd-scroll { max-height: 280px; overflow: auto; padding: 0 4px 6px; }
+.cols-dd-item {
+  display: flex; justify-content: space-between; gap: 6px; align-items: center;
+  padding: 2px 6px; border-radius: 6px;
 }
-.daftar-cols-add input { flex: 1; min-width: 140px; }
+.cols-dd-item:hover { background: var(--ink-3); }
+.cols-dd-check {
+  display: flex; gap: 8px; align-items: center; flex: 1; min-width: 0;
+  padding: 6px 4px; cursor: pointer; font-size: .8rem; font-weight: 550;
+}
+.cols-dd-check em { font-style: normal; font-size: .65rem; font-weight: 650; }
+.cols-dd-actions { display: flex; gap: 2px; flex: none; }
+.cols-dd-ico {
+  width: 24px; height: 24px; border: 0; background: transparent; color: var(--muted);
+  border-radius: 6px; cursor: pointer; font: inherit; font-size: .72rem; line-height: 1;
+}
+.cols-dd-ico:hover:not(:disabled) { background: var(--ink); color: var(--text); }
+.cols-dd-ico:disabled { opacity: .3; cursor: default; }
+.cols-dd-sep { height: 1px; background: var(--line); margin: 6px 8px; }
+.cols-dd-add {
+  display: flex; gap: 6px; align-items: center;
+  padding: 8px 10px; border-top: 1px solid var(--line);
+}
+.cols-dd-add input {
+  flex: 1; min-width: 0; font-size: .76rem; padding: 6px 8px;
+  border-radius: 6px; border: 1px solid var(--line-2); background: var(--ink-3); color: var(--text);
+}
+.cols-dd-reset {
+  display: block; width: 100%; border: 0; border-top: 1px solid var(--line);
+  background: transparent; color: var(--muted); font: inherit; font-size: .72rem;
+  font-weight: 650; padding: 10px 12px; cursor: pointer; text-align: left;
+}
+.cols-dd-reset:hover { color: var(--text); background: var(--ink-3); }
 .daftar-custom-in {
   min-width: 96px; max-width: 180px; font-size: .76rem;
 }
