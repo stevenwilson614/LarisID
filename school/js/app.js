@@ -536,6 +536,7 @@
     kurEdit: false,
     composeMode: 'note',
     daftarColsOpen: false,
+    pustakaAddOpen: false,
     cariSiswa: '',
     cariOpen: false,
     secFold: null,
@@ -4799,10 +4800,19 @@
   }
 
   function viewPustaka() {
+    const canAdd = canBill();
+    const addOpen = canAdd && ui.pustakaAddOpen;
     return catalogHero() +
-      '<div class="card" style="margin-top:12px"><h2>Perpustakaan</h2>' +
-      '<p class="muted">Produk lynk Anton. Toggle Contoh → File Anton setelah dia isi. Tambah SKU baru di bawah — tidak mengubah checkout lynk.id.</p>' +
-      (canBill()
+      '<div class="card" style="margin-top:12px">' +
+      '<div class="pustaka-head">' +
+        '<div><h2 style="margin:0">Perpustakaan</h2>' +
+          '<p class="muted" style="margin:6px 0 0">Produk lynk Anton. Toggle Contoh → File Anton setelah dia isi.</p></div>' +
+        (canAdd
+          ? '<button type="button" class="btn' + (addOpen ? ' secondary' : '') + '" data-act="pustaka-add-toggle">' +
+              (addOpen ? 'Tutup' : '+ Tambah') + '</button>'
+          : '') +
+      '</div>' +
+      (addOpen
         ? '<form class="compose add-sku" data-act="add-sku">' +
             '<strong>Tambah produk</strong>' +
             '<div class="row2">' +
@@ -4823,6 +4833,7 @@
               '<label class="muted"><input type="checkbox" name="example" checked> Contoh dulu</label>' +
               '<label class="muted"><input type="checkbox" name="mentor" checked> Termasuk mentoring</label>' +
               '<button class="btn" type="submit">Tambah ke perpustakaan</button>' +
+              '<button type="button" class="btn secondary" data-act="pustaka-add-toggle">Batal</button>' +
             '</div></form>'
         : '') +
       '<div class="tool-grid">' + catalog().map((p) =>
@@ -5614,6 +5625,7 @@
         ui.mentorTab = id;
         if (id !== 'orang') ui.personId = null;
         if (id === 'kurikulum') ui.kurEdit = false;
+        if (id === 'pustaka') ui.pustakaAddOpen = false;
       } else {
         ui.tab = id;
         if (id === 'alat') { ui.skuId = null; ui.skuPreview = false; }
@@ -5813,6 +5825,9 @@
       db.catalog = catalog().filter((p) => p.id !== id);
       save();
       toast('SKU dihapus dari perpustakaan lokal');
+      render();
+    } else if (act === 'pustaka-add-toggle') {
+      ui.pustakaAddOpen = !ui.pustakaAddOpen;
       render();
     } else if (act === 'close-drawer' || act === 'close-person') {
       closePerson();
@@ -6366,6 +6381,7 @@
       });
       save();
       toast('Produk masuk perpustakaan (lokal)');
+      ui.pustakaAddOpen = false;
       render();
     } else if (act === 'save-dunning') {
       db.dunning.warningDays = Math.max(1, +fd.get('warningDays') || 5);

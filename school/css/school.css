@@ -1909,6 +1909,11 @@ html[data-mode="mentor"] .main:has(.fub-page) { padding: 0; }
 .cal-dot.kind-task { background: #3f3f46; color: #fde68a; }
 .cal-day { margin-top: 16px; }
 .add-sku { margin: 12px 0 18px; padding: 12px; border: 1px dashed var(--line-2); border-radius: 12px; }
+.pustaka-head {
+  display: flex; justify-content: space-between; gap: 12px; align-items: flex-start;
+  flex-wrap: wrap; margin-bottom: 14px;
+}
+.pustaka-head .btn { flex: none; }
 
 /* ── student lesson player (Belajar) ───────────────────────────────── */
 html[data-mode="student"] #app.is-belajar {
