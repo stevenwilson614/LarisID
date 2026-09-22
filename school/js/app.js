@@ -198,6 +198,182 @@
     }[st] || st;
   }
 
+  const DAFTAR_COL_DEFS = [
+    { id: 'name', label: 'Nama', locked: true },
+    { id: 'phone', label: 'Telepon' },
+    { id: 'email', label: 'Email' },
+    { id: 'tiktok', label: 'TikTok' },
+    { id: 'city', label: 'Kota' },
+    { id: 'stage', label: 'Stage' },
+    { id: 'bayar', label: 'Bayar' },
+    { id: 'nilai', label: 'Nilai' },
+    { id: 'tags', label: 'Tags' },
+    { id: 'toko', label: 'Toko' },
+    { id: 'sumber', label: 'Sumber' },
+    { id: 'progres', label: 'Progres' },
+    { id: 'upline', label: 'Assigned' },
+    { id: 'aktif', label: 'Aktif terakhir' }
+  ];
+  const DAFTAR_DEFAULT_COLS = ['name', 'phone', 'email', 'stage', 'bayar', 'nilai'];
+
+  function defaultDaftarCols() {
+    return DAFTAR_DEFAULT_COLS.slice();
+  }
+  function daftarCustomList(store) {
+    const src = store || db;
+    return Array.isArray(src.daftarCustom) ? src.daftarCustom.filter((c) => c && c.id && c.label) : [];
+  }
+  function daftarColDef(id, store) {
+    const built = DAFTAR_COL_DEFS.find((c) => c.id === id);
+    if (built) return built;
+    const custom = daftarCustomList(store).find((c) => c.id === id);
+    return custom ? { id: custom.id, label: custom.label, custom: true } : null;
+  }
+  function hydrateDaftarCols(merged) {
+    merged.daftarCustom = Array.isArray(merged.daftarCustom)
+      ? merged.daftarCustom.filter((c) => c && c.id && String(c.label || '').trim()).map((c) => ({
+          id: String(c.id),
+          label: String(c.label).trim().slice(0, 40)
+        }))
+      : [];
+    const known = new Set(DAFTAR_COL_DEFS.map((c) => c.id).concat(merged.daftarCustom.map((c) => c.id)));
+    let cols = Array.isArray(merged.daftarCols) ? merged.daftarCols.filter((id) => known.has(id)) : [];
+    if (!cols.length || cols.indexOf('name') < 0) cols = defaultDaftarCols();
+    if (cols[0] !== 'name') cols = ['name'].concat(cols.filter((id) => id !== 'name'));
+    merged.daftarCols = cols;
+  }
+  function daftarCols() {
+    hydrateDaftarCols(db);
+    return db.daftarCols.slice();
+  }
+  function personCustomVal(sid, colId) {
+    const p = (db.people && db.people[sid]) || {};
+    const fields = p.fields || {};
+    return fields[colId] != null ? String(fields[colId]) : '';
+  }
+  function setPersonCustomVal(sid, colId, val) {
+    db.people = db.people || {};
+    const cur = Object.assign({}, db.people[sid] || {});
+    cur.fields = Object.assign({}, cur.fields || {});
+    cur.fields[colId] = String(val || '').trim();
+    db.people[sid] = cur;
+  }
+  function daftarCellHtml(colId, s) {
+    const b = billingOf(s.id);
+    const c = crmOf(s.id);
+    const app = db.applications[s.id];
+    const def = daftarColDef(colId);
+    if (!def) return '<span class="muted">—</span>';
+    if (def.custom) {
+      return '<input class="inline-edit daftar-custom-in" data-act="daftar-custom-val" data-id="' + esc(s.id) +
+        '" data-col="' + esc(colId) + '" value="' + esc(personCustomVal(s.id, colId)) + '" placeholder="—">';
+    }
+    if (colId === 'name') {
+      const tags = (s.tags || []).slice(0, 2);
+      return '<button type="button" class="linkish roster-name" data-act="open-student" data-id="' + esc(s.id) + '">' +
+        avatarHtml(s, 'avatar sm') + '<span>' + esc(s.name) +
+        '<div class="muted">' + esc(s.city || '—') +
+        (tags.length ? ' · ' + tags.map((t) => esc(t)).join(', ') : '') +
+        '</div></span></button>';
+    }
+    if (colId === 'phone') {
+      return s.wa
+        ? '<a class="fub-cell-link" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari MasterMind with Anton GC.')) +
+          '" target="_blank" rel="noopener">' + esc(fmtPhone(s.wa)) + '</a>'
+        : '<span class="muted">—</span>';
+    }
+    if (colId === 'email') {
+      return s.email
+        ? '<a class="fub-cell-link" href="' + esc(mailLink(s.email, 'MasterMind with Anton GC', 'Halo ' + s.name)) + '">' +
+          esc(s.email) + '</a>'
+        : '<span class="muted">—</span>';
+    }
+    if (colId === 'tiktok') {
+      const handle = tiktokHandle(s.tiktok);
+      return handle
+        ? '<a class="fub-cell-link" href="' + esc(tiktokUrl(handle)) + '" target="_blank" rel="noopener">@' + esc(handle) + '</a>'
+        : '<span class="muted">—</span>';
+    }
+    if (colId === 'city') return esc(s.city || '—');
+    if (colId === 'stage') return esc(stageLabel(c.stage));
+    if (colId === 'bayar') return canBill() ? billStatusSelect(s.id, b) : payChip(b.status);
+    if (colId === 'nilai') {
+      return canBill()
+        ? billAmountInput(s.id, b)
+        : (b.amount ? '<span class="money">' + esc(fmtRp(b.amount)) + '</span>' : '<span class="muted">—</span>');
+    }
+    if (colId === 'tags') {
+      const tags = s.tags || [];
+      return tags.length
+        ? tags.slice(0, 4).map((t) => '<span class="tag-chip">' + esc(t) + '</span>').join('')
+        : '<span class="muted">—</span>';
+    }
+    if (colId === 'toko') {
+      const name = s.shopName || (app && app.shopName) || '';
+      return name ? esc(name) : '<span class="muted">—</span>';
+    }
+    if (colId === 'sumber') {
+      return esc((app && app.heard) || b.source || '—');
+    }
+    if (colId === 'progres') {
+      const p = kurProgress(s.id);
+      return '<span title="' + p.n + '/' + p.total + '">' + p.pct + '%</span>';
+    }
+    if (colId === 'upline') return esc(s.mentorId ? nameOf(s.mentorId) : 'Anton');
+    if (colId === 'aktif') return esc(relWhen(s.lastActive) || '—');
+    return '<span class="muted">—</span>';
+  }
+  function daftarColsPanelHtml() {
+    const cols = daftarCols();
+    const custom = daftarCustomList();
+    const on = new Set(cols);
+    const builtins = DAFTAR_COL_DEFS.map((def) => {
+      const checked = on.has(def.id);
+      const i = cols.indexOf(def.id);
+      return '<div class="daftar-col-row' + (def.locked ? ' is-locked' : '') + '">' +
+        '<label><input type="checkbox" data-act="daftar-col-toggle" data-id="' + esc(def.id) + '"' +
+          (checked ? ' checked' : '') + (def.locked ? ' disabled' : '') + '> ' + esc(def.label) +
+          (def.locked ? ' <span class="muted">wajib</span>' : '') + '</label>' +
+        (checked && !def.locked
+          ? '<span class="daftar-col-move">' +
+              '<button type="button" class="btn-sm" data-act="daftar-col-up" data-id="' + esc(def.id) + '"' +
+                (i <= 1 ? ' disabled' : '') + '>↑</button>' +
+              '<button type="button" class="btn-sm" data-act="daftar-col-down" data-id="' + esc(def.id) + '"' +
+                (i < 0 || i >= cols.length - 1 ? ' disabled' : '') + '>↓</button>' +
+            '</span>'
+          : '') +
+      '</div>';
+    }).join('');
+    const customs = custom.map((def) => {
+      const checked = on.has(def.id);
+      const i = cols.indexOf(def.id);
+      return '<div class="daftar-col-row is-custom">' +
+        '<label><input type="checkbox" data-act="daftar-col-toggle" data-id="' + esc(def.id) + '"' +
+          (checked ? ' checked' : '') + '> ' + esc(def.label) +
+          ' <span class="muted">kustom</span></label>' +
+        '<span class="daftar-col-move">' +
+          (checked
+            ? '<button type="button" class="btn-sm" data-act="daftar-col-up" data-id="' + esc(def.id) + '"' +
+                (i <= 1 ? ' disabled' : '') + '>↑</button>' +
+              '<button type="button" class="btn-sm" data-act="daftar-col-down" data-id="' + esc(def.id) + '"' +
+                (i < 0 || i >= cols.length - 1 ? ' disabled' : '') + '>↓</button>'
+            : '') +
+          '<button type="button" class="btn-sm" data-act="daftar-col-del" data-id="' + esc(def.id) + '">Hapus</button>' +
+        '</span></div>';
+    }).join('');
+    return '<div class="daftar-cols-panel">' +
+      '<div class="daftar-cols-head"><strong>Kolom daftar</strong>' +
+        '<button type="button" class="btn-sm" data-act="daftar-cols-close">Tutup</button></div>' +
+      '<p class="muted">Centang yang mau ditampilkan. Geser ↑↓ untuk urutan. Kolom kustom bisa diisi per siswa di tabel.</p>' +
+      '<div class="daftar-cols-list">' + builtins + customs + '</div>' +
+      '<form class="daftar-cols-add" data-act="daftar-col-add">' +
+        '<input name="label" required maxlength="40" placeholder="Nama kolom kustom">' +
+        '<button class="btn" type="submit">+ Kolom</button>' +
+      '</form>' +
+      '<button type="button" class="btn-sm" data-act="daftar-cols-reset">Reset default</button>' +
+    '</div>';
+  }
+
   function hydrateFunnel(merged) {
     merged.schoolSlug = isValidSlug(merged.schoolSlug) ? normalizeSlug(merged.schoolSlug) : SEED.school.slug;
     merged.inviteCode = String(merged.inviteCode || (SEED.cohort && SEED.cohort.invite) || '').trim() || SEED.cohort.invite;
@@ -218,6 +394,7 @@
         if (st.to) st.to = migrateCrmStage(st.to);
       });
     });
+    hydrateDaftarCols(merged);
     merged.applications = Object.assign({}, JSON.parse(JSON.stringify(SEED.applications || {})), merged.applications || {});
     merged.timeline = Object.assign({}, JSON.parse(JSON.stringify(SEED.timelineSeed || {})), merged.timeline || {});
     merged.tasks = Array.isArray(merged.tasks) ? merged.tasks : JSON.parse(JSON.stringify(SEED.tasksSeed || []));
@@ -290,7 +467,9 @@
       progress,
       lastLecture: last,
       kolab: {},
-      sectionStyle: 'minggu'
+      sectionStyle: 'minggu',
+      daftarCols: defaultDaftarCols(),
+      daftarCustom: []
     };
   }
 
@@ -362,6 +541,7 @@
     editLecId: null,
     kurEdit: false,
     composeMode: 'note',
+    daftarColsOpen: false,
     cariSiswa: '',
     cariOpen: false,
     secFold: null,
@@ -3870,36 +4050,32 @@
   }
   function viewSiswaDaftar(q) {
     const stage = ui.stageFilter || '';
+    const cols = daftarCols();
     const rows = people().filter((s) => {
       if (stage && crmOf(s.id).stage !== stage) return false;
       return matchPerson(s, q);
     });
+    const panel = ui.daftarColsOpen ? daftarColsPanelHtml() : '';
     return stageTabsHtml(q) +
       '<div class="fub-list">' +
       '<div class="fub-toolbar"><span class="muted">Menampilkan ' + rows.length + ' orang</span>' +
-        '<span class="muted">Klik baris untuk profil · bayar di kolom</span></div>' +
-      '<table class="table roster"><thead><tr><th>Nama</th><th>Telepon</th><th>Email</th><th>Stage</th><th>Bayar</th><th>Nilai</th></tr></thead><tbody>' +
-      (rows.length ? rows.map((s) => {
-        const b = billingOf(s.id);
-        const c = crmOf(s.id);
-        const tags = (s.tags || []).slice(0, 3);
-        return '<tr class="roster-row" data-act="open-student" data-id="' + esc(s.id) + '">' +
-          '<td><button type="button" class="linkish roster-name" data-act="open-student" data-id="' + esc(s.id) + '">' +
-            avatarHtml(s, 'avatar sm') + '<span>' + esc(s.name) +
-            '<div class="muted">' + esc(s.city || '—') +
-            (tags.length ? ' · ' + tags.map((t) => esc(t)).join(', ') : '') + '</div></span></button></td>' +
-          '<td>' + (s.wa
-            ? '<a class="fub-cell-link" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari MasterMind with Anton GC.')) + '" target="_blank" rel="noopener">' + esc(fmtPhone(s.wa)) + '</a>'
-            : '<span class="muted">—</span>') + '</td>' +
-          '<td>' + (s.email
-            ? '<a class="fub-cell-link" href="' + esc(mailLink(s.email, 'MasterMind with Anton GC', 'Halo ' + s.name)) + '">' + esc(s.email) + '</a>'
-            : '<span class="muted">—</span>') + '</td>' +
-          '<td>' + esc(stageLabel(c.stage)) + '</td>' +
-          '<td>' + (canBill() ? billStatusSelect(s.id, b) : payChip(b.status)) + '</td>' +
-          '<td class="money">' + (canBill()
-            ? billAmountInput(s.id, b)
-            : (b.amount ? esc(fmtRp(b.amount)) : '—')) + '</td></tr>';
-      }).join('') : '<tr><td colspan="6" class="muted">Tidak ada orang di filter ini.</td></tr>') +
+        '<div class="row">' +
+          '<button type="button" class="btn-sm' + (ui.daftarColsOpen ? ' is-on' : '') +
+            '" data-act="daftar-cols-toggle">Kolom (' + cols.length + ')</button>' +
+          '<span class="muted">Klik nama untuk profil</span>' +
+        '</div></div>' +
+      panel +
+      '<table class="table roster"><thead><tr>' +
+        cols.map((id) => {
+          const def = daftarColDef(id);
+          return '<th>' + esc((def && def.label) || id) + '</th>';
+        }).join('') +
+      '</tr></thead><tbody>' +
+      (rows.length ? rows.map((s) =>
+        '<tr class="roster-row" data-act="open-student" data-id="' + esc(s.id) + '">' +
+          cols.map((id) => '<td>' + daftarCellHtml(id, s) + '</td>').join('') +
+        '</tr>'
+      ).join('') : '<tr><td colspan="' + cols.length + '" class="muted">Tidak ada orang di filter ini.</td></tr>') +
       '</tbody></table></div>';
   }
   function viewCrm(q) {
@@ -5283,6 +5459,21 @@
 
   document.addEventListener('change', (e) => {
     const t = e.target;
+    if (t.matches('[data-act="daftar-col-toggle"]')) {
+      const id = t.getAttribute('data-id');
+      if (!id || id === 'name') return;
+      const cols = daftarCols();
+      const i = cols.indexOf(id);
+      if (t.checked) {
+        if (i < 0) cols.push(id);
+      } else if (i >= 0) {
+        cols.splice(i, 1);
+      }
+      db.daftarCols = cols[0] === 'name' ? cols : ['name'].concat(cols.filter((x) => x !== 'name'));
+      save();
+      render();
+      return;
+    }
     if (t.matches('[data-act="lec-field"][data-k="url"]')) {
       const l = lectureById(t.getAttribute('data-id'));
       if (!l) return;
@@ -5299,6 +5490,11 @@
       ui.cariSiswa = t.value;
       ui.cariOpen = true;
       paintCariDrop();
+      return;
+    }
+    if (t.matches('[data-act="daftar-custom-val"]')) {
+      setPersonCustomVal(t.getAttribute('data-id'), t.getAttribute('data-col'), t.value);
+      save();
       return;
     }
     if (t.matches('[data-act="filter-siswa"]') || t.matches('[data-act="filter-crm"]')) {
@@ -5363,7 +5559,8 @@
         act === 'lec-field' || act === 'lec-points' || act === 'q-field' || act === 'doc-name' || act === 'doc-url' ||
         act === 'cover-file' || act === 'res-file' || act === 'photo-file' || act === 'lec-body' || act === 'res-name' || act === 'res-url' ||
         act === 'person-field' || act === 'bill-amount' || act === 'sec-due' || act === 'kur-preview-person' ||
-        act === 'has-shop' || act === 'heard-from' || act === 'apply' || act === 'cari-siswa') {
+        act === 'has-shop' || act === 'heard-from' || act === 'apply' || act === 'cari-siswa' ||
+        act === 'daftar-custom-val') {
       return;
     }
     if (act === 'wiz-next') {
@@ -5551,7 +5748,7 @@
       ui.pane = btn.getAttribute('data-id');
       render();
     } else if (act === 'open-student') {
-      if (e.target.closest('a, select, input, textarea, label, .btn-sm')) return;
+      if (e.target.closest('a, select, input, textarea, label, .btn-sm, .daftar-cols-panel')) return;
       const id = btn.getAttribute('data-id');
       if (ui.skipOpen === id) return;
       ui.cariOpen = false;
@@ -5611,6 +5808,42 @@
       ui.siswaView = 'daftar';
       ui.hubBack = 'daftar';
       ui.mentorTab = 'siswa';
+      render();
+    } else if (act === 'daftar-cols-toggle') {
+      ui.daftarColsOpen = !ui.daftarColsOpen;
+      render();
+    } else if (act === 'daftar-cols-close') {
+      ui.daftarColsOpen = false;
+      render();
+    } else if (act === 'daftar-cols-reset') {
+      db.daftarCols = defaultDaftarCols();
+      save();
+      toast('Kolom dikembalikan ke default.');
+      render();
+    } else if (act === 'daftar-col-up' || act === 'daftar-col-down') {
+      const id = btn.getAttribute('data-id');
+      const cols = daftarCols();
+      const i = cols.indexOf(id);
+      if (i < 1) return;
+      const j = act === 'daftar-col-up' ? i - 1 : i + 1;
+      if (j < 1 || j >= cols.length) return;
+      const tmp = cols[i];
+      cols[i] = cols[j];
+      cols[j] = tmp;
+      db.daftarCols = cols;
+      save();
+      render();
+    } else if (act === 'daftar-col-del') {
+      const id = btn.getAttribute('data-id');
+      db.daftarCustom = daftarCustomList().filter((c) => c.id !== id);
+      db.daftarCols = daftarCols().filter((x) => x !== id);
+      Object.keys(db.people || {}).forEach((sid) => {
+        if (db.people[sid] && db.people[sid].fields) {
+          delete db.people[sid].fields[id];
+        }
+      });
+      save();
+      toast('Kolom kustom dihapus.');
       render();
     } else if (act === 'queue-kind') {
       ui.queueKind = btn.getAttribute('data-id');
@@ -5995,6 +6228,18 @@
       db.notes[id] = db.notes[id] || [];
       db.notes[id].push({ at: isoNow(), body: String(fd.get('body')) });
       save();
+      render();
+    } else if (act === 'daftar-col-add') {
+      const label = String(fd.get('label') || '').trim().slice(0, 40);
+      if (!label) return;
+      const id = 'cf-' + Date.now().toString(36);
+      db.daftarCustom = daftarCustomList().concat([{ id: id, label: label }]);
+      const cols = daftarCols();
+      if (cols.indexOf(id) < 0) cols.push(id);
+      db.daftarCols = cols;
+      ui.daftarColsOpen = true;
+      save();
+      toast('Kolom “' + label + '” ditambah.');
       render();
     } else if (act === 'log-call') {
       const id = form.getAttribute('data-id');
