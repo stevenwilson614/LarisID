@@ -133,7 +133,7 @@
       sayAnton: 'Dewi: 2 murid (Oki mentoring, Putri SKU+Affiliate). Setoran 20% expected vs received. Rekening mereka.',
       saySiswa: 'Oki Firmansyah murid Dewi, bukan downline tak terbatas. Satu tingkat di bawah Anton.',
       student: { personaId: 's-oki', tab: 'home' },
-      mentor: { tab: 'jaringan' }
+      mentor: { tab: 'siswa', hub: 'pipa' }
     }
   ];
 

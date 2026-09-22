@@ -2072,7 +2072,6 @@
       { id: 'siswa', label: 'Siswa' },
       { id: 'tugas', label: 'Tugas' },
       { id: 'otomasi', label: 'Otomasi' },
-      { id: 'jaringan', label: 'Jaringan' },
       { id: 'kurikulum', label: 'Kurikulum' },
       { id: 'pustaka', label: 'Perpustakaan' },
       { id: 'jadwal', label: 'Jadwal' },
@@ -2121,7 +2120,6 @@
       else if (tab === 'orang') main.innerHTML = viewPerson(ui.personId);
       else if (tab === 'tugas') main.innerHTML = viewTugas();
       else if (tab === 'otomasi') main.innerHTML = viewOtomasi();
-      else if (tab === 'jaringan') main.innerHTML = viewJaringan();
       else if (tab === 'kurikulum') main.innerHTML = viewKurikulum();
       else if (tab === 'pustaka') main.innerHTML = viewPustaka();
       else if (tab === 'jadwal') main.innerHTML = viewJadwal(true);
@@ -2362,6 +2360,7 @@
     }
     if (tab === 'orang' && !ui.personId) return 'siswa';
     if (tab === 'waq') return 'tugas';
+    if (tab === 'jaringan') return 'siswa';
     if (tab === 'bayar') {
       ui.siswaView = 'daftar';
       return 'siswa';
