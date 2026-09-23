@@ -15,8 +15,8 @@ window.LARIS_CHANGELOG = [
     title: 'Edukasi di menu kiri',
     items: [
       {
-        text: 'Menu Edukasi untuk yang mau dibimbing cara jualan — halaman dengan manfaat mentor, form Daftar Minat, dan popup merah dengan logo. Nama wajib. Email atau WhatsApp yang belum ada di akun, diisi di situ. Satu tombol: Ya, saya tertarik.',
-        tech: '#btn-edukasi + .edu-page / .edu-form-card + #edu-interest-capture (.edu-pop-modal); education_interests + education_submit_interest / education_interest_mine / education_interests_list (20260923120000).',
+        text: 'Menu Edukasi untuk yang mau dibimbing cara jualan — halaman dengan manfaat mentor, form Daftar Minat, dan popup merah dengan logo. Nama wajib. Email atau WhatsApp yang belum ada di akun, diisi di situ. Satu tombol: Ya, saya tertarik. Admin melihat halaman seperti user baru; daftar yang buka halaman dan yang tertarik ada di Dashboard Admin.',
+        tech: '#btn-edukasi + .edu-page / .edu-form-card + #edu-interest-capture; edu_page_view; education_admin_overview + education_interests (20260923120000, 20260923140000).',
       },
     ],
   },

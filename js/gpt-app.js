@@ -2767,6 +2767,8 @@ function paintEduFormInto(root, ctx, opts) {
       <div class="auth-err" data-edu-error></div>
       ${eduCtaHtml({})}
       <button type="button" class="edu-later" data-edu-later>Nanti saja</button>`;
+    if (opts?.adminPreview) root.setAttribute('data-edu-preview', '1');
+    else root.removeAttribute('data-edu-preview');
     return;
   }
   root.innerHTML = `<h3 class="edu-form-title">Daftar Minat Edukasi</h3>
@@ -2775,52 +2777,74 @@ function paintEduFormInto(root, ctx, opts) {
     <div class="auth-err" data-edu-error></div>
     ${eduCtaHtml({ plainArrow: true })}
     ${eduPrivacyHtml()}`;
+  if (opts?.adminPreview) root.setAttribute('data-edu-preview', '1');
+  else root.removeAttribute('data-edu-preview');
+}
+
+function eduShowingAsNewUser() {
+  // Unmasked platform admin (and sample modes) see the blank interest form —
+  // not their own cohort / already-interested state. Mode mahasiswa/mentor
+  // (_viewAs) keeps the masked role's real context.
+  if (_admSample) return true;
+  return isPlatformAdmin();
+}
+
+function eduNewUserCtx() {
+  return {
+    name: '',
+    email: '',
+    wa: '',
+    needName: true,
+    needEmail: true,
+    needWa: true,
+    interested: false,
+    canList: false,
+    inCohort: false,
+    isMentor: false,
+  };
+}
+
+function noteEduPageView() {
+  if (eduShowingAsNewUser() || adminIsPreviewing()) return;
+  try {
+    if (sessionStorage.getItem('lid_edu_page_view_v1')) return;
+    sessionStorage.setItem('lid_edu_page_view_v1', '1');
+  } catch (_) {}
+  void logUserEvent('edu_page_view', { ui: 'gpt', via: 'panel' });
+}
+
+function syncEduPreviewBanner(show) {
+  const ban = $('edu-preview-banner');
+  if (!ban) return;
+  ban.hidden = !show;
 }
 
 async function paintEduPanel() {
   const root = $('edu-panel-body');
   if (!root) return;
   if (!currentUser) {
+    syncEduPreviewBanner(false);
     root.innerHTML = `<h3 class="edu-form-title">Daftar Minat Edukasi</h3>
       <p class="edu-form-sub">Masuk dulu supaya kami bisa mencatat minatmu. Nama wajib. Email atau WhatsApp yang belum ada di akun, kamu isi di sini.</p>
       <button type="button" class="edu-cta edu-cta-plain" id="edu-panel-login"><span>Masuk</span><span class="edu-cta-arrow" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></span></button>
       ${eduPrivacyHtml()}`;
-    $('edu-admin') && ($('edu-admin').hidden = true);
     return;
   }
+  if (eduShowingAsNewUser()) {
+    syncEduPreviewBanner(true);
+    paintEduFormInto(root, eduNewUserCtx(), { prefix: 'edu-p', adminPreview: true });
+    return;
+  }
+  syncEduPreviewBanner(false);
+  noteEduPageView();
   const ctx = await loadEduInterestContext();
   paintEduFormInto(root, ctx, { prefix: 'edu-p' });
-  void paintEduAdminList(ctx.canList || isPlatformAdmin());
 }
 
 async function paintEduAdminList(canList) {
-  const wrap = $('edu-admin');
-  const rows = $('edu-admin-rows');
-  if (!wrap || !rows) return;
-  if (!canList || !_supabase) {
-    wrap.hidden = true;
-    return;
-  }
-  wrap.hidden = false;
-  rows.textContent = 'Memuat…';
-  try {
-    const { data, error } = await _supabase.rpc('education_interests_list');
-    if (error) throw error;
-    const list = Array.isArray(data) ? data : [];
-    if (!list.length) {
-      rows.innerHTML = '<p class="edu-hint">Belum ada yang tertarik.</p>';
-      return;
-    }
-    rows.innerHTML = `<table><thead><tr><th>Nama</th><th>Kontak</th><th>Tanggal</th></tr></thead><tbody>${
-      list.map((r) => {
-        const contact = [r.email, r.whatsapp].filter(Boolean).join(' · ');
-        const when = r.created_at ? formatIdDate(String(r.created_at).slice(0, 10)) : '';
-        return `<tr><td>${esc(r.display_name || '')}</td><td>${esc(contact)}</td><td>${esc(when)}</td></tr>`;
-      }).join('')
-    }</tbody></table>`;
-  } catch (_) {
-    rows.innerHTML = '<p class="edu-hint">Gagal memuat daftar.</p>';
-  }
+  // Interest roster lives on the Admin dashboard (#adm-edukasi), not on the
+  // seller-facing Edukasi page.
+  void canList;
 }
 
 function openEdukasiView() {
@@ -2837,10 +2861,17 @@ function openEduInterestPopup(ctx) {
   const overlay = $('edu-interest-capture');
   const body = $('edu-pop-body');
   if (!overlay || !body) return;
-  paintEduFormInto(body, ctx, { prefix: 'edu-m', later: true, popup: true, forceForm: true });
+  const preview = eduShowingAsNewUser();
+  paintEduFormInto(body, ctx || (preview ? eduNewUserCtx() : ctx), {
+    prefix: 'edu-m',
+    later: true,
+    popup: true,
+    forceForm: true,
+    adminPreview: preview,
+  });
   overlay.hidden = false;
   overlay.classList.add('open');
-  void logUserEvent('edu_interest_shown', { ui: 'gpt', via: 'popup' });
+  if (!preview) void logUserEvent('edu_interest_shown', { ui: 'gpt', via: 'popup' });
 }
 
 function closeEduInterestPopup() {
@@ -2851,9 +2882,9 @@ function closeEduInterestPopup() {
 }
 
 function skipEduInterestPopup() {
-  markEduInterestSkipped();
+  if (!eduShowingAsNewUser()) markEduInterestSkipped();
   closeEduInterestPopup();
-  void logUserEvent('edu_interest', { ui: 'gpt', action: 'later' });
+  if (!eduShowingAsNewUser()) void logUserEvent('edu_interest', { ui: 'gpt', action: 'later' });
 }
 
 function scheduleEduInterestNotice(opts = {}) {
@@ -2934,8 +2965,26 @@ async function submitEduInterest(root, opts) {
     showErr('Masukkan nomor WhatsApp yang valid. Contoh: 8123456789');
     return;
   }
-  if (!fields.email && !waNorm && !eduRealEmail(currentUser)) {
+  if (!fields.email && !waNorm && !eduRealEmail(currentUser) && root.getAttribute('data-edu-preview') !== '1') {
     showErr('Isi email atau WhatsApp — salah satu cukup.');
+    return;
+  }
+  if (!fields.email && !waNorm && root.getAttribute('data-edu-preview') === '1') {
+    showErr('Isi email atau WhatsApp — salah satu cukup.');
+    return;
+  }
+  // Admin / sample preview: validate and show success, never write.
+  if (root.getAttribute('data-edu-preview') === '1' || eduShowingAsNewUser()) {
+    if (opts?.source === 'popup') {
+      root.innerHTML = eduDoneHtml({ popup: true });
+      setTimeout(() => closeEduInterestPopup(), 1200);
+    } else {
+      root.innerHTML = eduDoneHtml();
+      setTimeout(() => {
+        paintEduFormInto(root, eduNewUserCtx(), { prefix: 'edu-p', adminPreview: true });
+      }, 1400);
+    }
+    showToast('Pratinjau saja — minat tidak disimpan.');
     return;
   }
   if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
@@ -2980,6 +3029,16 @@ function bindEduInterestUi() {
     if (e.target.closest('#edu-panel-login')) {
       e.preventDefault();
       openEdukasiView();
+      return;
+    }
+    if (e.target.closest('#edu-preview-popup')) {
+      e.preventDefault();
+      openEduInterestPopup(eduNewUserCtx());
+      return;
+    }
+    if (e.target.closest('#edu-preview-admin')) {
+      e.preventDefault();
+      if (isPlatformAdminRaw()) openAdminView();
       return;
     }
     if (e.target.closest('[data-edu-submit]')) {
@@ -24913,9 +24972,82 @@ function openAdminView() {
   void loadAdminKomunitasOps();
   void loadAdminFeedback();
   void loadAdminKeywordRequests();
+  void loadAdminEdukasi();
   gptMountWinback();
   try { if (window.LarisCohort) void window.LarisCohort.renderOps(); } catch (_) {}
   void fillAdminCohortPreview();
+}
+
+function admEduFmtWhen(iso) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleString('id-ID', {
+      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+    });
+  } catch (_) {
+    return String(iso).slice(0, 16);
+  }
+}
+
+async function loadAdminEdukasi() {
+  const body = $('adm-edu-body');
+  const sum = $('adm-edu-summary');
+  if (!body || !_supabase) return;
+  if (!isPlatformAdmin()) {
+    body.innerHTML = '<tr><td colspan="5" class="dd-sub">Login sebagai admin dulu.</td></tr>';
+    return;
+  }
+  body.innerHTML = '<tr><td colspan="5" class="dd-sub">Memuat…</td></tr>';
+  if (sum) sum.textContent = 'Memuat…';
+  try {
+    const { data, error } = await _supabase.rpc('education_admin_overview');
+    if (error) throw error;
+    if (!data || data.ok === false) throw new Error(data?.error || 'Gagal memuat.');
+    const visitors = Number(data.visitors || 0);
+    const views = Number(data.views || 0);
+    const interested = Number(data.interested || 0);
+    const rows = Array.isArray(data.rows) ? data.rows : [];
+    const rate = visitors > 0 ? Math.round((interested / visitors) * 100) : null;
+    if ($('adm-edu-visitors')) $('adm-edu-visitors').textContent = admFmtNum(visitors);
+    if ($('adm-edu-interested')) $('adm-edu-interested').textContent = admFmtNum(interested);
+    if ($('adm-edu-views-sub')) {
+      $('adm-edu-views-sub').textContent = views
+        ? `${admFmtNum(views)} buka · ${admFmtNum(visitors)} orang unik`
+        : 'orang unik (belum ada buka halaman)';
+    }
+    if ($('adm-edu-rate-sub')) {
+      $('adm-edu-rate-sub').textContent = rate == null
+        ? 'dari yang buka halaman'
+        : `${rate}% dari yang buka halaman`;
+    }
+    if (sum) {
+      sum.textContent = visitors || interested
+        ? `${admFmtNum(visitors)} buka halaman · ${admFmtNum(interested)} tertarik`
+        : 'Belum ada yang membuka halaman Edukasi atau mendaftar minat.';
+    }
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="5" class="dd-sub">Belum ada data.</td></tr>';
+      return;
+    }
+    body.innerHTML = rows.map((r) => {
+      const contact = [r.email, r.whatsapp].filter(Boolean).join(' · ') || '—';
+      const viewsLbl = r.views > 0 ? String(r.views) : '—';
+      const yes = r.interested
+        ? '<span class="adm-edu-yes">Ya</span>'
+        : '<span class="adm-edu-no">Belum</span>';
+      const when = admEduFmtWhen(r.last_seen || r.interested_at || r.first_seen);
+      return `<tr>
+        <td>${esc(r.display_name || '—')}</td>
+        <td>${esc(contact)}</td>
+        <td>${esc(viewsLbl)}</td>
+        <td>${yes}</td>
+        <td>${esc(when)}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    if (sum) sum.textContent = 'Gagal memuat data Edukasi.';
+    body.innerHTML = `<tr><td colspan="5" class="dd-sub">${esc(e.message || 'Gagal memuat.')}</td></tr>`;
+  }
 }
 
 /** Fill the dashboard's cohort picker. Hidden when the account leads no cohort,
@@ -25311,6 +25443,8 @@ function wireUi() {
   $('btn-mentor-jadwal')?.addEventListener('click', () => void openMentorRail('jadwal'));
   $('adm-cohort-preview-go')?.addEventListener('click', () => void openAdminCohortPreview());
   $('adm-komunitas-refresh')?.addEventListener('click', () => { void loadAdminKomunitasOps(); });
+  $('adm-edu-refresh')?.addEventListener('click', () => { void loadAdminEdukasi(); });
+  $('adm-edu-open')?.addEventListener('click', () => { openEdukasiView(); });
   $('adm-feedback-refresh')?.addEventListener('click', () => { void loadAdminFeedback(); });
   $('adm-kwreq-refresh')?.addEventListener('click', () => { void loadAdminKeywordRequests(); });
   $('adm-komunitas-digest')?.addEventListener('click', () => { void sendAdminKomunitasDigest(); });
