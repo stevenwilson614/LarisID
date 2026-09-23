@@ -11,6 +11,16 @@
 // A plain string is still accepted and renders with no tech line.
 window.LARIS_CHANGELOG = [
   {
+    date: '2026-09-23',
+    title: 'Edukasi di menu kiri',
+    items: [
+      {
+        text: 'Menu Edukasi untuk yang mau dibimbing cara jualan. Nama wajib. Email atau WhatsApp yang belum ada di akun, diisi di situ. Satu tombol: Ya, saya tertarik. Bisa juga dari popup di halaman yang sedang kamu buka — tidak pindah halaman.',
+        tech: '#btn-edukasi + #view-edukasi + #edu-interest-capture; education_interests + education_submit_interest / education_interest_mine / education_interests_list (20260923120000).',
+      },
+    ],
+  },
+  {
     date: '2026-09-15',
     title: 'Cari Produk buka lebih cepat',
     items: [

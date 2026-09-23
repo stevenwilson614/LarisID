@@ -2466,14 +2466,16 @@ body.view-directory.dir-compare-picking .panel { padding-bottom: 110px; }
 /* ── Meta pages: Harga / FAQ ─────────────────────────────────────── */
 body.view-harga .panel,
 body.view-faq .panel,
-body.view-community .panel {
+body.view-community .panel,
+body.view-edukasi .panel {
   background: #F3F3F3;
   padding-top: 16px;
   padding-bottom: 40px;
 }
 body.view-harga .panel-inner,
 body.view-faq .panel-inner,
-body.view-community .panel-inner {
+body.view-community .panel-inner,
+body.view-edukasi .panel-inner {
   max-width: 920px;
 }
 /* Harga carries a six-column comparison table — give it more room than the
@@ -3907,6 +3909,66 @@ body.ddtp-open #btn-tracker svg .ic-f { fill: var(--accent); stroke: none; }
 #name-capture .nudge-actions { flex-direction: column; }
 #name-capture .nudge-actions .btn-primary,
 #name-capture .nudge-actions .btn-ghost { width: 100%; }
+.edu-card {
+  background: #fff;
+  border: 1px solid #E8E8E8;
+  border-radius: 28px;
+  padding: 36px 40px 28px;
+  max-width: 520px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.03);
+}
+.edu-card h2 {
+  margin: 0 0 10px;
+  font-size: 1.45rem;
+  font-weight: 750;
+  letter-spacing: -.03em;
+  line-height: 1.2;
+}
+.edu-card .edu-lead {
+  margin: 0 0 22px;
+  font-size: .95rem;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+.edu-known {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 8px;
+}
+.edu-known-lbl { font-size: .75rem; font-weight: 550; color: var(--muted); }
+.edu-known-val { font-size: .95rem; font-weight: 650; }
+.edu-req { color: var(--accent); }
+.edu-hint { margin: 0 0 14px; font-size: .82rem; color: var(--muted); line-height: 1.45; }
+.edu-admin {
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+.edu-admin h3 {
+  margin: 0 0 10px;
+  font-size: .82rem;
+  font-weight: 750;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.edu-admin table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+.edu-admin th, .edu-admin td {
+  text-align: left;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.edu-admin th { font-size: .72rem; color: var(--muted); font-weight: 650; }
+#edu-interest-capture .nudge-actions { margin-top: 8px; flex-wrap: wrap; }
+#edu-interest-capture .nudge-actions .btn-primary { flex: 1; min-width: 160px; }
+@media (max-width: 720px) {
+  .edu-card { padding: 26px 18px 20px; border-radius: 22px; }
+}
 .auth-wa-hint { font-size: .78rem; color: var(--muted); margin: 0 0 10px; line-height: 1.4; }
 .auth-wa-resend { text-align: center; margin: 10px 0 0; font-size: .78rem; }
 .auth-wa-resend a { color: var(--auth-wa, var(--accent)); font-weight: 600; cursor: pointer; }
@@ -8021,6 +8083,10 @@ body.view-chat .sfb-card {
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 4H6.2A2.2 2.2 0 0 0 4 6.2v8.6A2.2 2.2 0 0 0 6.2 17H7v3.2a.5.5 0 0 0 .85.36L11.4 17h6.4A2.2 2.2 0 0 0 20 14.8V6.2A2.2 2.2 0 0 0 17.8 4Z"/><path class="ic-a" d="M12 7.8v5.4M9.3 10.5h5.4"/></svg>
       <span class="side-btn-label">Komunitas</span>
     </button>
+    <button type="button" class="side-btn" id="btn-edukasi" title="Edukasi">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.4A2.2 2.2 0 0 1 6.2 3.2H20v16.4H6.2A2.2 2.2 0 0 0 4 21.8V5.4Z"/><path d="M4 21.8A2.2 2.2 0 0 1 6.2 19.6H20"/><path class="ic-a" d="M8.4 7.8h7.2M8.4 11.4h5"/></svg>
+      <span class="side-btn-label">Edukasi</span>
+    </button>
     <!-- Hidden for now. Restore with the landing .expor-tab in scripts/lib/expor-tab.mjs. -->
     <a class="side-btn" href="/?pasar=expor" id="btn-expor-pasar" title="LarisExpor" hidden>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
@@ -9237,6 +9303,15 @@ body.view-chat .sfb-card {
         <div class="view" id="view-community">
           <div id="community-board-root"></div>
         </div>
+        <div class="view" id="view-edukasi">
+          <article class="edu-card" id="edu-panel">
+            <div id="edu-panel-body"></div>
+            <section class="edu-admin" id="edu-admin" hidden>
+              <h3>Minat masuk</h3>
+              <div id="edu-admin-rows"></div>
+            </section>
+          </article>
+        </div>
         <div class="view" id="view-cohort">
           <div class="cohort-wrap">
             <div id="cohort-status" class="cohort-muted" style="margin-bottom:10px;"></div>
@@ -9969,6 +10044,12 @@ body.view-chat .sfb-card {
   </div>
 </div>
 
+<div class="modal-overlay" id="edu-interest-capture" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="edu-interest-title">
+    <div id="edu-pop-body"></div>
+  </div>
+</div>
+
 <!-- Deep Dive → Pantauan promo retired 2026-09-05: end-of-dive #ddr-alert
      card replaced the mid-dive modal. -->
 
@@ -10287,7 +10368,7 @@ body.view-chat .sfb-card {
 </aside>
 
 <script src="/js/laris-merdeka.js?v=20260816b" defer></script>
-<script src="/js/changelog.js?v=20260915a" defer></script>
+<script src="/js/changelog.js?v=20260923a" defer></script>
 <script defer src="/js/gpt-dir-filters.js?v=20260911c"></script>
 <script defer src="/js/gpt-dir-workbench.js?v=20260913b"></script>
 <script defer src="/js/gpt-activity.js?v=20260913a"></script>
@@ -10311,7 +10392,7 @@ body.view-chat .sfb-card {
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260915a" defer></script>
-<script src="/js/gpt-app.js?v=20260920a" defer></script>
+<script src="/js/gpt-app.js?v=20260923a" defer></script>
 <style>
 /* LarisExpor chrome hidden for now. Restore with scripts/lib/expor-tab.mjs. */
 #btn-expor-pasar,

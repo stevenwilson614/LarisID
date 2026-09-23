@@ -1822,6 +1822,7 @@ const state = {
   pendingTracker: null, // Favorit Aku seed behind the login gate; resumed after sign-in
   pendingTrackKeyword: null, // one-tap Favorit caught by the signup gate; added after sign-in
   pendingKomunitas: null, // { tab, title, topic, postId } behind login / email deep link
+  pendingEdukasi: false, // Edukasi panel opened behind the login gate
   everOpenedDeepdive: false,
   lastDeepDiveKeyword: '',
   lastDeepDiveCategory: '',
@@ -1881,6 +1882,7 @@ function loadLocalState() {
     if (raw.pendingTracker) state.pendingTracker = raw.pendingTracker;
     if (raw.pendingTrackKeyword) state.pendingTrackKeyword = raw.pendingTrackKeyword;
     if (raw.pendingKomunitas) state.pendingKomunitas = raw.pendingKomunitas;
+    if (raw.pendingEdukasi) state.pendingEdukasi = !!raw.pendingEdukasi;
     if (raw.everOpenedDeepdive != null) state.everOpenedDeepdive = !!raw.everOpenedDeepdive;
     if (raw.lastDeepDiveKeyword) state.lastDeepDiveKeyword = String(raw.lastDeepDiveKeyword);
     if (raw.lastDeepDiveCategory) state.lastDeepDiveCategory = String(raw.lastDeepDiveCategory);
@@ -1901,6 +1903,7 @@ function saveLocalState() {
       pendingTracker: state.pendingTracker || null,
       pendingTrackKeyword: state.pendingTrackKeyword || null,
       pendingKomunitas: state.pendingKomunitas || null,
+      pendingEdukasi: !!state.pendingEdukasi,
       everOpenedDeepdive: state.everOpenedDeepdive || false,
       lastDeepDiveKeyword: state.lastDeepDiveKeyword || '',
       lastDeepDiveCategory: state.lastDeepDiveCategory || '',
@@ -2295,12 +2298,14 @@ let _gptJourney = { deepdiveCount: 0, firstDeepDiveAt: null, loaded: false };
 let _gptDiveSeen = 0; // dives this session, for first_dive / second_dive steps
 let _profileWa = undefined; // undefined = not loaded; '' = none
 let _profileDisplayName = undefined;
+let _eduMine = null;
 
 function resetGptJourney() {
   _gptJourney = { deepdiveCount: 0, firstDeepDiveAt: null, loaded: false };
   _gptDiveSeen = 0;
   _profileWa = undefined;
   _profileDisplayName = undefined;
+  _eduMine = null;
 }
 
 function userNeverDeepDived() {
@@ -2449,6 +2454,7 @@ function skipWaCapture() {
 
 function _waCaptureContinue() {
   if (_waCaptureThenOnboarding) offerOnboardingAfterSignin();
+  else scheduleEduInterestNotice({ fromRestore: false, isNewSignup: false });
 }
 
 async function maybeOfferWaCapture(opts) {
@@ -2595,6 +2601,358 @@ async function submitNameCapture() {
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Simpan nama'; }
   }
+}
+
+const _LID_EDU_SKIP_KEY = 'lid_edu_interest_skip_v1';
+let _eduNoticeTimer = 0;
+let _eduBound = false;
+
+function eduRealEmail(user, profileEmail) {
+  const fromProfile = String(profileEmail || '').trim();
+  if (fromProfile && /@/.test(fromProfile) && !/@wa\.larisid\.com$/i.test(fromProfile)) return fromProfile;
+  const e = String(user?.email || '').trim();
+  if (!e || /@wa\.larisid\.com$/i.test(e) || _isWaUser(user)) return '';
+  return /@/.test(e) ? e : '';
+}
+
+function eduUserInCohort() {
+  const LC = window.LarisCohort;
+  if (!LC) return false;
+  try {
+    return !!(LC.myStudentCohort?.() || LC.isGenuineMentor?.());
+  } catch (_) {
+    return false;
+  }
+}
+
+function eduFinderBlocking() {
+  return shouldShowLandingFinder() || (state.onboarding?.step !== 'done' && !finderIsComplete());
+}
+
+function eduInterestSkipped(userId) {
+  const id = userId || currentUser?.id;
+  if (!id) return false;
+  try { return !!(JSON.parse(localStorage.getItem(_LID_EDU_SKIP_KEY) || '{}')[id]); } catch (_) { return false; }
+}
+
+function markEduInterestSkipped(userId) {
+  const id = userId || currentUser?.id;
+  if (!id) return;
+  try {
+    const m = JSON.parse(localStorage.getItem(_LID_EDU_SKIP_KEY) || '{}');
+    m[id] = 1;
+    localStorage.setItem(_LID_EDU_SKIP_KEY, JSON.stringify(m));
+  } catch (_) {}
+}
+
+async function loadEduInterestContext() {
+  const name = _storedPersonName(currentUser, _profileDisplayName);
+  let email = eduRealEmail(currentUser);
+  let wa = '';
+  let interested = !!(_eduMine && _eduMine.interested);
+  let canList = !!(_eduMine && _eduMine.can_list);
+  if (_supabase && currentUser) {
+    try {
+      const { data } = await _supabase.from('user_profiles')
+        .select('display_name, first_name, contact_email, wa_number, public_whatsapp')
+        .eq('user_id', currentUser.id).maybeSingle();
+      const profileName = String(data?.display_name || data?.first_name || '').trim();
+      if (profileName) _profileDisplayName = profileName;
+      email = eduRealEmail(currentUser, data?.contact_email);
+      wa = String(data?.wa_number || data?.public_whatsapp || '').trim();
+    } catch (_) {}
+    if (!wa) wa = await loadProfileWaNumber();
+    if (_eduMine == null) {
+      try {
+        const { data } = await _supabase.rpc('education_interest_mine');
+        _eduMine = data || { ok: false };
+        interested = !!_eduMine.interested;
+        canList = !!_eduMine.can_list;
+      } catch (_) {
+        _eduMine = { ok: false };
+      }
+    } else {
+      interested = !!_eduMine.interested;
+      canList = !!_eduMine.can_list;
+    }
+  }
+  const resolvedName = _storedPersonName(currentUser, _profileDisplayName) || name;
+  return {
+    name: resolvedName,
+    email,
+    wa,
+    needName: !_isRealPersonName(resolvedName),
+    needEmail: !email,
+    needWa: !wa,
+    interested,
+    canList,
+    inCohort: eduUserInCohort(),
+    isMentor: !!(window.LarisCohort && window.LarisCohort.isGenuineMentor && window.LarisCohort.isGenuineMentor()),
+  };
+}
+
+function eduFormFieldsHtml(ctx, prefix) {
+  const bits = [];
+  if (!ctx.needName && ctx.name) {
+    bits.push(`<div class="edu-known"><span class="edu-known-lbl">Nama</span><span class="edu-known-val" data-edu-known="name">${esc(ctx.name)}</span></div>`);
+  } else {
+    bits.push(`<div class="field"><label for="${prefix}-name">Nama <span class="edu-req">*</span></label><input id="${prefix}-name" data-edu-field="name" type="text" autocomplete="name" maxlength="80" placeholder="Nama lengkap" value="${esc(ctx.name || '')}"></div>`);
+  }
+  if (ctx.needEmail) {
+    bits.push(`<div class="field"><label for="${prefix}-email">Email</label><input id="${prefix}-email" data-edu-field="email" type="email" autocomplete="email" maxlength="160" placeholder="nama@email.com"></div>`);
+  } else if (ctx.email) {
+    bits.push(`<div class="edu-known"><span class="edu-known-lbl">Email</span><span class="edu-known-val" data-edu-known="email">${esc(ctx.email)}</span></div>`);
+  }
+  if (ctx.needWa) {
+    bits.push(`<div class="field"><label for="${prefix}-wa">WhatsApp</label><input id="${prefix}-wa" data-edu-field="wa" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="0812 3456 7890"></div>`);
+  } else if (ctx.wa) {
+    bits.push(`<div class="edu-known"><span class="edu-known-lbl">WhatsApp</span><span class="edu-known-val" data-edu-known="wa">${esc(ctx.wa)}</span></div>`);
+  }
+  if (ctx.needEmail && ctx.needWa) {
+    bits.push('<p class="edu-hint">Isi email atau WhatsApp — salah satu cukup.</p>');
+  }
+  return bits.join('');
+}
+
+function eduDoneHtml() {
+  return `<h2>Tercatat.</h2><p class="edu-lead">Kami akan menghubungi kamu. Belum ada jadwal pasti.</p>`;
+}
+
+function paintEduFormInto(root, ctx, opts) {
+  if (!root) return;
+  if (ctx.interested) {
+    root.innerHTML = eduDoneHtml();
+    return;
+  }
+  if (ctx.inCohort && !opts?.forceForm) {
+    root.innerHTML = `<h2>Kamu sudah di kohort.</h2><p class="edu-lead">Mentor dan jadwal ada di menu Kohort.</p>`;
+    return;
+  }
+  const later = opts?.later
+    ? '<button type="button" class="btn-ghost" data-edu-later>Nanti</button>'
+    : '';
+  const heading = opts?.popup
+    ? `<h3 id="edu-interest-title" class="nudge-title">Mau dibimbing cara jualan?</h3>`
+    : `<h2>Mau dibimbing cara jualan?</h2>`;
+  const leadClass = opts?.popup ? 'nudge-sub' : 'edu-lead';
+  root.innerHTML = `${heading}
+    <p class="${leadClass}">Batch September sedang berjalan. Kalau kamu mau dibimbing — lewat mentor, atau ikut kelompok berikutnya — kami catat namamu.</p>
+    ${eduFormFieldsHtml(ctx, opts?.prefix || 'edu')}
+    <div class="auth-err" data-edu-error></div>
+    <div class="nudge-actions">
+      <button type="button" class="btn-primary" data-edu-submit>Ya, saya tertarik.</button>
+      ${later}
+    </div>`;
+}
+
+async function paintEduPanel() {
+  const root = $('edu-panel-body');
+  if (!root) return;
+  if (!currentUser) {
+    root.innerHTML = `<h2>Mau dibimbing cara jualan?</h2>
+      <p class="edu-lead">Masuk dulu supaya kami bisa mencatat minatmu. Nama wajib. Email atau WhatsApp yang belum ada di akun, kamu isi di sini.</p>
+      <div class="nudge-actions"><button type="button" class="btn-primary" id="edu-panel-login">Masuk</button></div>`;
+    $('edu-admin') && ($('edu-admin').hidden = true);
+    return;
+  }
+  const ctx = await loadEduInterestContext();
+  paintEduFormInto(root, ctx, { prefix: 'edu-p' });
+  void paintEduAdminList(ctx.canList || isPlatformAdmin());
+}
+
+async function paintEduAdminList(canList) {
+  const wrap = $('edu-admin');
+  const rows = $('edu-admin-rows');
+  if (!wrap || !rows) return;
+  if (!canList || !_supabase) {
+    wrap.hidden = true;
+    return;
+  }
+  wrap.hidden = false;
+  rows.textContent = 'Memuat…';
+  try {
+    const { data, error } = await _supabase.rpc('education_interests_list');
+    if (error) throw error;
+    const list = Array.isArray(data) ? data : [];
+    if (!list.length) {
+      rows.innerHTML = '<p class="edu-hint">Belum ada yang tertarik.</p>';
+      return;
+    }
+    rows.innerHTML = `<table><thead><tr><th>Nama</th><th>Kontak</th><th>Tanggal</th></tr></thead><tbody>${
+      list.map((r) => {
+        const contact = [r.email, r.whatsapp].filter(Boolean).join(' · ');
+        const when = r.created_at ? formatIdDate(String(r.created_at).slice(0, 10)) : '';
+        return `<tr><td>${esc(r.display_name || '')}</td><td>${esc(contact)}</td><td>${esc(when)}</td></tr>`;
+      }).join('')
+    }</tbody></table>`;
+  } catch (_) {
+    rows.innerHTML = '<p class="edu-hint">Gagal memuat daftar.</p>';
+  }
+}
+
+function openEdukasiView() {
+  if (!currentUser) {
+    state.pendingEdukasi = true;
+    saveLocalState();
+    openAuthModal('login', 'gpt_gate_edukasi');
+    return;
+  }
+  setView('edukasi');
+}
+
+function openEduInterestPopup(ctx) {
+  const overlay = $('edu-interest-capture');
+  const body = $('edu-pop-body');
+  if (!overlay || !body) return;
+  paintEduFormInto(body, ctx, { prefix: 'edu-m', later: true, popup: true, forceForm: true });
+  overlay.hidden = false;
+  overlay.classList.add('open');
+  void logUserEvent('edu_interest_shown', { ui: 'gpt', via: 'popup' });
+}
+
+function closeEduInterestPopup() {
+  const overlay = $('edu-interest-capture');
+  if (!overlay) return;
+  overlay.classList.remove('open');
+  overlay.hidden = true;
+}
+
+function skipEduInterestPopup() {
+  markEduInterestSkipped();
+  closeEduInterestPopup();
+  void logUserEvent('edu_interest', { ui: 'gpt', action: 'later' });
+}
+
+function scheduleEduInterestNotice(opts = {}) {
+  if (!currentUser) return;
+  if (isPlatformAdminRaw() || adminIsPreviewing()) return;
+  if (eduInterestSkipped()) return;
+  if (state.view === 'edukasi') return;
+  if (eduFinderBlocking()) return;
+  clearTimeout(_eduNoticeTimer);
+  const tryOpen = (attempt) => {
+    _eduNoticeTimer = setTimeout(async () => {
+      if (!currentUser || eduInterestSkipped()) return;
+      if (isPlatformAdminRaw() || adminIsPreviewing()) return;
+      if (state.view === 'edukasi') return;
+      if (eduFinderBlocking()) return;
+      if (document.querySelector('.modal-overlay.open')) {
+        if (attempt < 4) tryOpen(attempt + 1);
+        return;
+      }
+      const ctx = await loadEduInterestContext();
+      if (!ctx || ctx.interested || ctx.inCohort || ctx.isMentor) {
+        if (ctx && ctx.interested) markEduInterestSkipped();
+        return;
+      }
+      openEduInterestPopup(ctx);
+    }, attempt === 0 ? 1800 : 2600);
+  };
+  tryOpen(0);
+}
+
+function eduReadFields(root, ctx) {
+  const nameInput = root.querySelector('[data-edu-field="name"]');
+  const emailInput = root.querySelector('[data-edu-field="email"]');
+  const waInput = root.querySelector('[data-edu-field="wa"]');
+  const knownName = root.querySelector('[data-edu-known="name"]');
+  const knownEmail = root.querySelector('[data-edu-known="email"]');
+  const knownWa = root.querySelector('[data-edu-known="wa"]');
+  return {
+    name: String(nameInput?.value || knownName?.textContent || ctx?.name || '').trim(),
+    email: String(emailInput?.value || knownEmail?.textContent || ctx?.email || '').trim(),
+    wa: String(waInput?.value || knownWa?.textContent || ctx?.wa || '').trim(),
+  };
+}
+
+async function submitEduInterest(root, opts) {
+  if (!root) return;
+  const err = root.querySelector('[data-edu-error]');
+  const btn = root.querySelector('[data-edu-submit]');
+  const showErr = (msg) => { if (!err) return; err.textContent = msg; err.style.display = 'block'; };
+  if (!currentUser) {
+    state.pendingEdukasi = true;
+    saveLocalState();
+    openAuthModal('login', 'gpt_gate_edukasi');
+    return;
+  }
+  const fields = eduReadFields(root);
+  if (!_isRealPersonName(fields.name)) {
+    showErr(_looksLikePhoneName(fields.name)
+      ? 'Pakai nama kamu, bukan nomor HP.'
+      : 'Nama wajib diisi.');
+    return;
+  }
+  if (fields.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(fields.email)) {
+    showErr('Masukkan alamat email yang valid.');
+    return;
+  }
+  const waNorm = fields.wa ? _waNormalisePhone(fields.wa) : '';
+  if (fields.wa && !waNorm) {
+    showErr('Masukkan nomor WhatsApp yang valid. Contoh: 08123456789');
+    return;
+  }
+  if (!fields.email && !waNorm && !eduRealEmail(currentUser)) {
+    showErr('Isi email atau WhatsApp — salah satu cukup.');
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    const { data, error } = await _supabase.rpc('education_submit_interest', {
+      p_name: fields.name,
+      p_email: fields.email || null,
+      p_whatsapp: waNorm || fields.wa || null,
+    });
+    if (error) throw error;
+    if (data && data.ok === false) {
+      showErr(data.error || 'Gagal menyimpan.');
+      return;
+    }
+    _eduMine = { ok: true, interested: true, can_list: !!(_eduMine && _eduMine.can_list) };
+    markEduInterestSkipped();
+    if (_isRealPersonName(fields.name)) await saveUserDisplayName(fields.name);
+    if (waNorm) await saveProfileWaNumber(waNorm);
+    void logUserEvent('edu_interest', { ui: 'gpt', action: 'yes', via: opts?.source || 'panel' });
+    if (opts?.source === 'popup') {
+      root.innerHTML = `<h3 id="edu-interest-title" class="nudge-title">Tercatat.</h3><p class="nudge-sub">Kami akan menghubungi kamu. Belum ada jadwal pasti.</p>`;
+      setTimeout(() => closeEduInterestPopup(), 1400);
+    } else {
+      root.innerHTML = eduDoneHtml();
+    }
+    const panel = $('edu-panel-body');
+    if (panel && panel !== root) panel.innerHTML = eduDoneHtml();
+  } catch (_) {
+    showErr('Gagal menyimpan. Coba lagi.');
+  } finally {
+    if (btn && btn.isConnected) { btn.disabled = false; btn.textContent = 'Ya, saya tertarik.'; }
+  }
+}
+
+function bindEduInterestUi() {
+  if (_eduBound) return;
+  _eduBound = true;
+  $('view-edukasi')?.addEventListener('click', (e) => {
+    if (e.target.closest('#edu-panel-login')) {
+      e.preventDefault();
+      openEdukasiView();
+      return;
+    }
+    if (e.target.closest('[data-edu-submit]')) {
+      e.preventDefault();
+      void submitEduInterest($('edu-panel-body'), { source: 'panel' });
+    }
+  });
+  $('edu-interest-capture')?.addEventListener('click', (e) => {
+    if (e.target.id === 'edu-interest-capture' || e.target.closest('[data-edu-later]')) {
+      e.preventDefault();
+      skipEduInterestPopup();
+      return;
+    }
+    if (e.target.closest('[data-edu-submit]')) {
+      e.preventDefault();
+      void submitEduInterest($('edu-pop-body'), { source: 'popup' });
+    }
+  });
 }
 
 function skipWaCapture() {
@@ -3203,6 +3561,7 @@ function scheduleReturningFeatureNotices(opts = {}) {
   scheduleProductRowsNotice(opts);
   scheduleExportXlsxNotice(opts);
   scheduleSuperuserFeedback(opts);
+  scheduleEduInterestNotice(opts);
   // Deliberately last and unconditional: a founder notice is a direct reply to
   // something the person told us, so it outranks the generic feature nudges
   // and is not gated on the returning-user heuristics above.
@@ -3951,7 +4310,7 @@ let _historyPrimed = false;
 function setView(name, opts = {}) {
   const leaving = state.view;
   state.view = name;
-  ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'cohort'].forEach(v => {
+  ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'edukasi', 'cohort'].forEach(v => {
     const el = $(`view-${v}`);
     if (el) el.classList.toggle('active', v === name);
     document.body.classList.toggle(`view-${v}`, v === name);
@@ -3971,8 +4330,8 @@ function setView(name, opts = {}) {
   // .composer-dock display rule) — everywhere else now hides the bar
   // entirely rather than just clearing its chips, so this list stops
   // mattering for those views, but chips are still irrelevant on them either way.
-  if (name === 'home' || name === 'landing' || name === 'directory' || name === 'harga' || name === 'admin' || name === 'tracker' || name === 'community' || name === 'cohort') setComposerChips(null);
-  ['btn-ask-laris', 'btn-produk', 'btn-harga', 'btn-faq', 'btn-tentang', 'btn-admin', 'btn-tracker', 'btn-community', 'btn-cohort'].forEach(id => {
+  if (name === 'home' || name === 'landing' || name === 'directory' || name === 'harga' || name === 'admin' || name === 'tracker' || name === 'community' || name === 'edukasi' || name === 'cohort') setComposerChips(null);
+  ['btn-ask-laris', 'btn-produk', 'btn-harga', 'btn-faq', 'btn-tentang', 'btn-admin', 'btn-tracker', 'btn-community', 'btn-edukasi', 'btn-cohort'].forEach(id => {
     const el = $(id);
     if (!el) return;
     el.classList.toggle('active',
@@ -3985,6 +4344,7 @@ function setView(name, opts = {}) {
       (id === 'btn-admin' && name === 'admin') ||
       (id === 'btn-tracker' && name === 'tracker') ||
       (id === 'btn-community' && name === 'community') ||
+      (id === 'btn-edukasi' && name === 'edukasi') ||
       (id === 'btn-cohort' && name === 'cohort'));
   });
   // Mobile Tentang accordion: highlight the parent when a child page is current.
@@ -4009,6 +4369,7 @@ function setView(name, opts = {}) {
     scrollPanelToTop();
     void logUserEvent('view_open', { ui: 'gpt', view: name });
   }
+  if (name === 'edukasi') void paintEduPanel();
   if ((name !== leaving || !_historyPrimed || opts.forceHistory) && !_navigatingFromHistory) {
     const histState = { view: name, ...(opts.hist || {}) };
     // Deep dive needs the product back, not just the view name — carry enough
@@ -4031,7 +4392,7 @@ function setView(name, opts = {}) {
   }
 }
 
-const HISTORY_VIEWS = ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'cohort'];
+const HISTORY_VIEWS = ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'edukasi', 'cohort'];
 // Old sessions may still have { view: 'tentang' } in history — map to landing.
 const HISTORY_VIEW_ALIASES = { tentang: 'landing' };
 
@@ -5081,6 +5442,10 @@ async function _authOnSignIn(session, opts) {
     state.pendingKomunitas = null;
     saveLocalState();
     openCommunityBoard(pk);
+  } else if (state.pendingEdukasi) {
+    state.pendingEdukasi = false;
+    saveLocalState();
+    openEdukasiView();
   }
 
   // A one-tap "Kabari Kalau Berubah" that hit the signup gate finishes itself
@@ -7123,7 +7488,10 @@ async function runFinderSearch() {
     syncDirectoryFromOnboarding();
     renderSidebarLocCard();
     updateHomeFinderVisibility();
-    if (currentUser) await persistOnboardingPrefs();
+    if (currentUser) {
+      await persistOnboardingPrefs();
+      scheduleEduInterestNotice({ fromRestore: false, isNewSignup: false });
+    }
 
     const bud = finderBudgetCfg(_finder.budget);
     const catLabel = _finder.categories.join(', ');
@@ -24862,6 +25230,8 @@ function wireUi() {
   $('btn-tracker')?.addEventListener('click', () => { openTrackerView(); });
   $('btn-cohort')?.addEventListener('click', () => { openCohortView(); });
   $('btn-community')?.addEventListener('click', () => { openCommunityBoard(); });
+  $('btn-edukasi')?.addEventListener('click', () => { openEdukasiView(); });
+  bindEduInterestUi();
   $('btn-harga')?.addEventListener('click', () => setView('harga'));
   $('btn-faq')?.addEventListener('click', () => setView('faq'));
   $('btn-tentang')?.addEventListener('click', goHome);
