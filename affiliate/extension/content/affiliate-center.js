@@ -26,6 +26,7 @@
     var d = ev.data;
     if (!d || d.source !== SRC_MAIN) return;
     if (d.op === 'capture' && d.payload) {
+      d.payload.shopName = shopNameGuess();
       Adapter.ingest(d.payload);
       return;
     }
@@ -65,6 +66,16 @@
     return /(^|\.)seller-id\.tokopedia\.com$|(^|\.)affiliate-id\.tokopedia\.com$|(^|\.)tiktokshop\.com$|(^|\.)tiktokglobalshop\.com$/i.test(host);
   }
 
+  function sleep(ms) {
+    return new Promise(function (resolve) { setTimeout(resolve, ms); });
+  }
+
+  function reconOriginOf(data) {
+    var collab = Adapter.latest(data, 'collab');
+    var search = Adapter.latest(data, 'search');
+    return (collab && collab.origin) || (search && search.origin) || '';
+  }
+
   async function hello() {
     var data = await Adapter.loadStore();
     chrome.runtime.sendMessage({
@@ -73,7 +84,8 @@
       shopSession: isShopSession(),
       affiliate: isAffiliateContext() && !isLoggedOut(),
       shopName: shopNameGuess(),
-      recon: Adapter.reconFlags(data)
+      recon: Adapter.reconFlags(data),
+      reconOrigin: reconOriginOf(data)
     });
   }
 
@@ -104,6 +116,20 @@
     if (parsed.message === 'success' || parsed.msg === 'success') return true;
     if (parsed.code) return false;
     return true;
+  }
+
+  function failReason(res, parsed) {
+    if (res && res.error) return res.error;
+    var parts = [];
+    if (parsed) {
+      if (parsed.code != null && parsed.code !== 0 && parsed.code !== '0') {
+        parts.push('code ' + parsed.code);
+      }
+      var msg = parsed.message || parsed.msg || parsed.error;
+      if (msg) parts.push(String(msg));
+    }
+    if (!parts.length && res) parts.push('HTTP ' + res.status);
+    return parts.join(' · ');
   }
 
   async function probeOne(row) {
@@ -205,6 +231,9 @@
       var row = rows[i];
       if (Adapter.needsOpenId(entry) && !row.creatorOpenId) {
         row = await resolveCreator(row, data);
+        if (i < rows.length - 1) {
+          await sleep(400 + Math.floor(Math.random() * 401));
+        }
       }
       if (Adapter.needsOpenId(entry) && !row.creatorOpenId) {
         unresolved.push({
@@ -256,10 +285,9 @@
     var res = await pageFetch(entry.url, init);
     var parsed = Adapter.parseMaybe(res.text);
     var ok = !res.error && jsonOk(res.status, parsed);
+    var bizReject = !ok && !res.error && res.status >= 200 && res.status < 300;
     var reason = '';
-    if (!ok) {
-      reason = res.error || (parsed && (parsed.message || parsed.msg || parsed.error)) || ('HTTP ' + res.status);
-    }
+    if (!ok) reason = failReason(res, parsed);
     var failIds = ok ? Adapter.failIdsFromResponse(parsed) : {};
     var results = ready.map(function (r) {
       var failed = !ok || failIds[r.creatorOpenId];
@@ -281,6 +309,8 @@
       requestId: parsed && (parsed.request_id || parsed.requestId) || '',
       reason: anyOk ? '' : reason,
       status: res.status,
+      bizReject: bizReject,
+      tiktokCode: parsed && parsed.code,
       sku: Adapter.collabSku(data),
       results: results
     };

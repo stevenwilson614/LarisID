@@ -67,7 +67,10 @@
     return /(creator_oec_id|creator_oecuid|oec_id|oecuid|open_id|openid)$/i.test(String(k));
   }
   function looksLikeHandle(k) {
-    return /(user_name|username|handle|unique_id|uniqueid|nick_name)$/i.test(String(k));
+    return /(user_name|username|handle|unique_id|uniqueid)$/i.test(String(k));
+  }
+  function looksLikeNick(k) {
+    return /(nick_name|nickname|display_name)$/i.test(String(k));
   }
   function looksLikeMessage(k) {
     return /^(message|invitation_msg|invite_msg|im_body)$/i.test(String(k));
@@ -75,31 +78,52 @@
 
   function extractCreator(json, handle) {
     var want = lower(handle).replace(/^@/, '');
-    var found = null;
+    var found = [];
     walk(json, function (k, val, parent) {
-      if (found) return;
       if (typeof val !== 'string' && typeof val !== 'number') return;
       if (!parent || typeof parent !== 'object' || Array.isArray(parent)) return;
-      var rec = {};
+      if (!looksLikeCreatorId(k)) return;
+      var rec = { creatorOpenId: String(val), handle: '', nick: '' };
       walk(parent, function (pk, pv) {
         if (typeof pv !== 'string' && typeof pv !== 'number') return;
         if (looksLikeHandle(pk) && !rec.handle) rec.handle = String(pv).replace(/^@/, '');
-        if (looksLikeCreatorId(pk) && !rec.creatorOpenId) rec.creatorOpenId = String(pv);
+        if (looksLikeNick(pk) && !rec.nick) rec.nick = String(pv);
       });
-      if (!rec.creatorOpenId) return;
-      if (want && rec.handle && lower(rec.handle) !== want) return;
-      if (want && !rec.handle && looksLikeHandle(k) && lower(val).replace(/^@/, '') !== want) return;
-      found = rec;
+      found.push(rec);
     });
-    return found;
+    var byId = {};
+    var unique = [];
+    found.forEach(function (rec) {
+      var prev = byId[rec.creatorOpenId];
+      if (prev) {
+        if (rec.handle && !prev.handle) prev.handle = rec.handle;
+        if (rec.nick && !prev.nick) prev.nick = rec.nick;
+        return;
+      }
+      byId[rec.creatorOpenId] = rec;
+      unique.push(rec);
+    });
+    var withHandle = unique.filter(function (r) { return r.handle; });
+    if (want && withHandle.length) {
+      return withHandle.find(function (r) { return lower(r.handle) === want; }) || null;
+    }
+    if (withHandle.length === 0 && unique.length === 1) return unique[0];
+    if (!want && unique.length === 1) return unique[0];
+    return null;
+  }
+
+  function applySearchQuery(obj, handle) {
+    if (!obj || obj.query == null) return;
+    var prev = String(obj.query);
+    var h = handle || '';
+    if (prev.charAt(0) === '@' && h.charAt(0) !== '@') obj.query = '@' + h;
+    else obj.query = h;
   }
 
   function fillSearchTemplate(templateObj, row) {
     var json = JSON.parse(JSON.stringify(templateObj));
-    if (json.query != null) json.query = row.handle;
-    if (json.request && typeof json.request === 'object' && json.request.query != null) {
-      json.request.query = row.handle;
-    }
+    applySearchQuery(json, row.handle);
+    if (json.request && typeof json.request === 'object') applySearchQuery(json.request, row.handle);
     return json;
   }
 
@@ -157,22 +181,43 @@
     });
     var rawComm = product.target_commission;
     var pct = rawComm == null ? null : (rawComm >= 100 ? rawComm / 100 : rawComm);
+    var hasMessage = !!(g && (g.message != null || g.invitation_msg != null || g.invite_msg != null));
     return {
       productId: product.product_id ? String(product.product_id) : '',
       productName: title,
       commissionPct: pct,
       invitationName: g && g.name || '',
       endTime: g && g.end_time || '',
-      recordedCreators: g && g.creator_id_list ? g.creator_id_list.length : 0
+      recordedCreators: g && g.creator_id_list ? g.creator_id_list.length : 0,
+      hasMessage: hasMessage
     };
   }
 
+  function absoluteUrl(url) {
+    try { return new URL(url, location.href).toString(); } catch (e) { return url || ''; }
+  }
+
+  function originOf(url) {
+    try { return new URL(url, location.href).origin; } catch (e) {
+      try { return location.origin; } catch (e2) { return ''; }
+    }
+  }
+
+  function clipBody(s, max) {
+    s = String(s == null ? '' : s);
+    return s.length > max ? s.slice(0, max) : s;
+  }
+
   function summarize(entry) {
+    var url = absoluteUrl(entry.url);
     return {
-      url: entry.url,
+      url: url,
       method: entry.method,
       reqBody: entry.reqBody || '',
+      resBody: clipBody(entry.resBody, 6000),
       status: entry.status,
+      origin: originOf(url),
+      shopName: entry.shopName || '',
       at: Date.now()
     };
   }
@@ -273,6 +318,8 @@
     fillUrl: fillUrl,
     parseMaybe: parseMaybe,
     extractCreator: extractCreator,
+    looksLikeHandle: looksLikeHandle,
+    looksLikeNick: looksLikeNick,
     fillTemplate: fillTemplate,
     fillCollabTemplate: fillCollabTemplate,
     fillSearchTemplate: fillSearchTemplate,

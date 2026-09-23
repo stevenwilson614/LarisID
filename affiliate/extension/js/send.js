@@ -44,9 +44,16 @@
 
   function compose(template, vars) {
     var map = vars || {};
-    return String(template || '').replace(/\{(\w+)\}/g, function (_, key) {
-      return map[key] != null ? String(map[key]) : '{' + key + '}';
-    });
+    return String(template || '')
+      .replace(/@\{(\w+)\}/g, function (_, key) {
+        var v = map[key];
+        if (v == null || String(v) === '') return '';
+        return String(v).charAt(0) === '@' ? String(v) : '@' + v;
+      })
+      .replace(/\{(\w+)\}/g, function (_, key) {
+        return map[key] != null ? String(map[key]) : '{' + key + '}';
+      })
+      .replace(/Halo\s*,\s*/gi, 'Halo Kak, ');
   }
 
   function varsFor(row, account) {
@@ -54,7 +61,7 @@
     var handle = normHandle(row && row.handle);
     return {
       handle: handle,
-      name: row && row.name || acc.name || '',
+      name: acc.name || '',
       toko: acc.shopName || acc.display || displayHandle(acc.handle),
       produk: acc.productName || '',
       komisi: acc.commissionPct != null ? acc.commissionPct : ''
@@ -154,7 +161,10 @@
         code: res.code || 'send_failed',
         endpoint: res.endpoint,
         reason: res.reason || (dryRun ? 'Uji gagal. Tidak ada yang dikirim.' : 'Gagal kirim. Jangan ditandai terkirim.'),
-        results: res.results || []
+        results: res.results || [],
+        status: res.status,
+        bizReject: !!res.bizReject,
+        tiktokCode: res.tiktokCode
       };
     });
   }
@@ -184,6 +194,46 @@
     return runtimeSend({ type: 'laris-kalodata-read' });
   }
 
+  async function bisectDispatch(creators, ctx, sendFn, opts) {
+    opts = opts || {};
+    var acc = { size1Fails: 0 };
+    var sleepFn = opts.sleep || sleep;
+    var minDelay = opts.minDelay != null ? opts.minDelay : 800;
+    var maxDelay = opts.maxDelay != null ? opts.maxDelay : 1200;
+    var pauseAt = opts.pauseAt != null ? opts.pauseAt : 3;
+    async function pauseMs() {
+      var span = Math.max(0, maxDelay - minDelay);
+      return sleepFn(minDelay + Math.floor(Math.random() * (span + 1)));
+    }
+    async function go(list) {
+      if (acc.size1Fails >= pauseAt) return { leftover: list.slice(), leaves: [] };
+      var result = await sendFn(list, ctx);
+      if (result && result.ok) {
+        acc.size1Fails = 0;
+        return { leftover: [], leaves: [{ creators: list, result: result }] };
+      }
+      if (!result || !result.bizReject || list.length <= 1) {
+        if (list.length === 1) acc.size1Fails += 1;
+        return { leftover: [], leaves: [{ creators: list, result: result || { ok: false } }] };
+      }
+      await pauseMs();
+      var mid = Math.ceil(list.length / 2);
+      var left = await go(list.slice(0, mid));
+      if (acc.size1Fails >= pauseAt) {
+        return { leftover: left.leftover.concat(list.slice(mid)), leaves: left.leaves };
+      }
+      await pauseMs();
+      var right = await go(list.slice(mid));
+      return {
+        leftover: left.leftover.concat(right.leftover),
+        leaves: left.leaves.concat(right.leaves)
+      };
+    }
+    var out = await go(creators || []);
+    out.size1Fails = acc.size1Fails;
+    return out;
+  }
+
   root.LarisAffiliateSend = {
     BATCH: BATCH,
     DAILY: DAILY,
@@ -202,6 +252,7 @@
     recon: recon,
     send: send,
     sendBatch: sendBatch,
+    bisectDispatch: bisectDispatch,
     kaloRead: kaloRead,
     workers: {
       sellerCenter: sellerCenterSend,

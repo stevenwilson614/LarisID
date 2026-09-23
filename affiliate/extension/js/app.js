@@ -71,7 +71,7 @@
     }
     if (!Array.isArray(s.creators)) s.creators = [];
     if (!Array.isArray(s.campaigns)) s.campaigns = [];
-    if (!s.template) s.template = SEED.template;
+    if (!s.template || s.template === SEED.oldTemplate) s.template = SEED.template;
     s.creators.forEach(function (c) {
       if (!c.creatorOpenId) c.creatorOpenId = '';
       if (c.followers == null) c.followers = 0;
@@ -79,6 +79,18 @@
     });
     if (!s.account.allowLiveSend) s.account.allowLiveSend = false;
     if (!s.account.allowKalodataRead) s.account.allowKalodataRead = false;
+    (s.campaigns || []).forEach(function (c) {
+      (c.rows || []).forEach(function (r) {
+        if (r.status === 'sending') {
+          r.status = 'failed';
+          r.note = 'panel ditutup saat mengirim';
+        }
+      });
+      if (c.status === 'berjalan') {
+        var pending = (c.rows || []).some(function (r) { return r.status === 'pending'; });
+        c.status = pending ? 'jeda' : 'selesai';
+      }
+    });
     return s;
   }
 
@@ -91,7 +103,7 @@
     campFilter: 'all',
     jobId: null,
     importNotice: '',
-    conn: { ok: false, shopSession: false, affiliate: false, shopName: '', href: '', recon: {}, kalodata: { present: false, count: 0 }, sku: {} }
+    conn: { ok: false, shopSession: false, affiliate: false, shopName: '', href: '', recon: {}, reconOrigin: '', reconShopName: '', kalodata: { present: false, count: 0 }, sku: {} }
   };
   var runner = { id: null, timer: null, paused: false, busy: false };
 
@@ -130,7 +142,7 @@
       (sku.invitationName ? ' · ' + sku.invitationName : '');
   }
   function skuFromReconStore(recon) {
-    var sku = { productId: '', productName: '', commissionPct: null, invitationName: '' };
+    var sku = { productId: '', productName: '', commissionPct: null, invitationName: '', hasMessage: false };
     ((recon && recon.collab) || []).forEach(function (e) {
       var body = null;
       try { body = JSON.parse(e.reqBody || ''); } catch (err) { body = null; }
@@ -143,6 +155,7 @@
         if (g.name) sku.invitationName = g.name;
         if (p.title) sku.productName = p.title;
       }
+      if (g && (g.message != null || g.invitation_msg != null || g.invite_msg != null)) sku.hasMessage = true;
       var inv = body.invitation && body.invitation.product_list && body.invitation.product_list[0];
       if (inv && inv.title) sku.productName = inv.title;
     });
@@ -420,6 +433,21 @@
   function connState(ok, yes, no) {
     return ok ? '<span class="chip ok">' + esc(yes || 'Terhubung') + '</span>' : '<span class="chip locked">' + esc(no || 'Belum') + '</span>';
   }
+  function currentOrigin() {
+    try { return ui.conn.href ? new URL(ui.conn.href).origin : ''; } catch (e) { return ''; }
+  }
+  function reconShopLine() {
+    var origin = ui.conn.reconOrigin || '';
+    var shop = ui.conn.reconShopName || '';
+    if (!origin && !shop) return '';
+    var cur = currentOrigin();
+    var mismatch = origin && cur && origin !== cur;
+    var line = 'Rekaman dari: ' + (shop || 'toko') + (origin ? ' · ' + origin : '');
+    return '<p class="muted" style="margin-top:10px">' + esc(line) + '</p>' +
+      (mismatch
+        ? '<div class="note">Rekaman adapter dari origin lain. Hapus rekaman adapter di bawah, lalu kirim 1 undangan manual di toko ini.</div>'
+        : '');
+  }
   function viewAkun() {
     var recon = ui.conn.recon || {};
     var href = ui.conn.href || '';
@@ -439,6 +467,7 @@
         '<div class="conn-row"><div><strong>Kalodata</strong><span class="meta">' +
           (kaloOn ? (ui.conn.kalodata.count || 0) + ' baris terlihat' : 'Buka tab kalodata.com/creator') +
           '</span></div><div class="side">' + connState(kaloOn) + '</div></div>' +
+        reconShopLine() +
       '</section>' +
       '<section class="card">' +
         '<h3>Toko</h3>' +
@@ -482,6 +511,7 @@
           reconLine(!!recon.search, 'Cari kreator') +
         '</ul>' +
         '<button type="button" class="btn-ghost" data-act="reset-recon" style="margin-top:10px">Hapus rekaman adapter</button>' +
+        '<button type="button" class="btn-ghost" data-act="copy-diag" style="margin-top:8px">Salin diagnostik</button>' +
       '</section>' +
       '<section class="card">' +
         '<h3>Pengirim di template</h3>' +
@@ -535,8 +565,12 @@
         '<div class="sticky-actions"><button type="button" class="btn" data-act="wiz-next">Lanjut</button>' +
         '<button type="button" class="btn-ghost" data-act="wiz-back">Kembali</button></div></section>';
     } else if (w.step === 2) {
+      var sku = (ui.conn.recon && ui.conn.recon.sku) || ui.conn.sku || {};
       html += '<section class="card"><h2>Template</h2>' +
         '<p class="muted">{handle} {name} {toko} {produk} {komisi}</p>' +
+        (ui.conn.recon && ui.conn.recon.collab && sku.hasMessage === false
+          ? '<div class="note">Rekaman Target Collab tidak punya field pesan. Teks di bawah tidak dikirim ke kreator — hanya nama + produk + komisi yang terekam.</div>'
+          : '') +
         '<textarea data-act="wiz-tpl">' + esc(w.template) + '</textarea>' +
         '<div class="sticky-actions"><button type="button" class="btn" data-act="wiz-next">Lanjut</button>' +
         '<button type="button" class="btn-ghost" data-act="wiz-back">Kembali</button></div></section>';
@@ -557,6 +591,7 @@
           : '<p class="muted">Kirim live terkunci. Uji cari tidak mengirim undangan.</p>') +
         '<div class="sticky-actions">' +
           '<button type="button" class="btn" data-act="wiz-probe"' + (n && ui.conn.ok ? '' : ' disabled') + '>Uji cari (tidak kirim)</button>' +
+          '<button type="button" class="btn-ghost" data-act="wiz-probe-all"' + (n && ui.conn.ok ? '' : ' disabled') + '>Uji cari semua (tidak kirim)</button>' +
           '<button type="button" class="btn-ghost" data-act="wiz-one"' + (n && ui.conn.ok && db.account.allowLiveSend ? '' : ' disabled') + '>Tes 1 kreator · LIVE</button>' +
           '<button type="button" class="btn-ghost" data-act="wiz-go"' + (n && ui.conn.ok && db.account.allowLiveSend ? '' : ' disabled') + '>Kirim kampanye · LIVE</button>' +
           '<button type="button" class="btn-ghost" data-act="wiz-back">Kembali</button></div></section>';
@@ -731,50 +766,85 @@
     var creators = batch.map(function (r) {
       return creatorById(r.creatorId) || { handle: r.handle, creatorOpenId: r.creatorOpenId, name: r.name || '' };
     });
-    var result = dryRun
-      ? await Send.send(creators[0], {
-          channel: campaign.channel,
-          account: db.account,
-          template: campaign.template,
-          dryRun: true
-        })
-      : await Send.sendBatch(creators, {
-          channel: campaign.channel,
-          account: db.account,
-          template: campaign.template,
-          dryRun: false
-        });
-    var byHandle = {};
-    (result.results || []).forEach(function (r) {
-      if (r && r.handle) byHandle[Send.normHandle(r.handle)] = r;
+    var ctx = {
+      channel: campaign.channel,
+      account: db.account,
+      template: campaign.template,
+      dryRun: dryRun
+    };
+    var leaves;
+    var leftover = [];
+    var lastReason = '';
+    if (dryRun) {
+      var probe = await Send.send(creators[0], ctx);
+      leaves = [{ creators: creators, result: probe }];
+    } else {
+      var split = await Send.bisectDispatch(creators, ctx, function (list, c) {
+        return Send.sendBatch(list, c);
+      }, { minDelay: 800, maxDelay: 1200, pauseAt: 3 });
+      leaves = split.leaves || [];
+      leftover = split.leftover || [];
+    }
+    leftover.forEach(function (c) {
+      var row = batch.find(function (r) { return Send.normHandle(r.handle) === Send.normHandle(c.handle); });
+      if (row && row.status === 'sending') row.status = 'pending';
     });
     var sentN = 0;
-    var batchFailed = true;
-    batch.forEach(function (row) {
-      var one = byHandle[Send.normHandle(row.handle)] || {
-        ok: result.ok,
-        reason: result.reason,
-        creatorOpenId: result.creatorOpenId,
-        endpoint: result.endpoint,
-        requestId: result.requestId
-      };
-      applyRowResult(campaign, row, one, dryRun);
-      if (row.status === 'sent') sentN += 1;
-      if (row.status === 'sent' || row.status === 'probed') batchFailed = false;
+    var size1Fails = 0;
+    var anyGood = false;
+    leaves.forEach(function (leaf) {
+      var result = leaf.result || {};
+      lastReason = result.reason || lastReason;
+      var byHandle = {};
+      (result.results || []).forEach(function (r) {
+        if (r && r.handle) byHandle[Send.normHandle(r.handle)] = r;
+      });
+      (leaf.creators || []).forEach(function (c) {
+        var row = batch.find(function (r) { return Send.normHandle(r.handle) === Send.normHandle(c.handle); });
+        if (!row) return;
+        var one = byHandle[Send.normHandle(row.handle)] || {
+          ok: result.ok,
+          reason: result.reason,
+          creatorOpenId: result.creatorOpenId,
+          endpoint: result.endpoint,
+          requestId: result.requestId
+        };
+        applyRowResult(campaign, row, one, dryRun);
+        if (row.status === 'sent') sentN += 1;
+        if (row.status === 'sent' || row.status === 'probed') anyGood = true;
+      });
+      if (!dryRun && (leaf.creators || []).length === 1 && !result.ok) size1Fails += 1;
     });
     if (sentN) bumpQuota(sentN);
-    if (batchFailed) {
+    if (!dryRun) {
+      if (anyGood) campaign.failStreak = 0;
+      if (size1Fails) campaign.failStreak = (campaign.failStreak || 0) + size1Fails;
+      if (!anyGood && !size1Fails && leftover.length === 0) {
+        campaign.failStreak = (campaign.failStreak || 0) + 1;
+      }
+      if (lastReason) campaign.lastFail = lastReason;
+    } else if (!anyGood) {
       campaign.failStreak = (campaign.failStreak || 0) + 1;
-      campaign.lastFail = result.reason || 'gagal';
+      campaign.lastFail = lastReason || 'gagal';
     } else {
       campaign.failStreak = 0;
+    }
+    if (!dryRun && (campaign.failStreak || 0) >= 3) {
+      campaign.status = 'jeda';
+      runner.paused = true;
     }
     persist();
     runner.busy = false;
     renderJob(id);
     renderQuota();
+    if (runner.paused) {
+      render();
+      toast('Dijeda: 3 gagal berturut-turut. ' + (campaign.lastFail || ''), 'bad', 6000);
+      return;
+    }
     if (!runner.paused && runner.id === id) {
-      queueTick(nextPending(campaign) && !dryRun ? 1400 : 220);
+      var wait = !nextPending(campaign) ? 220 : (dryRun ? 900 : 4000 + Math.floor(Math.random() * 3001));
+      queueTick(wait);
     }
   }
 
@@ -809,7 +879,7 @@
         (log.length ? log.map(function (r) {
           var label = r.status === 'sending' ? 'mengirim…' : r.status === 'sent' ? 'terkirim' : r.status === 'probed' ? 'uji' : 'gagal';
           return '<div class="job-log ' + esc(r.status) + '"><strong>' + esc(Send.displayHandle(r.handle)) + '</strong>' +
-            '<span>' + esc(label) + (r.status === 'failed' && r.note ? ' · ' + esc(r.note).slice(0, 40) : '') + '</span></div>';
+            '<span>' + esc(label) + (r.status === 'failed' && r.note ? ' · ' + esc(r.note) : '') + '</span></div>';
         }).join('') : '<p class="muted">Menunggu worker…</p>') +
       '</section>'
     );
@@ -1032,6 +1102,90 @@
     mergeRows(rows, 'csv');
   }
 
+  function clipReconForDiag(recon) {
+    var out = {};
+    ['search', 'collab', 'im', 'quota'].forEach(function (ch) {
+      out[ch] = ((recon && recon[ch]) || []).slice(0, 3).map(function (e) {
+        return {
+          url: e.url,
+          method: e.method,
+          status: e.status,
+          origin: e.origin || '',
+          shopName: e.shopName || '',
+          reqBody: String(e.reqBody || '').slice(0, 4000),
+          resBody: String(e.resBody || '').slice(0, 4000),
+          at: e.at
+        };
+      });
+    });
+    return out;
+  }
+
+  function downloadJson(name, text) {
+    try {
+      var blob = new Blob([text], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function copyDiagnostics() {
+    var recon = await Send.recon();
+    var version = '0.4.0';
+    try { version = chrome.runtime.getManifest().version || version; } catch (e) { /* ignore */ }
+    var lastRows = [];
+    db.campaigns.forEach(function (c) {
+      (c.rows || []).forEach(function (r) {
+        lastRows.push({
+          campaign: c.title,
+          handle: r.handle,
+          status: r.status,
+          note: r.note || '',
+          at: r.at,
+          endpoint: r.endpoint || ''
+        });
+      });
+    });
+    lastRows.sort(function (a, b) { return (b.at || '').localeCompare(a.at || ''); });
+    var payload = {
+      version: version,
+      at: new Date().toISOString(),
+      conn: {
+        ok: ui.conn.ok,
+        affiliate: ui.conn.affiliate,
+        shopSession: ui.conn.shopSession,
+        shopName: ui.conn.shopName,
+        href: ui.conn.href,
+        reconOrigin: ui.conn.reconOrigin,
+        reconShopName: ui.conn.reconShopName,
+        sku: ui.conn.sku || (ui.conn.recon && ui.conn.recon.sku) || {},
+        kalodata: ui.conn.kalodata
+      },
+      allowLiveSend: !!db.account.allowLiveSend,
+      quota: { used: db.quota.used, dailyCap: db.quota.dailyCap, day: db.quota.day },
+      recon: clipReconForDiag(recon),
+      lastRows: lastRows.slice(0, 20)
+    };
+    var text = JSON.stringify(payload, null, 2);
+    var copied = await Send.copy(text);
+    if (copied) {
+      toast('Diagnostik tersalin. Tempel ke Cursor.', 'ok', 4000);
+      return;
+    }
+    if (downloadJson('laris-affiliate-diagnostik.json', text)) {
+      toast('Clipboard gagal. File diagnostik diunduh.', 'warn', 4500);
+      return;
+    }
+    toast('Gagal menyalin diagnostik', 'bad');
+  }
+
   function splitCsvLine(line) {
     var out = [];
     var cur = '';
@@ -1060,6 +1214,8 @@
       affiliate: !!(ping && ping.affiliate),
       shopName: ping && ping.shopName || '',
       href: ping && ping.href || '',
+      reconOrigin: ping && ping.reconOrigin || '',
+      reconShopName: ping && ping.reconShopName || '',
       kalodata: (ping && ping.kalodata) || { present: false, count: 0 },
       recon: (ping && ping.recon) || {
         search: !!(recon && recon.search && recon.search.length),
@@ -1122,6 +1278,7 @@
     }     else if (act === 'wiz-go') { startJobFromWizard(); }
     else if (act === 'wiz-one') { startJobFromWizard({ limit: 1 }); }
     else if (act === 'wiz-probe') { startJobFromWizard({ limit: 1, dryRun: true }); }
+    else if (act === 'wiz-probe-all') { startJobFromWizard({ dryRun: true }); }
     else if (act === 'sel') { ui.selected[id] = t.checked; render(); }
     else if (act === 'sel-all') {
       filteredCreators().forEach(function (c) { ui.selected[c.id] = t.checked; });
@@ -1157,6 +1314,8 @@
       mergeRows(parseHandlesText(box && box.value), 'paste');
     } else if (act === 'kalo-read') {
       pullKalodata();
+    } else if (act === 'copy-diag') {
+      copyDiagnostics();
     } else if (act === 'reset-recon') {
       chrome.storage.local.set({ 'laris-affiliate-recon': { search: [], collab: [], im: [] } }, function () {
         toast('Rekaman adapter dihapus');
@@ -1243,6 +1402,7 @@
 
   function boot(saved) {
     db = hydrate(saved);
+    persist();
     render();
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
       refreshConn();

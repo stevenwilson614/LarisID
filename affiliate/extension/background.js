@@ -4,6 +4,7 @@ var HOST_RE = /(^|\.)seller-id\.tokopedia\.com$|(^|\.)affiliate-id\.tokopedia\.c
 var KALO_RE = /(^|\.)kalodata\.com$/i;
 var frames = {};
 var kaloFrames = {};
+var lastReconMeta = { origin: '', shopName: '' };
 
 try {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
@@ -64,6 +65,10 @@ function frameKey(tabId, frameId) {
   return tabId + ':' + frameId;
 }
 
+function frameOrigin(f) {
+  try { return new URL(f && f.href || '').origin; } catch (e) { return ''; }
+}
+
 function rememberFrame(sender, payload) {
   if (!sender || !sender.tab) return;
   var tabId = sender.tab.id;
@@ -78,6 +83,8 @@ function rememberFrame(sender, payload) {
     recon: payload && payload.recon || {},
     at: Date.now()
   };
+  if (payload && payload.reconOrigin) lastReconMeta.origin = payload.reconOrigin;
+  if (payload && payload.shopName) lastReconMeta.shopName = payload.shopName;
 }
 
 function rememberKalo(sender, payload) {
@@ -139,29 +146,43 @@ function pruneFrames() {
   });
 }
 
-function bestFrame() {
+function bestFrame(preferOrigin) {
   pruneFrames();
   var list = Object.keys(frames).map(function (k) { return frames[k]; });
   list.sort(function (a, b) {
-    var as = (a.affiliate ? 4 : 0) + (a.shopSession ? 1 : 0) + (a.recon && (a.recon.collab || a.recon.im || a.recon.search) ? 2 : 0) + (isAffiliateUrl(a.href) ? 1 : 0);
-    var bs = (b.affiliate ? 4 : 0) + (b.shopSession ? 1 : 0) + (b.recon && (b.recon.collab || b.recon.im || b.recon.search) ? 2 : 0) + (isAffiliateUrl(b.href) ? 1 : 0);
+    var ao = preferOrigin && frameOrigin(a) === preferOrigin ? 8 : 0;
+    var bo = preferOrigin && frameOrigin(b) === preferOrigin ? 8 : 0;
+    var as = ao + (a.affiliate ? 4 : 0) + (a.shopSession ? 1 : 0) + (a.recon && (a.recon.collab || a.recon.im || a.recon.search) ? 2 : 0) + (isAffiliateUrl(a.href) ? 1 : 0);
+    var bs = bo + (b.affiliate ? 4 : 0) + (b.shopSession ? 1 : 0) + (b.recon && (b.recon.collab || b.recon.im || b.recon.search) ? 2 : 0) + (isAffiliateUrl(b.href) ? 1 : 0);
     return bs - as;
   });
   return list[0] || null;
 }
 
-function pingPayload() {
-  var f = bestFrame();
+function latestReconEntry(recon) {
+  recon = recon || {};
+  return (recon.collab && recon.collab[0]) || (recon.search && recon.search[0]) || {};
+}
+
+function pingPayload(reconStore) {
+  var latest = latestReconEntry(reconStore);
+  var preferOrigin = latest.origin || lastReconMeta.origin || '';
+  var f = bestFrame(preferOrigin);
   var k = bestKalo();
   var kalodata = k
     ? { present: true, count: k.count || 0, href: k.href || '' }
     : { present: false, count: 0, href: '' };
+  var recon = (f && f.recon) || {};
+  var reconOrigin = latest.origin || lastReconMeta.origin || '';
+  var reconShopName = latest.shopName || lastReconMeta.shopName || '';
   if (!f || (!f.affiliate && !f.shopSession)) {
     return {
       ok: false,
       code: 'no_tab',
       reason: 'Buka Seller Center / Affiliate Center di tab Chrome ini.',
-      recon: (f && f.recon) || {},
+      recon: recon,
+      reconOrigin: reconOrigin,
+      reconShopName: reconShopName,
       kalodata: kalodata
     };
   }
@@ -172,7 +193,9 @@ function pingPayload() {
     shopName: f.shopName || '',
     href: f.href,
     affiliate: !!f.affiliate,
-    recon: f.recon || {},
+    recon: recon,
+    reconOrigin: reconOrigin,
+    reconShopName: reconShopName,
     kalodata: kalodata
   };
 }
@@ -191,21 +214,24 @@ async function findOrOpenAffiliateTab() {
 
 function sendToBestFrame(message) {
   return new Promise(function (resolve) {
-    var f = bestFrame();
-    if (!f || (!f.affiliate && !f.shopSession)) {
-      resolve({ ok: false, code: 'no_tab', reason: 'Buka Seller Center / Affiliate Center di tab Chrome ini.' });
-      return;
-    }
-    chrome.tabs.sendMessage(f.tabId, message, { frameId: f.frameId }, function (res) {
-      if (chrome.runtime.lastError) {
-        resolve({
-          ok: false,
-          code: 'no_listener',
-          reason: 'Tab Seller Center belum siap. Refresh Affiliate Center, lalu coba lagi.'
-        });
+    chrome.storage.local.get('laris-affiliate-recon', function (res) {
+      var latest = latestReconEntry(res['laris-affiliate-recon']);
+      var f = bestFrame(latest.origin || lastReconMeta.origin || '');
+      if (!f || (!f.affiliate && !f.shopSession)) {
+        resolve({ ok: false, code: 'no_tab', reason: 'Buka Seller Center / Affiliate Center di tab Chrome ini.' });
         return;
       }
-      resolve(res || { ok: false, code: 'empty', reason: 'Affiliate Center tidak menjawab.' });
+      chrome.tabs.sendMessage(f.tabId, message, { frameId: f.frameId }, function (reply) {
+        if (chrome.runtime.lastError) {
+          resolve({
+            ok: false,
+            code: 'no_listener',
+            reason: 'Tab Seller Center belum siap. Refresh Affiliate Center, lalu coba lagi.'
+          });
+          return;
+        }
+        resolve(reply || { ok: false, code: 'empty', reason: 'Affiliate Center tidak menjawab.' });
+      });
     });
   });
 }
@@ -224,8 +250,10 @@ chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
   }
 
   if (msg.type === 'laris-ping') {
-    sendResponse(pingPayload());
-    return;
+    chrome.storage.local.get('laris-affiliate-recon', function (res) {
+      sendResponse(pingPayload(res['laris-affiliate-recon'] || {}));
+    });
+    return true;
   }
 
   if (msg.type === 'laris-open-affiliate') {

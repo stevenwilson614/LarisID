@@ -14,7 +14,9 @@ window.LARIS_AFFILIATE_SEED = {
     dailyCap: 1000,
     batch: 50
   },
-  template:
+  oldTemplate:
     'Halo @{handle},\n\nAku {name} dari {toko}. Lagi jual {produk} dan undang kolaborasi affiliate. Komisi {komisi}%.\n\nKalau cocok, terima undangan di Affiliate Center ya.\n\n— {toko}',
+  template:
+    'Halo Kak,\n\nAku {name} dari {toko}. Lagi jual {produk} dan undang kolaborasi affiliate. Komisi {komisi}%.\n\nKalau cocok, terima undangan di Affiliate Center ya.\n\n— {toko}',
   demoCreators: []
 };
