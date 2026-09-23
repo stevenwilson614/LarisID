@@ -3237,6 +3237,8 @@ body.view-harga .panel-inner { max-width: 1180px; }
 .adm-kpi--dives .adm-kpi-ico { background: #F3E8FF; color: #7C3AED; }
 .adm-kpi--downloads .adm-kpi-ico { background: #EEF2FF; color: #4F46E5; }
 .adm-kpi--ext .adm-kpi-ico { background: #CCFBF1; color: #0F766E; }
+.adm-kpi--edu-views .adm-kpi-ico { background: #FEF2F2; color: #B5202A; }
+.adm-kpi--edu-yes .adm-kpi-ico { background: #ECFDF5; color: #047857; }
 .adm-trend-card { padding: 16px 18px 14px; margin-bottom: 14px; }
 .adm-trend-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .adm-trend-head .adm-card-title { margin: 0; }
@@ -9970,7 +9972,60 @@ body.view-chat .sfb-card {
                 <div class="adm-kpi-sub" id="adm-kpi-ext-sub">Klik ke Chrome Web Store</div>
                 <div class="adm-kpi-spark" id="adm-kpi-ext-spark"></div>
               </article>
+              <article class="adm-card adm-kpi adm-kpi--edu-views">
+                <div class="adm-kpi-top">
+                  <span class="adm-kpi-lbl">Edukasi — Buka Halaman</span>
+                  <span class="adm-kpi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
+                </div>
+                <div class="adm-kpi-val" id="adm-kpi-edu-visitors">—</div>
+                <div class="adm-kpi-sub" id="adm-kpi-edu-visitors-sub">Orang unik</div>
+              </article>
+              <article class="adm-card adm-kpi adm-kpi--edu-yes">
+                <div class="adm-kpi-top">
+                  <span class="adm-kpi-lbl">Edukasi — Tertarik</span>
+                  <span class="adm-kpi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>
+                </div>
+                <div class="adm-kpi-val" id="adm-kpi-edu-interested">—</div>
+                <div class="adm-kpi-sub" id="adm-kpi-edu-interested-sub">Ya, saya tertarik</div>
+              </article>
             </div>
+
+            <section class="adm-card adm-edu-card" id="adm-edukasi">
+              <div class="adm-users-toolbar">
+                <h3>Edukasi — minat</h3>
+                <button type="button" class="adm-tb-btn" id="adm-edu-refresh">Muat ulang</button>
+                <button type="button" class="adm-tb-btn" id="adm-edu-open">Buka seperti user baru</button>
+              </div>
+              <p class="dd-sub" id="adm-edu-summary">Memuat…</p>
+              <div class="adm-edu-kpis" id="adm-edu-kpis">
+                <div class="adm-edu-kpi">
+                  <span class="adm-edu-kpi-lbl">Buka halaman</span>
+                  <strong class="adm-edu-kpi-val" id="adm-edu-visitors">—</strong>
+                  <span class="adm-edu-kpi-sub" id="adm-edu-views-sub">orang unik</span>
+                </div>
+                <div class="adm-edu-kpi">
+                  <span class="adm-edu-kpi-lbl">Tertarik</span>
+                  <strong class="adm-edu-kpi-val" id="adm-edu-interested">—</strong>
+                  <span class="adm-edu-kpi-sub" id="adm-edu-rate-sub">dari yang buka halaman</span>
+                </div>
+              </div>
+              <div class="admin-table-wrap">
+                <table class="admin-table" id="adm-edu-table">
+                  <thead>
+                    <tr>
+                      <th>Nama</th>
+                      <th>Kontak</th>
+                      <th>Buka</th>
+                      <th>Tertarik</th>
+                      <th>Terakhir</th>
+                    </tr>
+                  </thead>
+                  <tbody id="adm-edu-body">
+                    <tr><td colspan="5" class="dd-sub">Memuat…</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
 
             <section class="adm-card adm-trend-card">
               <div class="adm-trend-head">
@@ -10098,43 +10153,6 @@ body.view-chat .sfb-card {
             <section class="adm-card adm-winback-wrap">
               <h3>Win-back</h3>
               <div id="adm-winback-card"></div>
-            </section>
-
-            <section class="adm-card adm-edu-card" id="adm-edukasi">
-              <div class="adm-users-toolbar">
-                <h3>Edukasi</h3>
-                <button type="button" class="adm-tb-btn" id="adm-edu-refresh">Muat ulang</button>
-                <button type="button" class="adm-tb-btn" id="adm-edu-open">Buka seperti user baru</button>
-              </div>
-              <p class="dd-sub" id="adm-edu-summary">Memuat…</p>
-              <div class="adm-edu-kpis" id="adm-edu-kpis">
-                <div class="adm-edu-kpi">
-                  <span class="adm-edu-kpi-lbl">Buka halaman</span>
-                  <strong class="adm-edu-kpi-val" id="adm-edu-visitors">—</strong>
-                  <span class="adm-edu-kpi-sub" id="adm-edu-views-sub">orang unik</span>
-                </div>
-                <div class="adm-edu-kpi">
-                  <span class="adm-edu-kpi-lbl">Tertarik</span>
-                  <strong class="adm-edu-kpi-val" id="adm-edu-interested">—</strong>
-                  <span class="adm-edu-kpi-sub" id="adm-edu-rate-sub">dari yang buka halaman</span>
-                </div>
-              </div>
-              <div class="admin-table-wrap">
-                <table class="admin-table" id="adm-edu-table">
-                  <thead>
-                    <tr>
-                      <th>Nama</th>
-                      <th>Kontak</th>
-                      <th>Buka</th>
-                      <th>Tertarik</th>
-                      <th>Terakhir</th>
-                    </tr>
-                  </thead>
-                  <tbody id="adm-edu-body">
-                    <tr><td colspan="5" class="dd-sub">Memuat…</td></tr>
-                  </tbody>
-                </table>
-              </div>
             </section>
 
             <section class="adm-card adm-komunitas-card" id="adm-komunitas">

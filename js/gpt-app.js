@@ -25010,6 +25010,18 @@ async function loadAdminEdukasi() {
     const rate = visitors > 0 ? Math.round((interested / visitors) * 100) : null;
     if ($('adm-edu-visitors')) $('adm-edu-visitors').textContent = admFmtNum(visitors);
     if ($('adm-edu-interested')) $('adm-edu-interested').textContent = admFmtNum(interested);
+    if ($('adm-kpi-edu-visitors')) $('adm-kpi-edu-visitors').textContent = admFmtNum(visitors);
+    if ($('adm-kpi-edu-interested')) $('adm-kpi-edu-interested').textContent = admFmtNum(interested);
+    if ($('adm-kpi-edu-visitors-sub')) {
+      $('adm-kpi-edu-visitors-sub').textContent = views
+        ? `${admFmtNum(views)} buka · orang unik`
+        : 'Orang unik';
+    }
+    if ($('adm-kpi-edu-interested-sub')) {
+      $('adm-kpi-edu-interested-sub').textContent = rate == null
+        ? 'Ya, saya tertarik'
+        : `${rate}% dari yang buka halaman`;
+    }
     if ($('adm-edu-views-sub')) {
       $('adm-edu-views-sub').textContent = views
         ? `${admFmtNum(views)} buka · ${admFmtNum(visitors)} orang unik`
