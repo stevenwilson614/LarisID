@@ -2478,6 +2478,7 @@ body.view-community .panel-inner,
 body.view-edukasi .panel-inner {
   max-width: 920px;
 }
+body.view-edukasi .panel-inner { max-width: 760px; }
 /* Harga carries a six-column comparison table — give it more room than the
    other meta pages. */
 body.view-harga .panel-inner { max-width: 1180px; }
@@ -3909,40 +3910,233 @@ body.ddtp-open #btn-tracker svg .ic-f { fill: var(--accent); stroke: none; }
 #name-capture .nudge-actions { flex-direction: column; }
 #name-capture .nudge-actions .btn-primary,
 #name-capture .nudge-actions .btn-ghost { width: 100%; }
-.edu-card {
-  background: #fff;
-  border: 1px solid #E8E8E8;
-  border-radius: 28px;
-  padding: 36px 40px 28px;
-  max-width: 520px;
-  box-shadow: 0 1px 2px rgba(0,0,0,.03);
+/* ── Edukasi page + interest popup ─────────────────────────────────── */
+body.view-edukasi .panel { background: #F7F7F8; }
+.edu-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 8px 0 32px;
 }
-.edu-card h2 {
+.edu-hero {
+  text-align: center;
+  margin: 0 auto 28px;
+  max-width: 560px;
+}
+.edu-eyebrow {
   margin: 0 0 10px;
-  font-size: 1.45rem;
-  font-weight: 750;
-  letter-spacing: -.03em;
-  line-height: 1.2;
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--accent, #B5202A);
 }
-.edu-card .edu-lead {
-  margin: 0 0 22px;
+.edu-hero h2 {
+  margin: 0 0 12px;
+  font-size: clamp(1.55rem, 3.2vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -.035em;
+  line-height: 1.15;
+  color: #111;
+}
+.edu-hero .edu-lead {
+  margin: 0 auto 26px;
+  max-width: 480px;
   font-size: .95rem;
   line-height: 1.6;
-  color: var(--ink-soft);
+  color: #4B5563;
+}
+.edu-benefits {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px 16px;
+  margin: 0 auto;
+  max-width: 560px;
+}
+.edu-benefit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+.edu-benefit-ico {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: #FEF2F2;
+  color: var(--accent, #B5202A);
+}
+.edu-benefit-ico svg { display: block; }
+.edu-benefit span {
+  font-size: .8rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #374151;
+  max-width: 11.5em;
+}
+.edu-form-card {
+  background: #fff;
+  border: 1px solid #EBEBEB;
+  border-radius: 24px;
+  padding: 32px 36px 28px;
+  max-width: 480px;
+  margin: 0 auto;
+  box-shadow: 0 8px 28px rgba(17, 17, 17, .06);
+}
+.edu-form-card .edu-form-title {
+  margin: 0 0 6px;
+  font-size: 1.15rem;
+  font-weight: 750;
+  letter-spacing: -.02em;
+  color: #111;
+}
+.edu-form-card .edu-form-sub {
+  margin: 0 0 22px;
+  font-size: .88rem;
+  line-height: 1.5;
+  color: #6B7280;
+}
+.edu-form-card .field { margin-bottom: 14px; }
+.edu-form-card .field label,
+#edu-interest-capture .field label {
+  display: block;
+  font-size: .8rem;
+  font-weight: 650;
+  margin-bottom: 7px;
+  color: #1A1A1A;
+}
+.edu-form-card .field input,
+#edu-interest-capture .field input {
+  width: 100%;
+  padding: 13px 14px;
+  border-radius: 12px;
+  border: 1px solid #E5E7EB;
+  font-size: .92rem;
+  background: #fff;
+  color: #111;
+}
+.edu-form-card .field input:focus,
+#edu-interest-capture .field input:focus {
+  outline: none;
+  border-color: var(--accent, #B5202A);
+  box-shadow: 0 0 0 3px rgba(181, 32, 42, .1);
 }
 .edu-known {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--line);
-  margin-bottom: 8px;
+  padding: 12px 14px;
+  border: 1px solid #EFEFEF;
+  border-radius: 12px;
+  background: #FAFAFA;
+  margin-bottom: 14px;
 }
 .edu-known-lbl { font-size: .75rem; font-weight: 550; color: var(--muted); }
-.edu-known-val { font-size: .95rem; font-weight: 650; }
-.edu-req { color: var(--accent); }
-.edu-hint { margin: 0 0 14px; font-size: .82rem; color: var(--muted); line-height: 1.45; }
+.edu-known-val { font-size: .92rem; font-weight: 650; color: #111; }
+.edu-req { color: var(--accent, #B5202A); }
+.edu-hint { margin: -4px 0 14px; font-size: .8rem; color: #6B7280; line-height: 1.45; }
+.edu-phone {
+  display: flex;
+  align-items: center;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+  transition: border-color .12s, box-shadow .12s;
+}
+.edu-phone:focus-within {
+  border-color: var(--accent, #B5202A);
+  box-shadow: 0 0 0 3px rgba(181, 32, 42, .1);
+}
+.edu-phone-cc {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 12px 10px 12px 12px;
+  color: #111;
+  font-size: .9rem;
+  font-weight: 650;
+  user-select: none;
+}
+.edu-phone-cc-flag {
+  width: 18px;
+  height: 13px;
+  border-radius: 2px;
+  object-fit: cover;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.06);
+}
+.edu-phone-cc-chevron { color: #B0B0B0; flex-shrink: 0; }
+.edu-phone-sep {
+  width: 1px;
+  height: 22px;
+  background: #E5E5E5;
+  flex-shrink: 0;
+}
+.edu-phone input {
+  flex: 1;
+  min-width: 0;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 13px 14px;
+  border-radius: 0;
+  font-size: .92rem;
+}
+.edu-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 14px 20px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent, #B5202A);
+  color: #fff;
+  font: inherit;
+  font-size: .95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity .12s, transform .12s;
+}
+.edu-cta:hover { opacity: .92; }
+.edu-cta:disabled { opacity: .4; cursor: not-allowed; }
+.edu-cta-arrow {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--accent, #B5202A);
+  flex-shrink: 0;
+}
+.edu-cta-arrow svg { display: block; }
+.edu-cta-plain .edu-cta-arrow {
+  width: auto;
+  height: auto;
+  margin-left: 4px;
+  background: transparent;
+  color: #fff;
+}
+.edu-privacy {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+  margin: 16px 0 0;
+  font-size: .75rem;
+  line-height: 1.45;
+  color: #9CA3AF;
+  text-align: left;
+}
+.edu-privacy svg { flex-shrink: 0; margin-top: 1px; color: #9CA3AF; }
 .edu-admin {
   margin-top: 28px;
   padding-top: 22px;
@@ -3964,10 +4158,80 @@ body.ddtp-open #btn-tracker svg .ic-f { fill: var(--accent); stroke: none; }
   vertical-align: top;
 }
 .edu-admin th { font-size: .72rem; color: var(--muted); font-weight: 650; }
-#edu-interest-capture .nudge-actions { margin-top: 8px; flex-wrap: wrap; }
-#edu-interest-capture .nudge-actions .btn-primary { flex: 1; min-width: 160px; }
+#edu-interest-capture {
+  background: rgba(17, 17, 17, .42);
+  backdrop-filter: blur(2px);
+}
+#edu-interest-capture .edu-pop-modal {
+  max-width: 420px;
+  padding: 22px 24px 26px;
+  border-radius: 22px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .18);
+}
+.edu-pop-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.edu-pop-logo {
+  display: block;
+  height: 28px;
+  width: auto;
+}
+.edu-pop-close {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #6B7280;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.edu-pop-close:hover { background: #F3F4F6; color: #111; }
+.edu-pop-rule {
+  height: 2px;
+  margin: 0 0 18px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent, #B5202A) 0 28%, #E5E7EB 28% 100%);
+}
+#edu-interest-capture .edu-pop-title {
+  margin: 0 0 8px;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -.03em;
+  line-height: 1.2;
+  color: #111;
+}
+#edu-interest-capture .edu-pop-lead {
+  margin: 0 0 20px;
+  font-size: .9rem;
+  line-height: 1.55;
+  color: #4B5563;
+}
+#edu-interest-capture .edu-later {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 6px;
+  border: 0;
+  background: transparent;
+  color: #4B5563;
+  font: inherit;
+  font-size: .88rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+}
+#edu-interest-capture .edu-later:hover { color: #111; }
 @media (max-width: 720px) {
-  .edu-card { padding: 26px 18px 20px; border-radius: 22px; }
+  .edu-form-card { padding: 24px 18px 20px; border-radius: 20px; }
+  .edu-benefits { gap: 14px 10px; }
+  .edu-benefit span { font-size: .74rem; }
+  .edu-benefit-ico { width: 40px; height: 40px; border-radius: 12px; }
 }
 .auth-wa-hint { font-size: .78rem; color: var(--muted); margin: 0 0 10px; line-height: 1.4; }
 .auth-wa-resend { text-align: center; margin: 10px 0 0; font-size: .78rem; }
@@ -9304,13 +9568,40 @@ body.view-chat .sfb-card {
           <div id="community-board-root"></div>
         </div>
         <div class="view" id="view-edukasi">
-          <article class="edu-card" id="edu-panel">
-            <div id="edu-panel-body"></div>
-            <section class="edu-admin" id="edu-admin" hidden>
-              <h3>Minat masuk</h3>
-              <div id="edu-admin-rows"></div>
-            </section>
-          </article>
+          <div class="edu-page" id="edu-panel">
+            <header class="edu-hero">
+              <p class="edu-eyebrow">Edukasi</p>
+              <h2>Mau dibimbing cara jualan?</h2>
+              <p class="edu-lead">Batch September sedang berjalan. Kalau kamu mau dibimbing — lewat mentor, atau ikut kelompok berikutnya — kami catat namamu.</p>
+              <div class="edu-benefits" aria-hidden="true">
+                <div class="edu-benefit">
+                  <span class="edu-benefit-ico">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                  </span>
+                  <span>Belajar dari mentor berpengalaman</span>
+                </div>
+                <div class="edu-benefit">
+                  <span class="edu-benefit-ico">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 8h4"/><path d="M7 12h6"/></svg>
+                  </span>
+                  <span>Bisa ikut kelompok berikutnya</span>
+                </div>
+                <div class="edu-benefit">
+                  <span class="edu-benefit-ico">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+                  </span>
+                  <span>Materi sesuai data pasar nyata</span>
+                </div>
+              </div>
+            </header>
+            <article class="edu-form-card">
+              <div id="edu-panel-body"></div>
+              <section class="edu-admin" id="edu-admin" hidden>
+                <h3>Minat masuk</h3>
+                <div id="edu-admin-rows"></div>
+              </section>
+            </article>
+          </div>
         </div>
         <div class="view" id="view-cohort">
           <div class="cohort-wrap">
@@ -10045,7 +10336,14 @@ body.view-chat .sfb-card {
 </div>
 
 <div class="modal-overlay" id="edu-interest-capture" hidden>
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="edu-interest-title">
+  <div class="modal edu-pop-modal" role="dialog" aria-modal="true" aria-labelledby="edu-interest-title">
+    <div class="edu-pop-head">
+      <img class="edu-pop-logo" src="/images/brand/logo-horizontal-red.webp" alt="LARIS" height="28" width="120">
+      <button type="button" class="edu-pop-close" data-edu-later aria-label="Tutup">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="edu-pop-rule" aria-hidden="true"></div>
     <div id="edu-pop-body"></div>
   </div>
 </div>

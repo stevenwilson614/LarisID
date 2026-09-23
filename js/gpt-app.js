@@ -2691,20 +2691,44 @@ async function loadEduInterestContext() {
   };
 }
 
-function eduFormFieldsHtml(ctx, prefix) {
+function eduCtaHtml(opts) {
+  const plain = opts?.plainArrow ? ' edu-cta-plain' : '';
+  const arrow = opts?.plainArrow
+    ? `<span class="edu-cta-arrow" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></span>`
+    : `<span class="edu-cta-arrow" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></span>`;
+  return `<button type="button" class="edu-cta${plain}" data-edu-submit><span>Ya, saya tertarik.</span>${arrow}</button>`;
+}
+
+function eduWaFieldHtml(prefix, localDigits, required) {
+  const req = required ? ' <span class="edu-req">*</span>' : '';
+  const flag = `<svg class="edu-phone-cc-flag" width="18" height="13" viewBox="0 0 18 13" aria-hidden="true"><rect width="18" height="13" rx="1.5" fill="#E31D1C"/><path fill="#fff" d="M0 4.3h18v4.4H0z"/></svg>`;
+  return `<div class="field"><label for="${prefix}-wa">WhatsApp${req}</label>
+    <div class="edu-phone">
+      <span class="edu-phone-cc" aria-hidden="true">${flag}<span>+62</span>
+        <svg class="edu-phone-cc-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg>
+      </span>
+      <span class="edu-phone-sep" aria-hidden="true"></span>
+      <input id="${prefix}-wa" data-edu-field="wa" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="16" placeholder="812 3456 7890" value="${esc(localDigits || '')}">
+    </div>
+  </div>`;
+}
+
+function eduFormFieldsHtml(ctx, prefix, opts) {
   const bits = [];
+  const panel = !opts?.popup;
   if (!ctx.needName && ctx.name) {
-    bits.push(`<div class="edu-known"><span class="edu-known-lbl">Nama</span><span class="edu-known-val" data-edu-known="name">${esc(ctx.name)}</span></div>`);
+    bits.push(`<div class="edu-known"><span class="edu-known-lbl">Nama Lengkap</span><span class="edu-known-val" data-edu-known="name">${esc(ctx.name)}</span></div>`);
   } else {
-    bits.push(`<div class="field"><label for="${prefix}-name">Nama <span class="edu-req">*</span></label><input id="${prefix}-name" data-edu-field="name" type="text" autocomplete="name" maxlength="80" placeholder="Nama lengkap" value="${esc(ctx.name || '')}"></div>`);
+    bits.push(`<div class="field"><label for="${prefix}-name">Nama Lengkap <span class="edu-req">*</span></label><input id="${prefix}-name" data-edu-field="name" type="text" autocomplete="name" maxlength="80" placeholder="${panel ? 'Contoh: Budi Santoso' : 'Nama lengkap'}" value="${esc(ctx.name || '')}"></div>`);
   }
   if (ctx.needEmail) {
-    bits.push(`<div class="field"><label for="${prefix}-email">Email</label><input id="${prefix}-email" data-edu-field="email" type="email" autocomplete="email" maxlength="160" placeholder="nama@email.com"></div>`);
+    const req = panel ? ' <span class="edu-req">*</span>' : '';
+    bits.push(`<div class="field"><label for="${prefix}-email">Email${req}</label><input id="${prefix}-email" data-edu-field="email" type="email" autocomplete="email" maxlength="160" placeholder="nama@email.com"></div>`);
   } else if (ctx.email) {
     bits.push(`<div class="edu-known"><span class="edu-known-lbl">Email</span><span class="edu-known-val" data-edu-known="email">${esc(ctx.email)}</span></div>`);
   }
   if (ctx.needWa) {
-    bits.push(`<div class="field"><label for="${prefix}-wa">WhatsApp</label><input id="${prefix}-wa" data-edu-field="wa" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="0812 3456 7890"></div>`);
+    bits.push(eduWaFieldHtml(prefix, '', panel));
   } else if (ctx.wa) {
     bits.push(`<div class="edu-known"><span class="edu-known-lbl">WhatsApp</span><span class="edu-known-val" data-edu-known="wa">${esc(ctx.wa)}</span></div>`);
   }
@@ -2714,44 +2738,53 @@ function eduFormFieldsHtml(ctx, prefix) {
   return bits.join('');
 }
 
-function eduDoneHtml() {
-  return `<h2>Tercatat.</h2><p class="edu-lead">Kami akan menghubungi kamu. Belum ada jadwal pasti.</p>`;
+function eduDoneHtml(opts) {
+  if (opts?.popup) {
+    return `<h3 id="edu-interest-title" class="edu-pop-title">Tercatat.</h3><p class="edu-pop-lead">Kami akan menghubungi kamu. Belum ada jadwal pasti.</p>`;
+  }
+  return `<h3 class="edu-form-title">Tercatat.</h3><p class="edu-form-sub">Kami akan menghubungi kamu. Belum ada jadwal pasti.</p>`;
+}
+
+function eduPrivacyHtml() {
+  return `<p class="edu-privacy"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span>Data kamu aman dan hanya digunakan untuk keperluan edukasi Laris.</span></p>`;
 }
 
 function paintEduFormInto(root, ctx, opts) {
   if (!root) return;
   if (ctx.interested) {
-    root.innerHTML = eduDoneHtml();
+    root.innerHTML = eduDoneHtml(opts);
     return;
   }
   if (ctx.inCohort && !opts?.forceForm) {
-    root.innerHTML = `<h2>Kamu sudah di kohort.</h2><p class="edu-lead">Mentor dan jadwal ada di menu Kohort.</p>`;
+    root.innerHTML = `<h3 class="edu-form-title">Kamu sudah di kohort.</h3><p class="edu-form-sub">Mentor dan jadwal ada di menu Kohort.</p>`;
     return;
   }
-  const later = opts?.later
-    ? '<button type="button" class="btn-ghost" data-edu-later>Nanti</button>'
-    : '';
-  const heading = opts?.popup
-    ? `<h3 id="edu-interest-title" class="nudge-title">Mau dibimbing cara jualan?</h3>`
-    : `<h2>Mau dibimbing cara jualan?</h2>`;
-  const leadClass = opts?.popup ? 'nudge-sub' : 'edu-lead';
-  root.innerHTML = `${heading}
-    <p class="${leadClass}">Batch September sedang berjalan. Kalau kamu mau dibimbing — lewat mentor, atau ikut kelompok berikutnya — kami catat namamu.</p>
-    ${eduFormFieldsHtml(ctx, opts?.prefix || 'edu')}
+  const fields = eduFormFieldsHtml(ctx, opts?.prefix || 'edu', opts);
+  if (opts?.popup) {
+    root.innerHTML = `<h3 id="edu-interest-title" class="edu-pop-title">Mau dibimbing cara jualan?</h3>
+      <p class="edu-pop-lead">Batch September sedang berjalan. Kalau kamu mau dibimbing — lewat mentor, atau ikut kelompok berikutnya — kami catat namamu.</p>
+      ${fields}
+      <div class="auth-err" data-edu-error></div>
+      ${eduCtaHtml({})}
+      <button type="button" class="edu-later" data-edu-later>Nanti saja</button>`;
+    return;
+  }
+  root.innerHTML = `<h3 class="edu-form-title">Daftar Minat Edukasi</h3>
+    <p class="edu-form-sub">Isi data berikut dan tim kami akan menghubungi kamu untuk informasi selanjutnya.</p>
+    ${fields}
     <div class="auth-err" data-edu-error></div>
-    <div class="nudge-actions">
-      <button type="button" class="btn-primary" data-edu-submit>Ya, saya tertarik.</button>
-      ${later}
-    </div>`;
+    ${eduCtaHtml({ plainArrow: true })}
+    ${eduPrivacyHtml()}`;
 }
 
 async function paintEduPanel() {
   const root = $('edu-panel-body');
   if (!root) return;
   if (!currentUser) {
-    root.innerHTML = `<h2>Mau dibimbing cara jualan?</h2>
-      <p class="edu-lead">Masuk dulu supaya kami bisa mencatat minatmu. Nama wajib. Email atau WhatsApp yang belum ada di akun, kamu isi di sini.</p>
-      <div class="nudge-actions"><button type="button" class="btn-primary" id="edu-panel-login">Masuk</button></div>`;
+    root.innerHTML = `<h3 class="edu-form-title">Daftar Minat Edukasi</h3>
+      <p class="edu-form-sub">Masuk dulu supaya kami bisa mencatat minatmu. Nama wajib. Email atau WhatsApp yang belum ada di akun, kamu isi di sini.</p>
+      <button type="button" class="edu-cta edu-cta-plain" id="edu-panel-login"><span>Masuk</span><span class="edu-cta-arrow" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></span></button>
+      ${eduPrivacyHtml()}`;
     $('edu-admin') && ($('edu-admin').hidden = true);
     return;
   }
@@ -2858,10 +2891,19 @@ function eduReadFields(root, ctx) {
   const knownName = root.querySelector('[data-edu-known="name"]');
   const knownEmail = root.querySelector('[data-edu-known="email"]');
   const knownWa = root.querySelector('[data-edu-known="wa"]');
+  let wa = '';
+  if (waInput) {
+    const local = String(waInput.value || '').trim();
+    wa = local ? (local.startsWith('+') || local.startsWith('62') || local.startsWith('0') ? local : `+62${local.replace(/\D/g, '')}`) : '';
+  } else if (knownWa) {
+    wa = String(knownWa.textContent || '').trim();
+  } else {
+    wa = String(ctx?.wa || '').trim();
+  }
   return {
     name: String(nameInput?.value || knownName?.textContent || ctx?.name || '').trim(),
     email: String(emailInput?.value || knownEmail?.textContent || ctx?.email || '').trim(),
-    wa: String(waInput?.value || knownWa?.textContent || ctx?.wa || '').trim(),
+    wa,
   };
 }
 
@@ -2889,14 +2931,14 @@ async function submitEduInterest(root, opts) {
   }
   const waNorm = fields.wa ? _waNormalisePhone(fields.wa) : '';
   if (fields.wa && !waNorm) {
-    showErr('Masukkan nomor WhatsApp yang valid. Contoh: 08123456789');
+    showErr('Masukkan nomor WhatsApp yang valid. Contoh: 8123456789');
     return;
   }
   if (!fields.email && !waNorm && !eduRealEmail(currentUser)) {
     showErr('Isi email atau WhatsApp — salah satu cukup.');
     return;
   }
-  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
   try {
     const { data, error } = await _supabase.rpc('education_submit_interest', {
       p_name: fields.name,
@@ -2914,7 +2956,7 @@ async function submitEduInterest(root, opts) {
     if (waNorm) await saveProfileWaNumber(waNorm);
     void logUserEvent('edu_interest', { ui: 'gpt', action: 'yes', via: opts?.source || 'panel' });
     if (opts?.source === 'popup') {
-      root.innerHTML = `<h3 id="edu-interest-title" class="nudge-title">Tercatat.</h3><p class="nudge-sub">Kami akan menghubungi kamu. Belum ada jadwal pasti.</p>`;
+      root.innerHTML = eduDoneHtml({ popup: true });
       setTimeout(() => closeEduInterestPopup(), 1400);
     } else {
       root.innerHTML = eduDoneHtml();
@@ -2924,7 +2966,10 @@ async function submitEduInterest(root, opts) {
   } catch (_) {
     showErr('Gagal menyimpan. Coba lagi.');
   } finally {
-    if (btn && btn.isConnected) { btn.disabled = false; btn.textContent = 'Ya, saya tertarik.'; }
+    if (btn && btn.isConnected) {
+      btn.disabled = false;
+      btn.removeAttribute('aria-busy');
+    }
   }
 }
 
