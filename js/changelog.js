@@ -18,6 +18,10 @@ window.LARIS_CHANGELOG = [
         text: 'Menu Edukasi untuk yang mau dibimbing cara jualan — halaman dengan manfaat mentor, form Daftar Minat, dan popup merah dengan logo. Nama wajib. Email atau WhatsApp yang belum ada di akun, diisi di situ. Satu tombol: Ya, saya tertarik. Admin melihat halaman seperti user baru; daftar yang buka halaman dan yang tertarik ada di Dashboard Admin.',
         tech: '#btn-edukasi + .edu-page / .edu-form-card + #edu-interest-capture; edu_page_view; education_admin_overview + education_interests (20260923120000, 20260923140000).',
       },
+      {
+        text: 'Kalau di chat Steven kamu pilih “Bingung cara pakainya”, balasannya mengajak buka tab Edukasi dan daftar bimbingan mentor.',
+        tech: 'sfbChoseBingung → #sfb-edu-link data-sfb-edu opens #view-edukasi; steven_followup payload.go=edukasi for unanswered Bingung replies (20260923180000).',
+      },
     ],
   },
   {

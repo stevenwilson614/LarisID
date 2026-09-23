@@ -8295,7 +8295,27 @@ body.view-chat .sfb-card {
   border-radius: 14px 0 14px 14px;
 }
 .sfb-bubble + .sfb-bubble { margin-top: -2px; }
+.sfb-in { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+.sfb-edu-link {
+  display: inline-block;
+  margin-top: 8px;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: #027A68;
+  font: inherit;
+  font-size: .84rem;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.sfb-edu-link[hidden] { display: none !important; }
+.sfb-edu-link:hover { color: #075E54; }
+.sfb-edu-link:focus-visible { outline: 2px solid #075E54; outline-offset: 2px; }
 .sfb-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.sfb-chips[hidden],
+.sfb-composer[hidden] { display: none !important; }
 .sfb-chip {
   border: 1px solid rgba(0, 0, 0, .1);
   background: #fff;
@@ -10702,8 +10722,11 @@ body.view-chat .sfb-card {
     <div class="wa-thread" id="sfb-thread">
       <div class="wa-row wa-row--in">
         <img class="wa-face" src="/images/steven-avatar.webp" width="28" height="28" alt="" decoding="async">
-        <p class="sfb-bubble" id="sfb-msg">Halo! Aku lihat kamu cukup sering pakai LarisID.
-          Boleh tanya &mdash; menurut kamu apa yang masih kurang di sini?</p>
+        <div class="sfb-in">
+          <p class="sfb-bubble" id="sfb-msg">Halo! Aku lihat kamu cukup sering pakai LarisID.
+            Boleh tanya &mdash; menurut kamu apa yang masih kurang di sini?</p>
+          <button type="button" class="sfb-edu-link" id="sfb-edu-link" data-sfb-edu hidden>Buka tab Edukasi</button>
+        </div>
       </div>
     </div>
     <div class="sfb-chips" id="sfb-chips">
@@ -10840,7 +10863,7 @@ body.view-chat .sfb-card {
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260915a" defer></script>
-<script src="/js/gpt-app.js?v=20260923b" defer></script>
+<script src="/js/gpt-app.js?v=20260923c" defer></script>
 <style>
 /* LarisExpor chrome hidden for now. Restore with scripts/lib/expor-tab.mjs. */
 #btn-expor-pasar,

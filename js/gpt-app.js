@@ -3882,7 +3882,14 @@ let _sfbBusy    = false;
 let _sfbStatus  = null;   // cached my_feedback_prompt_status() for this page load
 let _sfbAnswered = false;
 let _sfbChip    = null;
-let _sfbFollowup = null;  // { id, lead } pending steven_followup notice
+let _sfbFollowup = null;  // { id, lead, go, cta } pending steven_followup notice
+const SFB_EDU_CTA = 'Buka tab Edukasi';
+const SFB_EDU_INVITE = 'Kamu bilang masih bingung cara pakainya. Buka tab Edukasi di menu kiri, lalu daftar bimbingan mentor di situ ya.';
+
+function sfbChoseBingung(msg) {
+  if (_sfbChip === 'Bingung cara pakainya') return true;
+  return /masih bingung/i.test(String(msg || ''));
+}
 
 function sfbState() {
   try {
@@ -4042,11 +4049,18 @@ function sfbApplyPromptCopy() {
   const chips = $('sfb-chips');
   const composer = $('sfb-card')?.querySelector('.sfb-composer');
   if (composer) composer.hidden = false;
+  const edu = $('sfb-edu-link');
   if (_sfbFollowup?.lead) {
     if (msg) msg.textContent = _sfbFollowup.lead;
     if (chips) chips.hidden = true;
+    if (edu) {
+      const showEdu = _sfbFollowup.go === 'edukasi';
+      edu.hidden = !showEdu;
+      if (showEdu) edu.textContent = _sfbFollowup.cta || SFB_EDU_CTA;
+    }
     return;
   }
+  if (edu) edu.hidden = true;
   if (msg && !msg.dataset.sfbDefault) {
     msg.dataset.sfbDefault = msg.textContent.trim();
   }
@@ -4057,7 +4071,12 @@ function sfbApplyPromptCopy() {
 function sfbStartFollowup(notice) {
   const lead = (notice?.payload?.lead || '').trim();
   if (!notice?.id || !lead) return;
-  _sfbFollowup = { id: notice.id, lead };
+  _sfbFollowup = {
+    id: notice.id,
+    lead,
+    go: notice.payload?.go || '',
+    cta: notice.payload?.cta || '',
+  };
   _sfbAnswered = false;
   sfbBind();
   sfbApplyPromptCopy();
@@ -4156,6 +4175,11 @@ function sfbBind() {
   const send  = $('sfb-send');
 
   $('sfb-close')?.addEventListener('click', () => sfbMinimize('close'));
+  $('sfb-card')?.addEventListener('click', (e) => {
+    if (!e.target.closest('[data-sfb-edu]')) return;
+    e.preventDefault();
+    void sfbOpenEdukasi();
+  });
 
   $('sfb-chips')?.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-sfb-chip]');
@@ -4274,7 +4298,7 @@ async function sfbSubmit() {
     let granted = 0;
     if (inserted?.id) granted = await sfbClaimGrant(inserted.id);
     sfbSetMandatoryUi(false);
-    sfbThankYou(granted, fromLeft);
+    sfbThankYou(granted, fromLeft, { bingung: sfbChoseBingung(msg) });
   } catch (err) {
     console.error('superuser feedback submit failed:', err?.code || '', err?.message || err);
     if (st) { st.textContent = 'Gagal mengirim. Coba lagi.'; st.className = 'sfb-status is-err'; }
@@ -4304,7 +4328,22 @@ async function sfbClaimGrant(feedbackId) {
   return 0;
 }
 
-function sfbThankYou(granted, fromLeft) {
+async function sfbOpenEdukasi() {
+  const id = _sfbFollowup?.id || null;
+  if (id && _supabase) {
+    try { await _supabase.rpc('dismiss_notice', { p_id: id }); } catch (_) {}
+  }
+  _sfbFollowup = null;
+  _sfbAnswered = true;
+  sfbSetState('answered');
+  sfbSetMandatoryUi(false);
+  sfbHideCard();
+  sfbPaintFab();
+  void logUserEvent('superuser_feedback_prompt', { ui: 'gpt', action: 'open_edukasi' });
+  openEdukasiView();
+}
+
+function sfbThankYou(granted, fromLeft, opts = {}) {
   const body = $('sfb-body');
   if (!body) return;
   _sfbAnswered = true;
@@ -4312,11 +4351,17 @@ function sfbThankYou(granted, fromLeft) {
   const thanks = granted
     ? `Makasih, aku baca semua. Aku tambahin <strong>${granted.toLocaleString('id-ID')} baris unduhan</strong> ke akun kamu ya \u2014 dipakai kapan saja.`
     : 'Makasih, aku baca semua pesan yang masuk.';
+  const bingung = !!opts.bingung;
+  const bubble = bingung
+    ? `${thanks} ${SFB_EDU_INVITE}<button type="button" class="sfb-edu-link" data-sfb-edu>${SFB_EDU_CTA}</button>`
+    : thanks;
   const thread = $('sfb-thread');
   const chips = $('sfb-chips');
   const composer = $('sfb-card')?.querySelector('.sfb-composer');
+  const edu = $('sfb-edu-link');
   if (chips) chips.hidden = true;
   if (composer) composer.hidden = true;
+  if (edu) edu.hidden = true;
   const host = thread || body;
   const out = document.createElement('div');
   out.className = 'wa-row wa-row--out';
@@ -4326,9 +4371,13 @@ function sfbThankYou(granted, fromLeft) {
   inn.className = 'wa-row wa-row--in';
   inn.innerHTML =
     '<img class="wa-face" src="/images/steven-avatar.webp" width="28" height="28" alt="" decoding="async">' +
-    `<p class="sfb-bubble">${thanks}</p>`;
+    `<div class="sfb-bubble">${bubble}</div>`;
   host.appendChild(inn);
   body.scrollTop = body.scrollHeight;
+  if (bingung) {
+    if (granted > 0) sfbPlayGrantSlam(granted, fromLeft);
+    return;
+  }
   setTimeout(() => {
     sfbHideCard();
     sfbPaintFab();
