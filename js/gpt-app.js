@@ -3885,10 +3885,17 @@ let _sfbChip    = null;
 let _sfbFollowup = null;  // { id, lead, go, cta } pending steven_followup notice
 const SFB_EDU_CTA = 'Buka tab Edukasi';
 const SFB_EDU_INVITE = 'Kamu bilang masih bingung cara pakainya. Buka tab Edukasi di menu kiri, lalu daftar bimbingan mentor di situ ya.';
+const SFB_KURANG_LENGKAP_ASK =
+  'Hai! Makasih sudah jawab. Kamu bilang datanya kurang lengkap — informasi apa lagi yang paling ingin kamu lihat di LarisID? Ceritain di sini ya, aku baca.';
 
 function sfbChoseBingung(msg) {
   if (_sfbChip === 'Bingung cara pakainya') return true;
   return /masih bingung/i.test(String(msg || ''));
+}
+
+function sfbChoseKurangLengkap(msg) {
+  if (_sfbChip === 'Datanya kurang lengkap') return true;
+  return /kurang lengkap/i.test(String(msg || ''));
 }
 
 function sfbState() {
@@ -4298,7 +4305,29 @@ async function sfbSubmit() {
     let granted = 0;
     if (inserted?.id) granted = await sfbClaimGrant(inserted.id);
     sfbSetMandatoryUi(false);
-    sfbThankYou(granted, fromLeft, { bingung: sfbChoseBingung(msg) });
+    const bingung = sfbChoseBingung(msg);
+    const kurang = !bingung && sfbChoseKurangLengkap(msg);
+    // Bingung → Edukasi invite in the thank-you. Kurang lengkap → enqueue the
+    // standard "what are you looking for?" follow-up so it opens next (and in
+    // this same session after the thank-you paints).
+    let kurangNotice = null;
+    if (kurang) {
+      try {
+        const { data, error } = await _supabase.rpc('enqueue_sfb_kurang_lengkap_followup');
+        if (error) throw error;
+        kurangNotice = data || null;
+      } catch (e) {
+        console.warn('enqueue_sfb_kurang_lengkap_followup:', e?.message || e);
+      }
+    }
+    sfbThankYou(granted, fromLeft, { bingung, kurangLengkap: kurang });
+    if (kurangNotice?.id && kurangNotice?.payload?.lead) {
+      // Soft reopen as a personal follow-up after the thank-you settles.
+      setTimeout(() => sfbStartFollowup({
+        id: kurangNotice.id,
+        payload: kurangNotice.payload,
+      }), granted > 0 ? 2200 : 900);
+    }
   } catch (err) {
     console.error('superuser feedback submit failed:', err?.code || '', err?.message || err);
     if (st) { st.textContent = 'Gagal mengirim. Coba lagi.'; st.className = 'sfb-status is-err'; }
@@ -4352,9 +4381,12 @@ function sfbThankYou(granted, fromLeft, opts = {}) {
     ? `Makasih, aku baca semua. Aku tambahin <strong>${granted.toLocaleString('id-ID')} baris unduhan</strong> ke akun kamu ya \u2014 dipakai kapan saja.`
     : 'Makasih, aku baca semua pesan yang masuk.';
   const bingung = !!opts.bingung;
+  const kurangLengkap = !!opts.kurangLengkap;
   const bubble = bingung
     ? `${thanks} ${SFB_EDU_INVITE}<button type="button" class="sfb-edu-link" data-sfb-edu>${SFB_EDU_CTA}</button>`
-    : thanks;
+    : kurangLengkap
+      ? `${thanks} ${SFB_KURANG_LENGKAP_ASK}`
+      : thanks;
   const thread = $('sfb-thread');
   const chips = $('sfb-chips');
   const composer = $('sfb-card')?.querySelector('.sfb-composer');
@@ -4374,7 +4406,9 @@ function sfbThankYou(granted, fromLeft, opts = {}) {
     `<div class="sfb-bubble">${bubble}</div>`;
   host.appendChild(inn);
   body.scrollTop = body.scrollHeight;
-  if (bingung) {
+  // Keep the card open for bingung (Edukasi CTA) and kurang lengkap (follow-up
+  // ask takes over the composer next). Grant slam still runs.
+  if (bingung || kurangLengkap) {
     if (granted > 0) sfbPlayGrantSlam(granted, fromLeft);
     return;
   }

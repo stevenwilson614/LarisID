@@ -11,6 +11,16 @@
 // A plain string is still accepted and renders with no tech line.
 window.LARIS_CHANGELOG = [
   {
+    date: '2026-09-25',
+    title: 'Balasan Steven kalau data kurang lengkap',
+    items: [
+      {
+        text: 'Kalau di chat Steven kamu bilang datanya kurang lengkap, Steven langsung tanya informasi apa yang paling kamu mau lihat — balas di chat yang sama.',
+        tech: 'sfbChoseKurangLengkap → enqueue_sfb_kurang_lengkap_followup() + steven_followup ask; backfill open kurang-lengkap inbox (20260925100000).',
+      },
+    ],
+  },
+  {
     date: '2026-09-23',
     title: 'Edukasi di menu kiri',
     items: [
