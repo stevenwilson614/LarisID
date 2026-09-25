@@ -14067,10 +14067,17 @@ function bindListingRows(root, extra = {}) {
   (root || document).querySelectorAll('.lrow-wrap').forEach(w => {
     if (!w.dataset.boundLrowScroll) {
       w.dataset.boundLrowScroll = '1';
+      const scrollers = [w];
+      // Cari Produk desktop: H-scroll is on .panel so sticky Omset headers work.
+      if (w.closest('#dir-grid')) {
+        const panel = w.closest('.panel');
+        if (panel && !scrollers.includes(panel)) scrollers.push(panel);
+      }
       const syncScrolled = () => {
-        w.classList.toggle('is-scrolled', w.scrollLeft > 4);
+        const x = scrollers.some((el) => (el.scrollLeft || 0) > 4);
+        w.classList.toggle('is-scrolled', x);
       };
-      w.addEventListener('scroll', syncScrolled, { passive: true });
+      scrollers.forEach((el) => el.addEventListener('scroll', syncScrolled, { passive: true }));
       syncScrolled();
     }
     if (w.dataset.boundLrowSort) return;
