@@ -1,13 +1,24 @@
 # MasterMind with Anton GC — mentoring funnel + CRM
 
-_Internal. Localhost prototype only. Do not deploy, do not apply SQL on Contabo._
+_Internal. Do not apply SQL on Contabo. Do not merge to `main`._
 
-Run: `bash school/serve.sh` → http://127.0.0.1:8765/s/obrolan.marketing  
-(dev alias: http://127.0.0.1:8765/school/)
+Remote demo: https://mastermind-anton.pages.dev/s/obrolan.marketing?invite=ANTON-SEP26  
+Local: `bash school/serve.sh` → http://127.0.0.1:8765/s/obrolan.marketing  
+Dual-view (localhost): http://127.0.0.1:8765/school/present.html
 
-Dual-view walkthrough (Anton desktop + student HP): http://127.0.0.1:8765/school/present.html
+This extends [README.md](./README.md).
 
-This extends [README.md](./README.md). Offline lock unchanged.
+## Payment (honest mock)
+
+Anton is merchant. LarisID never holds student fees. Transfer is **pending until Anton confirms**.
+
+1. Siswa ketuk **Saya sudah transfer / scan** → status `pending`, plan tetap preview, tugas **Cek transfer**.
+2. Anton ketuk **Konfirmasi lunas** (profil, Daftar, atau tugas) → `grantMentoring`, stage Mentee.
+3. Autopay kartu tetap mock Mayar: langsung lunas, berlabel mock.
+4. Pilih ledger **lunas** pada siswa yang belum mentoring juga meng-grant akses.
+5. Perpanjangan: 5 hari peringatan → tugas WA Anton → 1 hari grace → preview video 1. Demo pakai **Simulasi jam**.
+
+Shared state (remote only): Pages Function `GET/PUT /api/state/{slug}?k=ANTON-SEP26` → KV. Poll 4 detik. Reset mengosongkan KV. IndexedDB blobs tidak ikut.
 
 ## Cycle
 
@@ -45,7 +56,7 @@ Satu tab **Siswa** dengan tiga kamera: **Daftar** (baris orang: nama+foto, telep
 
 **Jadwal:** kalender bulan — kurikulum (due), Meet/Zoom, tugas.
 
-Mentor tabs: Siswa · Tugas · Otomasi · Jaringan · Kurikulum · Perpustakaan · Jadwal · Diskusi · Pengaturan bayar. **Tidak ada** tab Antrian atau Pembayaran — bayar di baris siswa + profil.
+Mentor tabs: Siswa · Tugas · Otomasi · Kurikulum · Perpustakaan · Jadwal · Diskusi · Pengaturan bayar. **Tidak ada** tab Antrian atau Pembayaran — bayar di baris siswa + profil.
 
 **Simulasi jam** (+1h / +12h / +1d) on the mentor chrome to demo clocks without waiting. Queued WA/email is `wa.me` / `mailto` + status, not live send.
 
@@ -71,7 +82,7 @@ Certified mentors collect from **their** students. CRM **setoran 20%** is expect
 | Dewi Mentor | Mentor · downline Oki (mentoring) + Putri (SKU + Affiliate) |
 | Kamu / Nina / … | Mentee |
 
-Reset lokal clears `localStorage` key `anton-school-v3`.
+Reset clears `localStorage` key `anton-school-v3` and, on the remote demo, the shared KV blob. Fresh Reset also slides seed clocks forward so Ayu / Farah / Hadi / Irma stay demoable.
 
 ## Dual-view presentation
 

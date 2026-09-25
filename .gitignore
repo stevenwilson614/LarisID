@@ -19,6 +19,10 @@
 .venv-img/
 .venv-story/
 _site/
+_school_site/
+school/.kv-namespace-id
+.wrangler/
+school/.wrangler/
 dist/
 !affiliate/dist/
 !affiliate/dist/**

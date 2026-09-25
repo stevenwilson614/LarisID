@@ -1,4 +1,4 @@
-/* MasterMind with Anton GC localhost prototype. No live WhatsApp, TikTok, Mayar, or Contabo. */
+/* MasterMind with Anton GC prototype. No live WhatsApp, TikTok, Mayar, or Contabo. */
 (function () {
   const SEED = window.ANTON_SEED;
   const KEY = 'anton-school-v3';
@@ -8,6 +8,7 @@
   const PRESENT = PRESENT_QS.get('present') === '1';
   const PRESENT_PANE = PRESENT_QS.get('pane') === 'mentor' ? 'mentor' : 'student';
   const BUS = ('BroadcastChannel' in window) ? new BroadcastChannel('anton-school-v3') : null;
+  const SYNC_MAX = 5 * 1024 * 1024;
   const $ = (id) => document.getElementById(id);
   const ALL_SKUS = () => (SEED.catalog || []).map((p) => p.id);
   const MENTOR_SKUS = () => (SEED.catalog || []).filter((p) => p.includedInMentoring !== false).map((p) => p.id);
@@ -45,9 +46,18 @@
   function schoolPublicPath() {
     return '/s/' + schoolSlug();
   }
-  /** Canonical share URL (production host even on localhost demos). */
+  function isLocalHost() {
+    const h = location.hostname.toLowerCase();
+    return h === 'localhost' || h === '127.0.0.1' || h === '0.0.0.0';
+  }
+  function isBlockedHost() {
+    const h = location.hostname.toLowerCase();
+    return h === 'larisid.com' || h === 'www.larisid.com' || h === 'larisid.pages.dev';
+  }
+  /** Share URL: production host on localhost, this origin on the remote demo. */
   function schoolPublicUrl() {
-    return 'https://larisid.com' + schoolPublicPath();
+    if (isLocalHost()) return 'https://larisid.com' + schoolPublicPath();
+    return location.origin + schoolPublicPath();
   }
   function schoolLocalUrl() {
     return location.origin + schoolPublicPath();
@@ -80,7 +90,7 @@
     return false;
   }
 
-  if (/larisid\.com$/i.test(location.hostname) || location.hostname.endsWith('.pages.dev')) {
+  if (isBlockedHost()) {
     $('prod-block').hidden = false;
     $('app').hidden = true;
     return;
@@ -296,7 +306,11 @@
     }
     if (colId === 'city') return esc(s.city || '—');
     if (colId === 'stage') return esc(stageLabel(c.stage));
-    if (colId === 'bayar') return canBill() ? billStatusSelect(s.id, b) : payChip(b.status);
+    if (colId === 'bayar') {
+      const ctl = canBill() ? billStatusSelect(s.id, b) : payChip(b.status);
+      const confirm = confirmPaidBtn(s.id);
+      return confirm ? ctl + ' ' + confirm : ctl;
+    }
     if (colId === 'nilai') {
       return canBill()
         ? billAmountInput(s.id, b)
@@ -420,6 +434,30 @@
     });
   }
 
+  function rebaseDemoClocks(state) {
+    const anchor = new Date('2026-09-18T12:00:00+07:00').getTime();
+    const delta = Date.now() - anchor;
+    const bump = (iso) => {
+      if (!iso) return iso;
+      const t = new Date(iso).getTime();
+      return Number.isFinite(t) ? new Date(t + delta).toISOString() : iso;
+    };
+    Object.keys(state.billing || {}).forEach((id) => {
+      const b = state.billing[id];
+      if (!b) return;
+      ['offerStartedAt', 'offerExpiresAt', 'accessUntil', 'paidAt'].forEach((k) => {
+        if (b[k]) b[k] = bump(b[k]);
+      });
+    });
+    Object.keys(state.crm || {}).forEach((id) => {
+      const c = state.crm[id];
+      if (!c) return;
+      ['watchedFirstAt', 'notInterestedAt', 'examAt', 'acceptedMentorAt'].forEach((k) => {
+        if (c[k]) c[k] = bump(c[k]);
+      });
+    });
+  }
+
   function defaultState() {
     const progress = {};
     Object.entries(SEED.progressSeed).forEach(([sid, ids]) => {
@@ -430,7 +468,7 @@
       const ids = Object.keys(progress[sid]);
       last[sid] = ids[ids.length - 1] || (SEED.lectures[0] && SEED.lectures[0].id);
     });
-    return {
+    const state = {
       lectures: cloneLectures(),
       catalog: SEED.catalog.map((p) => ({ ...p, outline: (p.outline || []).slice() })),
       weeks: SEED.weeks.map((w) => ({ ...w })),
@@ -465,6 +503,8 @@
       daftarCols: defaultDaftarCols(),
       daftarCustom: []
     };
+    rebaseDemoClocks(state);
+    return state;
   }
 
   function load() {
@@ -563,6 +603,112 @@
     if (ui.present && ui.presentReady && parent !== window) {
       parent.postMessage({ source: 'anton-school', type: 'live' }, location.origin);
     }
+    schedulePush();
+  }
+
+  let syncRev = 0;
+  let syncTimer = null;
+  let syncPoll = null;
+  let syncInFlight = false;
+  let syncReady = false;
+  let syncStatus = '';
+
+  function syncEnabled() {
+    if (ui.present) return false;
+    if (isBlockedHost()) return false;
+    if (isLocalHost()) return PRESENT_QS.get('sync') === '1';
+    return true;
+  }
+  function syncInvite() {
+    try {
+      return schoolInviteCode() || sessionStorage.getItem('anton-school-invite') || '';
+    } catch (err) {
+      return schoolInviteCode() || '';
+    }
+  }
+  function syncUrl() {
+    const slug = encodeURIComponent(schoolSlug());
+    const k = encodeURIComponent(syncInvite());
+    return '/api/state/' + slug + '?k=' + k;
+  }
+  function schedulePush() {
+    if (!syncEnabled() || !syncReady) return;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(pushState, 800);
+  }
+  async function pushState(force) {
+    if (!syncEnabled()) return;
+    if (syncInFlight && !force) return;
+    const payload = {
+      rev: (syncRev || 0) + 1,
+      updatedAt: new Date().toISOString(),
+      state: db
+    };
+    let body;
+    try { body = JSON.stringify(payload); } catch (err) { return; }
+    if (body.length > SYNC_MAX) {
+      syncStatus = 'terlalu besar';
+      toast('State terlalu besar untuk sync');
+      return;
+    }
+    syncInFlight = true;
+    try {
+      const res = await fetch(syncUrl(), {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: body,
+        cache: 'no-store'
+      });
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        syncRev = Number(data.rev) || payload.rev;
+        syncStatus = 'ok · rev ' + syncRev;
+      } else {
+        syncStatus = 'gagal ' + res.status;
+      }
+    } catch (err) {
+      syncStatus = 'offline';
+    } finally {
+      syncInFlight = false;
+      if (isStaff()) {
+        const clock = $('clock-bar');
+        if (clock && !clock.hidden) {
+          const el = clock.querySelector('[data-sync]');
+          if (el) el.textContent = 'Sync ' + syncStatus;
+        }
+      }
+    }
+  }
+  async function pullState() {
+    if (!syncEnabled() || syncInFlight) return;
+    try {
+      const res = await fetch(syncUrl(), { cache: 'no-store' });
+      if (res.status === 404) return;
+      if (!res.ok) {
+        syncStatus = 'gagal ' + res.status;
+        return;
+      }
+      const data = await res.json();
+      if (!data || !data.state) return;
+      const rev = Number(data.rev) || 0;
+      if (rev <= syncRev) return;
+      syncRev = rev;
+      syncStatus = 'ok · rev ' + syncRev;
+      localStorage.setItem(KEY, JSON.stringify(data.state));
+      reloadDb();
+    } catch (err) {
+      syncStatus = 'offline';
+    }
+  }
+  async function bootSync() {
+    if (!syncEnabled()) return;
+    await pullState();
+    syncReady = true;
+    if (syncPoll) clearInterval(syncPoll);
+    syncPoll = setInterval(pullState, 4000);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') pullState();
+    });
   }
 
   function mergeActionPlans(have) {
@@ -640,11 +786,14 @@
     const t = nowMs();
     return t >= end && t < end + graceMs();
   }
+  function isPending(id) {
+    return billingOf(id).status === 'pending';
+  }
   function canMentoring(id) {
     const b = billingOf(id);
     if (b.status === 'gratis') return true;
+    if (b.status === 'pending' || b.status === 'belum' || b.status === 'trial') return false;
     if (b.plan !== 'mentoring' && b.status !== 'gratis') return false;
-    if (b.status === 'belum' || b.status === 'trial') return false;
     if (inGrace(id)) return true;
     if (b.accessUntil && nowMs() >= new Date(b.accessUntil).getTime() + graceMs()) return false;
     return b.status === 'lunas' || b.status === 'cicilan';
@@ -1476,9 +1625,45 @@
     b.paidAt = isoNow();
     b.accessUntil = until.toISOString();
     b.note = term === 'autopay' ? 'Kartu autopay (mock)' : ('Transfer · ' + termLabel(term));
+    delete b.pendingTerm;
+    delete b.pendingAmount;
+    delete b.pendingAt;
+    delete b.offerExpiresAt;
     setStage(id, 'mentee', 'Lunas mentoring · ' + term);
     pushTimeline(id, 'pay', 'Bayar ' + fmtRp(amount) + ' · ' + (source || 'transfer'));
     enrollPerson(id, 'onboarding', true);
+  }
+  function markPendingTransfer(id, term, amount) {
+    const b = billingOf(id);
+    b.status = 'pending';
+    b.pendingTerm = term;
+    b.pendingAmount = amount;
+    b.pendingAt = isoNow();
+    b.amount = amount;
+    b.term = term;
+    b.source = 'transfer';
+    b.note = 'Menunggu konfirmasi Anton · ' + termLabel(term);
+    if (!b.plan || b.plan === '') b.plan = 'preview';
+    pushTimeline(id, 'pay', 'Klaim transfer ' + fmtRp(amount) + ' · menunggu konfirmasi');
+    addTask(id, 'Cek transfer ' + nameOf(id), 'Jumlah ' + fmtRp(amount) + ' ke ' + db.bank.bank + ' ' + db.bank.number, isoNow(), 'reminder');
+  }
+  function closeTransferTasks(id, taskId) {
+    db.tasks.forEach((t) => {
+      if (t.done) return;
+      if (taskId && t.id === taskId) t.done = true;
+      else if (!taskId && t.personId === id && /cek transfer/i.test(t.title || '')) t.done = true;
+    });
+  }
+  function confirmPaid(id, taskId) {
+    const b = billingOf(id);
+    const term = b.pendingTerm || b.term || 'month';
+    const amount = b.pendingAmount || b.amount || priceForTerm(term, welcomeOpen(id));
+    grantMentoring(id, term, 'transfer', amount);
+    closeTransferTasks(id, taskId);
+  }
+  function confirmPaidBtn(id) {
+    if (!canBill() || !isPending(id)) return '';
+    return '<button type="button" class="btn-sm" data-act="confirm-paid" data-id="' + esc(id) + '">Konfirmasi lunas</button>';
   }
   function startTrial(id) {
     const b = billingOf(id);
@@ -1503,7 +1688,7 @@
     people().forEach((s) => {
       const b = billingOf(s.id);
       const c = crmOf(s.id);
-      if ((c.stage === 'trial' || c.stage === 'nonton') && b.offerExpiresAt) {
+      if ((c.stage === 'trial' || c.stage === 'nonton') && b.offerExpiresAt && b.status !== 'pending') {
         const left = hoursLeft(b.offerExpiresAt);
         if (left != null && left <= 12 && left > 0 && !c.wa12Sent) {
           const plan = planById('trial');
@@ -2257,7 +2442,8 @@
           '<button type="button" class="ghost" data-act="clock" data-ms="86400000">+1 hari</button>' +
           '<button type="button" class="ghost" data-act="clock-reset">Reset jam</button>' +
           '<span class="muted">Tugas ' + db.tasks.filter((t) => !t.done).length +
-          ' · antrian ' + ((db.waQueue.filter((w) => w.status === 'queued').length) + ((db.emailQueue || []).filter((w) => w.status === 'queued').length)) + '</span>';
+          ' · antrian ' + ((db.waQueue.filter((w) => w.status === 'queued').length) + ((db.emailQueue || []).filter((w) => w.status === 'queued').length)) + '</span>' +
+          (syncEnabled() ? '<span class="muted" data-sync>Sync ' + esc(syncStatus || '…') + '</span>' : '');
       }
     }
     if (!isStaff()) {
@@ -2622,7 +2808,16 @@
   }
 
   /* ── student views ───────────────────────────────────────────────── */
+  function pendingBanner(sid) {
+    const b = billingOf(sid);
+    return '<section class="card trial-cta pending-cta">' +
+      '<p class="trial-kicker">Menunggu konfirmasi Anton</p>' +
+      '<h3>Transfer ' + fmtRp(b.pendingAmount || b.amount || 0) + ' sudah dicatat</h3>' +
+      '<p class="muted">Akses mentoring kebuka setelah Anton konfirmasi di CRM. Video 1 tetap kebuka.</p>' +
+      '</section>';
+  }
   function offerBanner(sid) {
+    if (isPending(sid)) return pendingBanner(sid);
     const b = billingOf(sid);
     const exp = b.offerExpiresAt;
     const open = welcomeOpen(sid);
@@ -2767,8 +2962,18 @@
     );
   }
   function viewPayPage(sid) {
-    const welcome = welcomeOpen(sid) || !billingOf(sid).offerExpiresAt;
     const b = billingOf(sid);
+    if (b.status === 'pending') {
+      return obWrap(WIZ_PAY,
+        '<p class="ob-kicker">Transfer</p>' +
+        '<h1 class="ob-q">Menunggu konfirmasi Anton</h1>' +
+        '<p class="ob-sub">Kamu sudah klaim transfer ' + fmtRp(b.pendingAmount || b.amount || 0) +
+        ' (' + esc(termLabel(b.pendingTerm || b.term)) +
+        '). Anton cek rekening, lalu akses mentoring kebuka. Video 1 tetap kebuka.</p>',
+        '<button class="btn ob-cta" data-act="tab" data-id="home">Kembali ke Home</button>',
+        true);
+    }
+    const welcome = welcomeOpen(sid) || !b.offerExpiresAt;
     const exp = b.offerExpiresAt || addMs(isoNow(), 24 * 36e5);
     const inWin = hoursLeft(exp) > 0;
     const term = ui.payTerm || 'month';
@@ -3217,6 +3422,7 @@
   function payAfterFirst(lec) {
     if (lec.id !== firstLectureId()) return '';
     if (canMentoring(ui.personaId)) return '';
+    if (isPending(ui.personaId)) return pendingBanner(ui.personaId);
     const b = billingOf(ui.personaId);
     const open = welcomeOpen(ui.personaId);
     return '<section class="card trial-cta lec-after">' +
@@ -4100,7 +4306,11 @@
             '<div class="roster-name">' + avatarHtml(s, 'avatar sm') + '<strong>' + esc(s.name) + '</strong></div>' +
             '<div class="muted">' + esc(s.city) + (s.mentorId && s.mentorId !== 'u-anton' ? ' · ' + esc(nameOf(s.mentorId)) : '') + '</div>' +
             (b.amount ? '<div class="money">' + esc(fmtRp(b.amount)) + '</div>' : '') +
-            '<div>' + payChip(b.status) + ' <span class="muted">' + esc(fmtRemain(b.offerExpiresAt || b.accessUntil)) + '</span></div>' +
+            '<div>' + payChip(b.status) + ' <span class="muted">' + esc(fmtRemain(
+              (b.status === 'lunas' || b.status === 'cicilan' || b.status === 'gratis')
+                ? b.accessUntil
+                : (b.offerExpiresAt || b.accessUntil)
+            )) + '</span></div>' +
             '</button>';
         }).join('') : '<p class="muted">Kosong, tarik kartu ke sini</p>') +
         '</div>';
@@ -4161,6 +4371,9 @@
       if (kind === 'wa') action += '<a class="btn-sm" href="' + esc(waLink(s.wa, t.body)) + '" target="_blank" rel="noopener">Buka WA</a>';
       if (kind === 'email') action += '<a class="btn-sm" href="' + esc(mailLink(s.email, t.title, t.body)) + '">Email</a>';
       if (kind === 'call' && s.wa) action += '<a class="btn-sm" href="tel:+' + esc(String(s.wa).replace(/\D/g, '')) + '">Telepon</a>';
+      if (canBill() && isPending(t.personId) && /cek transfer/i.test(t.title || '')) {
+        action += '<button class="btn-sm" data-act="confirm-paid" data-id="' + esc(t.personId) + '" data-task="' + esc(t.id) + '">Konfirmasi lunas</button>';
+      }
       action += '<button class="btn-sm" data-act="task-done" data-id="' + esc(t.id) + '">Selesai</button>';
     }
     return '<div class="task-row' + (t.done ? ' is-done' : '') + '">' +
@@ -4442,7 +4655,8 @@
           '</dd></div>' +
           '<div class="fub-field"><dt>Bayar</dt><dd>' +
             (canBill() ? billStatusSelect(id, b) : payChip(b.status)) +
-            '<div class="muted" style="margin-top:6px">' + esc(termLabel(b.term)) + '</div>' +
+            (confirmPaidBtn(id) ? '<div style="margin-top:6px">' + confirmPaidBtn(id) + '</div>' : '') +
+            '<div class="muted" style="margin-top:6px">' + esc(termLabel(b.pendingTerm || b.term)) + '</div>' +
             (canBill() ? '<div style="margin-top:6px">' + billAmountInput(id, b) + '</div>' : '<div class="money">' + esc(fmtRp(b.amount || 0)) + '</div>') +
           '</dd></div>' +
           personEntitlementsHtml(id) +
@@ -4517,7 +4731,11 @@
                     ? '<span class="tick-ok">✓</span>'
                     : '<button type="button" class="task-check" data-act="task-done" data-id="' + esc(t.id) + '" aria-label="Selesai"></button>') +
                   '<div><strong>' + esc(t.title) + '</strong>' +
-                    '<div class="muted">' + esc(taskKindLabel(t.kind)) + ' · ' + esc(relWhen(t.dueAt)) + '</div></div></div>'
+                    '<div class="muted">' + esc(taskKindLabel(t.kind)) + ' · ' + esc(relWhen(t.dueAt)) + '</div>' +
+                    (!t.done && canBill() && isPending(id) && /cek transfer/i.test(t.title || '')
+                      ? '<div style="margin-top:6px"><button type="button" class="btn-sm" data-act="confirm-paid" data-id="' + esc(id) + '" data-task="' + esc(t.id) + '">Konfirmasi lunas</button></div>'
+                      : '') +
+                  '</div></div>'
               ).join('')
             : '<p class="muted">Tidak ada tugas.</p>') +
         '</section>' +
@@ -4550,6 +4768,7 @@
         '<button class="btn secondary" data-act="close-person">← Orang</button>' +
         '<strong>' + esc(s.name) + '</strong>' +
         payChip(b.status) +
+        confirmPaidBtn(id) +
         '<span class="chip">' + esc(stageLabel(c.stage)) + '</span>' +
       '</div>' +
       '<div class="fub-3">' + left + center + right + '</div></div>';
@@ -5215,15 +5434,38 @@
     if (t.matches('[data-act="bill-one"]')) {
       const id = t.getAttribute('data-id');
       const b = billingOf(id);
-      b.status = t.value;
-      b.updatedAt = new Date().toISOString();
-      if (t.value === 'gratis') {
-        b.plan = 'mentoring';
-        b.products = MENTOR_SKUS().slice();
-      }
-      if (t.value === 'belum') {
-        b.plan = '';
-        b.products = [];
+      if (t.value === 'lunas') {
+        const needsGrant = b.plan !== 'mentoring' || !b.accessUntil || b.status === 'pending';
+        if (needsGrant) {
+          const term = b.pendingTerm || b.term || 'month';
+          const amount = b.pendingAmount || b.amount || priceForTerm(term, false);
+          grantMentoring(id, term, b.source === 'mayar' ? 'mayar' : 'transfer', amount);
+        } else {
+          b.status = 'lunas';
+          b.updatedAt = isoNow();
+        }
+        closeTransferTasks(id);
+      } else {
+        b.status = t.value;
+        b.updatedAt = isoNow();
+        if (t.value === 'gratis') {
+          b.plan = 'mentoring';
+          b.products = MENTOR_SKUS().slice();
+        }
+        if (t.value === 'belum') {
+          b.plan = '';
+          b.products = [];
+          delete b.pendingTerm;
+          delete b.pendingAmount;
+          delete b.pendingAt;
+        }
+        if (t.value === 'pending') {
+          b.pendingTerm = b.pendingTerm || b.term || 'month';
+          b.pendingAmount = b.pendingAmount || b.amount || 0;
+          b.pendingAt = b.pendingAt || isoNow();
+          if (b.plan === 'mentoring') b.plan = 'preview';
+          b.note = 'Menunggu konfirmasi Anton';
+        }
       }
       save();
       toast('Ledger ' + nameOf(id) + ' → ' + t.value);
@@ -6154,12 +6396,22 @@
       const term = btn.getAttribute('data-term') || ui.payTerm || 'month';
       const welcome = welcomeOpen(ui.personaId) || hoursLeft(billingOf(ui.personaId).offerExpiresAt) > 0;
       const amount = priceForTerm(term, welcome);
-      const source = term === 'autopay' ? 'mayar' : 'transfer';
-      grantMentoring(ui.personaId, term, source, amount);
-      addTask(ui.personaId, 'Cek transfer ' + nameOf(ui.personaId), 'Jumlah ' + fmtRp(amount) + ' ke ' + db.bank.bank + ' ' + db.bank.number, isoNow());
+      if (term === 'autopay') {
+        grantMentoring(ui.personaId, term, 'mayar', amount);
+        toast('Autopay mock · akses kebuka');
+      } else {
+        markPendingTransfer(ui.personaId, term, amount);
+        toast('Tercatat. Akses kebuka setelah Anton konfirmasi.');
+      }
       save();
       ui.tab = 'home';
-      toast(term === 'autopay' ? 'Autopay mock · akses kebuka' : 'Tercatat transfer · Anton cek rekening');
+      render();
+    } else if (act === 'confirm-paid') {
+      const id = btn.getAttribute('data-id');
+      if (!id || !canBill()) return;
+      confirmPaid(id, btn.getAttribute('data-task') || '');
+      save();
+      toast('Lunas · akses mentoring kebuka');
       render();
     } else if (act === 'not-interested') {
       setStage(ui.personaId, 'tidak_tertarik', 'Siswa bilang tidak tertarik.');
@@ -6454,7 +6706,9 @@
 
   $('btn-reset').addEventListener('click', () => {
     if (ui.present) return;
-    if (!confirm('Hapus data lokal prototype ini?')) return;
+    if (!confirm(syncEnabled()
+      ? 'Hapus data lokal dan shared demo di semua perangkat?'
+      : 'Hapus data lokal prototype ini?')) return;
     localStorage.removeItem(KEY);
     blobClearAll();
     db = defaultState();
@@ -6465,6 +6719,10 @@
     resetWizForPersona();
     closeDrawer();
     render();
+    if (syncEnabled()) {
+      syncReady = true;
+      pushState(true);
+    }
   });
   $('drawer-scrim').addEventListener('click', closeDrawer);
 
@@ -6562,4 +6820,5 @@
   }
 
   render();
+  bootSync();
 })();

@@ -227,6 +227,7 @@ a { color: inherit; }
 .chip.lunas, .chip.gratis { border-color: var(--ok); color: var(--ok); }
 .chip.cicilan { border-style: dashed; color: #bbb; }
 .chip.belum { color: var(--muted); border-color: #444; }
+.chip.trial, .chip.pending { border-style: dashed; color: #fbbf24; border-color: #ca8a04; }
 .chip.warn { border-style: dashed; }
 
 .resume {
@@ -569,6 +570,10 @@ html[data-mode="student"] .canvas iframe.tool-frame { min-height: 520px; height:
   background: linear-gradient(165deg, #1c1917 0%, #18181b 55%, #14532d22 100%);
   margin-bottom: 12px;
 }
+.pending-cta {
+  background: linear-gradient(165deg, #1c1917 0%, #18181b 55%, #42200644 100%);
+}
+.pending-cta .trial-kicker { color: #fbbf24; }
 .trial-cta h3 { margin: 4px 0 8px; font-size: 1.05rem; letter-spacing: -.02em; }
 .trial-kicker {
   margin: 0; font-size: .68rem; font-weight: 800; letter-spacing: .08em;
@@ -790,6 +795,12 @@ html[data-mode="student"] .ob-flow { min-height: 100%; }
 .ob-segs i.is-on { background: #e4e4e7; }
 .ob-body { flex: 1; padding-bottom: 120px; }
 .ob-flow.is-pay .ob-body { padding-bottom: 12px; }
+html[data-mode="student"] .ob-flow.is-pay .ob-body {
+  padding-bottom: calc(var(--dock-h) + var(--safe-bottom) + 16px);
+}
+html[data-mode="student"] .ob-foot.is-end {
+  padding-bottom: calc(16px + var(--dock-h) + var(--safe-bottom));
+}
 .ob-kicker {
   margin: 12px 0 0; font-size: .68rem; font-weight: 800;
   letter-spacing: .08em; text-transform: uppercase; color: var(--muted);

@@ -1,0 +1,6 @@
+/ /s/obrolan.marketing 302
+/school /school/index.html 200
+/school/ /school/index.html 200
+/s/obrolan.marketing /school/index.html 200
+/s/obrolan.marketing/ /school/index.html 200
+/s/* /school/index.html 200

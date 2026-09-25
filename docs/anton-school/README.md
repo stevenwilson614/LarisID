@@ -1,7 +1,16 @@
-# MasterMind with Anton GC — offline prototype
+# MasterMind with Anton GC — offline prototype + remote demo
 
-_Internal. Not a public product. Do not deploy, do not apply SQL on Contabo,
-do not push this work to `main`._
+_Internal. Not a public product. Do not apply SQL on Contabo, do not merge
+this branch to `main`, do not copy `school/` into `scripts/assemble-site.sh`._
+
+**Remote demo (Anton, 25 Sep 2026):**
+[https://mastermind-anton.pages.dev/s/obrolan.marketing?invite=ANTON-SEP26](https://mastermind-anton.pages.dev/s/obrolan.marketing?invite=ANTON-SEP26)
+
+Separate Cloudflare Pages project (`mastermind-anton`), not `larisid.com`.
+Laptop (Mentor) and phone (Siswa) share one KV blob. Anyone with the link
+can switch to Mentor — treat the URL as private.
+
+Redeploy: `bash scripts/deploy-school-pages.sh`
 
 Run locally from the repo root:
 
@@ -11,7 +20,23 @@ bash school/serve.sh
 # join + invite:  http://127.0.0.1:8765/s/obrolan.marketing?invite=ANTON-SEP26
 # legacy path:    http://127.0.0.1:8765/school/
 # walkthrough:    http://127.0.0.1:8765/school/present.html
+# local sync:     add ?sync=1 (needs wrangler pages dev)
 ```
+
+## Anton — tes 10 langkah (HP + laptop)
+
+1. HP: buka tautan di atas. Peran **Siswa**, pilih **Tamu baru**.
+2. Isi form (nama → WA → toko → kota → dari mana). Dock Belajar muncul.
+3. Di halaman paket, pilih **1 bulan · transfer**, ketuk **Saya sudah transfer / scan**.
+4. Home siswa harus bilang **Menunggu konfirmasi Anton**. Video 1 tetap kebuka; 2–12 terkunci.
+5. Laptop: peran **Mentor (Anton)** → tab **Siswa** → kartu **Cek transfer** (atau **Tugas**).
+6. Ketuk **Konfirmasi lunas**. Stage jadi Mentee, ledger Lunas.
+7. HP (tunggu ~5 detik): banner hilang, 12 video kebuka (baca dulu; selesai tetap berurutan). Affiliate tetap satuan.
+8. Laptop: **Pengaturan bayar** — rekening, harga, slug. **Kurikulum** → Edit materi / + Bagian.
+9. Laptop: **Simulasi jam** +1 hari sampai kartu mentee **Akan keluar**, lalu habis → siswa kembali preview video 1.
+10. **Reset** di salah satu perangkat mengosongkan demo di semua perangkat. Autopay kartu = mock (langsung lunas). WA tidak terkirim.
+
+Masih mock: Mayar sungguhan, webhook, login, blob video IndexedDB (tautan YouTube/Drive ikut sync).
 
 ## School URLs (creator-mentor LMS)
 
