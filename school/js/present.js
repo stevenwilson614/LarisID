@@ -1,4 +1,4 @@
-/* Dual-view presenter. Localhost only. No live WhatsApp. */
+/* Dual-view presenter. Localhost only. WA in the CRM frames is the live app (seed / Fonnte). */
 (function () {
   if (/larisid\.com$/i.test(location.hostname) || location.hostname.endsWith('.pages.dev')) {
     document.getElementById('prod-block').hidden = false;
@@ -76,7 +76,7 @@
       id: 'a1-12h',
       act: 1,
       title: '12 jam · tugas WA',
-      sayAnton: 'Simulasi jam, bukan tunggu semalam. Tugas + antrian WA = wa.me. Tidak auto-send.',
+      sayAnton: 'Simulasi jam, bukan tunggu semalam. Tugas: Kirim dari CRM (thread profil). Fonnte hanya kalau device ready.',
       saySiswa: 'Farah masih di trial. Harga perkenalan masih jalan sampai jam form + 24 jam.',
       student: { personaId: 's-farah', tab: 'home', payPrompt: true },
       mentor: { tab: 'tugas', personId: 's-farah' }

@@ -1,4 +1,4 @@
-/* MasterMind with Anton GC prototype. No live WhatsApp, TikTok, Mayar, or Contabo. */
+/* MasterMind with Anton GC prototype. Live WA via Fonnte when the device is ready; localhost uses seed threads. No Contabo. */
 (function () {
   const SEED = window.ANTON_SEED;
   const KEY = 'anton-school-v3';
@@ -281,7 +281,7 @@
     if (colId === 'name') {
       const tags = (s.tags || []).slice(0, 2);
       return '<button type="button" class="linkish roster-name" data-act="open-student" data-id="' + esc(s.id) + '">' +
-        avatarHtml(s, 'avatar sm') + '<span>' + esc(s.name) +
+        avatarHtml(s, 'avatar sm') + '<span>' + esc(s.name) + waUnreadBadge(s.id) +
         '<div class="muted">' + esc(s.city || '—') +
         (tags.length ? ' · ' + tags.map((t) => esc(t)).join(', ') : '') +
         '</div></span></button>';
@@ -408,6 +408,12 @@
     merged.tasks = Array.isArray(merged.tasks) ? merged.tasks : JSON.parse(JSON.stringify(SEED.tasksSeed || []));
     merged.waQueue = Array.isArray(merged.waQueue) ? merged.waQueue : JSON.parse(JSON.stringify(SEED.waQueueSeed || []));
     merged.emailQueue = Array.isArray(merged.emailQueue) ? merged.emailQueue : JSON.parse(JSON.stringify(SEED.emailQueueSeed || []));
+    if (!Array.isArray(merged.waThreads) || !merged.waThreads.length) {
+      merged.waThreads = JSON.parse(JSON.stringify(SEED.waThreadsSeed || []));
+    }
+    if (!Array.isArray(merged.waMessages) || !merged.waMessages.length) {
+      merged.waMessages = JSON.parse(JSON.stringify(SEED.waMessagesSeed || []));
+    }
     merged.enrollments = Object.assign({}, JSON.parse(JSON.stringify(SEED.enrollmentsSeed || {})), merged.enrollments || {});
     merged.people = merged.people && typeof merged.people === 'object' ? merged.people : {};
     merged.remittances = Array.isArray(merged.remittances) ? merged.remittances : JSON.parse(JSON.stringify(SEED.remittances || []));
@@ -456,6 +462,12 @@
         if (c[k]) c[k] = bump(c[k]);
       });
     });
+    (state.waThreads || []).forEach((t) => {
+      if (t && t.updatedAt) t.updatedAt = bump(t.updatedAt);
+    });
+    (state.waMessages || []).forEach((m) => {
+      if (m && m.at) m.at = bump(m.at);
+    });
   }
 
   function defaultState() {
@@ -481,6 +493,8 @@
       timeline: JSON.parse(JSON.stringify(SEED.timelineSeed || {})),
       waQueue: JSON.parse(JSON.stringify(SEED.waQueueSeed || [])),
       emailQueue: JSON.parse(JSON.stringify(SEED.emailQueueSeed || [])),
+      waThreads: JSON.parse(JSON.stringify(SEED.waThreadsSeed || [])),
+      waMessages: JSON.parse(JSON.stringify(SEED.waMessagesSeed || [])),
       enrollments: JSON.parse(JSON.stringify(SEED.enrollmentsSeed || {})),
       people: {},
       schoolSlug: SEED.school.slug,
@@ -575,6 +589,9 @@
     editLecId: null,
     kurEdit: false,
     composeMode: 'note',
+    waDraft: '',
+    waSending: false,
+    waLive: null,
     daftarColsOpen: false,
     pustakaAddOpen: false,
     cariSiswa: '',
@@ -1173,6 +1190,389 @@
     const n = String(phone || '').replace(/\D/g, '');
     return 'https://wa.me/' + n + (text ? ('?text=' + encodeURIComponent(text)) : '');
   }
+  function normalizeWa(raw) {
+    let d = String(raw == null ? '' : raw).replace(/\D/g, '');
+    if (!d) return '';
+    if (d.indexOf('0') === 0) d = '62' + d.slice(1);
+    if (d.indexOf('8') === 0 && d.length >= 9) d = '62' + d;
+    if (d.indexOf('620') === 0) d = '62' + d.slice(3);
+    return d;
+  }
+  function ensureWaStore() {
+    if (!Array.isArray(db.waThreads)) db.waThreads = JSON.parse(JSON.stringify(SEED.waThreadsSeed || []));
+    if (!Array.isArray(db.waMessages)) db.waMessages = JSON.parse(JSON.stringify(SEED.waMessagesSeed || []));
+  }
+  function waApiEnabled() {
+    return syncEnabled();
+  }
+  function waApiUrl(path, extra) {
+    const q = new URLSearchParams();
+    const k = syncInvite();
+    if (k) q.set('k', k);
+    q.set('slug', schoolSlug());
+    Object.keys(extra || {}).forEach((key) => {
+      if (extra[key] != null && extra[key] !== '') q.set(key, extra[key]);
+    });
+    return '/api/wa/' + path + '?' + q.toString();
+  }
+  function waThreadOf(personId, phone) {
+    ensureWaStore();
+    const p = normalizeWa(phone);
+    return (db.waThreads || []).find((t) =>
+      (personId && t.personId === personId) || (p && t.phone === p)
+    ) || null;
+  }
+  function waMessagesOf(thread) {
+    ensureWaStore();
+    if (!thread) return [];
+    return (db.waMessages || []).filter((m) => m.threadId === thread.id)
+      .slice()
+      .sort((a, b) => String(a.at).localeCompare(String(b.at)));
+  }
+  function waUnreadFor(personId) {
+    const t = waThreadOf(personId, (people().find((s) => s.id === personId) || {}).wa);
+    return t ? (Number(t.unread) || 0) : 0;
+  }
+  function waUnreadTotal() {
+    ensureWaStore();
+    return (db.waThreads || []).reduce((n, t) => n + (Number(t.unread) || 0), 0);
+  }
+  function waUnreadBadge(personId) {
+    const n = waUnreadFor(personId);
+    return n
+      ? ' <span class="chip warn wa-badge" data-wa-badge="' + esc(personId) + '">' + n + '</span>'
+      : '<span class="wa-badge-slot" data-wa-badge="' + esc(personId) + '" hidden></span>';
+  }
+  function upsertLocalThread(rec) {
+    if (!rec) return null;
+    ensureWaStore();
+    const phone = normalizeWa(rec.phone);
+    let cur = db.waThreads.find((t) => t.id === rec.id || (phone && t.phone === phone) ||
+      (rec.personId && t.personId === rec.personId));
+    if (!cur) {
+      cur = {
+        id: rec.id || ('th-' + Date.now().toString(36)),
+        personId: rec.personId || null,
+        phone: phone,
+        updatedAt: rec.updatedAt || isoNow(),
+        unread: Number(rec.unread) || 0
+      };
+      db.waThreads.unshift(cur);
+      return cur;
+    }
+    if (rec.id && rec.id !== cur.id) {
+      const oldId = cur.id;
+      cur.id = rec.id;
+      db.waMessages.forEach((m) => {
+        if (m.threadId === oldId) m.threadId = rec.id;
+      });
+    }
+    if (rec.personId) cur.personId = rec.personId;
+    if (phone) cur.phone = phone;
+    if (rec.updatedAt) cur.updatedAt = rec.updatedAt;
+    if (rec.unread != null) cur.unread = Number(rec.unread) || 0;
+    return cur;
+  }
+  function upsertLocalMessage(msg) {
+    if (!msg || !msg.id) return false;
+    ensureWaStore();
+    const hit = db.waMessages.find((m) =>
+      m.id === msg.id || (msg.providerId && m.providerId && m.providerId === msg.providerId));
+    if (hit) {
+      if (msg.status) hit.status = msg.status;
+      return false;
+    }
+    db.waMessages.push({
+      id: msg.id,
+      threadId: msg.threadId,
+      direction: msg.direction,
+      body: msg.body,
+      at: msg.at || isoNow(),
+      status: msg.status || (msg.direction === 'in' ? 'received' : 'sent'),
+      providerId: msg.providerId || null
+    });
+    return true;
+  }
+  function applyRemoteThread(data, personId) {
+    if (!data) return { addedIn: 0 };
+    if (data.thread) {
+      if (personId && !data.thread.personId) data.thread.personId = personId;
+      upsertLocalThread(data.thread);
+    }
+    let addedIn = 0;
+    (data.messages || []).forEach((m) => {
+      if (upsertLocalMessage(m) && m.direction === 'in') addedIn += 1;
+    });
+    return { addedIn: addedIn };
+  }
+  function markWaRead(personId) {
+    const s = people().find((x) => x.id === personId) || {};
+    const t = waThreadOf(personId, s.wa);
+    if (!t || !t.unread) return;
+    t.unread = 0;
+    save();
+    if (waApiEnabled() && ui.waLive) {
+      fetch(waApiUrl('thread'), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'read', personId: personId, phone: s.wa || t.phone })
+      }).catch(() => {});
+    }
+  }
+  function waStatusLine() {
+    if (!waApiEnabled()) {
+      return 'Demo lokal: kirim tersimpan di CRM, tidak lewat Fonnte. Device live hanya di remote demo.';
+    }
+    if (!ui.waLive) return 'Menyambung ke inbox WA…';
+    if (ui.waLive.deviceReady) return 'Fonnte siap. Kirim dari sini masuk HP siswa; balasan muncul di thread.';
+    return 'Perangkat Fonnte belum siap. Kirim tetap tercatat di CRM; Buka WA sebagai cadangan.';
+  }
+  async function refreshWaStatus() {
+    if (!waApiEnabled()) {
+      ui.waLive = { live: false, deviceReady: false };
+      return ui.waLive;
+    }
+    try {
+      const res = await fetch(waApiUrl('status'), { cache: 'no-store' });
+      ui.waLive = res.ok ? await res.json() : { live: false, deviceReady: false };
+    } catch (err) {
+      ui.waLive = { live: false, deviceReady: false };
+    }
+    return ui.waLive;
+  }
+  async function pullWaThread(personId, opts) {
+    const s = people().find((x) => x.id === personId) || {};
+    if (!waApiEnabled()) return;
+    try {
+      const res = await fetch(waApiUrl('thread', { personId: personId, phone: s.wa || '' }), { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = await res.json();
+      const before = (db.waMessages || []).length;
+      const got = applyRemoteThread(data, personId);
+      if ((db.waMessages || []).length !== before || got.addedIn) {
+        if (got.addedIn && !(opts && opts.silentTimeline) && personId) {
+          pushTimeline(personId, 'wa', 'Balasan WA masuk');
+        }
+        save();
+        if (!(opts && opts.noPaint)) paintWaChrome();
+      }
+    } catch (err) { /* offline */ }
+  }
+  async function pullWaInbox(opts) {
+    if (!waApiEnabled()) return;
+    try {
+      const res = await fetch(waApiUrl('inbox'), { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = await res.json();
+      let changed = false;
+      (data.threads || []).forEach((t) => {
+        const prev = waThreadOf(t.personId, t.phone);
+        const next = upsertLocalThread(t);
+        if (!prev || prev.unread !== next.unread || prev.updatedAt !== next.updatedAt) changed = true;
+      });
+      if (changed) {
+        save();
+        if (!(opts && opts.noPaint)) paintWaChrome();
+      }
+    } catch (err) { /* offline */ }
+  }
+  function waBubblesHtml(personId) {
+    const s = people().find((x) => x.id === personId) || {};
+    const thread = waThreadOf(personId, s.wa);
+    const msgs = waMessagesOf(thread);
+    if (!msgs.length) {
+      return '<p class="muted wa-empty">Belum ada chat setelah perangkat tersambung. Riwayat WA lama tidak ikut.</p>';
+    }
+    return msgs.map((m) =>
+      '<div class="wa-bubble is-' + (m.direction === 'out' ? 'out' : 'in') + '">' +
+        '<div class="wa-bubble-body">' + esc(m.body).replace(/\n/g, '<br>') + '</div>' +
+        '<div class="wa-bubble-meta">' + esc(relWhen(m.at)) +
+          (m.direction === 'out' ? ' · ' + esc(m.status === 'local' ? 'lokal' : (m.status || 'terkirim')) : '') +
+        '</div></div>'
+    ).join('');
+  }
+  function waComposerHtml(id, s) {
+    if (!s.wa) return '<p class="muted">Belum ada nomor WA. Isi di kolom kiri dulu.</p>';
+    const draft = ui.waDraft || '';
+    return '<p class="muted wa-status">' + esc(waStatusLine()) + '</p>' +
+      '<div class="wa-thread" id="wa-thread" data-id="' + esc(id) + '">' + waBubblesHtml(id) + '</div>' +
+      '<form class="compose wa-compose" data-act="wa-send" data-id="' + esc(id) + '">' +
+        '<textarea name="body" required rows="3" placeholder="Tulis pesan WhatsApp…">' + esc(draft) + '</textarea>' +
+        '<div class="wa-compose-row">' +
+          '<button class="btn" type="submit"' + (ui.waSending ? ' disabled' : '') + '>' +
+            (ui.waSending ? 'Mengirim…' : 'Kirim') + '</button>' +
+          '<a class="btn-sm" href="' + esc(waLink(s.wa, draft || ('Halo ' + s.name + ', dari MasterMind with Anton GC.'))) +
+            '" target="_blank" rel="noopener">Buka WA</a>' +
+        '</div></form>';
+  }
+  function waInboxRows() {
+    ensureWaStore();
+    const rows = (db.waThreads || []).filter((t) => (Number(t.unread) || 0) > 0 || !t.personId)
+      .slice()
+      .sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+    return rows;
+  }
+  function waInboxHtml() {
+    const rows = waInboxRows();
+    if (!rows.length) return '';
+    const peopleById = Object.fromEntries(people().map((s) => [s.id, s]));
+    const items = rows.map((t) => {
+      const s = t.personId ? peopleById[t.personId] : null;
+      const last = waMessagesOf(t).slice(-1)[0];
+      const name = s ? s.name : ('Nomor belum dipasang · ' + fmtPhone(t.phone));
+      const attach = !t.personId
+        ? '<form class="wa-attach" data-act="wa-attach" data-phone="' + esc(t.phone) + '">' +
+            '<select name="personId" required>' +
+              '<option value="">Pasang ke siswa…</option>' +
+              people().map((p) => '<option value="' + esc(p.id) + '">' + esc(p.name) + '</option>').join('') +
+            '</select><button class="btn-sm" type="submit">Pasang</button></form>'
+        : '<button type="button" class="btn-sm" data-act="wa-crm-send" data-id="' + esc(t.personId) + '">Buka chat</button>';
+      return '<div class="wa-inbox-row">' +
+        (s ? avatarHtml(s, 'avatar sm') : '<span class="avatar sm avatar-fallback">?</span>') +
+        '<div class="task-main">' +
+          (t.personId
+            ? '<button type="button" class="linkish task-who" data-act="open-student" data-id="' + esc(t.personId) + '">' + esc(name) + '</button>'
+            : '<strong>' + esc(name) + '</strong>') +
+          '<div class="muted">' + esc(last ? last.body : 'Thread kosong') + '</div>' +
+        '</div>' +
+        '<div class="task-meta">' +
+          ((t.unread) ? '<span class="chip warn">' + esc(String(t.unread)) + ' baru</span>' : '') +
+          attach +
+        '</div></div>';
+    }).join('');
+    return '<section class="task-group wa-inbox" id="wa-inbox">' +
+      '<h3>Pesan · ' + rows.length + '</h3>' +
+      '<p class="muted">Balasan masuk yang belum dibaca, plus nomor yang belum ketemu di roster.</p>' +
+      '<div class="task-list">' + items + '</div></section>';
+  }
+  function paintWaChrome() {
+    const thread = document.getElementById('wa-thread');
+    if (thread && ui.personId) {
+      const html = waBubblesHtml(ui.personId);
+      const stick = (thread.scrollHeight - thread.scrollTop - thread.clientHeight) < 48;
+      if (thread.innerHTML !== html) {
+        thread.innerHTML = html;
+        if (stick) thread.scrollTop = thread.scrollHeight;
+      }
+    }
+    const inbox = document.getElementById('wa-inbox');
+    if (inbox) {
+      const wrap = document.createElement('div');
+      wrap.innerHTML = waInboxHtml() || '<div id="wa-inbox" hidden></div>';
+      const next = wrap.firstElementChild;
+      if (next) inbox.replaceWith(next);
+    }
+    const total = waUnreadTotal();
+    document.querySelectorAll('[data-wa-badge]').forEach((el) => {
+      const n = waUnreadFor(el.getAttribute('data-wa-badge'));
+      if (el.classList.contains('wa-badge-slot')) {
+        el.hidden = !n;
+        el.textContent = n ? String(n) : '';
+        el.className = n ? 'chip warn wa-badge' : 'wa-badge-slot';
+      } else {
+        el.textContent = n ? String(n) : '';
+        el.hidden = !n;
+      }
+    });
+    const tab = document.querySelector('#tabs [data-act="tab"][data-id="tugas"]');
+    if (tab) tab.textContent = total ? ('Tugas · ' + total) : 'Tugas';
+    const clockUnread = document.querySelector('[data-wa-unread-total]');
+    if (clockUnread) clockUnread.textContent = total ? ('WA ' + total + ' baru') : 'WA 0 baru';
+  }
+  function scrollWaThread() {
+    const el = document.getElementById('wa-thread');
+    if (el) el.scrollTop = el.scrollHeight;
+  }
+  async function sendWaFromCrm(personId, body) {
+    const text = String(body || '').trim();
+    const s = people().find((x) => x.id === personId);
+    if (!s || !s.wa) {
+      toast('Isi nomor WhatsApp dulu.');
+      return false;
+    }
+    if (!text) return false;
+    ensureWaStore();
+    let thread = waThreadOf(personId, s.wa);
+    if (!thread) {
+      thread = upsertLocalThread({
+        id: 'th-' + personId,
+        personId: personId,
+        phone: normalizeWa(s.wa),
+        updatedAt: isoNow(),
+        unread: 0
+      });
+    }
+    const localMsg = {
+      id: 'wm-' + Date.now().toString(36),
+      threadId: thread.id,
+      direction: 'out',
+      body: text,
+      at: isoNow(),
+      status: 'local',
+      providerId: null
+    };
+    upsertLocalMessage(localMsg);
+    thread.updatedAt = localMsg.at;
+    ui.waDraft = '';
+    ui.waSending = true;
+    save();
+    paintWaChrome();
+    scrollWaThread();
+
+    let liveOk = false;
+    if (waApiEnabled()) {
+      await refreshWaStatus();
+      if (ui.waLive && ui.waLive.deviceReady) {
+        try {
+          const res = await fetch(waApiUrl('send'), {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ personId: personId, phone: s.wa, body: text })
+          });
+          const data = await res.json().catch(() => ({}));
+          if (res.ok && data.message) {
+            localMsg.status = 'sent';
+            localMsg.providerId = data.message.providerId || localMsg.providerId;
+            if (data.message.id) localMsg.id = data.message.id;
+            if (data.thread) upsertLocalThread(Object.assign({}, data.thread, { personId: personId }));
+            liveOk = true;
+          } else if (data.error === 'device_not_ready') {
+            toast('Perangkat Fonnte belum siap. Pesan tercatat di CRM.');
+          } else {
+            toast('Fonnte gagal. Pesan tercatat di CRM. Coba Buka WA.');
+          }
+        } catch (err) {
+          toast('Tidak tersambung. Pesan tercatat di CRM.');
+        }
+      } else {
+        toast('Perangkat Fonnte belum siap. Pesan tercatat di CRM.');
+      }
+    } else {
+      toast('Demo lokal: pesan masuk thread CRM, tidak terkirim ke HP.');
+    }
+    pushTimeline(personId, 'wa', (liveOk ? 'WA terkirim: ' : 'WA tercatat: ') + text.slice(0, 80));
+    ui.waSending = false;
+    save();
+    paintWaChrome();
+    return liveOk;
+  }
+  let waPoll = null;
+  function ensureWaPoll() {
+    if (waPoll) return;
+    waPoll = setInterval(() => {
+      if (!isStaff() || document.visibilityState === 'hidden') return;
+      pullWaInbox({ noPaint: false });
+      if (ui.mentorTab === 'orang' && ui.composeMode === 'wa' && ui.personId) {
+        pullWaThread(ui.personId, { silentTimeline: false });
+      }
+    }, 4000);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && isStaff()) {
+        pullWaInbox();
+        if (ui.mentorTab === 'orang' && ui.composeMode === 'wa' && ui.personId) pullWaThread(ui.personId);
+      }
+    });
+  }
 
   function pushTimeline(id, kind, body) {
     db.timeline[id] = db.timeline[id] || [];
@@ -1298,7 +1698,7 @@
   const HEARD_OPTS = ['Grup WA Anton', 'Teman / murid Anton', 'TikTok', 'Instagram', 'Lainnya'];
   const WIZ_FORM = [
     { id: 'name', kicker: 'Kenalan', q: 'Siapa namamu?', sub: 'Nama yang Anton panggil di grup. Bukan tes.' },
-    { id: 'wa', kicker: 'Kontak', q: 'Nomor WhatsApp-mu?', sub: 'Anton chat ke sini. Prototype tidak kirim otomatis.' },
+    { id: 'wa', kicker: 'Kontak', q: 'Nomor WhatsApp-mu?', sub: 'Anton kirim & simpan chat mentoring dari nomor ini. Bukan riwayat WA lama.' },
     { id: 'shop', kicker: 'Toko', q: 'Sudah punya toko?', sub: 'Belum juga boleh. Jujur aja.' },
     { id: 'city', kicker: 'Tempat', q: 'Kota mana?', sub: 'Biar Anton tahu kamu dari mana.' },
     { id: 'heard', kicker: 'Cerita', q: 'Dari mana kenal Anton?', sub: 'Satu jawaban. Bukan syarat masuk.' }
@@ -2443,6 +2843,7 @@
           '<button type="button" class="ghost" data-act="clock-reset">Reset jam</button>' +
           '<span class="muted">Tugas ' + db.tasks.filter((t) => !t.done).length +
           ' · antrian ' + ((db.waQueue.filter((w) => w.status === 'queued').length) + ((db.emailQueue || []).filter((w) => w.status === 'queued').length)) + '</span>' +
+          '<span class="muted" data-wa-unread-total>' + (waUnreadTotal() ? ('WA ' + waUnreadTotal() + ' baru') : 'WA 0 baru') + '</span>' +
           (syncEnabled() ? '<span class="muted" data-sync>Sync ' + esc(syncStatus || '…') + '</span>' : '');
       }
     }
@@ -2472,7 +2873,7 @@
   function mentorTabs() {
     const t = [
       { id: 'siswa', label: 'Siswa' },
-      { id: 'tugas', label: 'Tugas' },
+      { id: 'tugas', label: waUnreadTotal() ? ('Tugas · ' + waUnreadTotal()) : 'Tugas' },
       { id: 'otomasi', label: 'Otomasi' },
       { id: 'kurikulum', label: 'Kurikulum' },
       { id: 'pustaka', label: 'Perpustakaan' },
@@ -2553,6 +2954,9 @@
     placeWaFab();
     tickRemainers();
     ensureRemainTimer();
+    if (isStaff() && ui.mentorTab === 'orang' && ui.composeMode === 'wa') {
+      requestAnimationFrame(scrollWaThread);
+    }
   }
 
   function bindNativeTools() {
@@ -4303,7 +4707,7 @@
         (rows.length ? rows.map((s) => {
           const b = billingOf(s.id);
           return '<button type="button" class="kanban-card" draggable="true" data-act="open-student" data-id="' + esc(s.id) + '">' +
-            '<div class="roster-name">' + avatarHtml(s, 'avatar sm') + '<strong>' + esc(s.name) + '</strong></div>' +
+            '<div class="roster-name">' + avatarHtml(s, 'avatar sm') + '<strong>' + esc(s.name) + '</strong>' + waUnreadBadge(s.id) + '</div>' +
             '<div class="muted">' + esc(s.city) + (s.mentorId && s.mentorId !== 'u-anton' ? ' · ' + esc(nameOf(s.mentorId)) : '') + '</div>' +
             (b.amount ? '<div class="money">' + esc(fmtRp(b.amount)) + '</div>' : '') +
             '<div>' + payChip(b.status) + ' <span class="muted">' + esc(fmtRemain(
@@ -4362,13 +4766,17 @@
     const kind = t.kind === 'task' ? 'reminder' : (t.kind || 'wa');
     let action = '';
     if (t.queue === 'wa') {
-      action = '<a class="btn-sm" href="' + esc(waLink(s.wa, t.body)) + '" target="_blank" rel="noopener">Buka WA</a>' +
+      action = '<button type="button" class="btn-sm" data-act="wa-crm-send" data-id="' + esc(t.personId) + '" data-qid="' + esc(t.id) + '">Kirim dari CRM</button>' +
+        '<a class="btn-sm" href="' + esc(waLink(s.wa, t.body)) + '" target="_blank" rel="noopener">Buka WA</a>' +
         '<button class="btn-sm" data-act="wa-sent" data-id="' + esc(t.id) + '">Tandai dikirim</button>';
     } else if (t.queue === 'email') {
       action = '<a class="btn-sm" href="' + esc(mailLink(s.email, t.title, t.body)) + '">mailto</a>' +
         '<button class="btn-sm" data-act="em-sent" data-id="' + esc(t.id) + '">Tandai dikirim</button>';
     } else if (!t.done) {
-      if (kind === 'wa') action += '<a class="btn-sm" href="' + esc(waLink(s.wa, t.body)) + '" target="_blank" rel="noopener">Buka WA</a>';
+      if (kind === 'wa') {
+        action += '<button type="button" class="btn-sm" data-act="wa-crm-send" data-id="' + esc(t.personId) + '" data-tid="' + esc(t.id) + '">Kirim dari CRM</button>';
+        action += '<a class="btn-sm" href="' + esc(waLink(s.wa, t.body)) + '" target="_blank" rel="noopener">Buka WA</a>';
+      }
       if (kind === 'email') action += '<a class="btn-sm" href="' + esc(mailLink(s.email, t.title, t.body)) + '">Email</a>';
       if (kind === 'call' && s.wa) action += '<a class="btn-sm" href="tel:+' + esc(String(s.wa).replace(/\D/g, '')) + '">Telepon</a>';
       if (canBill() && isPending(t.personId) && /cek transfer/i.test(t.title || '')) {
@@ -4399,10 +4807,11 @@
     const open = ui.taskComposer === 'new';
     return '<div class="task-board">' +
       '<div class="task-toolbar">' +
-        '<div><h2 style="margin:0">Tugas</h2><p class="muted" style="margin:4px 0 0">Hari ini, besok, minggu ini. Klik nama untuk profil. Antrian WA/email ikut di sini.</p></div>' +
+        '<div><h2 style="margin:0">Tugas</h2><p class="muted" style="margin:4px 0 0">Hari ini, besok, minggu ini. Klik nama untuk profil. Antrian WA: Kirim dari CRM, Buka WA cadangan.</p></div>' +
         '<button type="button" class="btn" data-act="task-compose" data-id="new">' + (open ? 'Tutup' : '+ Tugas') + '</button>' +
       '</div>' +
       (open ? '<div class="card" style="margin-bottom:14px"><h3>Buat tugas</h3>' + taskComposerHtml('') + '</div>' : '') +
+      waInboxHtml() +
       '<div class="row" style="margin-bottom:12px">' +
         '<label class="muted">Filter orang <select data-act="task-person">' +
           '<option value="">Semua</option>' +
@@ -4675,14 +5084,7 @@
             '<button class="btn" type="submit">Simpan catatan</button></form>'
         : '<p class="muted">Belum ada email. Isi di kolom kiri dulu.</p>';
     } else if (mode === 'wa') {
-      composerBody = s.wa
-        ? '<p class="muted">Buka WhatsApp, lalu catat hasil chat jika perlu.</p>' +
-          '<a class="btn" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari MasterMind with Anton GC.')) +
-            '" target="_blank" rel="noopener">Buka WA</a>' +
-          '<form class="compose" data-act="note" data-id="' + esc(id) + '" style="margin-top:10px">' +
-            '<textarea name="body" required rows="3" placeholder="Catatan setelah chat WA…"></textarea>' +
-            '<button class="btn" type="submit">Simpan catatan</button></form>'
-        : '<p class="muted">Belum ada nomor WA. Isi di kolom kiri dulu.</p>';
+      composerBody = waComposerHtml(id, s);
     } else if (mode === 'call') {
       composerBody = '<form class="compose" data-act="log-call" data-id="' + esc(id) + '">' +
         '<textarea name="body" required rows="3" placeholder="Ringkas panggilan…"></textarea>' +
@@ -4699,7 +5101,8 @@
           '<div class="fub-acts" role="tablist">' +
             '<button type="button" class="btn-sm' + (mode === 'note' ? ' is-on' : '') + '" data-act="compose-mode" data-id="note">Catatan</button>' +
             '<button type="button" class="btn-sm' + (mode === 'email' ? ' is-on' : '') + '" data-act="compose-mode" data-id="email">Email</button>' +
-            '<button type="button" class="btn-sm' + (mode === 'wa' ? ' is-on' : '') + '" data-act="compose-mode" data-id="wa">WA</button>' +
+            '<button type="button" class="btn-sm' + (mode === 'wa' ? ' is-on' : '') + '" data-act="compose-mode" data-id="wa">WA' +
+              (waUnreadFor(id) ? ' · ' + waUnreadFor(id) : '') + '</button>' +
             '<button type="button" class="btn-sm' + (mode === 'call' ? ' is-on' : '') + '" data-act="compose-mode" data-id="call">Panggilan</button>' +
             '<button type="button" class="btn-sm' + (mode === 'task' ? ' is-on' : '') + '" data-act="compose-mode" data-id="task">Tugas</button>' +
           '</div>' +
@@ -5360,6 +5763,9 @@
       if (!isStaff()) {
         ui.tab = needsWizard(ui.personaId) ? 'daftar' : 'home';
         resetWizForPersona();
+      } else {
+        refreshWaStatus().then(() => pullWaInbox());
+        ensureWaPoll();
       }
       render();
       return;
@@ -5741,6 +6147,10 @@
 
   document.addEventListener('input', (e) => {
     const t = e.target;
+    if (t.matches('.wa-compose textarea[name="body"]')) {
+      ui.waDraft = t.value;
+      return;
+    }
     if (t.matches('[data-act="cari-siswa"]')) {
       ui.cariSiswa = t.value;
       ui.cariOpen = true;
@@ -5899,7 +6309,12 @@
     } else if (act === 'compose-mode') {
       ui.composeMode = btn.getAttribute('data-id') || 'note';
       ui.taskComposer = ui.composeMode === 'task' ? (ui.personId || '') : '';
+      if (ui.composeMode === 'wa' && ui.personId) {
+        markWaRead(ui.personId);
+        pullWaThread(ui.personId, { silentTimeline: true, noPaint: true });
+      }
       render();
+      if (ui.composeMode === 'wa') requestAnimationFrame(scrollWaThread);
     } else if (act === 'open-sku') {
       const id = btn.getAttribute('data-id');
       if (!canSku(ui.personaId, id) && !isStaff()) return;
@@ -6436,6 +6851,19 @@
       const id = btn.getAttribute('data-id');
       ui.taskComposer = id;
       openPerson(id);
+    } else if (act === 'wa-crm-send') {
+      const id = btn.getAttribute('data-id');
+      const qid = btn.getAttribute('data-qid');
+      const tid = btn.getAttribute('data-tid');
+      const q = (db.waQueue || []).find((x) => x.id === qid);
+      const task = db.tasks.find((x) => x.id === tid);
+      ui.waDraft = (q && q.body) || (task && task.body) || ui.waDraft || '';
+      ui.composeMode = 'wa';
+      if (id) markWaRead(id);
+      if (id) openPerson(id);
+      else render();
+      if (id) pullWaThread(id, { silentTimeline: true });
+      requestAnimationFrame(scrollWaThread);
     } else if (act === 'wa-sent') {
       const w = db.waQueue.find((x) => x.id === btn.getAttribute('data-id'));
       if (w) {
@@ -6508,6 +6936,35 @@
       });
       save();
       render();
+    } else if (act === 'wa-send') {
+      const id = form.getAttribute('data-id');
+      const text = String(fd.get('body') || '').trim();
+      if (!id || !text) return;
+      sendWaFromCrm(id, text).then(() => {
+        render();
+        requestAnimationFrame(scrollWaThread);
+      });
+    } else if (act === 'wa-attach') {
+      const phone = form.getAttribute('data-phone') || '';
+      const personId = String(fd.get('personId') || '');
+      if (!phone || !personId) return;
+      const thread = upsertLocalThread({ phone: phone, personId: personId, updatedAt: isoNow() });
+      const s = people().find((x) => x.id === personId);
+      if (s && s.wa && normalizeWa(s.wa) !== normalizeWa(phone)) {
+        patchPerson(personId, { wa: normalizeWa(phone) });
+      }
+      if (thread) thread.personId = personId;
+      save();
+      if (waApiEnabled()) {
+        fetch(waApiUrl('thread'), {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ action: 'attach', personId: personId, phone: phone })
+        }).catch(() => {});
+      }
+      toast('Nomor dipasang ke ' + nameOf(personId));
+      ui.composeMode = 'wa';
+      openPerson(personId);
     } else if (act === 'note') {
       const id = form.getAttribute('data-id');
       db.notes[id] = db.notes[id] || [];
@@ -6821,4 +7278,11 @@
 
   render();
   bootSync();
+  if (isStaff()) {
+    refreshWaStatus().then(() => {
+      pullWaInbox();
+      paintWaChrome();
+    });
+    ensureWaPoll();
+  }
 })();

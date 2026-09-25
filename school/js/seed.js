@@ -484,6 +484,16 @@ window.ANTON_SEED = {
   waQueueSeed: [
     { id: 'wa-farah-12', toId: 's-farah', scheduledAt: '2026-09-18T11:00:00+07:00', status: 'queued', title: '12 jam sisa diskon', body: 'Halo Farah Nisa, sisa 12 jam harga perkenalan mentoring Anton. Bayar transfer atau kartu, atau lanjut coba video 1.' }
   ],
+  waThreadsSeed: [
+    { id: 'th-farah', personId: 's-farah', phone: '628120000012', updatedAt: '2026-09-18T08:20:00+07:00', unread: 1 },
+    { id: 'th-irma', personId: 's-irma', phone: '628120000015', updatedAt: '2026-09-17T21:10:00+07:00', unread: 0 }
+  ],
+  waMessagesSeed: [
+    { id: 'wm-farah-1', threadId: 'th-farah', direction: 'out', body: 'Halo Farah, Anton di sini. Video 1 kebuka ya — coba dulu, nanti kita ngobrol harga mentoring.', at: '2026-09-17T23:10:00+07:00', status: 'sent', providerId: 'seed-farah-1' },
+    { id: 'wm-farah-2', threadId: 'th-farah', direction: 'in', body: 'Siap Anton, baru selesai nonton. Mau tanya dulu soal transfer 1 bulan.', at: '2026-09-18T08:20:00+07:00', status: 'received', providerId: 'seed-farah-2' },
+    { id: 'wm-irma-1', threadId: 'th-irma', direction: 'out', body: 'Halo Irma, Anton. Akses bulan ini mau habis. Mau lanjut transfer atau kartu?', at: '2026-09-17T20:40:00+07:00', status: 'sent', providerId: 'seed-irma-1' },
+    { id: 'wm-irma-2', threadId: 'th-irma', direction: 'in', body: 'Masih mikir Anton. Boleh aku kabari besok?', at: '2026-09-17T21:10:00+07:00', status: 'received', providerId: 'seed-irma-2' }
+  ],
   emailQueueSeed: [
     { id: 'em-kamu-ob', toId: 's-kamu', scheduledAt: '2026-09-01T10:05:00+07:00', status: 'sent', title: 'Selamat datang + kuitansi', subject: 'Selamat datang di MasterMind with Anton GC', body: 'Halo Kamu (demo),\n\nTerima kasih. Mentoring sudah aktif.\nJumlah: Rp400.000\nPaket: bulan\nTransfer ke BCA 123456789 a.n. Anton.\n\nIni kuitansi mock — LarisID tidak menahan uang.' }
   ],

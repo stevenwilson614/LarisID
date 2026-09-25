@@ -28,7 +28,7 @@ Shared state (remote only): Pages Function `GET/PUT /api/state/{slug}?k=ANTON-SE
    - Included: kurikulum, live/diskusi/kolab, grup WA, **50% off all tools**. Laris Affiliate stays satuan.
    - Bayar sekarang: **1 bulan** transfer, **3 bulan** (−15%), **6 bulan** (−25%), or **kartu autopay** (−10%). Rekening in Pengaturan bayar. Mayar mock for autopay.
    - **Bayar nanti, lihat dulu:** Form selesai → trial aktif + dock **Belajar/Diskusi** muncul (boleh dari halaman bayar). Kurikulum penuh kelihatan; hanya video 1 (cover + checklist + pertanyaan GMV) kebuka, sisanya blur. CTA bayar + countdown 24 jam + FAB **WA Anton**.
-4. After video 1: in-app pay prompt. At 12 hours left: queued WA to the student + a **task for Anton** to open WA himself (never auto-send as Anton).
+4. After video 1: in-app pay prompt. At 12 hours left: queued WA + a **task for Anton**. He taps **Kirim dari CRM** (or Buka WA). Otomasi never auto-sends as Anton.
 5. Unpaid after 24h → **Sudah keluar**. “Tidak tertarik” stays its own stage.
 6. Paid → **Mentee**. Full class for the term (month / year / autopay). Laris Affiliate stays extra.
 7. Renewal defaults: 5-day warning WA → Anton personal WA task → 1-day grace. Stage **Akan keluar**. Anton edits delays in **Otomasi**. After grace: preview-only + **Sudah keluar**.
@@ -44,11 +44,13 @@ Shared state (remote only): Pages Function `GET/PUT /api/state/{slug}?k=ANTON-SE
 
 ## CRM (roster + profil + otomasi)
 
-Satu tab **Siswa** dengan tiga kamera: **Daftar** (baris orang: nama+foto, telepon, email, stage, bayar, nilai · klik baris = profil) · **Pipa** (kanban drag-and-drop) · **Progres** (nama + bar % materi selesai). Stage: WA baru · Form · Nonton belum bayar · 24 jam trial · Mentee · Akan keluar · Sudah keluar · Tidak tertarik · Mentor. Profil 3 kolom: kiri kontak **inline-edit** + status/SKU bayar, tengah catatan/linimasa + composer tugas, kanan tugas + rencana aksi. Foto TikTok (oEmbed → unavatar.io, cache IndexedDB, fallback inisial + unggah).
+Satu tab **Siswa** dengan tiga kamera: **Daftar** (baris orang: nama+foto, telepon, email, stage, bayar, nilai · klik baris = profil) · **Pipa** (kanban drag-and-drop) · **Progres** (nama + bar % materi selesai). Stage: WA baru · Form · Nonton belum bayar · 24 jam trial · Mentee · Akan keluar · Sudah keluar · Tidak tertarik · Mentor. Profil 3 kolom: kiri kontak **inline-edit** + status/SKU bayar, tengah chat WA / catatan / linimasa, kanan tugas + rencana aksi. Foto TikTok (oEmbed → unavatar.io, cache IndexedDB, fallback inisial + unggah).
 
 **Otomasi** = peta visual (pemicu → tunggu jam → email / WA / tugas / pindah stage → selesai). Buat / salin / arsip. Seed **Onboarding bayar**. Tidak auto-kirim.
 
-**Tugas** = inbox Follow Up Boss: jenis WA / Email / Telepon / pengingat, tanggal+jam, kelompok terlambat / hari ini / besok / minggu ini / nanti / selesai. Klik nama → profil. Antrian WA/email (wa.me / mailto, tidak auto-kirim) tampil di sini, bukan halaman terpisah.
+**Tugas** = inbox Follow Up Boss: jenis WA / Email / Telepon / pengingat, tanggal+jam, kelompok terlambat / hari ini / besok / minggu ini / nanti / selesai. Klik nama → profil. Antrian WA memakai **Kirim dari CRM** (thread di profil) plus **Buka WA** cadangan. Bagian **Pesan** menampilkan balasan belum dibaca.
+
+**WhatsApp (kirim + lihat).** Profil siswa, mode WA, adalah chat 1:1: bubble masuk/keluar, Kirim, unread. Live path = Fonnte device + Pages Functions (`/api/wa/send`, `/webhook`, `/thread`) on `mastermind-anton`. Localhost tanpa Fonnte memakai seed thread Farah / Irma. Hanya pesan setelah perangkat tersambung — tidak ada import riwayat WA lama, tidak ada grup. Otomasi tetap tidak auto-kirim. Chat mentoring disimpan untuk operasional (UU PDP); form join bilang nomor dipakai Anton untuk chat.
 
 **Kurikulum:** editor ala Udemy — Bagian N, lecture rows, **+ Item kurikulum** (Lecture / Bacaan / File), **+ Konten** untuk unggah, drag urutan. Cover, file, teks. Blob IndexedDB. Jatuh tempo bagian (Edit) masuk kalender. Tanpa preview HP.
 
@@ -58,7 +60,7 @@ Satu tab **Siswa** dengan tiga kamera: **Daftar** (baris orang: nama+foto, telep
 
 Mentor tabs: Siswa · Tugas · Otomasi · Kurikulum · Perpustakaan · Jadwal · Diskusi · Pengaturan bayar. **Tidak ada** tab Antrian atau Pembayaran — bayar di baris siswa + profil.
 
-**Simulasi jam** (+1h / +12h / +1d) on the mentor chrome to demo clocks without waiting. Queued WA/email is `wa.me` / `mailto` + status, not live send.
+**Simulasi jam** (+1h / +12h / +1d) on the mentor chrome to demo clocks without waiting. Queued WA becomes a CRM send (Fonnte when `FONNTE_DEVICE_READY=true`); email stays `mailto`.
 
 ## Money
 

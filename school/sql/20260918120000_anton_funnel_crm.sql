@@ -8,7 +8,8 @@
 --
 -- Adds: applications, offers/subscriptions, CRM pipeline, tasks, action plans,
 -- WA queue, remittances (20% one-level licensing), exam attempts.
--- Does not: charge cards, send WhatsApp, process Mayar webhooks.
+-- Does not: charge cards, process Mayar webhooks, or apply on Contabo.
+-- WhatsApp live send is Fonnte + Pages Functions, not this file.
 
 begin;
 
@@ -141,7 +142,30 @@ create table if not exists public.school_wa_queue (
 );
 
 comment on table public.school_wa_queue is
-  'Queued WhatsApp copy. v1 opens wa.me. Do not call send-cohort-whatsapp until go-live.';
+  'Queued WhatsApp copy. CRM send uses school_wa_messages + Fonnte. Do not call send-cohort-whatsapp.';
+
+create table if not exists public.school_wa_threads (
+  id          uuid primary key default gen_random_uuid(),
+  school_id   uuid not null references public.schools (id) on delete cascade,
+  person_id   uuid references auth.users (id) on delete set null,
+  phone       text not null,
+  updated_at  timestamptz not null default now(),
+  unread      integer not null default 0,
+  unique (school_id, phone)
+);
+
+create table if not exists public.school_wa_messages (
+  id           uuid primary key default gen_random_uuid(),
+  thread_id    uuid not null references public.school_wa_threads (id) on delete cascade,
+  direction    text not null check (direction in ('in', 'out')),
+  body         text not null,
+  at           timestamptz not null default now(),
+  status       text not null default 'sent',
+  provider_id  text
+);
+
+comment on table public.school_wa_messages is
+  '1:1 WhatsApp after the Fonnte device is connected. No history import. Draft only — do not apply on Contabo.';
 
 create table if not exists public.school_remittances (
   id           uuid primary key default gen_random_uuid(),

@@ -21,6 +21,7 @@
 _site/
 _school_site/
 school/.kv-namespace-id
+school/.d1-database-id
 .wrangler/
 school/.wrangler/
 dist/

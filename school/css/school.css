@@ -1578,6 +1578,38 @@ html[data-mode="mentor"] .main:has(.fub-page) { padding: 0; }
 }
 .fub-composer textarea { width: 100%; }
 .fub-composer .btn { width: auto; }
+.wa-status { margin: 0 0 8px; font-size: .72rem; }
+.wa-thread {
+  display: flex; flex-direction: column; gap: 8px;
+  max-height: 320px; overflow: auto;
+  padding: 10px 8px; margin-bottom: 10px;
+  background: var(--ink); border: 1px solid var(--line); border-radius: 10px;
+}
+.wa-empty { margin: 8px 4px; }
+.wa-bubble {
+  max-width: 86%; padding: 8px 10px 6px; border-radius: 12px;
+  font-size: .82rem; line-height: 1.4;
+}
+.wa-bubble.is-in {
+  align-self: flex-start;
+  background: var(--ink-3); border: 1px solid var(--line);
+  border-bottom-left-radius: 4px;
+}
+.wa-bubble.is-out {
+  align-self: flex-end;
+  background: #14532d; border: 1px solid #166534;
+  border-bottom-right-radius: 4px;
+}
+.wa-bubble-meta {
+  margin-top: 4px; font-size: .62rem; color: var(--muted); letter-spacing: .02em;
+}
+.wa-compose-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.wa-compose-row .btn-sm { text-decoration: none; }
+.wa-badge { margin-left: 6px; vertical-align: middle; }
+.wa-inbox { margin-bottom: 16px; }
+.wa-inbox-row { align-items: flex-start; }
+.wa-attach { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.wa-attach select { max-width: 180px; }
 .fub-acts { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; }
 .fub-acts .btn-sm, .fub-acts a.btn-sm { text-decoration: none; }
 .fub-acts .btn-sm.is-on {

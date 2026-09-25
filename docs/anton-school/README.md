@@ -34,9 +34,18 @@ bash school/serve.sh
 7. HP (tunggu ~5 detik): banner hilang, 12 video kebuka (baca dulu; selesai tetap berurutan). Affiliate tetap satuan.
 8. Laptop: **Pengaturan bayar** — rekening, harga, slug. **Kurikulum** → Edit materi / + Bagian.
 9. Laptop: **Simulasi jam** +1 hari sampai kartu mentee **Akan keluar**, lalu habis → siswa kembali preview video 1.
-10. **Reset** di salah satu perangkat mengosongkan demo di semua perangkat. Autopay kartu = mock (langsung lunas). WA tidak terkirim.
+10. **Reset** di salah satu perangkat mengosongkan demo di semua perangkat. Autopay kartu = mock (langsung lunas). WA: di localhost seed thread Farah/Irma (kirim tercatat, tidak ke HP); di remote demo, Kirim memakai Fonnte jika device ready.
 
-Masih mock: Mayar sungguhan, webhook, login, blob video IndexedDB (tautan YouTube/Drive ikut sync).
+Masih mock: Mayar sungguhan, payment webhook, login, blob video IndexedDB (tautan YouTube/Drive ikut sync).
+
+## WhatsApp in the CRM
+
+Anton can **send and see** 1:1 WhatsApp on a student profile (Siswa → orang → WA). Tugas queue uses **Kirim dari CRM**.
+
+- **Live:** Cloudflare Pages Functions + Fonnte device (`FONNTE_API_TOKEN`, `FONNTE_DEVICE_READY=true`, `WA_WEBHOOK_SECRET`). Store is D1 when bound, else KV. Webhook URL: `https://mastermind-anton.pages.dev/api/wa/webhook?secret=…&slug=obrolan.marketing`.
+- **Local:** seed threads, no Fonnte. Add `?sync=1` only if you are running wrangler Pages with the functions.
+- **Limits:** no backfill of old personal chats, no group sync, no media/voice, otomasi does not blast without Anton tapping Kirim.
+- **Privacy:** messages stored for mentoring ops. Join form discloses the number is for Anton’s CRM chat (UU PDP).
 
 ## School URLs (creator-mentor LMS)
 
