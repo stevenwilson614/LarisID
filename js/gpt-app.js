@@ -2699,14 +2699,99 @@ function eduCtaHtml(opts) {
   return `<button type="button" class="edu-cta${plain}" data-edu-submit><span>Ya, saya tertarik.</span>${arrow}</button>`;
 }
 
+/** Dial codes for Edukasi WhatsApp — Indonesia default; diaspora / neighbours. */
+const EDU_PHONE_COUNTRIES = [
+  { iso: 'ID', dial: '+62', name: 'Indonesia', flag: '🇮🇩' },
+  { iso: 'MY', dial: '+60', name: 'Malaysia', flag: '🇲🇾' },
+  { iso: 'SG', dial: '+65', name: 'Singapore', flag: '🇸🇬' },
+  { iso: 'BN', dial: '+673', name: 'Brunei', flag: '🇧🇳' },
+  { iso: 'TH', dial: '+66', name: 'Thailand', flag: '🇹🇭' },
+  { iso: 'PH', dial: '+63', name: 'Filipina', flag: '🇵🇭' },
+  { iso: 'AU', dial: '+61', name: 'Australia', flag: '🇦🇺' },
+  { iso: 'NL', dial: '+31', name: 'Belanda', flag: '🇳🇱' },
+  { iso: 'US', dial: '+1', name: 'Amerika Serikat', flag: '🇺🇸' },
+  { iso: 'GB', dial: '+44', name: 'Inggris', flag: '🇬🇧' },
+  { iso: 'AE', dial: '+971', name: 'UEA', flag: '🇦🇪' },
+  { iso: 'SA', dial: '+966', name: 'Arab Saudi', flag: '🇸🇦' },
+  { iso: 'JP', dial: '+81', name: 'Jepang', flag: '🇯🇵' },
+  { iso: 'KR', dial: '+82', name: 'Korea Selatan', flag: '🇰🇷' },
+  { iso: 'TW', dial: '+886', name: 'Taiwan', flag: '🇹🇼' },
+  { iso: 'HK', dial: '+852', name: 'Hong Kong', flag: '🇭🇰' },
+];
+
+/** Merah di atas, putih di bawah — bukan strip Austria (merah-putih-merah). */
+function eduIdFlagSvg() {
+  return `<svg class="edu-phone-cc-flag" width="18" height="13" viewBox="0 0 18 13" aria-hidden="true"><rect width="18" height="6.5" fill="#E31D1C"/><rect y="6.5" width="18" height="6.5" fill="#fff"/></svg>`;
+}
+
+function eduCcFlagHtml(iso) {
+  if (iso === 'ID') return eduIdFlagSvg();
+  const row = EDU_PHONE_COUNTRIES.find((c) => c.iso === iso);
+  return `<span class="edu-phone-cc-flag-emoji" aria-hidden="true">${row?.flag || '🌐'}</span>`;
+}
+
+function eduNormaliseWa(raw, dial) {
+  const local = String(raw || '').trim();
+  if (!local) return '';
+  const cc = String(dial || '+62').trim() || '+62';
+  if (local.startsWith('+')) {
+    if (local.startsWith('+62') || /^08|^8\d/.test(local.replace(/\D/g, ''))) {
+      return _waNormalisePhone(local) || '';
+    }
+    const e164 = local.replace(/[\s\-().]/g, '');
+    return /^\+[1-9]\d{7,14}$/.test(e164) ? e164 : '';
+  }
+  if (cc === '+62') return _waNormalisePhone(local) || '';
+  const nat = local.replace(/\D/g, '').replace(/^0+/, '');
+  if (!nat || nat.length < 6 || nat.length > 14) return '';
+  const full = cc + nat;
+  return /^\+[1-9]\d{7,14}$/.test(full) ? full : '';
+}
+
+function eduCloseCcMenus(except) {
+  document.querySelectorAll('[data-edu-cc-menu]').forEach((menu) => {
+    if (except && menu === except) return;
+    menu.hidden = true;
+    const btn = menu.closest('[data-edu-phone]')?.querySelector('[data-edu-cc-btn]');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+  });
+}
+
+function eduSetCc(phoneRoot, iso) {
+  const row = EDU_PHONE_COUNTRIES.find((c) => c.iso === iso) || EDU_PHONE_COUNTRIES[0];
+  const btn = phoneRoot.querySelector('[data-edu-cc-btn]');
+  const flagEl = phoneRoot.querySelector('[data-edu-cc-flag]');
+  const dialEl = phoneRoot.querySelector('[data-edu-cc-dial]');
+  if (btn) {
+    btn.setAttribute('data-edu-cc', row.dial);
+    btn.setAttribute('data-edu-iso', row.iso);
+  }
+  if (flagEl) flagEl.innerHTML = eduCcFlagHtml(row.iso);
+  if (dialEl) dialEl.textContent = row.dial;
+  phoneRoot.querySelectorAll('[data-edu-cc-pick]').forEach((opt) => {
+    opt.setAttribute('aria-selected', opt.getAttribute('data-edu-cc-pick') === row.iso ? 'true' : 'false');
+  });
+}
+
 function eduWaFieldHtml(prefix, localDigits, required) {
   const req = required ? ' <span class="edu-req">*</span>' : '';
-  const flag = `<svg class="edu-phone-cc-flag" width="18" height="13" viewBox="0 0 18 13" aria-hidden="true"><rect width="18" height="13" rx="1.5" fill="#E31D1C"/><path fill="#fff" d="M0 4.3h18v4.4H0z"/></svg>`;
+  const opts = EDU_PHONE_COUNTRIES.map((c) =>
+    `<button type="button" class="edu-cc-opt" role="option" data-edu-cc-pick="${c.iso}" aria-selected="${c.iso === 'ID' ? 'true' : 'false'}">` +
+      `<span class="edu-cc-opt-flag">${eduCcFlagHtml(c.iso)}</span>` +
+      `<span class="edu-cc-opt-name">${esc(c.name)}</span>` +
+      `<span class="edu-cc-opt-dial">${c.dial}</span>` +
+    `</button>`
+  ).join('');
   return `<div class="field"><label for="${prefix}-wa">WhatsApp${req}</label>
-    <div class="edu-phone">
-      <span class="edu-phone-cc" aria-hidden="true">${flag}<span>+62</span>
-        <svg class="edu-phone-cc-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg>
-      </span>
+    <div class="edu-phone" data-edu-phone>
+      <div class="edu-phone-cc-wrap">
+        <button type="button" class="edu-phone-cc" data-edu-cc-btn data-edu-cc="+62" data-edu-iso="ID" aria-haspopup="listbox" aria-expanded="false" aria-label="Pilih kode negara">
+          <span data-edu-cc-flag>${eduIdFlagSvg()}</span>
+          <span data-edu-cc-dial>+62</span>
+          <svg class="edu-phone-cc-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="edu-cc-menu" data-edu-cc-menu hidden role="listbox" aria-label="Kode negara">${opts}</div>
+      </div>
       <span class="edu-phone-sep" aria-hidden="true"></span>
       <input id="${prefix}-wa" data-edu-field="wa" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="16" placeholder="812 3456 7890" value="${esc(localDigits || '')}">
     </div>
@@ -2922,10 +3007,13 @@ function eduReadFields(root, ctx) {
   const knownName = root.querySelector('[data-edu-known="name"]');
   const knownEmail = root.querySelector('[data-edu-known="email"]');
   const knownWa = root.querySelector('[data-edu-known="wa"]');
+  const dial = String(root.querySelector('[data-edu-cc-btn]')?.getAttribute('data-edu-cc') || '+62');
   let wa = '';
   if (waInput) {
     const local = String(waInput.value || '').trim();
-    wa = local ? (local.startsWith('+') || local.startsWith('62') || local.startsWith('0') ? local : `+62${local.replace(/\D/g, '')}`) : '';
+    wa = local ? eduNormaliseWa(local, dial) : '';
+    // Keep raw for the "invalid" path so submit can distinguish empty vs bad.
+    if (local && !wa) wa = `__invalid__:${local}`;
   } else if (knownWa) {
     wa = String(knownWa.textContent || '').trim();
   } else {
@@ -2960,8 +3048,9 @@ async function submitEduInterest(root, opts) {
     showErr('Masukkan alamat email yang valid.');
     return;
   }
-  const waNorm = fields.wa ? _waNormalisePhone(fields.wa) : '';
-  if (fields.wa && !waNorm) {
+  const waInvalid = String(fields.wa || '').startsWith('__invalid__:');
+  const waNorm = waInvalid ? '' : String(fields.wa || '');
+  if (waInvalid) {
     showErr('Masukkan nomor WhatsApp yang valid. Contoh: 8123456789');
     return;
   }
@@ -2992,7 +3081,7 @@ async function submitEduInterest(root, opts) {
     const { data, error } = await _supabase.rpc('education_submit_interest', {
       p_name: fields.name,
       p_email: fields.email || null,
-      p_whatsapp: waNorm || fields.wa || null,
+      p_whatsapp: waNorm || null,
     });
     if (error) throw error;
     if (data && data.ok === false) {
@@ -3002,7 +3091,8 @@ async function submitEduInterest(root, opts) {
     _eduMine = { ok: true, interested: true, can_list: !!(_eduMine && _eduMine.can_list) };
     markEduInterestSkipped();
     if (_isRealPersonName(fields.name)) await saveUserDisplayName(fields.name);
-    if (waNorm) await saveProfileWaNumber(waNorm);
+    // Profile / Fonnte path stays Indonesia-only.
+    if (waNorm && waNorm.startsWith('+62')) await saveProfileWaNumber(waNorm);
     void logUserEvent('edu_interest', { ui: 'gpt', action: 'yes', via: opts?.source || 'panel' });
     if (opts?.source === 'popup') {
       root.innerHTML = eduDoneHtml({ popup: true });
@@ -3022,10 +3112,41 @@ async function submitEduInterest(root, opts) {
   }
 }
 
+function eduHandleCcClick(e) {
+  const pick = e.target.closest('[data-edu-cc-pick]');
+  if (pick) {
+    e.preventDefault();
+    e.stopPropagation();
+    const phone = pick.closest('[data-edu-phone]');
+    if (phone) eduSetCc(phone, pick.getAttribute('data-edu-cc-pick'));
+    eduCloseCcMenus();
+    phone?.querySelector('[data-edu-field="wa"]')?.focus();
+    return true;
+  }
+  const btn = e.target.closest('[data-edu-cc-btn]');
+  if (btn) {
+    e.preventDefault();
+    e.stopPropagation();
+    const phone = btn.closest('[data-edu-phone]');
+    const menu = phone?.querySelector('[data-edu-cc-menu]');
+    if (!menu) return true;
+    const open = menu.hidden;
+    eduCloseCcMenus();
+    if (open) {
+      menu.hidden = false;
+      btn.setAttribute('aria-expanded', 'true');
+    }
+    return true;
+  }
+  if (!e.target.closest('[data-edu-cc-menu]')) eduCloseCcMenus();
+  return false;
+}
+
 function bindEduInterestUi() {
   if (_eduBound) return;
   _eduBound = true;
   $('view-edukasi')?.addEventListener('click', (e) => {
+    if (eduHandleCcClick(e)) return;
     if (e.target.closest('#edu-panel-login')) {
       e.preventDefault();
       openEdukasiView();
@@ -3047,6 +3168,7 @@ function bindEduInterestUi() {
     }
   });
   $('edu-interest-capture')?.addEventListener('click', (e) => {
+    if (eduHandleCcClick(e)) return;
     if (e.target.id === 'edu-interest-capture' || e.target.closest('[data-edu-later]')) {
       e.preventDefault();
       skipEduInterestPopup();
@@ -3056,6 +3178,12 @@ function bindEduInterestUi() {
       e.preventDefault();
       void submitEduInterest($('edu-pop-body'), { source: 'popup' });
     }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') eduCloseCcMenus();
+  });
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('[data-edu-phone]')) eduCloseCcMenus();
   });
 }
 
