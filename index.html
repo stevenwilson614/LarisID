@@ -378,8 +378,14 @@ a.side-btn { text-decoration: none; box-sizing: border-box; color: var(--ink); }
      .app's overflow:hidden covers whatever doesn't fit and Riwayat
      shrinks away. The column scrolls; the chat list scrolls inside it. */
   .sidebar {
+    /* height, not only max-height. Past the 1279px rail (what 90% Chrome
+       zoom does to a window that was under that line at 100%), a max-height
+       percentage does not make a scrollport. The column then grows and
+       .app clips Admin. A definite height keeps the scrollbar. */
+    height: 100%;
     min-height: 0;
     max-height: 100%;
+    align-self: stretch;
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
