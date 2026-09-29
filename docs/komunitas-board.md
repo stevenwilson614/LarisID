@@ -4,7 +4,9 @@ Logged-in peer conversation. Goal: **users talking to each other**, not more lik
 
 Live UI: `index.html` + `js/gpt-community-board.js` + `js/gpt-app.js`. Schema: `supabase/migrations/20260907140000_komunitas_board.sql`. Apply on Contabo only (`bash scripts/apply-selfhost.sh`). Never `supabase db push --linked`.
 
-The public sebaran map is the same `user_map_distribution()` payload as Admin, drawn by `js/admin-map.js` with `inset: false`: no Jakarta panel, no size legend, province counts (including DKI) sit around a wide short national outline. Phone width still drops labels and uses the collapsed “Lihat sebaran per provinsi” list. Admin keeps the inset and legend.
+The public sebaran map is the same `user_map_distribution()` payload as Admin, drawn by `js/admin-map.js` with `inset: false`: no Jakarta panel, no size legend, province counts (including DKI) sit around a wide short national outline. The SVG is 90% of the card so side whitespace keeps it from crowding the thread list. Phone width still drops labels and uses the collapsed “Lihat sebaran per provinsi” list. Admin keeps the inset and legend.
+
+Answers have a thumb like, stored in `feature_request_comment_likes` / `feature_request_comments_feed`. That is a reply signal, not a success metric.
 
 Diskusi and Usulan rows start as one compact line (vote, title, author/date/topic, jawaban). Body and answers open on the title, the jawaban count, or a `?komunitas=` deep link. Do not invent view counts. Diskusi sort stays unanswered first, then newest.
 
@@ -29,8 +31,7 @@ Tips are a topic, not a lane. Named by default. No anonymous posting in v1.
 
 Public Diskusi is for **process and lessons**. Niche, supplier, margin, and winning ads stay off the board.
 
-- Pinned rules say that in three lines.
-- Compose placeholder repeats it.
+- Compose placeholder repeats it. The old peach rules strip under the tabs is gone so threads sit higher.
 - Every answer has **Kirim Pesan** (“Mau lanjut ngobrol privat?”) → `user_messages` via the public profile composer (`js/gpt-profile.js`). Requires the answerer `user_profiles.is_public`. First reply nudges the answerer to turn that on.
 - Do not prefill harga / omset / perkiraan deltas into a Diskusi post. “Tanya seller lain” uses **keyword grain** only.
 

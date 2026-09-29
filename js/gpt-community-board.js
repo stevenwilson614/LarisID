@@ -229,7 +229,11 @@
         const msg = (!isOwn(c.author_id) && c.author_id)
           ? `<span class="msb-dm-wrap"><button type="button" class="msb-dm" data-action="message-user" data-user-id="${_opts.esc(c.author_id)}" data-user-name="${_opts.esc(authorDisplayName(c))}">Kirim Pesan</button><span class="msb-dm-hint">Mau lanjut ngobrol privat?</span></span>`
           : '';
-        return `<div class="msb-comment" data-comment-id="${c.id}">${authorTagHtml(c)}<span class="msb-comment-body">${_opts.esc(c.body)}</span><span class="msb-comment-date">${formatDate(c.created_at)}</span>${msg}${manage}</div>`;
+        const liked = !!c.liked_by_me;
+        const likeBtn = `<button type="button" class="msb-comment-like${liked ? ' is-liked' : ''}" data-action="like-comment" data-post-id="${postId}" data-comment-id="${c.id}" aria-label="Suka balasan">
+          ${svgThumb(liked)}<span class="msb-comment-like-count">${c.like_count || 0}</span>
+        </button>`;
+        return `<div class="msb-comment" data-comment-id="${c.id}">${authorTagHtml(c)}<span class="msb-comment-body">${_opts.esc(c.body)}</span><span class="msb-comment-date">${formatDate(c.created_at)}</span>${likeBtn}${msg}${manage}</div>`;
       })
       .join('');
   }
@@ -240,8 +244,8 @@
       return;
     }
     const { data, error } = await _opts.supabase
-      .from('feature_request_comments')
-      .select('id, author_id, author_first_name, author_city, author_headshot_url, author_is_admin, body, created_at')
+      .from('feature_request_comments_feed')
+      .select('id, author_id, author_first_name, author_city, author_headshot_url, author_is_admin, body, created_at, like_count, liked_by_me')
       .eq('request_id', postId)
       .order('created_at', { ascending: true });
     if (error) return;
@@ -319,6 +323,45 @@
     }
   }
 
+  function updateCommentLikeDisplay(postId, commentId, liked, count) {
+    const btn = _listEl && _listEl.querySelector(`.msb-comment-like[data-comment-id="${commentId}"]`);
+    if (!btn) return;
+    btn.classList.toggle('is-liked', !!liked);
+    btn.innerHTML = `${svgThumb(!!liked)}<span class="msb-comment-like-count">${count}</span>`;
+  }
+
+  async function toggleCommentLike(postId, commentId) {
+    const comments = _commentsCache[postId] || [];
+    const row = comments.find((c) => c.id === commentId);
+    if (!row) return;
+    const wasLiked = !!row.liked_by_me;
+    const prevCount = row.like_count || 0;
+    row.liked_by_me = !wasLiked;
+    row.like_count = wasLiked ? Math.max(0, prevCount - 1) : prevCount + 1;
+    updateCommentLikeDisplay(postId, commentId, row.liked_by_me, row.like_count);
+    let error;
+    if (wasLiked) {
+      const res = await _opts.supabase
+        .from('feature_request_comment_likes')
+        .delete()
+        .eq('comment_id', commentId)
+        .eq('user_id', _opts.currentUserId);
+      error = res.error;
+    } else {
+      const res = await _opts.supabase
+        .from('feature_request_comment_likes')
+        .insert({ comment_id: commentId, user_id: _opts.currentUserId });
+      error = res.error;
+    }
+    if (error) {
+      row.liked_by_me = wasLiked;
+      row.like_count = prevCount;
+      updateCommentLikeDisplay(postId, commentId, row.liked_by_me, row.like_count);
+      _opts.toast('Gagal memperbarui. Coba lagi.');
+      if (typeof _opts.onError === 'function') _opts.onError(error);
+    }
+  }
+
   async function addComment(postId, body) {
     if (!body.trim()) {
       _opts.toast('Balasan tidak boleh kosong.');
@@ -338,6 +381,8 @@
       if (typeof _opts.onError === 'function') _opts.onError(error);
       return;
     }
+    data.like_count = data.like_count || 0;
+    data.liked_by_me = !!data.liked_by_me;
     if (!_commentsCache[postId]) _commentsCache[postId] = [];
     _commentsCache[postId].push(data);
     renderCommentsForPost(postId);
@@ -680,13 +725,11 @@
     _container.querySelectorAll('.msb-tab').forEach((btn) => {
       btn.classList.toggle('is-active', btn.dataset.tab === _tab);
     });
-    const rules = _container.querySelector('#msb-rules');
     const heroTitle = _container.querySelector('#msb-hero-title');
     const heroSub = _container.querySelector('#msb-hero-sub');
     const openBtn = _container.querySelector('#msb-open-form');
     const ctaBtn = _container.querySelector('#msb-cta-open');
     const ctaText = _container.querySelector('#msb-cta-text');
-    if (rules) rules.hidden = !isDiskusi();
     if (heroTitle) heroTitle.textContent = isDiskusi() ? 'Komunitas' : 'Ajukan Fitur';
     if (heroSub) {
       heroSub.textContent = isDiskusi()
@@ -765,11 +808,6 @@
         font-weight: 800; letter-spacing: -.03em; color: #0f172a; line-height: 1.15;
       }
       .msb-hero-text p { margin: 0 0 12px; color: var(--msb-muted); font-size: .9rem; line-height: 1.45; max-width: 46ch; }
-      .msb-rules {
-        margin: 0 0 10px; padding: 8px 10px; border-radius: 10px;
-        background: #FFF7ED; color: #9A3412; font-size: .76rem; line-height: 1.4;
-      }
-      .msb-rules strong { font-weight: 750; }
       .msb-hero-mascot {
         flex: 0 0 auto; display: block; align-self: flex-end;
         margin: 0 -6px -28px 0; line-height: 0; pointer-events: none; user-select: none;
@@ -789,8 +827,8 @@
       }
       .msb-map-title { margin: 0; font-size: 1.02rem; font-weight: 800; color: var(--msb-ink); }
       .msb-map-sub { margin: 2px 0 6px; font-size: .8rem; color: var(--msb-muted); }
-      .msb-map-stage { position: relative; }
-      .msb-map-svg { width: 100%; height: auto; display: block; }
+      .msb-map-stage { position: relative; display: flex; justify-content: center; }
+      .msb-map-svg { width: 90%; height: auto; display: block; }
       /* Shown only in compact mode, where the map drops its labels. Collapsed
          by default -- a full ranked list ate real vertical space just to load
          the page -- and native <details> gives keyboard/reader semantics free. */
@@ -939,6 +977,14 @@
       .msb-comment { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 8px; font-size: .82rem; color: #374151; }
       .msb-comment-body { flex: 1 1 50%; }
       .msb-comment-date { color: #9CA3AF; font-size: .75rem; }
+      .msb-comment-like {
+        display: inline-flex; align-items: center; gap: 3px;
+        border: none; background: none; padding: 0; cursor: pointer;
+        color: var(--msb-red); font: inherit;
+      }
+      .msb-comment-like svg { width: 13px; height: 13px; }
+      .msb-comment-like-count { font-size: .75rem; font-weight: 750; color: var(--msb-ink); }
+      .msb-comment-like.is-liked .msb-comment-like-count { color: var(--msb-red); }
       .msb-comment-actions { display: inline-flex; gap: 8px; }
       .msb-comment-actions button { border: none; background: none; padding: 0; cursor: pointer; font-size: .75rem; font-weight: 700; color: var(--msb-red); }
       .msb-comment-edit { display: flex; flex: 1 1 100%; gap: 6px; align-items: center; }
@@ -1055,14 +1101,14 @@
     _opts = options;
     _container = container;
 
-    if (container.dataset.communityBoardMounted === 'msb-v9') {
+    if (container.dataset.communityBoardMounted === 'msb-v10') {
       _listEl = container.querySelector('#msb-list');
       applyLaunchOpts();
       fetchPosts();
       renderUserMap();
       return;
     }
-    container.dataset.communityBoardMounted = 'msb-v9';
+    container.dataset.communityBoardMounted = 'msb-v10';
     injectStyles();
 
     container.innerHTML = `
@@ -1101,10 +1147,6 @@
             <button type="button" class="msb-tab is-active" data-tab="diskusi">Diskusi</button>
             <button type="button" class="msb-tab" data-tab="usulan">Ajukan Fitur</button>
           </div>
-          <p class="msb-rules" id="msb-rules">
-            <strong>Bagikan proses dan pelajaran.</strong> Niche, supplier, margin pribadi tidak perlu dibagikan di sini — pakai Kirim Pesan.
-            Jawab pertanyaan yang belum terjawab kalau kamu pernah mengalaminya.
-          </p>
 
           <div class="msb-form" id="msb-form-panel" hidden>
             <div id="msb-kind-wrap" hidden>
@@ -1180,6 +1222,9 @@
       } else if (action === 'like') {
         e.preventDefault();
         await toggleLike(postId);
+      } else if (action === 'like-comment') {
+        e.preventDefault();
+        await toggleCommentLike(postId, commentId);
       } else if (action === 'toggle-body') {
         e.preventDefault();
         toggleBody(postId);
