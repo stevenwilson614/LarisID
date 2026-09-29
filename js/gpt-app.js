@@ -24273,6 +24273,11 @@ function paintDirectoryTable(opts = {}) {
   grid.innerHTML = sum + nearbyLead + chooser + rowsHtml;
   bindDirChooser(grid);
   if (!slice.length) {
+    // The in-flight skeleton is painted before the pool returns. An empty
+    // result never hydrates trends, so clear it or "Menghitung kenaikan
+    // penjualan…" stays up after the table already says nothing matched.
+    const trendHost = $('dir-trending-now');
+    if (trendHost) { trendHost.hidden = true; trendHost.innerHTML = ''; }
     renderDirPager(pager, 0);
     updateDirCount(0, 0, false);
     updateDirHeading();
