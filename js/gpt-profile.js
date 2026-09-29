@@ -277,18 +277,20 @@
   function quotaMiniHtml() {
     if (!isOwn) return '';
     const u = readUsage() || {};
-    return '<div class="pf-quota-rings" aria-label="Jatah harian">' +
-      '<div class="pf-quota-item">' +
-        quotaRingHtml('dive', u.diveNum || '∞') +
-        '<span class="pf-quota-lbl">Deep Dive</span>' +
-        '<span class="pf-quota-val js-quota-dives">' + (u.divesText || '—') + '</span>' +
+    return '<section class="pf-card pf-quota">' +
+      '<div class="pf-quota-rings" aria-label="Jatah harian">' +
+        '<div class="pf-quota-item">' +
+          quotaRingHtml('dive', u.diveNum || '∞') +
+          '<span class="pf-quota-lbl">Deep Dive</span>' +
+          '<span class="pf-quota-val js-quota-dives">' + (u.divesText || '—') + '</span>' +
+        '</div>' +
+        '<div class="pf-quota-item">' +
+          quotaRingHtml('dl', u.dlNum || '90') +
+          '<span class="pf-quota-lbl">Unduhan</span>' +
+          '<span class="pf-quota-val js-quota-downloads">' + (u.downloadsText || '90/90') + '</span>' +
+        '</div>' +
       '</div>' +
-      '<div class="pf-quota-item">' +
-        quotaRingHtml('dl', u.dlNum || '90') +
-        '<span class="pf-quota-lbl">Unduhan</span>' +
-        '<span class="pf-quota-val js-quota-downloads">' + (u.downloadsText || '90/90') + '</span>' +
-      '</div>' +
-    '</div>';
+    '</section>';
   }
 
   function paintQuotaRing(wrap, num, tone, offset) {
@@ -607,7 +609,6 @@
         ? '<div class="pf-linklist">' + (list || fallback) + '</div>'
         : '<p class="pf-empty">' + (isOwn ? 'Ketuk pensil, pilih marketplace, lalu tempel tautan toko.' : 'Belum ada toko.') + '</p>') +
       editor +
-      quotaMiniHtml() +
     '</section>';
   }
 
@@ -648,6 +649,7 @@
         tentangHtml(row) +
         socialHtml(row) +
         tokoHtml(row) +
+        quotaMiniHtml() +
       '</aside>' +
       footerHtml() +
       '<div class="pf-status js-status"></div>';
