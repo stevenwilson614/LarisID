@@ -14392,7 +14392,7 @@ function trendAgeDays(iso) {
 
 function listingTrendEligible(p) {
   const t = p && p._petaTrend;
-  if (!t || t.belum || t.pending || t.held || !t.terukur || t.wkPct == null) return false;
+  if (!t || t.belum || t.pending || t.wkPct == null) return false;
   const nowWk = Number(t.unitsNowWk);
   const prevWk = Number(t.unitsPrevWk);
   if (!Number.isFinite(nowWk) || !Number.isFinite(prevWk)) return false;
@@ -14402,23 +14402,16 @@ function listingTrendEligible(p) {
 function listingTrendTitle(t) {
   if (!t || t.pending) return 'Menghitung kenaikan penjualan…';
   if (t.belum || t.wkPct == null) {
-    if (t && t.unitsPrevWk != null) {
-      return 'Belum cukup pergerakan terukur (penjualan sebelumnya terlalu kecil atau counter Shopee belum bergerak).';
-    }
-    return 'Butuh 3 pengukuran ≥7 hari terpisah; produk ini belum punya cukup scrape.';
+    return 'Belum bisa dibanding minggu lalu: minggu sebelumnya belum terukur, atau omsetnya masih kecil.';
   }
-  const n = Math.round(Number(t.unitsNowWk) || 0).toLocaleString('id-ID');
-  const m = Math.round(Number(t.unitsPrevWk) || 0).toLocaleString('id-ID');
-  const sNow = Math.round(Number(t.spanNow) || 0);
-  const sPrev = Math.round(Number(t.spanPrev) || 0);
   const dir = t.wkPct > 0 ? 'naik' : t.wkPct < 0 ? 'turun' : 'stabil';
-  const windows = `~${n}/minggu (${fmtTrendDay(t.at1)}–${fmtTrendDay(t.at0)}, ${sNow} hari) vs ~${m}/minggu (${fmtTrendDay(t.at2)}–${fmtTrendDay(t.at1)}, ${sPrev} hari)`;
-  if (t.held || !t.terukur) {
-    const age = trendAgeDays(t.at0);
-    const ageBit = age != null ? `, ${age} hari lalu` : '';
-    return `Perkiraan dari 3 scrape terakhir (terbaru ${fmtTrendDay(t.at0)}${ageBit}). Penjualan ${dir} ${fmtTrendPct(t.wkPct)} : ${windows}. Bukan scrape 21 hari terakhir.`;
+  const nowLbl = fmtTrendDay(t.weekNow || t.at0);
+  const prevLbl = fmtTrendDay(t.weekPrev || t.at1);
+  const pair = `minggu ${nowLbl} (${fmtRpShort(t.omsetNow)}) vs minggu ${prevLbl} (${fmtRpShort(t.omsetPrev)})`;
+  if (!t.terukur) {
+    return `Omset ${dir} ${fmtTrendPct(t.wkPct)}: ${pair}. Minggu berjalan masih perkiraan, seri yang sama dengan grafik Tren Produk.`;
   }
-  return `Penjualan ${dir} ${fmtTrendPct(t.wkPct)} : ${windows}. Terukur dari 3 scrape, bukan perkiraan.`;
+  return `Omset ${dir} ${fmtTrendPct(t.wkPct)}: ${pair}. Kedua minggu terukur dari scrape.`;
 }
 
 function listingTrendInnerHtml(p, opts = {}) {
@@ -14982,7 +14975,7 @@ function trendingNowRowHtml(p, i) {
       ${trendNowCatHtml(p)}
       <div class="trend-now-harga">${price ? fmtRp(price) : '—'}</div>
       <div class="trend-now-omset">${omset ? fmtOmset(omset) : '—'}</div>
-      <div class="trend-now-pct" title="${esc(listingTrendTitle(p._petaTrend))}">${listingTrendInnerHtml(p, { hidePerkiraan: true })}${bolt}</div>
+      <div class="trend-now-pct" title="${esc(listingTrendTitle(p._petaTrend))}">${listingTrendInnerHtml(p)}${bolt}</div>
     </div>
     <span class="trend-now-go" aria-hidden="true">${ico('chevronRight', first ? 22 : 18)}</span>
   </div>`;
@@ -14997,7 +14990,7 @@ function trendingNowHtml(listings, opts = {}) {
   return `<div class="trend-now">
     <div class="trend-now-hd">
       <h3 class="trend-now-title">Trending Sekarang</h3>
-      <p class="trend-now-sub">Kenaikan penjualan: ~2 minggu terakhir vs ~2 minggu sebelumnya, dari scrape nyata.</p>
+      <p class="trend-now-sub">Omset minggu ini vs minggu lalu, seri yang sama dengan grafik produk. Minggu berjalan ditandai perkiraan.</p>
     </div>
     ${top.map((p, i) => trendingNowRowHtml(p, i)).join('')}
   </div>`;

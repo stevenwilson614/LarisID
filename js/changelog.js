@@ -15,8 +15,8 @@ window.LARIS_CHANGELOG = [
     title: 'Kartu produk di Cari Produk',
     items: [
       {
-        text: 'Cari Produk sekarang menampilkan kartu foto seperti di Shopee — harga, omset, dan persen naik atau turun dibanding scrape sebelumnya. Angka persen tidak dipotong di 300%. Bisa ganti ke Tabel kalau mau lihat baris.',
-        tech: 'dirListingCardsHtml in gpt-app.js; default lid_dir_view_v1=kartu; wkPct from units_now_wk vs units_prev_wk without ±300 clamp (peta-peluang.js + 20260929160000 mv_listing_momentum).',
+        text: 'Cari Produk menampilkan kartu foto seperti di Shopee. Persen tren adalah omset minggu ini dibanding minggu lalu — seri yang sama dengan grafik produk. Kalau grafik minggu ini turun, angkanya ikut turun. Minggu yang belum selesai ditandai perkiraan.',
+        tech: 'wkPct from listing_chart_wow (this WIB week vs previous, product_daily_series grain) in peta_batch_momentum. Not the 3-scrape units_now_wk ratio. 20260929170000.',
       },
     ],
   },

@@ -49,6 +49,16 @@
     if (nowWk == null || prevWk == null || !(prevWk > 0)) return null;
     return (nowWk - prevWk) / prevWk * 100;
   }
+  // Same two Monday weeks the Tren Produk chart draws. The 3-scrape rate
+  // (units_now_wk vs units_prev_wk) can still be a boom from August while
+  // this week's point on the chart is already down.
+  function chartWowPct(m) {
+    if (!m || m.chart_prev_measured !== true) return null;
+    var nowOm = num(m.chart_omset_now);
+    var prevOm = num(m.chart_omset_prev);
+    if (nowOm == null || prevOm == null || !(prevOm >= OMSET_PREV_FLOOR)) return null;
+    return (nowOm - prevOm) / prevOm * 100;
+  }
   function fmtPctSigned(n) {
     var v = Math.round(Number(n) || 0);
     var abs = Math.abs(v);
@@ -79,29 +89,29 @@
   }
   function trendFromMomentum(m) {
     if (!m) return emptyTrend(false);
-    var belum = m.momentum_class === 'belum';
-    var nowWk = num(m.units_now_wk);
-    var prevWk = num(m.units_prev_wk);
-    var pct = weekVsPrevPct(nowWk, prevWk);
-    if (pct == null && !belum) pct = num(m.momentum_pct);
-    // Old peta_batch (no fresh/source) counts as measured.
-    var held = m.momentum_source === 'held' || m.fresh === false;
-    var noPct = belum || pct == null;
+    var pct = chartWowPct(m);
+    var belum = pct == null;
+    var nowMeasured = m.chart_now_measured === true;
+    var prevMeasured = m.chart_prev_measured === true;
     return {
-      wkPct: noPct ? null : pct,
-      wkPctRaw: noPct ? null : pct,
+      wkPct: belum ? null : pct,
+      wkPctRaw: belum ? null : pct,
       moPct: null,
-      terukur: !belum && !held,
-      held: !belum && held,
+      terukur: !belum && nowMeasured && prevMeasured,
+      held: false,
       belum: !!belum,
       pending: false,
-      unitsNowWk: nowWk,
-      unitsPrevWk: prevWk,
-      spanNow: num(m.span_now),
-      spanPrev: num(m.span_prev),
-      at0: m.at0 || null,
-      at1: m.at1 || null,
-      at2: m.at2 || null
+      unitsNowWk: num(m.chart_units_now),
+      unitsPrevWk: num(m.chart_units_prev),
+      spanNow: 7,
+      spanPrev: 7,
+      at0: m.chart_week_now || null,
+      at1: m.chart_week_prev || null,
+      at2: null,
+      omsetNow: num(m.chart_omset_now),
+      omsetPrev: num(m.chart_omset_prev),
+      weekNow: m.chart_week_now || null,
+      weekPrev: m.chart_week_prev || null
     };
   }
   function windowOmset(frames, weekList) {
@@ -244,17 +254,16 @@
     return 'mulai_sepi';
   }
   function momWord(m, pending) {
-    if (!m || m.momentum_class === 'belum') {
+    var pct = chartWowPct(m);
+    if (pct == null) {
       if (pending === 'pending') return '…';
       return '—';
     }
-    var pct = weekVsPrevPct(num(m.units_now_wk), num(m.units_prev_wk));
-    if (pct == null) pct = num(m.momentum_pct);
     var shown = fmtPctSigned(pct);
-    var core = m.momentum_class === 'naik' ? ('naik ' + shown)
-      : m.momentum_class === 'turun' ? ('turun ' + shown)
+    var core = pct > 20 ? ('naik ' + shown)
+      : pct < -20 ? ('turun ' + shown)
       : 'stabil';
-    var terukur = m.cur_source === 'measured' && m.prev_source === 'measured';
+    var terukur = m.chart_now_measured === true && m.chart_prev_measured === true;
     return terukur ? core : core + ' (perkiraan)';
   }
   function momMark(m) {

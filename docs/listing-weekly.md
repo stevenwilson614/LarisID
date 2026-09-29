@@ -90,10 +90,11 @@ covers them. It never rewrites an already-measured week, and never touches
 **distinct** `(item_id, shop_id)` set, so an ad slot and an organic slot of the
 same listing are not double-counted. It is **not** `mv_keyword_weekly` (that
 matview is only the Terlaris Minggu Ini badge). Cari Produk / Trending
-Sekarang % does **not** read `listing_weekly` — it uses 3-snapshot momentum
-in `mv_listing_momentum` (see [peta-peluang.md](./peta-peluang.md)). Fresh
-S0 (≤21d) is terukur; older 3-scrape rows are a held perkiraan, not a
-velocity nowcast.
+Sekarang % does **not** read `listing_weekly` or the 3-scrape rate. It is
+this WIB week versus the previous one on the same daily series as Tren
+Produk (`listing_chart_wow`, see [peta-peluang.md](./peta-peluang.md)).
+The current week is a velocity nowcast until a scrape covers it, and is
+labeled perkiraan.
 
 ## Update path
 
