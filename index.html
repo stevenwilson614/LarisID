@@ -2636,6 +2636,37 @@ body.view-profil [data-mascot="hero"] { visibility: hidden; }
 .pf-chip.is-add { background: #fff; color: #B5202A; border-style: dashed; border-color: #F3D4C8; }
 button.pf-chip { cursor: pointer; }
 .pf-chip-x { color: #9CA3AF; font-size: .85rem; line-height: 1; }
+.pf-plat-pick {
+  display: flex; flex-wrap: wrap; gap: 8px;
+}
+.pf-plat-pick--add { margin: 4px 0 10px; }
+.pf-plat-btn {
+  display: inline-flex; flex-direction: column; align-items: center; gap: 4px;
+  min-width: 64px; padding: 8px 8px 6px; border-radius: 14px;
+  background: #F7F7F7; border: 1.5px solid #EDEDED; color: #374151;
+  font-size: .68rem; font-weight: 750; line-height: 1.15;
+}
+.pf-plat-btn:hover { border-color: #F3D4C8; background: #FBF6F3; }
+.pf-plat-btn.is-on {
+  border-color: #B5202A; background: #F9EAE4; color: #8E191F;
+  box-shadow: 0 0 0 2px rgba(181,32,42,.1);
+}
+.pf-plat-btn svg { display: block; border-radius: 8px; }
+.pf-plat-lbl { max-width: 72px; text-align: center; }
+.pf-plat-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.pf-plat-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px 4px 4px; border-radius: 999px;
+  background: #F7F7F7; border: 1px solid #EDEDED;
+  font-size: .78rem; font-weight: 700; color: #374151;
+}
+.pf-plat-pill svg { width: 22px; height: 22px; border-radius: 6px; display: block; }
+.pf-logo-fallback {
+  width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center;
+  background: #111; color: #fff; font-size: .75rem; font-weight: 800;
+}
+.pf-link-ico { flex-shrink: 0; display: grid; place-items: center; }
+.pf-link-ico svg { width: 28px; height: 28px; border-radius: 8px; display: block; }
 .pf-stats {
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;
   margin: 0 0 14px;
@@ -2643,11 +2674,15 @@ button.pf-chip { cursor: pointer; }
 .pf-stat {
   text-align: center; padding: 12px 8px; border-radius: 14px; background: #F9F9F9;
 }
+.pf-stat-ico {
+  display: grid; place-items: center; margin: 0 auto 6px; color: #B5202A;
+}
 .pf-stat-n {
   display: block; font-size: 1.55rem; font-weight: 800; letter-spacing: -.03em;
   color: #B5202A; line-height: 1.1;
 }
 .pf-stat-l { display: block; margin-top: 4px; font-size: .75rem; font-weight: 700; color: #6B7280; }
+.pf-about-plats { align-items: center; }
 .pf-klist { display: flex; flex-direction: column; gap: 2px; }
 .pf-krow {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
@@ -11564,7 +11599,7 @@ body.view-chat .sfb-card {
 <script defer src="/js/gpt-dir-home.js?v=20260824d"></script>
 <script defer src="/js/gpt-photo-analyze.js?v=20260824a"></script>
 <script defer src="/js/gpt-referral.js?v=20260821a"></script>
-<script defer src="/js/gpt-profile.js?v=20260929a"></script>
+<script defer src="/js/gpt-profile.js?v=20260929b"></script>
 <script defer src="/js/gpt-community-board.js?v=20260929f"></script>
 <script defer src="/js/laris-cohort.js?v=20260908j"></script>
 <script defer src="/js/laris-mascot-rigs.js?v=20260907k"></script>

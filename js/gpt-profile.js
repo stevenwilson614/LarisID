@@ -10,13 +10,12 @@
     blibli: 'Blibli',
   };
   const SELL_PLATFORMS = [
-    { id: 'shopee', label: 'Shopee' },
-    { id: 'tiktok_shop', label: 'TikTok Shop' },
-    { id: 'tokopedia', label: 'Tokopedia' },
-    { id: 'lazada', label: 'Lazada' },
-    { id: 'blibli', label: 'Blibli' },
+    { id: 'shopee', label: 'Shopee', logo: 'shopee' },
+    { id: 'tiktok_shop', label: 'TikTok Shop', logo: 'tiktok' },
+    { id: 'tokopedia', label: 'Tokopedia', logo: 'tokopedia' },
+    { id: 'lazada', label: 'Lazada', logo: 'lazada' },
+    { id: 'blibli', label: 'Blibli', logo: 'blibli' },
   ];
-  const FOCUS_SUGGEST = ['Riset produk', 'Iklan', 'Supplier', 'Konten'];
   const SOCIAL_PLATFORMS = [
     { id: 'instagram', label: 'Instagram', hosts: ['instagram.com'] },
     { id: 'tiktok', label: 'TikTok', hosts: ['tiktok.com'] },
@@ -31,6 +30,14 @@
   const pencilSVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>';
   const lockSVG = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
   const chevSVG = '<svg class="pf-rchev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>';
+  const STAT_POST_SVG = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 4H6.2A2.2 2.2 0 0 0 4 6.2v8.6A2.2 2.2 0 0 0 6.2 17H7v3.2a.5.5 0 0 0 .85.36L11.4 17h6.4A2.2 2.2 0 0 0 20 14.8V6.2A2.2 2.2 0 0 0 17.8 4Z"/></svg>';
+  const STAT_COMMENT_SVG = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5z"/></svg>';
+  const STAT_LIKE_SVG = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h9.3a2.5 2.5 0 0 0 2.5-2.1l1.4-7.1A2 2 0 0 0 18.1 9H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>';
+  const SOCIAL_ICONS = {
+    instagram: '<svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><defs><linearGradient id="pf-ig" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#F58529"/><stop offset=".5" stop-color="#DD2A7B"/><stop offset="1" stop-color="#515BD4"/></linearGradient></defs><rect width="32" height="32" rx="9" fill="url(#pf-ig)"/><rect x="8" y="8" width="16" height="16" rx="5" fill="none" stroke="#fff" stroke-width="2"/><circle cx="16" cy="16" r="4.2" fill="none" stroke="#fff" stroke-width="2"/><circle cx="21.6" cy="10.4" r="1.4" fill="#fff"/></svg>',
+    tiktok: '<svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#010101"/><path d="M19.3 7.4c.34 2.06 1.66 3.4 3.62 3.6v2.55c-1.18 0-2.36-.4-3.42-1.04v5.55a5.36 5.36 0 1 1-5.36-5.36c.3 0 .58.02.86.07v2.66a2.8 2.8 0 1 0 1.96 2.67V7.4z" fill="#25F4EE" transform="translate(-0.9,-0.6)"/><path d="M19.3 7.4c.34 2.06 1.66 3.4 3.62 3.6v2.55c-1.18 0-2.36-.4-3.42-1.04v5.55a5.36 5.36 0 1 1-5.36-5.36c.3 0 .58.02.86.07v2.66a2.8 2.8 0 1 0 1.96 2.67V7.4z" fill="#FE2C55" transform="translate(0.9,0.6)"/><path d="M19.3 7.4c.34 2.06 1.66 3.4 3.62 3.6v2.55c-1.18 0-2.36-.4-3.42-1.04v5.55a5.36 5.36 0 1 1-5.36-5.36c.3 0 .58.02.86.07v2.66a2.8 2.8 0 1 0 1.96 2.67V7.4z" fill="#fff"/></svg>',
+    youtube: '<svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#FF0000"/><path d="M13 10.8v10.4L22.2 16z" fill="#fff"/></svg>',
+  };
 
   let supabase = null;
   let userId = null;
@@ -50,11 +57,33 @@
   let isOwn = false;
   let previewMode = null;
   let wantMessage = false;
-  let edit = { header: false, focus: false, social: false, toko: false };
+  let edit = { header: false, social: false, toko: false };
+  let socialPick = null;
+  let storePick = 'shopee';
   let riwayatChip = 'all';
   let statusEl = null;
   let imgPreview = null;
   let initialsFallback = null;
+
+  function storeLogo(platform) {
+    const map = { shopee: 'shopee', tiktok_shop: 'tiktok', tokopedia: 'tokopedia', lazada: 'lazada', blibli: 'blibli' };
+    const key = map[platform] || platform;
+    try {
+      if (global.LARIS_MP && typeof global.LARIS_MP.logo === 'function') {
+        return global.LARIS_MP.logo(key).replace(/width="26" height="26"/g, 'width="28" height="28"');
+      }
+    } catch (_) {}
+    return '<span class="pf-logo-fallback">' + esc((STORE_PLATFORMS[platform] || platform || '?').charAt(0)) + '</span>';
+  }
+
+  function socialLogo(platform) {
+    return SOCIAL_ICONS[platform] || '<span class="pf-logo-fallback">?</span>';
+  }
+
+  function sellLogo(id) {
+    const p = SELL_PLATFORMS.find((x) => x.id === id);
+    return storeLogo(p ? p.id : id);
+  }
 
   function $(sel, root) {
     return (root || pageRoot || document).querySelector(sel);
@@ -75,13 +104,6 @@
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return '';
     return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-  }
-
-  function fmtJoined(iso) {
-    if (!iso) return '';
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return '';
-    return d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
   }
 
   function asList(v) {
@@ -124,7 +146,6 @@
       is_admin: true,
       is_public: true,
       completed_at: '2023-01-12T00:00:00.000Z',
-      focus_areas: ['Riset produk', 'Iklan', 'Supplier'],
       selling_platforms: ['shopee', 'tiktok_shop'],
       social_links: [
         { platform: 'instagram', handle: 'stevenwilson', url: 'https://instagram.com/stevenwilson' },
@@ -335,8 +356,7 @@
     const name = esc(row.display_name || row.first_name || 'Pengguna LarisID');
     const role = row.is_admin ? ' <span class="gpt-pv-role">Admin</span>' : '';
     const city = row.city ? esc(row.city) : '';
-    const joined = fmtJoined(row.completed_at || row.joined_at);
-    const meta = [city, joined ? 'Bergabung ' + joined : ''].filter(Boolean).join(' · ');
+    const plats = asList(row.selling_platforms);
     const actions = isOwn
       ? '<button type="button" class="pf-edit-btn" data-pf="edit-header">' + pencilSVG + ' Edit profil</button>'
       : (viewerId && viewerId !== row.user_id
@@ -353,18 +373,37 @@
               '<input id="pf-city" class="js-city" maxlength="80" value="' + esc(row.city || '') + '" placeholder="Kota tempat kamu jualan"></div>' +
             '<div class="pf-field"><label for="pf-bio">Bio</label>' +
               '<textarea id="pf-bio" class="js-bio" maxlength="280" rows="3" placeholder="Ceritakan sedikit tentang kamu">' + esc(row.bio || '') + '</textarea></div>' +
+            '<div class="pf-field"><label>Saya tertarik jualan di</label>' +
+              '<div class="pf-plat-pick" role="group" aria-label="Platform jualan">' +
+                SELL_PLATFORMS.map((p) =>
+                  '<button type="button" class="pf-plat-btn' + (plats.includes(p.id) ? ' is-on' : '') + '" data-pf="tog-plat" data-id="' + p.id + '" title="' + esc(p.label) + '" aria-pressed="' + (plats.includes(p.id) ? 'true' : 'false') + '">' +
+                    sellLogo(p.id) +
+                    '<span class="pf-plat-lbl">' + esc(p.label) + '</span>' +
+                  '</button>'
+                ).join('') +
+              '</div>' +
+            '</div>' +
             '<button type="button" class="pf-save" data-pf="save-header">Simpan</button>' +
           '</div>' +
         '</div>' +
       '</section>';
     }
+    const platRow = plats.length
+      ? '<div class="pf-plat-row" aria-label="Tertarik jualan di">' +
+          plats.map((id) => {
+            const label = (SELL_PLATFORMS.find((p) => p.id === id) || {}).label || id;
+            return '<span class="pf-plat-pill" title="' + esc(label) + '">' + sellLogo(id) + '<span>' + esc(label) + '</span></span>';
+          }).join('') +
+        '</div>'
+      : '';
     return '<section class="pf-card">' +
       '<div class="pf-hero">' +
         avatarHtml(row, isOwn) +
         '<div class="pf-hero-body">' +
           '<h2 class="pf-name">' + name + role + '</h2>' +
-          (meta ? '<p class="pf-meta">' + meta + '</p>' : '') +
+          (city ? '<p class="pf-meta">' + city + '</p>' : '') +
           (row.bio ? '<p class="pf-bio">' + esc(row.bio) + '</p>' : (isOwn ? '<p class="pf-empty">Belum ada bio. Ketuk Edit profil untuk menulisnya.</p>' : '')) +
+          platRow +
           badgesHtml(row) +
         '</div>' +
         (actions ? '<div class="pf-hero-actions">' + actions + '</div>' : '') +
@@ -378,49 +417,6 @@
     '</section>';
   }
 
-  function chipBtn(on, attrs, label, removable) {
-    return '<button type="button" class="pf-chip' + (on ? ' is-on' : '') + '" ' + attrs + '>' +
-      esc(label) + (removable ? '<span class="pf-chip-x" aria-hidden="true">×</span>' : '') +
-    '</button>';
-  }
-
-  function focusHtml(row) {
-    const focus = asList(row.focus_areas);
-    const plats = asList(row.selling_platforms);
-    const shownFocus = FOCUS_SUGGEST.slice();
-    focus.forEach((t) => { if (!shownFocus.includes(t)) shownFocus.push(t); });
-    let body;
-    if (isOwn && edit.focus) {
-      body = '<p class="pf-card-sub">Platform yang sudah kamu pakai</p>' +
-        '<div class="pf-chips">' + SELL_PLATFORMS.map((p) =>
-          chipBtn(plats.includes(p.id), 'data-pf="tog-plat" data-id="' + p.id + '"', p.label)
-        ).join('') + '</div>' +
-        '<p class="pf-card-sub" style="margin-top:14px">Fokus</p>' +
-        '<div class="pf-chips">' + shownFocus.map((t) =>
-          chipBtn(focus.includes(t), 'data-pf="tog-focus" data-tag="' + esc(t) + '"', t, focus.includes(t) && !FOCUS_SUGGEST.includes(t))
-        ).join('') +
-        (focus.length < 8 ? '<button type="button" class="pf-chip is-add" data-pf="add-focus">+ Tambah</button>' : '') +
-        '</div>' +
-        '<div style="margin-top:14px"><button type="button" class="pf-save" data-pf="save-focus">Simpan</button></div>';
-    } else {
-      const platChips = plats.map((id) => {
-        const label = (SELL_PLATFORMS.find((p) => p.id === id) || {}).label || id;
-        return '<span class="pf-chip is-on">' + esc(label) + '</span>';
-      }).join('');
-      const focusChips = focus.map((t) => '<span class="pf-chip is-on">' + esc(t) + '</span>').join('');
-      if (!platChips && !focusChips) {
-        body = '<p class="pf-empty">' + (isOwn ? 'Belum ada fokus atau platform. Ketuk pensil untuk menambah.' : 'Belum diisi.') + '</p>';
-      } else {
-        body = (platChips ? '<div class="pf-chips" style="margin-bottom:10px">' + platChips + '</div>' : '') +
-          (focusChips ? '<div class="pf-chips">' + focusChips + '</div>' : '');
-      }
-    }
-    return '<section class="pf-card">' +
-      '<div class="pf-card-h"><h3>Fokus</h3>' + (isOwn ? icoBtn('edit-focus', 'Ubah fokus') : '') + '</div>' +
-      body +
-    '</section>';
-  }
-
   function komunitasHtml(row) {
     const posts = Number(row.komunitas_posts) || 0;
     const comments = Number(row.komunitas_comments) || 0;
@@ -430,9 +426,9 @@
     return '<section class="pf-card">' +
       '<div class="pf-card-h"><h3>Komunitas</h3></div>' +
       '<div class="pf-stats">' +
-        '<div class="pf-stat"><span class="pf-stat-n">' + fmtNum(posts) + '</span><span class="pf-stat-l">Postingan</span></div>' +
-        '<div class="pf-stat"><span class="pf-stat-n">' + fmtNum(comments) + '</span><span class="pf-stat-l">Komentar</span></div>' +
-        '<div class="pf-stat"><span class="pf-stat-n">' + fmtNum(likes) + '</span><span class="pf-stat-l">Disukai</span></div>' +
+        '<div class="pf-stat"><span class="pf-stat-ico" aria-hidden="true">' + STAT_POST_SVG + '</span><span class="pf-stat-n">' + fmtNum(posts) + '</span><span class="pf-stat-l">Postingan</span></div>' +
+        '<div class="pf-stat"><span class="pf-stat-ico" aria-hidden="true">' + STAT_COMMENT_SVG + '</span><span class="pf-stat-n">' + fmtNum(comments) + '</span><span class="pf-stat-l">Komentar</span></div>' +
+        '<div class="pf-stat"><span class="pf-stat-ico" aria-hidden="true">' + STAT_LIKE_SVG + '</span><span class="pf-stat-n">' + fmtNum(likes) + '</span><span class="pf-stat-l">Disukai</span></div>' +
       '</div>' +
       (empty
         ? '<p class="pf-empty">Belum ada postingan atau balasan di Komunitas.</p>'
@@ -495,24 +491,27 @@
   function tentangHtml(row) {
     const city = row.city ? esc(row.city) : '';
     const bio = row.bio ? esc(row.bio) : '';
-    const joined = fmtJoined(row.completed_at || row.joined_at);
-    const focus = asList(row.focus_areas).join(', ');
-    const plats = asList(row.selling_platforms).map((id) =>
-      (SELL_PLATFORMS.find((p) => p.id === id) || {}).label || id
-    ).join(', ');
+    const plats = asList(row.selling_platforms);
     const pin = '<svg class="pf-about-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>';
     const rows = [
       city && pin + '<span>' + city + '</span>',
       bio && '<svg class="pf-about-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10"/></svg><span>' + bio + '</span>',
-      plats && '<svg class="pf-about-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8h12l1 12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><span>' + esc(plats) + '</span>',
-      focus && '<svg class="pf-about-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg><span>' + esc(focus) + '</span>',
-      joined && '<svg class="pf-about-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Bergabung ' + esc(joined) + '</span>',
     ].filter(Boolean);
+    const platRow = plats.length
+      ? '<div class="pf-about-row pf-about-plats"><span class="pf-about-ico" aria-hidden="true">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8h12l1 12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>' +
+        '</span><div class="pf-plat-row">' +
+          plats.map((id) => {
+            const label = (SELL_PLATFORMS.find((p) => p.id === id) || {}).label || id;
+            return '<span class="pf-plat-pill" title="' + esc(label) + '">' + sellLogo(id) + '<span>' + esc(label) + '</span></span>';
+          }).join('') +
+        '</div></div>'
+      : '';
     return '<section class="pf-card">' +
       '<div class="pf-card-h"><h3>Tentang</h3>' + (isOwn ? icoBtn('edit-header', 'Ubah tentang') : '') + '</div>' +
-      (rows.length
-        ? '<div class="pf-about">' + rows.map((r) => '<div class="pf-about-row">' + r + '</div>').join('') + '</div>'
-        : '<p class="pf-empty">' + (isOwn ? 'Isi kota dan bio lewat Edit profil.' : 'Belum diisi.') + '</p>') +
+      (rows.length || platRow
+        ? '<div class="pf-about">' + rows.map((r) => '<div class="pf-about-row">' + r + '</div>').join('') + platRow + '</div>'
+        : '<p class="pf-empty">' + (isOwn ? 'Isi kota, bio, dan platform lewat Edit profil.' : 'Belum diisi.') + '</p>') +
     '</section>';
   }
 
@@ -521,22 +520,31 @@
     const list = links.map((s) => {
       const label = (SOCIAL_PLATFORMS.find((p) => p.id === s.platform) || {}).label || s.platform;
       return '<div class="pf-link">' +
-        '<span class="pf-link-plat">' + esc(label) + '</span>' +
+        '<span class="pf-link-ico" title="' + esc(label) + '">' + socialLogo(s.platform) + '</span>' +
         '<a href="' + esc(s.url || '#') + '" target="_blank" rel="noopener noreferrer">' + esc(s.handle || s.url || label) + '</a>' +
         (isOwn && edit.social ? '<button type="button" class="pf-del" data-pf="del-social" data-plat="' + esc(s.platform) + '">Hapus</button>' : '<span class="pf-link-go" aria-hidden="true">↗</span>') +
       '</div>';
     }).join('');
     const editor = isOwn && edit.social
-      ? '<div class="pf-addrow">' +
-          '<select class="js-social-plat">' + SOCIAL_PLATFORMS.map((p) => '<option value="' + p.id + '">' + p.label + '</option>').join('') + '</select>' +
-          '<input class="js-social-url" maxlength="200" placeholder="@nama atau tautan">' +
-          '<button type="button" data-pf="add-social">Tambah</button>' +
+      ? '<div class="pf-plat-pick pf-plat-pick--add" role="group" aria-label="Pilih sosial media">' +
+          SOCIAL_PLATFORMS.map((p) =>
+            '<button type="button" class="pf-plat-btn' + (socialPick === p.id ? ' is-on' : '') + '" data-pf="pick-social" data-id="' + p.id + '" title="' + esc(p.label) + '" aria-pressed="' + (socialPick === p.id ? 'true' : 'false') + '">' +
+              socialLogo(p.id) +
+              '<span class="pf-plat-lbl">' + esc(p.label) + '</span>' +
+            '</button>'
+          ).join('') +
         '</div>' +
+        (socialPick
+          ? '<div class="pf-addrow">' +
+              '<input class="js-social-url" maxlength="200" placeholder="@nama atau tautan ' + esc((SOCIAL_PLATFORMS.find((p) => p.id === socialPick) || {}).label || '') + '">' +
+              '<button type="button" data-pf="add-social">Tambah</button>' +
+            '</div>'
+          : '<p class="pf-card-sub">Ketuk ikon untuk menambah tautan.</p>') +
         '<div style="margin-top:12px"><button type="button" class="pf-save" data-pf="save-social">Simpan</button></div>'
       : '';
     return '<section class="pf-card">' +
       '<div class="pf-card-h"><h3>Link sosial media</h3>' + (isOwn ? icoBtn('edit-social', 'Ubah tautan sosial') : '') + '</div>' +
-      (list ? '<div class="pf-linklist">' + list + '</div>' : '<p class="pf-empty">' + (isOwn ? 'Belum ada tautan. Ketuk pensil untuk menambah Instagram, TikTok, atau YouTube.' : 'Belum ada tautan.') + '</p>') +
+      (list ? '<div class="pf-linklist">' + list + '</div>' : '<p class="pf-empty">' + (isOwn ? 'Belum ada tautan. Ketuk pensil, lalu pilih Instagram, TikTok, atau YouTube.' : 'Belum ada tautan.') + '</p>') +
       editor +
     '</section>';
   }
@@ -546,7 +554,7 @@
     const list = links.map((s) => {
       const label = STORE_PLATFORMS[s.platform] || s.platform;
       return '<div class="pf-link">' +
-        '<span class="pf-link-plat">' + esc(label) + '</span>' +
+        '<span class="pf-link-ico" title="' + esc(label) + '">' + storeLogo(s.platform) + '</span>' +
         '<a href="' + esc(s.url || '#') + '" target="_blank" rel="noopener noreferrer">' + esc(s.handle || s.url || label) + '</a>' +
         (isOwn && edit.toko && s.id
           ? '<button type="button" class="pf-del" data-pf="del-store" data-id="' + esc(s.id) + '">Hapus</button>'
@@ -555,11 +563,28 @@
     }).join('');
     const fallback = !links.length && row.shopee_store_url
       ? '<a class="pf-link" href="' + esc(row.shopee_store_url) + '" target="_blank" rel="noopener noreferrer">' +
-          '<span class="pf-link-plat">Shopee</span>' + esc(row.shopee_store_name || 'Toko Shopee') + '</a>'
+          '<span class="pf-link-ico">' + storeLogo('shopee') + '</span>' + esc(row.shopee_store_name || 'Toko Shopee') + '</a>'
       : '';
+    const pick = storePick || 'shopee';
+    const pickLabel = STORE_PLATFORMS[pick] || pick;
+    const placeholders = {
+      shopee: 'https://shopee.co.id/namatoko',
+      tiktok_shop: 'https://www.tiktok.com/@namatoko',
+      tokopedia: 'https://www.tokopedia.com/namatoko',
+      lazada: 'https://www.lazada.co.id/shop/namatoko',
+      blibli: 'https://www.blibli.com/merchant/namatoko',
+    };
     const editor = isOwn && edit.toko
-      ? '<div class="pf-addrow">' +
-          '<input class="js-store-url" type="url" maxlength="400" placeholder="https://shopee.co.id/namatoko">' +
+      ? '<div class="pf-plat-pick pf-plat-pick--add" role="group" aria-label="Pilih marketplace">' +
+          SELL_PLATFORMS.map((p) =>
+            '<button type="button" class="pf-plat-btn' + (pick === p.id ? ' is-on' : '') + '" data-pf="pick-store" data-id="' + p.id + '" title="' + esc(p.label) + '" aria-pressed="' + (pick === p.id ? 'true' : 'false') + '">' +
+              sellLogo(p.id) +
+              '<span class="pf-plat-lbl">' + esc(p.label) + '</span>' +
+            '</button>'
+          ).join('') +
+        '</div>' +
+        '<div class="pf-addrow">' +
+          '<input class="js-store-url" type="url" maxlength="400" placeholder="' + esc(placeholders[pick] || ('Tautan toko ' + pickLabel)) + '">' +
           '<button type="button" data-pf="add-store">Tambah</button>' +
         '</div>'
       : '';
@@ -567,7 +592,7 @@
       '<div class="pf-card-h"><h3>Toko saya</h3>' + (isOwn ? icoBtn('edit-toko', 'Ubah toko') : '') + '</div>' +
       (list || fallback
         ? '<div class="pf-linklist">' + (list || fallback) + '</div>'
-        : '<p class="pf-empty">' + (isOwn ? 'Tempel tautan toko Shopee, Tokopedia, TikTok Shop, Lazada, atau Blibli.' : 'Belum ada toko.') + '</p>') +
+        : '<p class="pf-empty">' + (isOwn ? 'Ketuk pensil, pilih marketplace, lalu tempel tautan toko.' : 'Belum ada toko.') + '</p>') +
       editor +
     '</section>';
   }
@@ -603,7 +628,6 @@
     return previewBarHtml() +
       '<div class="pf-main">' +
         headerHtml(row) +
-        focusHtml(row) +
         komunitasHtml(row) +
         riwayatHtml() +
       '</div>' +
@@ -664,7 +688,6 @@
       Object.assign(currentRow, payload, extra || {});
       if (extra) writeExtra(extra);
       edit.header = false;
-      edit.focus = false;
       edit.social = false;
       paint();
       showStatus('Pratinjau: perubahan hanya di layar ini.', 'info');
@@ -683,7 +706,6 @@
       currentRow = mergeExtra(data || Object.assign(currentRow, body));
       if (extra) writeExtra(extra);
       edit.header = false;
-      edit.focus = false;
       edit.social = false;
       paint();
       showStatus('Profil tersimpan.', 'success');
@@ -701,7 +723,6 @@
           writeExtra(extra);
           currentRow = mergeExtra(Object.assign(data || currentRow, extra));
           edit.header = false;
-          edit.focus = false;
           edit.social = false;
           paint();
           showStatus('Tersimpan di perangkat. Kolom baru masuk setelah migrasi di server.', 'info');
@@ -717,18 +738,13 @@
     const display_name = ($('.js-display-name') && $('.js-display-name').value || '').trim();
     const city = ($('.js-city') && $('.js-city').value || '').trim();
     const bio = ($('.js-bio') && $('.js-bio').value || '').trim();
+    const selling_platforms = asList(currentRow.selling_platforms);
     await saveCore({
       display_name: display_name || null,
       city: city || null,
       bio: bio || null,
       headshot_url: currentRow.headshot_url || null,
-    });
-  }
-
-  async function saveFocus() {
-    const focus_areas = asList(currentRow.focus_areas).slice(0, 8);
-    const selling_platforms = asList(currentRow.selling_platforms);
-    await saveCore({}, { focus_areas, selling_platforms });
+    }, { selling_platforms });
   }
 
   async function saveSocial() {
@@ -902,40 +918,41 @@
     if (act === 'preview-filled') { previewMode = 'filled'; isOwn = true; currentRow = previewFilled(); storeLinks = asList(currentRow.store_links); paint(); return; }
     if (act === 'preview-empty') { previewMode = 'empty'; isOwn = true; currentRow = previewEmpty(); storeLinks = []; paint(); return; }
     if (act === 'edit-header') { edit.header = !edit.header; paint(); return; }
-    if (act === 'edit-focus') { edit.focus = !edit.focus; paint(); return; }
-    if (act === 'edit-social') { edit.social = !edit.social; paint(); return; }
-    if (act === 'edit-toko') { edit.toko = !edit.toko; paint(); return; }
+    if (act === 'edit-social') { edit.social = !edit.social; socialPick = null; paint(); return; }
+    if (act === 'edit-toko') { edit.toko = !edit.toko; storePick = storePick || 'shopee'; paint(); return; }
     if (act === 'save-header') { void saveHeader(); return; }
-    if (act === 'save-focus') { void saveFocus(); return; }
     if (act === 'save-social') { void saveSocial(); return; }
     if (act === 'tog-plat') {
       const id = t.getAttribute('data-id');
+      const nameVal = ($('.js-display-name') && $('.js-display-name').value) || currentRow.display_name || '';
+      const cityVal = ($('.js-city') && $('.js-city').value) || currentRow.city || '';
+      const bioVal = ($('.js-bio') && $('.js-bio').value) || currentRow.bio || '';
+      currentRow.display_name = nameVal;
+      currentRow.city = cityVal;
+      currentRow.bio = bioVal;
       const cur = asList(currentRow.selling_platforms);
       currentRow.selling_platforms = cur.includes(id) ? cur.filter((x) => x !== id) : cur.concat([id]);
       paint();
       return;
     }
-    if (act === 'tog-focus') {
-      const tag = t.getAttribute('data-tag');
-      const cur = asList(currentRow.focus_areas);
-      currentRow.focus_areas = cur.includes(tag) ? cur.filter((x) => x !== tag) : cur.concat([tag]).slice(0, 8);
+    if (act === 'pick-social') {
+      socialPick = t.getAttribute('data-id');
       paint();
+      requestAnimationFrame(() => { try { $('.js-social-url')?.focus(); } catch (_) {} });
       return;
     }
-    if (act === 'add-focus') {
-      const tag = window.prompt('Fokus baru (maks. 24 huruf)', '');
-      const clean = String(tag || '').trim().slice(0, 24);
-      if (!clean) return;
-      const cur = asList(currentRow.focus_areas);
-      if (!cur.includes(clean) && cur.length < 8) currentRow.focus_areas = cur.concat([clean]);
+    if (act === 'pick-store') {
+      storePick = t.getAttribute('data-id') || 'shopee';
       paint();
+      requestAnimationFrame(() => { try { $('.js-store-url')?.focus(); } catch (_) {} });
       return;
     }
     if (act === 'add-social') {
-      const plat = ($('.js-social-plat') && $('.js-social-plat').value) || 'instagram';
+      const plat = socialPick || 'instagram';
       const parsed = parseSocial(plat, $('.js-social-url') && $('.js-social-url').value);
       if (!parsed) { showStatus('Pakai handle atau tautan ' + plat + ' yang benar.', 'error'); return; }
       currentRow.social_links = asList(currentRow.social_links).filter((s) => s.platform !== plat).concat([parsed]);
+      socialPick = null;
       paint();
       return;
     }
@@ -1006,7 +1023,9 @@
     applyOpts(options);
     const targetId = options && options.targetUserId ? options.targetUserId : userId;
     isOwn = !!(previewMode || (viewerId && targetId && viewerId === targetId));
-    edit = { header: false, focus: false, social: false, toko: false };
+    edit = { header: false, social: false, toko: false };
+    socialPick = null;
+    storePick = 'shopee';
     pageRoot.onclick = onClick;
     pageRoot.innerHTML = '<div class="pf-page"><section class="pf-card"><p class="pf-empty">Memuat profil…</p></section></div>';
     try {
