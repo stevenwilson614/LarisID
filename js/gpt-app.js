@@ -11749,14 +11749,24 @@ function wireKalkulatorPage() {
   _kalcPageWired = true;
   let _kalcSearchTimer = null;
   let _kalcSearchSeq = 0;
+  let _kalcHitsDismissed = false;
+  const hideKalcHits = () => {
+    const hits = $('kalc-product-hits');
+    if (hits) hits.hidden = true;
+  };
   const runSearch = (opts = {}) => { void searchKalcProducts(opts); };
-  $('kalc-product-go')?.addEventListener('click', () => runSearch({ immediate: true, seq: ++_kalcSearchSeq }));
+  $('kalc-product-go')?.addEventListener('click', () => {
+    _kalcHitsDismissed = false;
+    runSearch({ immediate: true, seq: ++_kalcSearchSeq });
+  });
   $('kalc-product-q')?.addEventListener('input', () => {
     clearTimeout(_kalcSearchTimer);
+    _kalcHitsDismissed = false;
     const q = String($('kalc-product-q')?.value || '').trim();
     if (q.length < 2) {
+      hideKalcHits();
       const hits = $('kalc-product-hits');
-      if (hits) { hits.hidden = true; hits.innerHTML = ''; hits._rows = null; }
+      if (hits) { hits.innerHTML = ''; hits._rows = null; }
       return;
     }
     const seq = ++_kalcSearchSeq;
@@ -11770,29 +11780,41 @@ function wireKalkulatorPage() {
   });
   $('kalc-product-q')?.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      const hits = $('kalc-product-hits');
-      if (hits) { hits.hidden = true; hits.innerHTML = ''; }
+      _kalcHitsDismissed = true;
+      hideKalcHits();
       return;
     }
     if (e.key === 'Enter') {
       e.preventDefault();
       clearTimeout(_kalcSearchTimer);
+      _kalcHitsDismissed = false;
       runSearch({ immediate: true, seq: ++_kalcSearchSeq });
     }
   });
   $('kalc-product-q')?.addEventListener('focus', () => {
+    if (_kalcHitsDismissed) return;
     const q = String($('kalc-product-q')?.value || '').trim();
     const hits = $('kalc-product-hits');
     if (q.length >= 2 && hits && hits._rows?.length) hits.hidden = false;
   });
-  document.addEventListener('click', (e) => {
+  // Click / tap outside the picker closes the list. pointerdown fires before
+  // focus moves; dismiss flag stops a late search response from reopening it.
+  const onAway = (e) => {
     const wrap = document.querySelector('.kalc-page-pick');
     const hits = $('kalc-product-hits');
     if (!hits || hits.hidden) return;
     if (wrap && wrap.contains(e.target)) return;
-    hits.hidden = true;
-  });
+    _kalcHitsDismissed = true;
+    hideKalcHits();
+  };
+  document.addEventListener('pointerdown', onAway, true);
+  document.addEventListener('click', onAway, true);
   wireKalkulatorPage._seq = () => _kalcSearchSeq;
+  wireKalkulatorPage._isDismissed = () => _kalcHitsDismissed;
+  wireKalkulatorPage._dismissHits = () => {
+    _kalcHitsDismissed = true;
+    hideKalcHits();
+  };
   $('kalc-download-pdf')?.addEventListener('click', () => { void downloadKalcPdf(); });
   $('kalc-save-riwayat')?.addEventListener('click', () => { void saveKalcToRiwayat(); });
 }
@@ -11954,6 +11976,12 @@ async function searchKalcListingsFast(q, limit = 24) {
 function paintKalcHits(rows, q) {
   const hits = $('kalc-product-hits');
   if (!hits) return;
+  // User clicked away — keep closed until they type/search again.
+  if (wireKalkulatorPage._isDismissed?.()) {
+    hits.hidden = true;
+    hits._rows = rows;
+    return;
+  }
   hits.hidden = false;
   hits.classList.add('kalc-ac');
   hits.setAttribute('role', 'listbox');
@@ -11987,7 +12015,7 @@ function paintKalcHits(rows, q) {
       if (!row) return;
       _kalcPageProduct = asListingProduct(row);
       _kalcPageSnapshot = null;
-      hits.hidden = true;
+      wireKalkulatorPage._dismissHits?.();
       hits.innerHTML = '';
       hits._rows = null;
       const inp = $('kalc-product-q');
@@ -12013,11 +12041,12 @@ async function searchKalcProducts(opts = {}) {
     hits._rows = null;
     return;
   }
-  hits.hidden = false;
   hits.classList.add('kalc-ac');
   // Always show waiting when a live fetch starts — keeps a prior "Tidak
   // ketemu" from looking final while the next query is still in flight.
   if (!opts.fromCache) {
+    if (wireKalkulatorPage._isDismissed?.()) return;
+    hits.hidden = false;
     hits.innerHTML = '<p class="alat-lead agent-wait">Mencari produk…</p>';
     hits._rows = null;
   }
@@ -12026,6 +12055,11 @@ async function searchKalcProducts(opts = {}) {
     rows = await searchKalcListingsFast(q, 24);
   } catch (_) {}
   if (seq && wireKalkulatorPage._seq && seq !== wireKalkulatorPage._seq()) return;
+  if (wireKalkulatorPage._isDismissed?.()) {
+    hits.hidden = true;
+    hits._rows = rows;
+    return;
+  }
   paintKalcHits(rows, q);
 }
 
