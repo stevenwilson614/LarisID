@@ -12,6 +12,16 @@
 window.LARIS_CHANGELOG = [
   {
     date: '2026-09-29',
+    title: 'Kartu produk di Cari Produk',
+    items: [
+      {
+        text: 'Cari Produk sekarang menampilkan kartu foto seperti di Shopee — harga, omset, dan persen naik atau turun dibanding scrape sebelumnya. Angka persen tidak dipotong di 300%. Bisa ganti ke Tabel kalau mau lihat baris.',
+        tech: 'dirListingCardsHtml in gpt-app.js; default lid_dir_view_v1=kartu; wkPct from units_now_wk vs units_prev_wk without ±300 clamp (peta-peluang.js + 20260929160000 mv_listing_momentum).',
+      },
+    ],
+  },
+  {
+    date: '2026-09-29',
     title: 'Profil jadi halaman penuh',
     items: [
       {

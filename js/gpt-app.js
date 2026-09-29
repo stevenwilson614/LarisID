@@ -14365,7 +14365,11 @@ function productCardsHtml(products) {
 
 function fmtTrendPct(n) {
   const v = Math.round(Number(n) || 0);
-  return (v > 0 ? '+' : '') + v + '%';
+  const abs = Math.abs(v);
+  const num = abs >= 1000 ? abs.toLocaleString('id-ID') : String(abs);
+  if (v > 0) return '+' + num + '%';
+  if (v < 0) return '-' + num + '%';
+  return '0%';
 }
 
 const TREND_MON = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -14567,6 +14571,57 @@ function listingRowHtml(p, opts = {}) {
   </tr>`;
 }
 
+function dirListingCardHtml(p, i) {
+  rememberProducts([p]);
+  const key = prodKey(p);
+  const name = p.product_name || p.keyword || 'Produk';
+  const toko = p.store_name || '—';
+  const img = p.image_url || '';
+  const omset = estOmsetBulan(p);
+  const usia = listingUsiaLabel(p);
+  const reviews = Number(p.reviews) || 0;
+  const soldN = Number(p.total_sold) || 0;
+  const price = Number(p.price) || 0;
+  const snap = productSnapshot(p);
+  const encoded = snap ? encodeURIComponent(JSON.stringify(snap)) : '';
+  const picked = (state.comparePick?.selected || []).some(x => prodKey(x) === key);
+  const favOn = isFavTracked(p);
+  const priceTxt = price ? fmtRp(price) : '—';
+  const omsetTxt = omset ? fmtOmset(omset) : '—';
+  const omsetChip = omset ? omsetChipHtml(p) : '';
+  const soldTxt = soldN ? `${fmtSold(soldN)} terjual` : '0 terjual';
+  const revTxt = reviews ? `${fmtSold(reviews)} review` : '0 review';
+  const thumb = img
+    ? `<img src="${esc(imgThumb(img))}" alt="" loading="lazy" decoding="async" width="320" height="320" onerror="this.onerror=null;this.replaceWith(Object.assign(document.createElement('div'),{className:'lrow-img lrow-img--ph'}))">`
+    : '<div class="lrow-img lrow-img--ph"></div>';
+  const cls = [
+    'prod-card',
+    'dir-prod-card',
+    'is-pickable',
+    picked ? 'is-picked' : '',
+  ].filter(Boolean).join(' ');
+  return `<div class="${cls}" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} role="button" tabindex="0" aria-pressed="${picked ? 'true' : 'false'}" style="animation-delay:${(i % 8) * 0.04}s">
+    <div class="dir-prod-card-img">
+      <button type="button" class="dir-prod-card-cmp lrow-check-btn" data-lrow-cmp="${esc(key)}" aria-pressed="${picked ? 'true' : 'false'}" aria-label="Pilih untuk bandingkan"><span class="lrow-check" aria-hidden="true">${ico('check', 12)}</span></button>
+      <button type="button" class="lrow-fav dir-prod-card-fav${favOn ? ' is-on' : ''}" data-lrow-fav="${esc(key)}" aria-pressed="${favOn ? 'true' : 'false'}" title="${favOn ? 'Hapus dari Favorit Aku' : 'Simpan ke Favorit Aku'}" aria-label="${favOn ? 'Hapus dari Favorit Aku' : 'Simpan ke Favorit Aku'}">${ico('bookmark', 16)}</button>
+      ${thumb}
+    </div>
+    <div class="prod-card-body">
+      <div class="prod-card-name">${esc(name)}</div>
+      <div class="dir-prod-card-price">${priceTxt}</div>
+      <div class="dir-prod-card-omset"><span>${omset ? omsetTxt : '—'}</span>${omsetChip}</div>
+      <div class="dir-prod-card-trend" title="${esc(listingTrendTitle(p && p._petaTrend))}">${listingTrendInnerHtml(p)}</div>
+      <div class="prod-card-meta">${soldTxt} · ${revTxt} · ${esc(usia.text)} · ${esc(toko)}</div>
+    </div>
+  </div>`;
+}
+
+function dirListingCardsHtml(list) {
+  const rows = list || [];
+  if (!rows.length) return '';
+  return `<div class="dir-card-grid">${rows.map((p, i) => dirListingCardHtml(p, i)).join('')}</div>`;
+}
+
 /** Ask Laris / chat listing tables — same Unduh affordance as Cari Produk when
  *  the painted set is big enough to be worth a spreadsheet. */
 const LROW_EXPORT_MIN = 5;
@@ -14591,15 +14646,16 @@ function listingExportRowsFrom(btn) {
   const host = btn?.closest?.('.lrow-export-host')
     || btn?.closest?.('.lrow-host')
     || btn?.closest?.('[data-lrow-block]')
+    || btn?.closest?.('#dir-grid')
     || btn?.closest?.('.msg-bubble');
   if (!host) return [];
   const rows = [];
   const seen = new Set();
-  host.querySelectorAll('tr.lrow[data-prod]').forEach((tr) => {
-    const key = tr.getAttribute('data-prod');
+  const take = (el) => {
+    const key = el.getAttribute('data-prod');
     if (!key || seen.has(key)) return;
     seen.add(key);
-    const raw = tr.getAttribute('data-product');
+    const raw = el.getAttribute('data-product');
     if (raw) {
       try {
         const decoded = JSON.parse(decodeURIComponent(raw));
@@ -14612,7 +14668,8 @@ function listingExportRowsFrom(btn) {
     const [item_id, shop_id] = key.split('|');
     const p = findProduct(item_id, shop_id);
     if (p) rows.push(productSnapshot(p) || p);
-  });
+  };
+  host.querySelectorAll('tr.lrow[data-prod], .dir-prod-card[data-prod]').forEach(take);
   return rows;
 }
 
@@ -14671,8 +14728,9 @@ function bindProductCards(root) {
     if (btn.dataset.boundProd) return;
     // Cari Produk actions rows put data-prod on the <tr> and also on the
     // title/chevron controls. Bind the row so harga/omset/etc. open Deep Dive;
-    // skip nested controls so we don't double-fire.
-    if (!btn.matches('tr.lrow') && btn.closest('tr.lrow[data-prod]')) return;
+    // skip nested controls so we don't double-fire. Same for Kartu tiles.
+    if (!btn.matches('tr.lrow, .dir-prod-card')
+        && (btn.closest('tr.lrow[data-prod]') || btn.closest('.dir-prod-card[data-prod]'))) return;
     btn.dataset.boundProd = '1';
     const onPick = (e) => {
       if (e && e.target && e.target.closest && e.target.closest('[data-lrow-cmp],[data-lrow-fav]')) return;
@@ -14819,6 +14877,14 @@ function refreshLrowTrendCells(root, listings) {
       spark.title = title;
       spark.innerHTML = `<span class="lrow-metric-lbl">Grafik</span>${listingTrendSparkHtml(p)}`;
     }
+  });
+  (root || document).querySelectorAll('.dir-prod-card').forEach(card => {
+    const p = map.get(card.getAttribute('data-prod'));
+    if (!p) return;
+    const el = card.querySelector('.dir-prod-card-trend');
+    if (!el) return;
+    el.title = listingTrendTitle(p._petaTrend);
+    el.innerHTML = listingTrendInnerHtml(p);
   });
 }
 
@@ -23487,7 +23553,8 @@ function refreshComparePickCards() {
   document.querySelectorAll('[data-lrow-cmp]').forEach(btn => {
     const on = keys.has(btn.getAttribute('data-lrow-cmp'));
     btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-    btn.closest('tr')?.classList.toggle('is-picked', on);
+    btn.closest('tr, .dir-prod-card')?.classList.toggle('is-picked', on);
+    btn.closest('.dir-prod-card')?.setAttribute('aria-pressed', on ? 'true' : 'false');
   });
 }
 
@@ -24263,15 +24330,20 @@ function paintDirectoryTable(opts = {}) {
   paintDirKwReq(q);
   const chooser = state.dirMatchLevel === 'chooser' ? dirChooserHtml(q, state.dirTypes) : '';
   const sum = slice.length && window.LarisDirWorkbench ? LarisDirWorkbench.rangkumanHtml(filtered) : '';
+  const kartu = !isExporPasar() && window.LarisDirWorkbench?.viewMode?.() === 'kartu';
   const rowsHtml = slice.length
-    ? listingRowsHtml(slice, {
-        actions: true,
-        highlightKey: '',
-        sort: state.dirSort || 'omset',
-      }) + listingUnsoldNote(state.dirUnsold)
+    ? (kartu
+        ? dirListingCardsHtml(slice)
+        : listingRowsHtml(slice, {
+            actions: true,
+            highlightKey: '',
+            sort: state.dirSort || 'omset',
+          }))
+      + listingUnsoldNote(state.dirUnsold)
     : (chooser ? '' : emptyMsg);
   grid.innerHTML = sum + nearbyLead + chooser + rowsHtml;
   bindDirChooser(grid);
+  try { window.LarisDirWorkbench?.applyViewClass(grid); } catch (_) {}
   if (!slice.length) {
     // The in-flight skeleton is painted before the pool returns. An empty
     // result never hydrates trends, so clear it or "Menghitung kenaikan
@@ -24283,7 +24355,6 @@ function paintDirectoryTable(opts = {}) {
     updateDirHeading();
     return;
   }
-  try { window.LarisDirWorkbench?.applyViewClass(grid); } catch (_) {}
   bindListingRows(grid, {
     onSort: (mode) => {
       state.dirSort = mode;

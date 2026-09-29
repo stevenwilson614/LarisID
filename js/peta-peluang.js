@@ -45,6 +45,18 @@
     });
   }
   function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
+  function weekVsPrevPct(nowWk, prevWk) {
+    if (nowWk == null || prevWk == null || !(prevWk > 0)) return null;
+    return (nowWk - prevWk) / prevWk * 100;
+  }
+  function fmtPctSigned(n) {
+    var v = Math.round(Number(n) || 0);
+    var abs = Math.abs(v);
+    var num = abs >= 1000 ? abs.toLocaleString('id-ID') : String(abs);
+    if (v > 0) return '+' + num + '%';
+    if (v < 0) return '-' + num + '%';
+    return '0%';
+  }
   function keyOf(p) { return String(p.item_id) + '|' + String(p.shop_id); }
   function num(v) { var n = Number(v); return Number.isFinite(n) ? n : null; }
   function weekKey(w) {
@@ -67,20 +79,24 @@
   }
   function trendFromMomentum(m) {
     if (!m) return emptyTrend(false);
-    var belum = m.momentum_class === 'belum' || m.momentum_pct == null;
-    var pct = num(m.momentum_pct);
+    var belum = m.momentum_class === 'belum';
+    var nowWk = num(m.units_now_wk);
+    var prevWk = num(m.units_prev_wk);
+    var pct = weekVsPrevPct(nowWk, prevWk);
+    if (pct == null && !belum) pct = num(m.momentum_pct);
     // Old peta_batch (no fresh/source) counts as measured.
     var held = m.momentum_source === 'held' || m.fresh === false;
+    var noPct = belum || pct == null;
     return {
-      wkPct: (belum || pct == null) ? null : clamp(pct, -100, 300),
-      wkPctRaw: (belum || pct == null) ? null : pct,
+      wkPct: noPct ? null : pct,
+      wkPctRaw: noPct ? null : pct,
       moPct: null,
       terukur: !belum && !held,
       held: !belum && held,
       belum: !!belum,
       pending: false,
-      unitsNowWk: num(m.units_now_wk),
-      unitsPrevWk: num(m.units_prev_wk),
+      unitsNowWk: nowWk,
+      unitsPrevWk: prevWk,
       spanNow: num(m.span_now),
       spanPrev: num(m.span_prev),
       at0: m.at0 || null,
@@ -126,11 +142,11 @@
       var moCur = windowOmset(frames, weeks.slice(n - 4));
       var moPrev = windowOmset(frames, weeks.slice(n - 8, n - 4));
       if (moCur && moPrev && moPrev.sum >= OMSET_PREV_FLOOR) {
-        moPct = clamp((moCur.sum - moPrev.sum) / Math.max(moPrev.sum, 1) * 100, -100, 300);
+        moPct = (moCur.sum - moPrev.sum) / Math.max(moPrev.sum, 1) * 100;
       }
     }
     return {
-      wkPct: clamp(wkPctRaw, -100, 300),
+      wkPct: wkPctRaw,
       wkPctRaw: wkPctRaw,
       moPct: moPct,
       terukur: !!(cur.measured && prev.measured),
@@ -232,9 +248,11 @@
       if (pending === 'pending') return '…';
       return '—';
     }
-    var pct = Math.round(Number(m.momentum_pct) || 0);
-    var core = m.momentum_class === 'naik' ? ('naik +' + pct + '%')
-      : m.momentum_class === 'turun' ? ('turun ' + pct + '%')
+    var pct = weekVsPrevPct(num(m.units_now_wk), num(m.units_prev_wk));
+    if (pct == null) pct = num(m.momentum_pct);
+    var shown = fmtPctSigned(pct);
+    var core = m.momentum_class === 'naik' ? ('naik ' + shown)
+      : m.momentum_class === 'turun' ? ('turun ' + shown)
       : 'stabil';
     var terukur = m.cur_source === 'measured' && m.prev_source === 'measured';
     return terukur ? core : core + ' (perkiraan)';
@@ -1611,7 +1629,7 @@
       + (function () {
           var shown = (p.trend && p.trend.wkPct != null) ? p.trend.wkPct : p.omsetPct;
           if (shown == null) return '~' + units.toLocaleString('id-ID') + ' terjual/minggu (' + tag + ')<br>';
-          return 'kenaikan omset/minggu ' + (shown > 0 ? '+' : '') + Math.round(shown) + '% (' + tag + ')<br>';
+          return 'kenaikan omset/minggu ' + fmtPctSigned(shown) + ' (' + tag + ')<br>';
         })()
       + 'omset/bulan ' + fmtRp(p.sizeOmset) + '<br>'
       + 'umur ' + umur + ' · ' + (L.reviews || 0) + ' ulasan<br>'

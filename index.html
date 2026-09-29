@@ -726,6 +726,7 @@ body.view-directory .panel {
      pick/thumb/title left share one scrollport and stay put while rows move. */
   overflow-x: auto;
 }
+body.view-directory.is-dir-cards .panel { overflow-x: hidden; }
 /* Keep Cari Produk chrome aligned while the wide product table scrolls sideways. */
 body.view-directory #view-directory > .dir-hero,
 body.view-directory #view-directory > .dir-cat-rail,
@@ -1364,6 +1365,10 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
   background: var(--accent, #B5202A);
   color: #fff;
 }
+.dir-prod-card.is-picked {
+  border-color: var(--accent, #B5202A);
+  box-shadow: 0 0 0 2px rgba(181,32,42,.18);
+}
 
 /* ── Terlaris Minggu Ini ───────────────────────────────────────────────────
    Applied by markTerlarisMinggu() in js/gpt-app.js to the best-selling card of
@@ -1974,21 +1979,70 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
   padding: 8px 12px; font-size: .82rem; font-weight: 700; cursor: pointer;
 }
 .dir-chooser-btn:hover { border-color: #F5D0A9; background-color: #FFF7ED; }
-#dir-grid .lrow-wrap.is-cards { container-type: inline-size; }
-@media (min-width: 560px) {
-  #dir-grid .lrow-wrap.is-cards .lrow-table thead { display: none; }
-  #dir-grid .lrow-wrap.is-cards tbody { display: flex; flex-direction: column; gap: 10px; }
-  #dir-grid .lrow-wrap.is-cards .lrow {
-    display: grid;
-    grid-template-columns: 30px 78px minmax(7rem, 1fr) max-content 18px;
-    gap: 8px; padding: 12px; border: 1px solid #ECEFF3; border-radius: 16px;
-    background-color: #fff;
-  }
-  #dir-grid .lrow-wrap.is-cards .lrow-extra {
-    grid-column: 3 / 5;
-    min-width: 0;
-  }
+.dir-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
 }
+@media (min-width: 640px) { .dir-card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .dir-card-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 1400px) { .dir-card-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+.dir-prod-card { width: 100%; }
+.dir-prod-card-img { position: relative; display: block; overflow: hidden; }
+.dir-prod-card-img img,
+.dir-prod-card-img .lrow-img--ph {
+  width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; display: block;
+  background: #f0f0f0;
+}
+.dir-prod-card-cmp,
+.dir-prod-card-fav {
+  position: absolute; z-index: 2; pointer-events: auto;
+}
+.dir-prod-card-cmp {
+  top: 8px; left: 8px;
+  width: 28px; height: 28px; padding: 0;
+  border: 2px solid #fff; border-radius: 6px;
+  background: rgba(0,0,0,.28);
+  box-shadow: 0 1px 4px rgba(0,0,0,.22);
+  color: transparent;
+  cursor: pointer;
+  display: grid; place-items: center;
+}
+.dir-prod-card-cmp .lrow-check {
+  display: grid; place-items: center;
+  width: 14px; height: 14px; border: 0; background: transparent;
+}
+.dir-prod-card.is-picked .dir-prod-card-cmp {
+  background: var(--accent, #B5202A);
+  color: #fff;
+}
+.dir-prod-card-fav {
+  top: 8px; right: 8px;
+  width: 32px; height: 32px;
+  border: 0; border-radius: 999px;
+  background: rgba(255,255,255,.92);
+  box-shadow: 0 1px 4px rgba(0,0,0,.18);
+  color: var(--ink-soft);
+}
+.dir-prod-card-fav:hover { background: #fff; color: var(--ink); }
+.dir-prod-card-fav.is-on { color: var(--accent, #B5202A); }
+.dir-prod-card-price {
+  margin-top: 6px;
+  font-size: 1.05rem; font-weight: 800; letter-spacing: -.02em;
+  color: var(--accent, #B5202A);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.dir-prod-card-omset {
+  margin-top: 2px;
+  font-size: .78rem; font-weight: 700; color: var(--ink-soft);
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.dir-prod-card-trend {
+  margin-top: 6px;
+  font-weight: 800; line-height: 1.25;
+}
+.dir-prod-card-trend .lrow-trend-pct { font-size: .9rem; }
 .lrow-disc { color: var(--accent, #B5202A); font-size: .78em; font-weight: 800; }
 .lrow-ext-url { color: var(--accent, #B5202A); font-weight: 700; }
 .riwayat-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 8px; }
@@ -11623,9 +11677,9 @@ body.view-chat .sfb-card {
 </aside>
 
 <script src="/js/laris-merdeka.js?v=20260816b" defer></script>
-<script src="/js/changelog.js?v=20260929b" defer></script>
+<script src="/js/changelog.js?v=20260929c" defer></script>
 <script defer src="/js/gpt-dir-filters.js?v=20260911c"></script>
-<script defer src="/js/gpt-dir-workbench.js?v=20260913b"></script>
+<script defer src="/js/gpt-dir-workbench.js?v=20260929a"></script>
 <script defer src="/js/gpt-activity.js?v=20260929b"></script>
 <script defer src="/js/gpt-dir-hero.js?v=20260824a"></script>
 <script defer src="/js/gpt-dir-home.js?v=20260824d"></script>
@@ -11643,11 +11697,11 @@ body.view-chat .sfb-card {
 <!-- admin-map.js and winback-admin.js used to load here for every visitor.
      Both are admin-only; gpt-app.js now pulls them on demand via
      larisLoadScript() when the admin view actually renders. -->
-<script src="/js/peta-peluang.js?v=20260908a" defer></script>
+<script src="/js/peta-peluang.js?v=20260929a" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260915a" defer></script>
-<script src="/js/gpt-app.js?v=20260929h" defer></script>
+<script src="/js/gpt-app.js?v=20260929i" defer></script>
 <style>
 /* LarisExpor chrome hidden for now. Restore with scripts/lib/expor-tab.mjs. */
 #btn-expor-pasar,

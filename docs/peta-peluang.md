@@ -12,14 +12,17 @@ One listing = `(item_id, shop_id)`.
 - Module: [`js/peta-peluang.js`](../js/peta-peluang.js) (`window.PetaPeluang`)
 - CSS (scatter, unused on Cari Produk): [`styles/peta-peluang.css`](../styles/peta-peluang.css)
 - SQL: [`supabase/migrations/20260906150000_listing_momentum_measured.sql`](../supabase/migrations/20260906150000_listing_momentum_measured.sql)
-  then held fallback [`20260906183000_listing_momentum_held.sql`](../supabase/migrations/20260906183000_listing_momentum_held.sql)
+  then held fallback [`20260906183000_listing_momentum_held.sql`](../supabase/migrations/20260906183000_listing_momentum_held.sql),
+  then uncapped % [`20260929160000_listing_momentum_uncapped.sql`](../supabase/migrations/20260929160000_listing_momentum_uncapped.sql)
   (positions / Jejak still from [`20260904120000_peta_peluang.sql`](../supabase/migrations/20260904120000_peta_peluang.sql))
 - Weekly backfill + revise: `~/shopee_scraper/listing_weekly.sql`
   (`backfill_listing_weekly_estimates`, then `revise_listing_weekly_measured`)
 - Hosts:
   - Cari Produk (`#dir-trending-now`) — top 3 rank rows, then Urutkan, then
-    `listingRowsHtml` (`actions: true`). Keyword chips filter both.
-  - Chat search / finder / recs (`.trend-host`) — same strip + table chrome.
+    Kartu (`.dir-card-grid`, default) or Tabel (`listingRowsHtml` with
+    `actions: true`). Keyword chips filter both.
+  - Chat search / finder / recs (`.trend-host`) — same strip + listing-row
+    table chrome.
   - Bandingkan Pasar is **not** mounted here. Chat-only
     (`handleBandingkanIntent`) — see [pasar-compare.md](./pasar-compare.md).
 
@@ -70,7 +73,8 @@ never peer / nowcast / forecast / `listing_weekly` frames.
   terakhir.” Table column shows the % with a perkiraan mark.
 - `belum` if there is no S2, `rate_prev < 1` unit/day, `d_now + d_prev < 10`,
   or sold stayed flat while reviews rose by more than 5 (counter lag).
-- Clamp `−100` … `+300`. Do not invent a % from peer / nowcast / forecast.
+- Show the real week-versus-previous-week %. Do not clamp to ±300. Do not
+  invent a % from peer / nowcast / forecast. `belum` stays `—`.
 - **Trending Sekarang** shows the top **3** by weekly % desc among **fresh
   (`terukur`)** rows with `unitsNowWk ≥ 20` and `unitsPrevWk ≥ 7`. Skip
   `belum` / `held` / missing. If none qualify after hydrate, hide the strip.

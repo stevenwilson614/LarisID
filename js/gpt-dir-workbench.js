@@ -24,7 +24,7 @@
   ];
 
   var _on = Object.create(null);
-  var _view = 'tabel';
+  var _view = 'kartu';
   var _draft = null;
   var _wired = false;
   var _bareRange = false;
@@ -41,8 +41,8 @@
     }
     try {
       var v = localStorage.getItem(VIEW_KEY);
-      _view = v === 'kartu' ? 'kartu' : 'tabel';
-    } catch (_) { _view = 'tabel'; }
+      if (v === 'kartu' || v === 'tabel') _view = v;
+    } catch (_) { _view = 'kartu'; }
   }
 
   function persistLocal() {
@@ -293,6 +293,19 @@
   }
 
   function applyViewClass(root) {
+    var grid = (root && root.id === 'dir-grid')
+      ? root
+      : (root || document).querySelector('#dir-grid');
+    if (grid) {
+      grid.classList.toggle('is-card-grid', _view === 'kartu');
+      grid.classList.toggle('is-table-grid', _view !== 'kartu');
+    }
+    try {
+      document.body.classList.toggle(
+        'is-dir-cards',
+        _view === 'kartu' && document.body.classList.contains('view-directory'),
+      );
+    } catch (_) {}
     var wrap = (root || document).querySelector('#dir-grid .lrow-wrap');
     if (!wrap) return;
     wrap.classList.toggle('is-cards', _view === 'kartu');
