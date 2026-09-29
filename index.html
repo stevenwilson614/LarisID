@@ -7377,12 +7377,14 @@ body.home-finder-done .home-hero {
 .trend-now-main {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) 8rem 10.5rem;
+  /* Omset and % size to their text. Fixed tracks were narrower than
+     "+64% perkiraan" plus the spark, so the percent painted over the omset. */
+  grid-template-columns: minmax(0, 1fr) max-content max-content;
   grid-template-areas:
     "name omset pct"
     "cat omset pct"
     "harga omset pct";
-  column-gap: 12px;
+  column-gap: 16px;
   align-items: center;
 }
 .trend-now-name {
@@ -7414,8 +7416,15 @@ body.home-finder-done .home-hero {
 .trend-now-pct {
   grid-area: pct;
   font-weight: 800;
-  display: flex; align-items: center; justify-content: flex-end; gap: 6px;
+  display: flex; align-items: center; justify-content: flex-end; gap: 8px;
   white-space: nowrap;
+}
+.trend-now-pct .lrow-trend-pct {
+  flex-wrap: wrap; justify-content: flex-end; row-gap: 0; column-gap: 4px;
+  max-width: 9.5rem; line-height: 1.05;
+}
+.trend-now-pct .lrow-trend-pct small {
+  flex-basis: 100%; text-align: right; line-height: 1.15;
 }
 .trend-now-pct .is-up { color: #16A34A; }
 .trend-now-pct .is-down { color: #DC2626; }
