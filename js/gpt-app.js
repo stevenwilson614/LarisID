@@ -16268,6 +16268,8 @@ async function openTrackerView(seed, resumeDraft) {
 // the read-only public view (name/city/avatar/bio only — never contact info).
 function consumeProfilPreview() {
   try {
+    const host = location.hostname;
+    if (host !== 'localhost' && host !== '127.0.0.1' && host !== '[::1]') return false;
     const q = new URLSearchParams(location.search);
     const v = q.get('profil');
     if (v !== 'isi' && v !== 'filled' && v !== 'kosong' && v !== 'empty' && v !== 'publik' && v !== 'public') return false;

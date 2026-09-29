@@ -118,4 +118,6 @@ $$;
 
 grant execute on function public.get_public_profile(uuid) to authenticated;
 
+notify pgrst, 'reload schema';
+
 commit;
