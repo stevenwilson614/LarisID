@@ -16270,8 +16270,10 @@ function consumeProfilPreview() {
   try {
     const q = new URLSearchParams(location.search);
     const v = q.get('profil');
-    if (v !== 'isi' && v !== 'filled' && v !== 'kosong' && v !== 'empty') return false;
-    state.pendingProfilPreview = (v === 'kosong' || v === 'empty') ? 'empty' : 'filled';
+    if (v !== 'isi' && v !== 'filled' && v !== 'kosong' && v !== 'empty' && v !== 'publik' && v !== 'public') return false;
+    state.pendingProfilPreview = (v === 'kosong' || v === 'empty')
+      ? 'empty'
+      : ((v === 'publik' || v === 'public') ? 'public' : 'filled');
     q.delete('profil');
     const qs = q.toString();
     history.replaceState(history.state || {}, '', location.pathname + (qs ? '?' + qs : '') + location.hash);
@@ -26722,7 +26724,10 @@ async function boot() {
   if (state.pendingProfilPreview) {
     const preview = state.pendingProfilPreview;
     state.pendingProfilPreview = null;
-    openUserProfile(preview === 'empty' ? 'preview-kosong' : 'preview-isi', { preview });
+    openUserProfile(
+      preview === 'empty' ? 'preview-kosong' : (preview === 'public' ? 'preview-publik' : 'preview-isi'),
+      { preview }
+    );
   }
 }
 

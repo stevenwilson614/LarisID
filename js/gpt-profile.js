@@ -94,6 +94,21 @@
     return parts.map((p) => p.charAt(0).toUpperCase()).join('') || '?';
   }
 
+  /** Public view: first name + last initial (e.g. "Steven W."). Own profile keeps the full name. */
+  function formatPublicName(full) {
+    const parts = String(full || '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return 'Pengguna LarisID';
+    if (parts.length === 1) return parts[0];
+    const last = parts[parts.length - 1];
+    return parts[0] + ' ' + last.charAt(0).toUpperCase() + '.';
+  }
+
+  function displayNameForView(row) {
+    const full = String(row.display_name || row.first_name || '').trim();
+    if (!full) return 'Pengguna LarisID';
+    return isOwn ? full : formatPublicName(full);
+  }
+
   function fmtNum(n) {
     const v = Number(n) || 0;
     return v.toLocaleString('id-ID');
@@ -259,22 +274,19 @@
     '</span>';
   }
 
-  function quotaHtml() {
+  function quotaMiniHtml() {
+    if (!isOwn) return '';
     const u = readUsage() || {};
-    return '<div class="gpt-quota" aria-label="Jatah harian">' +
-      '<div class="gpt-quota-item">' +
+    return '<div class="pf-quota-rings" aria-label="Jatah harian">' +
+      '<div class="pf-quota-item">' +
         quotaRingHtml('dive', u.diveNum || '∞') +
-        '<span class="gpt-quota-copy">' +
-          '<span class="gpt-quota-lbl">Deep Dive</span>' +
-          '<span class="gpt-quota-val js-quota-dives">' + (u.divesText || '—') + '</span>' +
-        '</span>' +
+        '<span class="pf-quota-lbl">Deep Dive</span>' +
+        '<span class="pf-quota-val js-quota-dives">' + (u.divesText || '—') + '</span>' +
       '</div>' +
-      '<div class="gpt-quota-item">' +
+      '<div class="pf-quota-item">' +
         quotaRingHtml('dl', u.dlNum || '90') +
-        '<span class="gpt-quota-copy">' +
-          '<span class="gpt-quota-lbl">Unduhan</span>' +
-          '<span class="gpt-quota-val js-quota-downloads">' + (u.downloadsText || '90/90') + '</span>' +
-        '</span>' +
+        '<span class="pf-quota-lbl">Unduhan</span>' +
+        '<span class="pf-quota-val js-quota-downloads">' + (u.downloadsText || '90/90') + '</span>' +
       '</div>' +
     '</div>';
   }
@@ -347,13 +359,14 @@
       '<span>Pratinjau lokal — belum ke larisid.com. Simpan toko dan hitungan live belum dihubungkan.</span>' +
       '<div class="pf-preview-btns">' +
         '<button type="button" data-pf="preview-filled"' + (previewMode === 'filled' ? ' class="is-on"' : '') + '>Terisi</button>' +
+        '<button type="button" data-pf="preview-public"' + (previewMode === 'public' ? ' class="is-on"' : '') + '>Publik</button>' +
         '<button type="button" data-pf="preview-empty"' + (previewMode === 'empty' ? ' class="is-on"' : '') + '>Kosong</button>' +
       '</div>' +
     '</div>';
   }
 
   function headerHtml(row) {
-    const name = esc(row.display_name || row.first_name || 'Pengguna LarisID');
+    const name = esc(displayNameForView(row));
     const role = row.is_admin ? ' <span class="gpt-pv-role">Admin</span>' : '';
     const city = row.city ? esc(row.city) : '';
     const plats = asList(row.selling_platforms);
@@ -594,6 +607,7 @@
         ? '<div class="pf-linklist">' + (list || fallback) + '</div>'
         : '<p class="pf-empty">' + (isOwn ? 'Ketuk pensil, pilih marketplace, lalu tempel tautan toko.' : 'Belum ada toko.') + '</p>') +
       editor +
+      quotaMiniHtml() +
     '</section>';
   }
 
@@ -616,7 +630,6 @@
       ? '<p class="gpt-ext-install"><a href="' + global.CWS_EXT_URL + '" target="_blank" rel="noopener" data-cws-ext="profile">Pasang Extension Chrome</a> — omset &amp; tren tampil di halaman Shopee.</p>'
       : '';
     return '<section class="pf-card pf-foot">' +
-      quotaHtml() +
       inboxHtml() +
       ext +
       '<p class="gpt-disclaimer">' + lockSVG + ' Informasi kamu aman dan hanya dipakai sesuai pengaturan profil.</p>' +
@@ -823,6 +836,7 @@
     if (previewMode) {
       currentRow = previewMode === 'empty' ? previewEmpty() : previewFilled();
       storeLinks = asList(currentRow.store_links);
+      if (previewMode === 'public') isOwn = false;
       return;
     }
     const { data, error } = await supabase
@@ -916,6 +930,7 @@
     if (!t || !pageRoot.contains(t)) return;
     const act = t.getAttribute('data-pf');
     if (act === 'preview-filled') { previewMode = 'filled'; isOwn = true; currentRow = previewFilled(); storeLinks = asList(currentRow.store_links); paint(); return; }
+    if (act === 'preview-public') { previewMode = 'public'; isOwn = false; edit = { header: false, social: false, toko: false }; currentRow = previewFilled(); storeLinks = asList(currentRow.store_links); paint(); return; }
     if (act === 'preview-empty') { previewMode = 'empty'; isOwn = true; currentRow = previewEmpty(); storeLinks = []; paint(); return; }
     if (act === 'edit-header') { edit.header = !edit.header; paint(); return; }
     if (act === 'edit-social') { edit.social = !edit.social; socialPick = null; paint(); return; }
@@ -1022,15 +1037,24 @@
     if (!pageRoot) return;
     applyOpts(options);
     const targetId = options && options.targetUserId ? options.targetUserId : userId;
-    isOwn = !!(previewMode || (viewerId && targetId && viewerId === targetId));
+    isOwn = previewMode === 'public'
+      ? false
+      : !!(previewMode || (viewerId && targetId && viewerId === targetId));
     edit = { header: false, social: false, toko: false };
     socialPick = null;
     storePick = 'shopee';
     pageRoot.onclick = onClick;
     pageRoot.innerHTML = '<div class="pf-page"><section class="pf-card"><p class="pf-empty">Memuat profil…</p></section></div>';
     try {
+      if (previewMode) {
+        isOwn = previewMode !== 'public';
+        currentRow = previewMode === 'empty' ? previewEmpty() : previewFilled();
+        storeLinks = asList(currentRow.store_links);
+        paint();
+        return;
+      }
       if (isOwn) {
-        if (!previewMode && (!supabase || !userId)) {
+        if (!supabase || !userId) {
           pageRoot.innerHTML = '<div class="pf-page"><section class="pf-card pf-privat"><h2>Masuk dulu</h2><p>Profil lengkap muncul setelah kamu masuk.</p></section></div>';
           return;
         }

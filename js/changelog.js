@@ -15,8 +15,8 @@ window.LARIS_CHANGELOG = [
     title: 'Profil jadi halaman penuh',
     items: [
       {
-        text: 'Ketuk namamu di pojok kanan untuk buka halaman profil: bio, kota, fokus, platform jualan, tautan sosial dan toko, hitungan Komunitas, plus Riwayat yang lebih lengkap. Seller lain yang ketuk namamu melihat versi publik — tanpa nomor WA atau email.',
-        tech: '#view-profil + js/gpt-profile.js; user_profiles.social_links / focus_areas / selling_platforms + get_public_profile counts (20260929150000, apply on Contabo after preview). Preview: ?profil=isi or ?profil=kosong.',
+        text: 'Ketuk namamu di pojok kanan untuk buka halaman profil: bio, kota, platform jualan, tautan sosial dan toko, hitungan Komunitas, plus Riwayat yang lebih lengkap. Di bawah Toko saya ada lingkaran jatah Deep Dive dan Unduhan. Seller lain melihat nama sebagai nama depan + inisial belakang — tanpa nomor WA atau email.',
+        tech: '#view-profil + js/gpt-profile.js; public name = first + last initial; quota rings under Toko saya; user_profiles.social_links / selling_platforms + get_public_profile counts (20260929150000, Contabo after preview). Preview: ?profil=isi|publik|kosong.',
       },
     ],
   },
