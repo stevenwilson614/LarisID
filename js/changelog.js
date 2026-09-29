@@ -12,6 +12,16 @@
 window.LARIS_CHANGELOG = [
   {
     date: '2026-09-29',
+    title: 'Komunitas: Ceritakan opsional',
+    items: [
+      {
+        text: 'Di Komunitas, pertanyaan cukup judul saja — bagian Ceritakan boleh dikosongkan.',
+        tech: '#msb-body no longer required; feature_requests_body_check allows empty (20260929123000).',
+      },
+    ],
+  },
+  {
+    date: '2026-09-29',
     title: 'Kalkulator profit di menu',
     items: [
       {

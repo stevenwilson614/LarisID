@@ -31,7 +31,7 @@ Tips are a topic, not a lane. Named by default. No anonymous posting in v1.
 
 Public Diskusi is for **process and lessons**. Niche, supplier, margin, and winning ads stay off the board.
 
-- Compose placeholder repeats it. The old peach rules strip under the tabs is gone so threads sit higher.
+- Compose placeholder repeats it. Body / Ceritakan is **optional** — a title-only question is fine. The old peach rules strip under the tabs is gone so threads sit higher.
 - Every answer has **Kirim Pesan** (“Mau lanjut ngobrol privat?”) → `user_messages` via the public profile composer (`js/gpt-profile.js`). Requires the answerer `user_profiles.is_public`. First reply nudges the answerer to turn that on.
 - Do not prefill harga / omset / perkiraan deltas into a Diskusi post. “Tanya seller lain” uses **keyword grain** only.
 

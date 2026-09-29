@@ -441,8 +441,8 @@
   async function savePostEdit(postId, title, body) {
     const t = (title || '').trim();
     const b = (body || '').trim();
-    if (!t || !b) {
-      _opts.toast('Judul dan deskripsi harus diisi.');
+    if (!t) {
+      _opts.toast('Judul harus diisi.');
       return;
     }
     const { error } = await _opts.supabase
@@ -639,7 +639,7 @@
             </div>
           </div>
           <div class="msb-card-detail" ${isExpanded ? '' : 'hidden'}>
-            <p class="msb-body">${bodyHtml(bodyText)}</p>
+            ${rawBody ? `<p class="msb-body">${bodyHtml(bodyText)}</p>` : '<p class="msb-body" hidden></p>'}
             ${needsBodyToggle ? `<button type="button" class="msb-body-toggle" data-action="toggle-body" data-post-id="${post.id}">${bodyExpanded ? 'Sembunyikan' : 'Baca selengkapnya'}</button>` : ''}
             ${likePrompt ? `<p class="msb-like-hint">Kamu mendukung ini. Ceritakan kasusmu singkat supaya thread-nya hidup.</p>` : ''}
             <div class="msb-comments" data-comments-for="${post.id}">
@@ -667,8 +667,8 @@
     const body = bodyInput.value.trim();
     const kind = isDiskusi() ? 'question' : ((kindSelect && kindSelect.value) || 'feature');
     const topic = isDiskusi() ? ((topicSelect && topicSelect.value) || '') : '';
-    if (!title || !body) {
-      _opts.toast('Judul dan deskripsi harus diisi.');
+    if (!title) {
+      _opts.toast('Judul harus diisi.');
       return;
     }
     const row = {
@@ -703,8 +703,8 @@
     if (topicWrap) topicWrap.hidden = !isDiskusi();
     if (title) title.placeholder = isDiskusi() ? 'Pertanyaan singkat' : 'Judul singkat';
     if (body) body.placeholder = isDiskusi()
-      ? 'Ceritakan situasinya. Proses dan pelajaran boleh — niche, supplier, margin pribadi tidak perlu.'
-      : 'Jelaskan singkat apa yang kamu butuhkan…';
+      ? 'Ceritakan situasinya (opsional). Proses dan pelajaran boleh — niche, supplier, margin pribadi tidak perlu.'
+      : 'Jelaskan singkat apa yang kamu butuhkan (opsional)…';
   }
 
   function openForm() {
@@ -1160,7 +1160,7 @@
               </select>
             </div>
             <input id="msb-title" type="text" placeholder="Pertanyaan singkat" maxlength="120" required>
-            <textarea id="msb-body" placeholder="Ceritakan situasinya. Proses dan pelajaran boleh — niche, supplier, margin pribadi tidak perlu." maxlength="4000" required></textarea>
+            <textarea id="msb-body" placeholder="Ceritakan situasinya (opsional). Proses dan pelajaran boleh — niche, supplier, margin pribadi tidak perlu." maxlength="4000"></textarea>
             <div class="msb-form-actions">
               <button type="button" class="msb-btn-ghost" id="msb-cancel">Batal</button>
               <button type="button" class="msb-btn-primary" id="msb-submit">Kirim</button>
