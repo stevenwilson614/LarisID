@@ -11762,10 +11762,11 @@ function wireKalkulatorPage() {
     const seq = ++_kalcSearchSeq;
     // Paint cached hits immediately, then refresh.
     const cacheKey = q.toLowerCase();
-    if (_kalcSearchCache.has(cacheKey)) {
+    const cached = _kalcSearchCache.has(cacheKey);
+    if (cached) {
       paintKalcHits(_kalcSearchCache.get(cacheKey), q);
     }
-    _kalcSearchTimer = setTimeout(() => runSearch({ seq }), 120);
+    _kalcSearchTimer = setTimeout(() => runSearch({ seq, fromCache: cached }), 220);
   });
   $('kalc-product-q')?.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
@@ -11796,37 +11797,97 @@ function wireKalkulatorPage() {
   $('kalc-save-riwayat')?.addEventListener('click', () => { void saveKalcToRiwayat(); });
 }
 
-/** Lightweight typeahead — skip the heavy searchListings relevance pass. */
+/**
+ * Kalkulator product typeahead. Prefer listings_deduped ilike (≈300ms) over
+ * search_listings (several seconds) — the slow RPC races with typing and
+ * paints "Tidak ketemu" when the in-flight seq is superseded or times out.
+ * No ORDER BY: sorting by total_sold on a leading-wildcard ilike hits the
+ * anon statement_timeout. Do not cache empty results (timeouts look empty).
+ */
 async function searchKalcListingsFast(q, limit = 12) {
   if (!_supabase) return [];
-  const clean = typeof _sanitizeSearchToken === 'function' ? _sanitizeSearchToken(q) : String(q || '').trim();
+  const clean = _sanitizeSearchToken(q).replace(/"/g, '').slice(0, 40);
   if (!clean || clean.length < 2) return [];
   const cacheKey = clean.toLowerCase();
   if (_kalcSearchCache.has(cacheKey)) return _kalcSearchCache.get(cacheKey);
-  try {
-    const { data, error } = await _supabase.rpc('search_listings', {
-      q: clean,
-      lim: limit,
-      off: 0,
-      cats: null,
-      price_min: null,
-      price_max: null,
-    });
-    if (error) throw error;
+
+  const dedupe = (data) => {
     const best = new Map();
     for (const r of (data || [])) {
       const key = `${r.item_id}_${r.shop_id}`;
       if (!best.has(key)) best.set(key, asListingProduct(r));
     }
-    const rows = Array.from(best.values()).slice(0, limit);
+    return Array.from(best.values()).slice(0, limit);
+  };
+  const remember = (rows) => {
+    if (!rows.length) return rows;
     if (_kalcSearchCache.size > 40) {
       const first = _kalcSearchCache.keys().next().value;
       _kalcSearchCache.delete(first);
     }
     _kalcSearchCache.set(cacheKey, rows);
     return rows;
-  } catch (_) {
-    return [];
+  };
+
+  const byName = async () => {
+    const build = () => _supabase.from('listings_deduped')
+      .select(listingCoreSelect())
+      .eq('is_offtopic', false)
+      .ilike('product_name', `%${clean}%`)
+      .limit(limit);
+    let { data, error } = await build();
+    if (listingIsAdMissing(error)) ({ data, error } = await build());
+    if (error) throw error;
+    return dedupe(data);
+  };
+
+  const byKeyword = async () => {
+    // Prefer keyword prefix (index-friendly) over leading-wildcard.
+    // Quote values that contain spaces so PostgREST .or() does not split them.
+    const build = () => {
+      let query = _supabase.from('listings_deduped')
+        .select(listingCoreSelect())
+        .eq('is_offtopic', false)
+        .limit(limit);
+      if (clean.includes(' ')) {
+        query = query.ilike('keyword', `%${clean}%`);
+      } else {
+        query = query.or(`keyword.ilike.${clean}%,keyword.ilike."% ${clean}%"`);
+      }
+      return query;
+    };
+    let { data, error } = await build();
+    if (listingIsAdMissing(error)) ({ data, error } = await build());
+    if (error) throw error;
+    return dedupe(data);
+  };
+
+  try {
+    let rows = await byName();
+    if (rows.length < 4) {
+      try {
+        const more = await byKeyword();
+        const seen = new Set(rows.map((r) => `${r.item_id}_${r.shop_id}`));
+        for (const r of more) {
+          const k = `${r.item_id}_${r.shop_id}`;
+          if (seen.has(k)) continue;
+          seen.add(k);
+          rows.push(r);
+          if (rows.length >= limit) break;
+        }
+      } catch (_) { /* keep name hits */ }
+    }
+    return remember(rows);
+  } catch (err) {
+    console.warn('[kalc-search] listings_deduped failed', err);
+    // Last resort — slow but ranked. Still better than a permanent miss.
+    try {
+      const rows = (await searchListings(clean, [], limit)).slice(0, limit);
+      return remember(rows);
+    } catch (err2) {
+      console.warn('[kalc-search] search_listings fallback failed', err2);
+      return [];
+    }
   }
 }
 
@@ -11894,8 +11955,11 @@ async function searchKalcProducts(opts = {}) {
   }
   hits.hidden = false;
   hits.classList.add('kalc-ac');
-  if (!hits.querySelector('.kalc-ac-list')) {
+  // Always show waiting when a live fetch starts — keeps a prior "Tidak
+  // ketemu" from looking final while the next query is still in flight.
+  if (!opts.fromCache) {
     hits.innerHTML = '<p class="alat-lead agent-wait">Mencari produk…</p>';
+    hits._rows = null;
   }
   let rows = [];
   try {
