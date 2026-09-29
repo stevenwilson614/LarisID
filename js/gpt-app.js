@@ -11798,27 +11798,70 @@ function wireKalkulatorPage() {
 }
 
 /**
- * Kalkulator product typeahead. Prefer listings_deduped ilike (≈300ms) over
- * search_listings (several seconds) — the slow RPC races with typing and
- * paints "Tidak ketemu" when the in-flight seq is superseded or times out.
- * No ORDER BY: sorting by total_sold on a leading-wildcard ilike hits the
- * anon statement_timeout. Do not cache empty results (timeouts look empty).
+ * Kalkulator product typeahead — keyword-first, sold-ranked.
+ *
+ * product_name ILIKE '%sepatu%' pulls accessories (insole, cat sepatu, rak…)
+ * with no ranking. Exact keyword = 'sepatu' uses listings_deduped_kw_sold_ontopic_idx
+ * (~2ms) and returns real shoes. Expand with sibling markets that START WITH
+ * the query (sepatu sneakers…), not middle matches (rak sepatu).
  */
-async function searchKalcListingsFast(q, limit = 12) {
+async function searchKalcListingsFast(q, limit = 24) {
   if (!_supabase) return [];
   const clean = _sanitizeSearchToken(q).replace(/"/g, '').slice(0, 40);
   if (!clean || clean.length < 2) return [];
   const cacheKey = clean.toLowerCase();
   if (_kalcSearchCache.has(cacheKey)) return _kalcSearchCache.get(cacheKey);
 
-  const dedupe = (data) => {
+  const phrase = clean.toLowerCase();
+  const terms = _searchTerms(clean);
+
+  const dedupeMerge = (buckets) => {
     const best = new Map();
-    for (const r of (data || [])) {
-      const key = `${r.item_id}_${r.shop_id}`;
-      if (!best.has(key)) best.set(key, asListingProduct(r));
+    for (const rows of buckets) {
+      for (const r of (rows || [])) {
+        const key = `${r.item_id}_${r.shop_id}`;
+        if (!best.has(key)) best.set(key, asListingProduct(r));
+      }
     }
-    return Array.from(best.values()).slice(0, limit);
+    return Array.from(best.values());
   };
+
+  const scoreKalcRow = (row) => {
+    const kw = String(row.keyword || '').toLowerCase();
+    const name = String(row.product_name || '').toLowerCase();
+    let score = Math.log10((Number(row.total_sold) || 0) + 1) * 3;
+    if (kw === phrase) score += 120;
+    else if (kw.startsWith(phrase + ' ') || kw.startsWith(phrase)) score += 80;
+    else if (kwHasTerm(kw, phrase)) score += 40;
+    if (name.includes(phrase)) score += 25;
+    // Accessory / adjacent markets that mention the word but are not the product.
+    if (/\b(rak|kotak|insole|sol |cat |pembersih|foam|lem |kaos kaki|tas sepatu)\b/i.test(kw)
+      || /\b(rak|kotak|insole|cat kain|cat sepatu|pembersih)\b/i.test(name)) {
+      score -= 100;
+    }
+    return score;
+  };
+
+  const rankAndFilter = (rows) => {
+    const scored = rows.map((h) => ({ h, score: scoreKalcRow(h) }));
+    // Keep rows that are clearly in-market OR whose title carries the phrase.
+    let good = scored.filter((x) => {
+      const kw = String(x.h.keyword || '').toLowerCase();
+      const name = String(x.h.product_name || '').toLowerCase();
+      if (x.score < 0) return false;
+      if (kw === phrase || kw.startsWith(phrase + ' ') || kw.startsWith(phrase)) return true;
+      if (kwHasTerm(kw, phrase) && name.includes(phrase)) return true;
+      if (name.includes(phrase) && !/\b(rak|kotak|insole|cat |pembersih)\b/i.test(name)) return true;
+      return false;
+    });
+    if (!good.length) {
+      good = filterRelevantHits(rows, terms, phrase).map((h) => ({ h, score: scoreKalcRow(h) }));
+    }
+    good.sort((a, b) => b.score - a.score
+      || (Number(b.h.total_sold) || 0) - (Number(a.h.total_sold) || 0));
+    return good.map((x) => x.h).slice(0, limit);
+  };
+
   const remember = (rows) => {
     if (!rows.length) return rows;
     if (_kalcSearchCache.size > 40) {
@@ -11829,60 +11872,77 @@ async function searchKalcListingsFast(q, limit = 12) {
     return rows;
   };
 
-  const byName = async () => {
-    const build = () => _supabase.from('listings_deduped')
-      .select(listingCoreSelect())
-      .eq('is_offtopic', false)
-      .ilike('product_name', `%${clean}%`)
-      .limit(limit);
-    let { data, error } = await build();
-    if (listingIsAdMissing(error)) ({ data, error } = await build());
-    if (error) throw error;
-    return dedupe(data);
-  };
-
-  const byKeyword = async () => {
-    // Prefer keyword prefix (index-friendly) over leading-wildcard.
-    // Quote values that contain spaces so PostgREST .or() does not split them.
-    const build = () => {
-      let query = _supabase.from('listings_deduped')
-        .select(listingCoreSelect())
-        .eq('is_offtopic', false)
-        .limit(limit);
-      if (clean.includes(' ')) {
-        query = query.ilike('keyword', `%${clean}%`);
-      } else {
-        query = query.or(`keyword.ilike.${clean}%,keyword.ilike."% ${clean}%"`);
+  /** Sibling scrape markets that start with the query (prefix only). */
+  async function relatedKeywords(needle, take = 6) {
+    try {
+      const build = () => _supabase.from('product_types_v')
+        .select('keyword,omset_top15,n_listings')
+        .eq('city', 'ALL')
+        .gte('n_listings', 3)
+        .ilike('keyword', `${needle}%`)
+        .order('omset_top15', { ascending: false, nullsFirst: false })
+        .limit(take + 4);
+      let { data, error } = await build();
+      if (ptypeWeeklyMissing(error)) ({ data } = await build());
+      const out = [];
+      const seen = new Set([needle.toLowerCase()]);
+      for (const r of (data || [])) {
+        const kw = String(r.keyword || '').trim();
+        if (!kw || seen.has(kw.toLowerCase())) continue;
+        // Skip accessory markets that happen to start with the word (rare).
+        if (/^(rak|kotak|insole|sol|cat|foam|lem)\b/i.test(kw)) continue;
+        seen.add(kw.toLowerCase());
+        out.push(kw);
+        if (out.length >= take) break;
       }
-      return query;
-    };
-    let { data, error } = await build();
-    if (listingIsAdMissing(error)) ({ data, error } = await build());
-    if (error) throw error;
-    return dedupe(data);
-  };
+      return out;
+    } catch (_) {
+      return [];
+    }
+  }
 
   try {
-    let rows = await byName();
-    if (rows.length < 4) {
-      try {
-        const more = await byKeyword();
-        const seen = new Set(rows.map((r) => `${r.item_id}_${r.shop_id}`));
-        for (const r of more) {
-          const k = `${r.item_id}_${r.shop_id}`;
-          if (seen.has(k)) continue;
-          seen.add(k);
-          rows.push(r);
-          if (rows.length >= limit) break;
-        }
-      } catch (_) { /* keep name hits */ }
+    // 1) Exact market keyword — index hit, sold-ranked.
+    const exact = await fetchListingsForKeyword(clean, Math.max(limit, 24));
+
+    // 2) Top sibling markets (sepatu sneakers…), not middle matches (rak sepatu).
+    let related = [];
+    try {
+      related = await relatedKeywords(phrase, 5);
+    } catch (_) {}
+    let siblingRows = [];
+    if (related.length) {
+      siblingRows = await fetchListingsForKeywords(
+        related,
+        Math.max(4, Math.ceil(limit / Math.max(related.length, 1))),
+        limit,
+      );
     }
+
+    let rows = rankAndFilter(dedupeMerge([exact, siblingRows]));
+
+    // 3) Thin result → title fallback, then relevance filter (still no ORDER BY).
+    if (rows.length < Math.min(8, limit)) {
+      try {
+        const build = () => _supabase.from('listings_deduped')
+          .select(listingCoreSelect())
+          .eq('is_offtopic', false)
+          .gt('total_sold', 0)
+          .ilike('product_name', `%${clean}%`)
+          .limit(Math.max(limit * 3, 36));
+        let { data, error } = await build();
+        if (listingIsAdMissing(error)) ({ data, error } = await build());
+        if (!error && data?.length) {
+          rows = rankAndFilter(dedupeMerge([rows, data]));
+        }
+      } catch (_) { /* keep keyword hits */ }
+    }
+
     return remember(rows);
   } catch (err) {
-    console.warn('[kalc-search] listings_deduped failed', err);
-    // Last resort — slow but ranked. Still better than a permanent miss.
+    console.warn('[kalc-search] keyword path failed', err);
     try {
-      const rows = (await searchListings(clean, [], limit)).slice(0, limit);
+      const rows = rankAndFilter(await searchListings(clean, [], Math.max(limit, 30)));
       return remember(rows);
     } catch (err2) {
       console.warn('[kalc-search] search_listings fallback failed', err2);
@@ -11963,7 +12023,7 @@ async function searchKalcProducts(opts = {}) {
   }
   let rows = [];
   try {
-    rows = await searchKalcListingsFast(q, 12);
+    rows = await searchKalcListingsFast(q, 24);
   } catch (_) {}
   if (seq && wireKalkulatorPage._seq && seq !== wireKalkulatorPage._seq()) return;
   paintKalcHits(rows, q);
@@ -25080,7 +25140,7 @@ async function renderAdminMap() {
   if (!map) {
     if (svg && typeof larisLoadScript === 'function' && !_admMapLoading) {
       _admMapLoading = true;
-      larisLoadScript('/js/admin-map.js?v=20260909a')
+      larisLoadScript('/js/admin-map.js?v=20260929a')
         .then(() => { _admMapLoading = false; renderAdminMap(); },
               () => { _admMapLoading = false; });
     }

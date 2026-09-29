@@ -373,6 +373,17 @@ a.side-btn { text-decoration: none; box-sizing: border-box; color: var(--ink); }
   margin-top: 10px; padding-top: 8px;
   flex: 1; min-height: 0; display: flex; flex-direction: column;
 }
+@media (min-width: 861px) {
+  /* Floor so Riwayat cannot collapse to 0 when the buttons below it
+     (lokasi, Harga, FAQ, links) fill the rest of the viewport. The
+     chat list scrolls inside this floor; the sidebar scrolls past it. */
+  .side-section {
+    flex: 1 1 0;
+    min-height: clamp(148px, 28vh, 280px);
+    overflow: hidden;
+  }
+  .chat-list { overscroll-behavior: contain; scrollbar-width: thin; }
+}
 .side-label {
   font-size: .7rem; font-weight: 500;
   color: var(--muted);
@@ -2499,6 +2510,7 @@ body.view-community .panel-inner,
 body.view-edukasi .panel-inner {
   max-width: 920px;
 }
+body.view-community .panel-inner { max-width: 1080px; }
 body.view-edukasi .panel-inner { max-width: 760px; }
 /* Harga carries a six-column comparison table — give it more room than the
    other meta pages. */
@@ -4632,7 +4644,10 @@ body.view-edukasi .panel { background: #F7F7F8; }
   .sidebar {
     position: fixed; top: 0; bottom: 0; left: 0;
     width: var(--sidebar-w);
-    overflow: hidden;
+    /* Clip the rail horizontally while it is 72px. Vertical scroll stays
+       so a short window can still reach Riwayat and the footer on hover. */
+    overflow-x: hidden;
+    overflow-y: auto;
     /* Above .dir-compare-bar (60), below .modal-overlay (100). Set on the bare
        class, not :hover, so body.ddtp-open .sidebar { z-index: 101 } keeps
        winning while that promo is open. */
@@ -11336,7 +11351,7 @@ body.view-chat .sfb-card {
 <script defer src="/js/gpt-photo-analyze.js?v=20260824a"></script>
 <script defer src="/js/gpt-referral.js?v=20260821a"></script>
 <script defer src="/js/gpt-profile.js?v=20260914e"></script>
-<script defer src="/js/gpt-community-board.js?v=20260909b"></script>
+<script defer src="/js/gpt-community-board.js?v=20260929a"></script>
 <script defer src="/js/laris-cohort.js?v=20260908j"></script>
 <script defer src="/js/laris-mascot-rigs.js?v=20260907k"></script>
 <script defer src="/js/laris-mascot.js?v=20260907k"></script>
@@ -11351,7 +11366,7 @@ body.view-chat .sfb-card {
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260915a" defer></script>
-<script src="/js/gpt-app.js?v=20260929b" defer></script>
+<script src="/js/gpt-app.js?v=20260929c" defer></script>
 <style>
 /* LarisExpor chrome hidden for now. Restore with scripts/lib/expor-tab.mjs. */
 #btn-expor-pasar,
