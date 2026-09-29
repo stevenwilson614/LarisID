@@ -4,7 +4,7 @@ Logged-in peer conversation. Goal: **users talking to each other**, not more lik
 
 Live UI: `index.html` + `js/gpt-community-board.js` + `js/gpt-app.js`. Schema: `supabase/migrations/20260907140000_komunitas_board.sql`. Apply on Contabo only (`bash scripts/apply-selfhost.sh`). Never `supabase db push --linked`.
 
-The public sebaran map is the same `user_map_distribution()` payload as Admin, drawn by `js/admin-map.js` with `inset: false`: no Jakarta panel, no size legend, province counts (including DKI) sit around a wide short national outline. The SVG is 90% of the card so side whitespace keeps it from crowding the thread list. Phone width still drops labels and uses the collapsed “Lihat sebaran per provinsi” list. Admin keeps the inset and legend.
+The public sebaran map is the same `user_map_distribution()` payload as Admin, drawn by `js/admin-map.js` with `inset: false`: no Jakarta panel, no size legend, province counts (including DKI) sit around a wide short national outline titled **Komunitas Laris**. The SVG is 90% of the card so side whitespace keeps it from crowding the thread list. Phone width still drops labels and uses the collapsed “Lihat sebaran per provinsi” list. Admin keeps the inset, legend, and “Sebaran Pengguna di Indonesia” title.
 
 Answers have a thumb like, stored in `feature_request_comment_likes` / `feature_request_comments_feed`. That is a reply signal, not a success metric.
 

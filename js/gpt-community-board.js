@@ -825,8 +825,7 @@
         padding: 14px 16px 10px; box-shadow: 0 1px 2px rgba(0,0,0,.03);
         margin-bottom: 12px;
       }
-      .msb-map-title { margin: 0; font-size: 1.02rem; font-weight: 800; color: var(--msb-ink); }
-      .msb-map-sub { margin: 2px 0 6px; font-size: .8rem; color: var(--msb-muted); }
+      .msb-map-title { margin: 0 0 6px; font-size: 1.02rem; font-weight: 800; color: var(--msb-ink); }
       .msb-map-stage { position: relative; display: flex; justify-content: center; }
       .msb-map-svg { width: 90%; height: auto; display: block; }
       /* Shown only in compact mode, where the map drops its labels. Collapsed
@@ -1101,14 +1100,14 @@
     _opts = options;
     _container = container;
 
-    if (container.dataset.communityBoardMounted === 'msb-v10') {
+    if (container.dataset.communityBoardMounted === 'msb-v11') {
       _listEl = container.querySelector('#msb-list');
       applyLaunchOpts();
       fetchPosts();
       renderUserMap();
       return;
     }
-    container.dataset.communityBoardMounted = 'msb-v10';
+    container.dataset.communityBoardMounted = 'msb-v11';
     injectStyles();
 
     container.innerHTML = `
@@ -1125,8 +1124,7 @@
         </header>
 
         <section class="msb-map-card" id="msb-map-card" hidden>
-          <h3 class="msb-map-title">Sebaran Pengguna di Indonesia</h3>
-          <p class="msb-map-sub">Lihat dari mana saja teman-teman kita bergabung di komunitas.</p>
+          <h3 class="msb-map-title">Komunitas Laris</h3>
           <div class="msb-map-stage">
             <svg class="msb-map-svg" id="msb-map-svg" role="img" aria-label="Peta sebaran pengguna LarisID di Indonesia"></svg>
           </div>
