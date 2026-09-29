@@ -1856,6 +1856,15 @@ function isExporPasar() {
   return !!(window.LarisExpor && window.LarisExpor.isOn());
 }
 
+function currentPasarTag() {
+  return isExporPasar() ? 'expor' : 'shopee';
+}
+
+function withPasar(ctx) {
+  return { ...(ctx || {}), pasar: currentPasarTag() };
+}
+
+
 function isExporListing(p) {
   return !!(p && (p._pasar === 'expor' || String(p.nowcast_method || '') === 'amazon_badge'));
 }
@@ -4625,7 +4634,7 @@ let _historyPrimed = false;
 function setView(name, opts = {}) {
   const leaving = state.view;
   state.view = name;
-  ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'edukasi', 'cohort'].forEach(v => {
+  ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'edukasi', 'cohort', 'kalkulator'].forEach(v => {
     const el = $(`view-${v}`);
     if (el) el.classList.toggle('active', v === name);
     document.body.classList.toggle(`view-${v}`, v === name);
@@ -4645,8 +4654,8 @@ function setView(name, opts = {}) {
   // .composer-dock display rule) — everywhere else now hides the bar
   // entirely rather than just clearing its chips, so this list stops
   // mattering for those views, but chips are still irrelevant on them either way.
-  if (name === 'home' || name === 'landing' || name === 'directory' || name === 'harga' || name === 'admin' || name === 'tracker' || name === 'community' || name === 'edukasi' || name === 'cohort') setComposerChips(null);
-  ['btn-ask-laris', 'btn-produk', 'btn-harga', 'btn-faq', 'btn-tentang', 'btn-admin', 'btn-tracker', 'btn-community', 'btn-edukasi', 'btn-cohort'].forEach(id => {
+  if (name === 'home' || name === 'landing' || name === 'directory' || name === 'harga' || name === 'admin' || name === 'tracker' || name === 'community' || name === 'edukasi' || name === 'cohort' || name === 'kalkulator') setComposerChips(null);
+  ['btn-ask-laris', 'btn-produk', 'btn-harga', 'btn-faq', 'btn-tentang', 'btn-admin', 'btn-tracker', 'btn-community', 'btn-edukasi', 'btn-cohort', 'btn-kalkulator-alat'].forEach(id => {
     const el = $(id);
     if (!el) return;
     el.classList.toggle('active',
@@ -4660,7 +4669,8 @@ function setView(name, opts = {}) {
       (id === 'btn-tracker' && name === 'tracker') ||
       (id === 'btn-community' && name === 'community') ||
       (id === 'btn-edukasi' && name === 'edukasi') ||
-      (id === 'btn-cohort' && name === 'cohort'));
+      (id === 'btn-cohort' && name === 'cohort') ||
+      (id === 'btn-kalkulator-alat' && name === 'kalkulator'));
   });
   // Mobile Tentang accordion: highlight the parent when a child page is current.
   const aboutChildActive = name === 'harga' || name === 'faq' || name === 'landing';
@@ -4707,7 +4717,7 @@ function setView(name, opts = {}) {
   }
 }
 
-const HISTORY_VIEWS = ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'edukasi', 'cohort'];
+const HISTORY_VIEWS = ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'edukasi', 'cohort', 'kalkulator'];
 // Old sessions may still have { view: 'tentang' } in history — map to landing.
 const HISTORY_VIEW_ALIASES = { tentang: 'landing' };
 
@@ -4742,6 +4752,7 @@ window.addEventListener('popstate', (e) => {
       setView(view);
       if (view === 'home') updateHomeFinderVisibility();
       if (view === 'chat' && state.activeChatId && activeChat()) renderChatThread();
+      if (view === 'kalkulator') openKalkulatorPage({ via: 'restore' });
       if (view === 'cohort') {
         void (async () => {
           mountLarisCohort();
@@ -4770,7 +4781,7 @@ function setSideAboutOpen(open) {
 
 function sellerToolsViewActive(name) {
   const v = name || state.view;
-  return v === 'home' || v === 'chat' || v === 'directory' || v === 'tracker' || v === 'deepdive';
+  return v === 'home' || v === 'chat' || v === 'directory' || v === 'tracker' || v === 'deepdive' || v === 'kalkulator';
 }
 
 function setSellerToolsOpen(open) {
@@ -11649,6 +11660,519 @@ function bindGptKalc(root) {
     });
     gptKalcRefresh(panel);
   });
+}
+
+
+let _kalcPageProduct = null;
+let _kalcPageSnapshot = null;
+let _kalcPageWired = false;
+let _kalcSearchCache = new Map();
+
+function openKalkulatorPage(opts = {}) {
+  try { closeCalcPanel(); } catch (_) {}
+  setView('kalkulator');
+  _offerActive = false;
+  if (opts.product) {
+    _kalcPageProduct = asListingProduct(opts.product);
+  } else if (opts.clearProduct) {
+    _kalcPageProduct = null;
+  }
+  _kalcPageSnapshot = opts.kalc || null;
+  renderKalkulatorPage();
+  if (!_kalcPageWired) wireKalkulatorPage();
+  if (opts.via !== 'restore') {
+    void logUserEvent('gpt_kalc_page_open', { ui: 'gpt', via: opts.via || 'nav', has_product: !!_kalcPageProduct });
+  }
+  if (currentUser) {
+    try { void window.LarisCohort?.tryCompleteMilestone('open_kalkulator'); } catch (_) {}
+  }
+}
+
+function kalcOptsFromProduct(p) {
+  const price = Math.round(Number(p?.price) || 0);
+  const cat = ddFeeCategory(p) || '';
+  return {
+    price: price || 0,
+    cogs: price ? Math.round(price * 0.33) : 0,
+    category: cat || undefined,
+  };
+}
+
+function renderKalkulatorPage() {
+  const body = $('kalc-page-body');
+  if (!body) return;
+  let opts;
+  if (_kalcPageSnapshot) {
+    opts = {
+      price: _kalcPageSnapshot.price,
+      cogs: _kalcPageSnapshot.cogs,
+      category: _kalcPageSnapshot.category,
+      marketplace: _kalcPageSnapshot.marketplace,
+    };
+  } else if (_kalcPageProduct) {
+    opts = kalcOptsFromProduct(_kalcPageProduct);
+  } else {
+    opts = { price: 0, cogs: 0 };
+  }
+  body.innerHTML = gptKalcHtml(opts);
+  bindGptKalc(body);
+  paintKalcPicked();
+}
+
+function paintKalcPicked() {
+  const box = $('kalc-product-picked');
+  if (!box) return;
+  if (!_kalcPageProduct) {
+    box.hidden = true;
+    box.innerHTML = '';
+    return;
+  }
+  const p = _kalcPageProduct;
+  box.hidden = false;
+  box.innerHTML =
+    `<div class="kalc-picked-card">` +
+      (p.image_url ? `<img src="${esc(p.image_url)}" alt="">` : '<span class="alat-ph"></span>') +
+      `<div><b>${esc((p.product_name || '').slice(0, 72))}</b>` +
+      `<small>${esc(p.keyword || '')} · ${fmtRp(p.price)} · ${esc(p.store_name || '')}</small></div>` +
+      `<button type="button" class="btn-ghost" id="kalc-product-clear">Hapus</button>` +
+    `</div>`;
+  $('kalc-product-clear')?.addEventListener('click', () => {
+    _kalcPageProduct = null;
+    _kalcPageSnapshot = null;
+    paintKalcPicked();
+    renderKalkulatorPage();
+  });
+}
+
+function wireKalkulatorPage() {
+  if (_kalcPageWired) return;
+  _kalcPageWired = true;
+  let _kalcSearchTimer = null;
+  let _kalcSearchSeq = 0;
+  const runSearch = (opts = {}) => { void searchKalcProducts(opts); };
+  $('kalc-product-go')?.addEventListener('click', () => runSearch({ immediate: true, seq: ++_kalcSearchSeq }));
+  $('kalc-product-q')?.addEventListener('input', () => {
+    clearTimeout(_kalcSearchTimer);
+    const q = String($('kalc-product-q')?.value || '').trim();
+    if (q.length < 2) {
+      const hits = $('kalc-product-hits');
+      if (hits) { hits.hidden = true; hits.innerHTML = ''; hits._rows = null; }
+      return;
+    }
+    const seq = ++_kalcSearchSeq;
+    // Paint cached hits immediately, then refresh.
+    const cacheKey = q.toLowerCase();
+    if (_kalcSearchCache.has(cacheKey)) {
+      paintKalcHits(_kalcSearchCache.get(cacheKey), q);
+    }
+    _kalcSearchTimer = setTimeout(() => runSearch({ seq }), 120);
+  });
+  $('kalc-product-q')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const hits = $('kalc-product-hits');
+      if (hits) { hits.hidden = true; hits.innerHTML = ''; }
+      return;
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      clearTimeout(_kalcSearchTimer);
+      runSearch({ immediate: true, seq: ++_kalcSearchSeq });
+    }
+  });
+  $('kalc-product-q')?.addEventListener('focus', () => {
+    const q = String($('kalc-product-q')?.value || '').trim();
+    const hits = $('kalc-product-hits');
+    if (q.length >= 2 && hits && hits._rows?.length) hits.hidden = false;
+  });
+  document.addEventListener('click', (e) => {
+    const wrap = document.querySelector('.kalc-page-pick');
+    const hits = $('kalc-product-hits');
+    if (!hits || hits.hidden) return;
+    if (wrap && wrap.contains(e.target)) return;
+    hits.hidden = true;
+  });
+  wireKalkulatorPage._seq = () => _kalcSearchSeq;
+  $('kalc-download-pdf')?.addEventListener('click', () => { void downloadKalcPdf(); });
+  $('kalc-save-riwayat')?.addEventListener('click', () => { void saveKalcToRiwayat(); });
+}
+
+/** Lightweight typeahead — skip the heavy searchListings relevance pass. */
+async function searchKalcListingsFast(q, limit = 12) {
+  if (!_supabase) return [];
+  const clean = typeof _sanitizeSearchToken === 'function' ? _sanitizeSearchToken(q) : String(q || '').trim();
+  if (!clean || clean.length < 2) return [];
+  const cacheKey = clean.toLowerCase();
+  if (_kalcSearchCache.has(cacheKey)) return _kalcSearchCache.get(cacheKey);
+  try {
+    const { data, error } = await _supabase.rpc('search_listings', {
+      q: clean,
+      lim: limit,
+      off: 0,
+      cats: null,
+      price_min: null,
+      price_max: null,
+    });
+    if (error) throw error;
+    const best = new Map();
+    for (const r of (data || [])) {
+      const key = `${r.item_id}_${r.shop_id}`;
+      if (!best.has(key)) best.set(key, asListingProduct(r));
+    }
+    const rows = Array.from(best.values()).slice(0, limit);
+    if (_kalcSearchCache.size > 40) {
+      const first = _kalcSearchCache.keys().next().value;
+      _kalcSearchCache.delete(first);
+    }
+    _kalcSearchCache.set(cacheKey, rows);
+    return rows;
+  } catch (_) {
+    return [];
+  }
+}
+
+function paintKalcHits(rows, q) {
+  const hits = $('kalc-product-hits');
+  if (!hits) return;
+  hits.hidden = false;
+  hits.classList.add('kalc-ac');
+  hits.setAttribute('role', 'listbox');
+  hits.setAttribute('aria-label', 'Rekomendasi produk');
+  if (!rows.length) {
+    hits.innerHTML = `<p class="alat-hint">Tidak ketemu “${esc(q)}”. Coba keyword lain.</p>`;
+    hits._rows = null;
+    return;
+  }
+  rememberProducts(rows);
+  hits.innerHTML =
+    `<div class="kalc-ac-list">` +
+    rows.map((r, i) => {
+      const meta = [fmtRp(r.price), r.keyword || '', r.store_name || ''].filter(Boolean).join(' · ');
+      const img = r.image_url
+        ? `<img class="kalc-ac-img" src="${esc(r.image_url)}" alt="" loading="lazy" decoding="async">`
+        : `<span class="kalc-ac-img alat-ph"></span>`;
+      return `<button type="button" class="kalc-ac-item" role="option" data-kalc-hit="${i}">` +
+        img +
+        `<span class="kalc-ac-text">` +
+          `<span class="kalc-ac-name">${esc((r.product_name || '').slice(0, 80))}</span>` +
+          `<span class="kalc-ac-meta">${esc(meta)}</span>` +
+        `</span></button>`;
+    }).join('') +
+    `</div>`;
+  hits._rows = rows;
+  hits.querySelectorAll('[data-kalc-hit]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const row = hits._rows[Number(btn.getAttribute('data-kalc-hit'))];
+      if (!row) return;
+      _kalcPageProduct = asListingProduct(row);
+      _kalcPageSnapshot = null;
+      hits.hidden = true;
+      hits.innerHTML = '';
+      hits._rows = null;
+      const inp = $('kalc-product-q');
+      if (inp) inp.value = (row.product_name || row.keyword || '').slice(0, 80);
+      renderKalkulatorPage();
+      void logUserEvent('gpt_kalc_page_prefill', {
+        ui: 'gpt',
+        item_id: _kalcPageProduct.item_id,
+        shop_id: _kalcPageProduct.shop_id,
+      });
+    });
+  });
+}
+
+async function searchKalcProducts(opts = {}) {
+  const q = String($('kalc-product-q')?.value || '').trim();
+  const hits = $('kalc-product-hits');
+  if (!hits) return;
+  const seq = opts.seq != null ? opts.seq : 0;
+  if (q.length < 2) {
+    hits.hidden = true;
+    hits.innerHTML = '';
+    hits._rows = null;
+    return;
+  }
+  hits.hidden = false;
+  hits.classList.add('kalc-ac');
+  if (!hits.querySelector('.kalc-ac-list')) {
+    hits.innerHTML = '<p class="alat-lead agent-wait">Mencari produk…</p>';
+  }
+  let rows = [];
+  try {
+    rows = await searchKalcListingsFast(q, 12);
+  } catch (_) {}
+  if (seq && wireKalkulatorPage._seq && seq !== wireKalkulatorPage._seq()) return;
+  paintKalcHits(rows, q);
+}
+
+function kalcPagePanel() {
+  return $('kalc-page-body')?.querySelector('[data-kalc]');
+}
+
+/** Load an image to a data URL so html2canvas never sees cross-origin assets. */
+function kalcPdfImgDataUrl(src, timeoutMs = 1800) {
+  return new Promise((resolve) => {
+    if (!src) { resolve(null); return; }
+    const img = new Image();
+    let done = false;
+    const finish = (v) => { if (done) return; done = true; resolve(v); };
+    const t = setTimeout(() => finish(null), timeoutMs);
+    img.onload = () => {
+      try {
+        const c = document.createElement('canvas');
+        const w = Math.min(img.naturalWidth || 112, 320);
+        const h = Math.min(img.naturalHeight || 112, 320);
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        finish(c.toDataURL('image/jpeg', 0.88));
+      } catch (_) {
+        finish(null);
+      } finally {
+        clearTimeout(t);
+      }
+    };
+    img.onerror = () => { clearTimeout(t); finish(null); };
+    // Same-origin (logo) or CORS-enabled only. Shopee CDN usually fails → placeholder.
+    img.crossOrigin = 'anonymous';
+    img.src = src;
+  });
+}
+
+function kalcPdfMixWhite(hex, t) {
+  const m = String(hex || '#B5202A').replace('#', '');
+  const n = m.length === 3 ? m.split('').map((c) => c + c).join('') : m;
+  const r = parseInt(n.slice(0, 2), 16) || 181;
+  const g = parseInt(n.slice(2, 4), 16) || 32;
+  const b = parseInt(n.slice(4, 6), 16) || 42;
+  const mix = (c) => Math.round(c + (255 - c) * t);
+  return `rgb(${mix(r)},${mix(g)},${mix(b)})`;
+}
+
+function kalcPdfShotHtml(inp, r, product, assets) {
+  const rate = inp.rate || LARIS_MP.rateFor(inp.mpKey, inp.category);
+  const mpLabel = rate.label || String(inp.mpKey || 'Shopee');
+  const mpColor = (LARIS_MP.FEES[inp.mpKey] && LARIS_MP.FEES[inp.mpKey].color) || '#B5202A';
+  const title = (product?.product_name || 'Kalkulasi profit').slice(0, 90);
+  const toko = product?.store_name || '';
+  const kw = product?.keyword || '';
+  const photo = assets?.photo
+    ? `<img class="kalc-pdf-photo" src="${assets.photo}" alt="">`
+    : `<span class="kalc-pdf-photo kalc-pdf-photo--ph"></span>`;
+  const logo = assets?.logo
+    ? `<img src="${assets.logo}" alt="LARIS" height="36">`
+    : `<div class="kalc-pdf-brand-txt">LARIS</div>`;
+  const catLabel = inp.manual ? 'Manual' : (inp.category || '—');
+  const marginTxt = `${(r.margin || 0).toFixed(1).replace('.', ',')}%`;
+  const feeRows = [
+    ['Harga jual', fmtRp(inp.price)],
+    ['Modal produk', fmtRp(inp.cogs)],
+    ['Kategori', catLabel],
+    [`Komisi (${LARIS_MP.fmtPct(rate.comm)})`, fmtRp(r.commAmt)],
+    [`Biaya admin (${LARIS_MP.fmtPct(rate.admin)})`, fmtRp(r.admAmt)],
+  ];
+  if (r.progAmt > 0) feeRows.push([rate.programLabel || 'Program promo', fmtRp(r.progAmt)]);
+  if ((r.ads || 0) > 0) feeRows.push(['Iklan', fmtRp(r.ads)]);
+  if (r.shipCost) feeRows.push(['Ongkir (subsidi)', fmtRp(r.shipCost)]);
+  feeRows.push(['Packing', fmtRp(inp.packing)]);
+  feeRows.push(['Operasional', fmtRp(inp.opex)]);
+  if ((r.taxAmt || 0) + (r.retAmt || 0) > 0) {
+    feeRows.push(['Pajak & return', fmtRp((r.taxAmt || 0) + (r.retAmt || 0))]);
+  }
+
+  const productBlock = product
+    ? `<div class="kalc-pdf-product">
+        ${photo}
+        <div class="kalc-pdf-product-txt">
+          <div class="kalc-pdf-product-title">${esc(title)}</div>
+          ${toko ? `<div class="kalc-pdf-product-toko">${esc(toko)}</div>` : ''}
+          ${kw ? `<div class="kalc-pdf-product-kw">${esc(kw)}</div>` : ''}
+        </div>
+      </div>`
+    : `<div class="kalc-pdf-product kalc-pdf-product--empty">
+        ${photo}
+        <div class="kalc-pdf-product-txt">
+          <div class="kalc-pdf-product-title">Kalkulasi profit</div>
+          <div class="kalc-pdf-product-toko">Tanpa produk terpilih</div>
+        </div>
+      </div>`;
+
+  const mpBg = kalcPdfMixWhite(mpColor, 0.88);
+  const mpBorder = kalcPdfMixWhite(mpColor, 0.72);
+
+  return `
+    <div class="kalc-pdf-brand">${logo}</div>
+    ${productBlock}
+    <div class="kalc-pdf-mp" style="background:${mpBg};border-color:${mpBorder}">
+      <span class="kalc-pdf-mp-lbl">Marketplace</span>
+      <span class="kalc-pdf-mp-name" style="color:${esc(mpColor)}">${esc(mpLabel)}</span>
+    </div>
+    <div class="kalc-pdf-hero">
+      <div class="kalc-pdf-hero-main">
+        <div class="kalc-pdf-eyebrow">Uang yang kamu dapat</div>
+        <div class="kalc-pdf-profit${r.profit < 0 ? ' is-neg' : ''}">${esc(fmtRp(r.profit))}</div>
+        <div class="kalc-pdf-margin">${esc(marginTxt)} margin</div>
+      </div>
+      <div class="kalc-pdf-hero-side">
+        <div><span>Omset / pesanan</span><b>${esc(fmtRp(r.price))}</b></div>
+        <div><span>Total biaya</span><b>${esc(fmtRp(r.totalCost))}</b></div>
+        <div><span>Laba bersih</span><b>${esc(fmtRp(r.profit))}</b></div>
+      </div>
+    </div>
+    <div class="kalc-pdf-grid">
+      ${feeRows.map(([k, v]) =>
+        `<div class="kalc-pdf-row"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`
+      ).join('')}
+    </div>
+    <div class="kalc-pdf-recs">
+      <div><span>Break even</span><b>${esc(fmtRp(gptKalcSolve(0, r)))}</b></div>
+      <div><span>Good profit ~18%</span><b>${esc(fmtRp(gptKalcSolve(18, r)))}</b></div>
+      <div><span>Healthy ~28%</span><b>${esc(fmtRp(gptKalcSolve(28, r)))}</b></div>
+    </div>
+    <div class="kalc-pdf-foot">${esc(new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }))} · Estimasi LarisID</div>
+  `;
+}
+
+async function downloadKalcPdf() {
+  const panel = kalcPagePanel();
+  if (!panel) return;
+  const inp = _gptKalcRead(panel);
+  const r = gptKalcCompute(inp);
+  if (!(inp.price > 0)) {
+    showToast('Isi harga jual dulu.');
+    return;
+  }
+  try {
+    if (typeof ensureJsPdf === 'function') await ensureJsPdf();
+    else if (window.larisLoadScript) {
+      await window.larisLoadScript('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js');
+    }
+    if (!window.html2canvas && window.larisLoadScript) {
+      await window.larisLoadScript('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js');
+    }
+  } catch (_) {}
+  const { jsPDF } = window.jspdf || {};
+  if (!jsPDF || typeof window.html2canvas !== 'function') {
+    showToast('Gagal memuat ekspor. Coba refresh.');
+    return;
+  }
+
+  // Bake images to data URLs first — remote Shopee photos taint the canvas.
+  const [logo, photo] = await Promise.all([
+    kalcPdfImgDataUrl('/images/brand/logo-horizontal-red.png'),
+    kalcPdfImgDataUrl(_kalcPageProduct?.image_url || null),
+  ]);
+
+  const shot = document.createElement('div');
+  shot.className = 'kalc-pdf-shot';
+  shot.setAttribute('aria-hidden', 'true');
+  shot.innerHTML = kalcPdfShotHtml(inp, r, _kalcPageProduct, { logo, photo });
+  document.body.appendChild(shot);
+
+  let canvas;
+  try {
+    canvas = await window.html2canvas(shot, {
+      scale: 2,
+      useCORS: false,
+      allowTaint: false,
+      backgroundColor: '#ffffff',
+      logging: false,
+      imageTimeout: 0,
+    });
+  } catch (err) {
+    console.warn('[kalc-pdf] html2canvas failed', err);
+    shot.remove();
+    showToast('Gagal mengambil gambar kalkulator.');
+    return;
+  }
+  shot.remove();
+
+  let img;
+  try {
+    img = canvas.toDataURL('image/png');
+  } catch (err) {
+    console.warn('[kalc-pdf] toDataURL failed', err);
+    showToast('Gagal mengambil gambar kalkulator.');
+    return;
+  }
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageW = 210;
+  const pageH = 297;
+  const margin = 10;
+  const maxW = pageW - margin * 2;
+  const maxH = pageH - margin * 2;
+  let w = maxW;
+  let h = (canvas.height / canvas.width) * w;
+  if (h > maxH) {
+    h = maxH;
+    w = (canvas.width / canvas.height) * h;
+  }
+  const x = margin + (maxW - w) / 2;
+  doc.addImage(img, 'PNG', x, margin, w, h);
+
+  const p = _kalcPageProduct;
+  const name = (p?.product_name || 'Kalkulasi profit').slice(0, 70);
+  const slug = String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'kalkulasi';
+  doc.save(`larisid-kalkulator-${slug}.pdf`);
+  void logUserEvent('gpt_kalc_pdf', { ui: 'gpt' });
+  showToast('PDF tersimpan.');
+}
+
+async function saveKalcToRiwayat() {
+  const panel = kalcPagePanel();
+  if (!panel) return;
+  const inp = _gptKalcRead(panel);
+  const r = gptKalcCompute(inp);
+  if (!(inp.price > 0)) {
+    showToast('Isi harga jual dulu.');
+    return;
+  }
+  const p = _kalcPageProduct;
+  const title = `Kalkulasi: ${(p?.product_name || p?.keyword || 'Profit').slice(0, 36)}`;
+  const chat = {
+    localId: 'local_' + Date.now(),
+    title: String(title).slice(0, 48),
+    context: withPasar({
+      kind: 'kalkulator',
+      product: p ? productSnapshot(p) : null,
+      kalc: {
+        price: inp.price,
+        cogs: inp.cogs,
+        marketplace: inp.mpKey,
+        category: inp.category,
+        profit: r.profit,
+        margin: r.margin,
+        shipping: inp.shipping,
+        packing: inp.packing,
+        opex: inp.opex,
+        ads: inp.ads,
+        adsOn: inp.adsOn,
+        programOn: inp.programOn,
+      },
+    }),
+    pasar: currentPasarTag(),
+    messages: [],
+    created_at: Date.now(),
+  };
+  state.chats.unshift(chat);
+  saveLocalState();
+  renderChatList();
+  void logUserEvent('gpt_kalc_save_riwayat', { ui: 'gpt', has_product: !!p });
+  showToast('Tersimpan di Riwayat · Kalk');
+}
+
+function openKalcFromRiwayat(chat) {
+  const ctx = chat?.context || {};
+  const product = ctx.product ? asListingProduct(ctx.product) : null;
+  openKalkulatorPage({
+    via: 'riwayat',
+    product: product || undefined,
+    clearProduct: !product,
+    kalc: ctx.kalc || null,
+  });
+  if (product) {
+    const inp = $('kalc-product-q');
+    if (inp) inp.value = (product.product_name || product.keyword || '').slice(0, 80);
+  }
 }
 
 // Quick table above the calculator. Uses the real baseline rate for the
@@ -24050,7 +24574,13 @@ function renderAdminKpis(users) {
   spark('adm-kpi-stores-spark', storesDaily, '#0891B2');
 
   set('adm-kpi-downloads', admFmtNum(downloadsTotal));
-  set('adm-kpi-downloads-sub', downloadsTotal == null ? 'Belum tersedia' : 'File .xlsx/CSV dari situs');
+  if (downloadsTotal == null) {
+    set('adm-kpi-downloads-sub', 'Belum tersedia');
+  } else if (k.download_rows_total != null) {
+    set('adm-kpi-downloads-sub', `${admFmtNum(downloadsTotal)} file · ${admFmtNum(k.download_rows_total)} baris`);
+  } else {
+    set('adm-kpi-downloads-sub', 'File .xlsx/CSV dari situs');
+  }
   spark('adm-kpi-downloads-spark', downloadsDaily, '#4F46E5');
 
   set('adm-kpi-dives', admFmtNum(divesTotal));
@@ -24060,6 +24590,65 @@ function renderAdminKpis(users) {
   set('adm-kpi-ext', admFmtNum(extClicksTotal));
   set('adm-kpi-ext-sub', extClicksTotal == null ? 'Belum tersedia' : 'Klik ke Chrome Web Store');
   spark('adm-kpi-ext-spark', extClicksDaily, '#0F766E');
+
+  renderAdminUsage(days);
+}
+
+function renderAdminUsage(days) {
+  const k = _adminKpis || {};
+  const span = days || admLastDays(14);
+  const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+  const spark = (id, series, color) => { const el = $(id); if (el) el.innerHTML = admSparkline(series, color); };
+  const n24 = (v) => (v == null ? '—' : admFmtNum(v));
+
+  set('adm-usage-kalc-opens', admFmtNum(k.kalc_opens_total));
+  set('adm-usage-kalc-pdf', admFmtNum(k.kalc_pdf_total));
+  set('adm-usage-kalc-saves', admFmtNum(k.kalc_saves_total));
+  if (k.kalc_opens_total != null) {
+    const uniq = k.kalc_opens_unique != null ? `${admFmtNum(k.kalc_opens_unique)} orang unik · ` : '';
+    set('adm-usage-kalc-sub',
+      `${uniq}24 jam ${n24(k.kalc_opens_24h)} buka / ${n24(k.kalc_pdf_24h)} PDF / ${n24(k.kalc_saves_24h)} simpan`);
+  }
+  spark('adm-usage-kalc-spark', admSeriesFromDaily(k.kalc_opens_daily, 'n', span), '#C2410C');
+
+  set('adm-usage-export-files', admFmtNum(k.downloads_total));
+  set('adm-usage-export-rows', admFmtNum(k.download_rows_total));
+  if (k.downloads_total != null) {
+    set('adm-usage-export-sub',
+      `${n24(k.downloads_24h)} file · ${n24(k.download_rows_24h)} baris (24 jam)`);
+  }
+  spark('adm-usage-export-spark', admSeriesFromDaily(k.download_rows_daily, 'n', span), '#4F46E5');
+
+  set('adm-usage-ai-prompts', admFmtNum(k.ai_prompts_total));
+  set('adm-usage-ai-24h', admFmtNum(k.ai_prompts_24h));
+  if (k.ai_prompts_total != null) {
+    set('adm-usage-ai-sub', 'Semua waktu · sparkline 14 hari');
+  }
+  spark('adm-usage-ai-spark', admSeriesFromDaily(k.ai_prompts_daily, 'n', span), '#7C3AED');
+
+  const neu = Number(k.new_users_24h);
+  const ret = Number(k.returning_users_24h);
+  set('adm-usage-new-24h', admFmtNum(k.new_users_24h));
+  set('adm-usage-ret-24h', admFmtNum(k.returning_users_24h));
+  const split = $('adm-usage-people-split');
+  const legend = $('adm-usage-people-legend');
+  const tot = (Number.isFinite(neu) ? neu : 0) + (Number.isFinite(ret) ? ret : 0);
+  if (split && legend) {
+    if (tot > 0) {
+      split.hidden = false;
+      legend.hidden = false;
+      const neuEl = $('adm-usage-split-new');
+      const retEl = $('adm-usage-split-ret');
+      if (neuEl) neuEl.style.width = `${(neu / tot) * 100}%`;
+      if (retEl) retEl.style.width = `${(ret / tot) * 100}%`;
+      set('adm-usage-people-sub', `${admFmtNum(tot)} orang masuk`);
+    } else {
+      split.hidden = true;
+      legend.hidden = true;
+      if (k.new_users_24h != null) set('adm-usage-people-sub', 'Belum ada kunjungan 24 jam ini');
+    }
+  }
+  spark('adm-usage-people-spark', admSeriesFromDaily(k.returning_users_daily, 'n', span), '#F59E0B');
 }
 
 // ── Monthly trend: landing page views vs sign ups ────────────────────────────
@@ -25635,6 +26224,9 @@ function wireUi() {
     location.href = '/';
   });
   $('btn-tracker')?.addEventListener('click', () => { openTrackerView(); });
+  $('btn-kalkulator-alat')?.addEventListener('click', () => {
+    openKalkulatorPage({ via: 'nav' });
+  });
   $('btn-cohort')?.addEventListener('click', () => { openCohortView(); });
   $('btn-community')?.addEventListener('click', () => { openCommunityBoard(); });
   $('btn-edukasi')?.addEventListener('click', () => { openEdukasiView(); });
@@ -26874,6 +27466,7 @@ function initRetentionSurfaces() {
       chats: () => state.chats,
       activeChatId: () => state.activeChatId,
       openChat,
+      openKalc: openKalcFromRiwayat,
       renameChat: beginChatRename,
       rerunSearch: (q) => {
         const inp = $('results-bar-input');

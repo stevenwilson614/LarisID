@@ -11,6 +11,16 @@
 // A plain string is still accepted and renders with no tech line.
 window.LARIS_CHANGELOG = [
   {
+    date: '2026-09-29',
+    title: 'Kalkulator profit di menu',
+    items: [
+      {
+        text: 'Kalkulator Profit kembali di menu kiri. Cari produk untuk mengisi harga otomatis, atau ketik modal dan harga jual sendiri. Bisa unduh PDF atau simpan ke Riwayat · Kalk.',
+        tech: '#btn-kalkulator-alat + #view-kalkulator; gpt_kalc_page_open / gpt_kalc_pdf / gpt_kalc_save_riwayat; admin_dashboard_kpis kalc_* (20260929120000).',
+      },
+    ],
+  },
+  {
     date: '2026-09-25',
     title: 'Balasan Steven kalau data kurang lengkap',
     items: [

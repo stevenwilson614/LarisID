@@ -3260,6 +3260,38 @@ body.view-harga .panel-inner { max-width: 1180px; }
 .adm-kpi--ext .adm-kpi-ico { background: #CCFBF1; color: #0F766E; }
 .adm-kpi--edu-views .adm-kpi-ico { background: #FEF2F2; color: #B5202A; }
 .adm-kpi--edu-yes .adm-kpi-ico { background: #ECFDF5; color: #047857; }
+
+.adm-usage {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 14px;
+}
+.adm-usage-card { padding: 16px 18px 12px; min-width: 0; }
+.adm-usage-head {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; margin-bottom: 12px;
+}
+.adm-usage-head .adm-card-title { margin: 0; }
+.adm-usage-sub { margin: 0; font-size: .72rem; color: #9A9A9A; font-weight: 550; line-height: 1.35; }
+.adm-usage-metrics {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;
+}
+.adm-usage-metrics--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.adm-usage-lbl { font-size: .7rem; font-weight: 600; color: #8A8A8A; }
+.adm-usage-val { font-size: 1.45rem; font-weight: 750; letter-spacing: -.03em; color: #1A1A1A; margin-top: 4px; line-height: 1.1; }
+.adm-usage--kalc .adm-usage-val { color: #C2410C; }
+.adm-usage--export .adm-usage-val { color: #4F46E5; }
+.adm-usage--ai .adm-usage-val { color: #7C3AED; }
+.adm-usage--people .adm-usage-val { color: #B5202A; }
+.adm-split {
+  display: flex; height: 8px; border-radius: 999px; overflow: hidden; background: #F3F4F6; margin-top: 12px;
+}
+.adm-split span { display: block; height: 100%; min-width: 0; }
+.adm-split-new { background: #B5202A; }
+.adm-split-ret { background: #F59E0B; }
+.adm-split-legend {
+  display: flex; gap: 14px; margin-top: 8px; font-size: .7rem; color: #6B7280; font-weight: 550;
+}
+.adm-split-legend i {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle;
+}
 .adm-trend-card { padding: 16px 18px 14px; margin-bottom: 14px; }
 .adm-trend-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .adm-trend-head .adm-card-title { margin: 0; }
@@ -3474,6 +3506,7 @@ body.view-harga .panel-inner { max-width: 1180px; }
 .sample-strip button:hover { background: #fff; color: #111; }
 @media (max-width: 980px) {
   .adm-kpis { grid-template-columns: repeat(2, 1fr); }
+  .adm-usage { grid-template-columns: 1fr; }
   .adm-mid { grid-template-columns: 1fr; }
 }
 @media (max-width: 560px) {
@@ -7665,6 +7698,252 @@ body.thread-wide .composer-chips { max-width: 1080px; }
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 @media (max-width: 640px) { .gpt-kalc-detail-grid { grid-template-columns: 1fr; } }
+
+.kalc-page { max-width: 720px; margin: 0 auto; padding: 20px 16px 72px; }
+.kalc-page-head h2 { margin: 0 0 6px; font-size: 1.45rem; letter-spacing: -.02em; }
+.kalc-page-head p { margin: 0 0 18px; color: #666; font-size: .92rem; line-height: 1.45; }
+.kalc-page-pick { position: relative; margin-bottom: 18px; z-index: 5; }
+.kalc-page-body { margin-bottom: 16px; }
+.kalc-page-actions {
+  display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end;
+  padding-top: 8px; border-top: 1px solid #F1F1F2;
+}
+/* Capture target for Unduh PDF — paint behind UI (opacity:0 blanks the canvas). */
+.kalc-pdf-shot {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 680px;
+  padding: 28px 32px 30px;
+  background: #fff;
+  box-sizing: border-box;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  color: #1A1A1A;
+  pointer-events: none;
+  z-index: -1;
+}
+.kalc-pdf-brand { margin: 0 0 20px; }
+.kalc-pdf-brand img { display: block; height: 36px; width: auto; }
+.kalc-pdf-brand-txt {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  color: #B5202A;
+}
+.kalc-pdf-product {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  margin: 0 0 16px;
+  padding: 14px;
+  border: 1px solid #E8E8E8;
+  border-radius: 14px;
+  background: #FAFAFA;
+}
+.kalc-pdf-product--empty { align-items: center; }
+.kalc-pdf-photo {
+  width: 112px;
+  height: 112px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex: none;
+  background: #EEE;
+}
+.kalc-pdf-photo--ph {
+  display: block;
+  background: #EEEEF0;
+}
+.kalc-pdf-product-txt { min-width: 0; flex: 1; padding-top: 4px; }
+.kalc-pdf-product-title {
+  font-size: 1.2rem;
+  font-weight: 750;
+  line-height: 1.3;
+  letter-spacing: -.02em;
+  margin: 0 0 8px;
+}
+.kalc-pdf-product-toko {
+  font-size: .98rem;
+  font-weight: 650;
+  color: #333;
+  margin: 0 0 4px;
+}
+.kalc-pdf-product-kw {
+  font-size: .82rem;
+  color: #8A8A8A;
+}
+.kalc-pdf-mp {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #F8ECEC;
+  border: 1px solid #F0D4D6;
+}
+.kalc-pdf-mp-lbl {
+  font-size: .78rem;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.kalc-pdf-mp-name {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #B5202A;
+}
+.kalc-pdf-hero {
+  display: flex;
+  gap: 16px;
+  margin: 0 0 16px;
+  padding: 18px;
+  border-radius: 14px;
+  background: #1A1A1A;
+  color: #fff;
+}
+.kalc-pdf-hero-main { flex: 1.2; min-width: 0; }
+.kalc-pdf-eyebrow {
+  font-size: .75rem;
+  font-weight: 600;
+  opacity: .7;
+  margin-bottom: 6px;
+}
+.kalc-pdf-profit {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -.03em;
+  line-height: 1.1;
+  margin-bottom: 6px;
+}
+.kalc-pdf-profit.is-neg { color: #FCA5A5; }
+.kalc-pdf-margin {
+  display: inline-block;
+  font-size: .85rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.12);
+}
+.kalc-pdf-hero-side {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  font-size: .88rem;
+}
+.kalc-pdf-hero-side div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  opacity: .92;
+}
+.kalc-pdf-hero-side span { opacity: .7; }
+.kalc-pdf-hero-side b { font-weight: 700; font-variant-numeric: tabular-nums; }
+.kalc-pdf-grid {
+  border: 1px solid #E8E8E8;
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 0 0 14px;
+}
+.kalc-pdf-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  padding: 11px 14px;
+  border-top: 1px solid #F1F1F2;
+  font-size: 1rem;
+}
+.kalc-pdf-row:first-child { border-top: 0; }
+.kalc-pdf-row span { color: #555; min-width: 0; }
+.kalc-pdf-row strong {
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  font-size: 1.05rem;
+  letter-spacing: -.01em;
+}
+.kalc-pdf-recs {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  margin: 0 0 14px;
+}
+.kalc-pdf-recs > div {
+  border: 1px solid #E8E8E8;
+  border-radius: 10px;
+  padding: 12px;
+  background: #FAFAFA;
+}
+.kalc-pdf-recs span {
+  display: block;
+  font-size: .72rem;
+  color: #888;
+  margin-bottom: 4px;
+}
+.kalc-pdf-recs b {
+  font-size: 1rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+.kalc-pdf-foot {
+  font-size: .75rem;
+  color: #999;
+  text-align: right;
+}
+.kalc-picked { margin-top: 10px; }
+.kalc-picked-card {
+  display: flex; align-items: center; gap: 12px;
+  border: 1px solid #E8E8E8; border-radius: 12px; padding: 10px 12px; background: #fff;
+}
+.kalc-picked-card img, .kalc-picked-card .alat-ph {
+  width: 44px; height: 44px; border-radius: 8px; object-fit: cover; flex: none; background: #F1F1F2;
+}
+.kalc-picked-card b { display: block; font-size: .86rem; }
+.kalc-picked-card small { display: block; color: #8A8A8A; font-size: .72rem; margin-top: 2px; }
+.kalc-ac-row { position: relative; }
+#kalc-product-hits.kalc-ac {
+  position: absolute; left: 0; right: 0; top: calc(100% + 4px);
+  margin-top: 0; max-height: min(360px, 55vh); overflow-y: auto;
+  background: #fff; border: 1px solid #E2E2E2; border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0,0,0,.12); z-index: 20; padding: 6px;
+  width: 100%; box-sizing: border-box;
+}
+.kalc-ac-list { display: flex; flex-direction: column; gap: 2px; }
+.kalc-ac-item {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  text-align: left; border: 0; background: transparent; border-radius: 10px;
+  padding: 8px 10px; cursor: pointer; font: inherit;
+}
+.kalc-ac-item:hover, .kalc-ac-item:focus-visible {
+  background: #FFF5F5; outline: none;
+}
+.kalc-ac-img {
+  width: 40px; height: 40px; border-radius: 8px; object-fit: cover; flex: none; background: #F1F1F2;
+}
+.kalc-ac-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.kalc-ac-name {
+  font-weight: 650; font-size: .84rem; color: #1A1A1A;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.kalc-ac-meta { font-size: .72rem; color: #8A8A8A; }
+/* Minimal form chrome shared by Kalkulator product picker */
+.alat-lead { color: var(--muted, #666); font-size: .9rem; line-height: 1.5; margin: 0 0 16px; }
+.alat-label { display: block; font-size: .78rem; font-weight: 650; margin-bottom: 6px; }
+.alat-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.alat-input {
+  flex: 1 1 220px; min-width: 0; border: 1px solid #E8E8E8; border-radius: 10px;
+  padding: 10px 12px; font: inherit;
+}
+.alat-hint { font-size: .75rem; color: var(--muted, #8A8A8A); margin: 12px 0 0; }
+.alat-picker { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.alat-ph {
+  width: 44px; height: 44px; border-radius: 8px; object-fit: cover; background: #F1F1F2; flex: none;
+  display: inline-block;
+}
 .gpt-kalc-items {
   display: grid; gap: 8px; margin-bottom: 12px;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -8551,6 +8830,10 @@ body.view-chat .sfb-card {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
           <span class="side-btn-label">Favorit Aku</span>
         </button>
+        <button type="button" class="side-btn" id="btn-kalkulator-alat" title="Kalkulator">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path class="ic-a" d="M8 7h8M8 12h3M13 12h3M8 16h3M13 16h3"/></svg>
+          <span class="side-btn-label">Kalkulator</span>
+        </button>
       </div>
     </div>
     <button type="button" class="side-btn" id="btn-community" title="Komunitas">
@@ -9383,6 +9666,28 @@ body.view-chat .sfb-card {
         <div class="view" id="view-tracker">
           <div id="laris-tracker-root" class="ltk-root" data-site="b"></div>
         </div>
+        <div class="view" id="view-kalkulator">
+          <div class="kalc-page" id="kalc-page">
+            <header class="kalc-page-head">
+              <h2>Kalkulator Profit</h2>
+              <p>Pilih produk untuk mengisi harga otomatis — semua angka masih bisa diubah.</p>
+            </header>
+            <section class="kalc-page-pick">
+              <label class="alat-label" for="kalc-product-q">Produk yang mau dijual</label>
+              <div class="alat-row kalc-ac-row">
+                <input type="search" id="kalc-product-q" class="alat-input" placeholder="Ketik nama produk atau keyword…" autocomplete="off" aria-autocomplete="list" aria-controls="kalc-product-hits">
+                <button type="button" class="btn-primary" id="kalc-product-go">Cari</button>
+                <div id="kalc-product-hits" class="alat-picker kalc-ac" hidden></div>
+              </div>
+              <div id="kalc-product-picked" class="kalc-picked" hidden></div>
+            </section>
+            <div id="kalc-page-body" class="kalc-page-body"></div>
+            <div class="kalc-page-actions">
+              <button type="button" class="btn-ghost" id="kalc-download-pdf">Unduh PDF</button>
+              <button type="button" class="btn-primary" id="kalc-save-riwayat">Simpan ke Riwayat</button>
+            </div>
+          </div>
+        </div>
         <div class="view" id="view-directory">
           <!-- Header carousel. Rendered by js/gpt-dir-hero.js and shown only in
                the default browse state (no search, no category, no subgroup) —
@@ -10106,6 +10411,90 @@ body.view-chat .sfb-card {
                 </div>
                 <div class="adm-kpi-val" id="adm-kpi-edu-interested">—</div>
                 <div class="adm-kpi-sub" id="adm-kpi-edu-interested-sub">Ya, saya tertarik</div>
+              </article>
+            </div>
+
+
+            <div class="adm-usage" id="admin-usage">
+              <article class="adm-card adm-usage-card adm-usage--kalc">
+                <div class="adm-usage-head">
+                  <h3 class="adm-card-title">Kalkulator</h3>
+                  <p class="adm-usage-sub" id="adm-usage-kalc-sub">Halaman Kalk</p>
+                </div>
+                <div class="adm-usage-metrics">
+                  <div>
+                    <div class="adm-usage-lbl">Buka halaman</div>
+                    <div class="adm-usage-val" id="adm-usage-kalc-opens">—</div>
+                  </div>
+                  <div>
+                    <div class="adm-usage-lbl">Unduh PDF</div>
+                    <div class="adm-usage-val" id="adm-usage-kalc-pdf">—</div>
+                  </div>
+                  <div>
+                    <div class="adm-usage-lbl">Simpan riwayat</div>
+                    <div class="adm-usage-val" id="adm-usage-kalc-saves">—</div>
+                  </div>
+                </div>
+                <div class="adm-kpi-spark" id="adm-usage-kalc-spark"></div>
+              </article>
+              <article class="adm-card adm-usage-card adm-usage--export">
+                <div class="adm-usage-head">
+                  <h3 class="adm-card-title">Unduhan produk</h3>
+                  <p class="adm-usage-sub" id="adm-usage-export-sub">File .xlsx/CSV dari Cari Produk</p>
+                </div>
+                <div class="adm-usage-metrics adm-usage-metrics--2">
+                  <div>
+                    <div class="adm-usage-lbl">File</div>
+                    <div class="adm-usage-val" id="adm-usage-export-files">—</div>
+                  </div>
+                  <div>
+                    <div class="adm-usage-lbl">Baris</div>
+                    <div class="adm-usage-val" id="adm-usage-export-rows">—</div>
+                  </div>
+                </div>
+                <div class="adm-kpi-spark" id="adm-usage-export-spark"></div>
+              </article>
+              <article class="adm-card adm-usage-card adm-usage--ai">
+                <div class="adm-usage-head">
+                  <h3 class="adm-card-title">Laris AI</h3>
+                  <p class="adm-usage-sub" id="adm-usage-ai-sub">Pertanyaan yang dikirim ke model</p>
+                </div>
+                <div class="adm-usage-metrics adm-usage-metrics--2">
+                  <div>
+                    <div class="adm-usage-lbl">Pertanyaan</div>
+                    <div class="adm-usage-val" id="adm-usage-ai-prompts">—</div>
+                  </div>
+                  <div>
+                    <div class="adm-usage-lbl">24 jam terakhir</div>
+                    <div class="adm-usage-val" id="adm-usage-ai-24h">—</div>
+                  </div>
+                </div>
+                <div class="adm-kpi-spark" id="adm-usage-ai-spark"></div>
+              </article>
+              <article class="adm-card adm-usage-card adm-usage--people">
+                <div class="adm-usage-head">
+                  <h3 class="adm-card-title">24 jam terakhir</h3>
+                  <p class="adm-usage-sub" id="adm-usage-people-sub">Pengguna masuk</p>
+                </div>
+                <div class="adm-usage-metrics adm-usage-metrics--2">
+                  <div>
+                    <div class="adm-usage-lbl">Pengguna baru</div>
+                    <div class="adm-usage-val" id="adm-usage-new-24h">—</div>
+                  </div>
+                  <div>
+                    <div class="adm-usage-lbl">Kembali (sesi ke-2+)</div>
+                    <div class="adm-usage-val" id="adm-usage-ret-24h">—</div>
+                  </div>
+                </div>
+                <div class="adm-split" id="adm-usage-people-split" hidden>
+                  <span class="adm-split-new" id="adm-usage-split-new"></span>
+                  <span class="adm-split-ret" id="adm-usage-split-ret"></span>
+                </div>
+                <div class="adm-split-legend" id="adm-usage-people-legend" hidden>
+                  <span><i class="adm-split-new"></i>Baru daftar</span>
+                  <span><i class="adm-split-ret"></i>Akun lama yang masuk lagi</span>
+                </div>
+                <div class="adm-kpi-spark" id="adm-usage-people-spark"></div>
               </article>
             </div>
 
@@ -10941,7 +11330,7 @@ body.view-chat .sfb-card {
 <script src="/js/changelog.js?v=20260923a" defer></script>
 <script defer src="/js/gpt-dir-filters.js?v=20260911c"></script>
 <script defer src="/js/gpt-dir-workbench.js?v=20260913b"></script>
-<script defer src="/js/gpt-activity.js?v=20260913a"></script>
+<script defer src="/js/gpt-activity.js?v=20260929a"></script>
 <script defer src="/js/gpt-dir-hero.js?v=20260824a"></script>
 <script defer src="/js/gpt-dir-home.js?v=20260824d"></script>
 <script defer src="/js/gpt-photo-analyze.js?v=20260824a"></script>
@@ -10962,7 +11351,7 @@ body.view-chat .sfb-card {
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260915a" defer></script>
-<script src="/js/gpt-app.js?v=20260925b" defer></script>
+<script src="/js/gpt-app.js?v=20260929a" defer></script>
 <style>
 /* LarisExpor chrome hidden for now. Restore with scripts/lib/expor-tab.mjs. */
 #btn-expor-pasar,
