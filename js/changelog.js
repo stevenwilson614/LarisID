@@ -12,6 +12,16 @@
 window.LARIS_CHANGELOG = [
   {
     date: '2026-09-29',
+    title: 'Foto di Komunitas',
+    items: [
+      {
+        text: 'Di Komunitas bisa lampirkan satu foto di pertanyaan dan di setiap jawaban — misalnya screenshot packing atau deskripsi.',
+        tech: 'feature_requests.image_url + feature_request_comments.image_url; storage bucket komunitas-photos; gpt-community-board msb-v12 (20260929140000).',
+      },
+    ],
+  },
+  {
+    date: '2026-09-29',
     title: 'Komunitas: Ceritakan opsional',
     items: [
       {

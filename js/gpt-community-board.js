@@ -13,6 +13,14 @@
   let _likePromptIds = new Set();
   let _mapData = null;
   let _mapResizeBound = false;
+  let _composePhotoFile = null;
+  let _composePreviewUrl = '';
+  const _commentPhotoFiles = Object.create(null);
+  const _commentPreviewUrls = Object.create(null);
+
+  const PHOTO_BUCKET = 'komunitas-photos';
+  const PHOTO_MAX_BYTES = 3 * 1024 * 1024;
+  const PHOTO_ACCEPT = 'image/jpeg,image/png,image/webp,image/gif';
 
   const TOPICS = [
     'Foto & Deskripsi',
@@ -70,6 +78,101 @@
 
   function svgDots() {
     return `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>`;
+  }
+
+  function svgCamera() {
+    return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>`;
+  }
+
+  function validatePhotoFile(file) {
+    if (!file) return 'Pilih foto dulu.';
+    if (!/^image\/(jpeg|png|webp|gif)$/i.test(file.type || '')) {
+      return 'Format foto: JPG, PNG, WebP, atau GIF.';
+    }
+    if (file.size > PHOTO_MAX_BYTES) return 'Ukuran foto maksimal 3 MB.';
+    return '';
+  }
+
+  function revokePreview(url) {
+    if (url && String(url).indexOf('blob:') === 0) {
+      try { URL.revokeObjectURL(url); } catch (_) {}
+    }
+  }
+
+  function clearComposePhoto() {
+    revokePreview(_composePreviewUrl);
+    _composePhotoFile = null;
+    _composePreviewUrl = '';
+    const input = _container && _container.querySelector('#msb-photo');
+    const wrap = _container && _container.querySelector('#msb-photo-preview');
+    const img = _container && _container.querySelector('#msb-photo-preview-img');
+    if (input) input.value = '';
+    if (img) img.removeAttribute('src');
+    if (wrap) wrap.hidden = true;
+  }
+
+  function setComposePhoto(file) {
+    const err = validatePhotoFile(file);
+    if (err) {
+      _opts.toast(err);
+      return;
+    }
+    revokePreview(_composePreviewUrl);
+    _composePhotoFile = file;
+    _composePreviewUrl = URL.createObjectURL(file);
+    const wrap = _container.querySelector('#msb-photo-preview');
+    const img = _container.querySelector('#msb-photo-preview-img');
+    if (img) img.src = _composePreviewUrl;
+    if (wrap) wrap.hidden = false;
+  }
+
+  function clearCommentPhoto(postId) {
+    revokePreview(_commentPreviewUrls[postId]);
+    delete _commentPhotoFiles[postId];
+    delete _commentPreviewUrls[postId];
+    if (!_listEl) return;
+    const input = _listEl.querySelector(`.msb-comment-photo-input[data-post-id="${postId}"]`);
+    const wrap = _listEl.querySelector(`.msb-comment-photo-preview[data-post-id="${postId}"]`);
+    const img = wrap && wrap.querySelector('img');
+    if (input) input.value = '';
+    if (img) img.removeAttribute('src');
+    if (wrap) wrap.hidden = true;
+  }
+
+  function setCommentPhoto(postId, file) {
+    const err = validatePhotoFile(file);
+    if (err) {
+      _opts.toast(err);
+      return;
+    }
+    revokePreview(_commentPreviewUrls[postId]);
+    _commentPhotoFiles[postId] = file;
+    _commentPreviewUrls[postId] = URL.createObjectURL(file);
+    const wrap = _listEl.querySelector(`.msb-comment-photo-preview[data-post-id="${postId}"]`);
+    const img = wrap && wrap.querySelector('img');
+    if (img) img.src = _commentPreviewUrls[postId];
+    if (wrap) wrap.hidden = false;
+  }
+
+  async function uploadBoardPhoto(file, folder) {
+    const uid = _opts.currentUserId;
+    if (!uid) throw new Error('login required');
+    const safe = String(file.name || 'foto.jpg').replace(/[^\w.\-]+/g, '_').slice(-80);
+    const path = `${folder}/${uid}/${Date.now()}-${safe}`;
+    const { error } = await _opts.supabase.storage
+      .from(PHOTO_BUCKET)
+      .upload(path, file, { upsert: false, cacheControl: '3600', contentType: file.type || 'image/jpeg' });
+    if (error) throw error;
+    const { data: pub } = _opts.supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path);
+    const url = pub && pub.publicUrl;
+    if (!url) throw new Error('missing public url');
+    return url;
+  }
+
+  function photoHtml(url, cls) {
+    if (!url) return '';
+    const src = _opts.esc(url);
+    return `<a class="${cls}" href="${src}" target="_blank" rel="noopener noreferrer"><img src="${src}" alt="Foto lampiran" loading="lazy" decoding="async"></a>`;
   }
 
   function truncateBody(body, expanded) {
@@ -233,7 +336,7 @@
         const likeBtn = `<button type="button" class="msb-comment-like${liked ? ' is-liked' : ''}" data-action="like-comment" data-post-id="${postId}" data-comment-id="${c.id}" aria-label="Suka balasan">
           ${svgThumb(liked)}<span class="msb-comment-like-count">${c.like_count || 0}</span>
         </button>`;
-        return `<div class="msb-comment" data-comment-id="${c.id}">${authorTagHtml(c)}<span class="msb-comment-body">${_opts.esc(c.body)}</span><span class="msb-comment-date">${formatDate(c.created_at)}</span>${likeBtn}${msg}${manage}</div>`;
+        return `<div class="msb-comment" data-comment-id="${c.id}">${authorTagHtml(c)}${c.body ? `<span class="msb-comment-body">${_opts.esc(c.body)}</span>` : ''}<span class="msb-comment-date">${formatDate(c.created_at)}</span>${likeBtn}${msg}${manage}${photoHtml(c.image_url, 'msb-comment-photo')}</div>`;
       })
       .join('');
   }
@@ -245,7 +348,7 @@
     }
     const { data, error } = await _opts.supabase
       .from('feature_request_comments_feed')
-      .select('id, author_id, author_first_name, author_city, author_headshot_url, author_is_admin, body, created_at, like_count, liked_by_me')
+      .select('id, author_id, author_first_name, author_city, author_headshot_url, author_is_admin, body, created_at, like_count, liked_by_me, image_url')
       .eq('request_id', postId)
       .order('created_at', { ascending: true });
     if (error) return;
@@ -362,19 +465,34 @@
     }
   }
 
-  async function addComment(postId, body) {
-    if (!body.trim()) {
-      _opts.toast('Balasan tidak boleh kosong.');
+  async function addComment(postId, body, imageFile) {
+    const text = (body || '').trim();
+    const file = imageFile || _commentPhotoFiles[postId] || null;
+    if (!text && !file) {
+      _opts.toast('Tulis jawaban atau tambah foto.');
       return;
     }
+    let imageUrl = '';
+    if (file) {
+      try {
+        _opts.toast('Mengunggah foto…');
+        imageUrl = await uploadBoardPhoto(file, 'comments');
+      } catch (err) {
+        _opts.toast('Gagal mengunggah foto.');
+        if (typeof _opts.onError === 'function') _opts.onError(err);
+        return;
+      }
+    }
+    const row = {
+      author_id: _opts.currentUserId,
+      request_id: postId,
+      body: text,
+    };
+    if (imageUrl) row.image_url = imageUrl;
     const { data, error } = await _opts.supabase
       .from('feature_request_comments')
-      .insert({
-        author_id: _opts.currentUserId,
-        request_id: postId,
-        body: body.trim(),
-      })
-      .select('id, author_id, author_first_name, author_city, author_headshot_url, author_is_admin, body, created_at')
+      .insert(row)
+      .select('id, author_id, author_first_name, author_city, author_headshot_url, author_is_admin, body, created_at, image_url')
       .single();
     if (error) {
       _opts.toast('Gagal mengirim balasan. Coba lagi.');
@@ -385,6 +503,7 @@
     data.liked_by_me = !!data.liked_by_me;
     if (!_commentsCache[postId]) _commentsCache[postId] = [];
     _commentsCache[postId].push(data);
+    clearCommentPhoto(postId);
     renderCommentsForPost(postId);
     const post = _posts.find((p) => p.id === postId);
     if (post) {
@@ -621,6 +740,7 @@
           <div class="msb-card-row">
             <div class="msb-card-lead">
               <button type="button" class="msb-title" data-action="toggle-thread" data-post-id="${post.id}">${_opts.esc(post.title)}</button>
+              ${post.image_url ? `<img class="msb-title-thumb" src="${_opts.esc(post.image_url)}" alt="" width="28" height="28" loading="lazy" data-action="toggle-thread" data-post-id="${post.id}">` : ''}
               <div class="msb-meta">
                 ${authorTagHtml(post)}
                 <span class="msb-dot">·</span>
@@ -641,12 +761,21 @@
           <div class="msb-card-detail" ${isExpanded ? '' : 'hidden'}>
             ${rawBody ? `<p class="msb-body">${bodyHtml(bodyText)}</p>` : '<p class="msb-body" hidden></p>'}
             ${needsBodyToggle ? `<button type="button" class="msb-body-toggle" data-action="toggle-body" data-post-id="${post.id}">${bodyExpanded ? 'Sembunyikan' : 'Baca selengkapnya'}</button>` : ''}
+            ${photoHtml(post.image_url, 'msb-post-photo')}
             ${likePrompt ? `<p class="msb-like-hint">Kamu mendukung ini. Ceritakan kasusmu singkat supaya thread-nya hidup.</p>` : ''}
             <div class="msb-comments" data-comments-for="${post.id}">
               <div class="msb-comments-list"></div>
               <div class="msb-comment-form">
+                <label class="msb-comment-photo-btn" title="Tambah foto">
+                  <input type="file" class="msb-comment-photo-input" accept="${PHOTO_ACCEPT}" data-post-id="${post.id}" hidden>
+                  ${svgCamera()}
+                </label>
                 <input type="text" class="msb-comment-input" placeholder="${_opts.esc(commentPh)}" data-post-id="${post.id}">
                 <button type="button" class="msb-comment-send" data-action="send-comment" data-post-id="${post.id}">${svgSend()}</button>
+              </div>
+              <div class="msb-comment-photo-preview" data-post-id="${post.id}" ${_commentPreviewUrls[post.id] ? '' : 'hidden'}>
+                <img src="${_commentPreviewUrls[post.id] ? _opts.esc(_commentPreviewUrls[post.id]) : ''}" alt="">
+                <button type="button" class="msb-photo-clear" data-action="clear-comment-photo" data-post-id="${post.id}">Hapus foto</button>
               </div>
             </div>
           </div>
@@ -671,6 +800,17 @@
       _opts.toast('Judul harus diisi.');
       return;
     }
+    let imageUrl = '';
+    if (_composePhotoFile) {
+      try {
+        _opts.toast('Mengunggah foto…');
+        imageUrl = await uploadBoardPhoto(_composePhotoFile, 'posts');
+      } catch (err) {
+        _opts.toast('Gagal mengunggah foto.');
+        if (typeof _opts.onError === 'function') _opts.onError(err);
+        return;
+      }
+    }
     const row = {
       author_id: _opts.currentUserId,
       kind,
@@ -678,6 +818,7 @@
       body,
     };
     if (topic) row.topic = topic;
+    if (imageUrl) row.image_url = imageUrl;
     const { data, error } = await _opts.supabase.from('feature_requests').insert(row).select('id').single();
     if (error) {
       _opts.toast('Gagal mengirim. Coba lagi.');
@@ -687,6 +828,7 @@
     _opts.toast('Berhasil dikirim. Terima kasih!');
     titleInput.value = '';
     bodyInput.value = '';
+    clearComposePhoto();
     closeForm();
     if (kind === 'question' && data?.id) {
       notifyAuthor({ kind: 'new_question', request_id: data.id });
@@ -719,6 +861,7 @@
   function closeForm() {
     const panel = _container.querySelector('#msb-form-panel');
     if (panel) panel.hidden = true;
+    clearComposePhoto();
   }
 
   function syncChrome() {
@@ -890,7 +1033,9 @@
       .msb-vote.is-liked .msb-vote-count { color: var(--msb-red); }
       .msb-card-main { min-width: 0; }
       .msb-card-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-      .msb-card-lead { min-width: 0; flex: 1; }
+      .msb-card-lead { display: flex; flex-wrap: wrap; align-items: flex-start; min-width: 0; flex: 1; }
+      .msb-card-lead .msb-title { flex: 1 1 auto; min-width: 0; }
+      .msb-card-lead .msb-meta { flex: 1 1 100%; }
       .msb-title {
         margin: 0; font-size: .95rem; font-weight: 750; color: #0f172a; line-height: 1.3;
         cursor: pointer; background: none; border: none; padding: 0; text-align: left;
@@ -960,6 +1105,40 @@
       .msb-body { margin: 0; font-size: .88rem; line-height: 1.5; color: #4B5563; white-space: pre-wrap; }
       .msb-body-toggle { display: inline-block; margin: 4px 0 0; padding: 0; background: none; border: none; cursor: pointer; font-size: .82rem; font-weight: 700; color: var(--msb-red); }
       .msb-body-toggle:hover { text-decoration: underline; }
+      .msb-title-thumb {
+        width: 28px; height: 28px; border-radius: 7px; object-fit: cover;
+        flex-shrink: 0; margin-left: 8px; vertical-align: middle; cursor: pointer;
+        border: 1px solid #E5E7EB; background: #F3F4F6;
+      }
+      .msb-post-photo, .msb-comment-photo {
+        display: block; margin: 10px 0 0; max-width: min(100%, 420px); border-radius: 12px; overflow: hidden;
+        border: 1px solid #E5E7EB; background: #F9FAFB; line-height: 0;
+      }
+      .msb-post-photo img, .msb-comment-photo img {
+        display: block; width: 100%; max-height: 360px; object-fit: cover;
+      }
+      .msb-comment-photo { flex: 1 1 100%; max-width: min(100%, 280px); margin-top: 6px; border-radius: 10px; }
+      .msb-comment-photo img { max-height: 220px; }
+      .msb-photo-row { display: flex; flex-direction: column; gap: 8px; margin: 0 0 10px; }
+      .msb-photo-btn, .msb-comment-photo-btn {
+        display: inline-flex; align-items: center; gap: 6px; width: fit-content;
+        border: 1px dashed #D1D5DB; background: #fff; color: #4B5563;
+        border-radius: 999px; padding: 7px 12px; font-size: .82rem; font-weight: 650; cursor: pointer;
+      }
+      .msb-photo-btn:hover, .msb-comment-photo-btn:hover { border-color: var(--msb-red); color: var(--msb-red); }
+      .msb-comment-photo-btn { padding: 6px; border-radius: 999px; flex-shrink: 0; }
+      .msb-photo-preview, .msb-comment-photo-preview {
+        display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap;
+      }
+      .msb-photo-preview img, .msb-comment-photo-preview img {
+        width: 96px; height: 96px; object-fit: cover; border-radius: 10px; border: 1px solid #E5E7EB; background: #F3F4F6;
+      }
+      .msb-comment-photo-preview { margin-top: 8px; }
+      .msb-comment-photo-preview img { width: 72px; height: 72px; }
+      .msb-photo-clear {
+        border: none; background: none; padding: 0; cursor: pointer;
+        color: var(--msb-red); font-size: .78rem; font-weight: 700;
+      }
       .msb-kind { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: .68rem; font-weight: 700; background: #F3F4F6; color: #4B5563; }
       .msb-kind--feature { background: #EDE9FE; color: #6D28D9; }
       .msb-kind--complaint { background: #FEE2E2; color: #B91C1C; }
@@ -1100,14 +1279,14 @@
     _opts = options;
     _container = container;
 
-    if (container.dataset.communityBoardMounted === 'msb-v11') {
+    if (container.dataset.communityBoardMounted === 'msb-v12') {
       _listEl = container.querySelector('#msb-list');
       applyLaunchOpts();
       fetchPosts();
       renderUserMap();
       return;
     }
-    container.dataset.communityBoardMounted = 'msb-v11';
+    container.dataset.communityBoardMounted = 'msb-v12';
     injectStyles();
 
     container.innerHTML = `
@@ -1161,6 +1340,16 @@
             </div>
             <input id="msb-title" type="text" placeholder="Pertanyaan singkat" maxlength="120" required>
             <textarea id="msb-body" placeholder="Ceritakan situasinya (opsional). Proses dan pelajaran boleh — niche, supplier, margin pribadi tidak perlu." maxlength="4000"></textarea>
+            <div class="msb-photo-row">
+              <label class="msb-photo-btn">
+                <input type="file" id="msb-photo" accept="${PHOTO_ACCEPT}" hidden>
+                ${svgCamera()} Tambah foto
+              </label>
+              <div class="msb-photo-preview" id="msb-photo-preview" hidden>
+                <img id="msb-photo-preview-img" alt="">
+                <button type="button" class="msb-photo-clear" id="msb-photo-clear">Hapus foto</button>
+              </div>
+            </div>
             <div class="msb-form-actions">
               <button type="button" class="msb-btn-ghost" id="msb-cancel">Batal</button>
               <button type="button" class="msb-btn-primary" id="msb-submit">Kirim</button>
@@ -1192,6 +1381,15 @@
     container.querySelector('#msb-cta-open')?.addEventListener('click', openForm);
     container.querySelector('#msb-cancel')?.addEventListener('click', closeForm);
     container.querySelector('#msb-submit')?.addEventListener('click', submitPost);
+    container.querySelector('#msb-photo')?.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) setComposePhoto(file);
+      else clearComposePhoto();
+    });
+    container.querySelector('#msb-photo-clear')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      clearComposePhoto();
+    });
 
     _listEl.addEventListener('click', async (e) => {
       const menuBtn = e.target.closest('[data-action="toggle-menu"]');
@@ -1238,11 +1436,16 @@
         const input = _listEl.querySelector(`.msb-comment-input[data-post-id="${postId}"]`);
         if (input) {
           const body = input.value.trim();
-          if (body) {
+          if (body || _commentPhotoFiles[postId]) {
             await addComment(postId, body);
             input.value = '';
+          } else {
+            _opts.toast('Tulis jawaban atau tambah foto.');
           }
         }
+      } else if (action === 'clear-comment-photo') {
+        e.preventDefault();
+        clearCommentPhoto(postId);
       } else if (action === 'edit-post') {
         e.preventDefault();
         closeMenus();
@@ -1276,6 +1479,14 @@
     });
 
     _listEl.addEventListener('change', async (e) => {
+      const photoInput = e.target.closest('.msb-comment-photo-input');
+      if (photoInput) {
+        const postId = photoInput.dataset.postId;
+        const file = photoInput.files && photoInput.files[0];
+        if (file) setCommentPhoto(postId, file);
+        else clearCommentPhoto(postId);
+        return;
+      }
       const sel = e.target.closest('[data-action="set-status"]');
       if (!sel) return;
       await setPostStatus(sel.dataset.postId, sel.value);
@@ -1288,9 +1499,11 @@
       e.preventDefault();
       const postId = input.dataset.postId;
       const body = input.value.trim();
-      if (body) {
+      if (body || _commentPhotoFiles[postId]) {
         await addComment(postId, body);
         input.value = '';
+      } else {
+        _opts.toast('Tulis jawaban atau tambah foto.');
       }
     });
 
