@@ -80,10 +80,6 @@
     return `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>`;
   }
 
-  function svgCamera() {
-    return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>`;
-  }
-
   function validatePhotoFile(file) {
     if (!file) return 'Pilih foto dulu.';
     if (!/^image\/(jpeg|png|webp|gif)$/i.test(file.type || '')) {
@@ -768,7 +764,7 @@
               <div class="msb-comment-form">
                 <label class="msb-comment-photo-btn" title="Tambah foto">
                   <input type="file" class="msb-comment-photo-input" accept="${PHOTO_ACCEPT}" data-post-id="${post.id}" hidden>
-                  ${svgCamera()}
+                  ${svgPlus()}
                 </label>
                 <input type="text" class="msb-comment-input" placeholder="${_opts.esc(commentPh)}" data-post-id="${post.id}">
                 <button type="button" class="msb-comment-send" data-action="send-comment" data-post-id="${post.id}">${svgSend()}</button>
@@ -1130,6 +1126,7 @@
       .msb-photo-preview, .msb-comment-photo-preview {
         display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap;
       }
+      .msb-photo-preview[hidden], .msb-comment-photo-preview[hidden] { display: none !important; }
       .msb-photo-preview img, .msb-comment-photo-preview img {
         width: 96px; height: 96px; object-fit: cover; border-radius: 10px; border: 1px solid #E5E7EB; background: #F3F4F6;
       }
@@ -1279,14 +1276,14 @@
     _opts = options;
     _container = container;
 
-    if (container.dataset.communityBoardMounted === 'msb-v12') {
+    if (container.dataset.communityBoardMounted === 'msb-v13') {
       _listEl = container.querySelector('#msb-list');
       applyLaunchOpts();
       fetchPosts();
       renderUserMap();
       return;
     }
-    container.dataset.communityBoardMounted = 'msb-v12';
+    container.dataset.communityBoardMounted = 'msb-v13';
     injectStyles();
 
     container.innerHTML = `
@@ -1343,7 +1340,7 @@
             <div class="msb-photo-row">
               <label class="msb-photo-btn">
                 <input type="file" id="msb-photo" accept="${PHOTO_ACCEPT}" hidden>
-                ${svgCamera()} Tambah foto
+                ${svgPlus()} Tambah foto
               </label>
               <div class="msb-photo-preview" id="msb-photo-preview" hidden>
                 <img id="msb-photo-preview-img" alt="">
