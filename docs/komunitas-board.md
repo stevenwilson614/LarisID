@@ -4,6 +4,10 @@ Logged-in peer conversation. Goal: **users talking to each other**, not more lik
 
 Live UI: `index.html` + `js/gpt-community-board.js` + `js/gpt-app.js`. Schema: `supabase/migrations/20260907140000_komunitas_board.sql`. Apply on Contabo only (`bash scripts/apply-selfhost.sh`). Never `supabase db push --linked`.
 
+The public sebaran map is the same `user_map_distribution()` payload as Admin, drawn by `js/admin-map.js` with `inset: false`: no Jakarta panel, no size legend, province counts (including DKI) sit around a wide short national outline. Phone width still drops labels and uses the collapsed “Lihat sebaran per provinsi” list. Admin keeps the inset and legend.
+
+Diskusi and Usulan rows start as one compact line (vote, title, author/date/topic, jawaban). Body and answers open on the title, the jawaban count, or a `?komunitas=` deep link. Do not invent view counts. Diskusi sort stays unanswered first, then newest.
+
 ## Lanes
 
 Two tabs. Do not add a third.

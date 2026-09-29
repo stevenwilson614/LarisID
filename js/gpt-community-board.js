@@ -112,9 +112,9 @@
     const name = _opts.esc(authorDisplayName(row));
     const badge = adminBadgeHtml(row);
     if (!row.author_id) {
-      return `<span class="msb-author">${avatarHtml(row, 22)}<span class="msb-author-name">${name}</span>${badge}</span>`;
+      return `<span class="msb-author">${avatarHtml(row, 18)}<span class="msb-author-name">${name}</span>${badge}</span>`;
     }
-    return `<button type="button" class="msb-author" data-action="open-profile" data-user-id="${_opts.esc(row.author_id)}">${avatarHtml(row, 22)}<span class="msb-author-name">${name}</span>${badge}</button>`;
+    return `<button type="button" class="msb-author" data-action="open-profile" data-user-id="${_opts.esc(row.author_id)}">${avatarHtml(row, 18)}<span class="msb-author-name">${name}</span>${badge}</button>`;
   }
 
   function statusBadgeHtml(status) {
@@ -157,9 +157,7 @@
   }
 
   function postMenuHtml(post) {
-    if (!canManage(post.author_id)) {
-      return `<button type="button" class="msb-more" aria-hidden="true" tabindex="-1">${svgDots()}</button>`;
-    }
+    if (!canManage(post.author_id)) return '';
     return `<div class="msb-menu">
       <button type="button" class="msb-more" data-action="toggle-menu" data-post-id="${post.id}" aria-label="Opsi">${svgDots()}</button>
       <div class="msb-menu-pop" hidden>
@@ -201,7 +199,7 @@
     if (!btn) return;
     const post = _posts.find((p) => p.id === postId);
     btn.classList.toggle('is-liked', !!liked);
-    btn.innerHTML = `${svgThumb(!!liked)}<span class="msb-vote-count">${count}</span><span class="msb-vote-label">${_opts.esc(voteLabel(post || {}))}</span>`;
+    btn.innerHTML = `${svgThumb(!!liked)}<span class="msb-vote-count">${count}</span>`;
   }
 
   function updateCommentCountDisplay(postId, count) {
@@ -210,7 +208,7 @@
     const unanswered = count === 0 && isDiskusi();
     el.classList.toggle('is-unanswered', unanswered);
     el.innerHTML = unanswered
-      ? `${svgComment()} 0 jawaban — bantu?`
+      ? `${svgComment()} 0 jawaban`
       : `${svgComment()} ${count} jawaban`;
   }
 
@@ -264,17 +262,24 @@
     if (toggleBtn) toggleBtn.textContent = nowExpanded ? 'Sembunyikan' : 'Baca selengkapnya';
   }
 
-  function toggleComments(postId) {
-    const section = _listEl && _listEl.querySelector(`[data-comments-for="${postId}"]`);
-    if (!section) return;
+  function toggleThread(postId) {
+    const card = _listEl && _listEl.querySelector(`.msb-card[data-post-id="${postId}"]`);
+    if (!card) return;
+    const detail = card.querySelector('.msb-card-detail');
     if (_expandedPostIds.has(postId)) {
-      section.hidden = true;
+      if (detail) detail.hidden = true;
+      card.classList.remove('is-open');
       _expandedPostIds.delete(postId);
     } else {
-      section.hidden = false;
+      if (detail) detail.hidden = false;
+      card.classList.add('is-open');
       _expandedPostIds.add(postId);
       loadComments(postId);
     }
+  }
+
+  function toggleComments(postId) {
+    toggleThread(postId);
   }
 
   async function toggleLike(postId) {
@@ -413,6 +418,7 @@
   }
 
   function startPostEdit(postId) {
+    if (!_expandedPostIds.has(postId)) toggleThread(postId);
     const post = _posts.find((p) => p.id === postId);
     const card = _listEl && _listEl.querySelector(`.msb-card[data-post-id="${postId}"]`);
     if (!post || !card) return;
@@ -518,6 +524,7 @@
         return new Date(b.created_at) - new Date(a.created_at);
       });
     }
+    if (_focusPostId) _expandedPostIds.add(_focusPostId);
     renderPosts();
     if (_focusPostId) {
       const card = _listEl.querySelector(`.msb-card[data-post-id="${_focusPostId}"]`);
@@ -544,16 +551,13 @@
       const card = document.createElement('article');
       card.className = 'msb-card';
       card.dataset.postId = post.id;
-      const alwaysOpen = isDiskusi();
-      const isExpanded = alwaysOpen || _expandedPostIds.has(post.id);
+      const isExpanded = _expandedPostIds.has(post.id);
       const rawBody = post.body || '';
       const bodyExpanded = _expandedBodyIds.has(post.id);
       const bodyText = truncateBody(rawBody, bodyExpanded);
       const needsBodyToggle = rawBody.length > 220;
       const unanswered = isDiskusi() && !(post.comment_count > 0);
-      const commentLabel = unanswered
-        ? '0 jawaban — bantu?'
-        : `${post.comment_count || 0} jawaban`;
+      const commentLabel = `${post.comment_count || 0} jawaban`;
       const likePrompt = !isDiskusi() && _likePromptIds.has(post.id);
       const commentPh = likePrompt
         ? 'Ceritakan kasusmu singkat…'
@@ -561,40 +565,44 @@
       const authorDm = (!isOwn(post.author_id) && post.author_id)
         ? `<button type="button" class="msb-dm" data-action="message-user" data-user-id="${_opts.esc(post.author_id)}" data-user-name="${_opts.esc(authorDisplayName(post))}">Kirim Pesan</button>`
         : '';
+      const topicChip = kindChipHtml(post);
+      if (isExpanded) card.classList.add('is-open');
       card.innerHTML = `
         <button type="button" class="msb-vote ${post.liked_by_me ? 'is-liked' : ''}" data-action="like" data-post-id="${post.id}" aria-label="${_opts.esc(voteLabel(post))}">
           ${svgThumb(!!post.liked_by_me)}
           <span class="msb-vote-count">${post.like_count || 0}</span>
-          <span class="msb-vote-label">${_opts.esc(voteLabel(post))}</span>
         </button>
         <div class="msb-card-main">
-          <div class="msb-card-top">
-            <h3 class="msb-title">${_opts.esc(post.title)}</h3>
-            <div class="msb-card-aside">
+          <div class="msb-card-row">
+            <div class="msb-card-lead">
+              <button type="button" class="msb-title" data-action="toggle-thread" data-post-id="${post.id}">${_opts.esc(post.title)}</button>
+              <div class="msb-meta">
+                ${authorTagHtml(post)}
+                <span class="msb-dot">·</span>
+                <span class="msb-date">${formatDate(post.created_at)}</span>
+                ${topicChip ? `<span class="msb-dot">·</span>${topicChip}` : ''}
+                ${authorDm}
+              </div>
+            </div>
+            <div class="msb-card-metrics">
+              <button type="button" class="msb-comments-count${unanswered ? ' is-unanswered' : ''}" data-action="toggle-comments" data-post-id="${post.id}">
+                ${svgComment()} ${commentLabel}
+              </button>
+              <span class="msb-row-date">${formatDate(post.created_at)}</span>
               ${statusControlHtml(post)}
               ${postMenuHtml(post)}
             </div>
           </div>
-          <div class="msb-meta">
-            ${authorTagHtml(post)}
-            <span class="msb-dot">·</span>
-            <span class="msb-date">${formatDate(post.created_at)}</span>
-            ${authorDm}
-          </div>
-          <p class="msb-body">${bodyHtml(bodyText)}</p>
-          ${needsBodyToggle ? `<button type="button" class="msb-body-toggle" data-action="toggle-body" data-post-id="${post.id}">${bodyExpanded ? 'Sembunyikan' : 'Baca selengkapnya'}</button>` : ''}
-          <div class="msb-card-foot">
-            ${kindChipHtml(post)}
-            <button type="button" class="msb-comments-count${unanswered ? ' is-unanswered' : ''}" data-action="toggle-comments" data-post-id="${post.id}">
-              ${svgComment()} ${commentLabel}
-            </button>
-          </div>
-          ${likePrompt ? `<p class="msb-like-hint">Kamu mendukung ini. Ceritakan kasusmu singkat supaya thread-nya hidup.</p>` : ''}
-          <div class="msb-comments" data-comments-for="${post.id}" ${isExpanded ? '' : 'hidden'}>
-            <div class="msb-comments-list"></div>
-            <div class="msb-comment-form">
-              <input type="text" class="msb-comment-input" placeholder="${_opts.esc(commentPh)}" data-post-id="${post.id}">
-              <button type="button" class="msb-comment-send" data-action="send-comment" data-post-id="${post.id}">${svgSend()}</button>
+          <div class="msb-card-detail" ${isExpanded ? '' : 'hidden'}>
+            <p class="msb-body">${bodyHtml(bodyText)}</p>
+            ${needsBodyToggle ? `<button type="button" class="msb-body-toggle" data-action="toggle-body" data-post-id="${post.id}">${bodyExpanded ? 'Sembunyikan' : 'Baca selengkapnya'}</button>` : ''}
+            ${likePrompt ? `<p class="msb-like-hint">Kamu mendukung ini. Ceritakan kasusmu singkat supaya thread-nya hidup.</p>` : ''}
+            <div class="msb-comments" data-comments-for="${post.id}">
+              <div class="msb-comments-list"></div>
+              <div class="msb-comment-form">
+                <input type="text" class="msb-comment-input" placeholder="${_opts.esc(commentPh)}" data-post-id="${post.id}">
+                <button type="button" class="msb-comment-send" data-action="send-comment" data-post-id="${post.id}">${svgSend()}</button>
+              </div>
             </div>
           </div>
         </div>
@@ -745,53 +753,44 @@
         --msb-bg: #F9FAFB;
         color: var(--msb-ink);
         font-family: inherit;
-        max-width: 920px;
+        max-width: 1080px;
       }
       .msb-hero {
         display: flex; align-items: flex-end; justify-content: space-between;
-        gap: 12px 20px; margin: 0; position: relative; z-index: 0;
+        gap: 8px 16px; margin: 0; position: relative; z-index: 0;
       }
-      .msb-hero-text { flex: 1 1 auto; min-width: 0; align-self: center; padding: 8px 0 22px; }
+      .msb-hero-text { flex: 1 1 auto; min-width: 0; align-self: center; padding: 4px 0 10px; }
       .msb-hero-text h2 {
-        margin: 0 0 8px; font-size: clamp(1.7rem, 3vw, 2.15rem);
+        margin: 0 0 6px; font-size: clamp(1.5rem, 2.8vw, 1.95rem);
         font-weight: 800; letter-spacing: -.03em; color: #0f172a; line-height: 1.15;
       }
-      .msb-hero-text p { margin: 0 0 16px; color: var(--msb-muted); font-size: .95rem; line-height: 1.5; max-width: 46ch; }
+      .msb-hero-text p { margin: 0 0 12px; color: var(--msb-muted); font-size: .9rem; line-height: 1.45; max-width: 46ch; }
       .msb-rules {
-        margin: 0 0 14px; padding: 10px 12px; border-radius: 12px;
-        background: #FFF7ED; color: #9A3412; font-size: .8rem; line-height: 1.45;
+        margin: 0 0 10px; padding: 8px 10px; border-radius: 10px;
+        background: #FFF7ED; color: #9A3412; font-size: .76rem; line-height: 1.4;
       }
       .msb-rules strong { font-weight: 750; }
       .msb-hero-mascot {
         flex: 0 0 auto; display: block; align-self: flex-end;
-        margin: 0 -6px -42px 0; line-height: 0; pointer-events: none; user-select: none;
+        margin: 0 -6px -28px 0; line-height: 0; pointer-events: none; user-select: none;
         position: relative; z-index: 0;
       }
-      .msb-hero-mascot img { display: block; width: 280px; height: auto; }
+      .msb-hero-mascot img { display: block; width: 200px; height: auto; }
       .msb-panel {
         position: relative; z-index: 1; background: #fff;
         border: 1px solid var(--msb-line); border-radius: 22px;
-        padding: 18px 20px 22px; box-shadow: 0 1px 2px rgba(0,0,0,.03);
+        padding: 14px 18px 16px; box-shadow: 0 1px 2px rgba(0,0,0,.03);
       }
       .msb-map-card {
         position: relative; z-index: 1; background: #fff;
         border: 1px solid var(--msb-line); border-radius: 22px;
-        padding: 18px 20px 16px; box-shadow: 0 1px 2px rgba(0,0,0,.03);
-        margin-bottom: 14px;
+        padding: 14px 16px 10px; box-shadow: 0 1px 2px rgba(0,0,0,.03);
+        margin-bottom: 12px;
       }
-      .msb-map-title { margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--msb-ink); }
-      .msb-map-sub { margin: 3px 0 10px; font-size: .86rem; color: var(--msb-muted); }
+      .msb-map-title { margin: 0; font-size: 1.02rem; font-weight: 800; color: var(--msb-ink); }
+      .msb-map-sub { margin: 2px 0 6px; font-size: .8rem; color: var(--msb-muted); }
       .msb-map-stage { position: relative; }
       .msb-map-svg { width: 100%; height: auto; display: block; }
-      .msb-map-legend {
-        display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-        margin-top: 10px; padding-top: 12px; border-top: 1px solid #F1F2F4;
-      }
-      .adm-map-key-title { font-size: .74rem; color: var(--msb-muted); font-weight: 650; }
-      .adm-map-keys { display: flex; align-items: flex-end; gap: 13px; }
-      .adm-map-key { display: flex; flex-direction: column; align-items: center; gap: 5px; }
-      .adm-map-key i { display: block; border-radius: 50%; }
-      .adm-map-key em { font-style: normal; font-size: .66rem; color: #9AA0AA; }
       /* Shown only in compact mode, where the map drops its labels. Collapsed
          by default -- a full ranked list ate real vertical space just to load
          the page -- and native <details> gives keyboard/reader semantics free. */
@@ -814,10 +813,10 @@
         padding: 3px 0; break-inside: avoid; color: var(--msb-muted);
       }
       .msb-map-list b { color: var(--msb-red); font-weight: 800; }
-      .msb-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+      .msb-tabs { display: flex; gap: 8px; margin-bottom: 10px; }
       .msb-tab {
         border: 1px solid #D1D5DB; background: #fff; color: #374151;
-        padding: 8px 16px; border-radius: 999px; font-size: .9rem; font-weight: 750; cursor: pointer;
+        padding: 7px 14px; border-radius: 999px; font-size: .86rem; font-weight: 750; cursor: pointer;
       }
       .msb-tab.is-active { background: var(--msb-red); border-color: var(--msb-red); color: #fff; }
       .msb-btn-primary {
@@ -835,26 +834,38 @@
       .msb-form textarea { min-height: 90px; resize: vertical; }
       .msb-form-actions { display: flex; justify-content: flex-end; gap: 8px; }
       .msb-btn-ghost { background: #F3F4F6; color: #374151; border: none; padding: 8px 14px; border-radius: 999px; cursor: pointer; font-weight: 600; }
-      .msb-loading, .msb-empty { text-align: center; color: var(--msb-muted); padding: 28px 12px; font-size: .95rem; }
-      .msb-list { display: flex; flex-direction: column; gap: 12px; }
+      .msb-loading, .msb-empty { text-align: center; color: var(--msb-muted); padding: 22px 12px; font-size: .9rem; }
+      .msb-list { display: flex; flex-direction: column; gap: 0; }
       .msb-card {
-        display: grid; grid-template-columns: 84px 1fr; gap: 4px 10px;
-        background: #fff; border: 1px solid var(--msb-line); border-radius: 14px;
-        padding: 14px 14px 14px 10px;
+        display: grid; grid-template-columns: 36px 1fr; gap: 2px 10px;
+        background: transparent; border: none; border-bottom: 1px solid #F1F2F4;
+        border-radius: 0; padding: 10px 2px 10px 0;
       }
-      .msb-card.is-focus { box-shadow: 0 0 0 2px rgba(181,32,42,.28); }
+      .msb-card:last-child { border-bottom: none; }
+      .msb-card.is-focus { box-shadow: 0 0 0 2px rgba(181,32,42,.28); border-radius: 10px; }
       .msb-vote {
         display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-        gap: 2px; padding: 8px 4px; background: none; border: none; cursor: pointer;
-        color: var(--msb-red); min-height: 84px;
+        gap: 1px; padding: 2px 0 0; background: none; border: none; cursor: pointer;
+        color: var(--msb-red); min-height: 0;
       }
-      .msb-vote-count { font-size: 1.15rem; font-weight: 800; color: var(--msb-ink); line-height: 1.1; }
-      .msb-vote-label { font-size: .68rem; font-weight: 700; color: var(--msb-red); letter-spacing: .01em; text-align: center; line-height: 1.2; }
+      .msb-vote svg { width: 16px; height: 16px; }
+      .msb-vote-count { font-size: .92rem; font-weight: 800; color: var(--msb-ink); line-height: 1.1; }
       .msb-vote.is-liked .msb-vote-count { color: var(--msb-red); }
       .msb-card-main { min-width: 0; }
-      .msb-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-      .msb-title { margin: 0; font-size: 1.02rem; font-weight: 750; color: #0f172a; line-height: 1.35; flex: 1; min-width: 0; }
-      .msb-card-aside { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; }
+      .msb-card-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+      .msb-card-lead { min-width: 0; flex: 1; }
+      .msb-title {
+        margin: 0; font-size: .95rem; font-weight: 750; color: #0f172a; line-height: 1.3;
+        cursor: pointer; background: none; border: none; padding: 0; text-align: left;
+        font-family: inherit; display: block; width: 100%;
+      }
+      .msb-title:hover { color: var(--msb-red); }
+      .msb-card-metrics {
+        display: inline-flex; align-items: center; gap: 12px; flex-shrink: 0;
+        font-size: .78rem; color: var(--msb-muted); padding-top: 1px;
+      }
+      .msb-row-date { white-space: nowrap; }
+      .msb-card-detail { margin-top: 10px; }
       .msb-status { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; font-size: .72rem; font-weight: 700; white-space: nowrap; }
       .msb-status--baru { background: #DBEAFE; color: #1D4ED8; }
       .msb-status--considering { background: #FFEDD5; color: #C2410C; }
@@ -889,7 +900,7 @@
       .msb-edit-title { font-weight: 750; font-size: 1.02rem; }
       .msb-edit-body { min-height: 90px; resize: vertical; }
       .msb-edit-actions { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 8px; }
-      .msb-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 8px; font-size: .8rem; color: var(--msb-muted); }
+      .msb-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 3px; font-size: .75rem; color: var(--msb-muted); }
       .msb-author {
         display: inline-flex; align-items: center; gap: 6px;
         border: none; background: none; padding: 0; cursor: pointer;
@@ -900,7 +911,7 @@
         display: inline-flex; align-items: center; margin-left: 2px; padding: 1px 7px; border-radius: 999px;
         background: #B5202A; color: #fff; font-size: .65rem; font-weight: 800; letter-spacing: .02em; line-height: 1.4;
       }
-      .msb-avatar { border-radius: 50%; object-fit: cover; flex-shrink: 0; width: 22px; height: 22px; background: #E5E7EB; }
+      .msb-avatar { border-radius: 50%; object-fit: cover; flex-shrink: 0; width: 18px; height: 18px; background: #E5E7EB; }
       .msb-avatar--letter { display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: #374151; }
       .msb-dot { color: #D1D5DB; }
       .msb-dm-wrap { display: inline-flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
@@ -909,18 +920,17 @@
         font-size: .75rem; font-weight: 700; color: var(--msb-red);
       }
       .msb-dm-hint { font-size: .72rem; color: var(--msb-muted); font-weight: 500; }
-      .msb-body { margin: 8px 0 0; font-size: .9rem; line-height: 1.5; color: #4B5563; white-space: pre-wrap; }
+      .msb-body { margin: 0; font-size: .88rem; line-height: 1.5; color: #4B5563; white-space: pre-wrap; }
       .msb-body-toggle { display: inline-block; margin: 4px 0 0; padding: 0; background: none; border: none; cursor: pointer; font-size: .82rem; font-weight: 700; color: var(--msb-red); }
       .msb-body-toggle:hover { text-decoration: underline; }
-      .msb-card-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
-      .msb-kind { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; font-size: .72rem; font-weight: 700; background: #F3F4F6; color: #4B5563; }
+      .msb-kind { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: .68rem; font-weight: 700; background: #F3F4F6; color: #4B5563; }
       .msb-kind--feature { background: #EDE9FE; color: #6D28D9; }
       .msb-kind--complaint { background: #FEE2E2; color: #B91C1C; }
       .msb-kind--topic { background: #FFEDD5; color: #C2410C; }
       .msb-comments-count {
         display: inline-flex; align-items: center; gap: 5px;
         border: none; background: none; color: var(--msb-muted); cursor: pointer;
-        font-size: .8rem; font-weight: 600; padding: 0;
+        font-size: .78rem; font-weight: 600; padding: 0; white-space: nowrap;
       }
       .msb-comments-count:hover { color: var(--msb-ink); }
       .msb-comments-count.is-unanswered { color: var(--msb-red); font-weight: 750; }
@@ -956,11 +966,13 @@
         .msb-hero-text p { margin-left: auto; margin-right: auto; }
         .msb-hero-text .msb-btn-primary { margin: 0 auto; }
         .msb-hero-mascot { align-self: center; margin: 0 0 4px; order: -1; }
-        .msb-hero-mascot img { width: 200px; }
-        .msb-panel { padding: 14px 14px 18px; border-radius: 18px; }
-        .msb-map-card { padding: 14px 14px 12px; border-radius: 18px; }
-        .msb-map-title { font-size: 1.02rem; }
-        .msb-card { grid-template-columns: 70px 1fr; padding: 12px 10px; }
+        .msb-hero-mascot img { width: 156px; }
+        .msb-panel { padding: 12px 12px 14px; border-radius: 18px; }
+        .msb-map-card { padding: 12px 12px 8px; border-radius: 18px; }
+        .msb-map-title { font-size: .98rem; }
+        .msb-card { grid-template-columns: 32px 1fr; padding: 9px 0; }
+        .msb-card-row { flex-wrap: wrap; gap: 6px 10px; }
+        .msb-card-metrics { width: 100%; justify-content: flex-start; }
         .msb-status { font-size: .68rem; padding: 3px 8px; }
         .msb-cta { padding: 14px; }
       }
@@ -989,10 +1001,7 @@
     const svg = _container?.querySelector('#msb-map-svg');
     if (!M || !card || !svg || !data) return;
     const compact = mapCompact(card);
-    M.renderUserMap(svg, data, { compact: compact, groupId: 'msb-map-world' });
-
-    const legend = _container.querySelector('#msb-map-legend');
-    if (legend) legend.innerHTML = M.legendHtml();
+    M.renderUserMap(svg, data, { compact: compact, inset: false, groupId: 'msb-map-world' });
 
     const wrap = _container.querySelector('#msb-map-list-wrap');
     const list = _container.querySelector('#msb-map-list');
@@ -1018,7 +1027,7 @@
       if (!window.LarisAdminMap) {
         if (_mapLoading || typeof window.larisLoadScript !== 'function') return;
         _mapLoading = true;
-        await window.larisLoadScript('/js/admin-map.js?v=20260909a');
+        await window.larisLoadScript('/js/admin-map.js?v=20260929b');
         _mapLoading = false;
       }
       const { data, error } = await _opts.supabase.rpc('user_map_distribution', { p_days: null });
@@ -1046,14 +1055,14 @@
     _opts = options;
     _container = container;
 
-    if (container.dataset.communityBoardMounted === 'msb-v8') {
+    if (container.dataset.communityBoardMounted === 'msb-v9') {
       _listEl = container.querySelector('#msb-list');
       applyLaunchOpts();
       fetchPosts();
       renderUserMap();
       return;
     }
-    container.dataset.communityBoardMounted = 'msb-v8';
+    container.dataset.communityBoardMounted = 'msb-v9';
     injectStyles();
 
     container.innerHTML = `
@@ -1065,7 +1074,7 @@
             <button type="button" class="msb-btn-primary" id="msb-open-form">${svgPlus()} Tanya sesuatu</button>
           </div>
           <div class="msb-hero-mascot" aria-hidden="true">
-            <img src="/images/brand/mascot-fitur.webp" width="280" height="235" alt="" loading="lazy" decoding="async">
+            <img src="/images/brand/mascot-fitur.webp" width="200" height="168" alt="" loading="lazy" decoding="async">
           </div>
         </header>
 
@@ -1075,7 +1084,6 @@
           <div class="msb-map-stage">
             <svg class="msb-map-svg" id="msb-map-svg" role="img" aria-label="Peta sebaran pengguna LarisID di Indonesia"></svg>
           </div>
-          <div class="msb-map-legend" id="msb-map-legend"></div>
           <!-- Collapsed by default on mobile: a 34-row list of provinces ate too
                much vertical space just to load the page. Native <details> gives
                keyboard/screen-reader semantics for free. -->
@@ -1175,13 +1183,12 @@
       } else if (action === 'toggle-body') {
         e.preventDefault();
         toggleBody(postId);
-      } else if (action === 'toggle-comments') {
+      } else if (action === 'toggle-comments' || action === 'toggle-thread') {
         e.preventDefault();
-        if (isDiskusi()) {
+        toggleThread(postId);
+        if (isDiskusi() && _expandedPostIds.has(postId)) {
           const input = _listEl.querySelector(`.msb-comment-input[data-post-id="${postId}"]`);
           input?.focus();
-        } else {
-          toggleComments(postId);
         }
       } else if (action === 'send-comment') {
         e.preventDefault();

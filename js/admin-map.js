@@ -143,11 +143,15 @@
     // opts.compact drops the labels and the inset for narrow screens — 34
     // leader-line labels are illegible at 375px, so the caller pairs compact
     // mode with a ranked list underneath.
+    //
+    // opts.inset defaults true (admin). Komunitas passes false so DKI is a
+    // normal pin on the national map and the tall Jakarta panel stays off.
     renderUserMap: function (svg, data, opts) {
       if (!svg) return;
       const M = w.LarisAdminMap;
       const o = opts || {};
       const compact = !!o.compact;
+      const showInset = o.inset !== false && !compact;
       const esc = function (t) {
         return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) {
           return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
@@ -158,8 +162,11 @@
       const FONT = 'Plus Jakarta Sans, system-ui, sans-serif';
 
       const pins = provinces.map(function (row) {
-        const meta = M.PROVINCES[row.province];
-        if (!meta) return null;
+        const base = M.PROVINCES[row.province];
+        if (!base) return null;
+        const meta = (!showInset && base.inset)
+          ? Object.assign({}, base, { inset: false, side: base.side || 't' })
+          : base;
         const xy = M.project(meta.lat, meta.lon);
         return { name: row.province, label: meta.short || row.province,
                  n: row.n || 0, x: xy[0], y: xy[1], meta: meta };
@@ -215,7 +222,7 @@
       // The inset panel is drawn later but has to be an obstacle now, or
       // Kalimantan Utara's label lands underneath it.
       const INSET = { x1: 136, y1: -108, x2: 400, y2: 68 };
-      if (!compact && dki.length) obstacles.push(INSET);
+      if (showInset && dki.length) obstacles.push(INSET);
 
       const placed = [];
       const order = pins.slice().sort(function (a, b) { return b.n - a.n; });
@@ -287,7 +294,7 @@
       // ── DKI inset ──
       let inset = '';
       let insetBox = null;
-      if (!compact && dki.length) {
+      if (showInset && dki.length) {
         // Parked in the empty sea north-west of Java. The five kota sit within
         // 2.4 map units of each other at national scale, which is the whole
         // reason this panel exists.
