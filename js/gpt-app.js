@@ -1822,6 +1822,7 @@ const state = {
   pendingTracker: null, // Favorit Aku seed behind the login gate; resumed after sign-in
   pendingTrackKeyword: null, // one-tap Favorit caught by the signup gate; added after sign-in
   pendingKomunitas: null, // { tab, title, topic, postId } behind login / email deep link
+  pendingProfilPreview: null, // 'filled' | 'empty' from ?profil=isi|kosong — local preview only
   pendingEdukasi: false, // Edukasi panel opened behind the login gate
   everOpenedDeepdive: false,
   lastDeepDiveKeyword: '',
@@ -4634,7 +4635,7 @@ let _historyPrimed = false;
 function setView(name, opts = {}) {
   const leaving = state.view;
   state.view = name;
-  ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'edukasi', 'cohort', 'kalkulator'].forEach(v => {
+  ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'edukasi', 'cohort', 'kalkulator', 'profil'].forEach(v => {
     const el = $(`view-${v}`);
     if (el) el.classList.toggle('active', v === name);
     document.body.classList.toggle(`view-${v}`, v === name);
@@ -4654,7 +4655,7 @@ function setView(name, opts = {}) {
   // .composer-dock display rule) — everywhere else now hides the bar
   // entirely rather than just clearing its chips, so this list stops
   // mattering for those views, but chips are still irrelevant on them either way.
-  if (name === 'home' || name === 'landing' || name === 'directory' || name === 'harga' || name === 'admin' || name === 'tracker' || name === 'community' || name === 'edukasi' || name === 'cohort' || name === 'kalkulator') setComposerChips(null);
+  if (name === 'home' || name === 'landing' || name === 'directory' || name === 'harga' || name === 'admin' || name === 'tracker' || name === 'community' || name === 'edukasi' || name === 'cohort' || name === 'kalkulator' || name === 'profil') setComposerChips(null);
   ['btn-ask-laris', 'btn-produk', 'btn-harga', 'btn-faq', 'btn-tentang', 'btn-admin', 'btn-tracker', 'btn-community', 'btn-edukasi', 'btn-cohort', 'btn-kalkulator-alat'].forEach(id => {
     const el = $(id);
     if (!el) return;
@@ -4672,6 +4673,7 @@ function setView(name, opts = {}) {
       (id === 'btn-cohort' && name === 'cohort') ||
       (id === 'btn-kalkulator-alat' && name === 'kalkulator'));
   });
+  $('btn-user')?.classList.toggle('is-on', name === 'profil');
   // Mobile Tentang accordion: highlight the parent when a child page is current.
   const aboutChildActive = name === 'harga' || name === 'faq' || name === 'landing';
   $('btn-side-about')?.classList.toggle('is-child-active', aboutChildActive);
@@ -4717,7 +4719,7 @@ function setView(name, opts = {}) {
   }
 }
 
-const HISTORY_VIEWS = ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'edukasi', 'cohort', 'kalkulator'];
+const HISTORY_VIEWS = ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'edukasi', 'cohort', 'kalkulator', 'profil'];
 // Old sessions may still have { view: 'tentang' } in history — map to landing.
 const HISTORY_VIEW_ALIASES = { tentang: 'landing' };
 
@@ -4753,6 +4755,12 @@ window.addEventListener('popstate', (e) => {
       if (view === 'home') updateHomeFinderVisibility();
       if (view === 'chat' && state.activeChatId && activeChat()) renderChatThread();
       if (view === 'kalkulator') openKalkulatorPage({ via: 'restore' });
+      if (view === 'profil') {
+        const preview = st.preview || null;
+        const uid = st.userId || currentUser?.id;
+        if (preview) openUserProfile(st.userId || 'preview', { preview, skipView: true });
+        else if (uid) openUserProfile(uid, { skipView: true, openMessage: !!st.openMessage });
+      }
       if (view === 'cohort') {
         void (async () => {
           mountLarisCohort();
@@ -16258,32 +16266,69 @@ async function openTrackerView(seed, resumeDraft) {
 // name opens the editable profile (GptProfile.viewPublic redirects there
 // itself when targetUserId === currentUserId); clicking anyone else's opens
 // the read-only public view (name/city/avatar/bio only — never contact info).
-function openUserProfile(userId, extra) {
-  if (!currentUser) { openAuthModal('login', 'gpt_gate_profile'); return; }
-  if (!userId || !window.GptProfile) return;
-  window.GptProfile.viewPublic(userId, {
+function consumeProfilPreview() {
+  try {
+    const q = new URLSearchParams(location.search);
+    const v = q.get('profil');
+    if (v !== 'isi' && v !== 'filled' && v !== 'kosong' && v !== 'empty') return false;
+    state.pendingProfilPreview = (v === 'kosong' || v === 'empty') ? 'empty' : 'filled';
+    q.delete('profil');
+    const qs = q.toString();
+    history.replaceState(history.state || {}, '', location.pathname + (qs ? '?' + qs : '') + location.hash);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function profileSelfOpts() {
+  return {
     supabase: _supabase,
+    userId: currentUser?.id,
+    currentUserId: currentUser?.id,
+    userEmail: currentUser?.email || '',
     esc,
     toast: showToast,
+    getUsage: gptUsageQuotaView,
+    getOnboardingCity: () => state.onboarding?.city || '',
+    onOpenKomunitas: (postId) => { openCommunityBoard({ tab: 'diskusi', postId }); },
+    onSignOut: () => { if (confirm('Keluar dari akun?')) void signOut(); },
+    onProfileChanged: (row) => {
+      _accountHeadshotUrl = row?.headshot_url || null;
+      _profileDisplayName = String(row?.display_name || row?.first_name || '').trim();
+      const name = accountPersonName(_profileDisplayName);
+      const short = String(name).split(' ')[0] || 'Akun';
+      setHeaderName(short);
+      setHeaderAvatar(short);
+    },
+  };
+}
+
+function openUserProfile(userId, extra) {
+  const preview = extra && extra.preview;
+  if (!preview && !currentUser) { openAuthModal('login', 'gpt_gate_profile'); return; }
+  if (!userId || !window.GptProfile) return;
+  const hist = { userId, preview: preview || null, openMessage: !!(extra && extra.openMessage) };
+  if (!extra?.skipView) setView('profil', { hist });
+  else state.view = 'profil';
+  const root = $('profil-root');
+  const self = profileSelfOpts();
+  if (preview) {
+    window.GptProfile.mount(root, Object.assign({}, self, {
+      preview,
+      targetUserId: userId,
+      currentUserId: currentUser?.id || userId,
+      userId: currentUser?.id || userId,
+    }));
+    return;
+  }
+  window.GptProfile.mount(root, Object.assign({}, self, {
+    targetUserId: userId,
     currentUserId: currentUser.id,
-    userEmail: currentUser.email || '',
+    userId: currentUser.id,
     openMessage: !!(extra && extra.openMessage),
     onError: (err) => { try { console.warn('[profile]', err); } catch (_) {} },
-    selfOpenOptions: {
-      supabase: _supabase, userId: currentUser.id, userEmail: currentUser.email || '',
-      esc, toast: showToast,
-      getUsage: gptUsageQuotaView,
-      onSignOut: () => { if (confirm('Keluar dari akun?')) void signOut(); },
-      onProfileChanged: (row) => {
-        _accountHeadshotUrl = row?.headshot_url || null;
-        _profileDisplayName = String(row?.display_name || row?.first_name || '').trim();
-        const name = accountPersonName(_profileDisplayName);
-        const short = String(name).split(' ')[0] || 'Akun';
-        setHeaderName(short);
-        setHeaderAvatar(short);
-      },
-    },
-  });
+  }));
 }
 
 function mountLarisCohort() {
@@ -26622,6 +26667,7 @@ async function boot() {
     }
   } catch (_) {}
   consumeKomunitasDeepLink();
+  consumeProfilPreview();
   consumeProductDeepLink();
   _exportWireDelegation();
   bindKwReqDelegation();
@@ -26646,19 +26692,20 @@ async function boot() {
 
   // Landing is the default surface; onboarding never auto-starts.
   // Don't overwrite a deep dive / finder that _authOnSignIn just resumed.
-  const pendingResume = !!(state.pendingDeepdive || state.pendingCompare || state.pendingTracker || state.pendingKomunitas || state.pendingFinder || _finderResumeInFlight);
+  const pendingResume = !!(state.pendingDeepdive || state.pendingCompare || state.pendingTracker || state.pendingKomunitas || state.pendingFinder || state.pendingProfilPreview || _finderResumeInFlight);
   const alreadyDeepdive = state.view === 'deepdive' && !!state.deepdiveProduct;
   const alreadyCommunity = state.view === 'community';
   const alreadyAdmin = state.view === 'admin';
+  const alreadyProfil = state.view === 'profil';
   const finderResultsUp = !!$('chat-thread')?.querySelector('[data-lrow-block]');
-  if (isExporPasar() && !_offerActive && !pendingResume && !alreadyDeepdive && !alreadyCommunity && !alreadyAdmin) {
+  if (isExporPasar() && !_offerActive && !pendingResume && !alreadyDeepdive && !alreadyCommunity && !alreadyAdmin && !alreadyProfil) {
     if (state.activeChatId && activeChat()) {
       setView('chat');
       renderChatThread();
     } else {
       void openDirectory();
     }
-  } else if (!_offerActive && !pendingResume && !alreadyDeepdive && !alreadyCommunity && !alreadyAdmin && !finderResultsUp) {
+  } else if (!_offerActive && !pendingResume && !alreadyDeepdive && !alreadyCommunity && !alreadyAdmin && !alreadyProfil && !finderResultsUp) {
     if (state.activeChatId && activeChat()) {
       setView('chat');
       renderChatThread();
@@ -26672,6 +26719,11 @@ async function boot() {
   renderSidebarLocCard();
   void routeCohortHome();
   consumeAdminDeepLink();
+  if (state.pendingProfilPreview) {
+    const preview = state.pendingProfilPreview;
+    state.pendingProfilPreview = null;
+    openUserProfile(preview === 'empty' ? 'preview-kosong' : 'preview-isi', { preview });
+  }
 }
 
 

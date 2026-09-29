@@ -8,6 +8,8 @@ The public sebaran map is the same `user_map_distribution()` payload as Admin, d
 
 Answers have a thumb like, stored in `feature_request_comment_likes` / `feature_request_comments_feed`. That is a reply signal, not a success metric.
 
+The member profile (`#view-profil`) shows that person’s Komunitas counts — postingan, komentar, and disukai — plus up to three recent titles. Counts only. No rank, no “top contributor”, no leaderboard.
+
 Diskusi and Usulan rows start as one compact line (vote, title, author/date/topic, jawaban). Body and answers open on the title, the jawaban count, or a `?komunitas=` deep link. Do not invent view counts. Diskusi sort stays unanswered first, then newest.
 
 ## Lanes

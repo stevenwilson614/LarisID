@@ -33,6 +33,7 @@
     var out = [];
     (_cache.chats || []).forEach(function (c) {
       var ctxKind = c.context && c.context.kind;
+      var img = c.context && c.context.product && c.context.product.image_url;
       if (ctxKind === 'kalkulator') {
         out.push({
           kind: 'kalk',
@@ -40,6 +41,7 @@
           id: c.id || c.localId,
           title: c.title || 'Kalkulasi',
           chat: c,
+          image: img || '',
         });
         return;
       }
@@ -50,6 +52,7 @@
         title: c.title || 'Chat',
         rename: true,
         chat: c,
+        image: img || '',
       });
     });
     (_cache.searches || []).forEach(function (s) {
@@ -71,6 +74,7 @@
         item_id: m.item_id,
         shop_id: m.shop_id,
         keyword: m.keyword,
+        image: m.image_url || m.image || '',
       });
     });
     (_cache.downloads || []).forEach(function (j) {
@@ -422,5 +426,9 @@
     render: function () { void load(); },
     refreshBell: function () { void loadNotices(); },
     paintList: paintList,
+    items: items,
+    openItem: openItem,
+    kindLabel: kindLabel,
+    whenLabel: whenLabel,
   };
 })(window);

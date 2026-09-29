@@ -12,6 +12,16 @@
 window.LARIS_CHANGELOG = [
   {
     date: '2026-09-29',
+    title: 'Profil jadi halaman penuh',
+    items: [
+      {
+        text: 'Ketuk namamu di pojok kanan untuk buka halaman profil: bio, kota, fokus, platform jualan, tautan sosial dan toko, hitungan Komunitas, plus Riwayat yang lebih lengkap. Seller lain yang ketuk namamu melihat versi publik — tanpa nomor WA atau email.',
+        tech: '#view-profil + js/gpt-profile.js; user_profiles.social_links / focus_areas / selling_platforms + get_public_profile counts (20260929150000, apply on Contabo after preview). Preview: ?profil=isi or ?profil=kosong.',
+      },
+    ],
+  },
+  {
+    date: '2026-09-29',
     title: 'Foto di Komunitas',
     items: [
       {
