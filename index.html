@@ -374,9 +374,18 @@ a.side-btn { text-decoration: none; box-sizing: border-box; color: var(--ink); }
   flex: 1; min-height: 0; display: flex; flex-direction: column;
 }
 @media (min-width: 861px) {
-  /* Floor so Riwayat cannot collapse to 0 when the buttons below it
-     (lokasi, Harga, FAQ, links) fill the rest of the viewport. The
-     chat list scrolls inside this floor; the sidebar scrolls past it. */
+  /* Nav + footer can be taller than the window. Without a scrollport,
+     .app's overflow:hidden covers whatever doesn't fit and Riwayat
+     shrinks away. The column scrolls; the chat list scrolls inside it. */
+  .sidebar {
+    min-height: 0;
+    max-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+  .sidebar > :not(.side-section) { flex-shrink: 0; }
   .side-section {
     flex: 1 1 0;
     min-height: clamp(148px, 28vh, 280px);
@@ -11366,7 +11375,7 @@ body.view-chat .sfb-card {
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260915a" defer></script>
-<script src="/js/gpt-app.js?v=20260929c" defer></script>
+<script src="/js/gpt-app.js?v=20260929d" defer></script>
 <style>
 /* LarisExpor chrome hidden for now. Restore with scripts/lib/expor-tab.mjs. */
 #btn-expor-pasar,
