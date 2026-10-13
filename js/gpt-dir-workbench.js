@@ -24,7 +24,7 @@
   ];
 
   var _on = Object.create(null);
-  var _view = 'kartu';
+  var _view = 'tabel';
   var _draft = null;
   var _wired = false;
   var _bareRange = false;
@@ -42,7 +42,7 @@
     try {
       var v = localStorage.getItem(VIEW_KEY);
       if (v === 'kartu' || v === 'tabel') _view = v;
-    } catch (_) { _view = 'kartu'; }
+    } catch (_) { _view = 'tabel'; }
   }
 
   function persistLocal() {

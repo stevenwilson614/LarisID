@@ -21,7 +21,7 @@ One listing = `(item_id, shop_id)`.
   (`backfill_listing_weekly_estimates`, then `revise_listing_weekly_measured`)
 - Hosts:
   - Cari Produk (`#dir-trending-now`) — top 3 rank rows, then Urutkan, then
-    Kartu (`.dir-card-grid`, default) or Tabel (`listingRowsHtml` with
+    Tabel (`listingRowsHtml`, default) or Kartu (`.dir-card-grid` with
     `actions: true`). Keyword chips filter both.
   - Chat search / finder / recs (`.trend-host`) — same strip + listing-row
     table chrome.
