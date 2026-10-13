@@ -95,35 +95,76 @@
     if (panel) requestAnimationFrame(() => { panel.scrollTop = 0; });
   }
 
-  function mediaHtml(lesson) {
+  const ICO = {
+    video: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M10.2 8.8v6.4L16 12l-5.8-3.2z" fill="currentColor" stroke="none"/></svg>',
+    doc: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3.5h7l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-9.5A1.5 1.5 0 0 1 5.5 20V5A1.5 1.5 0 0 1 7 3.5z"/><path d="M14 3.5V8h4.5M8 12.5h8M8 16h6"/></svg>',
+    link: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 13.5a4 4 0 0 0 5.7.4l2.2-2.2a4 4 0 0 0-5.7-5.6L11 7.3"/><path d="M14 10.5a4 4 0 0 0-5.7-.4L6.1 12.3a4 4 0 0 0 5.7 5.6L13 16.7"/></svg>',
+    list: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 7h11M9 12h11M9 17h11"/><circle cx="5" cy="7" r="1" fill="currentColor" stroke="none"/><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="5" cy="17" r="1" fill="currentColor" stroke="none"/></svg>',
+    ask: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9.2 9.2a2.8 2.8 0 1 1 3.6 2.7c-.7.3-1.3.9-1.3 1.6V14"/><circle cx="12" cy="17" r=".8" fill="currentColor" stroke="none"/></svg>',
+    step: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h12M13 6l6 6-6 6"/></svg>',
+    check: '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12.5l4.2 4.2L19 7.5"/></svg>',
+  };
+
+  function sectionHtml(icon, title, count, body) {
+    if (!body) return '';
+    return `<section class="blj-sec">
+      <header class="blj-sec-h">
+        <span class="blj-sec-ic" aria-hidden="true">${icon}</span>
+        <div>
+          <strong>${esc(title)}</strong>
+          ${count ? `<span>${esc(count)}</span>` : ''}
+        </div>
+      </header>
+      <div class="blj-sec-body">${body}</div>
+    </section>`;
+  }
+
+  function kindLabel(kind) {
+    if (kind === 'video') return 'Video';
+    if (kind === 'document') return 'Dokumen';
+    if (kind === 'tool') return 'Langkah di LarisID';
+    return 'Bacaan';
+  }
+
+  function mediaInner(lesson) {
     const url = safeUrl(lesson.url);
     const id = ytId(lesson.url);
-    if ((lesson.kind === 'video' || id) && id) {
+    if (id) {
       return `<button type="button" class="blj-yt" data-blj-yt="${esc(id)}">
         <img alt="" src="https://i.ytimg.com/vi/${esc(id)}/hqdefault.jpg" loading="lazy">
         <span>Putar video</span>
       </button>`;
     }
     if (url && (lesson.kind === 'document' || lesson.kind === 'video')) {
-      return `<a class="blj-doc" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Buka panduan</a>`;
+      return `<a class="blj-doc" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Buka dokumen</a>`;
     }
     return '';
   }
 
+  function mediaHtml(lesson) {
+    const inner = mediaInner(lesson);
+    if (!inner) return '';
+    const video = !!ytId(lesson.url) || lesson.kind === 'video';
+    return sectionHtml(video ? ICO.video : ICO.doc, video ? 'Video' : 'Dokumen', video ? 'Putar saat kamu siap' : 'Panduan resmi', inner);
+  }
+
   function resourcesHtml(lesson) {
+    const own = safeUrl(lesson.url);
     const items = arr(lesson.resources).map((r) => {
       const url = safeUrl(r && r.url);
-      if (!url) return '';
+      if (!url || url === own) return '';
       return `<li><a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc((r && r.name) || url)}</a></li>`;
     }).filter(Boolean);
     if (!items.length) return '';
-    return `<section class="blj-block"><h3>Bacaan</h3><ul class="blj-links">${items.join('')}</ul></section>`;
+    const n = items.length;
+    return sectionHtml(ICO.link, 'Tautan', n === 1 ? '1 tautan' : `${n} tautan`, `<ul class="blj-links">${items.join('')}</ul>`);
   }
 
   function pointsHtml(lesson) {
     const items = arr(lesson.points).map((p) => `<li>${esc(p)}</li>`).join('');
     if (!items) return '';
-    return `<section class="blj-block"><h3>Yang perlu diingat</h3><ul class="blj-points">${items}</ul></section>`;
+    const n = arr(lesson.points).length;
+    return sectionHtml(ICO.list, 'Poin penting', n === 1 ? '1 poin' : `${n} poin`, `<ul class="blj-points">${items}</ul>`);
   }
 
   function questionsHtml(lesson) {
@@ -138,9 +179,13 @@
         <textarea data-blj-answer="${i}" rows="3">${esc(val)}</textarea>
       </label>`;
     }).join('');
-    return `<section class="blj-block"><h3>Cek pemahaman</h3>
-      <p class="blj-quiet">Untuk kamu, bukan untuk dinilai. Jawaban tersimpan saat kamu menandai selesai.</p>
-      ${fields}</section>`;
+    const n = qs.length;
+    return sectionHtml(
+      ICO.ask,
+      'Cek pemahaman',
+      n === 1 ? '1 pertanyaan' : `${n} pertanyaan`,
+      `<p class="blj-quiet">Untuk kamu, bukan untuk dinilai. Jawaban tersimpan saat kamu menandai selesai.</p>${fields}`
+    );
   }
 
   function actionHtml(lesson) {
@@ -150,12 +195,93 @@
     const verified = lesson.verify_met
       ? '<p class="blj-verified">Sudah terverifikasi dari aktivitasmu.</p>'
       : '';
-    return `<section class="blj-block blj-next-step">
-      <h3>Langkah berikutnya</h3>
-      ${line ? `<p class="blj-quiet">${esc(line)}</p>` : ''}
-      ${verified}
-      <button type="button" class="btn-primary" data-blj-action="${esc(action.view)}">${esc(action.label)}</button>
-    </section>`;
+    return sectionHtml(
+      ICO.step,
+      'Langkah berikutnya',
+      'Di LarisID',
+      `${line ? `<p class="blj-quiet">${esc(line)}</p>` : ''}${verified}<button type="button" class="btn-primary" data-blj-action="${esc(action.view)}">${esc(action.label)}</button>`
+    );
+  }
+
+  function orderedLessons() {
+    const out = [];
+    modules().forEach((mod) => {
+      arr(mod.lessons).forEach((lesson) => out.push({ lesson, module: mod }));
+    });
+    return out;
+  }
+
+  function neighbor(dir) {
+    const items = orderedLessons();
+    const i = items.findIndex((item) => item.lesson.slug === _lessonSlug);
+    if (i < 0) return null;
+    return items[i + dir] || null;
+  }
+
+  function trailHtml(currentSlug) {
+    const items = orderedLessons();
+    if (!items.length || !_course) return '';
+    const p = _course.progress || {};
+    const done = p.done || 0;
+    const total = p.total || 0;
+    const pct = total ? Math.max(0, Math.min(100, p.pct || 0)) : 0;
+    const focus = currentSlug || (p.next && p.next.slug) || '';
+    const focusIdx = items.findIndex((item) => item.lesson.slug === focus);
+    const here = focusIdx >= 0 ? items[focusIdx] : null;
+    const dots = items.map((item, i) => {
+      const lesson = item.lesson;
+      const cls = [
+        'blj-dot',
+        lesson.status === 'done' ? 'is-done' : '',
+        lesson.status === 'skipped' ? 'is-skip' : '',
+        lesson.applicable ? '' : 'is-quiet',
+        lesson.slug === focus ? 'is-current' : '',
+      ].filter(Boolean).join(' ');
+      const mark = lesson.status === 'done' ? ICO.check : '';
+      return `<button type="button" class="${cls}" data-blj-lesson="${esc(lesson.slug)}" title="${esc(lesson.title)}" aria-label="${esc((i + 1) + '. ' + lesson.title)}"${lesson.slug === focus ? ' aria-current="step"' : ''}>${mark}</button>`;
+    }).join('');
+    const place = currentSlug
+      ? 'Kamu sedang di sini'
+      : (here ? here.lesson.title : 'Semua langkah yang dihitung selesai');
+    return `<div class="blj-trail">
+      <div class="blj-dots" data-blj-dots>${dots}</div>
+      <div class="blj-trail-meta">
+        <div>
+          <strong>${done} / ${total} langkah selesai</strong>
+          <span>${esc(place)}</span>
+        </div>
+        <b>${pct}%</b>
+      </div>
+    </div>`;
+  }
+
+  function lessonChrome(found) {
+    const items = orderedLessons();
+    const i = items.findIndex((item) => item.lesson.slug === found.lesson.slug);
+    const at = i >= 0 ? i + 1 : 1;
+    return `<div class="blj-chrome"><div class="blj-top">
+      <button type="button" class="blj-back" data-blj-back>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+        Belajar
+      </button>
+      <span class="blj-pos">${at} / ${items.length || 1}</span>
+      <button type="button" class="blj-navbtn" data-blj-step="-1" ${i > 0 ? '' : 'disabled'} aria-label="Materi sebelumnya">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 6l-6 6 6 6"/></svg>
+      </button>
+      <button type="button" class="blj-navbtn" data-blj-step="1" ${i >= 0 && i < items.length - 1 ? '' : 'disabled'} aria-label="Materi berikutnya">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+    ${trailHtml(found.lesson.slug)}</div>`;
+  }
+
+  function pagerHtml() {
+    const prev = neighbor(-1);
+    const next = neighbor(1);
+    return `<div class="blj-pager">
+      <button type="button" class="blj-pager-btn" data-blj-step="-1" ${prev ? '' : 'disabled'}>Materi sebelumnya</button>
+      <button type="button" class="blj-pager-btn is-next" data-blj-step="1" ${next ? '' : 'disabled'}>Materi berikutnya</button>
+    </div>`;
   }
 
   function lessonHtml(found) {
@@ -164,27 +290,38 @@
     const done = lesson.status === 'done';
     const skipped = lesson.status === 'skipped';
     const plat = PLATFORMS.find((p) => p.id === lesson.platform);
-    return `<article class="blj-lesson">
-      <button type="button" class="blj-back" data-blj-back>Semua materi</button>
-      <p class="blj-kicker">${esc(mod.title)}${lesson.est_mins ? ` · ${lesson.est_mins} mnt` : ''}${plat ? ` · ${esc(plat.label)}` : ''}</p>
-      <h2>${esc(lesson.title)}</h2>
-      ${!lesson.applicable ? '<p class="blj-quiet">Langkah ini tidak masuk hitungan progresmu. Tetap bisa dibaca.</p>' : ''}
-      ${mediaHtml(lesson)}
-      <div class="blj-body">${paras(lesson.body)}</div>
-      ${pointsHtml(lesson)}
-      ${resourcesHtml(lesson)}
-      ${questionsHtml(lesson)}
-      ${actionHtml(lesson)}
-      <div class="blj-actions">
-        ${done
-          ? '<button type="button" class="btn-ghost" data-blj-clear>Buka lagi</button>'
-          : `<button type="button" class="btn-primary" data-blj-done>Tandai selesai</button>
-             <button type="button" class="btn-ghost" data-blj-draft>Simpan jawaban</button>
-             ${skipped
-               ? '<button type="button" class="btn-ghost" data-blj-clear>Kembalikan</button>'
-               : '<button type="button" class="btn-ghost" data-blj-skip>Lewati</button>'}`}
-      </div>
-    </article>`;
+    const body = paras(lesson.body);
+    const next = neighbor(1);
+    const finish = done
+      ? (next
+        ? '<button type="button" class="blj-finish is-done" data-blj-step="1">Selesai · lanjut</button>'
+        : '<p class="blj-finish is-done" role="status">Selesai</p>')
+      : '<button type="button" class="blj-finish" data-blj-done>Tandai selesai</button>';
+    return `<div class="blj-player">
+      ${lessonChrome(found)}
+      <article class="blj-lesson">
+        <p class="blj-kicker">${esc(mod.title)}${plat ? ` · ${esc(plat.label)}` : ''}</p>
+        <h2>${esc(lesson.title)}</h2>
+        <p class="blj-kind">${esc(kindLabel(lesson.kind))}${lesson.est_mins ? ` · ${lesson.est_mins} mnt` : ''}</p>
+        ${!lesson.applicable ? '<p class="blj-quiet">Langkah ini tidak masuk hitungan progresmu. Tetap bisa dibaca.</p>' : ''}
+        ${mediaHtml(lesson)}
+        ${body ? sectionHtml(ICO.doc, 'Bacaan', '', `<div class="blj-body">${body}</div>`) : ''}
+        ${pointsHtml(lesson)}
+        ${resourcesHtml(lesson)}
+        ${questionsHtml(lesson)}
+        ${actionHtml(lesson)}
+        ${finish}
+        ${pagerHtml()}
+        <div class="blj-actions">
+          ${done
+            ? '<button type="button" class="btn-ghost" data-blj-clear>Buka lagi</button>'
+            : `<button type="button" class="btn-ghost" data-blj-draft>Simpan jawaban</button>
+               ${skipped
+                 ? '<button type="button" class="btn-ghost" data-blj-clear>Kembalikan</button>'
+                 : '<button type="button" class="btn-ghost" data-blj-skip>Lewati</button>'}`}
+        </div>
+      </article>
+    </div>`;
   }
 
   function lessonRow(lesson) {
@@ -207,12 +344,9 @@
   function homeHtml() {
     const p = _course.progress || {};
     const next = p.next || null;
-    const done = p.done || 0;
-    const total = p.total || 0;
-    const pct = total ? Math.max(0, Math.min(100, p.pct || 0)) : 0;
     const existing = _course.track === 'existing';
     const plats = arr(_course.platforms);
-    const complete = total > 0 && done >= total && !next;
+    const complete = (p.total || 0) > 0 && (p.done || 0) >= p.total && !next;
     const chips = PLATFORMS.map((pl) => {
       const on = plats.includes(pl.id);
       return `<button type="button" class="blj-chip${on ? ' is-on' : ''}" data-blj-platform="${pl.id}" aria-pressed="${on ? 'true' : 'false'}">${esc(pl.label)}</button>`;
@@ -235,12 +369,7 @@
       <h2>Dari belum punya produk sampai listing-nya hidup</h2>
       <p class="blj-lead">Gratis. Semua materi bisa dibaca. Tandai selesai kalau langkahnya sudah kamu kerjakan. Kalau aktivitasmu di LarisID sudah membuktikan, langkah itu tertandai sendiri.</p>
     </header>
-    <section class="blj-progress" aria-label="Progres">
-      <div class="blj-bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100">
-        <span style="width:${pct}%"></span>
-      </div>
-      <p>${done} dari ${total} langkah${existing ? ' · yang dihitung untuk yang sudah punya toko' : ''}</p>
-    </section>
+    <section class="blj-progress" aria-label="Progres">${trailHtml(null)}</section>
     ${complete ? `<section class="blj-done-card">
       <h3>Kamu sampai di sini</h3>
       <p>Listing dan pantauan ada di langkah yang kamu selesaikan. Kalau mau dibimbing mentor, atau ikut kelompok berikutnya, catat minatmu di Edukasi.</p>
@@ -272,6 +401,11 @@
     if (_lessonSlug && !found) _lessonSlug = null;
     scrollTopIfNeeded(_lessonSlug || 'home');
     el.innerHTML = found ? lessonHtml(found) : homeHtml();
+    const box = el.querySelector('[data-blj-dots]');
+    const cur = box && box.querySelector('.is-current');
+    if (box && cur) {
+      box.scrollLeft = Math.max(0, cur.offsetLeft - (box.clientWidth - cur.offsetWidth) / 2);
+    }
   }
 
   async function load(opts) {
@@ -327,8 +461,10 @@
         _ctx.log('belajar_lesson_done', { ui: 'gpt', slug: found.lesson.slug });
       }
       if (status === 'done' && _ctx && _ctx.open) {
-        const next = data.progress && data.progress.next;
-        _ctx.open(next && next.slug ? next.slug : null);
+        const step = neighbor(1);
+        const fallback = data.progress && data.progress.next;
+        const slug = step ? step.lesson.slug : (fallback && fallback.slug ? fallback.slug : null);
+        _ctx.open(slug);
       } else {
         paint();
       }
@@ -363,7 +499,7 @@
   }
 
   function onClick(e) {
-    const el = e.target.closest('[data-blj-lesson],[data-blj-back],[data-blj-track],[data-blj-platform],[data-blj-done],[data-blj-skip],[data-blj-draft],[data-blj-clear],[data-blj-action],[data-blj-yt],[data-blj-retry]');
+    const el = e.target.closest('[data-blj-lesson],[data-blj-back],[data-blj-track],[data-blj-platform],[data-blj-done],[data-blj-skip],[data-blj-draft],[data-blj-clear],[data-blj-action],[data-blj-yt],[data-blj-retry],[data-blj-step]');
     if (!el || !rootEl() || !rootEl().contains(el)) return;
     if (el.hasAttribute('data-blj-retry')) {
       e.preventDefault();
@@ -378,6 +514,14 @@
       frame.className = 'blj-frame';
       frame.innerHTML = `<iframe title="Video" src="https://www.youtube-nocookie.com/embed/${id}?rel=0" allow="accelerometer; autoplay; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe>`;
       el.replaceWith(frame);
+      return;
+    }
+    if (el.hasAttribute('data-blj-step')) {
+      e.preventDefault();
+      if (el.disabled) return;
+      const dir = Number(el.getAttribute('data-blj-step'));
+      const next = neighbor(dir);
+      if (next && _ctx && _ctx.open) _ctx.open(next.lesson.slug);
       return;
     }
     if (el.hasAttribute('data-blj-lesson')) {

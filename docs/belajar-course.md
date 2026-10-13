@@ -38,6 +38,8 @@ A lesson the user marked `skipped` stays skipped. A `draft` is upgraded to
 
 There is no paywall and no lock that blocks reading the next lesson.
 
+The course home and each lesson show one dot per lesson. A filled dot is selesai, the ring is where you are, and a dim dot is outside the current count (another platform, or an early module when the track is “sudah punya toko”). Tap a dot, or Materi sebelumnya / berikutnya, to open that lesson. Tandai selesai saves the step and opens the next lesson in order. On the last lesson it opens the next counted lesson that is still open. Selesai · lanjut moves forward without clearing the check.
+
 ## Modules
 
 1. **Cari produk** — Tabel, Kartu, Trending Sekarang, one Deep Dive, three Favorit.

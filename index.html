@@ -2634,6 +2634,85 @@ body.view-belajar .panel-inner { max-width: 760px; }
   background: var(--accent, #B5202A);
 }
 .blj-progress p, .blj-done-card p { margin: 8px 0 0; font-size: .85rem; color: var(--ink-soft, #4b5563); }
+.blj-chrome {
+  position: sticky; top: -16px; z-index: 4;
+  background: #F3F3F3; padding: 16px 0 8px; margin: 0 0 8px;
+}
+.blj-top {
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 0 4px; margin: 0;
+}
+.blj-top .blj-back { width: auto; margin: 0; color: var(--ink, #111); font-weight: 750; gap: 2px; }
+.blj-pos { margin-left: auto; font-weight: 750; font-variant-numeric: tabular-nums; }
+.blj-navbtn {
+  width: 36px; height: 36px; border-radius: 12px; padding: 0;
+  border: 1px solid var(--line, #e7e5e4); background: #fff; color: var(--ink, #111);
+  display: grid; place-items: center; cursor: pointer;
+}
+.blj-navbtn:disabled { opacity: .35; cursor: default; }
+.blj-trail { margin: 0; }
+.blj-progress .blj-trail { margin: 2px 0 14px; }
+.blj-dots {
+  display: flex; align-items: center;
+  overflow-x: auto; padding: 8px 2px 10px;
+  scrollbar-width: none;
+}
+.blj-dots::-webkit-scrollbar { height: 0; }
+.blj-dot {
+  position: relative; z-index: 1; flex: none;
+  width: 22px; height: 22px; margin-right: 18px; padding: 0;
+  border-radius: 99px; border: 2px solid #d6d3d1; background: #fff; color: #fff;
+  display: grid; place-items: center; cursor: pointer;
+}
+.blj-dot:last-child { margin-right: 0; }
+.blj-dot::after {
+  content: ""; position: absolute; left: 100%; top: 50%;
+  width: 18px; height: 2px; background: #e7e5e4; transform: translateY(-50%);
+}
+.blj-dot:last-child::after { display: none; }
+.blj-dot.is-done { background: var(--accent, #B5202A); border-color: var(--accent, #B5202A); }
+.blj-dot.is-done::after { background: #E7B7B4; }
+.blj-dot.is-current { border-color: var(--accent, #B5202A); box-shadow: 0 0 0 4px rgba(181,32,42,.16); }
+.blj-dot.is-skip { background: #f5f5f4; }
+.blj-dot.is-quiet { opacity: .38; }
+.blj-dot svg { display: block; }
+.blj-trail-meta { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.blj-trail-meta > div { flex: 1; min-width: 0; }
+.blj-trail-meta strong { display: block; font-size: .95rem; }
+.blj-trail-meta span { display: block; margin-top: 2px; color: var(--ink-soft, #4b5563); font-size: .82rem; }
+.blj-trail-meta b { flex: none; color: var(--accent, #B5202A); font-size: 1.15rem; font-weight: 800; line-height: 1.2; }
+.blj-player .blj-lesson { background: transparent; border: 0; padding: 0; margin: 8px 0 0; }
+.blj-kind { margin: -2px 0 12px; color: var(--ink-soft, #4b5563); font-size: .85rem; }
+.blj-sec {
+  background: #fff; border: 1px solid var(--line, #e7e5e4);
+  border-radius: 16px; padding: 14px 16px; margin: 10px 0;
+}
+.blj-sec-h { display: flex; align-items: center; gap: 12px; }
+.blj-sec-ic {
+  width: 36px; height: 36px; border-radius: 12px; flex: none;
+  display: grid; place-items: center;
+  background: #F9EAE4; color: var(--accent, #B5202A);
+}
+.blj-sec-h strong { display: block; font-size: .98rem; }
+.blj-sec-h span { display: block; color: var(--ink-soft, #4b5563); font-size: .8rem; }
+.blj-sec-body { margin-top: 12px; }
+.blj-sec-body > :last-child { margin-bottom: 0; }
+.blj-sec .btn-primary { margin-top: 8px; }
+.blj-finish {
+  display: flex; width: 100%; justify-content: center; align-items: center;
+  margin: 16px 0 8px; padding: 12px 18px; border: 0; border-radius: 999px;
+  background: var(--accent, #B5202A); color: #fff;
+  font: inherit; font-weight: 750; cursor: pointer;
+}
+.blj-finish.is-done { background: #E8F5EC; color: #155229; }
+p.blj-finish.is-done { cursor: default; }
+.blj-pager { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0 4px; }
+.blj-pager-btn {
+  border: 1px solid var(--line, #e7e5e4); background: #fff; color: var(--ink, #111);
+  border-radius: 999px; padding: 10px 12px; font: inherit; font-weight: 650; cursor: pointer;
+}
+.blj-pager-btn.is-next { background: var(--ink, #111); color: #fff; border-color: var(--ink, #111); }
+.blj-pager-btn:disabled { opacity: .35; cursor: default; }
 .blj-next-card, .blj-done-card, .blj-mod, .blj-lesson, .blj-block {
   background: #fff;
   border: 1px solid var(--line, #e7e5e4);
@@ -11953,7 +12032,7 @@ body.view-chat .sfb-card {
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260915a" defer></script>
-<script src="/js/gpt-belajar.js?v=20261013b" defer></script>
+<script src="/js/gpt-belajar.js?v=20261013e" defer></script>
 <script src="/js/gpt-app.js?v=20261013b" defer></script>
 <style>
 /* LarisExpor chrome hidden for now. Restore with scripts/lib/expor-tab.mjs. */
