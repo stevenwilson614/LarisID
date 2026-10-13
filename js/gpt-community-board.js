@@ -326,7 +326,7 @@
             </span>`
           : '';
         const msg = (!isOwn(c.author_id) && c.author_id)
-          ? `<span class="msb-dm-wrap"><button type="button" class="msb-dm" data-action="message-user" data-user-id="${_opts.esc(c.author_id)}" data-user-name="${_opts.esc(authorDisplayName(c))}">Kirim Pesan</button><span class="msb-dm-hint">Mau lanjut ngobrol privat?</span></span>`
+          ? `<button type="button" class="msb-dm" data-action="message-user" data-user-id="${_opts.esc(c.author_id)}" data-user-name="${_opts.esc(authorDisplayName(c))}">Kirim Pesan</button>`
           : '';
         const liked = !!c.liked_by_me;
         const likeBtn = `<button type="button" class="msb-comment-like${liked ? ' is-liked' : ''}" data-action="like-comment" data-post-id="${postId}" data-comment-id="${c.id}" aria-label="Suka balasan">
@@ -1092,12 +1092,10 @@
       .msb-avatar { border-radius: 50%; object-fit: cover; flex-shrink: 0; width: 18px; height: 18px; background: #E5E7EB; }
       .msb-avatar--letter { display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: #374151; }
       .msb-dot { color: #D1D5DB; }
-      .msb-dm-wrap { display: inline-flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
       .msb-dm {
         border: none; background: none; padding: 0; cursor: pointer;
         font-size: .75rem; font-weight: 700; color: var(--msb-red);
       }
-      .msb-dm-hint { font-size: .72rem; color: var(--msb-muted); font-weight: 500; }
       .msb-body { margin: 0; font-size: .88rem; line-height: 1.5; color: #4B5563; white-space: pre-wrap; }
       .msb-body-toggle { display: inline-block; margin: 4px 0 0; padding: 0; background: none; border: none; cursor: pointer; font-size: .82rem; font-weight: 700; color: var(--msb-red); }
       .msb-body-toggle:hover { text-decoration: underline; }
