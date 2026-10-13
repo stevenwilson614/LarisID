@@ -26242,8 +26242,16 @@ async function loadAdminEdukasi() {
     const interested = Number(data.interested || 0);
     const rows = Array.isArray(data.rows) ? data.rows : [];
     const rate = visitors > 0 ? Math.round((interested / visitors) * 100) : null;
+    const kotaKeys = new Set();
+    for (const r of rows) {
+      if (!r?.interested) continue;
+      const k = String(r.kota || '').trim().toLowerCase();
+      if (k) kotaKeys.add(k);
+    }
+    const kotaN = kotaKeys.size;
     if ($('adm-edu-visitors')) $('adm-edu-visitors').textContent = admFmtNum(visitors);
     if ($('adm-edu-interested')) $('adm-edu-interested').textContent = admFmtNum(interested);
+    if ($('adm-edu-kota')) $('adm-edu-kota').textContent = admFmtNum(kotaN);
     if ($('adm-kpi-edu-visitors')) $('adm-kpi-edu-visitors').textContent = admFmtNum(visitors);
     if ($('adm-kpi-edu-interested')) $('adm-kpi-edu-interested').textContent = admFmtNum(interested);
     if ($('adm-kpi-edu-visitors-sub')) {
@@ -26266,9 +26274,14 @@ async function loadAdminEdukasi() {
         ? 'dari yang buka halaman'
         : `${rate}% dari yang buka halaman`;
     }
+    if ($('adm-edu-kota-sub')) {
+      $('adm-edu-kota-sub').textContent = interested
+        ? 'kota unik yang tertarik'
+        : 'belum ada yang tertarik';
+    }
     if (sum) {
       sum.textContent = visitors || interested
-        ? `${admFmtNum(visitors)} buka halaman · ${admFmtNum(interested)} tertarik`
+        ? `${admFmtNum(visitors)} buka halaman · ${admFmtNum(interested)} tertarik · ${admFmtNum(kotaN)} kota`
         : 'Belum ada yang membuka halaman Edukasi atau mendaftar minat.';
     }
     if (!rows.length) {

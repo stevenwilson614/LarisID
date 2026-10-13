@@ -4643,9 +4643,12 @@ body.view-edukasi .panel { background: #F7F7F8; }
 .adm-edu-card { padding: 16px 18px; margin-bottom: 14px; }
 .adm-edu-kpis {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin: 0 0 16px;
+}
+@media (max-width: 640px) {
+  .adm-edu-kpis { grid-template-columns: 1fr; }
 }
 .adm-edu-kpi {
   background: #F9FAFB;
@@ -10881,6 +10884,11 @@ body.view-chat .sfb-card {
                   <span class="adm-edu-kpi-lbl">Tertarik</span>
                   <strong class="adm-edu-kpi-val" id="adm-edu-interested">—</strong>
                   <span class="adm-edu-kpi-sub" id="adm-edu-rate-sub">dari yang buka halaman</span>
+                </div>
+                <div class="adm-edu-kpi">
+                  <span class="adm-edu-kpi-lbl">Kota</span>
+                  <strong class="adm-edu-kpi-val" id="adm-edu-kota">—</strong>
+                  <span class="adm-edu-kpi-sub" id="adm-edu-kota-sub">kota unik yang tertarik</span>
                 </div>
               </div>
               <div class="admin-table-wrap">
