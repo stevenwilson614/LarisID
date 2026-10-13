@@ -1824,6 +1824,7 @@ const state = {
   pendingKomunitas: null, // { tab, title, topic, postId } behind login / email deep link
   pendingProfilPreview: null, // 'filled' | 'empty' from ?profil=isi|kosong — local preview only
   pendingEdukasi: false, // Edukasi panel opened behind the login gate
+  pendingBelajar: false, // Belajar course opened behind the login gate
   everOpenedDeepdive: false,
   lastDeepDiveKeyword: '',
   lastDeepDiveCategory: '',
@@ -1893,6 +1894,7 @@ function loadLocalState() {
     if (raw.pendingTrackKeyword) state.pendingTrackKeyword = raw.pendingTrackKeyword;
     if (raw.pendingKomunitas) state.pendingKomunitas = raw.pendingKomunitas;
     if (raw.pendingEdukasi) state.pendingEdukasi = !!raw.pendingEdukasi;
+    if (raw.pendingBelajar) state.pendingBelajar = !!raw.pendingBelajar;
     if (raw.everOpenedDeepdive != null) state.everOpenedDeepdive = !!raw.everOpenedDeepdive;
     if (raw.lastDeepDiveKeyword) state.lastDeepDiveKeyword = String(raw.lastDeepDiveKeyword);
     if (raw.lastDeepDiveCategory) state.lastDeepDiveCategory = String(raw.lastDeepDiveCategory);
@@ -1914,6 +1916,7 @@ function saveLocalState() {
       pendingTrackKeyword: state.pendingTrackKeyword || null,
       pendingKomunitas: state.pendingKomunitas || null,
       pendingEdukasi: !!state.pendingEdukasi,
+      pendingBelajar: !!state.pendingBelajar,
       everOpenedDeepdive: state.everOpenedDeepdive || false,
       lastDeepDiveKeyword: state.lastDeepDiveKeyword || '',
       lastDeepDiveCategory: state.lastDeepDiveCategory || '',
@@ -2950,6 +2953,49 @@ function openEdukasiView() {
     return;
   }
   setView('edukasi');
+}
+
+function belajarCtx() {
+  return {
+    supabase: _supabase,
+    user: currentUser,
+    toast: (msg) => { try { showToast(msg); } catch (_) {} },
+    log: (event, meta) => { void logUserEvent(event, meta || {}); },
+    open(slug) {
+      setView('belajar', {
+        forceHistory: true,
+        lesson: slug || null,
+        hist: slug ? { lesson: slug } : {},
+      });
+    },
+    action(view) {
+      void logUserEvent('belajar_action_click', { ui: 'gpt', view: view || '' });
+      if (view === 'directory') { void openDirectory(); return; }
+      if (view === 'kalkulator') { openKalkulatorPage({ via: 'belajar' }); return; }
+      if (view === 'tracker') { void openTrackerView(); return; }
+      if (view === 'community') { openCommunityBoard({ tab: 'diskusi' }); return; }
+      if (view === 'profil' && currentUser) { openUserProfile(currentUser.id); return; }
+      if (view === 'edukasi') { openEdukasiView(); return; }
+      if (view === 'chat') {
+        setView('chat');
+        const input = $('composer-input');
+        if (input) {
+          if (!String(input.value || '').trim()) input.value = 'Bandingkan ';
+          input.focus();
+        }
+      }
+    },
+  };
+}
+
+function openBelajarView() {
+  if (!currentUser) {
+    state.pendingBelajar = true;
+    saveLocalState();
+    openAuthModal('login', 'gpt_gate_belajar');
+    return;
+  }
+  setView('belajar');
 }
 
 function openEduInterestPopup(ctx) {
@@ -4635,7 +4681,7 @@ let _historyPrimed = false;
 function setView(name, opts = {}) {
   const leaving = state.view;
   state.view = name;
-  ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'edukasi', 'cohort', 'kalkulator', 'profil'].forEach(v => {
+  ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'edukasi', 'belajar', 'cohort', 'kalkulator', 'profil'].forEach(v => {
     const el = $(`view-${v}`);
     if (el) el.classList.toggle('active', v === name);
     document.body.classList.toggle(`view-${v}`, v === name);
@@ -4655,8 +4701,8 @@ function setView(name, opts = {}) {
   // .composer-dock display rule) — everywhere else now hides the bar
   // entirely rather than just clearing its chips, so this list stops
   // mattering for those views, but chips are still irrelevant on them either way.
-  if (name === 'home' || name === 'landing' || name === 'directory' || name === 'harga' || name === 'admin' || name === 'tracker' || name === 'community' || name === 'edukasi' || name === 'cohort' || name === 'kalkulator' || name === 'profil') setComposerChips(null);
-  ['btn-ask-laris', 'btn-produk', 'btn-harga', 'btn-faq', 'btn-tentang', 'btn-admin', 'btn-tracker', 'btn-community', 'btn-edukasi', 'btn-cohort', 'btn-kalkulator-alat'].forEach(id => {
+  if (name === 'home' || name === 'landing' || name === 'directory' || name === 'harga' || name === 'admin' || name === 'tracker' || name === 'community' || name === 'edukasi' || name === 'belajar' || name === 'cohort' || name === 'kalkulator' || name === 'profil') setComposerChips(null);
+  ['btn-ask-laris', 'btn-produk', 'btn-harga', 'btn-faq', 'btn-tentang', 'btn-admin', 'btn-tracker', 'btn-community', 'btn-edukasi', 'btn-belajar', 'btn-cohort', 'btn-kalkulator-alat'].forEach(id => {
     const el = $(id);
     if (!el) return;
     el.classList.toggle('active',
@@ -4670,6 +4716,7 @@ function setView(name, opts = {}) {
       (id === 'btn-tracker' && name === 'tracker') ||
       (id === 'btn-community' && name === 'community') ||
       (id === 'btn-edukasi' && name === 'edukasi') ||
+      (id === 'btn-belajar' && name === 'belajar') ||
       (id === 'btn-cohort' && name === 'cohort') ||
       (id === 'btn-kalkulator-alat' && name === 'kalkulator'));
   });
@@ -4697,6 +4744,12 @@ function setView(name, opts = {}) {
     void logUserEvent('view_open', { ui: 'gpt', view: name });
   }
   if (name === 'edukasi') void paintEduPanel();
+  if (name === 'belajar' && window.LarisBelajar) {
+    void window.LarisBelajar.render(belajarCtx(), {
+      lesson: opts.lesson || null,
+      entry: leaving !== 'belajar',
+    });
+  }
   if ((name !== leaving || !_historyPrimed || opts.forceHistory) && !_navigatingFromHistory) {
     const histState = { view: name, ...(opts.hist || {}) };
     // Deep dive needs the product back, not just the view name — carry enough
@@ -4719,7 +4772,7 @@ function setView(name, opts = {}) {
   }
 }
 
-const HISTORY_VIEWS = ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'edukasi', 'cohort', 'kalkulator', 'profil'];
+const HISTORY_VIEWS = ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'edukasi', 'belajar', 'cohort', 'kalkulator', 'profil'];
 // Old sessions may still have { view: 'tentang' } in history — map to landing.
 const HISTORY_VIEW_ALIASES = { tentang: 'landing' };
 
@@ -4751,7 +4804,7 @@ window.addEventListener('popstate', (e) => {
     } else if (view === 'landing') {
       renderLanding();
     } else {
-      setView(view);
+      setView(view, view === 'belajar' ? { lesson: st.lesson || null } : {});
       if (view === 'home') updateHomeFinderVisibility();
       if (view === 'chat' && state.activeChatId && activeChat()) renderChatThread();
       if (view === 'kalkulator') openKalkulatorPage({ via: 'restore' });
@@ -5260,6 +5313,7 @@ function renderAuthModal() {
       gpt_gate_directory: 'Login untuk lihat lebih banyak produk & filter kategori.',
       gpt_gate_history: 'Login untuk cari & simpan riwayat chat.',
       gpt_gate_track: 'Daftar gratis, lalu kami kabari kalau produk ini berubah.',
+      gpt_gate_belajar: 'Login untuk lanjut belajar, dari cari produk sampai pantau kompetitor.',
     };
     sub.textContent = reset
       ? 'Masukkan email kamu. Kami kirim link untuk mengatur password baru.'
@@ -5780,6 +5834,10 @@ async function _authOnSignIn(session, opts) {
     state.pendingEdukasi = false;
     saveLocalState();
     openEdukasiView();
+  } else if (state.pendingBelajar) {
+    state.pendingBelajar = false;
+    saveLocalState();
+    openBelajarView();
   }
 
   // A one-tap "Kabari Kalau Berubah" that hit the signup gate finishes itself
@@ -6549,6 +6607,7 @@ async function syncHomeRetentionCards() {
   if (host) host.hidden = shouldShowLandingFinder();
   await syncHomeFirstDdCard();
   await syncHomeLangkahCard();
+  if (window.LarisBelajar) await window.LarisBelajar.syncHome(belajarCtx());
   await syncHomeKomunitasCard();
 }
 
@@ -26207,6 +26266,7 @@ function openAdminView() {
   void loadAdminFeedback();
   void loadAdminKeywordRequests();
   void loadAdminEdukasi();
+  if (window.LarisBelajar) void window.LarisBelajar.loadAdmin(belajarCtx());
   gptMountWinback();
   try { if (window.LarisCohort) void window.LarisCohort.renderOps(); } catch (_) {}
   void fillAdminCohortPreview();
@@ -26687,6 +26747,7 @@ function wireUi() {
   $('btn-cohort')?.addEventListener('click', () => { openCohortView(); });
   $('btn-community')?.addEventListener('click', () => { openCommunityBoard(); });
   $('btn-edukasi')?.addEventListener('click', () => { openEdukasiView(); });
+  $('btn-belajar')?.addEventListener('click', () => { openBelajarView(); });
   bindEduInterestUi();
   $('btn-harga')?.addEventListener('click', () => setView('harga'));
   $('btn-faq')?.addEventListener('click', () => setView('faq'));
@@ -26724,6 +26785,10 @@ function wireUi() {
   $('adm-komunitas-refresh')?.addEventListener('click', () => { void loadAdminKomunitasOps(); });
   $('adm-edu-refresh')?.addEventListener('click', () => { void loadAdminEdukasi(); });
   $('adm-edu-open')?.addEventListener('click', () => { openEdukasiView(); });
+  $('adm-belajar-refresh')?.addEventListener('click', () => {
+    if (window.LarisBelajar) void window.LarisBelajar.loadAdmin(belajarCtx());
+  });
+  $('adm-belajar-open')?.addEventListener('click', () => { openBelajarView(); });
   $('adm-feedback-refresh')?.addEventListener('click', () => { void loadAdminFeedback(); });
   $('adm-kwreq-refresh')?.addEventListener('click', () => { void loadAdminKeywordRequests(); });
   $('adm-komunitas-digest')?.addEventListener('click', () => { void sendAdminKomunitasDigest(); });
