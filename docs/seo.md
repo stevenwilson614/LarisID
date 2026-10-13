@@ -255,8 +255,8 @@ These move the needle most for AI recommendations but can't be done from the rep
    - **Shipped:** LinkedIn company, Product Hunt, Chrome Web Store (+ founder LinkedIn on `Person.sameAs`).
    - **Still missing (create then append):** Crunchbase, X/Instagram/TikTok brand handles (only if
      they are actually LarisID — do not claim squatted handles), SaaSHub.
-2. **Wikidata item** for LarisID — none exists yet (search returns empty). Create when ready; then
-   add `https://www.wikidata.org/wiki/Q…` to `Organization.sameAs`.
+2. **Wikidata item** — [Q141722346](https://www.wikidata.org/wiki/Q141722346) created 13 Oct 2026
+   (label + description live; add P31/P856/etc. when edit throttle clears). Already in `Organization.sameAs`.
 3. **List on G2 / Capterra / SaaSHub** — these are AI's go-to sources for "best [tool]" answers.
    No LarisID listings found as of 13 Oct 2026.
 4. **Digital PR / data study** — publish "Laporan Tren Produk Shopee 2026" from scraper data; it's
