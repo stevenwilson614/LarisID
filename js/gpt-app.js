@@ -26242,16 +26242,34 @@ async function loadAdminEdukasi() {
     const interested = Number(data.interested || 0);
     const rows = Array.isArray(data.rows) ? data.rows : [];
     const rate = visitors > 0 ? Math.round((interested / visitors) * 100) : null;
-    const kotaKeys = new Set();
+    const kotaMap = new Map(); // lowerKey -> { label, n }
+    let noKota = 0;
     for (const r of rows) {
       if (!r?.interested) continue;
-      const k = String(r.kota || '').trim().toLowerCase();
-      if (k) kotaKeys.add(k);
+      const label = String(r.kota || '').trim();
+      if (!label) { noKota += 1; continue; }
+      const key = label.toLowerCase();
+      const cur = kotaMap.get(key);
+      if (cur) cur.n += 1;
+      else kotaMap.set(key, { label, n: 1 });
     }
-    const kotaN = kotaKeys.size;
+    const kotaRows = [...kotaMap.values()].sort((a, b) => b.n - a.n || a.label.localeCompare(b.label, 'id'));
+    const kotaList = $('adm-edu-kota-list');
+    if (kotaList) {
+      if (!kotaRows.length && !noKota) {
+        kotaList.innerHTML = '<li class="adm-edu-kota-chip-empty">Belum ada yang tertarik.</li>';
+      } else {
+        const chips = kotaRows.map((c) =>
+          `<li class="adm-edu-kota-chip">${esc(c.label)} <strong>${admFmtNum(c.n)}</strong></li>`
+        );
+        if (noKota) {
+          chips.push(`<li class="adm-edu-kota-chip">Tanpa kota <strong>${admFmtNum(noKota)}</strong></li>`);
+        }
+        kotaList.innerHTML = chips.join('');
+      }
+    }
     if ($('adm-edu-visitors')) $('adm-edu-visitors').textContent = admFmtNum(visitors);
     if ($('adm-edu-interested')) $('adm-edu-interested').textContent = admFmtNum(interested);
-    if ($('adm-edu-kota')) $('adm-edu-kota').textContent = admFmtNum(kotaN);
     if ($('adm-kpi-edu-visitors')) $('adm-kpi-edu-visitors').textContent = admFmtNum(visitors);
     if ($('adm-kpi-edu-interested')) $('adm-kpi-edu-interested').textContent = admFmtNum(interested);
     if ($('adm-kpi-edu-visitors-sub')) {
@@ -26274,14 +26292,9 @@ async function loadAdminEdukasi() {
         ? 'dari yang buka halaman'
         : `${rate}% dari yang buka halaman`;
     }
-    if ($('adm-edu-kota-sub')) {
-      $('adm-edu-kota-sub').textContent = interested
-        ? 'kota unik yang tertarik'
-        : 'belum ada yang tertarik';
-    }
     if (sum) {
       sum.textContent = visitors || interested
-        ? `${admFmtNum(visitors)} buka halaman · ${admFmtNum(interested)} tertarik · ${admFmtNum(kotaN)} kota`
+        ? `${admFmtNum(visitors)} buka halaman · ${admFmtNum(interested)} tertarik`
         : 'Belum ada yang membuka halaman Edukasi atau mendaftar minat.';
     }
     if (!rows.length) {

@@ -4643,12 +4643,52 @@ body.view-edukasi .panel { background: #F7F7F8; }
 .adm-edu-card { padding: 16px 18px; margin-bottom: 14px; }
 .adm-edu-kpis {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   margin: 0 0 16px;
 }
-@media (max-width: 640px) {
-  .adm-edu-kpis { grid-template-columns: 1fr; }
+.adm-edu-kota-break {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  background: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: 14px;
+}
+.adm-edu-kota-break-lbl {
+  display: block;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: #6B7280;
+  margin-bottom: 8px;
+}
+.adm-edu-kota-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.adm-edu-kota-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #E5E7EB;
+  font-size: .85rem;
+  color: #111;
+}
+.adm-edu-kota-chip strong {
+  font-weight: 800;
+  letter-spacing: -.02em;
+}
+.adm-edu-kota-chip-empty {
+  color: #6B7280;
+  font-size: .85rem;
 }
 .adm-edu-kpi {
   background: #F9FAFB;
@@ -10885,11 +10925,12 @@ body.view-chat .sfb-card {
                   <strong class="adm-edu-kpi-val" id="adm-edu-interested">—</strong>
                   <span class="adm-edu-kpi-sub" id="adm-edu-rate-sub">dari yang buka halaman</span>
                 </div>
-                <div class="adm-edu-kpi">
-                  <span class="adm-edu-kpi-lbl">Kota</span>
-                  <strong class="adm-edu-kpi-val" id="adm-edu-kota">—</strong>
-                  <span class="adm-edu-kpi-sub" id="adm-edu-kota-sub">kota unik yang tertarik</span>
-                </div>
+              </div>
+              <div class="adm-edu-kota-break" id="adm-edu-kota-break">
+                <span class="adm-edu-kota-break-lbl">Tertarik per kota</span>
+                <ul class="adm-edu-kota-list" id="adm-edu-kota-list">
+                  <li class="adm-edu-kota-chip-empty">Memuat…</li>
+                </ul>
               </div>
               <div class="admin-table-wrap">
                 <table class="admin-table" id="adm-edu-table">
