@@ -26282,8 +26282,12 @@ async function loadAdminEdukasi() {
         ? '<span class="adm-edu-yes">Ya</span>'
         : '<span class="adm-edu-no">Belum</span>';
       const when = admEduFmtWhen(r.last_seen || r.interested_at || r.first_seen);
+      const kota = String(r.kota || '').trim();
+      const nameCell = kota
+        ? `${esc(r.display_name || '—')} <span class="adm-edu-kota">${esc(kota)}</span>`
+        : esc(r.display_name || '—');
       return `<tr>
-        <td>${esc(r.display_name || '—')}</td>
+        <td>${nameCell}</td>
         <td>${esc(contact)}</td>
         <td>${esc(viewsLbl)}</td>
         <td>${yes}</td>
