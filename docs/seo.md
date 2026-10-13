@@ -251,14 +251,19 @@ Gemini, Google AI Overviews):
 
 These move the needle most for AI recommendations but can't be done from the repo:
 
-1. **Create real entity profiles, then add them to `Organization.sameAs`** in `index.html`
-   (currently omitted to avoid inventing URLs): LinkedIn company page, Crunchbase, Product Hunt
-   profile, X/Instagram/TikTok. Knowledge-graph presence is what makes LLMs "know" the brand.
-2. **Wikidata item** for LarisID — feeds the knowledge graphs LLMs train on.
+1. **Entity profiles / `Organization.sameAs`** in `index.html` (only real URLs — never invent):
+   - **Shipped:** LinkedIn company, Product Hunt, Chrome Web Store (+ founder LinkedIn on `Person.sameAs`).
+   - **Still missing (create then append):** Crunchbase, X/Instagram/TikTok brand handles (only if
+     they are actually LarisID — do not claim squatted handles), SaaSHub.
+2. **Wikidata item** for LarisID — none exists yet (search returns empty). Create when ready; then
+   add `https://www.wikidata.org/wiki/Q…` to `Organization.sameAs`.
 3. **List on G2 / Capterra / SaaSHub** — these are AI's go-to sources for "best [tool]" answers.
+   No LarisID listings found as of 13 Oct 2026.
 4. **Digital PR / data study** — publish "Laporan Tren Produk Shopee 2026" from scraper data; it's
    the most back-linkable, most-cited asset type and nobody else has the data.
-5. **Submit sitemap** in Google Search Console + Bing Webmaster after deploy.
+5. **Sitemap ingest:** Google deprecated `/ping?sitemap=`; use Search Console UI. Bing/IndexNow:
+   key file live + full sitemap submitted via IndexNow (2,384 URLs, HTTP 200 on 13 Oct 2026).
+   Re-check GSC → Sitemaps for fetch/index counts after each large `/riset/` batch.
 
 ## Core Web Vitals plan
 
