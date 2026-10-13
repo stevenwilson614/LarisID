@@ -36,6 +36,7 @@
   var _peerChecks = Object.create(null); // `${itemIdx}:${shopId}` → true
   var _analyzeFocus = -1;
   var _trackedIds = []; // item_id strings from seller center / wizard
+  var _savedProducts = []; // slim rows so a signup round-trip can still write them
   var _alerts = { email: false, wa: false, wa_number: '', cadence: 'daily' };
   var _wizardDone = false;
   var _shopLogo = '';
@@ -166,6 +167,7 @@
         ts: Date.now(),
         wizard_done: !!_wizardDone,
         tracked_item_ids: (_trackedIds || []).slice(0, TRACK_MAX),
+        tracked_products: (_savedProducts || []).slice(0, TRACK_MAX),
         snap_id: _claimSnapId || '',
         scrape_job_id: _scrapeJobId || '',
         pending_url: _pendingUrl || '',
@@ -191,6 +193,11 @@
     _trackedIds = Array.isArray(raw.tracked_item_ids)
       ? raw.tracked_item_ids.map(String).slice(0, TRACK_MAX)
       : _trackedIds;
+    if (Array.isArray(raw.tracked_products)) {
+      _savedProducts = raw.tracked_products.filter(function (p) {
+        return p && p.item_id != null && p.shop_id != null;
+      }).slice(0, TRACK_MAX);
+    }
     if (raw.snap_id && /^[0-9a-f-]{36}$/i.test(String(raw.snap_id))) {
       _claimSnapId = String(raw.snap_id);
     }
@@ -242,10 +249,6 @@
     var intentVal = intent();
     var o = host && host.onboarding && host.onboarding();
     var fromOb = !!(o && (o.completedAnon || o.experience === 'existing' || o.experience === 'first_time'));
-    var ret = !!(u || wiz || shop || intentVal || fromOb);
-    // #region agent log
-    fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'28520f'},body:JSON.stringify({sessionId:'28520f',runId:'new-user',hypothesisId:'A',location:'gpt-alat-preview.js:isReturningVisitor',message:'returning check',data:{ret:ret,hasUser:!!u,wiz:wiz,hasShop:!!(shop&&shop.shop_id),intent:intentVal||null,obExp:o&&o.experience||null,obDone:!!(o&&o.completedAnon),obStep:o&&o.step||null},timestamp:Date.now()})}).catch(function(){});
-    // #endregion
     if (u) return true;
     if (wiz || shop) return true;
     if (intentVal) return true;
@@ -332,18 +335,120 @@
     openAudit({ fresh: true });
   }
 
+  function shopSourceUrl(shop) {
+    var url = String(_pendingUrl || '').trim();
+    if (!url && shop && Number(shop.shop_id) > 0) {
+      url = 'https://shopee.co.id/shop/' + shop.shop_id;
+    }
+    return url.slice(0, 600);
+  }
+
+  function snapUuid() {
+    var id = String(_claimSnapId || '');
+    return /^[0-9a-f-]{36}$/i.test(id) ? id : null;
+  }
+
+  function slimProduct(p, shop) {
+    if (!p || p.item_id == null) return null;
+    var sid = Number((shop && shop.shop_id) || p.shop_id);
+    if (!(sid > 0)) return null;
+    return {
+      item_id: Number(p.item_id),
+      shop_id: sid,
+      product_name: String(p.product_name || '').slice(0, 500),
+      keyword: String(p.keyword || '').slice(0, 120),
+      image_url: String(p.image_url || '').slice(0, 400),
+      price: p.price != null && p.price !== '' ? Number(p.price) : null,
+      category: String(p.category || '').slice(0, 80),
+      store_name: String((shop && shop.store_name) || p.store_name || '').slice(0, 200),
+      total_sold: p.total_sold != null && p.total_sold !== '' ? Number(p.total_sold) : null,
+    };
+  }
+
+  function writeError(res) {
+    var err = res && res.error;
+    if (!err) return null;
+    return String(err.message || err.details || err.code || 'write failed').slice(0, 240);
+  }
+
   async function saveStoreProfile(shop) {
     var client = sb();
     var u = user();
-    if (!client || !u || !shop || !(Number(shop.shop_id) > 0)) return;
-    try {
-      await client.from('user_store_profiles').upsert({
-        user_id: u.id,
-        shopee_store_name: shop.store_name || '',
-        shopee_shop_id: shop.shop_id,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id' });
-    } catch (_) {}
+    if (!client || !u || !shop || !(Number(shop.shop_id) > 0)) {
+      return { storeError: 'no-session-or-shop', profileError: 'no-session-or-shop' };
+    }
+    var url = shopSourceUrl(shop);
+    var name = shop.store_name || '';
+    var now = new Date().toISOString();
+    var storeRes = await client.from('user_store_profiles').upsert({
+      user_id: u.id,
+      shopee_store_name: name,
+      shopee_shop_id: shop.shop_id,
+      source_url: url || null,
+      snap_id: snapUuid(),
+      updated_at: now,
+    }, { onConflict: 'user_id' });
+    var profileRes = await client.from('user_profiles').upsert({
+      user_id: u.id,
+      shopee_store_name: name,
+      shopee_store_url: url || null,
+      seller_status: 'existing',
+      updated_at: now,
+    }, { onConflict: 'user_id' });
+    return { storeError: writeError(storeRes), profileError: writeError(profileRes) };
+  }
+
+  async function flushSelectedProducts(shop) {
+    if (!user() || !host || !host.addTrackedProduct) return 0;
+    if (!_savedProducts.length) syncTrackedFromSelection();
+    var rows = _savedProducts.slice(0, TRACK_MAX);
+    var n = 0;
+    for (var i = 0; i < rows.length; i++) {
+      var ok = await host.addTrackedProduct(rows[i], { ensure: true, quiet: true });
+      if (ok) n++;
+    }
+    return n;
+  }
+
+  async function flushAccount() {
+    rememberedShop();
+    var shop = _shop;
+    var u = user();
+    if (!u || !shop || !(Number(shop.shop_id) > 0)) return { ok: false, reason: 'no-session-or-shop' };
+    var saved = await saveStoreProfile(shop);
+    var tracked = await flushSelectedProducts(shop);
+    var client = sb();
+    var profile = null;
+    var store = null;
+    var products = null;
+    var readError = null;
+    if (client) {
+      var p = await client.from('user_profiles')
+        .select('shopee_store_url,shopee_store_name,seller_status')
+        .eq('user_id', u.id)
+        .maybeSingle();
+      var s = await client.from('user_store_profiles')
+        .select('shopee_shop_id,shopee_store_name,source_url,snap_id')
+        .eq('user_id', u.id)
+        .maybeSingle();
+      var t = await client.from('user_tracked_products')
+        .select('item_id,shop_id,product_name')
+        .eq('user_id', u.id);
+      profile = p && p.data || null;
+      store = s && s.data || null;
+      products = t && t.data || null;
+      readError = writeError(p) || writeError(s) || writeError(t);
+    }
+    return {
+      ok: !saved.storeError && !saved.profileError && !readError,
+      storeError: saved.storeError,
+      profileError: saved.profileError,
+      readError: readError,
+      tracked: tracked,
+      profile: profile,
+      store: store,
+      products: products,
+    };
   }
 
   async function loadProfileFromDb() {
@@ -471,9 +576,6 @@
         p_store_name: (shop && shop.store_name) || '',
       });
       var d = res && res.data;
-      // #region agent log
-      fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'28520f'},body:JSON.stringify({sessionId:'28520f',runId:'new-user',hypothesisId:'E',location:'gpt-alat-preview.js:requestShopScrape',message:'scrape enqueue',data:{ok:!!(d&&d.ok),jobId:d&&d.job_id||null,reason:d&&d.reason||null,err:res&&res.error&&res.error.message||null,url:(url||'').slice(0,80)},timestamp:Date.now()})}).catch(function(){});
-      // #endregion
       if (d && d.ok && d.job_id) return d;
       if (d && d.reason === 'rate_limited') return d;
     } catch (_) {}
@@ -1239,9 +1341,6 @@
     // Guests: keep selection locally and continue the wizard. Server Favorit /
     // tracked-store RPCs open auth mid-flow — signup CTA is only after Selesai.
     if (!user()) {
-      // #region agent log
-      fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'28520f'},body:JSON.stringify({sessionId:'28520f',runId:'post-fix',hypothesisId:'F',location:'gpt-alat-preview.js:confirmTracks',message:'guest skip server track',data:{selected:_trackSelected.length,goNext:!!goNext},timestamp:Date.now()})}).catch(function(){});
-      // #endregion
       syncTrackedFromSelection();
       log('alat_tracks_confirmed', { products: 0, stores: 0, guest_local: true });
       if (goNext) renderAnalyzeStep(shop);
@@ -1289,9 +1388,14 @@
   }
 
   function syncTrackedFromSelection() {
+    var shop = _shop || {};
+    var rows = [];
     _trackedIds = _trackSelected.map(function (i) {
+      var slim = slimProduct(_listings[i], shop);
+      if (slim) rows.push(slim);
       return _listings[i] && String(_listings[i].item_id);
     }).filter(Boolean).slice(0, TRACK_MAX);
+    if (rows.length) _savedProducts = rows.slice(0, TRACK_MAX);
     persistProfile();
   }
 
@@ -1577,7 +1681,10 @@
     syncTrackedFromSelection();
     exitFocus();
     openSellerCenter();
-    if (!user()) {
+    if (user()) {
+      void flushAccount();
+    } else {
+      if (host && host.markPendingAlat) host.markPendingAlat('existing');
       showSignupCta();
     }
   }
@@ -2159,6 +2266,7 @@
     $('alat-signup-later')?.addEventListener('click', dismissSignupCta);
     $('alat-signup-go')?.addEventListener('click', function () {
       dismissSignupCta();
+      if (host && host.markPendingAlat) host.markPendingAlat('existing');
       if (host && host.openAuthModal) host.openAuthModal('signup', 'alat_analyze_cta');
     });
     log('alat_signup_cta_shown', {});
@@ -2259,19 +2367,10 @@
   function openSift() {
     exitFocus();
     if (host && host.setView) host.setView('sift');
-    // #region agent log
-    var vs = document.getElementById('view-sift');
-    fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'28520f'},body:JSON.stringify({sessionId:'28520f',runId:'new-user',hypothesisId:'D',location:'gpt-alat-preview.js:openSift',message:'openSift called',data:{bodyClass:document.body&&document.body.className||'',viewSiftHidden:vs?vs.hidden:null,viewSiftDisplay:vs?getComputedStyle(vs).display:null,hasDoors:!!document.querySelector('[data-alat-door]')},timestamp:Date.now()})}).catch(function(){});
-    // #endregion
   }
 
   function onBoot() {
-    if (!active()) {
-      // #region agent log
-      fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'28520f'},body:JSON.stringify({sessionId:'28520f',runId:'new-user',hypothesisId:'C',location:'gpt-alat-preview.js:onBoot',message:'alat inactive',data:{flag:(function(){try{return sessionStorage.getItem('lid_preview_alat')}catch(e){return 'err'}})()},timestamp:Date.now()})}).catch(function(){});
-      // #endregion
-      return false;
-    }
+    if (!active()) return false;
     stripExpor();
     rememberedShop(); // hydrate tracked / alerts / wizard flag before gates
     syncNavLabels();
@@ -2289,9 +2388,6 @@
     }
     // Brand-new visitors: choice doors. Returning: normal Laris home + My Toko in nav.
     var returning = isReturningVisitor();
-    // #region agent log
-    fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'28520f'},body:JSON.stringify({sessionId:'28520f',runId:'new-user',hypothesisId:'A',location:'gpt-alat-preview.js:onBoot',message:'boot branch',data:{returning:returning,willOpenSift:!returning,bodyClass:document.body&&document.body.className||''},timestamp:Date.now()})}).catch(function(){});
-    // #endregion
     if (!returning) {
       openSift();
       return true;
@@ -2364,6 +2460,7 @@
     active: active,
     attach: attach,
     openAudit: openAudit,
+    flushAccount: flushAccount,
     openSellerCenter: openSellerCenter,
     openSift: openSift,
     openQuest: openQuest,

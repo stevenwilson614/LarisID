@@ -5108,10 +5108,13 @@ async function _authOnSignIn(session, opts) {
     state.pendingKomunitas = null;
     saveLocalState();
     openCommunityBoard(pk);
-  } else if (state.pendingAlat === 'existing' && window.LarisAlatPreview?.active() && !opts?.fromRestore) {
+  } else if (state.pendingAlat === 'existing' && window.LarisAlatPreview?.active?.()) {
     state.pendingAlat = null;
     saveLocalState();
-    window.LarisAlatPreview.openAudit();
+    const resumeAudit = !opts?.fromRestore;
+    void window.LarisAlatPreview.flushAccount().then(function () {
+      if (resumeAudit) window.LarisAlatPreview.openAudit();
+    });
   }
 
   // A one-tap "Kabari Kalau Berubah" that hit the signup gate finishes itself
@@ -15452,6 +15455,7 @@ async function trackProductFavorite(product, opts = {}) {
   try {
     await refreshTrackedKwSet();
     if (isFavTracked(p)) {
+      if (opts.ensure) return true;
       const rem = await _supabase.rpc('remove_tracked_product', {
         p_item_id: p.item_id, p_shop_id: p.shop_id,
       });
@@ -15487,6 +15491,7 @@ async function trackProductFavorite(product, opts = {}) {
     _trackedFavSet.add(favKey(p));
     syncFavButtons();
     void logUserEvent('favorite_added', { ui: 'gpt', via: opts.via || 'aksi_cepat' });
+    if (opts.quiet) return true;
     try { void window.LarisCohort?.tryCompleteMilestone('save_favorit'); } catch (_) {}
 
     let notifyOn = false;
@@ -25906,8 +25911,8 @@ function attachAlatPreview() {
       } catch (_) {}
       return '';
     },
-    addTrackedProduct(p) {
-      return trackProductFavorite(p, { via: 'alat_preview' });
+    addTrackedProduct(p, opts) {
+      return trackProductFavorite(p, Object.assign({ via: 'alat_preview' }, opts || {}));
     },
     async addTrackedStore(id, name) {
       if (!_supabase) return { ok: false };
