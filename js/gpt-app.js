@@ -2989,12 +2989,7 @@ function belajarCtx() {
 }
 
 function openBelajarView() {
-  if (!currentUser) {
-    state.pendingBelajar = true;
-    saveLocalState();
-    openAuthModal('login', 'gpt_gate_belajar');
-    return;
-  }
+  if (!isPlatformAdmin()) return;
   setView('belajar');
 }
 
@@ -4679,6 +4674,7 @@ let _navigatingFromHistory = false;
 let _historyPrimed = false;
 
 function setView(name, opts = {}) {
+  if (name === 'belajar' && !isPlatformAdmin()) name = 'home';
   const leaving = state.view;
   state.view = name;
   ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'edukasi', 'belajar', 'cohort', 'kalkulator', 'profil'].forEach(v => {
@@ -5028,6 +5024,8 @@ function updateAccountUI() {
   }
   const btn = $('btn-admin');
   if (btn) btn.style.display = isPlatformAdmin() ? '' : 'none';
+  const belajarBtn = $('btn-belajar');
+  if (belajarBtn) belajarBtn.style.display = isPlatformAdmin() ? '' : 'none';
   syncHargaVisitCta();
   try { void refreshCohortNav(); } catch (_) {}
   try { supplierSyncNavVisibility(); } catch (_) {}
@@ -6607,7 +6605,9 @@ async function syncHomeRetentionCards() {
   if (host) host.hidden = shouldShowLandingFinder();
   await syncHomeFirstDdCard();
   await syncHomeLangkahCard();
-  if (window.LarisBelajar) await window.LarisBelajar.syncHome(belajarCtx());
+  const belajarCard = $('home-belajar');
+  if (window.LarisBelajar && isPlatformAdmin()) await window.LarisBelajar.syncHome(belajarCtx());
+  else if (belajarCard) { belajarCard.hidden = true; belajarCard.innerHTML = ''; }
   await syncHomeKomunitasCard();
 }
 
@@ -24727,6 +24727,8 @@ function applyViewAsChrome() {
   updateAccountUI();
   const admBtn = $('btn-admin');
   if (admBtn) admBtn.style.display = isPlatformAdmin() ? '' : 'none';
+  const belajarBtn = $('btn-belajar');
+  if (belajarBtn) belajarBtn.style.display = isPlatformAdmin() ? '' : 'none';
   void refreshGptUsage();
 }
 

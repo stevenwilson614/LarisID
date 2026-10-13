@@ -1,6 +1,6 @@
 # Belajar — seller course in the SPA
 
-Free, self-paced course for every logged-in user. It lives in the main app
+Free, self-paced course. The side tab, Beranda strip, and `#view-belajar` are platform-admin only for now (`isPlatformAdmin()`). Logged-out visitors and other accounts do not see them, and `belajar_course`, `belajar_mark_lesson`, and `belajar_set_state` return `admin_only`. It lives in the main app
 (`#btn-belajar`, `#view-belajar`, `js/gpt-belajar.js`), not in the Anton school
 prototype and not in cohort `milestone_content`.
 
