@@ -43,19 +43,52 @@
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  "name": "LarisID",
-  "applicationCategory": "BusinessApplication",
-  "operatingSystem": "Web",
-  "url": "https://larisid.com/",
-  "offers": {
-    "@type": "Offer",
-    "name": "Gratis selamanya",
-    "price": "0",
-    "priceCurrency": "IDR",
-    "availability": "https://schema.org/InStock",
-    "description": "100% gratis untuk semua pengguna, tanpa paket berbayar dan tanpa kartu kredit: 10 pencarian produk baru per hari (tanpa batas selama masa Beta), Deep Dive, Skor Produk dan Skor Pasar, analisis kompetitor, Laris AI, pantau 40 produk dan 20 toko, notifikasi WhatsApp dan email"
-  }
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "name": "LarisID",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "url": "https://larisid.com/",
+      "offers": {
+        "@type": "Offer",
+        "name": "Gratis selamanya",
+        "price": "0",
+        "priceCurrency": "IDR",
+        "availability": "https://schema.org/InStock",
+        "description": "100% gratis untuk semua pengguna, tanpa paket berbayar dan tanpa kartu kredit: 10 pencarian produk baru per hari (tanpa batas selama masa Beta), Deep Dive, Skor Produk dan Skor Pasar, analisis kompetitor, Laris AI, pantau 40 produk dan 20 toko, notifikasi WhatsApp dan email"
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Apakah LarisID benar-benar gratis?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Ya. LarisID 100% gratis untuk semua pengguna, selamanya — tidak ada paket berbayar, tidak ada tier Pro, dan tidak perlu kartu kredit. Yang membatasi hanya jatah 10 pencarian produk baru per hari (tanpa batas selama masa Beta), yang bisa ditambah gratis lewat ekstensi Chrome, referral, atau masukan produk."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Apa bedanya harga LarisID dengan Datapinter, Tokpee, dan Shoptik?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "LarisID Rp 0 selamanya. Datapinter berlangganan Rp 99.000–Rp 2.999.000/bulan (Dasar Rp 299.000/bulan). Tokpee Rp 113.999/bulan atau Rp 455.999/tahun. Shoptik Rp 537.000/tahun (promo). Kalodata (TikTok Shop analytics) sekitar Rp 325.000/bulan. Angka kompetitor adalah harga publik perkiraan — verifikasi di situs mereka."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Apakah unduh Excel/CSV termasuk gratis?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Ya. Pengguna yang sudah masuk bisa unduh listing Cari Produk (sampai 90 baris/hari) dan riwayat omset mingguan Deep Dive (4/8/12 minggu, kuota 12 minggu/hari). Kompetitor berbayar masih unggul pada ekspor massal tanpa batas."
+          }
+        }
+      ]
+    }
+  ]
 }
 </script>
 </head>
@@ -288,9 +321,23 @@
       <div class="stat"><div class="stat-num">10</div><div class="stat-label">Pencarian produk baru / hari</div><div class="stat-sub">Tanpa batas selama masa Beta</div></div>
       <div class="stat"><div class="stat-num">40</div><div class="stat-label">Produk dipantau (Pantauan Harian)</div></div>
       <div class="stat"><div class="stat-num">20</div><div class="stat-label">Toko dipantau (Pantauan Harian)</div></div>
-      <div class="stat"><div class="stat-num">845</div><div class="stat-label">Halaman riset pasar publik</div><div class="stat-sub">Tanpa login sama sekali</div></div>
+      <div class="stat"><div class="stat-num">2.248</div><div class="stat-label">Halaman riset pasar publik</div><div class="stat-sub">Tanpa login sama sekali</div></div>
     </div>
     <p>Jatah harian hanya berlaku untuk <strong>memulai pencarian baru</strong>. Membuka lagi produk yang sudah pernah kamu lihat, atau melanjutkan percakapan yang sudah ada, selalu gratis dan tidak memakai jatah.</p>
+
+    <h2>Pertanyaan umum soal harga</h2>
+    <div class="faq-item">
+      <p class="faq-q">Apakah LarisID benar-benar gratis?</p>
+      <p class="faq-a">Ya. LarisID 100% gratis untuk semua pengguna, selamanya — tidak ada paket berbayar, tidak ada tier Pro, dan tidak perlu kartu kredit. Yang membatasi hanya jatah 10 pencarian produk baru per hari (tanpa batas selama masa Beta), yang bisa ditambah gratis lewat ekstensi Chrome, referral, atau masukan produk.</p>
+    </div>
+    <div class="faq-item">
+      <p class="faq-q">Apa bedanya harga LarisID dengan Datapinter, Tokpee, dan Shoptik?</p>
+      <p class="faq-a">LarisID Rp 0 selamanya. Datapinter berlangganan Rp 99.000–Rp 2.999.000/bulan (Dasar Rp 299.000/bulan). Tokpee Rp 113.999/bulan atau Rp 455.999/tahun. Shoptik Rp 537.000/tahun (promo). Kalodata (TikTok Shop analytics) sekitar Rp 325.000/bulan. Angka kompetitor adalah harga publik perkiraan — verifikasi di situs mereka.</p>
+    </div>
+    <div class="faq-item">
+      <p class="faq-q">Apakah unduh Excel/CSV termasuk gratis?</p>
+      <p class="faq-a">Ya. Pengguna yang sudah masuk bisa unduh listing Cari Produk (sampai 90 baris/hari) dan riwayat omset mingguan Deep Dive (4/8/12 minggu, kuota 12 minggu/hari). Kompetitor berbayar masih unggul pada ekspor massal tanpa batas.</p>
+    </div>
 
     <div class="fh-rules">
       <h2>Cara menambah jatah harian, gratis</h2>

@@ -1,86 +1,86 @@
 {
-  "shops": 293490,
-  "products": 1221872,
+  "shops": 323607,
+  "products": 1398659,
   "sla_days": 7,
-  "snapshot": "2026-09-21",
+  "snapshot": "2026-10-13",
   "detail_ok": 1593,
-  "locations": 431,
+  "locations": 445,
   "categories": 88,
-  "scraped_7d": 4446,
-  "corpus_total": 6139,
+  "scraped_7d": 496,
+  "corpus_total": 6333,
   "first_scrape": "2026-04-08",
-  "generated_at": "2026-09-21T08:36:17+00",
-  "last_row_day": "2026-09-21",
-  "listing_rows": 4976371,
+  "generated_at": "2026-10-13T09:22:32+00",
+  "last_row_day": "2026-10-13",
+  "listing_rows": 6095122,
   "per_category": [
     {
-      "shops": 28753,
+      "shops": 30773,
       "category": "Rumah",
-      "products": 75318
+      "products": 82433
     },
     {
-      "shops": 24447,
+      "shops": 26067,
       "category": "Dapur",
-      "products": 70191
+      "products": 76399
     },
     {
-      "shops": 21339,
+      "shops": 24541,
       "category": "Perlengkapan Usaha",
-      "products": 54089
+      "products": 64459
     },
     {
-      "shops": 19455,
-      "category": "Fashion",
-      "products": 45212
-    },
-    {
-      "shops": 20736,
+      "shops": 23758,
       "category": "Makanan & Minuman",
-      "products": 44746
+      "products": 52839
     },
     {
-      "shops": 15138,
+      "shops": 20757,
+      "category": "Fashion",
+      "products": 48577
+    },
+    {
+      "shops": 16874,
       "category": "Pertanian",
-      "products": 33929
+      "products": 39778
     },
     {
-      "shops": 11761,
+      "shops": 13004,
       "category": "HP & Gadget",
-      "products": 33658
+      "products": 38581
     },
     {
-      "shops": 10928,
-      "category": "Olahraga",
-      "products": 27877
-    },
-    {
-      "shops": 12365,
-      "category": "Elektronik",
-      "products": 27500
-    },
-    {
-      "shops": 10745,
+      "shops": 12330,
       "category": "Perkakas",
-      "products": 27147
+      "products": 31861
     },
     {
-      "shops": 9771,
+      "shops": 12080,
+      "category": "Olahraga",
+      "products": 31237
+    },
+    {
+      "shops": 13287,
+      "category": "Elektronik",
+      "products": 30097
+    },
+    {
+      "shops": 11198,
       "category": "Ibu & Bayi",
-      "products": 25317
+      "products": 29403
     },
     {
-      "shops": 8855,
+      "shops": 10409,
       "category": "Elektronik Rumah Tangga",
-      "products": 22783
+      "products": 27984
     }
   ],
-  "corpus_active": 6119,
-  "keywords_seen": 6432,
+  "corpus_active": 6313,
+  "keywords_seen": 6682,
   "never_scraped": 0,
-  "snapshot_rows": 29493,
-  "oldest_age_days": 12.2,
-  "products_with_omset": 711074,
-  "days_to_full_coverage": 9.6,
-  "products_with_history": 516880,
-  "products_with_measured": 481786
+  "snapshot_rows": 40210,
+  "oldest_age_days": 19.7,
+  "products_with_omset": 638403,
+  "days_to_full_coverage": 89.1,
+  "products_with_history": 602630,
+  "products_with_measured": 569017
 }

@@ -1,6 +1,6 @@
 # SEO & GEO (AI discoverability) — LarisID
 
-*Context for humans and AI assistants working in this repo. Last updated: 14 Sep 2026.*
+*Context for humans and AI assistants working in this repo. Last updated: 13 Oct 2026.*
 
 ## Goal
 
@@ -38,7 +38,8 @@ Deploy: `bash scripts/deploy-static.sh` (or CI `.github/workflows/deploy-pages.y
 ## Homepage SEO (`index.html` `<head>`)
 
 - **Primary keywords:** riset produk shopee, riset produk e-commerce indonesia, alternatif datapinter
-- **H1 (landing):** “Riset Produk Shopee dengan Data Nyata” (not generic brand-only H1)
+- **H1 (landing):** “Cari produk. Analisis data. Jual lebih cerdas.” (brand voice; primary keywords live in `<title>` + static hubs `/riset/`, `/perbandingan/`)
+- **Title honesty:** lead with Shopee listing research; mention other marketplaces only for commission calc / sell-side — never imply Tokopedia/TikTok listing scrape
 - **JSON-LD:** `@graph` with `WebSite`, `SoftwareApplication`, `Organization`, `FAQPage`
 - **Removed:** `SearchAction` (no on-site `?q=` search — was invalid schema)
 - **Link:** `<link rel="alternate" href="https://larisid.com/llms.txt">`
@@ -187,10 +188,10 @@ Internal links: nav + footer on every static page and the landing point to `/ris
 **The old `scripts/fetch-seo-raw.sh` is dead** — `build-seo-pages.mjs` reads the committed JSON, so
 nothing consumes `scripts/_seo_raw/`. `refresh-seo.sh` still calls it; that call does nothing.
 
-**Batch, do not dump.** As of 13 Sep 2026: **4,335 keywords qualify, 748 published, ~3,587 pending.**
-Publishing the remainder in one push is a programmatic-SEO spam signal — ship ~400–600/week and watch
-indexation. `seo-keywords.json` is **append-only** (array index = page order); `ci-static-checks.sh`
-enforces that against `HEAD` and will fail the build on a reorder.
+**Batch, do not dump.** As of 13 Oct 2026 batch: **2,248 published**, ~2,614 qualifying still unpublished
+(~4,857 qualify). Publishing the remainder in one push is a programmatic-SEO spam signal —
+ship ~400–600/week and watch indexation. `seo-keywords.json` is **append-only** (array index = page
+order); `ci-static-checks.sh` enforces that against `HEAD` and will fail the build on a reorder.
 
 **Fail-closed freshness.** `ci-static-checks.sh` refuses to publish when the coverage snapshot is more
 than 10 days old, so a stalled scrape blocks the PR instead of shipping a fresh `dateModified` over
@@ -309,6 +310,6 @@ in `build-seo-pages.mjs` writing `riset/<slug>/og.png`, then point `og:image` at
 1. Run `bash scripts/deploy-static.sh` (Contabo + Cloudflare Pages; IndexNow from CI when Actions runs)
 2. Verify: `/riset/`, `/panduan/`, `/perbandingan/alat-riset-produk-shopee-terbaik/`,
    `/llms.txt`, `/llms-full.txt` on **https://larisid.com**
-3. Google Search Console → submit `sitemap.xml` (now 447 URLs)
+3. Google Search Console → submit `sitemap.xml` (~2,384 URLs as of Oct 2026; grows with `/riset/` batches)
 4. Bing Webmaster → confirm sitemap; spot-check a few `/riset/` pages in URL Inspection
 5. Request indexing for the new `/panduan/` and `/perbandingan/` hub pages

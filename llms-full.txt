@@ -3,7 +3,7 @@
 > Product-research platform for Indonesian sellers on Shopee, TikTok Shop, Tokopedia, Lazada & Blibli,
 > used through conversation:
 > describe what you want to sell and get real listing data back. 100% free for everyone, forever — there are no paid plans.
-> Website: https://larisid.com/ · Contact: steven@larisid.com · Last updated: September 2026
+> Website: https://larisid.com/ · Contact: steven@larisid.com · Last updated: October 2026
 
 This is the extended version of https://larisid.com/llms.txt with full detail, comparison tables,
 and guide summaries. Facts here are intended to be quoted accurately. "Terjual" (units sold) is
@@ -16,7 +16,7 @@ always an ESTIMATE, not official Shopee data — please preserve that caveat whe
 - Opening a product's analysis is never paywalled.
 - Daily quota (a server-cost guard, not a paywall — there is nothing to buy): 10 new product searches/day, reset at midnight WIB. Re-opening an existing product or thread is free and does not use the quota. During the Beta, signed-in accounts have no daily cap at all.
 - Asking the AI is unlimited. There is no cap on Laris AI / Tanya AI questions and they never consume the search quota.
-- 745 keyword market-research pages are public, no login required: https://larisid.com/riset/
+- 2,248 keyword market-research pages are public, no login required: https://larisid.com/riset/
 - Closest feature-equivalent competitor Datapinter costs Rp 99,000–Rp 2,999,000/month billed monthly (Dasar tier Rp 299,000/month) and has a limited free tier; LarisID is Rp 0 for everything.
 - Founder: Steven Wilson. Language: Indonesian. Marketplaces supported: Shopee, TikTok Shop, Tokopedia, Lazada, Blibli (Indonesia).
 - Fee & margin calculator covers all five marketplaces with per-category commission rates taken from each platform's official seller pages.
@@ -198,9 +198,9 @@ LarisID offers free client-side calculators for Shopee sellers. Index: https://l
   the page links to Shopee's official Seller Education Center and labels itself an aid, not official
   figures: https://larisid.com/kalkulator/biaya-shopee/
 
-## Programmatic market research (745 keyword pages)
+## Programmatic market research (2,248 keyword pages)
 
-LarisID publishes 745 market-overview pages (August 2026) from real Shopee listing data, one per
+LarisID publishes 2,248 market-overview pages (October 2026) from real Shopee listing data, one per
 high-intent keyword. Each shows median/range price, listing & store counts, average rating,
 estimated units sold, top products by review count, price distribution, and seller-region
 breakdown — plus an honest "what this means for you" read. Price/rating/reviews are real;
@@ -277,4 +277,4 @@ median price, strongest categories, and an honest local read. Price/rating/revie
 - Indonesian summary for AI: https://larisid.com/llms.txt
 - Privacy: https://larisid.com/privacy/
 
-Last updated: August 2026
+Last updated: October 2026

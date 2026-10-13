@@ -290,6 +290,20 @@ function listiclePage() {
     { name: 'Tokpee', price: 'Rp 113.999/bulan, atau Rp 455.999/tahun (\u2248Rp 37.999/bulan)', best: 'Riset cepat lintas Shopee + Tokopedia + ekspor Excel', pro: 'Ekstensi ringan, multi-marketplace, ekspor data', con: 'Analisis per produk kurang dalam; tidak ada paket gratis permanen', href: '/perbandingan/larisid-vs-tokpee/' },
     { name: 'Shoptik', price: 'Rp 537.000/tahun (\u2248Rp 44.750/bulan), promo 50% dari Rp 994.000', best: 'Yang butuh ekspor data massal & pasar Shopee Malaysia', pro: 'Riset Shopee Indonesia & Malaysia, unduh data tanpa batas', con: 'Tidak ada paket gratis; tanpa skor kelayakan atau AI; harga selalu dibingkai promo', href: '/perbandingan/larisid-vs-shoptik/' },
   ];
+  const faqs = [
+    {
+      q: 'Apa alat riset produk Shopee terbaik yang gratis?',
+      a: 'LarisID 100% gratis untuk semua pengguna: riset produk Shopee dari data listing nyata, skor kelayakan, Deep Dive, AI, Favorit Aku, dan unduh Excel/CSV dengan kuota harian. Tidak ada paket berbayar dan tidak perlu kartu kredit.',
+    },
+    {
+      q: 'Kapan sebaiknya bayar Datapinter, Tokpee, atau Shoptik?',
+      a: 'Bayar kalau kamu butuh ekspor massal tanpa batas, data listing Tokopedia, atau cakupan Shopee Malaysia. Datapinter unggul di paket all-in (Dasar ~Rp 299.000/bulan); Tokpee di ekstensi ringan + Excel; Shoptik di unduh tanpa batas. LarisID tetap cocok untuk riset mendalam per produk tanpa langganan.',
+    },
+    {
+      q: 'Apakah LarisID menggantikan Kalodata untuk TikTok Shop?',
+      a: 'Tidak untuk analitik kreator, video, live, atau GMV TikTok Shop — itu domain Kalodata (~Rp 325.000/bulan). LarisID membantu pilih produk dari data Shopee dan hitung komisi TikTok Shop gratis, tapi tidak punya data kreator/GMV.',
+    },
+  ];
   const ld = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -304,6 +318,7 @@ function listiclePage() {
         publisher: { '@type': 'Organization', name: 'LarisID', url: `${SITE}/`, logo: { '@type': 'ImageObject', url: `${SITE}/images/brand/appicon-red.png` } } },
       { '@type': 'ItemList', name: jt('Alat Riset Produk Shopee Terbaik 2026'),
         itemListElement: tools.map((t, i) => ({ '@type': 'ListItem', position: i + 1, name: t.name })) },
+      { '@type': 'FAQPage', mainEntity: faqs.map((f) => ({ '@type': 'Question', name: jt(f.q), acceptedAnswer: { '@type': 'Answer', text: jt(f.a) } })) },
     ],
   };
   const cards = tools.map((t, i) => `    <div class="summary-box">
@@ -344,6 +359,14 @@ ${tools.map((t) => `          <tr><td><strong>${esc(t.name)}</strong></td><td>${
       <a class="btn-secondary" href="/riset/">Lihat data pasar Shopee</a>
     </div>
   </article>
+
+  <div class="card">
+    <h2>Pertanyaan umum</h2>
+${faqs.map((f) => `    <div class="faq-item">
+      <p class="faq-q">${esc(f.q)}</p>
+      <p class="faq-a">${esc(f.a)}</p>
+    </div>`).join('\n')}
+  </div>
 </main>
 ${footer}`;
 }
