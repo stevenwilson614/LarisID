@@ -24936,7 +24936,13 @@ function renderAdminUsage(days) {
 // Views are blue here rather than the orange of their KPI tile: against the
 // brand red of sign ups, orange is the one pairing that collapses both at this
 // line weight and under red-green colour blindness.
+// The in-progress month is not a point on those lines. month_pace draws it as
+// bars on their own scale: outline = the same elapsed window last month,
+// solid = this month so far. A taller solid bar is a faster rate.
 const ADM_PV_TRACKING_START = '2026-07';
+// Outline bar sits at 1. Solid bar is this/last, capped just under the axis max
+// so a very large ratio stays inside the plot.
+const ADM_PACE_AXIS_MAX = 2;
 
 function admMonthKey(v) {
   return String(v || '').slice(0, 7); // YYYY-MM from a date / timestamptz
@@ -24966,6 +24972,71 @@ function admMonthLabel(key) {
   return `${names[Number(m) - 1] || m} ${String(y).slice(2)}`;
 }
 
+function admMonthName(v) {
+  const names = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+  const m = Number(String(v || '').slice(5, 7));
+  return names[m - 1] || '';
+}
+
+function admPaceActive(pace) {
+  if (!pace || typeof pace !== 'object') return false;
+  if (!/^\d{4}-\d{2}$/.test(admMonthKey(pace.month))) return false;
+  return ['views_mtd', 'views_prev', 'signups_mtd', 'signups_prev']
+    .some(k => (Number(pace[k]) || 0) > 0);
+}
+
+/** Outline bar. Missing when that window had no events. */
+function admPaceOutline(prev) {
+  return (Number(prev) || 0) > 0 ? 1 : null;
+}
+
+/** Solid bar: this month / last month's same window, capped inside the plot. */
+function admPaceSolid(mtd, prev) {
+  const cur = Number(mtd) || 0;
+  const old = Number(prev) || 0;
+  const cap = ADM_PACE_AXIS_MAX * 0.98;
+  if (old > 0) return Math.min(cur / old, cap);
+  if (cur > 0) return cap;
+  return null;
+}
+
+function admPaceSlot(len, idx, value) {
+  const data = Array(len).fill(null);
+  if (idx >= 0 && value != null) data[idx] = value;
+  return data;
+}
+
+function admPaceBar(len, idx, spec) {
+  const solid = spec.kind === 'mtd';
+  return {
+    type: 'bar',
+    label: spec.seriesName,
+    pace: spec.kind,
+    paceRaw: spec.raw,
+    seriesName: spec.seriesName,
+    data: admPaceSlot(len, idx, spec.value),
+    yAxisID: 'yPace',
+    backgroundColor: solid ? spec.color : 'transparent',
+    hoverBackgroundColor: solid ? spec.color : 'transparent',
+    borderColor: spec.color,
+    hoverBorderColor: spec.color,
+    borderWidth: solid ? 0 : 1,
+    borderSkipped: false,
+    categoryPercentage: 0.88,
+    barPercentage: 1,
+    maxBarThickness: 18,
+    order: 1,
+  };
+}
+
+function admPaceTip(ds, pace) {
+  const prevName = admMonthName(pace && pace.prev_month);
+  const when = ds.pace === 'prev'
+    ? (pace && pace.prev_capped && prevName ? `seluruh ${prevName}` : 'bulan lalu')
+    : 'bulan ini';
+  return `${ds.seriesName} · ${when}: ${admFmtNum(ds.paceRaw)}`;
+}
+
 function renderAdminTrend() {
   const stage = $('adm-trend-stage');
   const empty = $('adm-trend-empty');
@@ -24976,6 +25047,17 @@ function renderAdminTrend() {
   const signups = s.signups_monthly || [];
   const views = s.landing_views_monthly || [];
   const months = admMonthSpan(signups, views);
+  const pace = s.month_pace;
+  let paceIdx = -1;
+  if (admPaceActive(pace)) {
+    const paceKey = admMonthKey(pace.month);
+    if (!months.includes(paceKey) && (!months.length || paceKey > months[months.length - 1])) {
+      months.push(paceKey);
+    }
+    const idx = months.indexOf(paceKey);
+    if (idx === months.length - 1) paceIdx = idx;
+  }
+  const showPace = paceIdx >= 0;
 
   if (!months.length) {
     stage.hidden = true;
@@ -24994,6 +25076,10 @@ function renderAdminTrend() {
   };
   const viewData = byMonth(views, 'views');
   const signupData = byMonth(signups, 'signups');
+  if (showPace) {
+    viewData[paceIdx] = null;
+    signupData[paceIdx] = null;
+  }
 
   // Index of the first month with trustworthy landing-view tracking.
   const firstReal = months.findIndex(m => m >= ADM_PV_TRACKING_START);
@@ -25007,45 +25093,87 @@ function renderAdminTrend() {
     }
   }
 
+  const datasets = [
+    {
+      label: 'Landing page views',
+      data: viewData,
+      yAxisID: 'yViews',
+      borderColor: '#2563EB',
+      backgroundColor: 'rgba(37,99,235,.08)',
+      pointBackgroundColor: '#2563EB',
+      pointRadius: 3,
+      pointHoverRadius: 5,
+      borderWidth: 2,
+      tension: .3,
+      fill: true,
+      spanGaps: false,
+      segment: {
+        borderDash: ctx => (ctx.p0DataIndex < seedUntil ? [5, 4] : undefined),
+      },
+    },
+    {
+      label: 'Sign ups',
+      data: signupData,
+      yAxisID: 'ySignups',
+      borderColor: '#B5202A',
+      backgroundColor: 'rgba(181,32,42,.08)',
+      pointBackgroundColor: '#B5202A',
+      pointRadius: 3,
+      pointHoverRadius: 5,
+      borderWidth: 2,
+      tension: .3,
+      fill: false,
+      spanGaps: false,
+    },
+  ];
+  if (showPace) {
+    [
+      { kind: 'prev', seriesName: 'Landing page views', color: '#2563EB', raw: Number(pace.views_prev) || 0, value: admPaceOutline(pace.views_prev) },
+      { kind: 'mtd', seriesName: 'Landing page views', color: '#2563EB', raw: Number(pace.views_mtd) || 0, value: admPaceSolid(pace.views_mtd, pace.views_prev) },
+      { kind: 'prev', seriesName: 'Sign ups', color: '#B5202A', raw: Number(pace.signups_prev) || 0, value: admPaceOutline(pace.signups_prev) },
+      { kind: 'mtd', seriesName: 'Sign ups', color: '#B5202A', raw: Number(pace.signups_mtd) || 0, value: admPaceSolid(pace.signups_mtd, pace.signups_prev) },
+    ].forEach(spec => datasets.push(admPaceBar(months.length, paceIdx, spec)));
+  }
+
   larisEnsureChart().then(() => {
     const canvas = $('adm-trend-canvas');
     if (!canvas || typeof Chart === 'undefined') return;
     if (_admTrendChart) { try { _admTrendChart.destroy(); } catch (_) {} _admTrendChart = null; }
+    const scales = {
+      yViews: {
+        type: 'linear', position: 'left', beginAtZero: true,
+        title: { display: true, text: 'Landing page views', color: '#2563EB', font: { size: 10, weight: '600' } },
+        ticks: { precision: 0, color: '#9CA3AF', font: { size: 10 } },
+        grid: { color: 'rgba(0,0,0,.05)' },
+      },
+      ySignups: {
+        type: 'linear', position: 'right', beginAtZero: true,
+        title: { display: true, text: 'Sign ups', color: '#B5202A', font: { size: 10, weight: '600' } },
+        ticks: { precision: 0, color: '#9CA3AF', font: { size: 10 } },
+        grid: { drawOnChartArea: false },
+      },
+      x: {
+        offset: showPace,
+        stacked: false,
+        ticks: { color: '#9CA3AF', font: { size: 10 }, maxRotation: 0, autoSkipPadding: 12 },
+        grid: { display: false },
+      },
+    };
+    if (showPace) {
+      scales.yPace = {
+        type: 'linear',
+        display: false,
+        beginAtZero: true,
+        min: 0,
+        max: ADM_PACE_AXIS_MAX,
+        grid: { display: false },
+      };
+    }
     _admTrendChart = new Chart(canvas, {
       type: 'line',
       data: {
         labels: months.map(admMonthLabel),
-        datasets: [
-          {
-            label: 'Landing page views',
-            data: viewData,
-            yAxisID: 'yViews',
-            borderColor: '#2563EB',
-            backgroundColor: 'rgba(37,99,235,.08)',
-            pointBackgroundColor: '#2563EB',
-            pointRadius: 3,
-            pointHoverRadius: 5,
-            borderWidth: 2,
-            tension: .3,
-            fill: true,
-            segment: {
-              borderDash: ctx => (ctx.p0DataIndex < seedUntil ? [5, 4] : undefined),
-            },
-          },
-          {
-            label: 'Sign ups',
-            data: signupData,
-            yAxisID: 'ySignups',
-            borderColor: '#B5202A',
-            backgroundColor: 'rgba(181,32,42,.08)',
-            pointBackgroundColor: '#B5202A',
-            pointRadius: 3,
-            pointHoverRadius: 5,
-            borderWidth: 2,
-            tension: .3,
-            fill: false,
-          },
-        ],
+        datasets,
       },
       options: {
         responsive: true,
@@ -25054,33 +25182,56 @@ function renderAdminTrend() {
         plugins: {
           legend: {
             position: 'bottom',
-            labels: { boxWidth: 10, usePointStyle: true, pointStyle: 'circle', font: { size: 11 } },
+            onClick(e, legendItem, legend) {
+              if (!legendItem || legendItem.datasetIndex < 0) return;
+              const toggle = Chart.defaults.plugins.legend.onClick;
+              if (typeof toggle === 'function') toggle.call(this, e, legendItem, legend);
+            },
+            labels: {
+              boxWidth: 10,
+              usePointStyle: true,
+              pointStyle: 'circle',
+              font: { size: 11 },
+              generateLabels(chart) {
+                const gen = Chart.defaults.plugins.legend.labels.generateLabels;
+                const items = gen(chart).filter(item => {
+                  const ds = chart.data.datasets[item.datasetIndex];
+                  return !(ds && ds.pace);
+                });
+                if (!showPace) return items;
+                items.push(
+                  {
+                    text: 'Bulan lalu',
+                    fillStyle: 'transparent',
+                    strokeStyle: '#374151',
+                    lineWidth: 1,
+                    pointStyle: 'rect',
+                    hidden: false,
+                    datasetIndex: -1,
+                  },
+                  {
+                    text: 'Bulan ini',
+                    fillStyle: '#374151',
+                    strokeStyle: '#374151',
+                    lineWidth: 1,
+                    pointStyle: 'rect',
+                    hidden: false,
+                    datasetIndex: -1,
+                  },
+                );
+                return items;
+              },
+            },
           },
           tooltip: {
+            filter: item => item.parsed && item.parsed.y != null,
             callbacks: {
-              label: ctx => `${ctx.dataset.label}: ${admFmtNum(ctx.parsed.y)}`,
-              afterLabel: ctx => (ctx.datasetIndex === 0 && ctx.dataIndex < seedUntil ? 'data awal, tidak lengkap' : undefined),
+              label: ctx => (ctx.dataset.pace ? admPaceTip(ctx.dataset, pace) : `${ctx.dataset.label}: ${admFmtNum(ctx.parsed.y)}`),
+              afterLabel: ctx => (!ctx.dataset.pace && ctx.datasetIndex === 0 && ctx.dataIndex < seedUntil ? 'data awal, tidak lengkap' : undefined),
             },
           },
         },
-        scales: {
-          yViews: {
-            type: 'linear', position: 'left', beginAtZero: true,
-            title: { display: true, text: 'Landing page views', color: '#2563EB', font: { size: 10, weight: '600' } },
-            ticks: { precision: 0, color: '#9CA3AF', font: { size: 10 } },
-            grid: { color: 'rgba(0,0,0,.05)' },
-          },
-          ySignups: {
-            type: 'linear', position: 'right', beginAtZero: true,
-            title: { display: true, text: 'Sign ups', color: '#B5202A', font: { size: 10, weight: '600' } },
-            ticks: { precision: 0, color: '#9CA3AF', font: { size: 10 } },
-            grid: { drawOnChartArea: false },
-          },
-          x: {
-            ticks: { color: '#9CA3AF', font: { size: 10 }, maxRotation: 0, autoSkipPadding: 12 },
-            grid: { display: false },
-          },
-        },
+        scales,
       },
     });
   });
