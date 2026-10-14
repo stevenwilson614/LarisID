@@ -8,7 +8,7 @@ Read **[MISSION.md](../MISSION.md)** first. Do not reintroduce a blocking onboar
 
 **Laris AI replies:** [ask-laris.md](./ask-laris.md) — lookup / weekly / filter / refer / promo / judgment. Do not send every typed prompt through visible thinking.
 
-**Retention re-read:** [RETENTION.sql](./RETENTION.sql)
+**Retention re-read:** [RETENTION.sql](./RETENTION.sql). Signup-day activity vs later return: [ACTIVITY_RETURN_CORR.sql](./ACTIVITY_RETURN_CORR.sql).
 
 ---
 
