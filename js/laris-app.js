@@ -9546,7 +9546,8 @@ function _dscTokenMatch(token, hay) {
   if (hay.includes(token)) return true;
   const words = hay.split(/\s+/).filter(w => w.length >= 3);
   return words.some(w => {
-    if (w.includes(token) || token.includes(w)) return true;
+    // Keyword word must contain the query token. token.includes(w) made "olive" match "oli".
+    if (w.includes(token)) return true;
     if (token.length >= 4 && w.length >= 4 && _dscLevenshtein(token, w) <= 1) return true;
     return false;
   });
@@ -9667,6 +9668,8 @@ const DSC_SEARCH_SYNONYMS = {
   manik: ['gelang manik', 'manik-manik'],
   gelang: ['bracelet'],
   galang: ['gelang'],
+  wine: ['anggur', 'minuman anggur', 'gelas wine', 'wine opener'],
+  anggur: ['wine', 'minuman anggur', 'gelas wine', 'wine opener'],
 };
 const DSC_PHRASE_SYNONYMS = {
   'cross stitch': ['kristik', 'kruissteek', 'kruistik', 'sulam', 'benang sulam', 'pola kristik', 'tusuk silang', 'strimin', 'embroidery'],
@@ -9687,6 +9690,10 @@ const DSC_PHRASE_SYNONYMS = {
   'bead bracelet': ['gelang manik', 'manik', 'manik-manik', 'gelang', 'kalung manik'],
   'gelang manik': ['manik', 'manik-manik', 'gelang', 'kalung manik'],
   'galang manik': ['gelang manik', 'manik', 'gelang', 'kalung manik'],
+  'olive oil': ['minyak zaitun', 'minyak olive', 'extra virgin'],
+  'cooking oil': ['minyak goreng', 'minyak zaitun'],
+  'minyak zaitun': ['olive oil', 'minyak olive', 'extra virgin'],
+  'minyak olive': ['olive oil', 'minyak zaitun', 'extra virgin'],
 };
 
 function _dscTerms(text) {
@@ -9701,7 +9708,7 @@ function _dscTerms(text) {
 // owns its namespace, and the value carries a prompt tag so a future prompt
 // change invalidates stale entries instead of inheriting them.
 const DSC_SYN_CACHE_KEY = '_lid_syn_cache_a_v2';
-const DSC_PLAN_PROMPT_TAG = 'a-2026-08-07';
+const DSC_PLAN_PROMPT_TAG = 'a-2026-10-14';
 function _dscSynCacheGet(key) {
   try {
     const o = JSON.parse(localStorage.getItem(DSC_SYN_CACHE_KEY) || '{}');
@@ -9729,7 +9736,15 @@ function _dscStaticPlan(cleaned) {
     if (lower.includes(ph)) DSC_PHRASE_SYNONYMS[ph].forEach(add);
   }
   for (const t of terms) (DSC_SEARCH_SYNONYMS[t] || []).forEach(add);
-  return { queries, exclude: [], category: null };
+  const exclude = [];
+  if (/\bolive\s+oil\b|\bcooking\s+oil\b|\bminyak\s+zaitun\b|\bminyak\s+olive\b/.test(lower)) {
+    exclude.push('oli motor', 'oli mesin', 'oli gardan');
+  }
+  const fashionAsk = /\b(celana|dress|dresses|gaun|baju|pakaian|kaos|hijab|jaket|kemeja|rok|sepatu|sandal|pants|trousers)\b/.test(lower);
+  if (!fashionAsk && terms.some(t => t === 'wine' || t === 'anggur')) {
+    exclude.push('warna wine', 'motif wine', 'corak wine');
+  }
+  return { queries, exclude, category: null };
 }
 
 async function _dscDeepseekPlan(query) {
@@ -9746,7 +9761,12 @@ async function _dscDeepseekPlan(query) {
       + 'Rules: (1) Expand English product nouns into Indonesian seller keywords for THAT niche — '
       + 'e.g. "dresses" → "gaun","dress wanita","baju pesta","gaun pesta"; "tumbler" → "tumbler","botol minum"; '
       + '"serum" → "serum wajah","skincare serum". (2) Prefer specific product terms over broad category '
-      + 'labels like "fashion","pakaian","kecantikan". (3) Never invent product names, brands, prices or descriptions.';
+      + 'labels like "fashion","pakaian","kecantikan". (3) Never invent product names, brands, prices or descriptions. '
+      + '(4) Cooking oil is minyak, never oli: "olive oil" → "minyak zaitun","minyak olive" and exclude '
+      + '"oli motor","oli mesin". Bare "oil" may be hair oil, lip oil, or essential oil — do not force it '
+      + 'to motor oil or to cooking oil. '
+      + '(5) Bare "wine" is a drink: "anggur","minuman anggur","gelas wine","wine opener". Exclude fashion '
+      + 'color matches ("warna wine","celana"). If the shopper named a garment ("celana wine"), keep the garment.';
     const res = await fetch(`${SUPA_URL}/functions/v1/claude-proxy`, {
       method: 'POST',
       headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json' },

@@ -7000,9 +7000,12 @@ function _rbTokenMatch(token, hay) {
   const words = hay.split(/\s+/).filter(w => w.length >= 3);
   const maxEd = _rbMaxEdits(token.length);
   return words.some(w => {
-    if (w.includes(token) || token.includes(w)) return true;
+    // The keyword word must contain the query token. The reverse
+    // (token.includes(w)) made "olive" match "oli".
+    if (w.includes(token)) return true;
     if (maxEd > 0 && w.length >= 4) {
       const cap = Math.min(maxEd, _rbMaxEdits(w.length));
+      if (Math.abs(w.length - token.length) > cap) return false;
       if (_rbLevenshtein(token, w) <= cap) return true;
     }
     return false;
@@ -7029,9 +7032,12 @@ function _rbTokenAlts(token) {
   const out = new Set([t]);
   try {
     (SEARCH_SYNONYMS[t] || []).forEach(s => {
+      const phrase = _rbNormStr(s);
+      if (phrase.length >= 3 && phrase.includes(' ')) out.add(phrase);
       String(s).toLowerCase().split(/[\s/-]+/).forEach(w => {
         const n = _rbNormStr(w);
-        if (n.length >= 3) out.add(n);
+        // Skip generic shelf words so "minuman anggur" does not match every drink.
+        if (n.length >= 3 && n !== 'minuman' && n !== 'food' && n !== 'extra' && n !== 'virgin') out.add(n);
       });
     });
   } catch (_) { /* SEARCH_SYNONYMS may be TDZ only during module init */ }
@@ -7114,7 +7120,7 @@ async function _rbFuzzyMatch(raw, limit = 12) {
     }
     if (bestAlts && bestTok) hits = collect(hay => tokenHits(bestAlts, hay, bestTok));
   }
-  return hits.slice(0, limit);
+  return filterSenseRows(raw, hits).slice(0, limit);
 }
 
 function wireResultsBar() {
@@ -9755,6 +9761,8 @@ function _rankPoolListings(out, query, plan) {
     const filtered = filterRelevantHits(out.listings, terms, phrase, rankOpts);
     if (filtered.length) out.listings = filtered;
   }
+  const gated = filterSenseRows(query, out.listings);
+  if (gated.length !== out.listings.length) out.listings = gated;
 }
 
 async function _fetchPoolListings(out, types, chooser) {
@@ -9804,7 +9812,8 @@ async function _resolveListingPoolUncached({ q, cats, sub, home } = {}, memoKey)
     const planP = planSearch(query, { timeoutMs: PLAN_RACE_MS }).catch(() => ({ queries: [], brand: null }));
     const exactP = productTypeExactKeyword(query);
     const containingP = fetchContainingProductTypes(query, 24);
-    const exactKw = await exactP;
+    let exactKw = await exactP;
+    if (exactKw && rowFailsSense(query, exactKw)) exactKw = null;
     _dirMark(stages, 'exact');
     let plan;
     let containing = [];
@@ -9842,6 +9851,8 @@ async function _resolveListingPoolUncached({ q, cats, sub, home } = {}, memoKey)
       } else if (containing.length === 1) types = containing;
       else types = await searchProductTypes(query, [], 24, { plan });
     }
+    types = types.filter(t => !rowFailsSense(query, t));
+    if (types.length < 2) chooser = false;
     if (types.length) {
       out.matchLevel = chooser ? 'chooser' : 'keyword';
       out.keywords = types.some(t => t._nearby) ? types : markTerlarisMinggu(types.slice());
@@ -12516,7 +12527,8 @@ const SEARCH_STOPWORDS = new Set(['cari','carikan','tolong','coba','tunjukkan','
   'terlaris','laris','trending','kompetisi','rendah','persaingan','niche','bagus','laku',
   // English discovery fillers — keep nouns like "dresses" for search.
   'how','about','what','show','me','find','looking','for','any','some','please','a','an','with',
-  'instead','rather','than','maybe','could','would','should','can','want','need','get','like']);
+  'instead','rather','than','maybe','could','would','should','can','want','need','get','like',
+  'and','or']);
 
 // Natural-language → LarisID category. Used so “cari skincare” / “fashion trending”
 // hit the product tables instead of refusing inside a Deep Dive AI turn.
@@ -12584,6 +12596,9 @@ const SEARCH_SYNONYMS = {
   chopper: ['choper', 'food chopper', 'pencacah', 'blender chopper', 'blender bumbu chopper', 'chopper elektrik'],
   choper: ['chopper', 'food chopper', 'pencacah', 'blender chopper', 'blender bumbu chopper', 'chopper elektrik', 'chopper electric'],
   pencacah: ['chopper', 'food chopper', 'chopper elektrik', 'blender bumbu chopper'],
+  // Drink / pantry — same product, not the fashion color or motor-oil false friend
+  wine: ['anggur', 'minuman anggur', 'gelas wine', 'wine opener'],
+  anggur: ['wine', 'minuman anggur', 'gelas wine', 'wine opener'],
 };
 
 // Multi-word phrase → craft cluster. Single-token expansion can't express
@@ -12612,6 +12627,10 @@ const PHRASE_SYNONYMS = {
   'choper elektrik': ['chopper electric', 'chopper elektrik', 'food chopper', 'pencacah', 'chopper', 'blender bumbu chopper'],
   'choper electric': ['chopper electric', 'chopper elektrik', 'food chopper', 'pencacah', 'chopper', 'blender bumbu chopper'],
   'food chopper': ['chopper elektrik', 'chopper electric', 'pencacah', 'chopper', 'blender bumbu chopper'],
+  'olive oil': ['minyak zaitun', 'minyak olive', 'extra virgin'],
+  'cooking oil': ['minyak goreng', 'minyak zaitun'],
+  'minyak zaitun': ['olive oil', 'minyak olive', 'extra virgin'],
+  'minyak olive': ['olive oil', 'minyak zaitun', 'extra virgin'],
 };
 
 // When the catalog has nothing like the ask, suggest the nearest sellable niches.
@@ -12788,6 +12807,110 @@ function _searchTerms(text) {
     .filter(w => w.length >= 3 && !SEARCH_STOPWORDS.has(w));
 }
 
+// Color / size words are modifiers, not a second product. Used so
+// "black and white dress" stays one search while "wine and olive oil" splits.
+const SENSE_MODIFIER_WORDS = new Set([
+  'black', 'white', 'red', 'blue', 'green', 'yellow', 'pink', 'grey', 'gray', 'brown', 'purple', 'orange', 'navy', 'beige', 'gold', 'silver', 'maroon',
+  'hitam', 'putih', 'merah', 'biru', 'hijau', 'kuning', 'abu', 'coklat', 'cokelat', 'ungu', 'emas', 'perak',
+  'small', 'medium', 'large', 'size', 'ukuran', 'xl', 'xxl', 'xs',
+]);
+// Garment words in the query mean the shopper asked for clothes ("celana wine").
+const SENSE_FASHION_QUERY_WORDS = new Set([
+  'celana', 'dress', 'dresses', 'gaun', 'baju', 'pakaian', 'kaos', 'hijab', 'jaket', 'kemeja', 'rok', 'blouse',
+  'sepatu', 'sandal', 'tas', 'fashion', 'pants', 'trousers', 'jogger', 'sweatpants',
+]);
+const SENSE_ATTR_PREFIXES = ['warna', 'motif', 'corak', 'pattern'];
+const SENSE_DRINK_GEAR_RE = /\b(anggur|minuman|gelas|botol|bottle|glass|opener|corkscrew|stopper|decanter|dekant)\b/;
+const SENSE_GARMENT_RE = /\b(celana|pants|trousers|jogger|sweatpants|kemeja|dress|gaun|hijab|blouse|rok|atasan)\b/;
+
+function queryIsBareWine(query) {
+  const terms = _searchTerms(query);
+  if (!terms.some(t => t === 'wine' || t === 'anggur')) return false;
+  if (terms.some(t => SENSE_FASHION_QUERY_WORDS.has(t))) return false;
+  return true;
+}
+
+function queryIsCookingOil(query) {
+  const s = String(query || '').toLowerCase();
+  return /\bolive\s+oil\b|\bcooking\s+oil\b|\bminyak\s+zaitun\b|\bminyak\s+olive\b/.test(s);
+}
+
+function _senseExcludes(query) {
+  const out = [];
+  if (queryIsCookingOil(query)) out.push('oli motor', 'oli mesin', 'oli gardan');
+  if (queryIsBareWine(query)) out.push('warna wine', 'motif wine', 'corak wine');
+  return out;
+}
+
+/** Planned extra that is the other sense of a known clash — do not ILIKE it. */
+function planExtraRejected(query, extra) {
+  const t = String(extra || '').toLowerCase().trim();
+  if (!t) return false;
+  if (queryIsCookingOil(query) && /\boli\b/.test(t) && !/\b(minyak|zaitun|olive)\b/.test(t)) return true;
+  if (queryIsBareWine(query)) {
+    if (/\b(warna|motif|corak)\s+wine\b/.test(t)) return true;
+    if (SENSE_GARMENT_RE.test(t) && !SENSE_DRINK_GEAR_RE.test(t)) return true;
+  }
+  return false;
+}
+
+function _stripAttrValues(hay, terms) {
+  let s = String(hay || '').toLowerCase();
+  for (const t of terms) {
+    const safe = String(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    for (const p of SENSE_ATTR_PREFIXES) {
+      s = s.replace(new RegExp(`\\b${p}\\s+${safe}\\b`, 'g'), ' ');
+    }
+  }
+  return s;
+}
+
+/** True when every query token in the hay is only a color/motif value. */
+function isAttributeOnlyHit(query, hay) {
+  const raw = String(query || '').toLowerCase();
+  if (SENSE_ATTR_PREFIXES.some(p => new RegExp(`\\b${p}\\b`).test(raw))) return false;
+  const terms = _searchTerms(raw);
+  if (!terms.length) return false;
+  if (terms.some(t => SENSE_FASHION_QUERY_WORDS.has(t))) return false;
+  const text = String(hay || '').toLowerCase();
+  const stripped = _stripAttrValues(text, terms);
+  if (terms.some(t => stripped.includes(t))) return false;
+  return terms.some(t => text.includes(t));
+}
+
+function rowIsMotorOil(row) {
+  const cat = `${row.category_canonical || ''} ${row.category || ''}`.toLowerCase();
+  if (/motor\s*&\s*mobil|otomotif/.test(cat)) return true;
+  const hay = `${row.product_name || ''} ${row.keyword || ''}`.toLowerCase();
+  return /\boli\b/.test(hay) && !/\b(minyak|zaitun|olive)\b/.test(hay);
+}
+
+/** Drop a different product that only matched through a false friend or a color word. */
+function rowFailsSense(query, row) {
+  if (!row) return false;
+  const hay = `${row.product_name || ''} ${row.keyword || ''}`.toLowerCase();
+  if (isAttributeOnlyHit(query, hay)) return true;
+  if (queryIsBareWine(query)) {
+    const cat = `${row.category_canonical || ''} ${row.category || ''}`.toLowerCase();
+    const fashionCat = /fashion|sepatu,\s*tas/.test(cat);
+    const garment = SENSE_GARMENT_RE.test(hay);
+    const drink = SENSE_DRINK_GEAR_RE.test(hay);
+    if ((fashionCat || garment) && !drink) return true;
+  }
+  if (queryIsCookingOil(query) && rowIsMotorOil(row)) return true;
+  return false;
+}
+
+function filterSenseRows(query, rows) {
+  if (!Array.isArray(rows) || !rows.length) return rows || [];
+  return rows.filter(r => !rowFailsSense(query, r));
+}
+
+function _clauseIsProductIntent(clause) {
+  const terms = _searchTerms(clause);
+  return terms.some(t => !SENSE_MODIFIER_WORDS.has(t));
+}
+
 // ── Topic-change routing (leave a product chat when the user changes subject) ──
 function cityMentionedIn(lower) {
   for (const c of Object.keys(CITY_LOCATIONS)) {
@@ -12894,22 +13017,24 @@ async function fetchContainingProductTypes(text, limit = 24) {
       const kw = String(r.keyword || '').toLowerCase();
       return kw === want || kw.includes(want) || (` ${kw}`).includes(` ${want}`);
     });
-    return markTerlarisMinggu(rows.slice(0, limit));
+    return markTerlarisMinggu(filterSenseRows(text, rows).slice(0, limit));
   } catch (_) {
     return [];
   }
 }
 
-/** Split multi-intent queries ("kemeja denim, jeans pria") into independent clauses. */
+/** Split multi-intent queries ("kemeja denim, jeans pria", "wine and olive oil").
+ *  Modifier pairs stay whole ("black and white dress"). */
 function _splitSearchIntents(text) {
   const raw = String(text || '').replace(/\s+/g, ' ').trim();
   if (!raw) return [];
-  const parts = raw.split(/\s*(?:,|&|\bdan\b|\batau\b)\s*/i)
+  const parts = raw.split(/\s*(?:,|&|\bdan\b|\batau\b|\band\b|\bor\b)\s*/i)
     .map(s => s.trim())
     .filter(s => s.length >= 2)
     .filter(s => _searchTerms(s).length >= 1 || s.replace(/[^\p{L}\p{N}]+/gu, '').length >= 3)
     .slice(0, 4);
   if (parts.length < 2) return [raw];
+  if (!parts.every(_clauseIsProductIntent)) return [raw];
   return parts;
 }
 
@@ -13218,7 +13343,7 @@ function emptyListingPool() {
 async function resolveTitleListingPool(query) {
   const qTokens = _searchTerms(query);
   const phrase = String(query || '').toLowerCase();
-  const pool = await searchListingsFanout(titleSearchQueries(query), 40);
+  const pool = filterSenseRows(query, await searchListingsFanout(titleSearchQueries(query), 40));
   if (!pool.length) return emptyListingPool();
 
   const hitCounts = new Map();
@@ -13448,9 +13573,11 @@ async function searchListings(q, locations = [], limit = 30) {
       if (locFiltered.length) rows = locFiltered;
     }
     const relevant = filterRelevantHits(rows, scoreTerms, phrase, { synonyms });
-    if (relevant.length) return relevant.slice(0, limit);
-    if (scoreTerms.length <= 1) return rows.slice(0, limit);
-    return [];
+    let out = relevant.length ? relevant.slice(0, limit) : [];
+    // Single-token queries still fall through to the RPC rows, then the sense
+    // gate drops color-only and false-friend hits. Unambiguous queries stay.
+    if (!out.length && scoreTerms.length <= 1) out = rows.slice(0, limit);
+    return filterSenseRows(clean, out).slice(0, limit);
   } catch (_) { return []; }
 }
 
@@ -13485,7 +13612,7 @@ function _staticPlan(cleaned) {
     if (lower.includes(ph)) PHRASE_SYNONYMS[ph].forEach(add);
   }
   for (const t of terms) (SEARCH_SYNONYMS[t] || []).forEach(add);
-  return { queries, exclude: [], category: null };
+  return { queries, exclude: _senseExcludes(lower), category: null };
 }
 
 // DeepSeek V4 Pro query planner via the unauthenticated `search_plan` proxy route
@@ -13504,7 +13631,12 @@ async function _deepseekPlan(query) {
       + '"serum" → "serum wajah","skincare serum". (2) Prefer specific product terms over broad category '
       + 'labels like "fashion","pakaian","kecantikan". (3) Never invent product names, brands, prices or '
       + 'descriptions — "brand" may only correct/normalize a name already present in the search text, never '
-      + 'introduce one that isn\'t there.';
+      + 'introduce one that isn\'t there. '
+      + '(4) Cooking oil is minyak, never oli: "olive oil" → "minyak zaitun","minyak olive" and exclude '
+      + '"oli motor","oli mesin". Bare "oil" may be hair oil, lip oil, or essential oil — do not force it '
+      + 'to motor oil or to cooking oil. '
+      + '(5) Bare "wine" is a drink: "anggur","minuman anggur","gelas wine","wine opener". Exclude fashion '
+      + 'color matches ("warna wine","celana"). If the shopper named a garment ("celana wine"), keep the garment.';
     const res = await fetch(`${SUPA_URL}/functions/v1/claude-proxy`, {
       method: 'POST',
       headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json' },
@@ -13540,12 +13672,24 @@ async function _deepseekPlan(query) {
 // the listing paint; the AI plan still writes the cache in the background.
 const _planSearchInflight = Object.create(null);
 
+function _withStaticSeed(cleaned, plan) {
+  const seed = _staticPlan(cleaned);
+  const uniq = (arr, n) => Array.from(new Set((arr || []).filter(Boolean))).slice(0, n);
+  return {
+    ...(plan || {}),
+    queries: uniq([...(plan && plan.queries || []), ...seed.queries], 10),
+    exclude: uniq([...(plan && plan.exclude || []), ...seed.exclude], 12),
+    category: (plan && plan.category) || seed.category || null,
+    brand: (plan && plan.brand) || null,
+  };
+}
+
 async function planSearch(text, opts) {
   const cleaned = String(text || '').replace(/\s+/g, ' ').trim();
   const key = cleaned.toLowerCase();
   if (!key) return { queries: [], exclude: [], category: null, brand: null };
   const cached = _synCacheGet(key);
-  if (cached) return cached;
+  if (cached) return _withStaticSeed(cleaned, cached);
   if (!_planSearchInflight[key]) {
     _planSearchInflight[key] = (async () => {
       const seed = _staticPlan(cleaned);
@@ -13629,7 +13773,7 @@ async function searchProductsForQuery(text, locations = [], limit = 12) {
   // text (e.g. "Valentina" -> "Valentino"), never an invented one — see the
   // "never invent" rule in _deepseekPlan's system prompt.
   const plan = await planSearch(cleaned);
-  const planQueries = (plan.queries || []).filter(Boolean);
+  const planQueries = (plan.queries || []).filter(q => q && !planExtraRejected(cleaned, q));
   const exclude = plan.exclude || [];
   const brand = plan.brand || null;
   const synonyms = _planSynonymTerms(terms, planQueries);
@@ -13651,7 +13795,7 @@ async function searchProductsForQuery(text, locations = [], limit = 12) {
   const results = await Promise.all(queries.map(runQ));
   for (const r of results) mergePool(pool, r);
 
-  let ranked = filterRelevantHits(pool, terms, phrase, opts);
+  let ranked = filterSenseRows(cleaned, filterRelevantHits(pool, terms, phrase, opts));
   if (domain) {
     if (!ranked.some(p => domain.prefer(p))) {
       const extra = await Promise.all((domain.suggestions || []).slice(0, 3).map(sug => {
@@ -13665,8 +13809,8 @@ async function searchProductsForQuery(text, locations = [], limit = 12) {
       const hay = `${p.product_name || ''} ${p.keyword || ''} ${p.category || ''}`.toLowerCase();
       return synonyms.some(t => hay.includes(t)) || terms.some(t => hay.includes(t));
     });
-    ranked = filterRelevantHits(adjacent, terms, phrase, opts);
-    if (!ranked.length) ranked = adjacent.slice();
+    ranked = filterSenseRows(cleaned, filterRelevantHits(adjacent, terms, phrase, opts));
+    if (!ranked.length) ranked = filterSenseRows(cleaned, adjacent.slice());
     if (!ranked.length) {
       return { products: [], mode: 'clarify', domain, terms, brand };
     }
@@ -13681,8 +13825,8 @@ async function searchProductsForQuery(text, locations = [], limit = 12) {
     if (fuzzyHits.length) {
       const extra = await Promise.all(fuzzyHits.map(h => runQ(h.keyword)));
       for (const r of extra) mergePool(pool, r);
-      ranked = filterRelevantHits(pool, terms, phrase, opts);
-      if (!ranked.length) ranked = pool.slice(0, limit);
+      ranked = filterSenseRows(cleaned, filterRelevantHits(pool, terms, phrase, opts));
+      if (!ranked.length) ranked = filterSenseRows(cleaned, pool.slice(0, limit));
     }
   }
 
@@ -22830,6 +22974,8 @@ async function searchProductTypes(text, cities, limit = 12, opts) {
   } catch (_) {
     terms = [...new Set([raw, ..._searchTerms(raw)])].slice(0, 8);
   }
+  const rawKey = raw.toLowerCase();
+  terms = terms.filter(t => String(t).toLowerCase() === rawKey || !planExtraRejected(raw, t));
 
   const cityList = Array.isArray(cities) ? cities.filter(Boolean) : (cities ? [cities] : []);
   const buckets = cityList.length ? cityList : ['ALL'];
@@ -22861,6 +23007,7 @@ async function searchProductTypes(text, cities, limit = 12, opts) {
   }));
   runs.forEach(rows => rows.forEach(r => {
     if (!r?.keyword || seen.has(r.keyword)) return;
+    if (rowFailsSense(raw, r)) return;
     seen.add(r.keyword);
     hits.push(r);
   }));
@@ -22968,9 +23115,11 @@ async function searchProductTypes(text, cities, limit = 12, opts) {
         else fq = fq.in('city', buckets);
         const { data: fullRows } = await fq;
         ranked = (fullRows || []).map(r => ({ ...r, _score: 50 }));
+        ranked = ranked.filter(r => !rowFailsSense(raw, r));
       } catch (_) {}
     }
   }
+  ranked = ranked.filter(r => !rowFailsSense(raw, r));
   if (ranked.length && !_ptypeHasPct) {
     attachTypeQuartiles(ranked).catch(() => {});
   }
@@ -22997,7 +23146,7 @@ async function searchNearbyProductTypes(text, cities, limit = 12) {
   const titleHits = pool.filter(p => {
     const hay = String(p.product_name || '').toLowerCase();
     if (!hay) return false;
-    return terms.filter(t => hay.includes(t)).length >= need;
+    return terms.filter(t => hay.includes(t)).length >= need && !rowFailsSense(raw, p);
   });
   const byKw = new Map();
   titleHits.forEach(p => {
