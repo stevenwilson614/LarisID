@@ -8,9 +8,11 @@ Goal: four steps from an idea to a linked shop, then watching competitors. The f
 
 Four dots on top are the four modules. A dot is filled when every applicable lesson in that module is done. The ring is the module you are in. Tap a dot to open that module’s first open applicable lesson.
 
-Desktop: lesson in the center, curriculum on the right (title, percent, accordion, durations). Mobile (under 900px): short labels on the dots, a Materi sheet instead of the rail, and a sticky bar with Tandai selesai and Lanjut.
+Desktop: lesson in the center, curriculum on the right (title, percent, accordion, durations). Mobile (under 900px): short labels on the dots, a Materi sheet instead of the rail, and a sticky **Lanjut ke berikutnya** bar.
 
-Tabs on a lesson: **Tentang** (outcomes) and **Materi** (body + widget). **Diskusi** opens Komunitas Diskusi with an editable draft. It does not auto-post and it is not a second forum.
+No Tentang / Materi / Diskusi tabs. Body and widget sit on one page. At the bottom of every lesson: **Tanya komunitas** with an editable pre-draft; the learner opens Diskusi and sends themselves. It does not auto-post.
+
+Primary advance control is **Lanjut ke berikutnya** (marks done and opens the next lesson). No “Materi sebelumnya / Materi berikutnya” pager.
 
 A lesson shows a YouTube player only when `url` (or, on the platform lessons, a resource whose name matches that platform) is a real YouTube URL. There is no empty player and no invented video id.
 
@@ -30,7 +32,7 @@ The first visit still saves a suggestion when there is no row yet: `existing` wh
 
 ## Verify keys
 
-`belajar_course()` stamps `done` when the product already shows the step. A lesson the user marked `skipped` stays skipped. A `draft` is upgraded to `done` when the signal becomes true. Tandai selesai is the only control that advances to the next lesson.
+`belajar_course()` stamps `done` when the product already shows the step. A lesson the user marked `skipped` stays skipped. A `draft` is upgraded to `done` when the signal becomes true. **Lanjut ke berikutnya** marks the lesson done and opens the next one.
 
 | Key | Done when |
 |---|---|
@@ -51,20 +53,24 @@ There is no paywall and no lock that blocks reading the next lesson. Do not mark
 Unpublished lessons stay in the database so old progress rows are not deleted. They leave the learner count.
 
 1. **Cari produk**
-   - `ide-produk` — two cards. **Punya ide:** name (required to analyze), description, optional cost and sell price. Analisis uses `searchListings` and shows the rows that came back: count, price vs the median of that sample, omset p25–p75 labeled perkiraan, and frequent title words. Empty search says so and offers Cari Produk. No single “you will earn Rp X”. **Belum punya ide:** opens Cari Produk. Done on analysis or an existing Deep Dive.
-   - `pra-listing` — title, description, optional photo (local preview only; not uploaded), SKU yes/no plus variation names. Suggestions come from the competitor titles just retrieved. Tanya Laris AI opens chat with that draft and those rows and an instruction not to invent sold or omset. Done when a title is saved.
+   - `ide-produk` (**Mau jual apa?**) — single form: name (required to analyze), description, optional cost and sell price. No two-path chooser. Analisis uses a lenient `searchListings` (falls back to tokens / raw RPC if the strict pass is empty) and shows count, price vs median, omset p25–p75 labeled perkiraan, and frequent title words. Empty search says so. **Cari inspirasi di Cari Produk** sits under the form. No “Cara kerja LarisID” tautan. Done on analysis or an existing Deep Dive.
+   - `pra-listing` (**Nilai listingmu**) — title and description prefilled from the idea step when empty. Sample photo from a similar listing in the analysis (local upload optional; not stored). **Nilai listing vs kompetitor** scores the draft and lists suggestions from the sample. Tanya Laris AI opens chat with that draft and those rows and an instruction not to invent sold or omset. Done when a title is saved.
 2. **Sumber produk**
    - `hitung-modal` — opens the calculator prefilled from the pra-listing (`price`, `cogs`). Fee, ongkir, iklan, and retur are part of modal. Rp 3 juta on the shop lesson is gross omset, not profit.
    - `mulai-sourcing` — pasar lokal, 1688, and Alibaba. 1688 and Alibaba are import routes, not a way around customs. Sample, MOQ, lead time, and bea stay in the copy. Video only when a real URL is stored.
-   - `tanya-sumber` — Komunitas draft the person edits and posts themselves. Verify only if this account has posted a question.
-3. **Pilih tempat jual** — Shopee, Tokopedia, Lazada, and TikTok Shop. One switcher, stored by adding the platform to `user_course_state.platforms`. Content of the first two lessons swaps; the rail stays three sections.
+   - `tanya-sumber` — same Tanya komunitas block as other lessons, with a sourcing pre-draft. Verify only if this account has posted a question.
+3. **Pilih tempat jual** — Shopee, Tokopedia, Lazada, and TikTok Shop. One switcher with marketplace logos, stored by adding the platform to `user_course_state.platforms`. Content of the first two lessons swaps; the rail stays three sections.
    - `cara-mulai` — how to open the seller account, official education links, and a KTP plus rekening checklist. Video only from a real YouTube URL.
    - `listing-pertama` — checklist mapped from the pra-listing. Tokopedia and TikTok Shop Indonesia share a Seller Center. A short block covers the first week (reply time, packing, complaints).
    - `tautan-toko` — paste the shop URL. Calls `belajar_link_shop`, which uses `ssis_link_shop`. Then the page shows what Laris actually knows.
 4. **Pantau**
    - `pantau-kompetitor` — Favorit already saved, plus a form for competitor product URLs. A Shopee URL we can resolve (`-i.SHOP.ITEM` or `/product/SHOP/ITEM` in `listings_deduped`) becomes a real Favorit via `trackProductFavorite`. A URL we cannot resolve is stored as “kamu yang mencatat” with no invented sales. Done when at least one real Favorit or one manual note exists.
 
-External links are official seller-education pages from the seed, plus `/cara-kerja/`, `/kalkulator/biaya-shopee/`, and `/kalkulator/margin-hpp/`. Photo-rights and SKU-stock warnings live on `pra-listing`.
+External links are official seller-education pages from the seed, plus `/kalkulator/biaya-shopee/` and `/kalkulator/margin-hpp/`. Unit 1 does not link `/cara-kerja/`. Photo-rights and SKU-stock warnings live on `pra-listing`.
+
+```bash
+bash scripts/apply-selfhost.sh supabase/migrations/20261014200000_belajar_unit1_refresh.sql
+```
 
 ## Outcome: about Rp 3 juta / month
 
@@ -92,11 +98,12 @@ Interactive widgets are keyed by lesson slug in `js/gpt-belajar.js`. Changing th
 
 ```bash
 bash scripts/apply-selfhost.sh supabase/migrations/20261014180000_belajar_curriculum_v2.sql
+bash scripts/apply-selfhost.sh supabase/migrations/20261014200000_belajar_unit1_refresh.sql
 ```
 
 Never `supabase db push --linked`.
 
-Do not re-apply `supabase/migrations/20261014120000_belajar_course.sql` after the v2 file. That file’s `belajar_course()` does not know baseline, listing draft, or shop outcomes, and it puts the five-module seed back. Re-applying the v2 file overwrites v2 lesson copy for the same slugs.
+Do not re-apply `supabase/migrations/20261014120000_belajar_course.sql` after the v2 file. That file’s `belajar_course()` does not know baseline, listing draft, or shop outcomes, and it puts the five-module seed back. Re-applying the v2 file overwrites v2 lesson copy for the same slugs — then re-apply the unit1 refresh migration.
 
 ## Events
 

@@ -3010,8 +3010,34 @@ function belajarCtx() {
         }
       }
     },
-    search(q) {
-      return searchListings(q, [], 24);
+    async search(q) {
+      const raw = String(q || '').trim();
+      if (!raw) return [];
+      let rows = await searchListings(raw, [], 24);
+      if (rows.length) return rows;
+      // Broad fashion / category phrases sometimes miss after filters — try
+      // each token, then a looser RPC pass for Belajar analysis.
+      const terms = raw.toLowerCase().split(/\s+/).filter((t) => t.length >= 3);
+      for (const t of terms) {
+        rows = await searchListings(t, [], 24);
+        if (rows.length) return rows;
+      }
+      try {
+        const clean = _sanitizeSearchToken(raw);
+        if (!clean || !_supabase) return [];
+        const { data, error } = await _supabase.rpc('search_listings', {
+          q: clean, lim: 40, off: 0, cats: null, price_min: null, price_max: null,
+        });
+        if (error || !data || !data.length) return [];
+        const best = new Map();
+        for (const r of data) {
+          const key = `${r.item_id}_${r.shop_id}`;
+          if (!best.has(key)) best.set(key, asListingProduct(r));
+        }
+        return Array.from(best.values()).slice(0, 24);
+      } catch (_) {
+        return [];
+      }
     },
     favorite(product) {
       return trackProductFavorite(product, { via: 'belajar' });
@@ -13660,9 +13686,10 @@ async function searchListings(q, locations = [], limit = 30) {
     }
     const relevant = filterRelevantHits(rows, scoreTerms, phrase, { synonyms });
     let out = relevant.length ? relevant.slice(0, limit) : [];
-    // Single-token queries still fall through to the RPC rows, then the sense
-    // gate drops color-only and false-friend hits. Unambiguous queries stay.
-    if (!out.length && scoreTerms.length <= 1) out = rows.slice(0, limit);
+    // If relevance scoring emptied a non-empty RPC result (common on broad
+    // two-token queries like "baju wanita"), fall back to the raw rows.
+    // Sense gate still drops color-only / false-friend hits.
+    if (!out.length) out = rows.slice(0, limit);
     return filterSenseRows(clean, out).slice(0, limit);
   } catch (_) { return []; }
 }

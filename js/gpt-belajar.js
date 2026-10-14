@@ -72,6 +72,7 @@
   let _tab = '';
   let _focus = '';
   let _photoUrl = '';
+  let _askDraft = { slug: '', body: '' };
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({
@@ -121,6 +122,7 @@
       idea: Object.assign({ choice: '', name: '', description: '', cost: null, price: null }, d.idea || {}),
       analysis: d.analysis || {},
       listing: Object.assign({ title: '', description: '', sku: false, variations: '' }, d.listing || {}),
+      rating: d.rating || {},
       manual: arr(d.manual),
     };
   }
@@ -233,16 +235,66 @@
   }
 
   function resourcesHtml(lesson) {
-    if (lesson.slug === 'cara-mulai') return '';
+    if (lesson.slug === 'cara-mulai' || lesson.slug === 'ide-produk' || lesson.slug === 'pra-listing') return '';
     const own = safeUrl(lesson.url);
     const items = arr(lesson.resources).map((r) => {
       const url = safeUrl(r && r.url);
       if (!url || url === own || ytId(url)) return '';
+      if (url === '/cara-kerja/' || /cara\s*kerja/i.test(String((r && r.name) || ''))) return '';
       return `<li><a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc((r && r.name) || url)}</a></li>`;
     }).filter(Boolean);
     if (!items.length) return '';
     const n = items.length;
     return sectionHtml(ICO.link, 'Tautan', n === 1 ? '1 tautan' : `${n} tautan`, `<ul class="blj-links">${items.join('')}</ul>`);
+  }
+
+  function platformLogo(id) {
+    try {
+      if (global.LARIS_MP && typeof global.LARIS_MP.logo === 'function') {
+        return global.LARIS_MP.logo(id).replace(/width="26" height="26"/g, 'width="22" height="22"');
+      }
+    } catch (_) {}
+    return '';
+  }
+
+  function askSeed(slug) {
+    const name = draft().idea.name || draft().listing.title || 'produk saya';
+    const prompts = {
+      'ide-produk': `Ada yang pernah jual ${name}? Saya lagi cek idenya dari listing yang ada.`,
+      'pra-listing': `Boleh lihat draf judul listing saya untuk ${name}?`,
+      'hitung-modal': `Untuk ${name}, biaya apa yang sering kelewat waktu hitung modal?`,
+      'mulai-sourcing': `Yang pernah cari supplier untuk ${name}, apa yang perlu ditanya sebelum transfer?`,
+      'tanya-sumber': `Yang pernah cari supplier untuk ${name}, lewat pasar lokal, 1688, atau Alibaba: apa yang perlu ditanya sebelum transfer? Saya butuh sampel dulu.`,
+      'cara-mulai': 'Yang baru buka toko, verifikasi KTP-nya biasanya nyangkut di mana?',
+      'listing-pertama': `Listing pertama ${name}: foto atau judul yang lebih sering bikin orang nanya?`,
+      'tautan-toko': 'Setelah toko hidup, apa yang kalian pantau di minggu pertama?',
+      'pantau-kompetitor': 'Kalian pantau kompetitor dari harga, atau dari listing baru?',
+    };
+    return prompts[slug] || prompts['tanya-sumber'];
+  }
+
+  function communityAskHtml(lesson) {
+    const slug = (lesson && lesson.slug) || '';
+    const typed = fieldVal(rootEl(), '[data-blj-ask-body]');
+    if (_askDraft.slug === slug && typed != null) _askDraft.body = typed;
+    else if (_askDraft.slug !== slug) {
+      _askDraft = { slug, body: askSeed(slug) };
+    }
+    const seed = _askDraft.body || askSeed(slug);
+    const line = lesson && lesson.action && lesson.action.verify_key === 'diskusi'
+      ? signalLine(lesson)
+      : '';
+    return sectionHtml(
+      ICO.ask,
+      'Tanya komunitas',
+      'Diskusi',
+      `<p class="blj-quiet">Edit draf di bawah, lalu buka Diskusi. Kamu yang menekan kirim — kami tidak memposting otomatis.</p>
+       ${line ? `<p class="blj-verified">${esc(line)}</p>` : ''}
+       <label class="blj-ask-label">Draf pertanyaan
+         <textarea data-blj-ask-body rows="3" maxlength="4000">${esc(seed)}</textarea>
+       </label>
+       <button type="button" class="btn-primary" data-blj-go="diskusi">Tanya di Diskusi</button>`
+    );
   }
 
   function pointsHtml(lesson) {
@@ -531,77 +583,86 @@
     </div>`;
   }
 
-  function choiceCards(choice) {
-    const yesOn = choice === 'yes';
-    const noOn = choice === 'no';
-    return `<div class="blj-choices">
-      <button type="button" class="blj-choice${yesOn ? ' is-on' : ''}" data-blj-choice="yes" aria-pressed="${yesOn ? 'true' : 'false'}">
-        <strong>Saya punya ide produk</strong>
-        <span>Cek harga dan listing yang mirip dari data Shopee yang kami punya.</span>
-      </button>
-      <button type="button" class="blj-choice${noOn ? ' is-on' : ''}" data-blj-choice="no" aria-pressed="${noOn ? 'true' : 'false'}">
-        <strong>Saya mau cari ide produk</strong>
-        <span>Jelajahi produk yang sedang laku di Cari Produk.</span>
-      </button>
-    </div>`;
-  }
-
   function widgetIde() {
     const idea = draft().idea;
-    const choice = idea.choice === 'yes' || idea.choice === 'no' ? idea.choice : '';
-    const form = choice === 'yes' ? `<div class="blj-form">
-      <h3>Ceritakan ide produkmu</h3>
+    return `<div class="blj-form">
+      <h3>Mau jual apa?</h3>
       <p class="blj-quiet">Isi yang kamu tahu. Belum punya semua detailnya tidak apa-apa.</p>
-      <label>Nama produk <input data-blj-idea="name" maxlength="200" value="${esc(idea.name || '')}" required></label>
-      <label>Deskripsi <textarea data-blj-idea="description" maxlength="2000" rows="3">${esc(idea.description || '')}</textarea></label>
+      <label>Nama produk <input data-blj-idea="name" maxlength="200" value="${esc(idea.name || '')}" required placeholder="contoh: baju wanita"></label>
+      <label>Deskripsi <textarea data-blj-idea="description" maxlength="2000" rows="3" placeholder="opsional">${esc(idea.description || '')}</textarea></label>
       <div class="blj-price-row">
         <label>Harga modal <input data-blj-idea="cost" inputmode="numeric" placeholder="opsional" value="${idea.cost ? esc(String(idea.cost)) : ''}"></label>
         <label>Harga jual <input data-blj-idea="price" inputmode="numeric" placeholder="opsional" value="${idea.price ? esc(String(idea.price)) : ''}"></label>
       </div>
       <button type="button" class="btn-primary" data-blj-go="analyze">Analisis ide produk</button>
-    </div>` : '';
-    const search = choice === 'no' ? `<div class="blj-form">
-      <h3>Cari dari data yang sudah ada</h3>
-      <p>Buka Cari Produk. Tabel untuk membandingkan angka, kartu untuk melihat foto. Omset yang tidak terukur tetap perkiraan. Deep Dive satu produk menandai bagian ini kalau kamu belum menjalankan analisis.</p>
-      <button type="button" class="btn-primary" data-blj-go="search" data-q="">Buka Cari Produk</button>
-    </div>` : '';
-    return `${choiceCards(choice)}${form}${search}${analysisHtml(draft().analysis)}`;
+      ${analysisHtml(draft().analysis)}
+      <div class="blj-inspire">
+        <p class="blj-quiet">Belum yakin produknya? Cari inspirasi dari data Shopee yang sudah ada.</p>
+        <button type="button" class="btn-ghost" data-blj-go="search" data-q="${esc(idea.name || '')}">Cari inspirasi di Cari Produk</button>
+      </div>
+    </div>`;
   }
 
-  function suggestHtml() {
+  function samplePhotoUrl() {
+    if (_photoUrl) return _photoUrl;
+    const hit = arr(draft().analysis && draft().analysis.sample).find((r) => r.image);
+    return hit ? hit.image : '';
+  }
+
+  function rateTipsHtml() {
     const d = draft();
-    const analysis = d.analysis || {};
-    if (!analysis.ran) {
-      return '<p class="blj-quiet">Jalankan analisis ide dulu kalau kamu mau saran ini memakai listing yang ketemu, bukan tebakan.</p>';
-    }
-    const bits = [`<p>${esc(priceNote(analysis))}</p>`];
-    if (arr(analysis.words).length) {
-      bits.push(`<p>Kata yang sering muncul di judul sampel: ${esc(analysis.words.join(', '))}.</p>`);
-    }
-    bits.push('<button type="button" class="btn-ghost" data-blj-go="ask">Tanya Laris AI</button>');
-    bits.push('<p class="blj-quiet">Laris AI mendapat drafmu dan sampel listing ini. Ia tidak boleh mengarang angka terjual.</p>');
-    return bits.join('');
+    const rating = d.rating || {};
+    if (!rating.ran) return '';
+    const tips = arr(rating.tips).map((t) => `<li>${esc(t)}</li>`).join('');
+    return `<div class="blj-rate-out" data-blj-rate-out>
+      <p><strong>Skor draf:</strong> ${esc(String(rating.score || 0))}/10 terhadap sampel kompetitor.</p>
+      ${tips ? `<ul class="blj-points">${tips}</ul>` : ''}
+      <button type="button" class="btn-ghost" data-blj-go="ask">Tanya Laris AI</button>
+      <p class="blj-quiet">Laris AI mendapat drafmu dan sampel listing. Ia tidak boleh mengarang angka terjual.</p>
+    </div>`;
+  }
+
+  function listingPrefill() {
+    const d = draft();
+    return {
+      title: d.listing.title || d.idea.name || '',
+      description: d.listing.description || d.idea.description || '',
+      sku: !!d.listing.sku,
+      variations: d.listing.variations || '',
+    };
   }
 
   function widgetListing() {
-    const listing = draft().listing;
+    const listing = listingPrefill();
     const sku = !!listing.sku;
-    const preview = _photoUrl
-      ? `<img class="blj-photo" data-blj-photo-preview src="${esc(_photoUrl)}" alt="">`
+    const sample = samplePhotoUrl();
+    const fromSample = !_photoUrl && !!sample;
+    const preview = sample
+      ? `<img class="blj-photo" data-blj-photo-preview src="${esc(sample)}" alt="Foto sampel listing mirip">`
       : '<img class="blj-photo" data-blj-photo-preview alt="" hidden>';
+    const analysis = draft().analysis || {};
+    const hint = analysis.ran
+      ? `<p class="blj-quiet">${esc(priceNote(analysis))}${arr(analysis.words).length ? ` Kata sering di judul sampel: ${esc(analysis.words.join(', '))}.` : ''}</p>`
+      : '<p class="blj-quiet">Jalankan analisis di langkah sebelumnya supaya penilaian memakai listing yang ketemu, bukan tebakan.</p>';
     return `<div class="blj-form">
-      <label class="blj-photo-pick">Foto
-        <input type="file" accept="image/*" data-blj-photo>
-      </label>
-      ${preview}
-      <p class="blj-quiet">Foto hanya tampil di perangkat ini. Kami tidak menyimpannya. Pakai foto yang haknya kamu punya.</p>
-      <label>Judul <input data-blj-list="title" maxlength="200" value="${esc(listing.title || '')}"></label>
-      <label>Deskripsi <textarea data-blj-list="description" maxlength="4000" rows="4">${esc(listing.description || '')}</textarea></label>
+      <h3>Nilai listingmu</h3>
+      <p class="blj-quiet">Bandingkan drafmu dengan kompetitor dari langkah ide. Judul dan deskripsi diisi dari langkah 1 kalau sudah ada.</p>
+      <div class="blj-photo-block">
+        ${preview}
+        ${fromSample ? '<p class="blj-quiet">Foto sampel dari listing mirip. Kamu bisa unggah foto sendiri — hanya tampil di perangkat ini, kami tidak menyimpan.</p>' : '<p class="blj-quiet">Unggah foto kalau mau. Hanya tampil di perangkat ini; kami tidak menyimpan. Pakai foto yang haknya kamu punya.</p>'}
+        <label class="blj-photo-pick">Unggah foto sendiri
+          <input type="file" accept="image/*" data-blj-photo>
+        </label>
+      </div>
+      <label>Judul <input data-blj-list="title" maxlength="200" value="${esc(listing.title)}"></label>
+      <label>Deskripsi <textarea data-blj-list="description" maxlength="4000" rows="4">${esc(listing.description)}</textarea></label>
       <label class="blj-check"><input type="checkbox" data-blj-sku ${sku ? 'checked' : ''}> Ada variasi SKU</label>
-      <label data-blj-variations ${sku ? '' : 'hidden'}>Nama variasi <input data-blj-list="variations" maxlength="500" value="${esc(listing.variations || '')}" placeholder="contoh: dusty pink, sage"></label>
+      <label data-blj-variations ${sku ? '' : 'hidden'}>Nama variasi <input data-blj-list="variations" maxlength="500" value="${esc(listing.variations)}" placeholder="contoh: dusty pink, sage"></label>
       <p class="blj-quiet">Setiap variasi adalah barang lain yang harus kamu stok.</p>
-      ${suggestHtml()}
-      <button type="button" class="btn-primary" data-blj-go="save-listing">Simpan pra-listing</button>
+      ${hint}
+      <button type="button" class="btn-primary" data-blj-go="rate-listing">Nilai listing vs kompetitor</button>
+      ${rateTipsHtml()}
+      <button type="button" class="btn-ghost" data-blj-go="save-listing">Simpan draf listing</button>
     </div>`;
   }
 
@@ -619,13 +680,10 @@
   }
 
   function widgetDiskusi(lesson) {
-    const name = draft().idea.name || draft().listing.title || 'produk saya';
-    const seed = `Yang pernah cari supplier untuk ${name}, lewat pasar lokal, 1688, atau Alibaba: apa yang perlu ditanya sebelum transfer? Saya butuh sampel dulu.`;
     const line = signalLine(lesson);
     return `<div class="blj-form">
-      ${line ? `<p class="blj-verified">${esc(line)}</p>` : '<p class="blj-quiet">Belum ada pertanyaan dari akun ini. Kamu yang menekan kirim.</p>'}
-      <label>Draf pertanyaan <textarea data-blj-ask-body rows="4" maxlength="4000">${esc(seed)}</textarea></label>
-      <button type="button" class="btn-primary" data-blj-go="diskusi">Tanya di Diskusi</button>
+      <p>Pakai kotak <strong>Tanya komunitas</strong> di bawah. Edit draf sourcing-nya, lalu buka Diskusi — kamu yang kirim.</p>
+      ${line ? `<p class="blj-verified">${esc(line)}</p>` : '<p class="blj-quiet">Belum ada pertanyaan dari akun ini.</p>'}
     </div>`;
   }
 
@@ -658,9 +716,12 @@
 
   function platformSwitcher() {
     const focus = focusPlatform();
-    return `<div class="blj-chips" role="group" aria-label="Platform">${PLATFORMS.map((pl) => {
+    return `<div class="blj-plats" role="group" aria-label="Platform">${PLATFORMS.map((pl) => {
       const on = focus === pl.id;
-      return `<button type="button" class="blj-chip${on ? ' is-on' : ''}" data-blj-focus="${pl.id}" aria-pressed="${on ? 'true' : 'false'}">${esc(pl.label)}</button>`;
+      const logo = platformLogo(pl.id);
+      return `<button type="button" class="blj-plat${on ? ' is-on' : ''}" data-blj-focus="${pl.id}" aria-pressed="${on ? 'true' : 'false'}">
+        ${logo || ''}<span>${esc(pl.label)}</span>
+      </button>`;
     }).join('')}</div>`;
   }
 
@@ -789,22 +850,13 @@
         Belajar
       </button>
       <span class="blj-pos">Langkah ${mi >= 0 ? mi + 1 : 1} dari ${mods.length || 4}</span>
-      <button type="button" class="blj-navbtn" data-blj-step="-1" ${i > 0 ? '' : 'disabled'} aria-label="Materi sebelumnya">
+      <button type="button" class="blj-navbtn" data-blj-step="-1" ${i > 0 ? '' : 'disabled'} aria-label="Bagian sebelumnya">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 6l-6 6 6 6"/></svg>
       </button>
-      <button type="button" class="blj-navbtn" data-blj-step="1" ${i >= 0 && i < items.length - 1 ? '' : 'disabled'} aria-label="Materi berikutnya">
+      <button type="button" class="blj-navbtn" data-blj-step="1" ${i >= 0 && i < items.length - 1 ? '' : 'disabled'} aria-label="Bagian berikutnya">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 6l6 6-6 6"/></svg>
       </button>
     </div></div>`;
-  }
-
-  function pagerHtml() {
-    const prev = neighbor(-1);
-    const next = neighbor(1);
-    return `<div class="blj-pager">
-      <button type="button" class="blj-pager-btn" data-blj-step="-1" ${prev ? '' : 'disabled'}>Materi sebelumnya</button>
-      <button type="button" class="blj-pager-btn is-next" data-blj-step="1" ${next ? '' : 'disabled'}>Materi berikutnya</button>
-    </div>`;
   }
 
   function finishHtml(lesson) {
@@ -812,15 +864,12 @@
     const next = neighbor(1);
     if (done) {
       return next
-        ? '<button type="button" class="blj-finish is-done" data-blj-step="1">Selesai · lanjut</button>'
-        : '<p class="blj-finish is-done" role="status">Selesai</p>';
+        ? '<button type="button" class="blj-finish is-done" data-blj-step="1">Lanjut ke berikutnya</button>'
+        : '<p class="blj-finish is-done" role="status">Semua bagian di jalur ini selesai</p>';
     }
-    return '<button type="button" class="blj-finish" data-blj-done>Tandai selesai</button>';
-  }
-
-  function activeTab(lesson) {
-    if (_tab === 'tentang' || _tab === 'materi') return _tab;
-    return WIDGETS.has(lesson.slug) ? 'materi' : 'tentang';
+    return next
+      ? '<button type="button" class="blj-finish" data-blj-done>Lanjut ke berikutnya</button>'
+      : '<button type="button" class="blj-finish" data-blj-done>Selesai</button>';
   }
 
   function lessonMain(found) {
@@ -828,13 +877,7 @@
     const mod = found.module;
     const done = lesson.status === 'done';
     const skipped = lesson.status === 'skipped';
-    const tab = activeTab(lesson);
     const widget = widgetHtml(lesson);
-    const tentang = `${pointsHtml(lesson) || `<p>${esc(mod.subtitle || '')}</p>`}`;
-    const materi = `${paras(lesson.body) ? `<div class="blj-body">${paras(lesson.body)}</div>` : ''}
-      ${widget ? sectionHtml(ICO.step, 'Kerjakan di sini', '', widget) : ''}
-      ${resourcesHtml(lesson)}
-      ${questionsHtml(lesson)}`;
     return `${lessonChrome(found)}
       <article class="blj-lesson">
         <p class="blj-kicker">${esc(mod.title)}</p>
@@ -842,20 +885,16 @@
         <p class="blj-kind">${esc(kindLabel(lesson.kind))}${lesson.est_mins ? ` · ${lesson.est_mins} mnt` : ''}</p>
         ${!lesson.applicable ? '<p class="blj-quiet">Bagian ini tidak masuk hitungan progresmu. Tetap bisa dibaca.</p>' : ''}
         ${mediaHtml(lesson)}
-        <div class="blj-tabs" role="tablist">
-          <button type="button" role="tab" data-blj-tab="tentang" aria-selected="${tab === 'tentang' ? 'true' : 'false'}">Tentang</button>
-          <button type="button" role="tab" data-blj-tab="materi" aria-selected="${tab === 'materi' ? 'true' : 'false'}">Materi</button>
-          <button type="button" data-blj-tab="diskusi">Diskusi</button>
-        </div>
-        <div class="blj-tab-panel" ${tab === 'tentang' ? '' : 'hidden'}>${tentang}</div>
-        <div class="blj-tab-panel" ${tab === 'materi' ? '' : 'hidden'}>${materi}</div>
+        ${paras(lesson.body) ? `<div class="blj-body">${paras(lesson.body)}</div>` : ''}
+        ${widget ? sectionHtml(ICO.step, 'Kerjakan di sini', '', widget) : ''}
+        ${resourcesHtml(lesson)}
+        ${questionsHtml(lesson)}
+        ${communityAskHtml(lesson)}
         ${finishHtml(lesson)}
-        ${pagerHtml()}
         <div class="blj-actions">
           ${done
             ? '<button type="button" class="btn-ghost" data-blj-clear>Buka lagi</button>'
-            : `<button type="button" class="btn-ghost" data-blj-draft>Simpan jawaban</button>
-               ${skipped
+            : `${skipped
                  ? '<button type="button" class="btn-ghost" data-blj-clear>Kembalikan</button>'
                  : '<button type="button" class="btn-ghost" data-blj-skip>Lewati</button>'}`}
         </div>
@@ -866,13 +905,11 @@
     const lesson = found.lesson;
     const done = lesson.status === 'done';
     const next = neighbor(1);
+    const label = next ? 'Lanjut ke berikutnya' : (done ? 'Selesai' : 'Selesai');
     const primary = done
-      ? `<button type="button" class="blj-finish is-done" data-blj-step="1" ${next ? '' : 'disabled'}>Lanjut</button>`
-      : '<button type="button" class="blj-finish" data-blj-done>Tandai selesai</button>';
-    const side = done
-      ? ''
-      : `<button type="button" class="blj-pager-btn is-next" data-blj-step="1" ${next ? '' : 'disabled'}>Lanjut</button>`;
-    return `<div class="blj-mobile-bar">${primary}${side}</div>`;
+      ? `<button type="button" class="blj-finish is-done" data-blj-step="1" ${next ? '' : 'disabled'}>${label}</button>`
+      : `<button type="button" class="blj-finish" data-blj-done>${label}</button>`;
+    return `<div class="blj-mobile-bar">${primary}</div>`;
   }
 
   function homeMain() {
@@ -1012,7 +1049,7 @@
         paint();
       }
       if (_ctx && _ctx.toast) {
-        _ctx.toast(status === 'done' ? 'Ditandai selesai.' : status === 'skipped' ? 'Bagian dilewati.' : status === 'clear' ? 'Bagian dibuka lagi.' : 'Jawaban tersimpan.');
+        _ctx.toast(status === 'done' ? 'Lanjut.' : status === 'skipped' ? 'Bagian dilewati.' : status === 'clear' ? 'Bagian dibuka lagi.' : 'Jawaban tersimpan.');
       }
     } catch (err) {
       if (_ctx && _ctx.toast) _ctx.toast('Belum tersimpan. Coba lagi.');
@@ -1075,16 +1112,103 @@
     const btn = rootEl() && rootEl().querySelector('[data-blj-go="analyze"]');
     if (btn) { btn.disabled = true; btn.textContent = 'Mencari listing…'; }
     try {
-      const rows = await _ctx.search(idea.name);
+      const q = [idea.name, idea.description].filter(Boolean).join(' ').trim();
+      const rows = await _ctx.search(q || idea.name);
       const next = draft();
       next.idea = idea;
       next.analysis = summarize(idea, rows);
+      if (!next.listing.title && idea.name) next.listing.title = idea.name;
+      if (!next.listing.description && idea.description) next.listing.description = idea.description;
       await saveDraft(next);
       if (_ctx.log) _ctx.log('belajar_analysis', { ui: 'gpt', n: next.analysis.n || 0 });
       paint();
     } catch (err) {
       toastFail(err);
       try { console.warn('[belajar]', err); } catch (_) {}
+    } finally {
+      _busy = false;
+    }
+  }
+
+  function buildRating(listing, analysis) {
+    const tips = [];
+    let score = 4;
+    const title = String(listing.title || '').trim();
+    const desc = String(listing.description || '').trim();
+    const words = arr(analysis && analysis.words);
+    const n = (analysis && analysis.n) || 0;
+    if (!analysis || !analysis.ran) {
+      return {
+        ran: true,
+        score: 3,
+        tips: ['Jalankan analisis ide dulu supaya penilaian memakai listing yang ketemu, bukan tebakan.'],
+      };
+    }
+    if (!n) {
+      tips.push('Sampel kompetitor kosong. Coba kata yang lebih umum di langkah ide, atau cari inspirasi di Cari Produk.');
+    } else {
+      score += 2;
+    }
+    if (title.length >= 20 && title.length <= 100) {
+      score += 2;
+      tips.push('Panjang judulmu masuk kisaran yang biasa dipakai di sampel.');
+    } else if (title.length < 12) {
+      tips.push('Judul masih pendek. Sebut isi atau manfaat yang orang ketik saat cari.');
+    } else if (title.length > 120) {
+      tips.push('Judul terlalu panjang. Potong ke kata yang paling sering dicari.');
+    } else {
+      score += 1;
+    }
+    if (words.length) {
+      const lower = title.toLowerCase();
+      const hit = words.filter((w) => lower.includes(w));
+      if (hit.length) {
+        score += 1;
+        tips.push(`Judulmu sudah memakai kata yang sering muncul di sampel: ${hit.join(', ')}.`);
+      } else {
+        tips.push(`Coba sisipkan kata yang sering di judul sampel: ${words.slice(0, 4).join(', ')}.`);
+      }
+    }
+    if (desc.length >= 40) {
+      score += 1;
+      tips.push('Deskripsi sudah ada. Pastikan bahan, ukuran, dan isi paket jujur.');
+    } else {
+      tips.push('Tambah deskripsi singkat: bahan, ukuran, dan apa yang pembeli terima.');
+    }
+    if (analysis.median_price) {
+      tips.push(priceNote(analysis));
+      if (analysis.user_price && analysis.price_vs === 'below') {
+        tips.push('Harga jual di bawah median sampel — cek masih di atas modal setelah biaya platform.');
+      } else if (analysis.user_price && analysis.price_vs === 'near') {
+        score += 1;
+      }
+    }
+    if (arr(analysis.sample).some((r) => r.image)) {
+      tips.push('Ada foto sampel dari listing mirip. Unggah foto sendiri kalau hak fotonya kamu punya — jangan pakai foto merek orang lain.');
+    }
+    score = Math.max(1, Math.min(10, score));
+    return { ran: true, score, tips: tips.slice(0, 6) };
+  }
+
+  async function onRateListing() {
+    if (_busy) return;
+    const listing = readListing(rootEl());
+    if (!String(listing.title || '').trim()) {
+      if (_ctx && _ctx.toast) _ctx.toast('Isi judul dulu.');
+      return;
+    }
+    const next = draft();
+    if (!listing.title && next.idea.name) listing.title = next.idea.name;
+    if (!listing.description && next.idea.description) listing.description = next.idea.description;
+    next.listing = listing;
+    next.rating = buildRating(listing, next.analysis);
+    _busy = true;
+    try {
+      await saveDraft(next);
+      paint();
+      if (_ctx && _ctx.toast) _ctx.toast('Penilaian siap. Baca saran di bawah.');
+    } catch (err) {
+      toastFail(err);
     } finally {
       _busy = false;
     }
@@ -1103,7 +1227,7 @@
     try {
       await saveDraft(next);
       paint();
-      if (_ctx && _ctx.toast) _ctx.toast('Pra-listing tersimpan.');
+      if (_ctx && _ctx.toast) _ctx.toast('Draf listing tersimpan.');
     } catch (err) {
       toastFail(err);
     } finally {
@@ -1274,18 +1398,7 @@
   function diskusiPayload() {
     const name = draft().idea.name || draft().listing.title || 'produk saya';
     const typed = fieldVal(rootEl(), '[data-blj-ask-body]');
-    const prompts = {
-      'ide-produk': `Ada yang pernah jual ${name}? Saya lagi cek idenya dari listing yang ada.`,
-      'pra-listing': `Boleh lihat draf judul listing saya untuk ${name}?`,
-      'hitung-modal': `Untuk ${name}, biaya apa yang sering kelewat waktu hitung modal?`,
-      'mulai-sourcing': `Yang pernah cari supplier untuk ${name}, apa yang perlu ditanya sebelum transfer?`,
-      'tanya-sumber': `Yang pernah cari supplier untuk ${name}, lewat pasar lokal, 1688, atau Alibaba: apa yang perlu ditanya sebelum transfer? Saya butuh sampel dulu.`,
-      'cara-mulai': 'Yang baru buka toko, verifikasi KTP-nya biasanya nyangkut di mana?',
-      'listing-pertama': `Listing pertama ${name}: foto atau judul yang lebih sering bikin orang nanya?`,
-      'tautan-toko': 'Setelah toko hidup, apa yang kalian pantau di minggu pertama?',
-      'pantau-kompetitor': 'Kalian pantau kompetitor dari harga, atau dari listing baru?',
-    };
-    const body = (typed && typed.trim()) || prompts[_lessonSlug] || prompts['tanya-sumber'];
+    const body = (typed && typed.trim()) || _askDraft.body || askSeed(_lessonSlug);
     const title = (_lessonSlug === 'tanya-sumber' ? `Sourcing ${name}` : body).slice(0, 120);
     return { title, body: body.slice(0, 4000) };
   }
@@ -1403,6 +1516,7 @@
       e.preventDefault();
       const go = el.getAttribute('data-blj-go');
       if (go === 'analyze') { void onAnalyze(); return; }
+      if (go === 'rate-listing') { void onRateListing(); return; }
       if (go === 'save-listing') { void onSaveListing(); return; }
       if (go === 'link-shop') { void onLinkShop(); return; }
       if (go === 'report') { void onReport(); return; }
@@ -1477,7 +1591,10 @@
     const slug = opts.lesson || null;
     const changed = slug !== _lessonSlug;
     _lessonSlug = slug;
-    if (changed) _tab = '';
+    if (changed) {
+      _tab = '';
+      _askDraft = { slug: '', body: '' };
+    }
     if (changed && _lessonSlug && _ctx && _ctx.log) {
       _ctx.log('belajar_lesson_open', { ui: 'gpt', slug: _lessonSlug });
     }
