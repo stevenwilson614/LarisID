@@ -2971,21 +2971,63 @@ function belajarCtx() {
         hist: slug ? { lesson: slug } : {},
       });
     },
-    action(view) {
+    action(view, extra) {
+      extra = extra || {};
       void logUserEvent('belajar_action_click', { ui: 'gpt', view: view || '' });
-      if (view === 'directory') { void openDirectory(); return; }
-      if (view === 'kalkulator') { openKalkulatorPage({ via: 'belajar' }); return; }
+      if (view === 'directory') {
+        const q = String(extra.query || '').trim();
+        if (q) { void runResultsBarSearch(q); return; }
+        void openDirectory();
+        return;
+      }
+      if (view === 'kalkulator') {
+        openKalkulatorPage({
+          via: 'belajar',
+          clearProduct: true,
+          kalc: extra.kalc || null,
+        });
+        return;
+      }
       if (view === 'tracker') { void openTrackerView(); return; }
-      if (view === 'community') { openCommunityBoard({ tab: 'diskusi' }); return; }
+      if (view === 'community') {
+        openCommunityBoard({
+          tab: 'diskusi',
+          title: extra.title || '',
+          topic: extra.topic || '',
+          body: extra.body || '',
+        });
+        return;
+      }
       if (view === 'profil' && currentUser) { openUserProfile(currentUser.id); return; }
       if (view === 'edukasi') { openEdukasiView(); return; }
       if (view === 'chat') {
         setView('chat');
         const input = $('composer-input');
         if (input) {
-          if (!String(input.value || '').trim()) input.value = 'Bandingkan ';
+          if (extra.prompt) input.value = extra.prompt;
+          else if (!String(input.value || '').trim()) input.value = 'Bandingkan ';
           input.focus();
         }
+      }
+    },
+    search(q) {
+      return searchListings(q, [], 24);
+    },
+    favorite(product) {
+      return trackProductFavorite(product, { via: 'belajar' });
+    },
+    async lookupListing(itemId, shopId) {
+      if (!_supabase || itemId == null || shopId == null) return null;
+      try {
+        const { data, error } = await _supabase.from('listings_deduped')
+          .select('item_id,shop_id,product_name,store_name,price,image_url,keyword,category,total_sold,nowcast_omset_monthly')
+          .eq('item_id', itemId)
+          .eq('shop_id', shopId)
+          .limit(1);
+        if (error || !data || !data[0]) return null;
+        return data[0];
+      } catch (_) {
+        return null;
       }
     },
   };
@@ -16797,6 +16839,7 @@ function stashPendingKomunitas(opts) {
     title: opts?.title || '',
     topic: opts?.topic || '',
     postId: opts?.postId || '',
+    body: opts?.body || '',
   };
   saveLocalState();
 }
@@ -16845,6 +16888,7 @@ function openCommunityBoard(opts = {}) {
     title: opts.title || state.pendingKomunitas?.title || '',
     topic: opts.topic || state.pendingKomunitas?.topic || '',
     postId: opts.postId || state.pendingKomunitas?.postId || '',
+    body: opts.body || state.pendingKomunitas?.body || '',
   };
   if (!currentUser) {
     stashPendingKomunitas(next);
@@ -16865,6 +16909,7 @@ function openCommunityBoard(opts = {}) {
     initialTab: next.tab,
     prefillTitle: next.title,
     prefillTopic: next.topic,
+    prefillBody: next.body,
     focusPostId: next.postId,
     onError: (err) => { try { console.warn('[community-board]', err); } catch (_) {} },
     onOpenProfile: (userId, opts) => { openUserProfile(userId, opts); },

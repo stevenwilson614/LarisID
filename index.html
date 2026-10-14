@@ -2607,8 +2607,8 @@ body.view-profil .panel-inner {
 }
 body.view-community .panel-inner,
 body.view-profil .panel-inner { max-width: 1080px; }
-body.view-edukasi .panel-inner,
-body.view-belajar .panel-inner { max-width: 760px; }
+body.view-edukasi .panel-inner { max-width: 760px; }
+body.view-belajar .panel-inner { max-width: 1100px; }
 
 /* ── Belajar course ───────────────────────────────────────────── */
 .blj-page { padding: 8px 0 40px; }
@@ -2846,6 +2846,214 @@ p.blj-finish.is-done { cursor: default; }
 .blj-admin-lesson summary em { font-weight: 500; color: var(--muted, #78716c); font-style: normal; margin-left: 6px; }
 .blj-admin-err { margin: 0; color: var(--accent, #B5202A); font-size: .82rem; min-height: 1em; }
 .blj-admin-form textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+
+.blj-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 20px;
+  align-items: start;
+}
+.blj-main { min-width: 0; }
+.blj-steps-wrap { margin: 0 0 16px; }
+.blj-materi-btn { display: none; }
+.blj-steps {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.blj-steps::before {
+  content: "";
+  position: absolute;
+  top: 13px;
+  left: 12%;
+  right: 12%;
+  height: 2px;
+  background: #e7e5e4;
+}
+.blj-step {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.blj-step i {
+  width: 28px;
+  height: 28px;
+  border-radius: 99px;
+  border: 2px solid #d6d3d1;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  font-style: normal;
+  font-weight: 800;
+  font-size: .8rem;
+}
+.blj-step span {
+  font-size: .72rem;
+  font-weight: 750;
+  text-align: center;
+  line-height: 1.25;
+}
+.blj-step.is-done i { background: var(--accent, #B5202A); border-color: var(--accent, #B5202A); color: #fff; }
+.blj-step.is-current i { border-color: var(--accent, #B5202A); box-shadow: 0 0 0 4px rgba(181,32,42,.16); }
+.blj-step.is-quiet { opacity: .45; }
+.blj-steps-meta { margin: 8px 0 0; font-size: .82rem; color: var(--ink-soft, #4b5563); }
+.blj-steps-meta strong { color: var(--ink, #111); }
+.blj-rail {
+  position: sticky;
+  top: 8px;
+  background: #fff;
+  border: 1px solid var(--line, #e7e5e4);
+  border-radius: 16px;
+  padding: 14px 14px 6px;
+}
+.blj-rail-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.blj-rail-top strong { font-size: .95rem; line-height: 1.3; }
+.blj-rail-top b { color: var(--accent, #B5202A); font-size: 1.15rem; }
+.blj-rail-bar { height: 6px; border-radius: 99px; background: #eee; overflow: hidden; margin: 10px 0; }
+.blj-rail-bar span { display: block; height: 100%; background: var(--accent, #B5202A); }
+.blj-row.is-current { background: #fff5f5; margin: 0 -8px; padding: 10px 8px; border-radius: 10px; }
+.blj-tabs { display: flex; gap: 16px; border-bottom: 1px solid var(--line, #e7e5e4); margin: 8px 0 14px; }
+.blj-tabs button {
+  margin: 0;
+  padding: 8px 0 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  font: inherit;
+  font-weight: 750;
+  color: var(--ink-soft, #4b5563);
+  cursor: pointer;
+}
+.blj-tabs button[aria-selected="true"] { color: var(--accent, #B5202A); border-bottom-color: var(--accent, #B5202A); }
+.blj-outcomes {
+  background: #fff5f5;
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+.blj-outcomes strong { display: block; margin-bottom: 8px; }
+.blj-outcomes ul, .blj-checks { margin: 0; padding: 0; list-style: none; }
+.blj-outcomes li, .blj-checks li { margin: 8px 0; line-height: 1.45; }
+.blj-checks li span { color: var(--accent, #B5202A); font-weight: 800; margin-right: 6px; }
+.blj-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.blj-choice {
+  display: grid;
+  gap: 6px;
+  text-align: left;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1.5px solid var(--line, #e7e5e4);
+  background: #fff;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.blj-choice strong { font-size: 1rem; }
+.blj-choice span { color: var(--ink-soft, #4b5563); font-size: .88rem; line-height: 1.45; }
+.blj-choice.is-on { border-color: var(--accent, #B5202A); background: #fff5f5; box-shadow: 0 0 0 3px rgba(181,32,42,.12); }
+.blj-form { display: grid; gap: 10px; }
+.blj-form h3 { margin: 4px 0 0; font-size: 1.05rem; }
+.blj-form label { display: grid; gap: 4px; font-size: .82rem; font-weight: 750; }
+.blj-form input, .blj-form textarea {
+  width: 100%;
+  border: 1px solid var(--line, #e7e5e4);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font: inherit;
+  font-weight: 500;
+  font-size: .95rem;
+  background: #fff;
+}
+.blj-price-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.blj-check { grid-auto-flow: column; justify-content: start; align-items: center; font-size: .92rem; }
+.blj-form .btn-primary, .blj-form .btn-ghost { justify-self: start; }
+.blj-result { display: grid; gap: 8px; margin-top: 8px; }
+.blj-result p { margin: 0; line-height: 1.5; }
+.blj-comps { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.blj-comp {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-top: 1px solid var(--line, #eee);
+}
+.blj-comp strong, .blj-comp span { display: block; }
+.blj-comp span { color: var(--ink-soft, #4b5563); font-size: .82rem; }
+.blj-comp .btn-ghost { flex: none; }
+.blj-photo { display: block; width: 100%; max-height: 220px; object-fit: cover; border-radius: 12px; }
+.blj-photo[hidden], .blj-form label[hidden], .blj-tab-panel[hidden] { display: none; }
+.blj-sheet[hidden] { display: none !important; }
+.blj-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(17,17,17,.45);
+  display: grid;
+  align-items: end;
+  padding: 16px;
+}
+.blj-sheet-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 12px 14px 8px;
+  max-height: min(78vh, 640px);
+  overflow: auto;
+}
+.blj-sheet-close {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-weight: 750;
+  color: var(--accent, #B5202A);
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+.blj-mobile-bar { display: none; }
+
+@media (max-width: 900px) {
+  .blj-shell { grid-template-columns: 1fr; }
+  .blj-shell > .blj-rail { display: none; }
+  .blj-materi-btn {
+    display: inline-flex;
+    margin: 0 0 8px;
+    border: 1px solid var(--line, #e7e5e4);
+    background: #fff;
+    border-radius: 999px;
+    padding: 6px 12px;
+    font: inherit;
+    font-size: .82rem;
+    font-weight: 750;
+    cursor: pointer;
+  }
+  .blj-choices, .blj-price-row { grid-template-columns: 1fr; }
+  .blj-form .btn-primary { width: 100%; justify-self: stretch; }
+  .blj-lesson .blj-finish, .blj-lesson .blj-pager { display: none; }
+  .blj-mobile-bar {
+    display: flex;
+    gap: 8px;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: #fff;
+    border-top: 1px solid var(--line, #e7e5e4);
+  }
+  .blj-mobile-bar .blj-finish, .blj-mobile-bar .blj-pager-btn { flex: 1; margin: 0; }
+  body.view-belajar .blj-page { padding-bottom: 84px; }
+  .blj-comp { align-items: flex-start; flex-direction: column; }
+}
 
 /* ── Profil page ─────────────────────────────────────────────────── */
 .btn-user.is-on { background: var(--bg-user); }
@@ -12062,7 +12270,7 @@ body.view-chat .sfb-card {
 <script defer src="/js/gpt-photo-analyze.js?v=20260824a"></script>
 <script defer src="/js/gpt-referral.js?v=20260821a"></script>
 <script defer src="/js/gpt-profile.js?v=20260929e"></script>
-<script defer src="/js/gpt-community-board.js?v=20261014b"></script>
+<script defer src="/js/gpt-community-board.js?v=20260929f"></script>
 <script defer src="/js/laris-cohort.js?v=20260908j"></script>
 <script defer src="/js/laris-mascot-rigs.js?v=20260907k"></script>
 <script defer src="/js/laris-mascot.js?v=20260907k"></script>
@@ -12078,8 +12286,8 @@ body.view-chat .sfb-card {
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260915a" defer></script>
 <script src="/js/gpt-belajar.js?v=20261014b" defer></script>
-<script src="/js/gpt-alat-preview.js?v=20261014b" defer></script>
-<script src="/js/gpt-app.js?v=20261014b" defer></script>
+<script src="/js/gpt-alat-preview.js?v=20261014a" defer></script>
+<script src="/js/gpt-app.js?v=20261014a" defer></script>
 <style>
 .hl-hero-ctas-alat { display: none; }
 html.alat-preview #finder-xp-step { display: none; }

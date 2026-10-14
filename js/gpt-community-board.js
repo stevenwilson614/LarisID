@@ -906,10 +906,12 @@
   function applyLaunchOpts() {
     if (_opts.initialTab === 'usulan' || _opts.initialTab === 'diskusi') _tab = _opts.initialTab;
     _focusPostId = _opts.focusPostId || '';
-    if (_opts.prefillTitle || _opts.prefillTopic) {
+    if (_opts.prefillTitle || _opts.prefillTopic || _opts.prefillBody) {
       openForm();
       const title = _container.querySelector('#msb-title');
       if (title && _opts.prefillTitle && !title.value) title.value = _opts.prefillTitle;
+      const body = _container.querySelector('#msb-body');
+      if (body && _opts.prefillBody && !body.value) body.value = _opts.prefillBody;
       const topicSel = _container.querySelector('#msb-topic');
       if (topicSel && _opts.prefillTopic && TOPICS.includes(_opts.prefillTopic)) {
         topicSel.value = _opts.prefillTopic;

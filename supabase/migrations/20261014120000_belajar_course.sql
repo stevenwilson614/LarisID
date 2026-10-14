@@ -8,6 +8,10 @@
 --
 -- Re-applying this file overwrites the seeded module/lesson copy (slug is the
 -- key). Live admin edits to those same columns are replaced by this seed.
+--
+-- Do not re-apply this file after 20261014180000_belajar_curriculum_v2.sql.
+-- This file's belajar_course() does not know baseline, listing_draft, or
+-- user_seller_outcomes, and it would put the five-module course back.
 
 begin;
 
