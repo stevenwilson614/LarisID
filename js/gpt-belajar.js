@@ -981,23 +981,72 @@
     el.innerHTML = pageHtml(_lessonSlug ? lessonBySlug(_lessonSlug) : null);
   }
 
+  function loadFailReason(err) {
+    const code = (err && err.payload && err.payload.error)
+      || (err && err.message)
+      || (err && err.code)
+      || '';
+    if (code === 'login_required' || /login|jwt|auth/i.test(String(code))) {
+      return 'Login dulu, lalu buka Belajar lagi.';
+    }
+    if (code === 'admin_only') {
+      return 'Belajar masih terbatas untuk admin platform.';
+    }
+    if (code === 'no_client') {
+      return 'Koneksi belum siap. Muat ulang halaman.';
+    }
+    return 'Materi belum bisa dimuat.';
+  }
+
+  async function fetchCourse() {
+    if (!_ctx || !_ctx.supabase) throw new Error('no_client');
+    const data = await rpc('belajar_course');
+    if (!data || data.ok === false) {
+      throw Object.assign(new Error((data && data.error) || 'gagal'), { payload: data });
+    }
+    return data;
+  }
+
   async function load(opts) {
     const el = rootEl();
     const gen = ++_loadGen;
     if (el && !_course) el.innerHTML = '<p class="blj-loading">Menyusun materi…</p>';
     try {
-      const data = await rpc('belajar_course');
+      let data;
+      try {
+        data = await fetchCourse();
+      } catch (first) {
+        const code = (first && first.payload && first.payload.error) || (first && first.message) || '';
+        // Auth/session often lands a beat after the first paint — one quiet retry.
+        if (code === 'login_required' || code === 'no_client') {
+          await new Promise((r) => setTimeout(r, 450));
+          if (gen !== _loadGen) return;
+          data = await fetchCourse();
+        } else {
+          throw first;
+        }
+      }
       if (gen !== _loadGen) return;
-      if (!data || data.ok === false) throw new Error((data && data.error) || 'gagal');
       _course = data;
-      paint();
+      try {
+        paint();
+      } catch (paintErr) {
+        try { console.warn('[belajar] paint', paintErr); } catch (_) {}
+        if (el) {
+          el.innerHTML = `<p class="blj-loading">Materi terunduh, tapi tampilannya gagal.</p>
+            <p class="blj-quiet">${esc(String((paintErr && paintErr.message) || paintErr || ''))}</p>
+            <button type="button" class="btn-primary" data-blj-retry>Coba lagi</button>`;
+        }
+        return;
+      }
       if (opts && opts.entry && _ctx && _ctx.log) {
         _ctx.log('belajar_open', { ui: 'gpt', track: data.track || '', baseline: data.baseline || '' });
       }
     } catch (err) {
       if (gen !== _loadGen) return;
       if (el) {
-        el.innerHTML = '<p class="blj-loading">Materi belum bisa dimuat.</p><button type="button" class="btn-primary" data-blj-retry>Coba lagi</button>';
+        el.innerHTML = `<p class="blj-loading">${esc(loadFailReason(err))}</p>
+          <button type="button" class="btn-primary" data-blj-retry>Coba lagi</button>`;
       }
       try { console.warn('[belajar]', err); } catch (_) {}
     }
