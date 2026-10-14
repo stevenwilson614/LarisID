@@ -1825,6 +1825,7 @@ const state = {
   pendingProfilPreview: null, // 'filled' | 'empty' from ?profil=isi|kosong — local preview only
   pendingEdukasi: false, // Edukasi panel opened behind the login gate
   pendingBelajar: false, // Belajar course opened behind the login gate
+  pendingAlat: null, // 'existing' after My Toko sift / claim_shop, resumed after sign-in
   everOpenedDeepdive: false,
   lastDeepDiveKeyword: '',
   lastDeepDiveCategory: '',
@@ -1895,6 +1896,7 @@ function loadLocalState() {
     if (raw.pendingKomunitas) state.pendingKomunitas = raw.pendingKomunitas;
     if (raw.pendingEdukasi) state.pendingEdukasi = !!raw.pendingEdukasi;
     if (raw.pendingBelajar) state.pendingBelajar = !!raw.pendingBelajar;
+    if (raw.pendingAlat) state.pendingAlat = raw.pendingAlat;
     if (raw.everOpenedDeepdive != null) state.everOpenedDeepdive = !!raw.everOpenedDeepdive;
     if (raw.lastDeepDiveKeyword) state.lastDeepDiveKeyword = String(raw.lastDeepDiveKeyword);
     if (raw.lastDeepDiveCategory) state.lastDeepDiveCategory = String(raw.lastDeepDiveCategory);
@@ -1917,6 +1919,7 @@ function saveLocalState() {
       pendingKomunitas: state.pendingKomunitas || null,
       pendingEdukasi: !!state.pendingEdukasi,
       pendingBelajar: !!state.pendingBelajar,
+      pendingAlat: state.pendingAlat || null,
       everOpenedDeepdive: state.everOpenedDeepdive || false,
       lastDeepDiveKeyword: state.lastDeepDiveKeyword || '',
       lastDeepDiveCategory: state.lastDeepDiveCategory || '',
@@ -4677,7 +4680,7 @@ function setView(name, opts = {}) {
   if (name === 'belajar' && !isPlatformAdmin()) name = 'home';
   const leaving = state.view;
   state.view = name;
-  ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'edukasi', 'belajar', 'cohort', 'kalkulator', 'profil'].forEach(v => {
+  ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'edukasi', 'belajar', 'cohort', 'audit', 'sift', 'kalkulator', 'profil'].forEach(v => {
     const el = $(`view-${v}`);
     if (el) el.classList.toggle('active', v === name);
     document.body.classList.toggle(`view-${v}`, v === name);
@@ -4697,8 +4700,8 @@ function setView(name, opts = {}) {
   // .composer-dock display rule) — everywhere else now hides the bar
   // entirely rather than just clearing its chips, so this list stops
   // mattering for those views, but chips are still irrelevant on them either way.
-  if (name === 'home' || name === 'landing' || name === 'directory' || name === 'harga' || name === 'admin' || name === 'tracker' || name === 'community' || name === 'edukasi' || name === 'belajar' || name === 'cohort' || name === 'kalkulator' || name === 'profil') setComposerChips(null);
-  ['btn-ask-laris', 'btn-produk', 'btn-harga', 'btn-faq', 'btn-tentang', 'btn-admin', 'btn-tracker', 'btn-community', 'btn-edukasi', 'btn-belajar', 'btn-cohort', 'btn-kalkulator-alat'].forEach(id => {
+  if (name === 'home' || name === 'landing' || name === 'directory' || name === 'harga' || name === 'admin' || name === 'tracker' || name === 'community' || name === 'edukasi' || name === 'belajar' || name === 'cohort' || name === 'audit' || name === 'sift' || name === 'kalkulator' || name === 'profil') setComposerChips(null);
+  ['btn-ask-laris', 'btn-produk', 'btn-harga', 'btn-faq', 'btn-tentang', 'btn-admin', 'btn-tracker', 'btn-community', 'btn-edukasi', 'btn-belajar', 'btn-cohort', 'btn-audit', 'btn-kalkulator-alat'].forEach(id => {
     const el = $(id);
     if (!el) return;
     el.classList.toggle('active',
@@ -4714,6 +4717,7 @@ function setView(name, opts = {}) {
       (id === 'btn-edukasi' && name === 'edukasi') ||
       (id === 'btn-belajar' && name === 'belajar') ||
       (id === 'btn-cohort' && name === 'cohort') ||
+      (id === 'btn-audit' && name === 'audit') ||
       (id === 'btn-kalkulator-alat' && name === 'kalkulator'));
   });
   $('btn-user')?.classList.toggle('is-on', name === 'profil');
@@ -4768,7 +4772,7 @@ function setView(name, opts = {}) {
   }
 }
 
-const HISTORY_VIEWS = ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'edukasi', 'belajar', 'cohort', 'kalkulator', 'profil'];
+const HISTORY_VIEWS = ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'edukasi', 'belajar', 'cohort', 'audit', 'sift', 'kalkulator', 'profil'];
 // Old sessions may still have { view: 'tentang' } in history — map to landing.
 const HISTORY_VIEW_ALIASES = { tentang: 'landing' };
 
@@ -4804,6 +4808,7 @@ window.addEventListener('popstate', (e) => {
       if (view === 'home') updateHomeFinderVisibility();
       if (view === 'chat' && state.activeChatId && activeChat()) renderChatThread();
       if (view === 'kalkulator') openKalkulatorPage({ via: 'restore' });
+      if (view === 'audit' && window.LarisAlatPreview?.openAudit) window.LarisAlatPreview.openAudit();
       if (view === 'profil') {
         const preview = st.preview || null;
         const uid = st.userId || currentUser?.id;
@@ -4838,7 +4843,7 @@ function setSideAboutOpen(open) {
 
 function sellerToolsViewActive(name) {
   const v = name || state.view;
-  return v === 'home' || v === 'chat' || v === 'directory' || v === 'tracker' || v === 'deepdive' || v === 'kalkulator';
+  return v === 'home' || v === 'chat' || v === 'directory' || v === 'tracker' || v === 'deepdive' || v === 'audit' || v === 'kalkulator';
 }
 
 function setSellerToolsOpen(open) {
@@ -5802,7 +5807,7 @@ async function _authOnSignIn(session, opts) {
   renderSidebarLocCard();
 
   // Continue where the login gate interrupted: open the product they clicked.
-  const hadPending = !!(state.pendingDeepdive || state.pendingCompare || state.pendingTracker);
+  const hadPending = !!(state.pendingDeepdive || state.pendingCompare || state.pendingTracker || state.pendingAlat);
   if (state.pendingCompare) {
     const pending = state.pendingCompare;
     state.pendingCompare = null;
@@ -5836,6 +5841,13 @@ async function _authOnSignIn(session, opts) {
     state.pendingBelajar = false;
     saveLocalState();
     openBelajarView();
+  } else if (state.pendingAlat === 'existing' && window.LarisAlatPreview?.active?.()) {
+    state.pendingAlat = null;
+    saveLocalState();
+    const resumeAudit = !opts?.fromRestore;
+    void window.LarisAlatPreview.flushAccount().then(function () {
+      if (resumeAudit) window.LarisAlatPreview.openAudit();
+    });
   }
 
   // A one-tap "Kabari Kalau Berubah" that hit the signup gate finishes itself
@@ -6579,6 +6591,10 @@ function hasEngagedBeyondFinder() {
 }
 
 function shouldShowLandingFinder() {
+  if (window.LarisAlatPreview?.forceFinder?.()) return true;
+  if (window.LarisAlatPreview?.active() && (state.onboarding?.experience === 'existing' || window.LarisAlatPreview.intent?.() === 'existing')) {
+    return false;
+  }
   return !hasEngagedBeyondFinder();
 }
 
@@ -7892,6 +7908,17 @@ async function runFinderSearch() {
       scheduleEduInterestNotice({ fromRestore: false, isNewSignup: false });
     }
 
+    if (window.LarisAlatPreview?.active() && _finder.experience === 'first_time') {
+      void logUserEvent('gpt_finder_search', {
+        ui: 'gpt', surface: 'mytoko', city: _finder.city,
+        categories: _finder.categories.join(', '), budget: _finder.budget,
+        experience: _finder.experience,
+      });
+      try { window.LarisAlatPreview.exitFocus?.(); } catch (_) {}
+      await openDirectory();
+      return;
+    }
+
     const bud = finderBudgetCfg(_finder.budget);
     const catLabel = _finder.categories.join(', ');
 
@@ -8581,6 +8608,14 @@ function fillCalcContent(opts = {}) {
   if (!body) return;
   const product = opts.product || resolveSideProduct();
   if (!product) {
+    if (window.LarisAlatPreview?.active()) {
+      setSideContext('Kalkulator');
+      body.innerHTML = gptKalcHtml({ price: 0, cogs: 0 });
+      _calcFilled = true;
+      _calcProductKey = null;
+      bindGptKalc(body);
+      return;
+    }
     setSideContext('');
     body.innerHTML = '<p class="side-empty">Buka produk dulu untuk pakai kalkulator.</p>';
     _calcFilled = false;
@@ -8895,7 +8930,16 @@ function openSidePanel(mode, opts = {}) {
 }
 
 function openAiPanel(opts = {}) { openSidePanel('ai', opts); }
-function openCalcPanel(opts = {}) { openSidePanel('kalkulator', opts); }
+function openCalcPanel(opts = {}) {
+  if (window.LarisAlatPreview?.active()) {
+    openKalkulatorPage({
+      via: opts.via || 'panel',
+      product: opts.product || state.deepdiveProduct || null,
+    });
+    return;
+  }
+  openSidePanel('kalkulator', opts);
+}
 function openKompPanel(opts = {}) { openSidePanel('kompetitor', opts); }
 function openKeywordPanel(opts = {}) { openSidePanel('keyword', opts); }
 
@@ -16513,6 +16557,12 @@ async function openTrackerView(seed, resumeDraft) {
   if (!window.LarisTracker) return;
   window.LarisTracker.mount({ hostId: 'laris-tracker-root', site: 'b', adapter: gptTrackerAdapter() });
   const p = window.LarisTracker.open({ touch: true });
+  try {
+    if (window.LarisAlatPreview?.active() && window.LarisAlatPreview.intent?.() === 'existing') {
+      const title = document.querySelector('#laris-tracker-root .ltk-title');
+      if (title) title.textContent = 'Product Tracker';
+    }
+  } catch (_) {}
   if (seed && (seed.item_id || seed.keyword)) {
     Promise.resolve(p).then(() => {
       try { window.LarisTracker.openSetup({ seed }); } catch (_) {}
@@ -26893,6 +26943,7 @@ function wireUi() {
   });
   $('btn-tracker')?.addEventListener('click', () => { openTrackerView(); });
   $('btn-kalkulator-alat')?.addEventListener('click', () => {
+    try { window.LarisAlatPreview?.exitFocus?.(); } catch (_) {}
     openKalkulatorPage({ via: 'nav' });
   });
   $('btn-cohort')?.addEventListener('click', () => { openCohortView(); });
@@ -27060,6 +27111,7 @@ function wireUi() {
   wireCalcPanel();
   wireUsagePill();
   wireResultsBar();
+  attachAlatPreview();
 
   document.addEventListener('keydown', e => {
     if ((e.metaKey || e.ctrlKey) && String(e.key).toLowerCase() === 'k') {
@@ -27070,13 +27122,99 @@ function wireUi() {
   });
 }
 
+function attachAlatPreview() {
+  const api = window.LarisAlatPreview;
+  if (!api || typeof api.attach !== 'function') return;
+  api.attach({
+    $,
+    esc,
+    supabase: () => _supabase,
+    user: () => currentUser,
+    onboarding: () => state.onboarding,
+    pendingAlat: () => state.pendingAlat,
+    clarityEvt,
+    markPendingAlat(kind) {
+      state.pendingAlat = kind || null;
+      saveLocalState();
+    },
+    setExperience(kind) {
+      _finder.experience = kind;
+      state.onboarding.experience = kind;
+      saveFinderState();
+      saveLocalState();
+      try { window.LarisAlatPreview.hideFinderXp(); } catch (_) {}
+    },
+    resetFinderForAlat() {
+      if (state.onboarding) {
+        state.onboarding.step = 'city';
+        state.onboarding.completedAnon = false;
+        state.onboarding.experience = 'first_time';
+      }
+      _finder.experience = 'first_time';
+      saveFinderState();
+      saveLocalState();
+      try { window.LarisAlatPreview.hideFinderXp(); } catch (_) {}
+      updateHomeFinderVisibility();
+    },
+    openAuthModal,
+    setView,
+    showToast,
+    logUserEvent,
+    renderHome,
+    renderLanding,
+    openDirectory,
+    openDeepDive,
+    openCalcPanel,
+    openKalkulatorPage,
+    persistOnboardingPrefs,
+    imgThumb,
+    async getShopLogo(shopId) {
+      if (!_supabase || shopId == null) return '';
+      try {
+        const { data } = await _supabase.from('shop_logo_cache')
+          .select('logo_url')
+          .eq('shop_id', Number(shopId))
+          .maybeSingle();
+        if (data?.logo_url) return data.logo_url;
+      } catch (_) {}
+      try {
+        const { data, error } = await _supabase.functions.invoke('get-shop-logo', {
+          body: { shop_id: Number(shopId) },
+        });
+        if (!error && data) return data.logo_url || data.logo || '';
+      } catch (_) {}
+      return '';
+    },
+    addTrackedProduct(p, opts) {
+      return trackProductFavorite(p, Object.assign({ via: 'alat_preview' }, opts || {}));
+    },
+    async addTrackedStore(id, name) {
+      if (!_supabase) return { ok: false };
+      const { data, error } = await _supabase.rpc('add_tracked_store', {
+        p_shop_id: id,
+        p_store_name: name || '',
+      });
+      if (error) return { ok: false, error: error.message };
+      return data || { ok: true };
+    },
+    renderStandaloneCalc(el) {
+      if (!el) return;
+      el.innerHTML = gptKalcHtml({ price: 0, cogs: 0 });
+      bindGptKalc(el);
+    },
+  });
+}
+
 async function boot() {
   loadLocalState();
   recomputeLearnedCategories();
   // Merdeka decorations — self-gates to August WIB, no-ops the rest of the year.
   try { window.LarisMerdeka?.mount({ site: 'b', navSelector: '.main-top' }); } catch (_) {}
   try {
-    if (window.LarisExpor) {
+    if (window.LarisAlatPreview?.active()) {
+      document.body.classList.remove('expor-lab', 'pasar-expor');
+      document.body.classList.add('pasar-shopee');
+    } else if (window.LarisExpor) {
       if (new URLSearchParams(location.search).get('pasar') === 'expor') window.LarisExpor.activate();
       else window.LarisExpor.setPasar('shopee');
     }
@@ -27162,13 +27300,27 @@ async function boot() {
 
   // Landing is the default surface; onboarding never auto-starts.
   // Don't overwrite a deep dive / finder that _authOnSignIn just resumed.
-  const pendingResume = !!(state.pendingDeepdive || state.pendingCompare || state.pendingTracker || state.pendingKomunitas || state.pendingFinder || state.pendingProfilPreview || _finderResumeInFlight);
+  const pendingResume = !!(state.pendingDeepdive || state.pendingCompare || state.pendingTracker || state.pendingKomunitas || state.pendingFinder || state.pendingProfilPreview || (state.pendingAlat && currentUser) || _finderResumeInFlight);
   const alreadyDeepdive = state.view === 'deepdive' && !!state.deepdiveProduct;
   const alreadyCommunity = state.view === 'community';
   const alreadyAdmin = state.view === 'admin';
   const alreadyProfil = state.view === 'profil';
   const finderResultsUp = !!$('chat-thread')?.querySelector('[data-lrow-block]');
-  if (isExporPasar() && !_offerActive && !pendingResume && !alreadyDeepdive && !alreadyCommunity && !alreadyAdmin && !alreadyProfil) {
+  const previewResumeProduct = !!(state.pendingDeepdive || state.pendingCompare || state.pendingTracker || state.pendingFinder || state.pendingProfilPreview || _finderResumeInFlight);
+  if (window.LarisAlatPreview?.active() && !_offerActive && !previewResumeProduct && !alreadyDeepdive && !alreadyCommunity && !alreadyAdmin && !alreadyProfil) {
+    const tookAlat = window.LarisAlatPreview.onBoot();
+    if (tookAlat) {
+      _bootLandingView = state.view;
+    } else if (!pendingResume && !finderResultsUp) {
+      if (state.activeChatId && activeChat()) {
+        setView('chat');
+        renderChatThread();
+      } else {
+        renderHome();
+        _bootLandingView = state.view;
+      }
+    }
+  } else if (isExporPasar() && !_offerActive && !pendingResume && !alreadyDeepdive && !alreadyCommunity && !alreadyAdmin && !alreadyProfil) {
     if (state.activeChatId && activeChat()) {
       setView('chat');
       renderChatThread();
@@ -27189,6 +27341,9 @@ async function boot() {
   renderSidebarLocCard();
   void routeCohortHome();
   consumeAdminDeepLink();
+  if (window.LarisAlatPreview?.active() && !document.body.className.split(/\s+/).some((c) => c.startsWith('view-'))) {
+    if (!window.LarisAlatPreview.onBoot()) renderHome();
+  }
   if (state.pendingProfilPreview) {
     const preview = state.pendingProfilPreview;
     state.pendingProfilPreview = null;

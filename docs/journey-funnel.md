@@ -14,13 +14,14 @@ Read **[MISSION.md](../MISSION.md)** first. Do not reintroduce a blocking onboar
 
 ## Live flow
 
-**Login → Beranda (`#home-finder`) → Cari Produk / Laris AI → Deep Dive → end-of-dive alert card → Favorit Aku pulse / scrape digest / Langkah minggu ini / Komunitas strip**
+**First visit → sift doors (`#view-sift`) → Seller baru (Beranda finder) or Sudah punya toko (My Toko wizard) → Cari Produk / Laris AI → Deep Dive → end-of-dive alert card → Favorit Aku pulse / scrape digest / Langkah minggu ini / Komunitas strip**
 
-Onboarding is in-page on Beranda (`state.onboarding`: city → category → experience → notes), plus `#prefs-drawer` and a profile nudge. It is **not** a modal overlay.
+First visit is a full-page choice, not a popup: **Seller baru** opens the Beranda finder (city → category → experience). **Sudah punya toko** is the My Toko wizard (paste shop URL → kabar → kompetitor → analisis) in `js/gpt-alat-preview.js`. Returning visitors skip the doors and land on normal Beranda; My Toko stays in the sidebar. `?preview=off` hides the doors. It is **not** a modal overlay. Shop paste needs the Mac `shop_claim_worker.py` — see [alat-shop-scrape.md](./alat-shop-scrape.md).
 
 | Area | Where | Notes |
 |------|--------|--------|
-| Onboarding | `state.onboarding` in `js/gpt-app.js` | steps `idle` → city/category/experience → `done`; persisted with chat state |
+| Onboarding | `#view-sift` + `js/gpt-alat-preview.js` | First visit: Seller baru → Beranda finder; Sudah punya toko → 4-step My Toko. Returning: normal Beranda. Events `alat_*` also go to Clarity. |
+| Beranda finder | `state.onboarding` in `js/gpt-app.js` | Seller-baru questionnaire: city → category → experience → `done`; persisted with chat state |
 | WhatsApp on signup | `#auth-wa-panel` | Primary path on `#auth-overlay.auth-is-signup`. Google is secondary. |
 | WA name capture | `#name-capture` | Required after WhatsApp signup/login if there is no real name. Not skippable. Not onboarding (city/category stay in-page). Also shown on session restore until a name is saved. |
 | Google WA capture | `#wa-capture` | Skippable prompt after Google sign-in if `user_profiles.wa_number` is empty. Not onboarding; not shown on session restore. |
