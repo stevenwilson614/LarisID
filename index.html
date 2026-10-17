@@ -2708,6 +2708,26 @@ body.view-belajar .panel-inner { max-width: 1100px; }
 .blj-sec > .blj-sec-body:first-child { margin-top: 0; }
 .blj-sec-body > :last-child { margin-bottom: 0; }
 .blj-sec .btn-primary { margin-top: 8px; }
+.blj-ask { padding: 0; }
+.blj-ask-sum {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px 16px; cursor: pointer; list-style: none; user-select: none;
+  font: inherit; color: inherit;
+}
+.blj-ask-sum::-webkit-details-marker { display: none; }
+.blj-ask-sum strong { font-size: .98rem; font-weight: 750; }
+.blj-ask-chev {
+  flex: none; color: var(--ink-soft, #4b5563);
+  transition: transform .15s ease;
+}
+.blj-ask[open] > .blj-ask-sum .blj-ask-chev { transform: rotate(180deg); }
+.blj-ask-panel {
+  padding: 0 16px 14px;
+  border-top: 1px solid var(--line, #e7e5e4);
+}
+.blj-ask-panel > :first-child { margin-top: 12px; }
+.blj-ask-panel > :last-child { margin-bottom: 0; }
+.blj-ask-panel .btn-primary { margin-top: 8px; }
 .blj-finish {
   display: flex; width: 100%; justify-content: center; align-items: center;
   margin: 16px 0 8px; padding: 12px 18px; border: 0; border-radius: 999px;

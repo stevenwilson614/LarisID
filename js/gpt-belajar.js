@@ -280,16 +280,22 @@
     const line = lesson && lesson.action && lesson.action.verify_key === 'diskusi'
       ? signalLine(lesson)
       : '';
-    return sectionHtml(
-      'Tanya komunitas',
-      'Diskusi',
-      `<p class="blj-quiet">Edit draf di bawah, lalu buka Diskusi. Kamu yang menekan kirim — kami tidak memposting otomatis.</p>
-       ${line ? `<p class="blj-verified">${esc(line)}</p>` : ''}
-       <label class="blj-ask-label">Draf pertanyaan
-         <textarea data-blj-ask-body rows="3" maxlength="4000">${esc(seed)}</textarea>
-       </label>
-       <button type="button" class="btn-primary" data-blj-go="diskusi">Tanya di Diskusi</button>`
-    );
+    const root = rootEl();
+    const open = !!(root && root.querySelector('details.blj-ask[open]'));
+    return `<details class="blj-sec blj-ask"${open ? ' open' : ''}>
+      <summary class="blj-ask-sum">
+        <strong>Tanya komunitas</strong>
+        <svg class="blj-ask-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </summary>
+      <div class="blj-ask-panel">
+        <p class="blj-quiet">Edit draf di bawah, lalu buka Diskusi. Kamu yang menekan kirim — kami tidak memposting otomatis.</p>
+        ${line ? `<p class="blj-verified">${esc(line)}</p>` : ''}
+        <label class="blj-ask-label">Draf pertanyaan
+          <textarea data-blj-ask-body rows="3" maxlength="4000">${esc(seed)}</textarea>
+        </label>
+        <button type="button" class="btn-primary" data-blj-go="diskusi">Tanya di Diskusi</button>
+      </div>
+    </details>`;
   }
 
   function pointsHtml(lesson) {
