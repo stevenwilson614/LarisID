@@ -4263,13 +4263,13 @@ let _sfbAnswered = false;
 let _sfbChip    = null;
 let _sfbFollowup = null;  // { id, lead, go, cta } pending steven_followup notice
 const SFB_EDU_CTA = 'Buka Belajar';
-const SFB_EDU_INVITE = 'Kamu bilang masih bingung cara pakainya. Buka tab Belajar di menu kiri, lalu daftar bimbingan mentor di situ ya.';
+const SFB_EDU_INVITE = 'Kalau masih bingung cara pakainya, buka halaman Belajar di menu kiri ya. Langkahnya pelan-pelan, dari cari produk sampai pantau toko.';
 const SFB_KURANG_LENGKAP_ASK =
   'Hai! Makasih sudah jawab. Kamu bilang datanya kurang lengkap — informasi apa lagi yang paling ingin kamu lihat di LarisID? Ceritain di sini ya, aku baca.';
 
 function sfbChoseBingung(msg) {
   if (_sfbChip === 'Bingung cara pakainya') return true;
-  return /masih bingung/i.test(String(msg || ''));
+  return /bingung|binggung/i.test(String(msg || ''));
 }
 
 function sfbChoseKurangLengkap(msg) {
@@ -4686,11 +4686,20 @@ async function sfbSubmit() {
     sfbSetMandatoryUi(false);
     const bingung = sfbChoseBingung(msg);
     const kurang = !bingung && sfbChoseKurangLengkap(msg);
-    // Bingung → Edukasi invite in the thank-you. Kurang lengkap → enqueue the
-    // standard "what are you looking for?" follow-up so it opens next (and in
-    // this same session after the thank-you paints).
+    // Bingung → Belajar page (saved notice, so it is still there next login).
+    // Kurang lengkap → enqueue the "what are you looking for?" follow-up so it
+    // opens next (and in this same session after the thank-you paints).
     let kurangNotice = null;
-    if (kurang) {
+    let bingungNotice = null;
+    if (bingung) {
+      try {
+        const { data, error } = await _supabase.rpc('enqueue_sfb_bingung_followup');
+        if (error) throw error;
+        bingungNotice = data || null;
+      } catch (e) {
+        console.warn('enqueue_sfb_bingung_followup:', e?.message || e);
+      }
+    } else if (kurang) {
       try {
         const { data, error } = await _supabase.rpc('enqueue_sfb_kurang_lengkap_followup');
         if (error) throw error;
@@ -4698,6 +4707,14 @@ async function sfbSubmit() {
       } catch (e) {
         console.warn('enqueue_sfb_kurang_lengkap_followup:', e?.message || e);
       }
+    }
+    if (bingungNotice?.id) {
+      _sfbFollowup = {
+        id: bingungNotice.id,
+        lead: bingungNotice.payload?.lead || SFB_EDU_INVITE,
+        go: bingungNotice.payload?.go || 'edukasi',
+        cta: bingungNotice.payload?.cta || SFB_EDU_CTA,
+      };
     }
     sfbThankYou(granted, fromLeft, { bingung, kurangLengkap: kurang });
     if (kurangNotice?.id && kurangNotice?.payload?.lead) {
