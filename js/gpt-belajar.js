@@ -1077,63 +1077,90 @@
     return `<div class="blj-mobile-bar">${primary}</div>`;
   }
 
+  function homeSteps() {
+    return [
+      {
+        n: 1,
+        title: 'Cari produk',
+        blurb: 'Temukan ide produk dengan data pasar.',
+        img: '/images/titles/discover.webp',
+        slug: 'cari',
+      },
+      {
+        n: 2,
+        title: 'Cari sumber',
+        blurb: 'Temukan supplier dan bandingkan harga.',
+        img: '/images/story/delivery.webp',
+        slug: 'supplier',
+      },
+      {
+        n: 3,
+        title: 'Mulai jualan',
+        blurb: 'Buka toko dan siapkan listing produk.',
+        img: '/images/titles/mulai-berjualan.webp',
+        slug: 'toko',
+      },
+      {
+        n: 4,
+        title: 'Pantau hasil',
+        blurb: 'Pantau kompetitor dan langkah selanjutnya.',
+        img: '/images/titles/dashboard.webp',
+        slug: 'pantau',
+      },
+    ];
+  }
+
+  function startLessonSlug() {
+    const p = (_course && _course.progress) || {};
+    if (p.next && p.next.slug && canOpenLesson(p.next.slug)) return p.next.slug;
+    const open = firstOpenSlug();
+    if (open) return open;
+    const first = orderedLessons()[0];
+    return first ? first.lesson.slug : null;
+  }
+
   function homeMain() {
     const p = _course.progress || {};
     const next = p.next || null;
-    const existing = _course.track === 'existing';
-    const baseline = _course.baseline || 'unknown';
-    const plats = arr(_course.platforms);
     const complete = (p.total || 0) > 0 && (p.done || 0) >= p.total && !next;
-    const chips = PLATFORMS.map((pl) => {
-      const on = plats.includes(pl.id);
-      return `<button type="button" class="blj-chip${on ? ' is-on' : ''}" data-blj-platform="${pl.id}" aria-pressed="${on ? 'true' : 'false'}">${esc(pl.label)}</button>`;
+    const cta = complete ? 'Lihat lagi' : ((p.done || 0) > 0 ? 'Lanjut belajar' : 'Mulai sekarang');
+    const steps = homeSteps().map((step, i) => {
+      const mod = modules().find((m) => m.slug === step.slug);
+      const tone = mod ? moduleTone(mod) : { done: false };
+      const locked = mod ? !moduleUnlocked(mod) : i > 0;
+      return `${i ? '<span class="blj-intro-arrow" aria-hidden="true">→</span>' : ''}
+        <div class="blj-intro-step${tone.done ? ' is-done' : ''}${locked ? ' is-locked' : ''}">
+          <span class="blj-intro-num">${tone.done ? '✓' : step.n}</span>
+          <img src="${esc(step.img)}" alt="" width="160" height="100" loading="lazy">
+          <strong>${esc(step.title)}</strong>
+          <p>${esc(step.blurb)}</p>
+        </div>`;
     }).join('');
-    const bases = [
-      ['no_store', 'Belum punya toko'],
-      ['no_sales', 'Punya toko, belum ada penjualan'],
-      ['has_sales', 'Sudah ada penjualan'],
-    ].map((pair) => {
-      const on = baseline === pair[0];
-      return `<button type="button" data-blj-baseline="${pair[0]}" aria-pressed="${on ? 'true' : 'false'}">${esc(pair[1])}</button>`;
-    }).join('');
-    return `<header class="blj-hero">
+    return `<header class="blj-hero blj-hero-intro">
       <p class="blj-kicker">Belajar</p>
       <h2>Dari nol sampai jualan online</h2>
-      <p class="blj-lead">Gratis. Empat langkah, dari ide produk sampai pantau kompetitor. Semua bagian bisa dibaca. Tidak ada yang dikunci.</p>
+      <p class="blj-lead">Ikuti empat langkah: cari produk, cari sumber, mulai jualan, lalu pantau hasil. Selesaikan berurutan — mulai dari langkah yang belum selesai.</p>
     </header>
-    ${complete ? `<section class="blj-done-card">
-      <h3>Kamu sampai di sini</h3>
-      <p>Listing dan pantauan ada di bagian yang kamu selesaikan. Kalau mau dibimbing mentor, catat minatmu di Edukasi.</p>
-      <button type="button" class="btn-primary" data-blj-action="edukasi">Buka Edukasi</button>
-    </section>` : (next ? `<section class="blj-next-card">
-      <p class="blj-kicker">Langkah berikutnya</p>
-      <button type="button" class="blj-next-go" data-blj-lesson="${esc(next.slug)}">
-        <strong>${esc(next.title)}</strong>
-        <span>${esc(next.module_title || '')}</span>
+    <section class="blj-intro-card">
+      <p class="blj-kicker">Empat langkah</p>
+      <h3>Belajar jualan online</h3>
+      <div class="blj-intro-steps">${steps}</div>
+      <button type="button" class="blj-intro-cta" data-blj-go="start">
+        <span>${esc(cta)}</span>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M5 12h12M13 6l6 6-6 6"/></svg>
       </button>
-    </section>` : '')}
-    <div class="blj-platforms">
-      <p class="blj-kicker">Posisi tokomu sekarang</p>
-      <div class="blj-track" role="group" aria-label="Posisi toko">${bases}</div>
-      <p class="blj-quiet">Pilihan ini mencatat titik awal. Boleh dikosongkan. Yang sudah punya toko tetap bisa membaca cari produk dan sumber; yang dihitung mulai dari tempat jual.</p>
-      ${existing ? '<p class="blj-quiet">Langkah awal yang kamu selesaikan sendiri tetap masuk hitungan.</p>' : ''}
-    </div>
-    <div class="blj-platforms">
-      <p class="blj-kicker">Tempat yang mau kamu jual</p>
-      <div class="blj-chips">${chips}</div>
-      <p class="blj-quiet">Panduan di langkah jual mengikuti platform yang sedang kamu lihat. Data LarisID adalah data Shopee.</p>
-    </div>`;
+    </section>`;
   }
 
   function pageHtml(found) {
-    return `<div class="blj-shell">
+    return `<div class="blj-shell${found ? '' : ' is-home'}">
       <div class="blj-main">
-        ${stepsHtml()}
+        ${found ? stepsHtml() : ''}
         ${found ? lessonMain(found) : homeMain()}
       </div>
-      ${railHtml()}
+      ${found ? railHtml() : ''}
     </div>
-    ${sheetHtml()}
+    ${found ? sheetHtml() : ''}
     ${found ? mobileBar(found) : ''}`;
   }
 
@@ -1834,6 +1861,12 @@
       if (go === 'analyze') { void onAnalyze(); return; }
       if (go === 'rate-listing') { void onRateListing(); return; }
       if (go === 'save-listing') { void onSaveListing(); return; }
+      if (go === 'start' && _ctx && _ctx.open) {
+        const slug = startLessonSlug();
+        if (slug) _ctx.open(slug);
+        else if (_ctx.toast) _ctx.toast('Materi belum siap.');
+        return;
+      }
       if (go === 'open-ide' && _ctx && _ctx.open) { _ctx.open('ide-produk'); return; }
       if (go === 'kalc-save') {
         const host = rootEl() && rootEl().querySelector('[data-blj-kalc]');

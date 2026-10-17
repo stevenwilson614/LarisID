@@ -8,7 +8,7 @@ Goal: four steps from an idea to a linked shop, then watching competitors. The f
 
 Four dots on top are the four modules. A dot is filled when every applicable lesson in that module is done. The ring is the module you are in. Tap a dot to open that module’s first open applicable lesson. Later modules and lessons stay locked until every prior applicable lesson is done — you cannot open step 4 while step 3 is unfinished. There is no Lewati / skip.
 
-Desktop: lesson in the center, curriculum on the right (title, percent, accordion, durations). Mobile (under 900px): short labels on the dots, a Materi sheet instead of the rail, and a sticky **Lanjut ke berikutnya** bar.
+Opening page (no lesson open): hero + one card with the four steps and a single **Mulai sekarang** / **Lanjut belajar** button. No baseline or platform questions on that page. Desktop lesson view: lesson in the center, curriculum on the right. Mobile (under 900px): short labels on the dots, a Materi sheet instead of the rail, and a sticky **Lanjut ke berikutnya** bar.
 
 No Tentang / Materi / Diskusi tabs. Body and widget sit on one page. At the bottom of every lesson: **Tanya komunitas** with an editable pre-draft; the learner opens Diskusi and sends themselves. It does not auto-post.
 
