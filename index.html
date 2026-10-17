@@ -2915,6 +2915,21 @@ p.blj-finish.is-done { cursor: default; }
 .blj-step.is-done i { background: var(--accent, #B5202A); border-color: var(--accent, #B5202A); color: #fff; }
 .blj-step.is-current i { border-color: var(--accent, #B5202A); box-shadow: 0 0 0 4px rgba(181,32,42,.16); }
 .blj-step.is-quiet { opacity: .45; }
+.blj-step.is-locked,
+.blj-row.is-locked {
+  opacity: .42;
+  cursor: not-allowed;
+}
+.blj-step.is-locked i {
+  background: #f3f4f6;
+  color: #9ca3af;
+  border-style: dashed;
+}
+.blj-row.is-locked i {
+  background: #f3f4f6;
+  border-style: dashed;
+  color: #9ca3af;
+}
 .blj-steps-meta { margin: 8px 0 0; font-size: .82rem; color: var(--ink-soft, #4b5563); }
 .blj-steps-meta strong { color: var(--ink, #111); }
 .blj-rail {
@@ -12424,7 +12439,7 @@ body.view-chat .sfb-card {
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260915a" defer></script>
-<script src="/js/gpt-belajar.js?v=20261017b" defer></script>
+<script src="/js/gpt-belajar.js?v=20261017c" defer></script>
 <script src="/js/gpt-alat-preview.js?v=20261014a" defer></script>
 <script src="/js/gpt-app.js?v=20261017b" defer></script>
 <style>

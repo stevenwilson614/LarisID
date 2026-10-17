@@ -6,7 +6,7 @@ Goal: four steps from an idea to a linked shop, then watching competitors. The f
 
 ## Layout
 
-Four dots on top are the four modules. A dot is filled when every applicable lesson in that module is done. The ring is the module you are in. Tap a dot to open that module’s first open applicable lesson.
+Four dots on top are the four modules. A dot is filled when every applicable lesson in that module is done. The ring is the module you are in. Tap a dot to open that module’s first open applicable lesson. Later modules and lessons stay locked until every prior applicable lesson is done — you cannot open step 4 while step 3 is unfinished. There is no Lewati / skip.
 
 Desktop: lesson in the center, curriculum on the right (title, percent, accordion, durations). Mobile (under 900px): short labels on the dots, a Materi sheet instead of the rail, and a sticky **Lanjut ke berikutnya** bar.
 
@@ -26,7 +26,7 @@ The course overview has one optional choice. Skip leaves `baseline = unknown`.
 | `no_sales` or `has_sales` | `existing` | Modules with `sort_order` ≥ 3 (Pilih tempat jual and Pantau), plus earlier lessons they actually mark done |
 | `unknown` | whatever was inferred on first visit | Same rule as that track |
 
-Nothing is hidden. Steps 1–2 stay readable for people who already have a store. Skipping a lesson removes it from the count. It is not marked done.
+Nothing is hidden from the rail, but locked rows are not clickable. Steps 1–2 stay readable for people who already have a store when those lessons are not applicable to their track.
 
 The first visit still saves a suggestion when there is no row yet: `existing` when onboarding `seller_status` is `existing` or a shop URL is already stored, otherwise `new`. Platforms default to linked shops (`tiktok_shop` maps to `tiktok`) or Shopee. Choosing a baseline overwrites the track. Platform chips do not change the baseline.
 
@@ -46,7 +46,7 @@ The first visit still saves a suggestion when there is no row yet: `existing` wh
 | `favorit3` | kept for unpublished lessons: favorites ≥ 3 |
 | `pantau` | kept for unpublished lessons: favorites ≥ 3 and `user_tracker_state.notify_channels` is not empty |
 
-There is no paywall and no lock that blocks reading the next lesson. Do not mark a step done unless the learner did it or the verify signal is true. Notification channels are not required for `watch`.
+There is no paywall. Progress is sequential: locked modules/lessons cannot be opened early. Do not mark a step done unless the learner did it or the verify signal is true. Notification channels are not required for `watch`.
 
 ## Modules
 

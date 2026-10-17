@@ -331,6 +331,33 @@
     return out;
   }
 
+  function lessonCleared(lesson) {
+    return !!lesson && (lesson.status === 'done' || lesson.status === 'skipped');
+  }
+
+  /** Sequential gate: an applicable lesson opens only when every prior applicable lesson is done (or was skipped before skip was removed). */
+  function canOpenLesson(slug) {
+    if (!slug) return true;
+    const found = lessonBySlug(slug);
+    if (!found) return false;
+    if (lessonCleared(found.lesson)) return true;
+    if (!found.lesson.applicable) return true;
+    for (const item of orderedLessons()) {
+      if (item.lesson.slug === slug) return true;
+      if (!item.lesson.applicable) continue;
+      if (!lessonCleared(item.lesson)) return false;
+    }
+    return false;
+  }
+
+  function moduleUnlocked(mod) {
+    return arr(mod && mod.lessons).some((lesson) => canOpenLesson(lesson.slug));
+  }
+
+  function gateToast() {
+    if (_ctx && _ctx.toast) _ctx.toast('Selesaikan langkah sebelumnya dulu.');
+  }
+
   function neighbor(dir) {
     const items = orderedLessons();
     const i = items.findIndex((item) => item.lesson.slug === _lessonSlug);
@@ -359,15 +386,17 @@
     const mods = modules();
     const dots = mods.map((mod, i) => {
       const tone = moduleTone(mod);
+      const locked = !moduleUnlocked(mod);
       const cls = [
         'blj-step',
         tone.done ? 'is-done' : '',
         tone.quiet ? 'is-quiet' : '',
         tone.current ? 'is-current' : '',
+        locked ? 'is-locked' : '',
       ].filter(Boolean).join(' ');
       const mark = tone.done ? ICO.check : String(i + 1);
       const label = DOT_LABEL[mod.slug] || mod.title;
-      return `<button type="button" class="${cls}" data-blj-module="${esc(mod.slug)}" aria-label="${esc((i + 1) + '. ' + label)}"${tone.current ? ' aria-current="step"' : ''}>
+      return `<button type="button" class="${cls}" data-blj-module="${esc(mod.slug)}" aria-label="${esc((i + 1) + '. ' + label)}${locked ? ' (terkunci)' : ''}"${tone.current ? ' aria-current="step"' : ''}${locked ? ' disabled' : ''}>
         <i>${mark}</i><span>${esc(label)}</span>
       </button>`;
     }).join('');
@@ -380,16 +409,18 @@
   }
 
   function lessonRow(lesson) {
+    const locked = !canOpenLesson(lesson.slug);
     const cls = [
       'blj-row',
       lesson.status === 'done' ? 'is-done' : '',
       lesson.status === 'skipped' ? 'is-skipped' : '',
       lesson.applicable ? '' : 'is-quiet',
       lesson.slug === _lessonSlug ? 'is-current' : '',
+      locked ? 'is-locked' : '',
     ].filter(Boolean).join(' ');
     const mark = lesson.status === 'done' ? '✓' : (lesson.status === 'skipped' ? '–' : '');
     const mins = lesson.est_mins ? `${lesson.est_mins} mnt` : '';
-    return `<button type="button" class="${cls}" data-blj-lesson="${esc(lesson.slug)}">
+    return `<button type="button" class="${cls}" data-blj-lesson="${esc(lesson.slug)}"${locked ? ' disabled' : ''}>
       <i>${mark}</i>
       <span>${esc(lesson.title)}</span>
       ${mins ? `<em>${esc(mins)}</em>` : ''}
@@ -974,16 +1005,20 @@
     const i = items.findIndex((item) => item.lesson.slug === found.lesson.slug);
     const mods = modules();
     const mi = mods.findIndex((m) => m.slug === found.module.slug);
+    const prev = i > 0 ? items[i - 1] : null;
+    const next = i >= 0 && i < items.length - 1 ? items[i + 1] : null;
+    const prevOk = prev && canOpenLesson(prev.lesson.slug);
+    const nextOk = next && canOpenLesson(next.lesson.slug) && lessonCleared(found.lesson);
     return `<div class="blj-chrome"><div class="blj-top">
       <button type="button" class="blj-back" data-blj-back>
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
         Belajar
       </button>
       <span class="blj-pos">Langkah ${mi >= 0 ? mi + 1 : 1} dari ${mods.length || 4}</span>
-      <button type="button" class="blj-navbtn" data-blj-step="-1" ${i > 0 ? '' : 'disabled'} aria-label="Bagian sebelumnya">
+      <button type="button" class="blj-navbtn" data-blj-step="-1" ${prevOk ? '' : 'disabled'} aria-label="Bagian sebelumnya">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 6l-6 6 6 6"/></svg>
       </button>
-      <button type="button" class="blj-navbtn" data-blj-step="1" ${i >= 0 && i < items.length - 1 ? '' : 'disabled'} aria-label="Bagian berikutnya">
+      <button type="button" class="blj-navbtn" data-blj-step="1" ${nextOk ? '' : 'disabled'} aria-label="Bagian berikutnya">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 6l6 6-6 6"/></svg>
       </button>
     </div></div>`;
@@ -1024,9 +1059,9 @@
         <div class="blj-actions">
           ${done
             ? '<button type="button" class="btn-ghost" data-blj-clear>Buka lagi</button>'
-            : `${skipped
+            : (skipped
                  ? '<button type="button" class="btn-ghost" data-blj-clear>Kembalikan</button>'
-                 : '<button type="button" class="btn-ghost" data-blj-skip>Lewati</button>'}`}
+                 : '')}
         </div>
       </article>`;
   }
@@ -1241,9 +1276,10 @@
     if (_busy || !_lessonSlug) return;
     const found = lessonBySlug(_lessonSlug);
     if (!found) return;
+    // Skip removed — sections must be completed in order.
     if (status === 'skipped') {
-      const ok = global.confirm('Lewati bagian ini? Tidak dihitung selesai.');
-      if (!ok) return;
+      if (_ctx && _ctx.toast) _ctx.toast('Bagian tidak bisa dilewati. Selesaikan dulu.');
+      return;
     }
     _busy = true;
     const article = rootEl() && rootEl().querySelector('.blj-lesson');
@@ -1706,11 +1742,16 @@
     }
     if (el.hasAttribute('data-blj-module')) {
       e.preventDefault();
+      if (el.disabled) { gateToast(); return; }
       const mod = modules().find((m) => m.slug === el.getAttribute('data-blj-module'));
       if (!mod || !_ctx || !_ctx.open) return;
+      if (!moduleUnlocked(mod)) { gateToast(); return; }
       const lessons = arr(mod.lessons);
-      const next = lessons.find((l) => l.applicable && l.status !== 'done') || lessons[0];
-      if (next) _ctx.open(next.slug);
+      const next = lessons.find((l) => l.applicable && l.status !== 'done' && canOpenLesson(l.slug))
+        || lessons.find((l) => canOpenLesson(l.slug))
+        || lessons[0];
+      if (next && canOpenLesson(next.slug)) _ctx.open(next.slug);
+      else gateToast();
       return;
     }
     if (el.hasAttribute('data-blj-step')) {
@@ -1718,12 +1759,20 @@
       if (el.disabled) return;
       const dir = Number(el.getAttribute('data-blj-step'));
       const next = neighbor(dir);
-      if (next && _ctx && _ctx.open) _ctx.open(next.lesson.slug);
+      if (!next || !_ctx || !_ctx.open) return;
+      if (dir > 0 && !lessonCleared(lessonBySlug(_lessonSlug)?.lesson)) {
+        gateToast();
+        return;
+      }
+      if (!canOpenLesson(next.lesson.slug)) { gateToast(); return; }
+      _ctx.open(next.lesson.slug);
       return;
     }
     if (el.hasAttribute('data-blj-lesson')) {
       e.preventDefault();
+      if (el.disabled) { gateToast(); return; }
       const slug = el.getAttribute('data-blj-lesson');
+      if (!canOpenLesson(slug)) { gateToast(); return; }
       if (_ctx && _ctx.open) _ctx.open(slug);
       return;
     }
@@ -1870,11 +1919,26 @@
     el.addEventListener('change', onChange);
   }
 
+  function firstOpenSlug() {
+    const hit = orderedLessons().find((item) => item.lesson.applicable && !lessonCleared(item.lesson));
+    return hit ? hit.lesson.slug : null;
+  }
+
   function render(ctx, opts) {
     _ctx = ctx || _ctx;
     opts = opts || {};
     ensureBound();
-    const slug = opts.lesson || null;
+    let slug = opts.lesson || null;
+    // History / deep links cannot jump past unfinished steps.
+    if (slug && _course && !canOpenLesson(slug)) {
+      const fallback = firstOpenSlug();
+      if (_ctx && _ctx.open && fallback !== slug) {
+        gateToast();
+        _ctx.open(fallback);
+        return undefined;
+      }
+      slug = fallback;
+    }
     const changed = slug !== _lessonSlug;
     _lessonSlug = slug;
     if (changed) {
@@ -1886,7 +1950,17 @@
     }
     if (!_course || opts.entry) {
       if (_course) paint();
-      return load(opts);
+      return load(opts).then(() => {
+        if (_lessonSlug && !canOpenLesson(_lessonSlug)) {
+          const fallback = firstOpenSlug();
+          if (_ctx && _ctx.open && fallback && fallback !== _lessonSlug) {
+            gateToast();
+            _ctx.open(fallback);
+          } else {
+            paint();
+          }
+        }
+      });
     }
     paint();
     return undefined;
