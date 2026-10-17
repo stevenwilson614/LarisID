@@ -487,6 +487,91 @@
       .map((pair) => pair[0]);
   }
 
+  function scoreOneListing(row, median, omsetP25, omsetP75) {
+    let s = 48;
+    if (row.omset != null && omsetP75 != null) {
+      if (row.omset >= omsetP75) s += 28;
+      else if (omsetP25 != null && row.omset >= omsetP25) s += 18;
+      else if (row.omset > 0) s += 8;
+    } else if (row.omset != null && row.omset > 0) {
+      s += 10;
+    }
+    if (row.price && median) {
+      const ratio = row.price / median;
+      if (ratio >= 0.85 && ratio <= 1.2) s += 12;
+      else if (ratio < 0.85) s += 6;
+    } else if (row.price) {
+      s += 4;
+    }
+    if (row.image) s += 6;
+    if (row.name && String(row.name).length >= 24) s += 4;
+    return Math.max(15, Math.min(98, Math.round(s)));
+  }
+
+  function buildRecommend(idea, analysis) {
+    const words = arr(analysis.words);
+    const name = String(idea.name || analysis.query || '').trim();
+    const extra = words.filter((w) => !name.toLowerCase().includes(w)).slice(0, 3);
+    const title = (extra.length ? `${name} ${extra.join(' ')}` : name).trim().slice(0, 120);
+    const features = words.slice(0, 6);
+    const price = analysis.median_price || idea.price || null;
+    const descBits = [];
+    if (idea.description) descBits.push(String(idea.description).trim());
+    if (features.length) {
+      descBits.push(`Kata yang sering di judul kompetitor: ${features.join(', ')}.`);
+    }
+    if (price) {
+      descBits.push(`Harga jual yang kami sarankan dari median sampel: ${rp(price)}.`);
+    }
+    descBits.push('Sesuaikan bahan, ukuran, dan isi paket supaya jujur dengan barangmu.');
+    return {
+      price,
+      title: title || name,
+      features,
+      description: descBits.join(' ').slice(0, 1500),
+    };
+  }
+
+  function buildOpportunity(idea, analysis) {
+    const sample = arr(analysis.sample);
+    let score;
+    if (!analysis.n) {
+      score = 28;
+    } else if (!sample.length) {
+      score = 42;
+    } else {
+      const scores = sample.map((row) => Number(row.score) || scoreOneListing(
+        row,
+        analysis.median_price,
+        analysis.omset_p25,
+        analysis.omset_p75,
+      ));
+      score = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+    }
+    if (analysis.user_price && analysis.median_price) {
+      if (analysis.price_vs === 'near') score = Math.min(98, score + 4);
+      else if (analysis.price_vs === 'below') score = Math.min(98, score + 2);
+      else if (analysis.price_vs === 'above') score = Math.max(20, score - 4);
+    }
+    score = Math.max(10, Math.min(98, score));
+    let verdict;
+    let tone;
+    if (!analysis.n) {
+      verdict = 'Data masih tipis. Coba ejaan lain atau kata yang lebih umum sebelum lanjut.';
+      tone = 'thin';
+    } else if (score >= 72) {
+      verdict = 'Produk ini layak dilanjut. Simpan rekomendasi di bawah, lalu hitung modal dari harga jual.';
+      tone = 'go';
+    } else if (score >= 48) {
+      verdict = 'Bisa dilanjut, tapi bandingkan lagi harga dan judul dengan kompetitor di bawah.';
+      tone = 'maybe';
+    } else {
+      verdict = 'Peluangnya masih tipis di sampel ini. Coba kata lain, atau cari inspirasi di Cari Produk.';
+      tone = 'thin';
+    }
+    return { score, verdict, tone };
+  }
+
   function summarize(idea, rows) {
     const list = arr(rows);
     const prices = list.map((r) => Math.round(Number(r.price) || 0)).filter((n) => n > 0).sort((a, b) => a - b);
@@ -502,35 +587,47 @@
       const n = Number(r.nowcast_omset_monthly);
       return Number.isFinite(n) && n >= 0 ? Math.round(n) : null;
     }).filter((n) => n != null).sort((a, b) => a - b);
+    const omsetP25 = percentile(omsets, 0.25);
+    const omsetP75 = percentile(omsets, 0.75);
     const sample = list.slice().sort((a, b) => {
       const ao = a.nowcast_omset_monthly == null ? -1 : Number(a.nowcast_omset_monthly);
       const bo = b.nowcast_omset_monthly == null ? -1 : Number(b.nowcast_omset_monthly);
       return (Number.isFinite(bo) ? bo : -1) - (Number.isFinite(ao) ? ao : -1);
-    }).slice(0, 6).map((r) => ({
-      item_id: String(r.item_id == null ? '' : r.item_id),
-      shop_id: String(r.shop_id == null ? '' : r.shop_id),
-      name: String(r.product_name || '').slice(0, 180),
-      price: Math.round(Number(r.price) || 0) || null,
-      omset: r.nowcast_omset_monthly == null || !Number.isFinite(Number(r.nowcast_omset_monthly))
-        ? null
-        : Math.round(Number(r.nowcast_omset_monthly)),
-      store: String(r.store_name || '').slice(0, 120),
-      keyword: String(r.keyword || '').slice(0, 80),
-      category: String(r.category || r.category_canonical || '').slice(0, 80),
-      image: /^https:\/\//i.test(String(r.image_url || '')) ? String(r.image_url).slice(0, 800) : '',
-    }));
-    return {
+    }).slice(0, 6).map((r) => {
+      const row = {
+        item_id: String(r.item_id == null ? '' : r.item_id),
+        shop_id: String(r.shop_id == null ? '' : r.shop_id),
+        name: String(r.product_name || '').slice(0, 180),
+        price: Math.round(Number(r.price) || 0) || null,
+        omset: r.nowcast_omset_monthly == null || !Number.isFinite(Number(r.nowcast_omset_monthly))
+          ? null
+          : Math.round(Number(r.nowcast_omset_monthly)),
+        store: String(r.store_name || '').slice(0, 120),
+        keyword: String(r.keyword || '').slice(0, 80),
+        category: String(r.category || r.category_canonical || '').slice(0, 80),
+        image: /^https:\/\//i.test(String(r.image_url || '')) ? String(r.image_url).slice(0, 800) : '',
+      };
+      row.score = scoreOneListing(row, median, omsetP25, omsetP75);
+      return row;
+    });
+    const analysis = {
       ran: true,
       query: idea.name,
       n: list.length,
       median_price: median,
       user_price: userPrice,
       price_vs: priceVs,
-      omset_p25: percentile(omsets, 0.25),
-      omset_p75: percentile(omsets, 0.75),
+      omset_p25: omsetP25,
+      omset_p75: omsetP75,
       words: wordCounts(list),
       sample,
     };
+    const opp = buildOpportunity(idea, analysis);
+    analysis.score = opp.score;
+    analysis.verdict = opp.verdict;
+    analysis.tone = opp.tone;
+    analysis.recommend = buildRecommend(idea, analysis);
+    return analysis;
   }
 
   function priceNote(analysis) {
@@ -556,30 +653,57 @@
 
   function analysisHtml(analysis) {
     if (!analysis || !analysis.ran) return '';
-    const words = arr(analysis.words);
+    const opp = (analysis.score != null)
+      ? { score: analysis.score, verdict: analysis.verdict || '', tone: analysis.tone || '' }
+      : buildOpportunity(draft().idea, analysis);
+    const rec = analysis.recommend || buildRecommend(draft().idea, analysis);
+    const listing = listingPrefill();
     const rows = arr(analysis.sample).map((row, i) => {
       const canFav = row.item_id && row.shop_id;
       const saved = canFav && savedFav(row.item_id, row.shop_id);
       const omset = row.omset == null ? 'omset belum ada' : `${rp(row.omset)} perkiraan`;
+      const img = row.image
+        ? `<img class="blj-comp-img" src="${esc(row.image)}" alt="" loading="lazy">`
+        : '<span class="blj-comp-ph" aria-hidden="true"></span>';
+      const cardScore = row.score != null ? `<em class="blj-comp-score">${esc(String(row.score))}</em>` : '';
       return `<li class="blj-comp">
-        <div>
+        ${img}
+        <div class="blj-comp-body">
           <strong>${esc(row.name || 'Listing')}</strong>
           <span>${row.price ? esc(rp(row.price)) : '—'} · ${esc(omset)}${row.store ? ` · ${esc(row.store)}` : ''}</span>
         </div>
-        ${canFav ? `<button type="button" class="btn-ghost" data-blj-fav="${i}" ${saved ? 'disabled' : ''}>${saved ? 'Sudah di Favorit' : 'Simpan ke Favorit'}</button>` : ''}
+        ${cardScore}
+        ${canFav ? `<button type="button" class="btn-ghost" data-blj-fav="${i}" ${saved ? 'disabled' : ''}>${saved ? 'Tersimpan' : 'Favorit'}</button>` : ''}
       </li>`;
     }).join('');
     const empty = !analysis.n
       ? `<p>Tidak ada listing yang ketemu untuk “${esc(analysis.query || '')}”. Coba ejaan yang lebih dekat ke kata pencarian Shopee (mis. “futsal” bukan “futsol”), atau kata yang lebih umum.</p>
          <button type="button" class="btn-primary" data-blj-go="search" data-q="${esc(analysis.query || '')}">Buka Cari Produk</button>`
       : '';
+    const features = arr(rec.features);
     return `<div class="blj-result">
-      <p><strong>${analysis.n || 0} listing</strong> di sampel pencarian ini.</p>
+      <div class="blj-score blj-score-${esc(opp.tone || 'maybe')}" role="status">
+        <div class="blj-score-num"><strong>${esc(String(opp.score || 0))}</strong><span>/100</span></div>
+        <p>${esc(opp.verdict || '')}</p>
+      </div>
+      <p><strong>${analysis.n || 0} listing</strong> di sampel pencarian ini. Skor di atas adalah rata-rata skor kompetitor di sampel.</p>
       <p>${esc(priceNote(analysis))}</p>
       <p>${esc(omsetNote(analysis))}</p>
-      ${words.length ? `<p>Kata yang sering muncul di judul sampel: ${esc(words.join(', '))}.</p>` : ''}
       ${empty}
       ${rows ? `<ul class="blj-comps">${rows}</ul>` : ''}
+      ${analysis.n ? `<div class="blj-rec">
+        <h4>Rekomendasi dari kompetitor</h4>
+        <p class="blj-quiet">Harga, fitur, dan deskripsi di bawah diambil dari sampel — bukan janji omset untuk produkmu. Edit supaya cocok dengan barang yang kamu jual.</p>
+        <p><strong>Harga jual disarankan:</strong> ${rec.price ? esc(rp(rec.price)) : 'belum ada median di sampel'}</p>
+        ${features.length ? `<p><strong>Fitur / kata judul:</strong> ${esc(features.join(', '))}</p>` : ''}
+        <label>Judul listing <input data-blj-list="title" maxlength="200" value="${esc(listing.title || rec.title || '')}"></label>
+        <label>Deskripsi <textarea data-blj-list="description" maxlength="4000" rows="4">${esc(listing.description || rec.description || '')}</textarea></label>
+        <div class="blj-price-row">
+          <label>Harga modal <input data-blj-idea="cost" inputmode="numeric" placeholder="opsional" value="${draft().idea.cost ? esc(String(draft().idea.cost)) : ''}"></label>
+          <label>Harga jual <input data-blj-idea="price" inputmode="numeric" placeholder="opsional" value="${(draft().idea.price || rec.price) ? esc(String(draft().idea.price || rec.price)) : ''}"></label>
+        </div>
+        <button type="button" class="btn-primary" data-blj-go="save-listing">Simpan rekomendasi</button>
+      </div>` : ''}
     </div>`;
   }
 
@@ -587,13 +711,9 @@
     const idea = draft().idea;
     return `<div class="blj-form">
       <h3>Mau jual apa?</h3>
-      <p class="blj-quiet">Isi yang kamu tahu. Belum punya semua detailnya tidak apa-apa.</p>
+      <p class="blj-quiet">Isi nama produk. Kami cari kompetitor, beri skor, lalu sarankan harga, fitur, dan deskripsi dari sampel itu.</p>
       <label>Nama produk <input data-blj-idea="name" maxlength="200" value="${esc(idea.name || '')}" required placeholder="contoh: baju wanita"></label>
-      <label>Deskripsi <textarea data-blj-idea="description" maxlength="2000" rows="3" placeholder="opsional">${esc(idea.description || '')}</textarea></label>
-      <div class="blj-price-row">
-        <label>Harga modal <input data-blj-idea="cost" inputmode="numeric" placeholder="opsional" value="${idea.cost ? esc(String(idea.cost)) : ''}"></label>
-        <label>Harga jual <input data-blj-idea="price" inputmode="numeric" placeholder="opsional" value="${idea.price ? esc(String(idea.price)) : ''}"></label>
-      </div>
+      <label>Catatan (opsional) <textarea data-blj-idea="description" maxlength="2000" rows="2" placeholder="warna, bahan, ide singkat — bukan kata pencarian">${esc(idea.description || '')}</textarea></label>
       <button type="button" class="btn-primary" data-blj-go="analyze">Analisis ide produk</button>
       ${analysisHtml(draft().analysis)}
       <div class="blj-inspire">
@@ -633,49 +753,59 @@
   }
 
   function widgetListing() {
-    const listing = listingPrefill();
-    const sku = !!listing.sku;
-    const sample = samplePhotoUrl();
-    const fromSample = !_photoUrl && !!sample;
-    const preview = sample
-      ? `<img class="blj-photo" data-blj-photo-preview src="${esc(sample)}" alt="Foto sampel listing mirip">`
-      : '<img class="blj-photo" data-blj-photo-preview alt="" hidden>';
-    const analysis = draft().analysis || {};
-    const hint = analysis.ran
-      ? `<p class="blj-quiet">${esc(priceNote(analysis))}${arr(analysis.words).length ? ` Kata sering di judul sampel: ${esc(analysis.words.join(', '))}.` : ''}</p>`
-      : '<p class="blj-quiet">Jalankan analisis di langkah sebelumnya supaya penilaian memakai listing yang ketemu, bukan tebakan.</p>';
+    // pra-listing is merged into Mau jual apa? — keep a short pointer if opened.
     return `<div class="blj-form">
-      <h3>Nilai listingmu</h3>
-      <p class="blj-quiet">Bandingkan drafmu dengan kompetitor dari langkah ide. Judul dan deskripsi diisi dari langkah 1 kalau sudah ada.</p>
-      <div class="blj-photo-block">
-        ${preview}
-        ${fromSample ? '<p class="blj-quiet">Foto sampel dari listing mirip. Kamu bisa unggah foto sendiri — hanya tampil di perangkat ini, kami tidak menyimpan.</p>' : '<p class="blj-quiet">Unggah foto kalau mau. Hanya tampil di perangkat ini; kami tidak menyimpan. Pakai foto yang haknya kamu punya.</p>'}
-        <label class="blj-photo-pick">Unggah foto sendiri
-          <input type="file" accept="image/*" data-blj-photo>
-        </label>
-      </div>
-      <label>Judul <input data-blj-list="title" maxlength="200" value="${esc(listing.title)}"></label>
-      <label>Deskripsi <textarea data-blj-list="description" maxlength="4000" rows="4">${esc(listing.description)}</textarea></label>
-      <label class="blj-check"><input type="checkbox" data-blj-sku ${sku ? 'checked' : ''}> Ada variasi SKU</label>
-      <label data-blj-variations ${sku ? '' : 'hidden'}>Nama variasi <input data-blj-list="variations" maxlength="500" value="${esc(listing.variations)}" placeholder="contoh: dusty pink, sage"></label>
-      <p class="blj-quiet">Setiap variasi adalah barang lain yang harus kamu stok.</p>
-      ${hint}
-      <button type="button" class="btn-primary" data-blj-go="rate-listing">Nilai listing vs kompetitor</button>
-      ${rateTipsHtml()}
-      <button type="button" class="btn-ghost" data-blj-go="save-listing">Simpan draf listing</button>
+      <p>Penilaian listing sudah digabung ke langkah <strong>Mau jual apa?</strong>.</p>
+      <button type="button" class="btn-primary" data-blj-go="open-ide">Buka Mau jual apa?</button>
     </div>`;
   }
 
+  function kalcDefaultsFromDraft(pickIndex) {
+    const d = draft();
+    const sample = arr(d.analysis && d.analysis.sample);
+    const idx = Number.isFinite(pickIndex) ? pickIndex : 0;
+    const row = sample[idx] || sample[0] || null;
+    const recPrice = d.analysis && d.analysis.recommend && d.analysis.recommend.price;
+    const price = d.idea.price || recPrice || (row && row.price) || d.analysis.median_price || 0;
+    const cost = d.idea.cost || (price ? Math.round(Number(price) * 0.33) : 0);
+    return {
+      price: Math.round(Number(price) || 0),
+      cogs: Math.round(Number(cost) || 0),
+      marketplace: 'shopee',
+      product: row,
+      pick: row ? sample.indexOf(row) : -1,
+    };
+  }
+
   function widgetModal(lesson) {
-    const idea = draft().idea;
-    const price = idea.price ? rp(idea.price) : 'belum diisi';
-    const cost = idea.cost ? rp(idea.cost) : 'belum diisi';
+    const d = draft();
+    const sample = arr(d.analysis && d.analysis.sample);
+    const defaults = kalcDefaultsFromDraft(0);
     const line = signalLine(lesson);
-    return `<div class="blj-form">
-      <p>Harga jual di pra-listing: <strong>${esc(price)}</strong>. Harga modal: <strong>${esc(cost)}</strong>.</p>
-      <p class="blj-quiet">Kalkulator terbuka dengan angka itu. Tambahkan ongkir, kemasan, biaya platform, iklan, dan cadangan retur di sana. Simpan ke Riwayat.</p>
+    const picks = sample.slice(0, 4).map((row, i) => {
+      const on = i === 0 ? ' is-on' : '';
+      const img = row.image
+        ? `<img src="${esc(row.image)}" alt="" loading="lazy">`
+        : '<span class="blj-comp-ph"></span>';
+      return `<button type="button" class="blj-kalc-pick${on}" data-blj-kalc-pick="${i}" aria-pressed="${i === 0 ? 'true' : 'false'}">
+        ${img}
+        <span>${esc((row.name || 'Listing').slice(0, 42))}</span>
+        <small>${row.price ? esc(rp(row.price)) : '—'}</small>
+      </button>`;
+    }).join('');
+    return `<div class="blj-form blj-kalc-wrap">
+      <h3>Hitung modal dari harga jual</h3>
+      <p class="blj-quiet">Kalkulator yang sama dengan halaman Kalkulator — sudah diisi dari rekomendasi atau salah satu kompetitor. Semua angka bisa kamu ubah.</p>
+      ${sample.length ? `<div class="blj-kalc-picks" role="list">${picks}</div>` : ''}
+      <div class="blj-kalc-example" data-blj-kalc-example></div>
+      <div class="blj-kalc-host" data-blj-kalc
+        data-price="${esc(String(defaults.price || 0))}"
+        data-cogs="${esc(String(defaults.cogs || 0))}"></div>
+      <div class="blj-kalc-actions">
+        <button type="button" class="btn-primary" data-blj-go="kalc-save">Simpan ke Riwayat</button>
+      </div>
       ${line ? `<p class="blj-quiet">${esc(line)}</p>` : ''}
-      <button type="button" class="btn-primary" data-blj-go="kalk">Buka kalkulator</button>
+      <p class="blj-quiet">Rp 3 juta di langkah toko adalah omset kotor perkiraan dari listing Laris, bukan laba. Laba dihitung di sini.</p>
     </div>`;
   }
 
@@ -829,7 +959,7 @@
 
   function widgetHtml(lesson) {
     if (lesson.slug === 'ide-produk') return widgetIde();
-    if (lesson.slug === 'pra-listing') return widgetListing();
+    if (lesson.slug === 'pra-listing') return widgetIde();
     if (lesson.slug === 'hitung-modal') return widgetModal(lesson);
     if (lesson.slug === 'tanya-sumber') return widgetDiskusi(lesson);
     if (lesson.slug === 'cara-mulai') return widgetPlatform(lesson, 'start');
@@ -972,6 +1102,44 @@
     ${found ? mobileBar(found) : ''}`;
   }
 
+  function paintKalcExample(row) {
+    const box = rootEl() && rootEl().querySelector('[data-blj-kalc-example]');
+    if (!box) return;
+    if (!row) {
+      box.innerHTML = '';
+      box.hidden = true;
+      return;
+    }
+    box.hidden = false;
+    const img = row.image
+      ? `<img src="${esc(row.image)}" alt="">`
+      : '<span class="blj-comp-ph"></span>';
+    box.innerHTML = `<div class="blj-kalc-picked">${img}<div><strong>${esc(row.name || 'Contoh kompetitor')}</strong><span>${row.price ? esc(rp(row.price)) : '—'}${row.store ? ` · ${esc(row.store)}` : ''} · contoh, bisa diubah</span></div></div>`;
+  }
+
+  function mountKalc(opts) {
+    const host = rootEl() && rootEl().querySelector('[data-blj-kalc]');
+    if (!host || !_ctx || typeof _ctx.kalcHtml !== 'function') return;
+    const price = opts && opts.price != null ? opts.price : Number(host.getAttribute('data-price') || 0);
+    const cogs = opts && opts.cogs != null ? opts.cogs : Number(host.getAttribute('data-cogs') || 0);
+    host.setAttribute('data-price', String(price || 0));
+    host.setAttribute('data-cogs', String(cogs || 0));
+    host.innerHTML = _ctx.kalcHtml({
+      price: price || 0,
+      cogs: cogs || 0,
+      marketplace: (opts && opts.marketplace) || 'shopee',
+    });
+    if (typeof _ctx.bindKalc === 'function') _ctx.bindKalc(host);
+    if (opts && opts.product) paintKalcExample(opts.product);
+  }
+
+  function mountEmbeds() {
+    if (_lessonSlug !== 'hitung-modal') return;
+    const defaults = kalcDefaultsFromDraft(0);
+    mountKalc(defaults);
+    if (defaults.product) paintKalcExample(defaults.product);
+  }
+
   function paint() {
     const el = rootEl();
     if (!el || !_course) return;
@@ -979,6 +1147,7 @@
     if (_lessonSlug && !found) _lessonSlug = null;
     scrollTopIfNeeded(_lessonSlug || 'home');
     el.innerHTML = pageHtml(_lessonSlug ? lessonBySlug(_lessonSlug) : null);
+    mountEmbeds();
   }
 
   function loadFailReason(err) {
@@ -1168,13 +1337,32 @@
       const next = draft();
       next.idea = idea;
       next.analysis = summarize(idea, rows);
-      if (!next.listing.title && idea.name) next.listing.title = idea.name;
-      if (!next.listing.description && idea.description) next.listing.description = idea.description;
+      const rec = next.analysis.recommend || {};
+      if (rec.price && !next.idea.price) next.idea.price = rec.price;
+      next.listing.title = rec.title || next.listing.title || idea.name || '';
+      next.listing.description = rec.description || next.listing.description || idea.description || '';
+      next.rating = {
+        ran: true,
+        score: Math.round((next.analysis.score || 0) / 10),
+        tips: [next.analysis.verdict || 'Analisis selesai.'].concat(
+          arr(rec.features).length
+            ? [`Kata fitur dari sampel: ${arr(rec.features).slice(0, 4).join(', ')}.`]
+            : [],
+        ).slice(0, 6),
+      };
       await saveDraft(next);
-      if (_ctx.log) _ctx.log('belajar_analysis', { ui: 'gpt', n: next.analysis.n || 0 });
+      if (_ctx.log) {
+        _ctx.log('belajar_analysis', {
+          ui: 'gpt',
+          n: next.analysis.n || 0,
+          score: next.analysis.score || 0,
+        });
+      }
       paint();
       if (!next.analysis.n && _ctx.toast) {
         _ctx.toast('Belum ketemu listing mirip. Coba ejaan lain, atau kata yang lebih umum.');
+      } else if (next.analysis.n && _ctx.toast) {
+        _ctx.toast(`Skor ${next.analysis.score}/100 — baca rekomendasi di bawah.`);
       }
     } catch (err) {
       toastFail(err);
@@ -1275,17 +1463,26 @@
   async function onSaveListing() {
     if (_busy) return;
     const listing = readListing(rootEl());
+    const idea = readIdea(rootEl());
     if (!String(listing.title || '').trim()) {
       if (_ctx && _ctx.toast) _ctx.toast('Isi judul dulu.');
       return;
     }
     const next = draft();
     next.listing = listing;
+    next.idea = Object.assign({}, next.idea, idea);
+    if (next.analysis && next.analysis.recommend) {
+      next.analysis.recommend = Object.assign({}, next.analysis.recommend, {
+        title: listing.title,
+        description: listing.description,
+        price: idea.price || next.analysis.recommend.price || null,
+      });
+    }
     _busy = true;
     try {
       await saveDraft(next);
       paint();
-      if (_ctx && _ctx.toast) _ctx.toast('Draf listing tersimpan.');
+      if (_ctx && _ctx.toast) _ctx.toast('Rekomendasi tersimpan. Lanjut ke hitung modal.');
     } catch (err) {
       toastFail(err);
     } finally {
@@ -1466,7 +1663,7 @@
       e.target.hidden = true;
       return;
     }
-    const el = e.target.closest('[data-blj-lesson],[data-blj-back],[data-blj-platform],[data-blj-done],[data-blj-skip],[data-blj-draft],[data-blj-clear],[data-blj-action],[data-blj-yt],[data-blj-retry],[data-blj-step],[data-blj-go],[data-blj-choice],[data-blj-baseline],[data-blj-focus],[data-blj-sheet],[data-blj-sheet-close],[data-blj-tab],[data-blj-fav],[data-blj-module]');
+    const el = e.target.closest('[data-blj-lesson],[data-blj-back],[data-blj-platform],[data-blj-done],[data-blj-skip],[data-blj-draft],[data-blj-clear],[data-blj-action],[data-blj-yt],[data-blj-retry],[data-blj-step],[data-blj-go],[data-blj-choice],[data-blj-baseline],[data-blj-focus],[data-blj-sheet],[data-blj-sheet-close],[data-blj-tab],[data-blj-fav],[data-blj-module],[data-blj-kalc-pick]');
     if (!el || !rootEl() || !rootEl().contains(el)) return;
     if (el.hasAttribute('data-blj-retry')) {
       e.preventDefault();
@@ -1570,12 +1767,37 @@
       void onFav(Number(el.getAttribute('data-blj-fav')));
       return;
     }
+    if (el.hasAttribute('data-blj-kalc-pick')) {
+      e.preventDefault();
+      const i = Number(el.getAttribute('data-blj-kalc-pick'));
+      const defaults = kalcDefaultsFromDraft(i);
+      rootEl().querySelectorAll('[data-blj-kalc-pick]').forEach((btn) => {
+        const on = Number(btn.getAttribute('data-blj-kalc-pick')) === i;
+        btn.classList.toggle('is-on', on);
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      mountKalc(defaults);
+      return;
+    }
     if (el.hasAttribute('data-blj-go')) {
       e.preventDefault();
       const go = el.getAttribute('data-blj-go');
       if (go === 'analyze') { void onAnalyze(); return; }
       if (go === 'rate-listing') { void onRateListing(); return; }
       if (go === 'save-listing') { void onSaveListing(); return; }
+      if (go === 'open-ide' && _ctx && _ctx.open) { _ctx.open('ide-produk'); return; }
+      if (go === 'kalc-save') {
+        const host = rootEl() && rootEl().querySelector('[data-blj-kalc]');
+        const pick = rootEl() && rootEl().querySelector('[data-blj-kalc-pick].is-on');
+        const idx = pick ? Number(pick.getAttribute('data-blj-kalc-pick')) : 0;
+        const row = arr(draft().analysis && draft().analysis.sample)[idx] || null;
+        if (_ctx && typeof _ctx.saveKalc === 'function') {
+          void _ctx.saveKalc(host, row).then((ok) => {
+            if (ok && _ctx.toast) _ctx.toast('Tersimpan di Riwayat · Kalk');
+          });
+        }
+        return;
+      }
       if (go === 'link-shop') { void onLinkShop(); return; }
       if (go === 'report') { void onReport(); return; }
       if (go === 'watch') { void onWatch(); return; }
@@ -1584,8 +1806,14 @@
         return;
       }
       if (go === 'kalk' && _ctx && _ctx.action) {
-        const idea = draft().idea;
-        _ctx.action('kalkulator', { kalc: { price: idea.price || 0, cogs: idea.cost || 0, marketplace: 'shopee' } });
+        const defaults = kalcDefaultsFromDraft(0);
+        _ctx.action('kalkulator', {
+          kalc: {
+            price: defaults.price || 0,
+            cogs: defaults.cogs || 0,
+            marketplace: 'shopee',
+          },
+        });
         return;
       }
       if (go === 'ask' && _ctx && _ctx.action) {

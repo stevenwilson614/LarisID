@@ -53,10 +53,9 @@ There is no paywall and no lock that blocks reading the next lesson. Do not mark
 Unpublished lessons stay in the database so old progress rows are not deleted. They leave the learner count.
 
 1. **Cari produk**
-   - `ide-produk` (**Mau jual apa?**) — single form: name (required to analyze), description, optional cost and sell price. No two-path chooser. Analisis searches the **name only** (description is notes, not a query). It uses lenient `searchListings`, then shorter token prefixes, fuzzy keyword rescue for typos, then a raw RPC pass. Shows count, price vs median, omset p25–p75 labeled perkiraan, and frequent title words. Empty search says so. **Cari inspirasi di Cari Produk** sits under the form. No “Cara kerja LarisID” tautan. Done on analysis or an existing Deep Dive.
-   - `pra-listing` (**Nilai listingmu**) — title and description prefilled from the idea step when empty. Sample photo from a similar listing in the analysis (local upload optional; not stored). **Nilai listing vs kompetitor** scores the draft and lists suggestions from the sample. Tanya Laris AI opens chat with that draft and those rows and an instruction not to invent sold or omset. Done when a title is saved.
+   - `ide-produk` (**Mau jual apa?**) — single form: name (required to analyze); notes optional. Analisis searches the **name only**. Competitor cards show **photos**, a per-listing score, and an **average score /100** with a short verdict (layak dilanjut / bandingkan lagi / data tipis). The same step recommends **harga, fitur/kata judul, and deskripsi** from the sample — editable, then **Simpan rekomendasi**. `pra-listing` is unpublished and merged here (title saved still satisfies the old `pra` verify). Empty search says so. **Cari inspirasi di Cari Produk** sits under the form.
 2. **Sumber produk**
-   - `hitung-modal` — opens the calculator prefilled from the pra-listing (`price`, `cogs`). Fee, ongkir, iklan, and retur are part of modal. Rp 3 juta on the shop lesson is gross omset, not profit.
+   - `hitung-modal` (**Hitung modal dari harga jual**) — embeds the same `gpt-kalc` UI as the Kalkulator page (not a separate navigation). Prefills from the recommended price / cost or a tapped competitor photo chip; learner can change every field and **Simpan ke Riwayat**. Fee, ongkir, iklan, and retur are part of modal. Rp 3 juta on the shop lesson is gross omset, not profit.
    - `mulai-sourcing` — pasar lokal, 1688, and Alibaba. 1688 and Alibaba are import routes, not a way around customs. Sample, MOQ, lead time, and bea stay in the copy. Video only when a real URL is stored.
    - `tanya-sumber` — same Tanya komunitas block as other lessons, with a sourcing pre-draft. Verify only if this account has posted a question.
 3. **Pilih tempat jual** — Shopee, Tokopedia, Lazada, and TikTok Shop. One switcher with marketplace logos, stored by adding the platform to `user_course_state.platforms`. Content of the first two lessons swaps; the rail stays three sections.
@@ -70,6 +69,7 @@ External links are official seller-education pages from the seed, plus `/kalkula
 
 ```bash
 bash scripts/apply-selfhost.sh supabase/migrations/20261014200000_belajar_unit1_refresh.sql
+bash scripts/apply-selfhost.sh supabase/migrations/20261017120000_belajar_ide_score_kalc.sql
 ```
 
 ## Outcome: about Rp 3 juta / month

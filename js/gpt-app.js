@@ -3086,6 +3086,70 @@ function belajarCtx() {
         return null;
       }
     },
+    kalcHtml(opts) {
+      return gptKalcHtml(opts || {});
+    },
+    bindKalc(root) {
+      bindGptKalc(root);
+    },
+    async saveKalc(panel, productRow) {
+      const root = panel && panel.querySelector
+        ? (panel.matches?.('[data-kalc]') ? panel : panel.querySelector('[data-kalc]'))
+        : null;
+      if (!root) {
+        showToast('Kalkulator belum siap.');
+        return false;
+      }
+      const inp = _gptKalcRead(root);
+      const r = gptKalcCompute(inp);
+      if (!(inp.price > 0)) {
+        showToast('Isi harga jual dulu.');
+        return false;
+      }
+      const p = productRow
+        ? asListingProduct({
+          item_id: productRow.item_id,
+          shop_id: productRow.shop_id,
+          product_name: productRow.name,
+          store_name: productRow.store,
+          price: productRow.price,
+          image_url: productRow.image,
+          keyword: productRow.keyword,
+          category: productRow.category,
+        })
+        : null;
+      const title = `Kalkulasi: ${(p?.product_name || p?.keyword || 'Profit').slice(0, 36)}`;
+      const chat = {
+        localId: 'local_' + Date.now(),
+        title: String(title).slice(0, 48),
+        context: withPasar({
+          kind: 'kalkulator',
+          product: p ? productSnapshot(p) : null,
+          kalc: {
+            price: inp.price,
+            cogs: inp.cogs,
+            marketplace: inp.mpKey,
+            category: inp.category,
+            profit: r.profit,
+            margin: r.margin,
+            shipping: inp.shipping,
+            packing: inp.packing,
+            opex: inp.opex,
+            ads: inp.ads,
+            adsOn: inp.adsOn,
+            programOn: !!root.querySelector('[data-k="programOn"]')?.checked,
+          },
+        }),
+        pasar: currentPasarTag(),
+        messages: [],
+        created_at: Date.now(),
+      };
+      state.chats.unshift(chat);
+      saveLocalState();
+      renderChatList();
+      void logUserEvent('gpt_kalc_save_riwayat', { ui: 'gpt', via: 'belajar', has_product: !!p });
+      return true;
+    },
   };
 }
 
