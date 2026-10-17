@@ -3011,19 +3011,49 @@ function belajarCtx() {
       }
     },
     async search(q) {
+      // Belajar idea analysis: tolerate typos ("futsol"→"futsal") and ignore
+      // English filler from the description field. Prefer content tokens.
       const raw = String(q || '').trim();
       if (!raw) return [];
-      let rows = await searchListings(raw, [], 24);
+      const FILLER = new Set([
+        'with', 'the', 'and', 'for', 'from', 'that', 'this', 'warna', 'dengan',
+        'yang', 'untuk', 'dari', 'pada', 'juga', 'atau', 'ada', 'ini', 'itu',
+      ]);
+      const tryQ = async (query) => {
+        const s = String(query || '').trim();
+        if (!s) return [];
+        try {
+          return await searchListings(s, [], 24);
+        } catch (_) {
+          return [];
+        }
+      };
+      let rows = await tryQ(raw);
       if (rows.length) return rows;
-      // Broad fashion / category phrases sometimes miss after filters — try
-      // each token, then a looser RPC pass for Belajar analysis.
-      const terms = raw.toLowerCase().split(/\s+/).filter((t) => t.length >= 3);
-      for (const t of terms) {
-        rows = await searchListings(t, [], 24);
+
+      const terms = raw.toLowerCase().split(/\s+/)
+        .filter((t) => t.length >= 3 && !FILLER.has(t));
+      // Drop the rarest/last tokens first so "sepatu futsol biru" → "sepatu futsol" → "sepatu".
+      for (let n = terms.length; n >= 1; n--) {
+        rows = await tryQ(terms.slice(0, n).join(' '));
         if (rows.length) return rows;
       }
+      for (const t of terms) {
+        rows = await tryQ(t);
+        if (rows.length) return rows;
+      }
+
+      // Typo rescue via the same keyword pool Cari Produk uses.
       try {
-        const clean = _sanitizeSearchToken(raw);
+        const fuzzy = await _rbFuzzyMatch(terms.join(' ') || raw, 6);
+        for (const hit of fuzzy) {
+          rows = await tryQ(hit.keyword);
+          if (rows.length) return rows;
+        }
+      } catch (_) { /* pool may be cold */ }
+
+      try {
+        const clean = _sanitizeSearchToken(terms.join(' ') || raw);
         if (!clean || !_supabase) return [];
         const { data, error } = await _supabase.rpc('search_listings', {
           q: clean, lim: 40, off: 0, cats: null, price_min: null, price_max: null,

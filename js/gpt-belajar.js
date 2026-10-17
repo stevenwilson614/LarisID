@@ -564,7 +564,7 @@
       </li>`;
     }).join('');
     const empty = !analysis.n
-      ? `<p>Tidak ada listing yang ketemu untuk “${esc(analysis.query || '')}”. Coba kata yang lebih umum, atau cari sendiri.</p>
+      ? `<p>Tidak ada listing yang ketemu untuk “${esc(analysis.query || '')}”. Coba ejaan yang lebih dekat ke kata pencarian Shopee (mis. “futsal” bukan “futsol”), atau kata yang lebih umum.</p>
          <button type="button" class="btn-primary" data-blj-go="search" data-q="${esc(analysis.query || '')}">Buka Cari Produk</button>`
       : '';
     return `<div class="blj-result">
@@ -1155,8 +1155,10 @@
     const btn = rootEl() && rootEl().querySelector('[data-blj-go="analyze"]');
     if (btn) { btn.disabled = true; btn.textContent = 'Mencari listing…'; }
     try {
-      const q = [idea.name, idea.description].filter(Boolean).join(' ').trim();
-      const rows = await _ctx.search(q || idea.name);
+      // Search the product name only — description is notes (warna, fitur),
+      // not a marketplace query. Mixing it in (e.g. "biru with cleats")
+      // emptied results for common typos like "futsol".
+      const rows = await _ctx.search(String(idea.name || '').trim());
       const next = draft();
       next.idea = idea;
       next.analysis = summarize(idea, rows);
@@ -1165,8 +1167,15 @@
       await saveDraft(next);
       if (_ctx.log) _ctx.log('belajar_analysis', { ui: 'gpt', n: next.analysis.n || 0 });
       paint();
+      if (!next.analysis.n && _ctx.toast) {
+        _ctx.toast('Belum ketemu listing mirip. Coba ejaan lain, atau kata yang lebih umum.');
+      }
     } catch (err) {
       toastFail(err);
+      if (btn && rootEl() && rootEl().contains(btn)) {
+        btn.disabled = false;
+        btn.textContent = 'Analisis ide produk';
+      }
       try { console.warn('[belajar]', err); } catch (_) {}
     } finally {
       _busy = false;
