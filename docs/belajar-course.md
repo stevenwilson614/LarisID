@@ -1,6 +1,8 @@
 # Belajar — seller course in the SPA
 
-Free, self-paced course. The side tab, Beranda strip, and `#view-belajar` are platform-admin only for now (`isPlatformAdmin()`). Logged-out visitors and other accounts do not see them, and `belajar_course`, `belajar_mark_lesson`, `belajar_set_state`, `belajar_save_draft`, `belajar_set_baseline`, `belajar_link_shop`, and `belajar_set_reported_omset` return `admin_only`. It lives in the main app (`#btn-belajar`, `#view-belajar`, `js/gpt-belajar.js`), not in the Anton school prototype and not in cohort `milestone_content`.
+Free, self-paced course, public in the main app (`#btn-belajar`, `#view-belajar`, `js/gpt-belajar.js`). The side button uses the book icon and the label Belajar. Logged-out visitors see the four-step home; Mulai and the mentor banner ask them to sign in, then resume. Signed-in learners use `belajar_course` and the other learner RPCs — those no longer return `admin_only`. Editor RPCs (`belajar_admin_overview`, `belajar_admin_save_lesson`, `belajar_admin_save_module`, `belajar_admin_progress`) stay platform-admin only. Not the Anton school prototype and not cohort `milestone_content`.
+
+The old Edukasi page is not a second tab. `#btn-edukasi` stays hidden and `setView('edukasi')` opens Belajar. A small banner on Belajar asks “Tertarik dibimbing mentor bisnis?”. Yes writes `education_interests` through `education_submit_interest` (name, plus email or WhatsApp), so people who already said yes on Edukasi stay interested and show “Minat mentor bisnis sudah tercatat.” The old auto popup does not open.
 
 Goal: four steps from an idea to a linked shop, then watching competitors. The funnel records who starts with no store or no sales and later has a linked shop whose Laris listing data reaches about Rp 3 juta omset per month.
 
@@ -105,6 +107,16 @@ Never `supabase db push --linked`.
 
 Do not re-apply `supabase/migrations/20261014120000_belajar_course.sql` after the v2 file. That file’s `belajar_course()` does not know baseline, listing draft, or shop outcomes, and it puts the five-module seed back. Re-applying the v2 file overwrites v2 lesson copy for the same slugs — then re-apply the unit1 refresh migration.
 
+## Visits, mentor interest, and where people stop
+
+Signed-in opens of Belajar log `belajar_page_view` once per browser session (`lid_belajar_page_view_v1`). Platform-admin and view-as sessions are not counted, same as the old Edukasi preview. Admin → **Belajar — kunjungan & minat mentor** (`education_admin_overview`) counts unique people across `edu_page_view` and `belajar_page_view`, and every row in `education_interests`.
+
+`belajar_touch('mulai', slug)` runs when someone presses **Mulai sekarang** or Beranda **Mulai belajar**. It sets `user_course_state.mulai_at` once. Each lesson they then open calls `belajar_touch('open', slug)`, which sets `last_slug` / `last_at` and advances `furthest_slug` only forward. Admin → Belajar lists where those people stopped (`belajar_admin_progress`: last lesson opened) and how far they got. Do not backfill `mulai_at` from `started_at`.
+
+```bash
+bash scripts/apply-selfhost.sh supabase/migrations/20261017150000_belajar_public.sql
+```
+
 ## Events
 
-`belajar_open`, `belajar_lesson_open`, `belajar_lesson_done`, `belajar_action_click`, `belajar_track_set`, `belajar_analysis`, `belajar_shop_linked`, `belajar_baseline`.
+`belajar_page_view`, `belajar_open`, `belajar_lesson_open`, `belajar_lesson_done`, `belajar_action_click`, `belajar_track_set`, `belajar_analysis`, `belajar_shop_linked`, `belajar_baseline`. Mentor yes also logs `edu_interest` with `via: belajar`.

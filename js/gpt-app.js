@@ -1823,8 +1823,10 @@ const state = {
   pendingTrackKeyword: null, // one-tap Favorit caught by the signup gate; added after sign-in
   pendingKomunitas: null, // { tab, title, topic, postId } behind login / email deep link
   pendingProfilPreview: null, // 'filled' | 'empty' from ?profil=isi|kosong — local preview only
-  pendingEdukasi: false, // Edukasi panel opened behind the login gate
+  pendingEdukasi: false, // legacy: old Edukasi tab behind login — resumes on Belajar
   pendingBelajar: false, // Belajar course opened behind the login gate
+  pendingBelajarMulai: false, // pressed Mulai before login
+  pendingMentor: false, // pressed mentor interest before login
   pendingAlat: null, // 'existing' after My Toko sift / claim_shop, resumed after sign-in
   everOpenedDeepdive: false,
   lastDeepDiveKeyword: '',
@@ -1896,6 +1898,8 @@ function loadLocalState() {
     if (raw.pendingKomunitas) state.pendingKomunitas = raw.pendingKomunitas;
     if (raw.pendingEdukasi) state.pendingEdukasi = !!raw.pendingEdukasi;
     if (raw.pendingBelajar) state.pendingBelajar = !!raw.pendingBelajar;
+    if (raw.pendingBelajarMulai) state.pendingBelajarMulai = !!raw.pendingBelajarMulai;
+    if (raw.pendingMentor) state.pendingMentor = !!raw.pendingMentor;
     if (raw.pendingAlat) state.pendingAlat = raw.pendingAlat;
     if (raw.everOpenedDeepdive != null) state.everOpenedDeepdive = !!raw.everOpenedDeepdive;
     if (raw.lastDeepDiveKeyword) state.lastDeepDiveKeyword = String(raw.lastDeepDiveKeyword);
@@ -1919,6 +1923,8 @@ function saveLocalState() {
       pendingKomunitas: state.pendingKomunitas || null,
       pendingEdukasi: !!state.pendingEdukasi,
       pendingBelajar: !!state.pendingBelajar,
+      pendingBelajarMulai: !!state.pendingBelajarMulai,
+      pendingMentor: !!state.pendingMentor,
       pendingAlat: state.pendingAlat || null,
       everOpenedDeepdive: state.everOpenedDeepdive || false,
       lastDeepDiveKeyword: state.lastDeepDiveKeyword || '',
@@ -2949,13 +2955,20 @@ async function paintEduAdminList(canList) {
 }
 
 function openEdukasiView() {
-  if (!currentUser) {
-    state.pendingEdukasi = true;
-    saveLocalState();
-    openAuthModal('login', 'gpt_gate_edukasi');
-    return;
-  }
-  setView('edukasi');
+  // Edukasi page is folded into Belajar.
+  openBelajarView();
+}
+
+let _belajarQueue = { mulai: false, mentor: false };
+
+function noteBelajarPageView() {
+  // Same rule as the old Edukasi page: signed-in people, not an admin preview.
+  if (!currentUser || adminIsPreviewing() || isPlatformAdminRaw()) return;
+  try {
+    if (sessionStorage.getItem('lid_belajar_page_view_v1')) return;
+    sessionStorage.setItem('lid_belajar_page_view_v1', '1');
+  } catch (_) {}
+  void logUserEvent('belajar_page_view', { ui: 'gpt', via: 'panel' });
 }
 
 function belajarCtx() {
@@ -2964,6 +2977,49 @@ function belajarCtx() {
     user: currentUser,
     toast: (msg) => { try { showToast(msg); } catch (_) {} },
     log: (event, meta) => { void logUserEvent(event, meta || {}); },
+    takeQueue() {
+      const q = { mulai: !!_belajarQueue.mulai, mentor: !!_belajarQueue.mentor };
+      _belajarQueue = { mulai: false, mentor: false };
+      return q;
+    },
+    login(reason) {
+      state.pendingBelajar = true;
+      if (reason === 'mulai') state.pendingBelajarMulai = true;
+      if (reason === 'mentor') state.pendingMentor = true;
+      saveLocalState();
+      openAuthModal('login', 'gpt_gate_belajar');
+    },
+    touch(kind, slug) {
+      if (!_supabase || !currentUser) return Promise.resolve(null);
+      return _supabase.rpc('belajar_touch', { p_kind: kind, p_slug: slug || '' })
+        .then(({ data, error }) => {
+          if (error) {
+            try { console.warn('[belajar] touch', error); } catch (_) {}
+            return null;
+          }
+          return data;
+        });
+    },
+    async mentorState() {
+      if (!currentUser) return { loggedIn: false, interested: false };
+      const ctx = await loadEduInterestContext();
+      return Object.assign({ loggedIn: true }, ctx || {});
+    },
+    async submitMentor(fields) {
+      fields = fields || {};
+      if (!_supabase || !currentUser) return { ok: false, error: 'Masuk dulu.' };
+      const { data, error } = await _supabase.rpc('education_submit_interest', {
+        p_name: fields.name || '',
+        p_email: fields.email || null,
+        p_whatsapp: fields.wa || null,
+      });
+      if (error) return { ok: false, error: 'Minat belum tersimpan.' };
+      if (data && data.ok) {
+        _eduMine = { ok: true, interested: true, can_list: !!(_eduMine && _eduMine.can_list) };
+        void logUserEvent('edu_interest', { ui: 'gpt', action: 'yes', via: 'belajar' });
+      }
+      return data || { ok: false };
+    },
     open(slug) {
       setView('belajar', {
         forceHistory: true,
@@ -3153,8 +3209,10 @@ function belajarCtx() {
   };
 }
 
-function openBelajarView() {
-  if (!isPlatformAdmin()) return;
+function openBelajarView(opts) {
+  opts = opts || {};
+  if (opts.mulai) _belajarQueue.mulai = true;
+  if (opts.mentor) _belajarQueue.mentor = true;
   setView('belajar');
 }
 
@@ -3189,31 +3247,8 @@ function skipEduInterestPopup() {
 }
 
 function scheduleEduInterestNotice(opts = {}) {
-  if (!currentUser) return;
-  if (isPlatformAdminRaw() || adminIsPreviewing()) return;
-  if (eduInterestSkipped()) return;
-  if (state.view === 'edukasi') return;
-  if (eduFinderBlocking()) return;
-  clearTimeout(_eduNoticeTimer);
-  const tryOpen = (attempt) => {
-    _eduNoticeTimer = setTimeout(async () => {
-      if (!currentUser || eduInterestSkipped()) return;
-      if (isPlatformAdminRaw() || adminIsPreviewing()) return;
-      if (state.view === 'edukasi') return;
-      if (eduFinderBlocking()) return;
-      if (document.querySelector('.modal-overlay.open')) {
-        if (attempt < 4) tryOpen(attempt + 1);
-        return;
-      }
-      const ctx = await loadEduInterestContext();
-      if (!ctx || ctx.interested || ctx.inCohort || ctx.isMentor) {
-        if (ctx && ctx.interested) markEduInterestSkipped();
-        return;
-      }
-      openEduInterestPopup(ctx);
-    }, attempt === 0 ? 1800 : 2600);
-  };
-  tryOpen(0);
+  // Mentor interest now lives on the Belajar banner. Do not pop the old form.
+  void opts;
 }
 
 function eduReadFields(root, ctx) {
@@ -4227,8 +4262,8 @@ let _sfbStatus  = null;   // cached my_feedback_prompt_status() for this page lo
 let _sfbAnswered = false;
 let _sfbChip    = null;
 let _sfbFollowup = null;  // { id, lead, go, cta } pending steven_followup notice
-const SFB_EDU_CTA = 'Buka tab Edukasi';
-const SFB_EDU_INVITE = 'Kamu bilang masih bingung cara pakainya. Buka tab Edukasi di menu kiri, lalu daftar bimbingan mentor di situ ya.';
+const SFB_EDU_CTA = 'Buka Belajar';
+const SFB_EDU_INVITE = 'Kamu bilang masih bingung cara pakainya. Buka tab Belajar di menu kiri, lalu daftar bimbingan mentor di situ ya.';
 const SFB_KURANG_LENGKAP_ASK =
   'Hai! Makasih sudah jawab. Kamu bilang datanya kurang lengkap — informasi apa lagi yang paling ingin kamu lihat di LarisID? Ceritain di sini ya, aku baca.';
 
@@ -4839,7 +4874,7 @@ let _navigatingFromHistory = false;
 let _historyPrimed = false;
 
 function setView(name, opts = {}) {
-  if (name === 'belajar' && !isPlatformAdmin()) name = 'home';
+  if (name === 'edukasi') name = 'belajar';
   const leaving = state.view;
   state.view = name;
   ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'edukasi', 'belajar', 'cohort', 'audit', 'sift', 'kalkulator', 'profil'].forEach(v => {
@@ -4906,6 +4941,7 @@ function setView(name, opts = {}) {
     void logUserEvent('view_open', { ui: 'gpt', view: name });
   }
   if (name === 'edukasi') void paintEduPanel();
+  if (name === 'belajar') noteBelajarPageView();
   if (name === 'belajar' && window.LarisBelajar) {
     void window.LarisBelajar.render(belajarCtx(), {
       lesson: opts.lesson || null,
@@ -5192,7 +5228,9 @@ function updateAccountUI() {
   const btn = $('btn-admin');
   if (btn) btn.style.display = isPlatformAdmin() ? '' : 'none';
   const belajarBtn = $('btn-belajar');
-  if (belajarBtn) belajarBtn.style.display = isPlatformAdmin() ? '' : 'none';
+  if (belajarBtn) belajarBtn.style.display = '';
+  const eduBtn = $('btn-edukasi');
+  if (eduBtn) eduBtn.style.display = 'none';
   syncHargaVisitCta();
   try { void refreshCohortNav(); } catch (_) {}
   try { supplierSyncNavVisibility(); } catch (_) {}
@@ -5995,14 +6033,15 @@ async function _authOnSignIn(session, opts) {
     state.pendingKomunitas = null;
     saveLocalState();
     openCommunityBoard(pk);
-  } else if (state.pendingEdukasi) {
+  } else if (state.pendingEdukasi || state.pendingBelajar || state.pendingBelajarMulai || state.pendingMentor) {
+    const mulai = !!state.pendingBelajarMulai;
+    const mentor = !!state.pendingMentor;
     state.pendingEdukasi = false;
-    saveLocalState();
-    openEdukasiView();
-  } else if (state.pendingBelajar) {
     state.pendingBelajar = false;
+    state.pendingBelajarMulai = false;
+    state.pendingMentor = false;
     saveLocalState();
-    openBelajarView();
+    openBelajarView({ mulai, mentor });
   } else if (state.pendingAlat === 'existing' && window.LarisAlatPreview?.active?.()) {
     state.pendingAlat = null;
     saveLocalState();
@@ -6784,7 +6823,7 @@ async function syncHomeRetentionCards() {
   await syncHomeFirstDdCard();
   await syncHomeLangkahCard();
   const belajarCard = $('home-belajar');
-  if (window.LarisBelajar && isPlatformAdmin()) await window.LarisBelajar.syncHome(belajarCtx());
+  if (window.LarisBelajar && currentUser) await window.LarisBelajar.syncHome(belajarCtx());
   else if (belajarCard) { belajarCard.hidden = true; belajarCard.innerHTML = ''; }
   await syncHomeKomunitasCard();
 }
@@ -25093,7 +25132,9 @@ function applyViewAsChrome() {
   const admBtn = $('btn-admin');
   if (admBtn) admBtn.style.display = isPlatformAdmin() ? '' : 'none';
   const belajarBtn = $('btn-belajar');
-  if (belajarBtn) belajarBtn.style.display = isPlatformAdmin() ? '' : 'none';
+  if (belajarBtn) belajarBtn.style.display = '';
+  const eduNav = $('btn-edukasi');
+  if (eduNav) eduNav.style.display = 'none';
   void refreshGptUsage();
 }
 
@@ -26722,7 +26763,7 @@ async function loadAdminEdukasi() {
     if (sum) {
       sum.textContent = visitors || interested
         ? `${admFmtNum(visitors)} buka halaman · ${admFmtNum(interested)} tertarik`
-        : 'Belum ada yang membuka halaman Edukasi atau mendaftar minat.';
+        : 'Belum ada yang membuka halaman Belajar atau mendaftar minat mentor.';
     }
     if (!rows.length) {
       body.innerHTML = '<tr><td colspan="5" class="dd-sub">Belum ada data.</td></tr>';

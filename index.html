@@ -368,6 +368,7 @@ html.session-restoring body::after {
 a.side-btn { text-decoration: none; box-sizing: border-box; color: var(--ink); }
 .side-btn:hover { background: var(--bg-hover); }
 .side-btn.active { background: #fff; box-shadow: 0 0 0 1px var(--line); }
+#btn-edukasi { display: none !important; }
 
 /* First-dive Pantauan nudge: pulse until they open Pantauan (stops on click). */
 @keyframes pantauNavPulse {
@@ -2635,6 +2636,32 @@ body.view-belajar .panel-inner { max-width: 1100px; }
   margin: 0 auto;
 }
 .blj-hero-intro { margin-bottom: 20px; }
+.blj-mentor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #fdf2f3;
+  border: 1px solid #f3d4d6;
+  color: var(--ink, #111);
+}
+.blj-mentor p { margin: 0; font-size: 14px; line-height: 1.4; }
+.blj-mentor .btn-primary { flex: none; }
+.blj-mentor.is-done { background: #f6f6f5; border-color: var(--line, #e7e5e4); }
+.blj-mentor-form { display: grid; gap: 8px; width: 100%; }
+.blj-mentor-form label { display: grid; gap: 4px; font-size: 13px; }
+.blj-mentor-form input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--line, #e7e5e4);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font: inherit;
+}
 .blj-intro-card {
   background: #fff;
   border: 1px solid var(--line, #e7e5e4);
@@ -9968,12 +9995,12 @@ body.view-chat .sfb-card {
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 4H6.2A2.2 2.2 0 0 0 4 6.2v8.6A2.2 2.2 0 0 0 6.2 17H7v3.2a.5.5 0 0 0 .85.36L11.4 17h6.4A2.2 2.2 0 0 0 20 14.8V6.2A2.2 2.2 0 0 0 17.8 4Z"/><path class="ic-a" d="M12 7.8v5.4M9.3 10.5h5.4"/></svg>
       <span class="side-btn-label">Komunitas</span>
     </button>
-    <button type="button" class="side-btn" id="btn-edukasi" title="Edukasi">
+    <button type="button" class="side-btn" id="btn-edukasi" title="Edukasi" hidden>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.4A2.2 2.2 0 0 1 6.2 3.2H20v16.4H6.2A2.2 2.2 0 0 0 4 21.8V5.4Z"/><path d="M4 21.8A2.2 2.2 0 0 1 6.2 19.6H20"/><path class="ic-a" d="M8.4 7.8h7.2M8.4 11.4h5"/></svg>
       <span class="side-btn-label">Edukasi</span>
     </button>
-    <button type="button" class="side-btn" id="btn-belajar" title="Belajar" style="display:none">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12"/><path class="ic-a" d="M4 6h.01M4 12h.01M4 18h.01"/></svg>
+    <button type="button" class="side-btn" id="btn-belajar" title="Belajar">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.4A2.2 2.2 0 0 1 6.2 3.2H20v16.4H6.2A2.2 2.2 0 0 0 4 21.8V5.4Z"/><path d="M4 21.8A2.2 2.2 0 0 1 6.2 19.6H20"/><path class="ic-a" d="M8.4 7.8h7.2M8.4 11.4h5"/></svg>
       <span class="side-btn-label">Belajar</span>
     </button>
     <!-- Hidden for now. Restore with the landing .expor-tab in scripts/lib/expor-tab.mjs. -->
@@ -11564,7 +11591,7 @@ body.view-chat .sfb-card {
               </article>
               <article class="adm-card adm-kpi adm-kpi--edu-views">
                 <div class="adm-kpi-top">
-                  <span class="adm-kpi-lbl">Edukasi — Buka Halaman</span>
+                  <span class="adm-kpi-lbl">Belajar — Buka halaman</span>
                   <span class="adm-kpi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
                 </div>
                 <div class="adm-kpi-val" id="adm-kpi-edu-visitors">—</div>
@@ -11572,7 +11599,7 @@ body.view-chat .sfb-card {
               </article>
               <article class="adm-card adm-kpi adm-kpi--edu-yes">
                 <div class="adm-kpi-top">
-                  <span class="adm-kpi-lbl">Edukasi — Tertarik</span>
+                  <span class="adm-kpi-lbl">Belajar — Minat mentor</span>
                   <span class="adm-kpi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>
                 </div>
                 <div class="adm-kpi-val" id="adm-kpi-edu-interested">—</div>
@@ -11666,9 +11693,9 @@ body.view-chat .sfb-card {
 
             <section class="adm-card adm-edu-card" id="adm-edukasi">
               <div class="adm-users-toolbar">
-                <h3>Edukasi — minat</h3>
+                <h3>Belajar — kunjungan & minat mentor</h3>
                 <button type="button" class="adm-tb-btn" id="adm-edu-refresh">Muat ulang</button>
-                <button type="button" class="adm-tb-btn" id="adm-edu-open">Buka seperti user baru</button>
+                <button type="button" class="adm-tb-btn" id="adm-edu-open">Buka Belajar</button>
               </div>
               <p class="dd-sub" id="adm-edu-summary">Memuat…</p>
               <div class="adm-edu-kpis" id="adm-edu-kpis">
@@ -12395,7 +12422,7 @@ body.view-chat .sfb-card {
         <div class="sfb-in">
           <p class="sfb-bubble" id="sfb-msg">Halo! Aku lihat kamu cukup sering pakai LarisID.
             Boleh tanya &mdash; menurut kamu apa yang masih kurang di sini?</p>
-          <button type="button" class="sfb-edu-link" id="sfb-edu-link" data-sfb-edu hidden>Buka tab Edukasi</button>
+          <button type="button" class="sfb-edu-link" id="sfb-edu-link" data-sfb-edu hidden>Buka Belajar</button>
         </div>
       </div>
     </div>
@@ -12533,9 +12560,9 @@ body.view-chat .sfb-card {
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260915a" defer></script>
-<script src="/js/gpt-belajar.js?v=20261017d" defer></script>
+<script src="/js/gpt-belajar.js?v=20261017e" defer></script>
 <script src="/js/gpt-alat-preview.js?v=20261014a" defer></script>
-<script src="/js/gpt-app.js?v=20261017b" defer></script>
+<script src="/js/gpt-app.js?v=20261017e" defer></script>
 <style>
 .hl-hero-ctas-alat { display: none; }
 html.alat-preview #finder-xp-step { display: none; }

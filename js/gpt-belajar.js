@@ -73,6 +73,8 @@
   let _focus = '';
   let _photoUrl = '';
   let _askDraft = { slug: '', body: '' };
+  let _mentor = null;
+  let _mentorOpen = false;
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({
@@ -1119,6 +1121,53 @@
     return first ? first.lesson.slug : null;
   }
 
+  function guestCourse() {
+    return {
+      ok: true,
+      track: 'new',
+      baseline: 'unknown',
+      platforms: ['shopee'],
+      draft: {},
+      modules: [],
+      favorites: [],
+      signals: {},
+      progress: { done: 0, total: 0, pct: 0, next: null },
+    };
+  }
+
+  async function refreshMentor() {
+    if (!_ctx || typeof _ctx.mentorState !== 'function') {
+      _mentor = { loggedIn: !!(_ctx && _ctx.user), interested: false };
+      return;
+    }
+    try {
+      _mentor = await _ctx.mentorState() || { loggedIn: false, interested: false };
+    } catch (_) {
+      _mentor = { loggedIn: !!(_ctx && _ctx.user), interested: false };
+    }
+  }
+
+  function mentorHtml() {
+    const m = _mentor || { loggedIn: false, interested: false };
+    if (m.interested) {
+      return `<aside class="blj-mentor is-done"><p>Minat mentor bisnis sudah tercatat.</p></aside>`;
+    }
+    if (_mentorOpen && m.loggedIn) {
+      return `<aside class="blj-mentor">
+        <form class="blj-mentor-form" data-blj-mentor-form>
+          <p>Tertarik dibimbing mentor bisnis? Nama wajib. Email atau WhatsApp — salah satu cukup.</p>
+          <label>Nama <input data-blj-mentor="name" maxlength="80" value="${esc(m.name || '')}" autocomplete="name"></label>
+          <label>Email atau WhatsApp <input data-blj-mentor="contact" maxlength="160" value="${esc(m.email || m.wa || '')}" placeholder="nama@email.com atau 08…" autocomplete="email"></label>
+          <button type="button" class="btn-primary" data-blj-go="mentor-send">Simpan minat</button>
+        </form>
+      </aside>`;
+    }
+    return `<aside class="blj-mentor">
+      <p>Tertarik dibimbing mentor bisnis?</p>
+      <button type="button" class="btn-primary" data-blj-go="mentor">Ya, saya tertarik</button>
+    </aside>`;
+  }
+
   function homeMain() {
     const p = _course.progress || {};
     const next = p.next || null;
@@ -1153,7 +1202,7 @@
   }
 
   function pageHtml(found) {
-    return `<div class="blj-shell${found ? '' : ' is-home'}">
+    return `${mentorHtml()}<div class="blj-shell${found ? '' : ' is-home'}">
       <div class="blj-main">
         ${found ? stepsHtml() : ''}
         ${found ? lessonMain(found) : homeMain()}
@@ -1259,6 +1308,23 @@
       }
       if (gen !== _loadGen) return;
       _course = data;
+      await refreshMentor();
+      const queued = (_ctx && _ctx.takeQueue) ? _ctx.takeQueue() : {};
+      if (queued.mentor && _mentor && !_mentor.interested) {
+        const missingContact = !_mentor.email && !_mentor.wa;
+        if (_mentor.needName || missingContact) _mentorOpen = true;
+        else await sendMentor(_mentor.name, _mentor.email || '', _mentor.wa || '');
+      }
+      if (queued.mulai) {
+        const slug = startLessonSlug();
+        if (_ctx.touch) {
+          try { await _ctx.touch('mulai', slug || ''); } catch (_) {}
+        }
+        if (slug && _ctx.open) {
+          _ctx.open(slug);
+          return;
+        }
+      }
       try {
         paint();
       } catch (paintErr) {
@@ -1270,6 +1336,7 @@
         }
         return;
       }
+      if (_lessonSlug) noteLessonOpen(_lessonSlug);
       if (opts && opts.entry && _ctx && _ctx.log) {
         _ctx.log('belajar_open', { ui: 'gpt', track: data.track || '', baseline: data.baseline || '' });
       }
@@ -1861,12 +1928,9 @@
       if (go === 'analyze') { void onAnalyze(); return; }
       if (go === 'rate-listing') { void onRateListing(); return; }
       if (go === 'save-listing') { void onSaveListing(); return; }
-      if (go === 'start' && _ctx && _ctx.open) {
-        const slug = startLessonSlug();
-        if (slug) _ctx.open(slug);
-        else if (_ctx.toast) _ctx.toast('Materi belum siap.');
-        return;
-      }
+      if (go === 'start') { void onStart(); return; }
+      if (go === 'mentor') { void onMentor(); return; }
+      if (go === 'mentor-send') { void onMentorSend(); return; }
       if (go === 'open-ide' && _ctx && _ctx.open) { _ctx.open('ide-produk'); return; }
       if (go === 'kalc-save') {
         const host = rootEl() && rootEl().querySelector('[data-blj-kalc]');
@@ -1950,6 +2014,12 @@
     _bound = true;
     el.addEventListener('click', onClick);
     el.addEventListener('change', onChange);
+    el.addEventListener('submit', (e) => {
+      const form = e.target && e.target.closest ? e.target.closest('[data-blj-mentor-form]') : null;
+      if (!form || !el.contains(form)) return;
+      e.preventDefault();
+      void onMentorSend();
+    });
   }
 
   function firstOpenSlug() {
@@ -1957,10 +2027,95 @@
     return hit ? hit.lesson.slug : null;
   }
 
+  function noteLessonOpen(slug) {
+    if (!slug || !_course || !canOpenLesson(slug) || !_ctx || typeof _ctx.touch !== 'function') return;
+    void _ctx.touch('open', slug);
+  }
+
+  async function onStart() {
+    if (!_ctx) return;
+    if (!_ctx.user) {
+      if (_ctx.login) _ctx.login('mulai');
+      return;
+    }
+    const slug = startLessonSlug();
+    if (!slug) {
+      if (_ctx.toast) _ctx.toast('Materi belum siap.');
+      return;
+    }
+    if (_ctx.touch) {
+      try { await _ctx.touch('mulai', slug); } catch (_) {}
+    }
+    if (_ctx.open) _ctx.open(slug);
+  }
+
+  async function onMentor() {
+    if (!_ctx) return;
+    if (!_ctx.user) {
+      if (_ctx.login) _ctx.login('mentor');
+      return;
+    }
+    if (!_mentor) await refreshMentor();
+    const m = _mentor || {};
+    if (m.interested) return;
+    const missingContact = !m.email && !m.wa;
+    if (m.needName || missingContact) {
+      _mentorOpen = true;
+      paint();
+      return;
+    }
+    await sendMentor(m.name, m.email || '', m.wa || '');
+  }
+
+  async function onMentorSend() {
+    const root = rootEl();
+    const name = fieldVal(root, '[data-blj-mentor="name"]') || '';
+    const contact = String(fieldVal(root, '[data-blj-mentor="contact"]') || '').trim();
+    const email = contact.includes('@') ? contact : '';
+    const wa = email ? '' : contact;
+    await sendMentor(name.trim(), email, wa);
+  }
+
+  async function sendMentor(name, email, wa) {
+    if (!_ctx || typeof _ctx.submitMentor !== 'function') return;
+    const btn = rootEl() && rootEl().querySelector('[data-blj-go="mentor-send"], [data-blj-go="mentor"]');
+    if (btn) btn.disabled = true;
+    try {
+      const data = await _ctx.submitMentor({ name, email, wa });
+      if (!data || data.ok === false) {
+        if (_ctx.toast) _ctx.toast((data && data.error) || 'Minat belum tersimpan.');
+        if (!_mentorOpen) {
+          _mentorOpen = true;
+          paint();
+        }
+        return;
+      }
+      _mentor = Object.assign({}, _mentor || {}, { loggedIn: true, interested: true, name });
+      _mentorOpen = false;
+      paint();
+      if (_ctx.toast) _ctx.toast('Minat mentor tercatat.');
+    } catch (_) {
+      if (_ctx.toast) _ctx.toast('Minat belum tersimpan. Coba lagi.');
+    } finally {
+      if (btn && btn.isConnected) btn.disabled = false;
+    }
+  }
+
   function render(ctx, opts) {
     _ctx = ctx || _ctx;
     opts = opts || {};
     ensureBound();
+    if (!_ctx.user) {
+      _course = guestCourse();
+      _mentor = { loggedIn: false, interested: false };
+      _mentorOpen = false;
+      _lessonSlug = null;
+      paint();
+      // Drop the guest stub so the next signed-in paint reloads the real course
+      // even when the view was already Belajar (login from Mulai / mentor).
+      _course = null;
+      return undefined;
+    }
     let slug = opts.lesson || null;
     // History / deep links cannot jump past unfinished steps.
     if (slug && _course && !canOpenLesson(slug)) {
@@ -1981,6 +2136,7 @@
     if (changed && _lessonSlug && _ctx && _ctx.log) {
       _ctx.log('belajar_lesson_open', { ui: 'gpt', slug: _lessonSlug });
     }
+    if (changed && _course && _lessonSlug) noteLessonOpen(_lessonSlug);
     if (!_course || opts.entry) {
       if (_course) paint();
       return load(opts).then(() => {
@@ -2025,6 +2181,10 @@
         <h2>${esc(title)}</h2>
         <button type="button" class="home-ret-link" data-home-belajar>${esc(label)}</button>`;
       card.querySelector('[data-home-belajar]').addEventListener('click', () => {
+        if (!next && !finished) {
+          void onStart();
+          return;
+        }
         if (_ctx && _ctx.open) _ctx.open(next ? next.slug : null);
       });
     } catch (_) {
@@ -2142,6 +2302,40 @@
     });
   }
 
+  function fmtWhen(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '—';
+    try {
+      return d.toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    } catch (_) {
+      return String(iso).slice(0, 16);
+    }
+  }
+
+  function progressAdminHtml(data) {
+    if (!data || data.ok === false) return '';
+    const stops = arr(data.stops).map((s) =>
+      `<li>${esc(s.module_title ? `${s.module_title} · ` : '')}${esc(s.title || s.slug || '—')} <strong>${s.n || 0}</strong></li>`
+    ).join('');
+    const rows = arr(data.people).map((p) => `<tr>
+      <td>${esc(p.name || '—')}</td>
+      <td>${esc(fmtWhen(p.mulai_at))}</td>
+      <td>${esc(p.last_title || '—')}</td>
+      <td>${esc(p.furthest_title || '—')}</td>
+      <td>${p.done || 0} / ${p.total || 0}</td>
+    </tr>`).join('');
+    return `<section class="blj-admin-mod">
+      <h4>Yang menekan Mulai · ${data.started || 0}</h4>
+      <p class="blj-quiet">Berhenti di = pelajaran terakhir yang dibuka. Terjauh = pelajaran paling akhir yang pernah dibuka.</p>
+      <ul class="blj-points">${stops || '<li>Belum ada yang menekan Mulai.</li>'}</ul>
+      <div class="admin-table-wrap"><table class="admin-table">
+        <thead><tr><th>Nama</th><th>Mulai</th><th>Berhenti di</th><th>Terjauh</th><th>Selesai</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="5" class="dd-sub">Belum ada.</td></tr>'}</tbody>
+      </table></div>
+    </section>`;
+  }
+
   function funnelLine(data) {
     const f = data.funnel || {};
     return `${data.learners || 0} mulai · belum toko ${f.no_store || 0} · toko tanpa penjualan ${f.no_sales || 0} · sudah jual ${f.has_sales || 0} · tautan ${f.linked || 0} · omset perkiraan ≥ Rp 3 jt ${f.reached_3jt || 0} · selesai semua bagian ${data.completed || 0}.`;
@@ -2164,7 +2358,12 @@
       if (sum) sum.textContent = funnelLine(data);
       const f = data.funnel || {};
       const funnel = `<p class="blj-quiet">Dari belum punya toko: ${f.linked_no_store || 0} menautkan URL, ${f.reached_no_store || 0} mencapai Rp 3 jt perkiraan. Dari toko tanpa penjualan: ${f.linked_no_sales || 0} tautan, ${f.reached_no_sales || 0} mencapai Rp 3 jt. Milestone hanya dari listing Shopee yang ada di data Laris, omset kotor.</p>`;
-      body.innerHTML = funnel + (arr(data.modules).map(moduleAdmin).join('') || '<p class="dd-sub">Belum ada modul.</p>');
+      let progress = '';
+      try {
+        const stops = await rpc('belajar_admin_progress');
+        progress = progressAdminHtml(stops);
+      } catch (_) {}
+      body.innerHTML = funnel + progress + (arr(data.modules).map(moduleAdmin).join('') || '<p class="dd-sub">Belum ada modul.</p>');
     } catch (err) {
       if (sum) sum.textContent = 'Gagal memuat kurikulum.';
       try { console.warn('[belajar-admin]', err); } catch (_) {}
