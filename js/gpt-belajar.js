@@ -186,25 +186,21 @@
   }
 
   const ICO = {
-    video: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M10.2 8.8v6.4L16 12l-5.8-3.2z" fill="currentColor" stroke="none"/></svg>',
-    doc: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3.5h7l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-9.5A1.5 1.5 0 0 1 5.5 20V5A1.5 1.5 0 0 1 7 3.5z"/><path d="M14 3.5V8h4.5M8 12.5h8M8 16h6"/></svg>',
-    link: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 13.5a4 4 0 0 0 5.7.4l2.2-2.2a4 4 0 0 0-5.7-5.6L11 7.3"/><path d="M14 10.5a4 4 0 0 0-5.7-.4L6.1 12.3a4 4 0 0 0 5.7 5.6L13 16.7"/></svg>',
-    list: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 7h11M9 12h11M9 17h11"/><circle cx="5" cy="7" r="1" fill="currentColor" stroke="none"/><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="5" cy="17" r="1" fill="currentColor" stroke="none"/></svg>',
-    ask: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9.2 9.2a2.8 2.8 0 1 1 3.6 2.7c-.7.3-1.3.9-1.3 1.6V14"/><circle cx="12" cy="17" r=".8" fill="currentColor" stroke="none"/></svg>',
-    step: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h12M13 6l6 6-6 6"/></svg>',
     check: '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12.5l4.2 4.2L19 7.5"/></svg>',
   };
 
-  function sectionHtml(icon, title, count, body) {
+  function sectionHtml(title, count, body) {
     if (!body) return '';
+    const header = title
+      ? `<header class="blj-sec-h">
+          <div>
+            <strong>${esc(title)}</strong>
+            ${count ? `<span>${esc(count)}</span>` : ''}
+          </div>
+        </header>`
+      : '';
     return `<section class="blj-sec">
-      <header class="blj-sec-h">
-        <span class="blj-sec-ic" aria-hidden="true">${icon}</span>
-        <div>
-          <strong>${esc(title)}</strong>
-          ${count ? `<span>${esc(count)}</span>` : ''}
-        </div>
-      </header>
+      ${header}
       <div class="blj-sec-body">${body}</div>
     </section>`;
   }
@@ -245,7 +241,7 @@
     }).filter(Boolean);
     if (!items.length) return '';
     const n = items.length;
-    return sectionHtml(ICO.link, 'Tautan', n === 1 ? '1 tautan' : `${n} tautan`, `<ul class="blj-links">${items.join('')}</ul>`);
+    return sectionHtml('Tautan', n === 1 ? '1 tautan' : `${n} tautan`, `<ul class="blj-links">${items.join('')}</ul>`);
   }
 
   function platformLogo(id) {
@@ -285,7 +281,6 @@
       ? signalLine(lesson)
       : '';
     return sectionHtml(
-      ICO.ask,
       'Tanya komunitas',
       'Diskusi',
       `<p class="blj-quiet">Edit draf di bawah, lalu buka Diskusi. Kamu yang menekan kirim — kami tidak memposting otomatis.</p>
@@ -316,7 +311,6 @@
       </label>`;
     }).join('');
     return sectionHtml(
-      ICO.ask,
       'Cek pemahaman',
       qs.length === 1 ? '1 pertanyaan' : `${qs.length} pertanyaan`,
       `<p class="blj-quiet">Untuk kamu, bukan untuk dinilai. Jawaban tersimpan saat kamu menandai selesai.</p>${fields}`
@@ -886,7 +880,7 @@
         ${!lesson.applicable ? '<p class="blj-quiet">Bagian ini tidak masuk hitungan progresmu. Tetap bisa dibaca.</p>' : ''}
         ${mediaHtml(lesson)}
         ${paras(lesson.body) ? `<div class="blj-body">${paras(lesson.body)}</div>` : ''}
-        ${widget ? sectionHtml(ICO.step, 'Kerjakan di sini', '', widget) : ''}
+        ${widget ? sectionHtml('', '', widget) : ''}
         ${resourcesHtml(lesson)}
         ${questionsHtml(lesson)}
         ${communityAskHtml(lesson)}
