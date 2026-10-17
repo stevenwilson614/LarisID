@@ -357,6 +357,9 @@
   }
 
   function gateToast() {
+    // #region agent log
+    fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ae30a5'},body:JSON.stringify({sessionId:'ae30a5',runId:'post-fix',hypothesisId:'B',location:'gpt-belajar.js:gateToast',message:'locked step toast',data:{slug:_lessonSlug||''},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     if (_ctx && _ctx.toast) _ctx.toast('Selesaikan langkah sebelumnya dulu.');
   }
 
@@ -398,7 +401,7 @@
       ].filter(Boolean).join(' ');
       const mark = tone.done ? ICO.check : String(i + 1);
       const label = DOT_LABEL[mod.slug] || mod.title;
-      return `<button type="button" class="${cls}" data-blj-module="${esc(mod.slug)}" aria-label="${esc((i + 1) + '. ' + label)}${locked ? ' (terkunci)' : ''}"${tone.current ? ' aria-current="step"' : ''}${locked ? ' disabled' : ''}>
+      return `<button type="button" class="${cls}" data-blj-module="${esc(mod.slug)}" aria-label="${esc((i + 1) + '. ' + label)}${locked ? ' (terkunci)' : ''}"${tone.current ? ' aria-current="step"' : ''}${locked ? ' aria-disabled="true"' : ''}>
         <i>${mark}</i><span>${esc(label)}</span>
       </button>`;
     }).join('');
@@ -422,7 +425,7 @@
     ].filter(Boolean).join(' ');
     const mark = lesson.status === 'done' ? '✓' : (lesson.status === 'skipped' ? '–' : '');
     const mins = lesson.est_mins ? `${lesson.est_mins} mnt` : '';
-    return `<button type="button" class="${cls}" data-blj-lesson="${esc(lesson.slug)}"${locked ? ' disabled' : ''}>
+    return `<button type="button" class="${cls}" data-blj-lesson="${esc(lesson.slug)}"${locked ? ' aria-disabled="true"' : ''}>
       <i>${mark}</i>
       <span>${esc(lesson.title)}</span>
       ${mins ? `<em>${esc(mins)}</em>` : ''}
@@ -1836,7 +1839,7 @@
     }
     if (el.hasAttribute('data-blj-module')) {
       e.preventDefault();
-      if (el.disabled) { gateToast(); return; }
+      if (el.disabled || el.getAttribute('aria-disabled') === 'true') { gateToast(); return; }
       const mod = modules().find((m) => m.slug === el.getAttribute('data-blj-module'));
       if (!mod || !_ctx || !_ctx.open) return;
       if (!moduleUnlocked(mod)) { gateToast(); return; }
@@ -1864,7 +1867,7 @@
     }
     if (el.hasAttribute('data-blj-lesson')) {
       e.preventDefault();
-      if (el.disabled) { gateToast(); return; }
+      if (el.disabled || el.getAttribute('aria-disabled') === 'true') { gateToast(); return; }
       const slug = el.getAttribute('data-blj-lesson');
       if (!canOpenLesson(slug)) { gateToast(); return; }
       if (_ctx && _ctx.open) _ctx.open(slug);
@@ -2028,17 +2031,27 @@
   }
 
   function noteLessonOpen(slug) {
-    if (!slug || !_course || !canOpenLesson(slug) || !_ctx || typeof _ctx.touch !== 'function') return;
+    const allowed = !!(slug && _course && canOpenLesson(slug));
+    // #region agent log
+    fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ae30a5'},body:JSON.stringify({sessionId:'ae30a5',runId:'post-fix',hypothesisId:'C',location:'gpt-belajar.js:noteLessonOpen',message:'lesson open',data:{slug:slug||'',allowed},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+    if (!allowed || !_ctx || typeof _ctx.touch !== 'function') return;
     void _ctx.touch('open', slug);
   }
 
   async function onStart() {
     if (!_ctx) return;
     if (!_ctx.user) {
+      // #region agent log
+      fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ae30a5'},body:JSON.stringify({sessionId:'ae30a5',runId:'post-fix',hypothesisId:'A',location:'gpt-belajar.js:onStart',message:'mulai while signed out',data:{signedIn:false},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       if (_ctx.login) _ctx.login('mulai');
       return;
     }
     const slug = startLessonSlug();
+    // #region agent log
+    fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ae30a5'},body:JSON.stringify({sessionId:'ae30a5',runId:'post-fix',hypothesisId:'A',location:'gpt-belajar.js:onStart',message:'mulai',data:{signedIn:true,slug:slug||''},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     if (!slug) {
       if (_ctx.toast) _ctx.toast('Materi belum siap.');
       return;
@@ -2181,11 +2194,17 @@
         <h2>${esc(title)}</h2>
         <button type="button" class="home-ret-link" data-home-belajar>${esc(label)}</button>`;
       card.querySelector('[data-home-belajar]').addEventListener('click', () => {
-        if (!next && !finished) {
+        const slug = next ? next.slug : '';
+        const branch = (!next && !finished) ? 'onStart' : 'enter';
+        // #region agent log
+        fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ae30a5'},body:JSON.stringify({sessionId:'ae30a5',runId:'post-fix',hypothesisId:'A',location:'gpt-belajar.js:syncHome',message:'beranda course card',data:{branch,slug,label},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
+        if (branch === 'onStart') {
           void onStart();
           return;
         }
-        if (_ctx && _ctx.open) _ctx.open(next ? next.slug : null);
+        if (_ctx && _ctx.touch) void _ctx.touch('mulai', slug);
+        if (_ctx && _ctx.open) _ctx.open(slug || null);
       });
     } catch (_) {
       card.hidden = true;
