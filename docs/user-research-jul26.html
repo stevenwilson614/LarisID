@@ -1,0 +1,888 @@
+<title>LarisID user research — last 30 signups, A vs B</title>
+<style>
+  :root {
+    --paper: #FCFCFB;
+    --raise: #F5F4F1;
+    --ink: #1B1A18;
+    --ink-2: #4A4741;
+    --ink-3: #7C776E;
+    --rule: #E3DFD8;
+    --rule-soft: #EDEAE4;
+    --a: #3D5A96;
+    --b: #C3283F;
+    --neutral-series: #9A958C;
+    --accent: #C3283F;
+    --good: #2F6D50;
+    --warn: #96631A;
+    --crit: #A8302B;
+    --shadow: 0 1px 2px rgba(27,26,24,.05), 0 8px 24px -16px rgba(27,26,24,.28);
+    --serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #1A1A19;
+      --raise: #232320;
+      --ink: #EDEBE7;
+      --ink-2: #B9B5AD;
+      --ink-3: #8B867D;
+      --rule: #35342F;
+      --rule-soft: #2B2A26;
+      --a: #5C87D8;
+      --b: #E04B6B;
+      --neutral-series: #857F76;
+      --accent: #E04B6B;
+      --good: #6FBE95;
+      --warn: #D9A64B;
+      --crit: #E8756F;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #1A1A19; --raise: #232320; --ink: #EDEBE7; --ink-2: #B9B5AD;
+    --ink-3: #8B867D; --rule: #35342F; --rule-soft: #2B2A26;
+    --a: #5C87D8; --b: #E04B6B; --neutral-series: #857F76; --accent: #E04B6B;
+    --good: #6FBE95; --warn: #D9A64B; --crit: #E8756F;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+  }
+  :root[data-theme="light"] {
+    --paper: #FCFCFB; --raise: #F5F4F1; --ink: #1B1A18; --ink-2: #4A4741;
+    --ink-3: #7C776E; --rule: #E3DFD8; --rule-soft: #EDEAE4;
+    --a: #3D5A96; --b: #C3283F; --neutral-series: #9A958C; --accent: #C3283F;
+    --good: #2F6D50; --warn: #96631A; --crit: #A8302B;
+    --shadow: 0 1px 2px rgba(27,26,24,.05), 0 8px 24px -16px rgba(27,26,24,.28);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--sans); font-size: 16px; line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 24px 96px; }
+
+  /* ---------- masthead ---------- */
+  .mast { padding: 56px 0 32px; border-bottom: 2px solid var(--ink); }
+  .eyebrow {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--ink-3); margin: 0 0 20px;
+  }
+  .wrap .mast h1 {
+    font-family: var(--serif); font-weight: 400; font-size: clamp(32px, 5vw, 52px);
+    line-height: 1.06; letter-spacing: -.02em; margin: 0 0 18px;
+    text-wrap: balance; overflow-wrap: break-word; max-width: 20ch;
+  }
+  .wrap .mast h1 em { font-style: italic; color: var(--accent); }
+  .standfirst {
+    font-size: 18px; line-height: 1.5; color: var(--ink-2);
+    max-width: 60ch; margin: 0 0 28px;
+  }
+  .meta {
+    display: flex; flex-wrap: wrap; gap: 8px 28px;
+    font-family: var(--mono); font-size: 12px; color: var(--ink-3);
+  }
+  .meta b { color: var(--ink-2); font-weight: 500; }
+
+  /* ---------- sections ---------- */
+  section { padding-top: 56px; }
+  .wrap h2 {
+    font-family: var(--serif); font-weight: 400; font-size: 27px;
+    letter-spacing: -.01em; margin: 0 0 6px; text-wrap: balance;
+  }
+  .wrap h2 .num {
+    font-family: var(--mono); font-size: 12px; color: var(--accent);
+    letter-spacing: .1em; display: block; margin-bottom: 10px;
+  }
+  .wrap h3 {
+    font-family: var(--sans); font-size: 15px; font-weight: 650;
+    letter-spacing: .01em; margin: 34px 0 12px;
+  }
+  .lede { color: var(--ink-2); max-width: 68ch; margin: 0 0 26px; }
+  p { max-width: 68ch; }
+  a { color: var(--accent); }
+  a:focus-visible, button:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px;
+  }
+
+  /* ---------- evidence tags ---------- */
+  .tag {
+    display: inline-block; font-family: var(--mono); font-size: 10px;
+    letter-spacing: .1em; text-transform: uppercase; padding: 2px 7px;
+    border-radius: 3px; vertical-align: 1px; white-space: nowrap;
+    border: 1px solid currentColor; margin-left: 4px;
+  }
+  .t-fact { color: var(--good); }
+  .t-pattern { color: var(--warn); }
+  .t-hypothesis { color: var(--ink-3); }
+  .t-gap { color: var(--crit); }
+
+  /* ---------- key findings ---------- */
+  .findings { list-style: none; padding: 0; margin: 0; display: grid; gap: 2px; }
+  .findings li {
+    background: var(--raise); padding: 16px 20px; border-left: 3px solid var(--rule);
+    max-width: none;
+  }
+  .findings li:first-child { border-radius: 4px 4px 0 0; }
+  .findings li:last-child { border-radius: 0 0 4px 4px; }
+  .findings li.hi { border-left-color: var(--accent); }
+  .findings strong { font-weight: 650; }
+
+  /* ---------- stat tiles ---------- */
+  .tiles {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 2px; margin: 0 0 8px;
+  }
+  .tile { background: var(--raise); padding: 20px; border-radius: 4px; }
+  .tile .k {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--ink-3); margin-bottom: 10px;
+  }
+  .tile .v {
+    font-family: var(--serif); font-size: 34px; line-height: 1;
+    font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+  }
+  .tile .v .unit { font-size: 17px; color: var(--ink-3); }
+  .tile .sub { font-size: 13px; color: var(--ink-2); margin-top: 8px; line-height: 1.4; }
+  .tile .vs { display: flex; gap: 18px; align-items: baseline; }
+  .tile .vs .arm { font-family: var(--mono); font-size: 10px; color: var(--ink-3);
+    letter-spacing: .08em; display: block; margin-bottom: 2px; }
+  .swatch { display: inline-block; width: 8px; height: 8px; border-radius: 2px;
+    margin-right: 5px; vertical-align: 0px; }
+  .sw-a { background: var(--a); }
+  .sw-b { background: var(--b); }
+
+  /* ---------- charts ---------- */
+  figure { margin: 0 0 10px; }
+  figcaption {
+    font-size: 13px; color: var(--ink-3); margin-top: 12px; max-width: 68ch;
+    line-height: 1.5;
+  }
+  .fig-title {
+    font-family: var(--sans); font-size: 14px; font-weight: 650;
+    margin-bottom: 4px;
+  }
+  .fig-sub {
+    font-family: var(--mono); font-size: 11px; color: var(--ink-3);
+    letter-spacing: .04em; margin-bottom: 18px;
+  }
+  .legend {
+    display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 16px;
+    font-family: var(--mono); font-size: 11px; color: var(--ink-2);
+    letter-spacing: .05em;
+  }
+
+  .bars { display: grid; gap: 9px; }
+  .row { display: grid; grid-template-columns: minmax(96px, 168px) 1fr; gap: 14px; align-items: center; }
+  .row .lbl { font-size: 13px; color: var(--ink-2); text-align: right; line-height: 1.25; }
+  .row .lbl .mono { font-family: var(--mono); font-size: 11.5px; }
+  .track { position: relative; height: 20px; background: var(--rule-soft); border-radius: 3px; }
+  .bar {
+    position: absolute; inset: 0 auto 0 0; border-radius: 3px 4px 4px 3px;
+    transition: filter .12s ease;
+  }
+  .bar:hover { filter: brightness(1.08) saturate(1.1); }
+  .val {
+    position: absolute; top: 50%; transform: translateY(-50%); left: calc(100% + 9px);
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink-2);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .bar.inlab .val { left: auto; right: 9px; color: #fff; }
+
+  /* grouped A/B */
+  .grp { display: grid; gap: 3px; }
+  .grp .track { height: 15px; }
+
+  /* funnel */
+  .funnel { display: grid; gap: 3px; }
+  .funnel .step {
+    display: grid; grid-template-columns: minmax(120px, 200px) 1fr; gap: 14px;
+    align-items: center;
+  }
+  .funnel .stepbar {
+    height: 40px; border-radius: 3px 4px 4px 3px; display: flex; align-items: center;
+    padding-left: 14px; color: #fff; font-family: var(--mono); font-size: 13px;
+    font-variant-numeric: tabular-nums; letter-spacing: .03em;
+    min-width: 132px; white-space: nowrap;
+  }
+  .funnel .drop {
+    font-family: var(--mono); font-size: 11px; color: var(--crit);
+    padding-left: 14px; letter-spacing: .04em;
+  }
+
+  /* ---------- tables ---------- */
+  .tablewrap { overflow-x: auto; margin: 0 0 10px; }
+  table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: 14px; }
+  caption {
+    text-align: left; font-family: var(--sans); font-size: 14px; font-weight: 650;
+    padding-bottom: 4px;
+  }
+  th, td { padding: 9px 14px 9px 0; text-align: left; vertical-align: baseline; }
+  thead th {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--ink-3); font-weight: 400;
+    border-bottom: 1px solid var(--ink); padding-bottom: 8px;
+  }
+  tbody tr { border-bottom: 1px solid var(--rule-soft); }
+  tbody tr:hover { background: var(--raise); }
+  td.num, th.num { text-align: right; font-family: var(--mono);
+    font-variant-numeric: tabular-nums; font-size: 13px; padding-right: 0; }
+  th:last-child, td:last-child { padding-left: 24px; }
+  td.win { font-weight: 650; }
+  td.win-a { color: var(--a); }
+  td.win-b { color: var(--b); }
+  .rowlbl { color: var(--ink-2); }
+
+  /* ---------- callout ---------- */
+  .callout {
+    background: var(--raise); border-left: 3px solid var(--accent);
+    padding: 20px 24px; border-radius: 0 4px 4px 0; margin: 26px 0;
+  }
+  .callout .ct {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 8px;
+  }
+  .callout p { margin: 0; max-width: 66ch; }
+  .callout p + p { margin-top: 10px; }
+
+  /* ---------- needs / recs ---------- */
+  .ranked { list-style: none; padding: 0; margin: 0; display: grid; gap: 2px; counter-reset: r; }
+  .ranked li {
+    background: var(--raise); border-radius: 4px; padding: 20px 24px 20px 66px;
+    position: relative; counter-increment: r;
+  }
+  .ranked li::before {
+    content: counter(r); position: absolute; left: 24px; top: 19px;
+    font-family: var(--serif); font-size: 22px; color: var(--accent);
+    line-height: 1; font-variant-numeric: tabular-nums;
+  }
+  .wrap .ranked h4 {
+    margin: 0 0 6px; font-size: 15px; font-weight: 650; font-family: var(--sans);
+  }
+  .ranked p { margin: 0; font-size: 14.5px; color: var(--ink-2); max-width: 64ch; }
+
+  .gaps { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+  .gaps li {
+    display: grid; grid-template-columns: 10px 1fr; gap: 14px; align-items: start;
+    font-size: 14.5px; color: var(--ink-2); max-width: 74ch;
+  }
+  .gaps li::before {
+    content: ""; width: 8px; height: 8px; border-radius: 2px;
+    background: var(--crit); margin-top: 8px;
+  }
+  .gaps code, code {
+    font-family: var(--mono); font-size: 12.5px; background: var(--rule-soft);
+    padding: 1px 5px; border-radius: 3px; color: var(--ink);
+  }
+
+  footer {
+    margin-top: 72px; padding-top: 28px; border-top: 1px solid var(--rule);
+    font-size: 13.5px; color: var(--ink-3); max-width: 74ch;
+  }
+
+  /* tooltip */
+  #tip {
+    position: fixed; z-index: 50; pointer-events: none; opacity: 0;
+    transition: opacity .1s ease; background: var(--ink); color: var(--paper);
+    font-family: var(--mono); font-size: 11.5px; padding: 6px 10px;
+    border-radius: 4px; white-space: nowrap; box-shadow: var(--shadow);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+  }
+  @media (max-width: 620px) {
+    .row { grid-template-columns: 1fr; gap: 4px; }
+    .row .lbl { text-align: left; }
+    .funnel .step { grid-template-columns: 1fr; gap: 4px; }
+    .val { position: static; transform: none; display: block; margin-top: 3px; }
+    .bar.inlab .val { position: absolute; top: 50%; transform: translateY(-50%); }
+  }
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <p class="eyebrow">LarisID · Product research · 25 July 2026</p>
+  <h1>Activation is solved. <em>Returning isn't.</em></h1>
+  <p class="standfirst">
+    What the last 30 signed-up sellers actually did, where anonymous visitors quit,
+    and what the classic dashboard and the chat-first LARISgpt arms really trade against
+    each other.
+  </p>
+  <div class="meta">
+    <span><b>Cohort</b> 30 real signups · 12–23 Jul</span>
+    <span><b>Landing</b> 678 sessions / 30 days</span>
+    <span><b>Sources</b> Supabase · Clarity vykppujn5k</span>
+  </div>
+</header>
+
+<section id="summary">
+  <h2><span class="num">01 — Headline</span>The short version</h2>
+  <p class="lede">
+    Eight findings, each measured. Evidence strength is marked on every claim throughout:
+    <span class="tag t-fact">fact</span> measured,
+    <span class="tag t-pattern">pattern</span> consistent but small n,
+    <span class="tag t-hypothesis">hypothesis</span> a reading,
+    <span class="tag t-gap">gap</span> not instrumented.
+  </p>
+
+  <div class="tiles">
+    <div class="tile">
+      <div class="k">Session → signup</div>
+      <div class="vs">
+        <div>
+          <span class="arm"><span class="swatch sw-a"></span>ARM A</span>
+          <span class="v">9.0<span class="unit">%</span></span>
+        </div>
+        <div>
+          <span class="arm"><span class="swatch sw-b"></span>ARM B</span>
+          <span class="v">8.6<span class="unit">%</span></span>
+        </div>
+      </div>
+      <div class="sub">A dead heat on 134 and 174 sessions.</div>
+    </div>
+    <div class="tile">
+      <div class="k">Events per user</div>
+      <div class="vs">
+        <div>
+          <span class="arm"><span class="swatch sw-a"></span>ARM A</span>
+          <span class="v">25.7</span>
+        </div>
+        <div>
+          <span class="arm"><span class="swatch sw-b"></span>ARM B</span>
+          <span class="v">54.2</span>
+        </div>
+      </div>
+      <div class="sub">B goes 2.1× deeper after signup.</div>
+    </div>
+    <div class="tile">
+      <div class="k">Multi-day return</div>
+      <div class="v">4<span class="unit"> / 22</span></div>
+      <div class="sub">2 in A, 2 in B. Identical, and unchanged from every prior audit.</div>
+    </div>
+    <div class="tile">
+      <div class="k">Never scroll the landing</div>
+      <div class="v">32.7<span class="unit">%</span></div>
+      <div class="sub">Of 272 pageviews on <code>/</code>, a third never reach 5% depth.</div>
+    </div>
+  </div>
+
+  <ul class="findings">
+    <li class="hi"><strong>The A/B test is a tie where it counts.</strong> B converts CTA-clickers far better (40.5% vs 28.6%) but earns fewer clicks per session (21.3% vs 26.1%). The two effects cancel almost exactly. <span class="tag t-fact">fact</span></li>
+    <li class="hi"><strong>B is decisively better after signup</strong> — 54.2 events vs 25.7, 4.8 dives vs 3.2, first value in 0.4 min vs 1.2 min. <span class="tag t-pattern">pattern</span></li>
+    <li><strong>Neither arm fixes retention.</strong> Multi-day return is 2/10 and 2/12. Whatever breaks day 2 sits upstream of the A/B question. <span class="tag t-fact">fact</span></li>
+    <li class="hi"><strong>The landing page's two most-clicked elements are dismiss buttons</strong> — 54 clicks between them against 18 for the primary CTA. <span class="tag t-fact">fact</span></li>
+    <li class="hi"><strong>Half of signup intent routes to a door that never opens.</strong> The auth modal splits 16 Google / 14 email, yet all 30 cohort signups are Google and zero are email. <span class="tag t-fact">fact</span></li>
+    <li><strong>Interest dies in the hero,</strong> not at pricing. The largest single scroll drop is 5% → 10%. <span class="tag t-fact">fact</span></li>
+    <li><strong>The free daily cap is a terminal screen.</strong> 6 of 17 active user-days end at the 3-dive ceiling; for 4 of 30 users a limit event is the last thing they ever did. <span class="tag t-fact">fact</span></li>
+    <li><strong>Paid acquisition stopped around 22 July.</strong> Visits fell ~4× and no signup has landed since 23 Jul 18:01. <span class="tag t-fact">fact</span></li>
+  </ul>
+</section>
+
+<section id="ab">
+  <h2><span class="num">02 — The experiment</span>A versus B, honestly scored</h2>
+  <p class="lede">
+    Arm A is the classic dashboard at <code>/</code>. Arm B is chat-first LARISgpt at
+    <code>/gpt/</code>. Assignment is a sticky 50/50 split read from the first
+    <code>signup_attribution</code> event; 22 of the 30 cohort users carry a variant, the
+    other 8 predate the ramp on ~18 July.
+  </p>
+
+  <figure>
+    <div class="fig-title">Pre-signup funnel, by arm</div>
+    <div class="fig-sub">CLARITY · LAST 30 DAYS · SHARE OF SESSIONS IN THAT ARM</div>
+    <div class="legend">
+      <span><span class="swatch sw-a"></span>A — dashboard (134 sessions)</span>
+      <span><span class="swatch sw-b"></span>B — LARISgpt (174 sessions)</span>
+    </div>
+    <div class="bars" id="abchart"></div>
+    <figcaption>
+      A pulls more people to a call-to-action; B closes more of the people it pulls.
+      Net signup rate lands in the same place. <span class="tag t-fact">fact</span>
+    </figcaption>
+  </figure>
+
+  <div class="tablewrap">
+    <table>
+      <caption>Full comparison — post-signup figures from Supabase, pre-signup from Clarity</caption>
+      <thead>
+        <tr><th>Metric</th><th class="num">Arm A</th><th class="num">Arm B</th><th>Reading</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="rowlbl">Session → signup</td><td class="num">9.0%</td><td class="num">8.6%</td><td>Tie, inside noise</td></tr>
+        <tr><td class="rowlbl">CTA click rate</td><td class="num win win-a">26.1%</td><td class="num">21.3%</td><td>A pulls harder</td></tr>
+        <tr><td class="rowlbl">CTA → signup</td><td class="num">28.6%</td><td class="num win win-b">40.5%</td><td>B closes harder</td></tr>
+        <tr><td class="rowlbl">Median time to convert</td><td class="num win win-a">43 s</td><td class="num">1.2 min</td><td>B asks later</td></tr>
+        <tr><td class="rowlbl">Active time on page</td><td class="num">1.5 min</td><td class="num win win-b">2.6 min</td><td>B holds attention</td></tr>
+        <tr><td class="rowlbl">Quick backs</td><td class="num">3.73%</td><td class="num win win-b">0%</td><td>Nobody bounces off B</td></tr>
+        <tr><td class="rowlbl">Events per user</td><td class="num">25.7</td><td class="num win win-b">54.2</td><td>B 2.1×</td></tr>
+        <tr><td class="rowlbl">Deep dives per user</td><td class="num">3.2</td><td class="num win win-b">4.8</td><td>B 1.5×</td></tr>
+        <tr><td class="rowlbl">Reached any value</td><td class="num">8 / 10</td><td class="num win win-b">11 / 12</td><td>B leaves fewer behind</td></tr>
+        <tr><td class="rowlbl">Median time to first value</td><td class="num">1.2 min</td><td class="num win win-b">0.4 min</td><td>B is immediate</td></tr>
+        <tr><td class="rowlbl">Multi-day return</td><td class="num">2 / 10</td><td class="num">2 / 12</td><td>Neither works</td></tr>
+        <tr><td class="rowlbl">Performance score</td><td class="num">64 / 100</td><td class="num win win-b">77 / 100</td><td>B is the faster page</td></tr>
+        <tr><td class="rowlbl">Largest contentful paint</td><td class="num">6.3 s</td><td class="num win win-b">4.0 s</td><td>Both poor; A badly so</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <div class="ct">Do not read the scroll-depth numbers</div>
+    <p>
+      Clarity reports 44.3% average scroll for A and 99.5% for B. B is a short chat page
+      where full depth is trivially reached — the figure measures page length, not interest.
+      <code>scroll_depth_*</code> also fires on the A arm only, so there is no comparable
+      B measurement to be had. <span class="tag t-gap">gap</span>
+    </p>
+  </div>
+
+  <div class="callout">
+    <div class="ct">Recommendation — keep both arms running</div>
+    <p>
+      Session→signup is a tie, B wins on depth, A wins on CTA rate. There is no evidence
+      base for retiring either arm, and the 22 July traffic collapse means recent data is
+      thin. The interesting question is no longer which arm converts — it is why nobody
+      comes back to either.
+    </p>
+  </div>
+</section>
+
+<section id="landing">
+  <h2><span class="num">03 — Before signup</span>Where anonymous visitors quit</h2>
+  <p class="lede">
+    678 Clarity sessions over 30 days, plus server-side <code>page_views</code> since the
+    20 July deploy. Roughly 59% of sessions are mobile, and zero rage clicks were recorded
+    site-wide — the landing page is not frustrating anyone. It is simply failing to hold them.
+  </p>
+
+  <figure>
+    <div class="fig-title">Signup funnel, all arms</div>
+    <div class="fig-sub">CLARITY · 678 SESSIONS · LAST 30 DAYS</div>
+    <div class="funnel" id="funnel"></div>
+    <figcaption>
+      Two thirds of the people who reach for a CTA never finish. That single step loses
+      88 sessions — more than any other point in the journey. <span class="tag t-fact">fact</span>
+    </figcaption>
+  </figure>
+
+  <figure style="margin-top:48px">
+    <div class="fig-title">Scroll decay on <code>/</code></div>
+    <div class="fig-sub">272 PAGEVIEWS · SHARE REACHING EACH DEPTH</div>
+    <div class="bars" id="scroll"></div>
+    <figcaption>
+      A third of pageviews never reach 5%. The steepest fall is 5% → 10%, inside the hero;
+      past 20% the decay is gentle. Whatever is wrong is above the fold, not at pricing.
+      <span class="tag t-fact">fact</span>
+    </figcaption>
+  </figure>
+
+  <figure style="margin-top:48px">
+    <div class="fig-title">What people actually tap on <code>/</code></div>
+    <div class="fig-sub">CLICK HEATMAP · 705 TAPS · RANKED BY VOLUME</div>
+    <div class="bars" id="taps"></div>
+    <figcaption>
+      The two top elements are dismiss controls. Together they out-click the primary
+      "Mulai Gratis" CTA three to one. <span class="tag t-fact">fact</span>
+    </figcaption>
+  </figure>
+
+  <div class="callout">
+    <div class="ct">The email door that never opens</div>
+    <p>
+      Inside the auth modal, "Lanjutkan dengan Google" takes 16 clicks and "Daftar dengan
+      Email" takes 14 — near-even intent. Yet every one of the 30 cohort signups arrived
+      through Google, and not a single email signup completed.
+    </p>
+    <p>
+      A further 9 people opened the signup modal and closed it again. Roughly half of all
+      signup intent on this page is currently discarded.
+      <span class="tag t-fact">fact</span>
+    </p>
+  </div>
+
+  <h3>Traffic collapsed after 22 July</h3>
+  <figure>
+    <div class="fig-sub">REAL <code>page_views</code> ROWS · UNIQUE VISITORS PER DAY (WIB)</div>
+    <div class="bars" id="pv"></div>
+    <figcaption>
+      Synthetic backfill rows tagged <code>(historical-backfill:cloudflare)</code> are excluded.
+      No signup has occurred since 23 July 18:01 — consistent with the ad campaign pausing
+      or exhausting budget. <span class="tag t-hypothesis">hypothesis — verify in Google Ads</span>
+    </figcaption>
+  </figure>
+</section>
+
+<section id="behaviour">
+  <h2><span class="num">04 — After signup</span>What the 30 did</h2>
+  <p class="lede">
+    All 30 arrived through Google OAuth. Thirteen came from the
+    <code>ab_gpt_jul26</code> ad campaign, seven from ChatGPT referrals, and the campaign
+    feeds both arms — it points at <code>/</code>, so the random split happens downstream
+    of the ad.
+  </p>
+
+  <figure>
+    <div class="fig-title">Surfaces reached</div>
+    <div class="fig-sub">DISTINCT USERS OF 30 TOUCHING EACH SURFACE</div>
+    <div class="bars" id="surfaces"></div>
+    <figcaption>
+      Discover → Deep Dive is the spine of the product. Everything else is minority
+      behaviour. <span class="tag t-fact">fact</span>
+    </figcaption>
+  </figure>
+
+  <figure style="margin-top:48px">
+    <div class="fig-title">Last thing each user ever did</div>
+    <div class="fig-sub">FINAL RECORDED EVENT PER USER · 30 USERS</div>
+    <div class="bars" id="last"></div>
+    <figcaption>
+      Eleven of thirty end their entire relationship with the product looking at the
+      Discover feed. Four more end on a usage-limit wall.
+      <span class="tag t-fact">fact</span>
+    </figcaption>
+  </figure>
+
+  <h3>What they were looking for</h3>
+  <p>
+    Onboarding categories skew beauty-first — Kecantikan 10, then Fashion, Bayi &amp; Anak,
+    HP &amp; Gadget and Kamar Mandi at 6 each. Regions are Jakarta-weighted (7) with a real
+    secondary-city tail: Bandung, Surabaya, Surakarta, Semarang, Tasikmalaya, Jepara.
+  </p>
+  <p>
+    But <strong>typed searches tell a different story than the category picker.</strong>
+    The logged queries resolve to about a dozen real intents, and most are brand or
+    competitor lookups — <code>Sipolos</code>, <code>Andistro</code>, <code>morinaga</code>,
+    <code>chilkid</code> — or own-market checks like <code>Kaos polos tasikmalaya</code>,
+    typed by a user whose registered region <em>is</em> Tasikmalaya.
+    <span class="tag t-pattern">pattern</span>
+  </p>
+  <p>
+    In the B arm, 90 chat messages split between canned suggestion chips and genuinely
+    typed prompts. The typed ones are almost uniformly a single request:
+    <em>find me a winner</em> — <code>Produk bakal viral</code>,
+    <code>produk fashion trending kompetisi rendah</code>, <code>Cari skincare terlaris</code>,
+    <code>Produk yang laris 2026</code>. One is a support question asked twice —
+    <code>Gimana caranya masuk link toko</code> — suggesting store-level analysis is wanted
+    but undiscoverable. <span class="tag t-hypothesis">hypothesis</span>
+  </p>
+</section>
+
+<section id="needs">
+  <h2><span class="num">05 — Synthesis</span>What users actually need</h2>
+  <p class="lede">
+    Derived from behaviour and from the words users typed, ranked by weight of evidence —
+    not from assumptions about what sellers want.
+  </p>
+  <ol class="ranked">
+    <li>
+      <h4>"Tell me what to sell" — a shortlist, not a feed <span class="tag t-pattern">pattern</span></h4>
+      <p>
+        27 of 30 reach Discover and 11 of 30 die there. Typed chat prompts are almost all
+        <em>trending / viral / terlaris / kompetisi rendah</em>. Users are not asking to
+        browse; they are asking to be handed a small set of answers. Strongest finding here —
+        two independent sources agree, behaviour and language.
+      </p>
+    </li>
+    <li>
+      <h4>"Check this specific thing I already have in mind" <span class="tag t-pattern">pattern</span></h4>
+      <p>
+        Every typed search is a named brand or a personal niche, often against the user's own
+        city. These are sellers validating an existing hypothesis, not discovering from
+        scratch. Only 6 of 30 typed anything — but of those who did, this is what they did.
+      </p>
+    </li>
+    <li>
+      <h4>"Will this actually make me money?" <span class="tag t-pattern">pattern</span></h4>
+      <p>
+        <em>Hitung estimasi profit</em> is a repeatedly-clicked chip, and 8 calculator rows
+        from 6 users show the MLS calculator being opened. The question after "what should
+        I sell" is immediately "what do I earn".
+      </p>
+    </li>
+    <li>
+      <h4>"Let me look at more than three things" <span class="tag t-fact">fact</span></h4>
+      <p>
+        6 of 17 active user-days end at the 3-dive cap, and four users' final action is a
+        limit wall. Three dives is below the number needed to form a judgement when
+        comparing products.
+      </p>
+    </li>
+    <li>
+      <h4>"Sign me in the way I expect" <span class="tag t-fact">fact</span></h4>
+      <p>
+        14 clicks on email signup; zero email signups have ever completed. Users are
+        choosing a door that does not open.
+      </p>
+    </li>
+  </ol>
+</section>
+
+<section id="next">
+  <h2><span class="num">06 — Next</span>Five things to change</h2>
+  <p class="lede">Ranked by expected impact over effort.</p>
+  <ol class="ranked">
+    <li>
+      <h4>Remove or fix the email signup path</h4>
+      <p>
+        It absorbs roughly 47% of auth-modal clicks and converts nobody. Either fix
+        deliverability and confirmation end to end, or demote it behind a "lainnya" link and
+        make Google the single obvious door. The cheapest measurable win available.
+      </p>
+    </li>
+    <li>
+      <h4>Find and kill the two dismiss buttons on <code>/</code></h4>
+      <p>
+        They out-click the primary CTA three to one. <code>#sidebar-overlay</code> at rank 6
+        is the lead. Remove the interruption or defer it until after first scroll, then
+        re-measure CTA click rate.
+      </p>
+    </li>
+    <li>
+      <h4>Restructure the 3-dive daily cap</h4>
+      <p>
+        Four users' last-ever action is a limit event and 35% of active days hit the ceiling.
+        Test a larger first-day allowance so the first session can reach a decision. Measure
+        the share of user-days ending at the cap, and day-2 return.
+      </p>
+    </li>
+    <li>
+      <h4>Fix the hero, and fix it on mobile first</h4>
+      <p>
+        A third of pageviews never scroll, and A's largest contentful paint is 6.3 seconds
+        against a roughly 64%-mobile paid audience. B already proves 77/100 is achievable on
+        the same stack.
+      </p>
+    </li>
+    <li>
+      <h4>Close the instrumentation gaps below</h4>
+      <p>
+        Log <code>/gpt/</code> pageviews server-side and fire <code>scroll_depth_*</code> on
+        the B arm. Without these, the next A/B read arrives with exactly the same blind spots
+        as this one.
+      </p>
+    </li>
+  </ol>
+</section>
+
+<section id="gaps">
+  <h2><span class="num">07 — Caveats</span>What this pass could not measure</h2>
+  <p class="lede">Confirmed in code and data. Each of these bounds a claim above.</p>
+  <ul class="gaps">
+    <li><code>/gpt/</code> pageviews are never written to <code>page_views</code> — <code>_lidLogPageView()</code> runs from <code>js/laris-app.js</code> only. B-arm landing volume exists in Clarity alone.</li>
+    <li><code>scroll_depth_*</code> fires on arm A only (<code>js/laris-app.js:24339</code>), so B's 99.5% is a page-length artifact.</li>
+    <li>No CTA-click event reaches the database; only Clarity carries <code>cta_signup_click</code> and <code>signup_cta_source</code>.</li>
+    <li>No view-open events for Tools, Akademi, MLS or community — reaching those surfaces is inferred.</li>
+    <li><code>unlock_modal_shown</code> and <code>deepdive_teaser_click</code> remain at zero site-wide since 10 July. Absence is not evidence of behaviour; these hooks are unverified.</li>
+    <li><code>gpt_ai_reply</code> badly undercounts — 10 events against 50 assistant messages actually stored. Unusable as a reply-rate metric.</li>
+    <li><code>deepdive_open</code> (116 events / 25 users) and metered <code>usage_events</code> dives (30 / 10 users) disagree about fourfold. Both are reported as-is rather than reconciled; resolve before either becomes a KPI.</li>
+    <li><code>seller_status</code> is null for 26 of 30 since the 9 July onboarding cut — pemula versus existing seller cannot be segmented from preferences.</li>
+    <li>Clarity totals include local development traffic: 112 pageviews from <code>https://Electron</code>, <code>localhost</code> and <code>127.0.0.1</code>.</li>
+    <li>One user has no <code>signup_attribution</code> row, so channel data covers 29 of 30.</li>
+    <li>Instagram sent 21 sessions in 30 days and TikTok 1, but no cohort user carries social attribution — that traffic either bounces or loses its referrer.</li>
+  </ul>
+
+  <div class="callout">
+    <div class="ct">Scope limit, stated plainly</div>
+    <p>
+      The qualitative layer here comes from heatmaps, ranked click elements, dead-click and
+      quick-back rates, and stored chat text — <strong>not from watching individual session
+      recordings</strong>. No claim above rests on one.
+    </p>
+    <p>
+      Recording review is the best next step for the two open questions: what those two
+      dismiss buttons actually close, and what happens in the 88 sessions that reached for a
+      CTA and never signed up.
+    </p>
+  </div>
+</section>
+
+<footer>
+  Cohort pulled from <code>auth.users</code> ordered by <code>created_at desc</code>, limit 30,
+  excluding one test address; reconciled against 163 total users and a newest signup of
+  24 Jul 03:52 UTC. Variant read from the first <code>signup_attribution</code> event, matching
+  <code>docs/AB_TEST.sql</code> — 22 tagged, 8 pre-ramp, no silent drops. The feedback table
+  contributes nothing for this window: 22 rows all-time, one in the last 30 days.
+</footer>
+
+</div>
+<div id="tip" role="status"></div>
+
+<script>
+(function () {
+  var A = "var(--a)", B = "var(--b)", N = "var(--neutral-series)";
+
+  function bars(el, rows, opts) {
+    opts = opts || {};
+    var max = opts.max || Math.max.apply(null, rows.map(function (r) { return r.v; }));
+    var host = document.getElementById(el);
+    if (!host) return;
+    rows.forEach(function (r) {
+      var row = document.createElement("div");
+      row.className = "row";
+      var lbl = document.createElement("div");
+      lbl.className = "lbl";
+      lbl.innerHTML = r.l;
+      var track = document.createElement("div");
+      track.className = "track";
+      var bar = document.createElement("div");
+      bar.className = "bar";
+      var pct = Math.max(r.v / max * 100, 0.6);
+      bar.style.width = pct + "%";
+      bar.style.background = r.c || A;
+      bar.setAttribute("data-tip", r.tip || (r.l + " — " + r.d));
+      if (pct > 28) {
+        bar.classList.add("inlab");
+        bar.innerHTML = '<span class="val">' + r.d + "</span>";
+      } else {
+        bar.innerHTML = '<span class="val">' + r.d + "</span>";
+      }
+      track.appendChild(bar);
+      row.appendChild(lbl);
+      row.appendChild(track);
+      host.appendChild(row);
+    });
+  }
+
+  /* grouped A/B pre-signup funnel */
+  (function () {
+    var host = document.getElementById("abchart");
+    if (!host) return;
+    var groups = [
+      { l: "Clicked a CTA", a: 26.1, b: 21.3, ad: "26.1%", bd: "21.3%" },
+      { l: "CTA &rarr; signup", a: 28.6, b: 40.5, ad: "28.6%", bd: "40.5%" },
+      { l: "Session &rarr; signup", a: 9.0, b: 8.6, ad: "9.0%", bd: "8.6%" }
+    ];
+    var max = 45;
+    groups.forEach(function (g) {
+      var row = document.createElement("div");
+      row.className = "row";
+      var lbl = document.createElement("div");
+      lbl.className = "lbl";
+      lbl.innerHTML = g.l;
+      var grp = document.createElement("div");
+      grp.className = "grp";
+      [["A", g.a, g.ad, A], ["B", g.b, g.bd, B]].forEach(function (s) {
+        var t = document.createElement("div");
+        t.className = "track";
+        var bar = document.createElement("div");
+        bar.className = "bar";
+        bar.style.width = Math.max(s[1] / max * 100, 1) + "%";
+        bar.style.background = s[3];
+        bar.setAttribute("data-tip", "Arm " + s[0] + " — " + g.l.replace("&rarr;", "to") + ": " + s[2]);
+        bar.innerHTML = '<span class="val">' + s[0] + " " + s[2] + "</span>";
+        t.appendChild(bar);
+        grp.appendChild(t);
+      });
+      row.appendChild(lbl);
+      row.appendChild(grp);
+      host.appendChild(row);
+    });
+  })();
+
+  /* funnel */
+  (function () {
+    var host = document.getElementById("funnel");
+    if (!host) return;
+    var steps = [
+      { l: "Sessions", v: 678, d: "678", drop: "" },
+      { l: "Clicked a signup CTA", v: 130, d: "130 &middot; 19.2%", drop: "&minus;548 sessions never reach for a CTA" },
+      { l: "Signed up", v: 42, d: "42 &middot; 6.2%", drop: "&minus;88 clicked and did not finish" }
+    ];
+    steps.forEach(function (s) {
+      var st = document.createElement("div");
+      st.className = "step";
+      var lbl = document.createElement("div");
+      lbl.className = "lbl";
+      lbl.innerHTML = s.l;
+      var wrap = document.createElement("div");
+      var bar = document.createElement("div");
+      bar.className = "stepbar";
+      bar.style.width = Math.max(s.v / 678 * 100, 9) + "%";
+      bar.style.background = B;
+      bar.innerHTML = s.d;
+      bar.setAttribute("data-tip", s.l + ": " + s.d.replace("&middot;", "/"));
+      wrap.appendChild(bar);
+      if (s.drop) {
+        var d = document.createElement("div");
+        d.className = "drop";
+        d.innerHTML = s.drop;
+        wrap.appendChild(d);
+      }
+      st.appendChild(lbl);
+      st.appendChild(wrap);
+      host.appendChild(st);
+    });
+  })();
+
+  bars("scroll", [
+    { l: '<span class="mono">5%</span>', v: 67.3, d: "67.3% &middot; 183" },
+    { l: '<span class="mono">10%</span>', v: 48.9, d: "48.9% &middot; 133" },
+    { l: '<span class="mono">15%</span>', v: 44.1, d: "44.1% &middot; 120" },
+    { l: '<span class="mono">20%</span>', v: 39.7, d: "39.7% &middot; 108" },
+    { l: '<span class="mono">25%</span>', v: 34.2, d: "34.2% &middot; 93" },
+    { l: '<span class="mono">30%</span>', v: 31.6, d: "31.6% &middot; 86" },
+    { l: '<span class="mono">35%</span>', v: 29.8, d: "29.8% &middot; 81" },
+    { l: '<span class="mono">40%</span>', v: 28.3, d: "28.3% &middot; 77" },
+    { l: '<span class="mono">45%</span>', v: 24.3, d: "24.3% &middot; 66" }
+  ], { max: 100 });
+
+  bars("taps", [
+    { l: "Dismiss &times; (1st)", v: 28, d: "28", c: "var(--crit)" },
+    { l: "Dismiss &times; (2nd)", v: 26, d: "26", c: "var(--crit)" },
+    { l: "Mulai Gratis &mdash; primary CTA", v: 18, d: "18", c: B },
+    { l: "Lanjutkan dengan Google", v: 16, d: "16", c: B },
+    { l: "Daftar dengan Email", v: 14, d: "14", c: "var(--warn)" },
+    { l: "#sidebar-overlay", v: 13, d: "13", c: N },
+    { l: "&times; on signup modal", v: 9, d: "9", c: "var(--crit)" }
+  ]);
+
+  bars("pv", [
+    { l: "20 Jul", v: 12, d: "12" },
+    { l: "21 Jul", v: 29, d: "29" },
+    { l: "22 Jul", v: 31, d: "31" },
+    { l: "23 Jul", v: 6, d: "6" },
+    { l: "24 Jul", v: 7, d: "7" },
+    { l: "25 Jul", v: 3, d: "3" }
+  ], {});
+
+  bars("surfaces", [
+    { l: "Discover feed", v: 27, d: "27" },
+    { l: "Deep Dive", v: 25, d: "25" },
+    { l: "Completed onboarding", v: 20, d: "20" },
+    { l: "Discover card click", v: 16, d: "16" },
+    { l: "LARISgpt landing", v: 12, d: "12" },
+    { l: "Deep-dive sections", v: 9, d: "9" },
+    { l: "Sent a chat message", v: 8, d: "8" },
+    { l: "Track toggle", v: 8, d: "8" },
+    { l: "Typed a search", v: 6, d: "6" }
+  ], { max: 30 });
+
+  bars("last", [
+    { l: "Discover feed", v: 11, d: "11", c: "var(--crit)" },
+    { l: "Chat dwell", v: 4, d: "4", c: N },
+    { l: "Usage limit shown", v: 3, d: "3", c: "var(--warn)" },
+    { l: "Deep dive open", v: 3, d: "3", c: N },
+    { l: "Chat limit hit", v: 1, d: "1", c: "var(--warn)" },
+    { l: "Other, one each", v: 8, d: "8", c: N }
+  ], { max: 12 });
+
+  /* hover layer */
+  var tip = document.getElementById("tip");
+  document.addEventListener("mouseover", function (e) {
+    var t = e.target.closest("[data-tip]");
+    if (!t) return;
+    tip.textContent = t.getAttribute("data-tip");
+    tip.style.opacity = "1";
+  });
+  document.addEventListener("mousemove", function (e) {
+    if (tip.style.opacity !== "1") return;
+    var x = e.clientX + 14, y = e.clientY + 16;
+    if (x + tip.offsetWidth > window.innerWidth - 8) x = e.clientX - tip.offsetWidth - 14;
+    tip.style.left = x + "px";
+    tip.style.top = y + "px";
+  });
+  document.addEventListener("mouseout", function (e) {
+    if (e.target.closest("[data-tip]")) tip.style.opacity = "0";
+  });
+})();
+</script>
