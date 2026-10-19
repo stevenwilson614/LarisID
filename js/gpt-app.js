@@ -8406,6 +8406,12 @@ function startOnboarding(source) {
 
 function offerOnboardingAfterSignin() {
   _offerActive = false;
+  // Alat mode: doors ask Seller baru vs Sudah punya toko (finder hides XP).
+  // Do not swap that for the skippable profile nudge on a fresh signup.
+  if (window.LarisAlatPreview?.active?.() && !window.LarisAlatPreview.isReturningVisitor?.()) {
+    window.LarisAlatPreview.openSift();
+    return;
+  }
   const overlay = $('profile-nudge');
   if (!overlay) { openPrefsDrawer('post_signin'); return; }
   overlay.classList.add('open');
@@ -27336,6 +27342,19 @@ function attachAlatPreview() {
       saveFinderState();
       saveLocalState();
       try { window.LarisAlatPreview.hideFinderXp(); } catch (_) {}
+      updateHomeFinderVisibility();
+    },
+    /** ?sift=1 — wipe door/experience so #view-sift can show again. */
+    resetSiftOnboarding() {
+      if (state.onboarding) {
+        state.onboarding.step = 'idle';
+        state.onboarding.completedAnon = false;
+        state.onboarding.experience = '';
+        state.onboarding.promptedPostSignin = false;
+      }
+      _finder.experience = '';
+      try { localStorage.removeItem(FINDER_STATE_KEY); } catch (_) {}
+      saveLocalState();
       updateHomeFinderVisibility();
     },
     openAuthModal,

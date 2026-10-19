@@ -70,12 +70,29 @@
     return 'https://chromewebstore.google.com/detail/ldgcjbnecfnpbgenechgfbdagecnloae';
   }
 
+  /** QA / replay: ?sift=1 clears the door choice and forces #view-sift. */
+  function wantsForcedSift() {
+    try {
+      var q = new URLSearchParams(location.search);
+      return q.get('sift') === '1' || q.get('onboarding') === '1';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function clearDoorChoice() {
+    try { sessionStorage.removeItem(SS_INTENT); } catch (_) {}
+    if (host && host.resetSiftOnboarding) {
+      try { host.resetSiftOnboarding(); } catch (_) {}
+    }
+  }
+
   function applyFlag() {
     try {
       var q = new URLSearchParams(location.search);
       if (q.get('preview') === 'off') {
         sessionStorage.setItem(SS_FLAG, '0');
-      } else if (q.get('preview') === 'alat') {
+      } else if (q.get('preview') === 'alat' || wantsForcedSift()) {
         sessionStorage.setItem(SS_FLAG, '1');
       } else if (sessionStorage.getItem(SS_FLAG) !== '0') {
         // Live default: My Toko doors on unless explicitly turned off.
@@ -241,15 +258,18 @@
     return !!(raw && raw.wizard_done);
   }
 
-  /** Logged-in, prior onboarding, or My Toko already started — normal app home. */
+  /**
+   * Prior door choice, My Toko progress, or onboarding experience — normal home.
+   * Login alone does NOT count: alat hides #finder-xp-step, so new signups still
+   * need the Seller baru / Sudah punya toko doors (see journey-funnel.md).
+   */
   function isReturningVisitor() {
-    var u = user();
     var wiz = isWizardDone();
     var shop = rememberedShop();
     var intentVal = intent();
     var o = host && host.onboarding && host.onboarding();
-    var fromOb = !!(o && (o.completedAnon || o.experience === 'existing' || o.experience === 'first_time'));
-    if (u) return true;
+    var fromOb = !!(o && (o.completedAnon || o.step === 'done'
+      || o.experience === 'existing' || o.experience === 'first_time'));
     if (wiz || shop) return true;
     if (intentVal) return true;
     if (fromOb) return true;
@@ -2380,6 +2400,12 @@
       var q = new URLSearchParams(location.search);
       if (q.get('claim_shop') || q.get('claim_snap')) { openAudit(); return true; }
     } catch (_) {}
+    // Force the Seller baru / Sudah punya toko doors (clears a prior door pick).
+    if (wantsForcedSift()) {
+      clearDoorChoice();
+      openSift();
+      return true;
+    }
     if (document.body.classList.contains('view-audit') && $('alat-root')?.querySelector('.myt-store, #alat-shop-q, .alat-progress')) {
       return true;
     }
