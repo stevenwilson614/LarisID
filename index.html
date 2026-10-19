@@ -2703,10 +2703,11 @@ body.view-belajar .panel-inner { max-width: 1100px; }
 .blj-intro-step.is-locked { opacity: .55; }
 .blj-intro-step img {
   width: 100%;
-  height: 88px;
+  aspect-ratio: 1 / 1;
+  height: auto;
   object-fit: cover;
   object-position: center;
-  border-radius: 12px;
+  border-radius: 18px;
   background: #fafafa;
   border: 1px solid var(--line, #eee);
 }
@@ -2722,8 +2723,8 @@ body.view-belajar .panel-inner { max-width: 1100px; }
   color: var(--ink-soft, #4b5563);
 }
 .blj-intro-arrow {
-  align-self: center;
-  margin-top: 48px;
+  align-self: start;
+  margin-top: 100px; /* num + gap + mid of square thumb */
   color: #c4c4c4;
   font-size: 1.1rem;
   font-weight: 700;

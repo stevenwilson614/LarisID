@@ -1183,7 +1183,7 @@
       return `${i ? '<span class="blj-intro-arrow" aria-hidden="true">→</span>' : ''}
         <div class="blj-intro-step${tone.done ? ' is-done' : ''}${locked ? ' is-locked' : ''}">
           <span class="blj-intro-num">${tone.done ? '✓' : step.n}</span>
-          <img src="${esc(step.img)}" alt="" width="160" height="100" loading="lazy">
+          <img src="${esc(step.img)}" alt="" width="160" height="160" loading="lazy">
           <strong>${esc(step.title)}</strong>
           <p>${esc(step.blurb)}</p>
         </div>`;
