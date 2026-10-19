@@ -43,13 +43,13 @@
 <meta property="og:description" content="Tanya apa yang mau kamu jual, dapat jawaban dari data listing Shopee nyata: produk yang lagi naik, harga pasar, kompetitor, dan hitung komisi 5 marketplace. 100% gratis, selamanya.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://larisid.com/">
-<meta property="og:image" content="https://larisid.com/images/Banner.jpg">
+<meta property="og:image" content="https://larisid.com/images/og-banner.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="LarisID — Riset Produk Shopee Gratis">
 <meta name="twitter:description" content="Riset produk dari data listing Shopee nyata, plus hitung komisi 5 marketplace. 100% gratis selamanya, tanpa kartu kredit.">
-<meta name="twitter:image" content="https://larisid.com/images/Banner.jpg">
+<meta name="twitter:image" content="https://larisid.com/images/og-banner.jpg">
 <meta name="keywords" content="riset produk shopee, riset produk e-commerce indonesia, data penjualan shopee, alat riset produk seller, larisid vs datapinter, alternatif datapinter, analisis kompetitor shopee">
 <link rel="manifest" href="/manifest.webmanifest">
 <script type="application/ld+json">
@@ -12542,8 +12542,8 @@ body.view-chat .sfb-card {
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260915a" defer></script>
 <script src="/js/gpt-belajar.js?v=20261017f" defer></script>
-<script src="/js/gpt-alat-preview.js?v=20261019sift" defer></script>
-<script src="/js/gpt-app.js?v=20261019sift" defer></script>
+<script src="/js/gpt-alat-preview.js?v=20261019busy" defer></script>
+<script src="/js/gpt-app.js?v=20261019busy" defer></script>
 <style>
 .hl-hero-ctas-alat { display: none; }
 html.alat-preview #finder-xp-step { display: none; }
@@ -13321,6 +13321,42 @@ body.alat-focus.view-audit .alat-page--wide::after { display: none; }
   padding: 22px 24px; margin-bottom: 0;
   width: 100%;
   box-sizing: border-box;
+  position: relative;
+}
+.alat-card.is-busy > :not(.alat-busy) {
+  opacity: .38;
+  pointer-events: none;
+  user-select: none;
+}
+.alat-busy {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+  background: rgba(255, 255, 255, .82);
+  border-radius: inherit;
+  text-align: center;
+}
+.alat-busy-spin {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid #E8E8E8;
+  border-top-color: var(--accent, #B5202A);
+  animation: spin .7s linear infinite;
+}
+.alat-busy-msg {
+  margin: 0;
+  max-width: 22rem;
+  font-size: .9rem;
+  font-weight: 600;
+  color: #1A1A1A;
+  line-height: 1.4;
 }
 .alat-kicker { font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted, #8A8A8A); margin: 0 0 6px; }
 .alat-card h2 { margin: 0 0 8px; font-size: clamp(1.1rem, 2vw, 1.25rem); }

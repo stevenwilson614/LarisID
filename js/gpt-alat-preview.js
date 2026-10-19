@@ -723,13 +723,42 @@
     $('alat-kabar-go')?.addEventListener('click', function () { void finishPersonalInfo(shop); });
   }
 
+  function setKabarBusy(msg) {
+    var card = document.querySelector('#alat-root .alat-card');
+    if (!card) return null;
+    var busy = $('alat-kabar-busy');
+    if (!busy) {
+      busy = document.createElement('div');
+      busy.id = 'alat-kabar-busy';
+      busy.className = 'alat-busy';
+      busy.setAttribute('role', 'status');
+      busy.setAttribute('aria-live', 'polite');
+      busy.innerHTML =
+        '<span class="alat-busy-spin" aria-hidden="true"></span>' +
+        '<p class="alat-busy-msg" id="alat-kabar-busy-msg"></p>';
+      card.appendChild(busy);
+    }
+    card.classList.add('is-busy');
+    var go = $('alat-kabar-go');
+    var back = $('alat-kabar-back');
+    if (go) { go.disabled = true; go.setAttribute('aria-busy', 'true'); }
+    if (back) back.disabled = true;
+    document.querySelectorAll('#alat-root .alat-card input, #alat-root .alat-card label').forEach(function (el) {
+      if (el.tagName === 'INPUT') el.disabled = true;
+      else el.setAttribute('aria-disabled', 'true');
+    });
+    var label = $('alat-kabar-busy-msg');
+    if (label) label.textContent = msg || 'Menyiapkan produk toko…';
+    var status = $('alat-scrape-status');
+    if (status) status.textContent = msg || 'Menyiapkan produk toko…';
+    return busy;
+  }
+
   async function finishPersonalInfo(shop) {
     readAlertsFromForm();
-    var go = $('alat-kabar-go');
-    var status = $('alat-scrape-status');
     var err = $('alat-kabar-err');
     if (err) { err.hidden = true; err.textContent = ''; }
-    if (go) { go.disabled = true; go.textContent = 'Menyiapkan…'; }
+    setKabarBusy('Menyiapkan produk toko…');
 
     if (_scrapeJobId) {
       var already = [];
@@ -737,11 +766,9 @@
         try { already = await fetchTokoListings(shop.shop_id); } catch (_) { already = []; }
       }
       var waitMs = already.length ? 12000 : SCRAPE_WAIT_MS;
-      if (status) {
-        status.textContent = already.length
-          ? 'Menyegarkan produk toko (opsional)…'
-          : 'Mengambil produk toko… biasanya selesai sebelum kamu baca ini.';
-      }
+      setKabarBusy(already.length
+        ? 'Menyegarkan produk toko…'
+        : 'Mengambil produk toko…');
       var started = Date.now();
       var job = null;
       var client = sb();
@@ -753,14 +780,12 @@
           });
           job = res && res.data;
           if (job && job.ok) {
-            if (status) {
-              if (job.status === 'claimed' || job.status === 'pending') {
-                status.textContent = 'Mac kami sedang membuka halaman toko…';
-              } else if (job.status === 'done') {
-                status.textContent = 'Produk toko siap.';
-              } else if (job.status === 'failed') {
-                status.textContent = 'Ambil otomatis gagal — siapin cadangan ekstensi.';
-              }
+            if (job.status === 'claimed' || job.status === 'pending') {
+              setKabarBusy('Mac kami sedang membuka halaman toko…');
+            } else if (job.status === 'done') {
+              setKabarBusy('Produk toko siap…');
+            } else if (job.status === 'failed') {
+              setKabarBusy('Ambil otomatis gagal — menyiapkan cadangan…');
             }
             if (job.status === 'done' || job.status === 'failed') break;
           }
@@ -775,8 +800,10 @@
         if (job.shop_id) shop.shop_id = job.shop_id;
         if (job.store_name) shop.store_name = job.store_name;
         rememberShop(shop);
+        setKabarBusy('Menyimpan toko…');
         await saveStoreProfile(shop);
         persistProfile();
+        setKabarBusy('Memuat produk toko…');
         await loadShopWork(shop, { freshListings: true });
         return;
       }
@@ -784,6 +811,7 @@
         // Fall through to extension if nothing in DB.
       } else if (already.length) {
         rememberShop(shop);
+        setKabarBusy('Memuat produk toko…');
         await loadShopWork(shop, { freshListings: true });
         return;
       }
@@ -794,6 +822,7 @@
       return;
     }
     rememberShop(shop);
+    setKabarBusy('Memuat produk toko…');
     await loadShopWork(shop, { freshListings: true });
   }
 
