@@ -45,6 +45,7 @@
   var _claimSnapId = '';
   var _scrapeJobId = '';
   var _pendingUrl = '';
+  var _siftViewLogged = false;
 
   function clientId() {
     try {
@@ -344,11 +345,63 @@
     openQuest();
   }
 
-  function openQuest() {
+  function openQuest(opts) {
+    opts = opts || {};
     setFocus(true);
-    if (host && host.resetFinderForAlat) host.resetFinderForAlat();
+    if (!opts.resume && host && host.resetFinderForAlat) host.resetFinderForAlat();
     if (host && host.renderHome) host.renderHome();
     else if (host && host.setView) host.setView('home');
+  }
+
+  function firstTimeUnfinished() {
+    var o = host && host.onboarding && host.onboarding();
+    if (o && o.step === 'done') return false;
+    if (intent() === 'first_time') return true;
+    return !!(o && o.experience === 'first_time' && o.step !== 'idle');
+  }
+
+  /** Seller baru answers unfinished, or Sudah punya toko wizard not finished. */
+  function doorInProgress() {
+    if (!active() || isWizardDone()) return false;
+    var o = host && host.onboarding && host.onboarding();
+    // Seller baru finished (Temukan Produk). Intent can still say first_time.
+    if (o && o.step === 'done' && intent() !== 'existing'
+      && !(host && host.pendingAlat && host.pendingAlat() === 'existing')) return false;
+    try {
+      if (document.body && (document.body.classList.contains('view-sift') || document.body.classList.contains('alat-focus'))) {
+        return true;
+      }
+    } catch (_) {}
+    if (firstTimeUnfinished()) return true;
+    if (intent() === 'existing') return true;
+    if (host && host.pendingAlat && host.pendingAlat() === 'existing') return true;
+    if (o && o.experience === 'existing' && rememberedShop()) return true;
+    return false;
+  }
+
+  function resumeDoor() {
+    if (!active() || isWizardDone()) return false;
+    var kind = intent();
+    var o = host && host.onboarding && host.onboarding();
+    if (firstTimeUnfinished()) {
+      if (kind !== 'first_time') setIntent('first_time');
+      openQuest({ resume: true });
+      return true;
+    }
+    if (kind === 'existing' || (host && host.pendingAlat && host.pendingAlat() === 'existing')
+      || (o && o.experience === 'existing' && rememberedShop())) {
+      openAudit({ fresh: !rememberedShop(), focus: true });
+      return true;
+    }
+    if (document.body && document.body.classList.contains('view-sift')) {
+      openSift();
+      return true;
+    }
+    if (!isReturningVisitor()) {
+      openSift();
+      return true;
+    }
+    return false;
   }
 
   function startExistingSeller() {
@@ -489,6 +542,37 @@
       }
     } catch (_) {}
     return rememberedShop();
+  }
+
+  /**
+   * Second device: a finished account (completed prefs or a saved shop) skips
+   * the doors. An in-progress door on this browser is left alone.
+   */
+  async function hydrateServerVisitor() {
+    var client = sb();
+    var u = user();
+    if (!client || !u) return;
+    var localDoor = !!intent() || !!(document.body && document.body.classList.contains('alat-focus'));
+    try {
+      var shopRes = await client.from('user_store_profiles')
+        .select('shopee_store_name,shopee_shop_id')
+        .eq('user_id', u.id)
+        .maybeSingle();
+      var row = shopRes && shopRes.data;
+      if (row && row.shopee_shop_id && !rememberedShop()) {
+        rememberShop({ shop_id: row.shopee_shop_id, store_name: row.shopee_store_name || '' });
+      }
+      if (localDoor) return;
+      var prefRes = await client.from('user_onboarding_prefs')
+        .select('completed_at,seller_status')
+        .eq('user_id', u.id)
+        .maybeSingle();
+      var pref = prefRes && prefRes.data;
+      if (pref && pref.completed_at && host && host.markOnboardingDone) {
+        host.markOnboardingDone(pref.seller_status || '');
+      }
+      if (row && row.shopee_shop_id) markWizardDone();
+    } catch (_) {}
   }
 
   function renderConnect() {
@@ -2418,6 +2502,10 @@
   function openSift() {
     exitFocus();
     if (host && host.setView) host.setView('sift');
+    if (!_siftViewLogged) {
+      _siftViewLogged = true;
+      log('alat_sift_view', {});
+    }
   }
 
   function onBoot() {
@@ -2435,17 +2523,18 @@
       openSift();
       return true;
     }
+    // Leaders and platform admins are not gated into the doors.
+    if (host && host.isPlatformAdmin && host.isPlatformAdmin()) return false;
     if (document.body.classList.contains('view-audit') && $('alat-root')?.querySelector('.myt-store, #alat-shop-q, .alat-progress')) {
       return true;
     }
-    // Mid first-time questionnaire — keep them in that flow.
-    if (intent() === 'first_time' && forceFinder()) {
-      openQuest();
-      return true;
-    }
-    // Brand-new visitors: choice doors. Returning: normal Laris home + My Toko in nav.
-    var returning = isReturningVisitor();
-    if (!returning) {
+    if (isWizardDone()) return false;
+    var o = host && host.onboarding && host.onboarding();
+    if (o && o.step === 'done') return false;
+    // Resume the door they already chose — including after a reload, when
+    // alat-focus is gone but session intent / saved experience is still set.
+    if (resumeDoor()) return true;
+    if (!isReturningVisitor()) {
       openSift();
       return true;
     }
@@ -2523,6 +2612,9 @@
     openQuest: openQuest,
     shouldTakeBoot: shouldTakeBoot,
     onBoot: onBoot,
+    doorInProgress: doorInProgress,
+    resumeDoor: resumeDoor,
+    hydrateServerVisitor: hydrateServerVisitor,
     startNewSeller: startNewSeller,
     startExistingSeller: startExistingSeller,
     hideFinderXp: hideFinderXp,

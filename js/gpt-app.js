@@ -2470,17 +2470,18 @@ function skipWaCapture() {
   try { sessionStorage.setItem(_LID_WA_CAPTURE_SKIP_KEY, '1'); } catch (_) {}
   closeWaCapture();
   void logUserEvent('wa_capture', { ui: 'gpt', action: 'later' });
-  if (_waCaptureThenOnboarding) offerOnboardingAfterSignin();
-  else scheduleReturningFeatureNotices({ fromRestore: false, isNewSignup: false });
+  _waCaptureContinue();
 }
 
 function _waCaptureContinue() {
+  if (_waCaptureThenDoor) { resumeAlatDoor(); return; }
   if (_waCaptureThenOnboarding) offerOnboardingAfterSignin();
   else scheduleEduInterestNotice({ fromRestore: false, isNewSignup: false });
 }
 
 async function maybeOfferWaCapture(opts) {
   _waCaptureThenOnboarding = !!(opts && opts.thenOnboarding);
+  _waCaptureThenDoor = !!(opts && opts.thenDoor);
   if (adminIsPreviewing() || isPlatformAdminRaw()) {
     _waCaptureContinue();
     return;
@@ -2524,6 +2525,8 @@ async function submitWaCapture() {
 }
 
 let _nameCaptureThenOnboarding = false;
+let _nameCaptureThenDoor = false;
+let _waCaptureThenDoor = false;
 // Session-scoped, like the WhatsApp capture skip: a name is still wanted, but a
 // modal with no way out must not be able to trap someone on every reload.
 const _LID_NAME_CAPTURE_SKIP_KEY = '_lid_name_capture_skip_v1';
@@ -2551,13 +2554,26 @@ function skipNameCapture() {
   _nameCaptureContinue();
 }
 
+function resumeAlatDoor() {
+  const alat = window.LarisAlatPreview;
+  if (!alat?.active?.()) return false;
+  if (alat.doorInProgress?.()) return !!alat.resumeDoor?.();
+  if (!alat.isReturningVisitor?.()) {
+    alat.openSift?.();
+    return true;
+  }
+  return false;
+}
+
 function _nameCaptureContinue() {
+  if (_nameCaptureThenDoor) { resumeAlatDoor(); return; }
   if (_nameCaptureThenOnboarding) offerOnboardingAfterSignin();
   else scheduleReturningFeatureNotices({ fromRestore: false, isNewSignup: false });
 }
 
 async function maybeOfferNameCapture(opts) {
   _nameCaptureThenOnboarding = !!(opts && opts.thenOnboarding);
+  _nameCaptureThenDoor = !!(opts && opts.thenDoor);
   if (adminIsPreviewing() || !_isWaUser() || !currentUser) return false;
   try { if (sessionStorage.getItem(_LID_NAME_CAPTURE_SKIP_KEY)) return false; } catch (_) {}
   let profileName = _profileDisplayName;
@@ -5904,7 +5920,8 @@ async function consumeOAuthHash() {
 async function _authOnSignIn(session, opts) {
   currentUser = session.user || _decodeJwtUser(session.access_token);
   if (!currentUser) { _clearSessionRestoring(); return; }
-  if (!(opts && opts.fromRestore)) {
+  const alatDoorEarly = !!(window.LarisAlatPreview?.active?.() && window.LarisAlatPreview.doorInProgress?.());
+  if (!(opts && opts.fromRestore) && !alatDoorEarly) {
     try { window.LarisMerdeka && window.LarisMerdeka.showPromo(true); } catch (_) {}
   }
   if (!session.user) { session.user = currentUser; _authSave(session); }
@@ -6080,13 +6097,46 @@ async function _authOnSignIn(session, opts) {
   // skippable). That is not onboarding and must not run on session restore.
   // WA users without a real name get #name-capture (required, including on
   // restore) — identity, not onboarding; city/category stay in-page.
+  if (window.LarisAlatPreview?.hydrateServerVisitor) {
+    try { await window.LarisAlatPreview.hydrateServerVisitor(); } catch (_) {}
+  }
+  const alatDoor = !!(window.LarisAlatPreview?.active?.() && window.LarisAlatPreview.doorInProgress?.());
+  // Fresh sign-in, or a reload while the wizard is still open: write the shop
+  // and any listings they already picked. Finished sessions don't re-write.
+  if (window.LarisAlatPreview?.active?.() && (!(opts && opts.fromRestore) || alatDoor)) {
+    try {
+      const flushed = await window.LarisAlatPreview.flushAccount?.();
+      if (!(opts && opts.fromRestore) && flushed && (flushed.tracked > 0 || flushed.ok)) {
+        void logUserEvent('alat_tracks_confirmed', {
+          ui: 'gpt',
+          surface: 'mytoko',
+          products: flushed.tracked || 0,
+          via: 'signin',
+          store: !flushed.storeError,
+        });
+      }
+    } catch (_) {}
+  }
+
   const needsOnboarding = !hadPending && !resumedFinder && state.onboarding.step !== 'done' && !finderIsComplete();
-  if (needsOnboarding) {
+  if (needsOnboarding && !alatDoor) {
     state.onboarding.promptedPostSignin = true;
     saveLocalState();
   }
   const deferPostSignin = !hadPending && !resumedFinder;
-  if (deferPostSignin && _isWaUser() && !adminIsPreviewing()) {
+  if (alatDoor) {
+    // Identity prompt may cover the wizard; afterwards return to the same door.
+    // Do not open the profile nudge or feature notices on top of it.
+    if (_isWaUser() && !adminIsPreviewing()) {
+      void maybeOfferNameCapture({ thenDoor: true }).then((opened) => {
+        if (!opened) resumeAlatDoor();
+      });
+    } else if (!(opts && opts.fromRestore)) {
+      void maybeOfferWaCapture({ thenDoor: true });
+    } else {
+      resumeAlatDoor();
+    }
+  } else if (deferPostSignin && _isWaUser() && !adminIsPreviewing()) {
     void maybeOfferNameCapture({ thenOnboarding: needsOnboarding }).then((opened) => {
       if (!opened && needsOnboarding) offerOnboardingAfterSignin();
     });
@@ -6096,11 +6146,13 @@ async function _authOnSignIn(session, opts) {
     offerOnboardingAfterSignin();
   }
 
-  // Returning users: one-time feature notices (skippable, not onboarding).
-  scheduleReturningFeatureNotices({
-    fromRestore: !!(opts && opts.fromRestore),
-    isNewSignup,
-  });
+  if (!alatDoor) {
+    // Returning users: one-time feature notices (skippable, not onboarding).
+    scheduleReturningFeatureNotices({
+      fromRestore: !!(opts && opts.fromRestore),
+      isNewSignup,
+    });
+  }
   consumeAdminDeepLink();
 }
 
@@ -8407,10 +8459,17 @@ function startOnboarding(source) {
 function offerOnboardingAfterSignin() {
   _offerActive = false;
   // Alat mode: doors ask Seller baru vs Sudah punya toko (finder hides XP).
-  // Do not swap that for the skippable profile nudge on a fresh signup.
-  if (window.LarisAlatPreview?.active?.() && !window.LarisAlatPreview.isReturningVisitor?.()) {
-    window.LarisAlatPreview.openSift();
-    return;
+  // A door already in progress resumes; a fresh signup still sees the doors.
+  // Do not swap either for the skippable profile nudge.
+  if (window.LarisAlatPreview?.active?.()) {
+    if (window.LarisAlatPreview.doorInProgress?.()) {
+      window.LarisAlatPreview.resumeDoor();
+      return;
+    }
+    if (!window.LarisAlatPreview.isReturningVisitor?.()) {
+      window.LarisAlatPreview.openSift();
+      return;
+    }
   }
   const overlay = $('profile-nudge');
   if (!overlay) { openPrefsDrawer('post_signin'); return; }
@@ -16941,6 +17000,8 @@ let _bootCohortNav = null;
 
 async function routeCohortHome() {
   if (!_bootLandingView || !currentUser) return;
+  if (document.body.classList.contains('view-sift') || document.body.classList.contains('alat-focus')) return;
+  if (window.LarisAlatPreview?.doorInProgress?.()) return;
   try {
     await _bootCohortNav;
     // Students only. A mentor or an admin is not a mahasiswa, and sending them
@@ -27345,6 +27406,17 @@ function attachAlatPreview() {
       updateHomeFinderVisibility();
     },
     /** ?sift=1 — wipe door/experience so #view-sift can show again. */
+    finderIsComplete: () => finderIsComplete(),
+    isPlatformAdmin: () => isPlatformAdmin(),
+    markOnboardingDone(kind) {
+      if (!state.onboarding) return;
+      if (kind === 'existing' || kind === 'first_time') {
+        state.onboarding.experience = kind;
+        _finder.experience = kind;
+      }
+      state.onboarding.step = 'done';
+      saveLocalState();
+    },
     resetSiftOnboarding() {
       if (state.onboarding) {
         state.onboarding.step = 'idle';
@@ -27508,10 +27580,15 @@ async function boot() {
   const alreadyProfil = state.view === 'profil';
   const finderResultsUp = !!$('chat-thread')?.querySelector('[data-lrow-block]');
   const previewResumeProduct = !!(state.pendingDeepdive || state.pendingCompare || state.pendingTracker || state.pendingFinder || state.pendingProfilPreview || _finderResumeInFlight);
+  if (window.LarisAlatPreview?.hydrateServerVisitor) {
+    try { await window.LarisAlatPreview.hydrateServerVisitor(); } catch (_) {}
+  }
   if (window.LarisAlatPreview?.active() && !_offerActive && !previewResumeProduct && !alreadyDeepdive && !alreadyCommunity && !alreadyAdmin && !alreadyProfil) {
     const tookAlat = window.LarisAlatPreview.onBoot();
     if (tookAlat) {
-      _bootLandingView = state.view;
+      if (state.view !== 'sift' && state.view !== 'audit' && !document.body.classList.contains('alat-focus')) {
+        _bootLandingView = state.view;
+      }
     } else if (!pendingResume && !finderResultsUp) {
       if (state.activeChatId && activeChat()) {
         setView('chat');
