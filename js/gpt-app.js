@@ -4260,7 +4260,6 @@ let _sfbBound   = false;
 let _sfbBusy    = false;
 let _sfbStatus  = null;   // cached my_feedback_prompt_status() for this page load
 let _sfbAnswered = false;
-let _sfbChip    = null;
 let _sfbFollowup = null;  // { id, lead, go, cta } pending steven_followup notice
 const SFB_EDU_CTA = 'Buka Belajar';
 const SFB_EDU_INVITE = 'Kalau masih bingung cara pakainya, buka halaman Belajar di menu kiri ya. Langkahnya pelan-pelan, dari cari produk sampai pantau toko.';
@@ -4268,12 +4267,10 @@ const SFB_KURANG_LENGKAP_ASK =
   'Hai! Makasih sudah jawab. Kamu bilang datanya kurang lengkap — informasi apa lagi yang paling ingin kamu lihat di LarisID? Ceritain di sini ya, aku baca.';
 
 function sfbChoseBingung(msg) {
-  if (_sfbChip === 'Bingung cara pakainya') return true;
   return /bingung|binggung/i.test(String(msg || ''));
 }
 
 function sfbChoseKurangLengkap(msg) {
-  if (_sfbChip === 'Datanya kurang lengkap') return true;
   return /kurang lengkap/i.test(String(msg || ''));
 }
 
@@ -4432,13 +4429,11 @@ async function scheduleSuperuserFeedback(_opts) {
 
 function sfbApplyPromptCopy() {
   const msg = $('sfb-msg');
-  const chips = $('sfb-chips');
   const composer = $('sfb-card')?.querySelector('.sfb-composer');
   if (composer) composer.hidden = false;
   const edu = $('sfb-edu-link');
   if (_sfbFollowup?.lead) {
     if (msg) msg.textContent = _sfbFollowup.lead;
-    if (chips) chips.hidden = true;
     if (edu) {
       const showEdu = _sfbFollowup.go === 'edukasi';
       edu.hidden = !showEdu;
@@ -4451,7 +4446,6 @@ function sfbApplyPromptCopy() {
     msg.dataset.sfbDefault = msg.textContent.trim();
   }
   if (msg && msg.dataset.sfbDefault) msg.textContent = msg.dataset.sfbDefault;
-  if (chips) chips.hidden = false;
 }
 
 function sfbStartFollowup(notice) {
@@ -4567,23 +4561,6 @@ function sfbBind() {
     void sfbOpenEdukasi();
   });
 
-  $('sfb-chips')?.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-sfb-chip]');
-    if (!btn || !input) return;
-    // The chip is an on-ramp, not an answer: it prefills and hands over the
-    // cursor so the person finishes the sentence in their own words.
-    const seed = btn.getAttribute('data-sfb-chip') || '';
-    _sfbChip = btn.textContent.trim();
-    document.querySelectorAll('#sfb-chips .sfb-chip')
-      .forEach(c => c.setAttribute('aria-pressed', String(c === btn)));
-    input.value = seed;
-    sfbAutosize(input);
-    input.focus();
-    input.setSelectionRange(input.value.length, input.value.length);
-    if (send) send.disabled = false;
-    clarityEvt('superuser_feedback_prompt', { action: 'chip' });
-  });
-
   input?.addEventListener('input', () => {
     sfbAutosize(input);
     if (send) send.disabled = !input.value.trim();
@@ -4646,7 +4623,6 @@ async function sfbSubmit() {
       element_context: {
         sessions: _sfbStatus?.sessions ?? null,
         dives:    _sfbStatus?.dives ?? null,
-        chip:     _sfbChip,
         view:     state.view,
         followup_notice_id: followupId,
       },
@@ -4677,7 +4653,7 @@ async function sfbSubmit() {
     _supabase.functions.invoke('notify-feedback', { body: { record: { ...record, id: inserted?.id } } })
       .then(({ error: e }) => { if (e) console.warn('notify-feedback:', e.message); });
     void logUserEvent('superuser_feedback_prompt', { ui: 'gpt', action: 'answered',
-      chars: msg.length, chip: _sfbChip, mandatory: !!_sfbStatus?.mandatory });
+      chars: msg.length, mandatory: !!_sfbStatus?.mandatory });
     clarityEvt('superuser_feedback_prompt', { action: 'answered' });
 
     const fromLeft = gptUsageQuotaView().dlLeft;
@@ -4784,10 +4760,8 @@ function sfbThankYou(granted, fromLeft, opts = {}) {
       ? `${thanks} ${SFB_KURANG_LENGKAP_ASK}`
       : thanks;
   const thread = $('sfb-thread');
-  const chips = $('sfb-chips');
   const composer = $('sfb-card')?.querySelector('.sfb-composer');
   const edu = $('sfb-edu-link');
-  if (chips) chips.hidden = true;
   if (composer) composer.hidden = true;
   if (edu) edu.hidden = true;
   const host = thread || body;
@@ -26665,21 +26639,6 @@ async function loadAdminKomunitasOps() {
   }
 }
 
-async function sendAdminKomunitasDigest() {
-  if (!_supabase) return;
-  showToast('Mengirim digest…');
-  try {
-    const { error } = await _supabase.functions.invoke('komunitas-staff-digest', {
-      body: { include_weekly: true, include_invites: true },
-    });
-    if (error) throw error;
-    showToast('Digest terkirim ke tim.');
-  } catch (err) {
-    showToast('Gagal mengirim digest.');
-    try { console.warn('[komunitas-digest]', err); } catch (_) {}
-  }
-}
-
 function openAdminView() {
   if (!isPlatformAdmin()) {
     showToast('Admin only.');
@@ -27217,7 +27176,6 @@ function wireUi() {
   $('adm-belajar-open')?.addEventListener('click', () => { openBelajarView(); });
   $('adm-feedback-refresh')?.addEventListener('click', () => { void loadAdminFeedback(); });
   $('adm-kwreq-refresh')?.addEventListener('click', () => { void loadAdminKeywordRequests(); });
-  $('adm-komunitas-digest')?.addEventListener('click', () => { void sendAdminKomunitasDigest(); });
   $('admin-sample-new')?.addEventListener('click', () => adminSampleNewUser());
   $('admin-sample-exit')?.addEventListener('click', () => adminExitSample());
   $('sample-strip-exit')?.addEventListener('click', () => {

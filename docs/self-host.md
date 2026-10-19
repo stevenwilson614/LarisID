@@ -112,14 +112,15 @@ it with `bash scripts/schedule-tracker-favorite-weekly.sh` (reads the
 service-role key on the VPS, never commits it). The old `weekly-digest`
 cron is unscheduled. See [favorit-aku.md](./favorit-aku.md).
 
-Komunitas staff digest (`komunitas-staff-digest`) emails Steven / Afryian / admin+leader roles only. It never posts to the board. Deploy the function, then schedule:
+Komunitas unanswered digest is retired. Staff email on new post/reply is
+`notify-feature-board`. To clear old cron jobs:
 
 ```bash
-bash scripts/deploy-function-selfhost.sh komunitas-staff-digest
+bash scripts/deploy-function-selfhost.sh notify-feature-board
 bash scripts/schedule-komunitas-staff-digest.sh
 ```
 
-Tue–Sun 08:00 WIB: unanswered Diskusi older than 48h. Monday 08:00 WIB: that list plus a keyword draft (`perkiraan`) and invite candidates. See [komunitas-board.md](./komunitas-board.md).
+See [komunitas-board.md](./komunitas-board.md).
 
 `rise-crawl-watchdog` (LARISE shop crawl coverage, 14:00 WIB) is scheduled with:
 

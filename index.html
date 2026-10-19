@@ -9844,25 +9844,7 @@ body.view-chat .sfb-card {
 .sfb-edu-link[hidden] { display: none !important; }
 .sfb-edu-link:hover { color: #075E54; }
 .sfb-edu-link:focus-visible { outline: 2px solid #075E54; outline-offset: 2px; }
-.sfb-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.sfb-chips[hidden],
 .sfb-composer[hidden] { display: none !important; }
-.sfb-chip {
-  border: 1px solid rgba(0, 0, 0, .1);
-  background: #fff;
-  color: var(--ink);
-  border-radius: 999px;
-  padding: 6px 11px;
-  font: inherit;
-  font-size: .74rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background .12s, border-color .12s;
-  box-shadow: 0 1px 1px rgba(16, 24, 40, .06);
-}
-.sfb-chip:hover { background: #f7f7f7; border-color: #d8d8d8; }
-.sfb-chip:focus-visible { outline: 2px solid var(--accent, #B5202A); outline-offset: 1px; }
-.sfb-chip[aria-pressed="true"] { background: #075E54; border-color: #075E54; color: #fff; }
 .sfb-composer {
   display: flex; flex-direction: column; gap: 6px;
   margin: 0;
@@ -11878,7 +11860,6 @@ body.view-chat .sfb-card {
               <div class="adm-users-toolbar">
                 <h3>Komunitas — staf</h3>
                 <button type="button" class="adm-tb-btn" id="adm-komunitas-refresh">Muat ulang</button>
-                <button type="button" class="adm-tb-btn" id="adm-komunitas-digest">Kirim digest ke tim</button>
               </div>
               <p class="dd-sub" id="adm-komunitas-metrics">Memuat metrik…</p>
               <div class="adm-komunitas-grid">
@@ -12428,19 +12409,11 @@ body.view-chat .sfb-card {
         </div>
       </div>
     </div>
-    <div class="sfb-chips" id="sfb-chips">
-      <button type="button" class="sfb-chip" aria-pressed="false"
-              data-sfb-chip="Datanya kurang lengkap, terutama ">Datanya kurang lengkap</button>
-      <button type="button" class="sfb-chip" aria-pressed="false"
-              data-sfb-chip="Aku masih bingung cara pakai ">Bingung cara pakainya</button>
-      <button type="button" class="sfb-chip" aria-pressed="false"
-              data-sfb-chip="Ada fitur yang belum ada: ">Ada fitur yang kurang</button>
-    </div>
   </div>
   <div class="sfb-composer">
     <div class="sfb-reply" id="sfb-reply">
       <textarea class="sfb-input" id="sfb-input" rows="1"
-                placeholder="Ketik pesan&hellip;" aria-label="Balasan untuk Steven"></textarea>
+                placeholder="Tulis jawabanmu di sini&hellip;" aria-label="Balasan untuk Steven"></textarea>
       <button type="button" class="sfb-send" id="sfb-send" aria-label="Kirim balasan" disabled>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>

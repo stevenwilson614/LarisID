@@ -11,6 +11,16 @@
 // A plain string is still accepted and renders with no tech line.
 window.LARIS_CHANGELOG = [
   {
+    date: '2026-10-19',
+    title: 'Email Komunitas & pesan Steven',
+    items: [
+      {
+        text: 'Tim LarisID tidak lagi dikirimi email soal pertanyaan yang belum terjawab. Email hanya masuk saat ada tulisan atau balasan baru di Komunitas. Pesan wajib dari Steven juga minta jawaban diketik sendiri — tanpa pilihan siap pakai.',
+        tech: 'notify-feature-board CCs staff on new_question/new_post/comment; komunitas-staff-digest retired + cron unscheduled; #sfb-chips removed (typed reply only).',
+      },
+    ],
+  },
+  {
     date: '2026-09-29',
     title: 'Kartu produk di Cari Produk',
     items: [

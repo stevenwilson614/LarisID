@@ -826,8 +826,11 @@
     bodyInput.value = '';
     clearComposePhoto();
     closeForm();
-    if (kind === 'question' && data?.id) {
-      notifyAuthor({ kind: 'new_question', request_id: data.id });
+    if (data?.id) {
+      notifyAuthor({
+        kind: kind === 'question' ? 'new_question' : 'new_post',
+        request_id: data.id,
+      });
     }
     fetchPosts();
   }
@@ -1276,14 +1279,14 @@
     _opts = options;
     _container = container;
 
-    if (container.dataset.communityBoardMounted === 'msb-v13') {
+    if (container.dataset.communityBoardMounted === 'msb-v14') {
       _listEl = container.querySelector('#msb-list');
       applyLaunchOpts();
       fetchPosts();
       renderUserMap();
       return;
     }
-    container.dataset.communityBoardMounted = 'msb-v13';
+    container.dataset.communityBoardMounted = 'msb-v14';
     injectStyles();
 
     container.innerHTML = `

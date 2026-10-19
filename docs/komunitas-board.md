@@ -48,11 +48,12 @@ Public Diskusi is for **process and lessons**. Niche, supplier, margin, and winn
 
 `notify-feature-board` (deploy: `bash scripts/deploy-function-selfhost.sh notify-feature-board`):
 
-- New comment → author + likers + other commenters. CTA opens the thread, not the site root.
-- `kind=new_question` → users who opted in via `board_topic_follows` for that topic. (UI opt-in is deferred with topic browse filters; schema + notify path remain.)
+- New comment → author + likers + other commenters + staff (Steven / Afryian / admin+leader). CTA opens the thread, not the site root.
+- `kind=new_question` → topic followers (`board_topic_follows`) + staff. (UI opt-in is deferred with topic browse filters; schema + notify path remain.)
+- `kind=new_post` → staff only (Usulan Fitur / keluhan).
 - `kind=resolved` → watchers when an usulan is marked done (admin).
 
-No email without a reason. No daily user blasts. WhatsApp question digests are v2.
+No unanswered digests. No email without a reason. No daily user blasts. WhatsApp question digests are v2.
 
 ## Usulan Fitur
 
@@ -119,23 +120,16 @@ Good seeds ask something a peer can answer. Bad seeds are blog posts.
 
 Do not post “Tips packing: pakai bubble wrap.” Nobody needs to reply. Do not invent fake user accounts.
 
-## Staff ops helper (automated, staff-only)
+## Staff ops helper
 
-Never publishes. Emails Steven (`stevenwilson614@gmail.com`), Afryian (`afryannp@gmail.com`), and `app_role_assignments` admin/leader.
-
-| When | What |
-|------|------|
-| Tue–Sun 08:00 WIB | Diskusi still at 0 **non-staff** replies after 48h + one-tap thread links |
-| Monday 08:00 WIB | That list + keyword draft (`perkiraan`) + invite-candidate names/keywords |
-
-Admin → **Komunitas — staf**: metrics, unanswered, draft (opens compose), invite list, “Kirim digest ke tim”.
+Unanswered digest email is **retired**. Staff hear about activity via `notify-feature-board` (new post / reply only). Admin → **Komunitas — staf** still shows metrics, unanswered list, keyword draft, and invite candidates in-app.
 
 ```bash
-bash scripts/deploy-function-selfhost.sh komunitas-staff-digest
-bash scripts/schedule-komunitas-staff-digest.sh
+bash scripts/deploy-function-selfhost.sh notify-feature-board
+bash scripts/schedule-komunitas-staff-digest.sh   # unschedules old unanswered crons
 ```
 
-The schedule script reads `SERVICE_ROLE_KEY` on the VPS. Do not paste JWTs into tracked SQL.
+`komunitas-staff-digest` is a no-op kept for soft failure if anything still calls it.
 
 RPCs (admin unless noted): `komunitas_beranda_cards` (any signed-in user), `komunitas_board_metrics`, `komunitas_unanswered_staff`, `komunitas_weekly_draft`, `komunitas_invite_candidates`. Service role only: `komunitas_staff_digest_payload`.
 
