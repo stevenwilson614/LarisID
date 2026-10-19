@@ -1,4 +1,6 @@
 /* Shared demo state for MasterMind with Anton GC. Not for larisid.com. */
+import { overlayGrants } from '../pay/_lib.js';
+
 const MAX_BYTES = 5 * 1024 * 1024;
 
 function json(data, status) {
@@ -44,6 +46,7 @@ export async function onRequestGet(context) {
     return json({ error: 'forbidden' }, 403);
   }
   if (!rec || !rec.state) return json({ rev: 0, updatedAt: null, state: null }, 404);
+  await overlayGrants(env, slug, rec.state);
   return json({
     rev: rec.rev || 0,
     updatedAt: rec.updatedAt || null,
@@ -70,11 +73,13 @@ export async function onRequestPut(context) {
   const incomingInvite = (body && body.state && body.state.inviteCode) || '';
   if (!allowed(env, rec, k, incomingInvite)) return json({ error: 'forbidden' }, 403);
   const incomingRev = Number(body && body.rev) || 0;
+  const state = body && body.state ? body.state : null;
+  if (state) await overlayGrants(env, slug, state);
   const stored = {
     key: k,
     rev: incomingRev || ((rec && rec.rev) || 0) + 1,
     updatedAt: (body && body.updatedAt) || new Date().toISOString(),
-    state: body && body.state ? body.state : null
+    state: state
   };
   await env.STATE.put(kvKey(slug), JSON.stringify(stored));
   return json({ rev: stored.rev, updatedAt: stored.updatedAt });

@@ -85,6 +85,8 @@ pages_build_output_dir = "../_school_site"
 
 [vars]
 FONNTE_DEVICE_READY = "false"
+# Sandbox until Anton’s live key. Flip to https://api.mayar.id/hl/v2 — never put MAYAR_API_KEY here.
+MAYAR_API_BASE = "https://api.mayar.io/hl/v2"
 
 [[kv_namespaces]]
 binding = "STATE"
@@ -107,3 +109,7 @@ echo "Deploying $PROJECT from school/ (functions + wrangler.toml)"
 
 echo "OK — https://${PROJECT}.pages.dev/s/obrolan.marketing?invite=ANTON-SEP26"
 echo "KV id ${KV_ID}. Do not deploy this tree to larisid.com."
+echo "Mayar key is not in git. When Anton sends it:"
+echo "  npx wrangler pages secret put MAYAR_API_KEY --project-name=${PROJECT}"
+echo "Optional: MAYAR_WEBHOOK_SECRET, MAYAR_VA_METHOD (va/bni, va/bri, va/mandiri, …)"
+echo "Webhook: https://${PROJECT}.pages.dev/api/pay/webhook"

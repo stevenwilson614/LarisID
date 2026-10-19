@@ -27,16 +27,38 @@ bash school/serve.sh
 
 1. HP: buka tautan di atas. Peran **Siswa**, pilih **Tamu baru**.
 2. Isi form (nama → WA → toko → kota → dari mana). Dock Belajar muncul.
-3. Di halaman paket, pilih **1 bulan · transfer**, ketuk **Saya sudah transfer / scan**.
-4. Home siswa harus bilang **Menunggu konfirmasi Anton**. Video 1 tetap kebuka; 2–12 terkunci.
-5. Laptop: peran **Mentor (Anton)** → tab **Siswa** → kartu **Cek transfer** (atau **Tugas**).
-6. Ketuk **Konfirmasi lunas**. Stage jadi Mentee, ledger Lunas.
+3. Di halaman paket, pilih **1 bulan**. Tanpa kunci Mayar: ketuk **Saya sudah transfer / scan**. Dengan kunci: **Bayar sekarang** (halaman Mayar).
+4. Home siswa: **Menunggu konfirmasi Anton** (transfer manual) atau **Menunggu pembayaran Mayar**. Video 1 tetap kebuka; 2–12 terkunci.
+5. Laptop, transfer manual: peran **Mentor (Anton)** → tab **Siswa** → kartu **Cek transfer** (atau **Tugas**). Mayar: chip **Menunggu Mayar**, tanpa tugas Cek transfer.
+6. Transfer manual: ketuk **Konfirmasi lunas**. Mayar: bayar invoice tes/sandbox, tunggu webhook — stage jadi Mentee tanpa konfirmasi. **Konfirmasi manual** hanya kalau Mayar macet.
 7. HP (tunggu ~5 detik): banner hilang, 12 video kebuka (baca dulu; selesai tetap berurutan). Affiliate tetap satuan.
-8. Laptop: **Pengaturan bayar** — rekening, harga, slug. **Kurikulum** → Edit materi / + Bagian.
+8. Laptop: **Pengaturan bayar** — kartu Mayar (status, salin webhook, tes invoice Rp10.000), rekening, harga, slug. **Kurikulum** → Edit materi / + Bagian.
 9. Laptop: **Simulasi jam** +1 hari sampai kartu mentee **Akan keluar**, lalu habis → siswa kembali preview video 1.
-10. **Reset** di salah satu perangkat mengosongkan demo di semua perangkat. Autopay kartu = mock (langsung lunas). WA: di localhost seed thread Farah/Irma (kirim tercatat, tidak ke HP); di remote demo, Kirim memakai Fonnte jika device ready.
+10. **Reset** di salah satu perangkat mengosongkan demo di semua perangkat. Tanpa kunci Mayar, autopay kartu tetap mock (langsung lunas). WA: di localhost seed thread Farah/Irma (kirim tercatat, tidak ke HP); di remote demo, Kirim memakai Fonnte jika device ready.
 
-Masih mock: Mayar sungguhan, payment webhook, login, blob video IndexedDB (tautan YouTube/Drive ikut sync).
+Masih mock tanpa kunci Mayar: transfer manual + autopay. Login dan blob video IndexedDB tetap lokal (tautan YouTube/Drive ikut sync).
+
+## Mayar (siap saat kunci datang)
+
+Invoice Headless (~1.5% Starter + biaya channel), bukan produk Kelas Online Mayar (~4%). Anton merchant. LarisID tidak menahan uang. Rekening di Pengaturan tetap untuk transfer manual.
+
+Webhook: `https://mastermind-anton.pages.dev/api/pay/webhook`  
+Event: `payment.received`.
+
+Anton kirim (jangan tempel kunci di LMS):
+
+1. API key Read & Write — sandbox [web.mayar.io/api-keys](https://web.mayar.io/api-keys), lalu live [web.mayar.id/api-keys](https://web.mayar.id/api-keys).
+2. VA + QRIS menyala.
+3. Setelah URL di atas (atau yang di kartu Mayar, termasuk `?secret=` kalau ada) ditempel di Mayar → Integration → Webhook.
+4. Opsional: bank VA default.
+
+Steven:
+
+```bash
+npx wrangler pages secret put MAYAR_API_KEY --project-name=mastermind-anton
+```
+
+`MAYAR_API_BASE` ada di `school/wrangler.toml`, default sandbox `https://api.mayar.io/hl/v2`. Live: ganti ke `https://api.mayar.id/hl/v2`, simpan kunci live, deploy ulang, satu invoice kecil. Opsional: `MAYAR_WEBHOOK_SECRET`, `MAYAR_VA_METHOD`.
 
 ## WhatsApp in the CRM
 

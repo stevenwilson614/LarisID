@@ -307,7 +307,7 @@
     if (colId === 'city') return esc(s.city || '—');
     if (colId === 'stage') return esc(stageLabel(c.stage));
     if (colId === 'bayar') {
-      const ctl = canBill() ? billStatusSelect(s.id, b) : payChip(b.status);
+      const ctl = canBill() ? billStatusSelect(s.id, b) : payChip(b.status, b.source);
       const confirm = confirmPaidBtn(s.id);
       return confirm ? ctl + ' ' + confirm : ctl;
     }
@@ -596,6 +596,8 @@
     pustakaAddOpen: false,
     cariSiswa: '',
     cariOpen: false,
+    tagPickerId: null,
+    tagQuery: '',
     secFold: null,
     wizard: null,
     wizStep: null,
@@ -608,7 +610,8 @@
     present: PRESENT,
     presentPane: PRESENT_PANE,
     presentApplying: false,
-    presentReady: false
+    presentReady: false,
+    mayar: null
   };
   if (PRESENT) document.documentElement.classList.add('present-pane');
 
@@ -2024,7 +2027,9 @@
     b.amount = amount;
     b.paidAt = isoNow();
     b.accessUntil = until.toISOString();
-    b.note = term === 'autopay' ? 'Kartu autopay (mock)' : ('Transfer · ' + termLabel(term));
+    b.note = source === 'mayar'
+      ? ('Mayar · ' + termLabel(term))
+      : (term === 'autopay' ? 'Kartu autopay (mock)' : ('Transfer · ' + termLabel(term)));
     delete b.pendingTerm;
     delete b.pendingAmount;
     delete b.pendingAt;
@@ -2047,6 +2052,56 @@
     pushTimeline(id, 'pay', 'Klaim transfer ' + fmtRp(amount) + ' · menunggu konfirmasi');
     addTask(id, 'Cek transfer ' + nameOf(id), 'Jumlah ' + fmtRp(amount) + ' ke ' + db.bank.bank + ' ' + db.bank.number, isoNow(), 'reminder');
   }
+  function markPendingMayar(id, term, amount, inv) {
+    const b = billingOf(id);
+    b.status = 'pending';
+    b.source = 'mayar';
+    b.pendingTerm = term;
+    b.pendingAmount = amount;
+    b.pendingAt = isoNow();
+    b.amount = amount;
+    b.term = term;
+    b.mayarLink = (inv && inv.link) || '';
+    b.mayarTx = (inv && (inv.transactionId || inv.invoiceId)) || '';
+    b.note = 'Menunggu pembayaran Mayar · ' + termLabel(term);
+    if (!b.plan) b.plan = 'preview';
+    pushTimeline(id, 'pay', 'Invoice Mayar ' + fmtRp(amount) + ' · menunggu');
+  }
+  function mayarReady() {
+    return !!(ui.mayar && ui.mayar.configured);
+  }
+  async function refreshMayarStatus() {
+    const k = syncInvite();
+    if (!k) {
+      ui.mayar = { configured: false, mode: 'unset' };
+      return ui.mayar;
+    }
+    try {
+      const res = await fetch('/api/pay/status?k=' + encodeURIComponent(k) +
+        '&slug=' + encodeURIComponent(schoolSlug()), { cache: 'no-store' });
+      if (!res.ok) {
+        ui.mayar = { configured: false, mode: 'unset' };
+        return ui.mayar;
+      }
+      ui.mayar = await res.json();
+      return ui.mayar;
+    } catch (err) {
+      ui.mayar = { configured: false, mode: 'unset' };
+      return ui.mayar;
+    }
+  }
+  async function requestMayarInvoice(opts) {
+    const k = syncInvite();
+    const res = await fetch('/api/pay/invoice?k=' + encodeURIComponent(k) +
+      '&slug=' + encodeURIComponent(schoolSlug()), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(Object.assign({ slug: schoolSlug() }, opts || {})),
+      cache: 'no-store'
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, data: data };
+  }
   function closeTransferTasks(id, taskId) {
     db.tasks.forEach((t) => {
       if (t.done) return;
@@ -2063,7 +2118,9 @@
   }
   function confirmPaidBtn(id) {
     if (!canBill() || !isPending(id)) return '';
-    return '<button type="button" class="btn-sm" data-act="confirm-paid" data-id="' + esc(id) + '">Konfirmasi lunas</button>';
+    const src = billingOf(id).source;
+    const label = src === 'mayar' ? 'Konfirmasi manual' : 'Konfirmasi lunas';
+    return '<button type="button" class="btn-sm" data-act="confirm-paid" data-id="' + esc(id) + '">' + label + '</button>';
   }
   function startTrial(id) {
     const b = billingOf(id);
@@ -2404,11 +2461,12 @@
     }).catch(() => toast('Gagal simpan file.'));
   }
 
-  function payChip(st) {
-    const label = {
+  function payChip(st, source) {
+    let label = {
       lunas: 'Lunas', cicilan: 'Cicilan', belum: 'Belum bayar', gratis: 'Beasiswa',
       trial: 'Trial', pending: 'Cek transfer'
     }[st] || st;
+    if (st === 'pending' && source === 'mayar') label = 'Menunggu Mayar';
     const cls = st === 'trial' ? 'warn' : st;
     return '<span class="chip ' + esc(cls) + '">' + esc(label) + '</span>';
   }
@@ -2681,6 +2739,8 @@
     ui.personId = id;
     ui.hubBack = ui.siswaView || 'pipa';
     ui.mentorTab = 'orang';
+    ui.tagPickerId = null;
+    ui.tagQuery = '';
     render();
     const s = people().find((x) => x.id === id);
     if (s && s.tiktok && !s.photoBlob) {
@@ -2691,7 +2751,102 @@
     ui.personId = null;
     ui.mentorTab = 'siswa';
     ui.siswaView = ui.hubBack || ui.siswaView || 'pipa';
+    ui.tagPickerId = null;
+    ui.tagQuery = '';
     render();
+  }
+  function allKnownTags() {
+    const seen = new Map();
+    people().forEach((s) => {
+      (s.tags || []).forEach((t) => {
+        const raw = String(t || '').trim();
+        if (!raw) return;
+        const key = raw.toLowerCase();
+        if (!seen.has(key)) seen.set(key, raw);
+      });
+    });
+    return Array.from(seen.values()).sort((a, b) => a.localeCompare(b, 'id'));
+  }
+  function normalizeTag(t) {
+    return String(t || '').trim().replace(/\s+/g, ' ');
+  }
+  function resolveTagLabel(tag) {
+    const raw = normalizeTag(tag);
+    if (!raw) return '';
+    const known = allKnownTags().find((t) => t.toLowerCase() === raw.toLowerCase());
+    return known || raw;
+  }
+  function addPersonTag(id, tag) {
+    const raw = resolveTagLabel(tag);
+    if (!raw) return false;
+    const s = people().find((x) => x.id === id);
+    const tags = ((s && s.tags) || []).filter(Boolean).slice();
+    if (tags.some((t) => t.toLowerCase() === raw.toLowerCase())) return false;
+    tags.push(raw);
+    patchPerson(id, { tags });
+    save();
+    return true;
+  }
+  function removePersonTag(id, tag) {
+    const key = normalizeTag(tag).toLowerCase();
+    const s = people().find((x) => x.id === id);
+    const tags = ((s && s.tags) || []).filter((t) => String(t).toLowerCase() !== key);
+    patchPerson(id, { tags });
+    save();
+  }
+  function tagPickerListHtml(id) {
+    const s = people().find((x) => x.id === id);
+    const owned = new Set(((s && s.tags) || []).map((t) => String(t).toLowerCase()));
+    const q = normalizeTag(ui.tagQuery);
+    const qLower = q.toLowerCase();
+    const suggestions = allKnownTags().filter((t) => {
+      if (owned.has(t.toLowerCase())) return false;
+      if (!qLower) return true;
+      return t.toLowerCase().indexOf(qLower) >= 0;
+    });
+    const exactKnown = allKnownTags().some((t) => t.toLowerCase() === qLower);
+    const canCreate = !!q && !owned.has(qLower) && !exactKnown;
+    const opts = suggestions.map((t) =>
+      '<button type="button" class="tag-picker-opt" data-act="tag-add" data-id="' + esc(id) + '" data-tag="' + esc(t) + '">' +
+        '<span class="tag-chip">' + esc(t) + '</span><span class="muted">pakai</span></button>'
+    ).join('');
+    const create = canCreate
+      ? '<button type="button" class="tag-picker-opt is-create" data-act="tag-add" data-id="' + esc(id) + '" data-tag="' + esc(q) + '">' +
+          '<span class="tag-chip tag-chip-new">+ ' + esc(q) + '</span><span class="muted">tag baru</span></button>'
+      : '';
+    const empty = !opts && !create
+      ? '<p class="muted tag-picker-empty">' +
+          (q ? 'Tidak ada tag yang cocok.' : 'Belum ada tag lain. Ketik nama lalu Enter.') +
+        '</p>'
+      : '';
+    return opts + create + empty;
+  }
+  function personTagsHtml(id) {
+    const s = people().find((x) => x.id === id);
+    const tags = ((s && s.tags) || []).filter(Boolean);
+    const open = ui.tagPickerId === id;
+    return '<dd class="fub-tags" id="fub-tags">' +
+      tags.map((t) =>
+        '<span class="tag-chip has-x">' + esc(t) +
+          '<button type="button" class="tag-x" data-act="tag-remove" data-id="' + esc(id) +
+            '" data-tag="' + esc(t) + '" aria-label="Hapus tag ' + esc(t) + '">×</button></span>'
+      ).join('') +
+      '<button type="button" class="tag-add-btn' + (open ? ' is-open' : '') +
+        '" data-act="tag-toggle" data-id="' + esc(id) + '" aria-expanded="' + open +
+        '" title="Tambah tag" aria-label="Tambah tag">+</button>' +
+      (open
+        ? '<div class="tag-picker" id="tag-picker">' +
+            '<input class="tag-picker-in" data-act="tag-query" data-id="' + esc(id) +
+              '" value="' + esc(ui.tagQuery || '') + '" placeholder="Cari tag atau buat baru…" autocomplete="off">' +
+            '<div class="tag-picker-list" id="tag-picker-list">' + tagPickerListHtml(id) + '</div>' +
+          '</div>'
+        : '') +
+    '</dd>';
+  }
+  function paintTagPickerList() {
+    const list = document.getElementById('tag-picker-list');
+    if (!list || !ui.tagPickerId) return;
+    list.innerHTML = tagPickerListHtml(ui.tagPickerId);
   }
 
   /* ── Kolab (per-student) ─────────────────────────────────────────── */
@@ -3214,6 +3369,16 @@
   /* ── student views ───────────────────────────────────────────────── */
   function pendingBanner(sid) {
     const b = billingOf(sid);
+    if (b.source === 'mayar') {
+      return '<section class="card trial-cta pending-cta">' +
+        '<p class="trial-kicker">Menunggu pembayaran Mayar</p>' +
+        '<h3>' + fmtRp(b.pendingAmount || b.amount || 0) + ' · ' + esc(termLabel(b.pendingTerm || b.term)) + '</h3>' +
+        '<p class="muted">Akses mentoring kebuka otomatis setelah pembayaran masuk. Video 1 tetap kebuka.</p>' +
+        (b.mayarLink
+          ? '<div class="row" style="margin-top:10px"><a class="btn" href="' + esc(b.mayarLink) + '" target="_blank" rel="noopener">Buka halaman bayar</a></div>'
+          : '') +
+        '</section>';
+    }
     return '<section class="card trial-cta pending-cta">' +
       '<p class="trial-kicker">Menunggu konfirmasi Anton</p>' +
       '<h3>Transfer ' + fmtRp(b.pendingAmount || b.amount || 0) + ' sudah dicatat</h3>' +
@@ -3368,6 +3533,19 @@
   function viewPayPage(sid) {
     const b = billingOf(sid);
     if (b.status === 'pending') {
+      if (b.source === 'mayar') {
+        return obWrap(WIZ_PAY,
+          '<p class="ob-kicker">Mayar</p>' +
+          '<h1 class="ob-q">Menunggu pembayaran</h1>' +
+          '<p class="ob-sub">Invoice ' + fmtRp(b.pendingAmount || b.amount || 0) +
+          ' (' + esc(termLabel(b.pendingTerm || b.term)) +
+          '). Akses mentoring kebuka otomatis setelah pembayaran masuk. Video 1 tetap kebuka.</p>',
+          (b.mayarLink
+            ? '<a class="btn ob-cta" href="' + esc(b.mayarLink) + '" target="_blank" rel="noopener">Buka halaman bayar</a>'
+            : '') +
+          '<button class="btn secondary ob-cta" data-act="tab" data-id="home">Kembali ke Home</button>',
+          true);
+      }
       return obWrap(WIZ_PAY,
         '<p class="ob-kicker">Transfer</p>' +
         '<h1 class="ob-q">Menunggu konfirmasi Anton</h1>' +
@@ -3401,7 +3579,9 @@
         : '');
     const inner = '<p class="ob-kicker">Paket</p>' +
       '<h1 class="ob-q">Yang kamu dapat</h1>' +
-      '<p class="ob-sub">Bayar ke rekening Anton. LarisID tidak menahan uang. Tidak ada sisa kursi.</p>' +
+      '<p class="ob-sub">' + (mayarReady()
+        ? 'Bayar di Mayar (VA atau QRIS). Anton merchant. LarisID tidak menahan uang.'
+        : 'Bayar ke rekening Anton. LarisID tidak menahan uang. Tidak ada sisa kursi.') + '</p>' +
       include +
       '<p class="ob-note">' + (inWin
         ? 'Harga perkenalan 24 jam untuk 1 bulan &amp; autopay · sisa <strong>' + esc(fmtRemain(exp)) + '</strong>. 3 &amp; 6 bulan sudah diskon program, tidak ditumpuk.'
@@ -3413,26 +3593,45 @@
         termCard('autopay', term, inWin && welcome) +
       '</div>' +
       '<div class="ob-bank">' +
-        '<div class="ob-pay-ways">' +
-          '<div class="ob-qris" aria-label="Contoh QRIS">' +
-            qrisPlaceholderSvg() +
-            '<span class="ob-qris-badge">QRIS · contoh</span>' +
-            '<span class="ob-qris-nm">' + esc(db.bank.name) + '</span>' +
-            '<span class="muted">Placeholder — bukan kode bayar sungguhan</span>' +
-          '</div>' +
-          '<div class="ob-tf">' +
-            '<p class="ob-tf-kicker">Atau transfer bank</p>' +
-            '<p><strong>' + esc(db.bank.bank) + '</strong> ' + esc(db.bank.number) + '<br>a.n. ' + esc(db.bank.name) + '</p>' +
-            '<p class="muted">Jumlah sekarang: <strong>' + fmtRp(price) + '</strong>' +
-            (price < list ? ' <span class="price-coret">' + fmtRp(list) + '</span>' : '') +
-            ' · ' + esc(termLabel(term)) + '</p>' +
-            '<p class="muted">Kartu autopay = mock Mayar. Prototype tidak menagih sungguhan.</p>' +
-          '</div>' +
-        '</div>' +
+        (mayarReady()
+          ? '<div class="ob-tf">' +
+              '<p class="ob-tf-kicker">Bayar lewat Mayar</p>' +
+              '<p class="muted">VA atau QRIS di halaman Mayar. Akses kebuka otomatis setelah pembayaran masuk. Anton merchant — LarisID tidak menahan uang.</p>' +
+              '<p class="muted">Jumlah sekarang: <strong>' + fmtRp(price) + '</strong>' +
+              (price < list ? ' <span class="price-coret">' + fmtRp(list) + '</span>' : '') +
+              ' · ' + esc(termLabel(term)) + '</p>' +
+              (b.mayarLink && b.source === 'mayar' && b.status === 'pending'
+                ? '<p><a class="btn" href="' + esc(b.mayarLink) + '" target="_blank" rel="noopener">Buka halaman bayar</a></p>'
+                : '') +
+            '</div>'
+          : '<div class="ob-pay-ways">' +
+              '<div class="ob-qris" aria-label="Contoh QRIS">' +
+                qrisPlaceholderSvg() +
+                '<span class="ob-qris-badge">QRIS · contoh</span>' +
+                '<span class="ob-qris-nm">' + esc(db.bank.name) + '</span>' +
+                '<span class="muted">Mayar belum dikonfigurasi — ini bukan kode bayar</span>' +
+              '</div>' +
+              '<div class="ob-tf">' +
+                '<p class="ob-tf-kicker">Transfer manual</p>' +
+                '<p><strong>' + esc(db.bank.bank) + '</strong> ' + esc(db.bank.number) + '<br>a.n. ' + esc(db.bank.name) + '</p>' +
+                '<p class="muted">Jumlah sekarang: <strong>' + fmtRp(price) + '</strong>' +
+                (price < list ? ' <span class="price-coret">' + fmtRp(list) + '</span>' : '') +
+                ' · ' + esc(termLabel(term)) + '</p>' +
+                '<p class="muted">Tanpa kunci Mayar, kartu autopay tetap mock.</p>' +
+              '</div>' +
+            '</div>') +
+        (mayarReady()
+          ? '<details class="ob-manual"><summary>Sudah transfer ke rekening Anton</summary>' +
+              '<p><strong>' + esc(db.bank.bank) + '</strong> ' + esc(db.bank.number) + '<br>a.n. ' + esc(db.bank.name) + '</p>' +
+              '<p class="muted">Anton menandai lunas di CRM. Bukan webhook.</p></details>'
+          : '') +
       '</div>';
     const foot =
-      '<button class="btn ob-cta" data-act="pay-now" data-term="' + esc(term) + '">' +
-      (term === 'autopay' ? 'Bayar kartu (mock)' : 'Saya sudah transfer / scan') + '</button>' +
+      (mayarReady()
+        ? '<button class="btn ob-cta" data-act="pay-mayar" data-term="' + esc(term) + '">Bayar sekarang</button>' +
+          '<button type="button" class="btn secondary ob-cta" data-act="pay-manual" data-term="' + esc(term) + '">Saya sudah transfer</button>'
+        : '<button class="btn ob-cta" data-act="pay-now" data-term="' + esc(term) + '">' +
+          (term === 'autopay' ? 'Bayar kartu (mock)' : 'Saya sudah transfer / scan') + '</button>') +
       '<button type="button" class="btn secondary ob-cta" data-act="pay-later">Bayar nanti, lihat dulu</button>' +
       '<p class="ob-look-hint">Form sudah masuk — tab <strong>Belajar</strong> &amp; <strong>Diskusi</strong> di bawah. Video 1 kebuka; sisanya blur sampai lunas.</p>' +
       '<button type="button" class="ob-text" data-act="not-interested">Tidak tertarik</button>';
@@ -3525,7 +3724,7 @@
         '<section class="card">' +
           '<h2>Pengumuman</h2>' +
           (ann ? '<p><strong>' + esc(ann.title) + '</strong></p><p class="muted">' + esc(ann.body) + '</p>' : '<p class="muted">Tidak ada.</p>') +
-          '<div style="margin-top:12px">' + payChip(bill.status) +
+          '<div style="margin-top:12px">' + payChip(bill.status, bill.source) +
             '<span class="muted"> · ' + esc(bill.plan || crmOf(s.id).stage) +
             (bill.accessUntil ? ' · sampai ' + fmtWhen(bill.accessUntil) : '') +
             (bill.note ? ' · ' + esc(bill.note) : '') + '</span></div>' +
@@ -3560,7 +3759,7 @@
           '<a class="wa" href="' + esc(waLink(SEED.staff[0].wa, 'Halo Anton, mau ikut mentoring. Saya sudah cek lynk.id/obrolan.marketing')) + '" target="_blank" rel="noopener">Chat Anton di WA</a>' +
           '<a class="btn secondary" href="' + esc(SEED.school.lynk) + '" target="_blank" rel="noopener">Buka lynk.id</a>' +
         '</div>' +
-        '<p class="muted" style="margin-top:10px">' + payChip(b.status) +
+        '<p class="muted" style="margin-top:10px">' + payChip(b.status, b.source) +
           (b.note ? ' · ' + esc(b.note) : ' · belum mentoring') + '</p>' +
         '<div class="row" style="margin-top:10px">' +
           '<button class="btn" data-act="tab" data-id="daftar">Isi form mentoring</button>' +
@@ -4017,6 +4216,24 @@
   function nameOf(id) {
     return (people().find((s) => s.id === id) || SEED.staff.find((s) => s.id === id) || { name: id }).name;
   }
+  /** Anton + anyone in the Mentor pipeline column (for Assigned). */
+  function assignableMentors(forId) {
+    const seen = new Set();
+    const list = [];
+    function add(id, name) {
+      if (!id || seen.has(id) || id === forId) return;
+      seen.add(id);
+      list.push({ id, name: name || nameOf(id) || id });
+    }
+    add('u-anton', 'Anton');
+    people().forEach((s) => {
+      if (s.kind === 'mentor' || crmOf(s.id).stage === 'mentor') add(s.id, s.name);
+    });
+    const cur = people().find((x) => x.id === forId);
+    const mid = (cur && cur.mentorId) || 'u-anton';
+    if (!seen.has(mid)) add(mid, nameOf(mid));
+    return list;
+  }
 
   function skuPriceHtml(p) {
     const list = Number(p.price) || 0;
@@ -4451,7 +4668,7 @@
               ? 'Video 1 selesai. Modul lain masih blur sampai lunas.'
               : 'Belum selesai video 1 — nonton ≥85% di tab Belajar.') +
           '</p>' +
-          '<p>Bayar: ' + payChip(bill.status) +
+          '<p>Bayar: ' + payChip(bill.status, bill.source) +
             ' <span class="muted">' + esc(bill.note || bill.plan || crmOf(sid).stage) + '</span></p>' +
           (owned.length
             ? '<p class="muted" style="margin-top:8px">Alat punya: ' +
@@ -4477,7 +4694,7 @@
         '<h2>Status</h2>' +
         '<p>Kurikulum: <strong>' + p.n + ' / ' + p.total + '</strong> · ' + p.pct + '%</p>' +
         '<p>Hadir: <strong>' + hadir + '%</strong></p>' +
-        '<p>Bayar: ' + payChip(bill.status) + ' <span class="muted">' + esc(bill.note || bill.plan || '') +
+        '<p>Bayar: ' + payChip(bill.status, bill.source) + ' <span class="muted">' + esc(bill.note || bill.plan || '') +
         (bill.accessUntil ? ' · sampai ' + fmtWhen(bill.accessUntil) : '') + '</span></p>' +
         '<h3 style="margin-top:16px">Lencana (kejadian nyata)</h3>' +
         '<p class="muted">' +
@@ -4532,7 +4749,7 @@
       '<div class="quota"><div><div class="bar"><span style="width:' + Math.min(100, (k.used / q.weekly) * 100) + '%"></span></div>' +
       '<p class="muted">Kuota unconnected minggu ini: ' + k.used + ' / ' + q.weekly + ' terpakai · sisa ' + left +
       ' · cap harian ' + q.dailyCap + ' · batch ' + q.batch + '</p></div>' +
-      '<div>' + payChip(billingOf(sid).status) + ' <span class="muted">' + esc(nameOf(sid)) + '</span></div></div>' +
+      '<div>' + payChip(billingOf(sid).status, billingOf(sid).source) + ' <span class="muted">' + esc(nameOf(sid)) + '</span></div></div>' +
       '<p style="margin-top:8px"><strong>SKU:</strong> ' + esc(SEED.product.name) +
       ' · modal contoh ' + fmtRp(SEED.product.modal) +
       ' · tawaran awal ' + SEED.product.suggestedCommission + '% (dari ekonomi produk, bukan biaya LarisID)</p>' +
@@ -4710,7 +4927,7 @@
             '<div class="roster-name">' + avatarHtml(s, 'avatar sm') + '<strong>' + esc(s.name) + '</strong>' + waUnreadBadge(s.id) + '</div>' +
             '<div class="muted">' + esc(s.city) + (s.mentorId && s.mentorId !== 'u-anton' ? ' · ' + esc(nameOf(s.mentorId)) : '') + '</div>' +
             (b.amount ? '<div class="money">' + esc(fmtRp(b.amount)) + '</div>' : '') +
-            '<div>' + payChip(b.status) + ' <span class="muted">' + esc(fmtRemain(
+            '<div>' + payChip(b.status, b.source) + ' <span class="muted">' + esc(fmtRemain(
               (b.status === 'lunas' || b.status === 'cicilan' || b.status === 'gratis')
                 ? b.accessUntil
                 : (b.offerExpiresAt || b.accessUntil)
@@ -4926,7 +5143,7 @@
       '<h3>Murid langsung Anton · ' + antonKids.length + '</h3>' +
       '<table class="table"><thead><tr><th>Nama</th><th>Stage</th><th>Bayar</th></tr></thead><tbody>' +
       antonKids.map((s) => '<tr><td><button class="btn-sm" data-act="open-student" data-id="' + esc(s.id) + '">' + esc(s.name) + '</button></td>' +
-        '<td>' + esc(stageLabel(crmOf(s.id).stage)) + '</td><td>' + payChip(billingOf(s.id).status) + '</td></tr>').join('') +
+        '<td>' + esc(stageLabel(crmOf(s.id).stage)) + '</td><td>' + payChip(billingOf(s.id).status, billingOf(s.id).source) + '</td></tr>').join('') +
       '</tbody></table></section>';
     html += '<section class="card" style="margin-top:12px"><h3>Mentor yang Anton bimbing</h3>';
     mentors.forEach((m) => {
@@ -4998,8 +5215,25 @@
         '<label class="muted">Nomor</label><input name="number" value="' + esc(b.number) + '">' +
         '<label class="muted">Atas nama</label><input name="name" value="' + esc(b.name) + '">' +
         '<button class="btn" type="submit">Simpan rekening</button></form>' +
-      '<p class="muted">Siswa menyalin ini di halaman bayar. Anton menandai lunas di baris siswa / profil.</p>' +
-      '</section></div>';
+      '<p class="muted">Siswa menyalin ini kalau transfer manual. Anton menandai lunas di baris siswa / profil.</p>' +
+      '</section></div>' + mayarSettingsHtml();
+  }
+  function mayarSettingsHtml() {
+    const m = ui.mayar || {};
+    const label = !m.configured ? 'Belum dikonfigurasi' : (m.mode === 'live' ? 'Live' : (m.mode === 'sandbox' ? 'Sandbox' : (m.mode || 'custom')));
+    const hook = m.webhookUrl || (location.origin + '/api/pay/webhook');
+    return '<section class="card" style="margin-top:12px"><h2>Mayar</h2>' +
+      '<p>Status: <strong>' + esc(label) + '</strong></p>' +
+      (m.lastWebhookAt
+        ? '<p class="muted">Webhook terakhir ' + esc(fmtWhen(m.lastWebhookAt)) +
+          (m.lastEvent ? ' · ' + esc(m.lastEvent) : '') + '</p>'
+        : '<p class="muted">Belum ada webhook.</p>') +
+      '<p class="muted">Kunci API ada di Cloudflare (bukan di form ini). Invoice Headless, bukan produk Kelas Online Mayar.</p>' +
+      '<p><code>' + esc(hook) + '</code> ' +
+        '<button type="button" class="btn-sm" data-act="copy-url" data-url="' + esc(hook) + '">Salin webhook</button></p>' +
+      '<button type="button" class="btn" data-act="mayar-test"' + (m.configured ? '' : ' disabled') + '>Tes invoice Rp10.000</button>' +
+      '<p class="muted">Tes tidak membuka akses kelas. Rekening di atas tetap untuk transfer manual.</p>' +
+      '</section>';
   }
   function viewPerson(id) {
     const s = people().find((x) => x.id === id);
@@ -5014,7 +5248,6 @@
     const openTasks = tsk.filter((t) => !t.done).length;
     const prog = kurProgress(id);
     const mode = ui.composeMode || 'note';
-    const tags = (s.tags || []).filter(Boolean);
     const feed = personFeed(id);
     const left =
       '<aside class="fub-left">' +
@@ -5029,17 +5262,17 @@
         '<div class="fub-contact">' +
           '<div class="fub-contact-row">' +
             '<span class="fub-ico" aria-hidden="true">☎</span>' +
-            '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="wa" value="' + esc(s.wa || '') + '" placeholder="62812…">' +
+            '<input class="inline-edit ghost-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="wa" value="' + esc(s.wa || '') + '" placeholder="62812…" title="Klik untuk edit WA">' +
             (s.wa ? '<a class="fub-cell-link" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari MasterMind with Anton GC.')) + '" target="_blank" rel="noopener">WA</a>' : '') +
           '</div>' +
           '<div class="fub-contact-row">' +
             '<span class="fub-ico" aria-hidden="true">✉</span>' +
-            '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="email" type="email" value="' + esc(s.email || '') + '" placeholder="email">' +
+            '<input class="inline-edit ghost-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="email" type="email" value="' + esc(s.email || '') + '" placeholder="email" title="Klik untuk edit email">' +
             (s.email ? '<a class="fub-cell-link" href="' + esc(mailLink(s.email, 'MasterMind with Anton GC', 'Halo ' + s.name)) + '">✉</a>' : '') +
           '</div>' +
           '<div class="fub-contact-row">' +
             '<span class="fub-ico" aria-hidden="true">♪</span>' +
-            '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="tiktok" value="' + esc(s.tiktok || '') + '" placeholder="handle TikTok">' +
+            '<input class="inline-edit ghost-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="tiktok" value="' + esc(s.tiktok || '') + '" placeholder="@handle TikTok" title="Klik untuk edit TikTok">' +
             (handle ? '<a class="fub-cell-link" href="' + esc(tiktokUrl(handle)) + '" target="_blank" rel="noopener">@</a>' : '') +
           '</div>' +
         '</div>' +
@@ -5047,12 +5280,12 @@
           '<div class="fub-field"><dt>Stage</dt><dd><select data-act="crm-stage" data-id="' + esc(id) + '">' +
             stages.map((st) => '<option value="' + esc(st.id) + '"' + (c.stage === st.id ? ' selected' : '') + '>' + esc(st.label) + '</option>').join('') +
           '</select></dd></div>' +
-          '<div class="fub-field"><dt>Assigned</dt><dd>' + esc(s.mentorId ? nameOf(s.mentorId) : 'Anton') + '</dd></div>' +
-          '<div class="fub-field"><dt>Tags</dt><dd class="fub-tags">' +
-            tags.map((t) => '<span class="tag-chip">' + esc(t) + '</span>').join('') +
-            '<input class="inline-edit tag-in" data-act="person-field" data-id="' + esc(id) + '" data-k="tags" value="' +
-              esc(tags.join(', ')) + '" placeholder="+ tag">' +
-          '</dd></div>' +
+          '<div class="fub-field"><dt>Assigned</dt><dd><select data-act="assign-mentor" data-id="' + esc(id) + '" aria-label="Assigned">' +
+            assignableMentors(id).map((m) =>
+              '<option value="' + esc(m.id) + '"' + (((s.mentorId || 'u-anton') === m.id) ? ' selected' : '') + '>' + esc(m.name) + '</option>'
+            ).join('') +
+          '</select></dd></div>' +
+          '<div class="fub-field"><dt>Tags</dt>' + personTagsHtml(id) + '</div>' +
           '<div class="fub-field"><dt>Sumber</dt><dd>' + esc((app && app.heard) || b.source || '—') +
             (app ? '<div class="muted">' + (app.hasShop ? 'Sudah punya toko' : 'Belum punya toko') + '</div>' : '') +
           '</dd></div>' +
@@ -5063,7 +5296,7 @@
               esc(s.shopUrl || (app && app.shopUrl) || '') + '" placeholder="https://…">' +
           '</dd></div>' +
           '<div class="fub-field"><dt>Bayar</dt><dd>' +
-            (canBill() ? billStatusSelect(id, b) : payChip(b.status)) +
+            (canBill() ? billStatusSelect(id, b) : payChip(b.status, b.source)) +
             (confirmPaidBtn(id) ? '<div style="margin-top:6px">' + confirmPaidBtn(id) + '</div>' : '') +
             '<div class="muted" style="margin-top:6px">' + esc(termLabel(b.pendingTerm || b.term)) + '</div>' +
             (canBill() ? '<div style="margin-top:6px">' + billAmountInput(id, b) + '</div>' : '<div class="money">' + esc(fmtRp(b.amount || 0)) + '</div>') +
@@ -5170,7 +5403,7 @@
       '<div class="fub-page-bar">' +
         '<button class="btn secondary" data-act="close-person">← Orang</button>' +
         '<strong>' + esc(s.name) + '</strong>' +
-        payChip(b.status) +
+        payChip(b.status, b.source) +
         confirmPaidBtn(id) +
         '<span class="chip">' + esc(stageLabel(c.stage)) + '</span>' +
       '</div>' +
@@ -5820,6 +6053,14 @@
       render();
       return;
     }
+    if (t.matches('[data-act="assign-mentor"]')) {
+      const id = t.getAttribute('data-id');
+      const mentorId = t.value || 'u-anton';
+      patchPerson(id, { mentorId });
+      save();
+      render();
+      return;
+    }
     if (t.matches('[data-act="filter-siswa"]')) {
       ui.filterSiswa = t.value;
       render();
@@ -5870,7 +6111,7 @@
           b.pendingAmount = b.pendingAmount || b.amount || 0;
           b.pendingAt = b.pendingAt || isoNow();
           if (b.plan === 'mentoring') b.plan = 'preview';
-          b.note = 'Menunggu konfirmasi Anton';
+          if (b.source !== 'mayar') b.note = 'Menunggu konfirmasi Anton';
         }
       }
       save();
@@ -5996,13 +6237,9 @@
       if (k === 'wa') val = String(val).replace(/\D/g, '');
       if (k === 'tiktok') val = tiktokHandle(val);
       if (k === 'email') val = String(val).trim();
-      if (k === 'tags') {
-        patchPerson(id, { tags: String(val).split(',').map((s) => s.trim()).filter(Boolean) });
-      } else {
-        const fields = {};
-        fields[k] = val;
-        patchPerson(id, fields);
-      }
+      const fields = {};
+      fields[k] = val;
+      patchPerson(id, fields);
       save();
       if (k === 'tiktok') {
         refreshPersonPhoto(id, true).then((ok) => {
@@ -6157,6 +6394,11 @@
       paintCariDrop();
       return;
     }
+    if (t.matches('[data-act="tag-query"]')) {
+      ui.tagQuery = t.value;
+      paintTagPickerList();
+      return;
+    }
     if (t.matches('[data-act="daftar-custom-val"]')) {
       setPersonCustomVal(t.getAttribute('data-id'), t.getAttribute('data-col'), t.value);
       save();
@@ -6207,12 +6449,33 @@
       paintCariDrop();
     }
   });
+  document.addEventListener('keydown', (e) => {
+    if (!e.target.matches('[data-act="tag-query"]')) return;
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const id = e.target.getAttribute('data-id') || ui.tagPickerId;
+    const q = normalizeTag(e.target.value || ui.tagQuery);
+    if (!id || !q) return;
+    if (addPersonTag(id, q)) {
+      ui.tagQuery = '';
+      render();
+      requestAnimationFrame(() => {
+        const inp = document.querySelector('[data-act="tag-query"]');
+        if (inp) inp.focus();
+      });
+    }
+  });
   document.addEventListener('click', (e) => {
     if (!e.target.closest('#topbar-search')) {
       if (ui.cariOpen) {
         ui.cariOpen = false;
         paintCariDrop();
       }
+    }
+    if (ui.tagPickerId && !e.target.closest('#fub-tags')) {
+      ui.tagPickerId = null;
+      ui.tagQuery = '';
+      render();
     }
     if (ui.daftarColsOpen && !e.target.closest('#daftar-cols-wrap')) {
       ui.daftarColsOpen = false;
@@ -6241,7 +6504,43 @@
         act === 'cover-file' || act === 'res-file' || act === 'photo-file' || act === 'lec-body' || act === 'res-name' || act === 'res-url' ||
         act === 'person-field' || act === 'bill-amount' || act === 'sec-due' || act === 'kur-preview-person' ||
         act === 'has-shop' || act === 'heard-from' || act === 'apply' || act === 'cari-siswa' ||
-        act === 'daftar-custom-val') {
+        act === 'daftar-custom-val' || act === 'tag-query' || act === 'crm-stage' || act === 'assign-mentor') {
+      return;
+    }
+    if (act === 'tag-toggle') {
+      const id = btn.getAttribute('data-id');
+      if (ui.tagPickerId === id) {
+        ui.tagPickerId = null;
+        ui.tagQuery = '';
+      } else {
+        ui.tagPickerId = id;
+        ui.tagQuery = '';
+      }
+      render();
+      if (ui.tagPickerId) {
+        requestAnimationFrame(() => {
+          const inp = document.querySelector('[data-act="tag-query"]');
+          if (inp) inp.focus();
+        });
+      }
+      return;
+    }
+    if (act === 'tag-add') {
+      const id = btn.getAttribute('data-id');
+      const tag = btn.getAttribute('data-tag');
+      if (addPersonTag(id, tag)) {
+        ui.tagQuery = '';
+        render();
+        requestAnimationFrame(() => {
+          const inp = document.querySelector('[data-act="tag-query"]');
+          if (inp) inp.focus();
+        });
+      }
+      return;
+    }
+    if (act === 'tag-remove') {
+      removePersonTag(btn.getAttribute('data-id'), btn.getAttribute('data-tag'));
+      render();
       return;
     }
     if (act === 'wiz-next') {
@@ -6278,6 +6577,7 @@
         if (id !== 'orang') ui.personId = null;
         if (id === 'kurikulum') ui.kurEdit = false;
         if (id === 'pustaka') ui.pustakaAddOpen = false;
+        if (id === 'harga') refreshMayarStatus().then(() => { if (ui.mentorTab === 'harga') render(); });
       } else {
         ui.tab = id;
         if (id === 'alat') { ui.skuId = null; ui.skuPreview = false; }
@@ -6799,7 +7099,7 @@
       ui.tab = 'belajar';
       toast('Trial: video 1 kebuka. Diskon 24 jam dari jam form.');
       render();
-    } else if (act === 'pay-now') {
+    } else if (act === 'pay-manual' || act === 'pay-now') {
       if (!ensureApplication()) {
         toast('Isi form dulu.');
         ui.wizStep = 0;
@@ -6811,9 +7111,12 @@
       const term = btn.getAttribute('data-term') || ui.payTerm || 'month';
       const welcome = welcomeOpen(ui.personaId) || hoursLeft(billingOf(ui.personaId).offerExpiresAt) > 0;
       const amount = priceForTerm(term, welcome);
-      if (term === 'autopay') {
-        grantMentoring(ui.personaId, term, 'mayar', amount);
+      if (act === 'pay-now' && term === 'autopay' && !mayarReady()) {
+        grantMentoring(ui.personaId, term, 'mock', amount);
         toast('Autopay mock · akses kebuka');
+      } else if (act === 'pay-now' && mayarReady()) {
+        toast('Pakai Bayar sekarang.');
+        return;
       } else {
         markPendingTransfer(ui.personaId, term, amount);
         toast('Tercatat. Akses kebuka setelah Anton konfirmasi.');
@@ -6821,6 +7124,54 @@
       save();
       ui.tab = 'home';
       render();
+    } else if (act === 'pay-mayar' || act === 'mayar-test') {
+      const test = act === 'mayar-test';
+      if (test && !canBill()) return;
+      if (!test && !ensureApplication()) {
+        toast('Isi form dulu.');
+        ui.wizStep = 0;
+        ui.wizFocusedStep = null;
+        ui.tab = 'daftar';
+        render();
+        return;
+      }
+      const term = btn.getAttribute('data-term') || ui.payTerm || 'month';
+      const welcome = !test && (welcomeOpen(ui.personaId) || hoursLeft(billingOf(ui.personaId).offerExpiresAt) > 0);
+      const amount = test ? 10000 : priceForTerm(term, welcome);
+      const who = test ? null : student();
+      btn.disabled = true;
+      requestMayarInvoice({
+        test: test,
+        personId: test ? 'mayar-test' : ui.personaId,
+        term: test ? 'month' : term,
+        amount: amount,
+        name: test ? 'Tes Mayar' : (who && who.name),
+        email: test ? 'tes.mayar@obrolan.marketing' : (who && who.email),
+        mobile: test ? '080000000000' : (who && who.wa)
+      }).then((res) => {
+        const data = res.data || {};
+        if (!res.ok || !data.link) {
+          const msg = data.message || data.error || 'Mayar gagal';
+          toast(msg === 'not_configured' ? 'Mayar belum dikonfigurasi.' : String(msg));
+          render();
+          return;
+        }
+        if (test) {
+          window.open(data.link, '_blank', 'noopener');
+          toast('Invoice tes terbuka. Tidak mengubah akses kelas.');
+          refreshMayarStatus().then(() => { if (ui.mentorTab === 'harga') render(); });
+          return;
+        }
+        markPendingMayar(ui.personaId, term, amount, data);
+        save();
+        window.open(data.link, '_blank', 'noopener');
+        toast('Halaman Mayar terbuka. Akses kebuka setelah pembayaran masuk.');
+        ui.tab = 'home';
+        render();
+      }).catch(() => {
+        toast('Mayar tidak terjangkau.');
+        render();
+      });
     } else if (act === 'confirm-paid') {
       const id = btn.getAttribute('data-id');
       if (!id || !canBill()) return;
@@ -7278,6 +7629,11 @@
 
   render();
   bootSync();
+  refreshMayarStatus().then(() => {
+    if (!mayarReady()) return;
+    if (isStaff() && ui.mentorTab === 'harga') render();
+    else if (!isStaff() && (ui.tab === 'daftar' || ui.tab === 'home')) render();
+  });
   if (isStaff()) {
     refreshWaStatus().then(() => {
       pullWaInbox();

@@ -8,17 +8,48 @@ Dual-view (localhost): http://127.0.0.1:8765/school/present.html
 
 This extends [README.md](./README.md).
 
-## Payment (honest mock)
+## Payment
 
-Anton is merchant. LarisID never holds student fees. Transfer is **pending until Anton confirms**.
+Anton is merchant. LarisID never holds student fees. Live pay is a Mayar **Headless Invoice** plus webhook. Manual rekening stays as fallback. Do not create a Mayar Kelas Online / membership product (that fee is higher).
 
-1. Siswa ketuk **Saya sudah transfer / scan** → status `pending`, plan tetap preview, tugas **Cek transfer**.
-2. Anton ketuk **Konfirmasi lunas** (profil, Daftar, atau tugas) → `grantMentoring`, stage Mentee.
-3. Autopay kartu tetap mock Mayar: langsung lunas, berlabel mock.
-4. Pilih ledger **lunas** pada siswa yang belum mentoring juga meng-grant akses.
-5. Perpanjangan: 5 hari peringatan → tugas WA Anton → 1 hari grace → preview video 1. Demo pakai **Simulasi jam**.
+**When `MAYAR_API_KEY` is set on Cloudflare:**
 
-Shared state (remote only): Pages Function `GET/PUT /api/state/{slug}?k=ANTON-SEP26` → KV. Poll 4 detik. Reset mengosongkan KV. IndexedDB blobs tidak ikut.
+1. Siswa ketuk **Bayar sekarang** → `POST /api/pay/invoice`. Prefer VA if `MAYAR_VA_METHOD` is set (`va/bni`, `va/bri`, `va/mandiri`, …); otherwise the Mayar checkout link lets them pick VA or QRIS.
+2. Billing stays `pending`, `source: mayar`. CRM chip **Menunggu Mayar**. No Cek transfer task.
+3. Mayar `payment.received` → `POST /api/pay/webhook` sets lunas, stage Mentee, timeline `Bayar Mayar`. Same transaction is ignored the second time. HP and laptop unlock on the ~4s state poll.
+4. **Konfirmasi manual** remains on the row if Mayar is stuck. It is not required for a normal payment.
+
+**When Mayar is not configured** (localhost, or before the key arrives):
+
+1. **Saya sudah transfer / scan** → `pending`, task **Cek transfer**.
+2. Anton **Konfirmasi lunas** → mentoring opens.
+3. Kartu autopay is still an instant mock, labeled mock.
+
+Picking ledger **lunas** on a student who is not yet mentoring also grants access. Renewal: 5-day warning → WA task → 1-day grace → video 1 only. Demo clocks: **Simulasi jam**.
+
+Shared state: `GET/PUT /api/state/{slug}?k=ANTON-SEP26` → KV. Poll 4 detik. A paid grant is also stored beside the blob and re-applied on GET and PUT, so a stale browser cannot wipe lunas. Reset clears the school blob; it does not delete old invoice maps. IndexedDB blobs do not sync.
+
+### What to ask Anton
+
+He does not paste the key into the LMS.
+
+1. Mayar API key, Read & Write. Sandbox first from [web.mayar.io/api-keys](https://web.mayar.io/api-keys), then live from [web.mayar.id/api-keys](https://web.mayar.id/api-keys).
+2. At least one VA bank and QRIS turned on.
+3. After deploy, paste the webhook from **Pengaturan bayar** (or `https://mastermind-anton.pages.dev/api/pay/webhook`) into Mayar → Integration → Webhook, event `payment.received`.
+4. Optional: which VA bank should be the default.
+
+Steven, not Anton:
+
+```bash
+npx wrangler pages secret put MAYAR_API_KEY --project-name=mastermind-anton
+# optional
+npx wrangler pages secret put MAYAR_WEBHOOK_SECRET --project-name=mastermind-anton
+npx wrangler pages secret put MAYAR_VA_METHOD --project-name=mastermind-anton
+```
+
+`MAYAR_API_BASE` lives in `school/wrangler.toml` (not a secret). Default `https://api.mayar.io/hl/v2` (sandbox). Live flip: `https://api.mayar.id/hl/v2`, put the live key, redeploy, Anton saves the webhook URL, one small invoice. If `MAYAR_WEBHOOK_SECRET` is set, Anton must paste the URL that includes `?secret=` (the settings card shows it).
+
+Localhost without Pages Functions keeps the mock. Full path: `npx wrangler pages dev` inside `school/` with the sandbox secret, then open the school with `?sync=1`.
 
 ## Cycle
 
@@ -26,7 +57,7 @@ Shared state (remote only): Pages Function `GET/PUT /api/state/{slug}?k=ANTON-SE
 2. Group CTA → school. **Form first, one question per screen** (nama → WA → toko → kota → dari mana), progress ticks, back keeps answers, dock hidden. Same fields: nama, WA, sudah punya toko (kalau ya: nama + tautan), kota, dari mana tahu Anton.
 3. **Payment page** (last onboarding screen). Clocked 24-hour welcome discount starts at form submit (remaining time is real; no fake seat count). Applies to 1-month transfer and autopay only — not stacked on 3/6 month.
    - Included: kurikulum, live/diskusi/kolab, grup WA, **50% off all tools**. Laris Affiliate stays satuan.
-   - Bayar sekarang: **1 bulan** transfer, **3 bulan** (−15%), **6 bulan** (−25%), or **kartu autopay** (−10%). Rekening in Pengaturan bayar. Mayar mock for autopay.
+   - Bayar sekarang: **1 bulan**, **3 bulan** (−15%), **6 bulan** (−25%), or **kartu autopay** (−10%). With a Mayar key this opens a Mayar invoice. Without it, transfer waits for Anton and autopay is a mock. Rekening in Pengaturan bayar is the manual fallback.
    - **Bayar nanti, lihat dulu:** Form selesai → trial aktif + dock **Belajar/Diskusi** muncul (boleh dari halaman bayar). Kurikulum penuh kelihatan; hanya video 1 (cover + checklist + pertanyaan GMV) kebuka, sisanya blur. CTA bayar + countdown 24 jam + FAB **WA Anton**.
 4. After video 1: in-app pay prompt. At 12 hours left: queued WA + a **task for Anton**. He taps **Kirim dari CRM** (or Buka WA). Otomasi never auto-sends as Anton.
 5. Unpaid after 24h → **Sudah keluar**. “Tidak tertarik” stays its own stage.
@@ -67,6 +98,8 @@ Mentor tabs: Siswa · Tugas · Otomasi · Kurikulum · Perpustakaan · Jadwal ·
 Anton is merchant. LarisID never holds student fees.
 
 Placeholder list (editable): monthly Rp500.000; 3 months −15%; 6 months −25%; card autopay −10%; 24h welcome −20% on 1-month and autopay; mentee tools −50% vs satuan.
+
+Mentoring invoices use the Mayar Invoice API. Prefer VA for the Rp500rb line (channel fee is a flat bank charge). QRIS stays available on the Mayar checkout page. Platform fee is the Invoice rate, not the Kelas Online rate.
 
 Certified mentors collect from **their** students. CRM **setoran 20%** is expected vs received. Mission: this is a disclosed curriculum/brand licensing fee, one level, no recruit bonuses.
 

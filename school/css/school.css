@@ -894,6 +894,9 @@ html[data-mode="student"] .ob-foot.is-end {
   margin: 0 0 6px; font-size: .68rem; font-weight: 800;
   letter-spacing: .06em; text-transform: uppercase; color: var(--muted);
 }
+.ob-manual { margin-top: 12px; }
+.ob-manual summary { cursor: pointer; font-weight: 650; }
+.ob-manual p { margin: 8px 0 0; }
 .ob-look-hint { margin: 0; text-align: center; color: var(--muted); font-size: .74rem; line-height: 1.4; }
 .ob-text {
   border: 0; background: transparent; color: var(--muted);
@@ -1478,11 +1481,71 @@ html.present-pane[data-mode="student"] .kurikulum-pane.is-open {
 .fub-cell-link:hover { text-decoration: underline; }
 .money { color: var(--ok); font-weight: 700; }
 .tag-chip {
-  display: inline-flex; align-items: center;
+  display: inline-flex; align-items: center; gap: 2px;
   border: 1px solid var(--line-2); border-radius: 99px;
   padding: 1px 8px; font-size: .62rem; font-weight: 700; color: var(--muted);
-  margin: 0 4px 0 0;
+  margin: 0;
 }
+.tag-chip.has-x { padding-right: 4px; }
+.tag-chip-new { border-color: var(--accent); color: var(--accent); }
+.tag-x {
+  border: 0; background: transparent; color: inherit; cursor: pointer;
+  font-size: .78rem; line-height: 1; padding: 0 2px; opacity: .55;
+  border-radius: 50%;
+}
+.tag-x:hover { opacity: 1; color: var(--text); }
+.tag-add-btn {
+  display: inline-grid; place-items: center;
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 1px dashed var(--line-2); background: transparent;
+  color: var(--muted); font-size: .95rem; font-weight: 700;
+  cursor: pointer; line-height: 1; padding: 0; flex: none;
+}
+.tag-add-btn:hover,
+.tag-add-btn.is-open {
+  border-style: solid; border-color: var(--accent); color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.tag-picker {
+  flex: 1 1 100%;
+  margin-top: 6px;
+  background: var(--ink);
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  padding: 8px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .35);
+}
+.tag-picker-in {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--ink-2);
+  color: var(--text);
+  font: inherit;
+  font-size: .78rem;
+  padding: 7px 10px;
+}
+.tag-picker-in:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.tag-picker-list {
+  display: flex; flex-direction: column; gap: 2px;
+  max-height: 180px; overflow: auto; margin-top: 6px;
+}
+.tag-picker-opt {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; width: 100%;
+  border: 0; background: transparent;
+  padding: 6px 8px; border-radius: 8px;
+  cursor: pointer; color: inherit; text-align: left; font: inherit;
+}
+.tag-picker-opt:hover { background: var(--ink-3); }
+.tag-picker-opt.is-create {
+  border-top: 1px solid var(--line);
+  margin-top: 4px; padding-top: 10px; border-radius: 0 0 8px 8px;
+}
+.tag-picker-empty { margin: 6px 4px 2px; font-size: .72rem; }
 .avatar {
   display: inline-grid; place-items: center; flex: none;
   width: 36px; height: 36px; border-radius: 50%;
@@ -1546,13 +1609,31 @@ html[data-mode="mentor"] .main:has(.fub-page) { padding: 0; }
   font-size: 1.15rem; font-weight: 750; letter-spacing: -.02em;
   border: 0; background: transparent; color: var(--text); padding: 0;
 }
+.fub-iden .name-edit:hover,
+.fub-iden .name-edit:focus {
+  border: 1px solid var(--line-2); background: var(--ink-3);
+  padding: 2px 6px; border-radius: 6px;
+}
 .fub-photo-btn { margin-top: 4px; width: fit-content; }
 .fub-contact { display: grid; gap: 2px; margin-bottom: 12px; }
 .fub-contact-row {
   display: flex; gap: 8px; align-items: center;
   padding: 6px 0; border-bottom: 1px solid var(--line);
 }
-.fub-contact-row .inline-edit { flex: 1; min-width: 0; }
+.fub-contact-row .inline-edit,
+.fub-contact-row .ghost-edit {
+  flex: 1; min-width: 0;
+  border: 0; background: transparent; padding: 2px 0;
+  border-radius: 6px;
+}
+.fub-contact-row .ghost-edit:hover,
+.fub-contact-row .ghost-edit:focus {
+  border: 1px solid var(--line-2);
+  background: var(--ink-3);
+  padding: 2px 6px;
+  outline: 0;
+}
+.fub-contact-row .ghost-edit::placeholder { color: var(--muted); opacity: .7; }
 .fub-ico {
   width: 22px; text-align: center; color: var(--muted); font-size: .85rem; flex: none;
 }
@@ -1567,8 +1648,10 @@ html[data-mode="mentor"] .main:has(.fub-page) { padding: 0; }
   text-transform: uppercase; letter-spacing: .06em; padding-top: 4px;
 }
 .fub-field dd { margin: 0; min-width: 0; }
-.fub-tags { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
-.fub-tags .tag-in { flex: 1 1 100%; min-width: 0; margin-top: 4px; }
+.fub-tags {
+  display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
+  position: relative;
+}
 .fub-composer {
   background: var(--ink-2); border: 1px solid var(--line); border-radius: 12px;
   padding: 10px 12px 12px; margin-bottom: 16px;
