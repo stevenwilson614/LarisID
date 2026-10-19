@@ -17,7 +17,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const OUT = path.join(ROOT, 'panduan');
 const SITE = 'https://larisid.com';
-const OG_IMAGE = `${SITE}/images/Banner.jpg`;
+const OG_IMAGE = `${SITE}/images/og-banner.jpg`;
 const AUTHOR = 'Steven Wilson';
 
 // Google Ads tag — lives on the section hub pages (parity with the committed

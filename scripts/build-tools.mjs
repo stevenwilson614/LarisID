@@ -17,7 +17,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const OUT = path.join(ROOT, 'kalkulator');
 const SITE = 'https://larisid.com';
-const OG_IMAGE = `${SITE}/images/Banner.jpg`;
+const OG_IMAGE = `${SITE}/images/og-banner.jpg`;
 const AUTHOR = 'Steven Wilson';
 
 function esc(s) {

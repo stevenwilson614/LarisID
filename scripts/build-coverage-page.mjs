@@ -26,7 +26,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const OUT_DIR = path.join(ROOT, 'data');
 const SITE = 'https://larisid.com';
-const OG_IMAGE = `${SITE}/images/Banner.jpg`;
+const OG_IMAGE = `${SITE}/images/og-banner.jpg`;
 
 const C = JSON.parse(fs.readFileSync(path.join(__dirname, 'coverage.json'), 'utf8'));
 

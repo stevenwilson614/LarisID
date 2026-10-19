@@ -46,7 +46,7 @@ const SNAPSHOT = '2026-06-19';
 const CONTENT_2026_07 = '2026-07-24';
 const TOOLS_2026_09 = '2026-09-08'; // kalkulator fee tables refreshed
 const COPY_2026_09 = '2026-09-14'; // weekly omset + weekly refresh copy on harga/perbandingan
-const OG_IMAGE = `${SITE}/images/Banner.jpg`;
+const OG_IMAGE = `${SITE}/images/og-banner.jpg`;
 
 // /data/ is owned by build-coverage-page.mjs but its sitemap entry lives here (this
 // file owns the whole sitemap). Fall back to SNAPSHOT if the coverage pull has never

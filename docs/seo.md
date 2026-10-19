@@ -234,7 +234,7 @@ Gemini, Google AI Overviews):
 - **Freshness signals** — `dateModified` / `article:modified_time` + visible snapshot date; per-URL
   `lastmod` in sitemap.
 - **Per-page `og:image` + Twitter cards** on riset/guide/comparison pages (currently the shared
-  `images/Banner.jpg`; see "dynamic OG cards" below to upgrade).
+  `images/og-banner.jpg`; see "dynamic OG cards" below to upgrade).
 - **`/panduan/` guides** (`scripts/build-guides.mjs`) — Article + FAQPage + author (E-E-A-T).
 - **Dedicated comparison pages + listicle** (`scripts/build-comparisons.mjs`) — "X vs Y" and
   "best tools" are the highest-intent, most-quoted query shapes.
@@ -286,7 +286,7 @@ the schema/llms/entity work is paying off.
 
 ## Dynamic OG cards (future upgrade)
 
-Per-page OG images currently fall back to `images/Banner.jpg`. To generate a unique data card per
+Per-page OG images currently fall back to `images/og-banner.jpg`. To generate a unique data card per
 riset page (keyword + median price + rating), add a build step using `satori` + `resvg` (SVG→PNG)
 in `build-seo-pages.mjs` writing `riset/<slug>/og.png`, then point `og:image` at it.
 

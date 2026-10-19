@@ -32,7 +32,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const OUT_DIR = path.join(ROOT, 'kota');
 const SITE = 'https://larisid.com';
-const OG_IMAGE = `${SITE}/images/Banner.jpg`;
+const OG_IMAGE = `${SITE}/images/og-banner.jpg`;
 
 const RAW = JSON.parse(fs.readFileSync(path.join(__dirname, 'city-data.json'), 'utf8'));
 const SNAPSHOT = RAW.snapshot;
