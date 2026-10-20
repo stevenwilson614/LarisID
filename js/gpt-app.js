@@ -16630,6 +16630,117 @@ function sddvCancel() {
   }
 }
 
+/* ── After 5 Deep Dives: extension install video ──────────────────────────
+ *  Desktop only (cwsExtOfferable). Once per browser. Soft: Pasang ekstensi
+ *  and Lanjut are both live on open — no wait for `ended`. Count lives in
+ *  localStorage so signed-out dives still add up across sessions. Marked
+ *  seen on open so a refresh mid-play never replays. */
+const EDDV_KEY = 'lid_ext_dd5_video_v1';
+const EDDV_COUNT_KEY = 'lid_dd_count_v1';
+const EDDV_SRC = '/images/onboarding/ext-deepdive.mp4';
+const EDDV_DELAY = 2000;
+const EDDV_AFTER = 5;
+let _eddvTimer = null;
+let _eddvBound = false;
+
+function eddvIsSeen() {
+  try { return localStorage.getItem(EDDV_KEY) === '1'; } catch { return false; }
+}
+
+function eddvMarkSeen() {
+  try { localStorage.setItem(EDDV_KEY, '1'); } catch (_) {}
+}
+
+function eddvBumpCount() {
+  let n = 0;
+  try { n = parseInt(localStorage.getItem(EDDV_COUNT_KEY) || '0', 10) || 0; } catch { return 0; }
+  n += 1;
+  try { localStorage.setItem(EDDV_COUNT_KEY, String(n)); } catch (_) {}
+  return n;
+}
+
+function eddvPrefetch() {
+  const v = $('eddv-video');
+  if (!v || v.getAttribute('src')) return;
+  v.src = EDDV_SRC;
+  v.preload = 'auto';
+  try { v.load(); } catch (_) {}
+}
+
+function scheduleExtDdVideo() {
+  if (_eddvTimer) { clearTimeout(_eddvTimer); _eddvTimer = null; }
+  const n = eddvBumpCount();
+  if ($('ext-dd-video')?.classList.contains('open')) return;
+  if (isPlatformAdminRaw()) return;
+  if (!cwsExtOfferable()) return;
+  if (eddvIsSeen()) return;
+  if (n < EDDV_AFTER) return;
+  eddvPrefetch();
+  _eddvTimer = setTimeout(() => {
+    _eddvTimer = null;
+    eddvFire();
+  }, EDDV_DELAY);
+}
+
+function eddvFire() {
+  if (eddvIsSeen()) return;
+  if (isPlatformAdminRaw()) return;
+  if (!cwsExtOfferable()) return;
+  if (state.view !== 'deepdive') return;
+  if (document.querySelector('.modal-overlay.open')) return;
+  const overlay = $('ext-dd-video');
+  const video = $('eddv-video');
+  if (!overlay || !video) return;
+  eddvPrefetch();
+  eddvMarkSeen();
+  eddvBind(video);
+  overlay.classList.add('open');
+  document.body.classList.add('eddv-open');
+  eddvTryPlay(video);
+  void logUserEvent('ext_dd5_video', { ui: 'gpt', action: 'show' });
+  clarityEvt('ext_dd5_video', { action: 'show' });
+}
+
+function eddvTryPlay(video) {
+  video.muted = false;
+  try { video.currentTime = 0; } catch (_) {}
+  const p = video.play();
+  if (p && typeof p.then === 'function') {
+    p.then(() => eddvSetMutedUi(false)).catch(() => {
+      video.muted = true;
+      eddvSetMutedUi(true);
+      video.play().catch(() => {});
+    });
+  }
+}
+
+function eddvSetMutedUi(muted) {
+  const btn = $('eddv-unmute');
+  if (!btn) return;
+  btn.hidden = !muted;
+}
+
+function eddvBind(video) {
+  if (_eddvBound) return;
+  _eddvBound = true;
+  video.addEventListener('ended', () => {
+    void logUserEvent('ext_dd5_video', { ui: 'gpt', action: 'complete' });
+    clarityEvt('ext_dd5_video', { action: 'complete' });
+  });
+}
+
+function eddvClose(reason) {
+  if (_eddvTimer) { clearTimeout(_eddvTimer); _eddvTimer = null; }
+  const overlay = $('ext-dd-video');
+  if (!overlay || !overlay.classList.contains('open')) return;
+  overlay.classList.remove('open');
+  document.body.classList.remove('eddv-open');
+  const video = $('eddv-video');
+  if (video) { try { video.pause(); } catch (_) {} }
+  void logUserEvent('ext_dd5_video', { ui: 'gpt', action: reason || 'close' });
+  clarityEvt('ext_dd5_video', { action: reason || 'close' });
+}
+
 /** One-click product favorite. Toggle off removes. May set notify prefs
  *  if the user has never answered (or if a channel is passed from #ddr-alert). */
 async function trackProductFavorite(product, opts = {}) {
@@ -19070,6 +19181,7 @@ async function openDeepDive(product, ddOpts = {}) {
   if (!isExporListing(product)) {
     if (isFirstDeepDive) schedulePantauNavPulse(product);
     scheduleStevenDdVideo();
+    scheduleExtDdVideo();
   }
   rememberProducts([product]);
   state.deepdiveProduct = product;
@@ -27058,6 +27170,10 @@ function wireUi() {
     }
     if ($('steven-dd-video')?.classList.contains('open')) {
       if (_sddvEnded) sddvClose('esc');
+      return;
+    }
+    if ($('ext-dd-video')?.classList.contains('open')) {
+      eddvClose('dismiss');
     }
   });
 
@@ -27072,6 +27188,16 @@ function wireUi() {
   $('steven-dd-video')?.addEventListener('click', (e) => {
     if (e.target !== e.currentTarget) return;
     if (_sddvEnded) sddvClose('backdrop');
+  });
+
+  $('eddv-lanjut')?.addEventListener('click', () => eddvClose('dismiss'));
+  $('eddv-install')?.addEventListener('click', () => eddvClose('install'));
+  $('eddv-unmute')?.addEventListener('click', () => {
+    const video = $('eddv-video');
+    if (!video) return;
+    video.muted = false;
+    eddvSetMutedUi(false);
+    if (video.paused) video.play().catch(() => {});
   });
 
   // Pinned product bar tools (Analisa / Kalkulator / Kompetitor).
@@ -28531,6 +28657,7 @@ const CWS_EXT_LINK_SOURCES = {
   'hdr-ext-link': 'header',
   'ext-hint-install': 'hint',
   'gpt-limit-ext': 'limit',
+  'eddv-install': 'dd5_ad',
 };
 
 /** Click-through to CWS — flush immediately so the row lands even if the tab stays open. */
