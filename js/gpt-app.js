@@ -16631,16 +16631,18 @@ function sddvCancel() {
 }
 
 /* ── After 5 Deep Dives: extension install video ──────────────────────────
- *  Desktop only (cwsExtOfferable). Once per browser. Pasang ekstensi and
- *  Lanjut stay locked until the clip fires `ended` (the full ~14s). Count
- *  lives in localStorage so signed-out dives still add up across sessions.
- *  Marked seen on open so a refresh mid-play never replays. */
+ *  Desktop only (cwsExtOfferable). Once per browser, including admins.
+ *  The five dives are counted in this page session only — a reload starts
+ *  over, so the ad appears when someone hits five in one sitting. Pasang
+ *  ekstensi and Lanjut stay locked until the clip fires `ended`. Marked
+ *  seen on open so a refresh mid-play never replays. */
 const EDDV_KEY = 'lid_ext_dd5_video_v1';
-const EDDV_COUNT_KEY = 'lid_dd_count_v1';
 const EDDV_SRC = '/images/onboarding/ext-deepdive.mp4';
 const EDDV_DELAY = 2000;
 const EDDV_AFTER = 5;
+let _eddvSessionDives = 0;
 let _eddvTimer = null;
+let _eddvTick = null;
 let _eddvBound = false;
 let _eddvEnded = false;
 
@@ -16650,14 +16652,6 @@ function eddvIsSeen() {
 
 function eddvMarkSeen() {
   try { localStorage.setItem(EDDV_KEY, '1'); } catch (_) {}
-}
-
-function eddvBumpCount() {
-  let n = 0;
-  try { n = parseInt(localStorage.getItem(EDDV_COUNT_KEY) || '0', 10) || 0; } catch { return 0; }
-  n += 1;
-  try { localStorage.setItem(EDDV_COUNT_KEY, String(n)); } catch (_) {}
-  return n;
 }
 
 function eddvPrefetch() {
@@ -16670,9 +16664,9 @@ function eddvPrefetch() {
 
 function scheduleExtDdVideo() {
   if (_eddvTimer) { clearTimeout(_eddvTimer); _eddvTimer = null; }
-  const n = eddvBumpCount();
+  _eddvSessionDives += 1;
+  const n = _eddvSessionDives;
   if ($('ext-dd-video')?.classList.contains('open')) return;
-  if (isPlatformAdminRaw()) return;
   if (!cwsExtOfferable()) return;
   if (eddvIsSeen()) return;
   if (n < EDDV_AFTER) return;
@@ -16685,7 +16679,6 @@ function scheduleExtDdVideo() {
 
 function eddvFire() {
   if (eddvIsSeen()) return;
-  if (isPlatformAdminRaw()) return;
   if (!cwsExtOfferable()) return;
   if (state.view !== 'deepdive') return;
   if (document.querySelector('.modal-overlay.open')) return;
@@ -16709,6 +16702,7 @@ function eddvFire() {
 function eddvTryPlay(video) {
   video.muted = false;
   try { video.currentTime = 0; } catch (_) {}
+  eddvStartCountdown(video);
   const p = video.play();
   if (p && typeof p.then === 'function') {
     p.then(() => eddvSetMutedUi(false)).catch(() => {
@@ -16725,12 +16719,28 @@ function eddvSetMutedUi(muted) {
   btn.hidden = !muted;
 }
 
+function eddvStopCountdown() {
+  if (_eddvTick) { clearInterval(_eddvTick); _eddvTick = null; }
+}
+
+function eddvStartCountdown(video) {
+  eddvStopCountdown();
+  const tick = () => {
+    if (!$('ext-dd-video')?.classList.contains('open')) { eddvStopCountdown(); return; }
+    eddvUpdateTimer(video);
+    if (video.ended) eddvStopCountdown();
+  };
+  tick();
+  _eddvTick = setInterval(tick, 200);
+}
+
 function eddvUpdateTimer(video) {
   const el = $('eddv-timer');
   if (!el) return;
   const dur = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 14;
+  const now = Number.isFinite(video.currentTime) ? video.currentTime : 0;
   el.hidden = false;
-  el.textContent = sddvFmtRemain(dur - (video.currentTime || 0));
+  el.textContent = sddvFmtRemain(dur - now);
 }
 
 function eddvSetLocked(locked) {
@@ -16761,6 +16771,7 @@ function eddvBind(video) {
     eddvSetLocked(false);
     const timer = $('eddv-timer');
     if (timer) timer.textContent = '0:00';
+    eddvStopCountdown();
     void logUserEvent('ext_dd5_video', { ui: 'gpt', action: 'complete' });
     clarityEvt('ext_dd5_video', { action: 'complete' });
   });
@@ -16768,6 +16779,7 @@ function eddvBind(video) {
 
 function eddvClose(reason) {
   if (!_eddvEnded) return;
+  eddvStopCountdown();
   if (_eddvTimer) { clearTimeout(_eddvTimer); _eddvTimer = null; }
   const overlay = $('ext-dd-video');
   if (!overlay || !overlay.classList.contains('open')) return;
