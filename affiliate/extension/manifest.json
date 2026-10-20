@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "minimum_chrome_version": "114",
   "name": "Laris Affiliate",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Kampanye Target Collab lewat sesi Affiliate Center di Chrome ini. Unofficial. Cookie tidak dikirim ke LarisID.",
   "icons": {
     "16": "icons/icon16.png",
@@ -32,6 +32,17 @@
     "https://www.kalodata.com/*",
     "https://kalodata.com/*"
   ],
+  "web_accessible_resources": [
+    {
+      "resources": ["panel.html", "css/app.css", "js/*", "icons/*"],
+      "matches": [
+        "https://seller-id.tokopedia.com/*",
+        "https://affiliate-id.tokopedia.com/*",
+        "https://*.tiktokshop.com/*",
+        "https://seller.tiktokglobalshop.com/*"
+      ]
+    }
+  ],
   "content_scripts": [
     {
       "matches": [
@@ -52,9 +63,21 @@
         "https://*.tiktokshop.com/*",
         "https://seller.tiktokglobalshop.com/*"
       ],
-      "js": ["content/adapter.js", "content/affiliate-center.js"],
+      "js": ["js/paging.js", "content/adapter.js", "content/affiliate-center.js"],
       "run_at": "document_start",
       "all_frames": true,
+      "world": "ISOLATED"
+    },
+    {
+      "matches": [
+        "https://seller-id.tokopedia.com/*",
+        "https://affiliate-id.tokopedia.com/*",
+        "https://*.tiktokshop.com/*",
+        "https://seller.tiktokglobalshop.com/*"
+      ],
+      "js": ["content/pill.js"],
+      "run_at": "document_idle",
+      "all_frames": false,
       "world": "ISOLATED"
     },
     {

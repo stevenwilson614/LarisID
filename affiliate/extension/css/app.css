@@ -230,6 +230,7 @@ label.field {
 }
 
 .import-box { padding: 4px 12px 12px; }
+details:not([open]) > :not(summary) { display: none !important; }
 .import-box summary {
   cursor: pointer; font-size: .8rem; font-weight: 700; padding: 8px 0;
   color: var(--merah-dark);
@@ -348,4 +349,30 @@ label.field {
   padding: 4px 0 2px;
 }
 .shop-line strong { font-size: .9rem; }
-.quota-line { margin: 8px 0 0; font-size: .76rem; color: var(--muted); }
+.step-labels { display: flex; gap: 6px; margin: 0 0 6px; }
+.step-labels span {
+  flex: 1; text-align: center;
+  font-size: .62rem; font-weight: 800; color: var(--muted);
+}
+.step-labels span.on { color: var(--merah); }
+.tabs { display: flex; gap: 6px; margin: 0 0 10px; }
+.tabs button {
+  flex: 1; border: 1px solid var(--line); background: var(--card);
+  border-radius: 999px; padding: 8px 10px; font-size: .74rem; font-weight: 800; color: var(--muted);
+}
+.tabs button[aria-selected="true"] { background: var(--hitam); color: #fff; border-color: var(--hitam); }
+.creator-scroll { max-height: 360px; overflow: auto; border-top: 1px solid var(--line); }
+
+body.surface-overlay { background: var(--krem); }
+body.surface-overlay #app { min-height: 100%; }
+body.surface-overlay .main { max-width: 980px; margin: 0 auto; }
+body.surface-overlay .wiz-split {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+body.surface-overlay .sticky-actions { bottom: 8px; }
+@media (max-width: 720px) {
+  body.surface-overlay .wiz-split { grid-template-columns: 1fr; }
+}

@@ -15,7 +15,7 @@
       return 'collab';
     }
     if (/invitation_group\/rate_limit_info/.test(u)) return 'quota';
-    if (/creator\/marketplace\/find/.test(u)) return 'search';
+    if (/creator\/marketplace\/(find|search)/.test(u) && !/suggestion/.test(u)) return 'search';
     if (/(\/im\/send|messages\/send|conversation\/send|chat\/send|affiliate_im)/.test(u) &&
         !/helpdesk\/im\/url|optimizer\/message/.test(u)) {
       return 'im';
@@ -127,10 +127,24 @@
     return json;
   }
 
-  function fillCollabTemplate(templateObj, rows, message) {
+  function pagingApi() {
+    return root.LarisAffiliatePaging || null;
+  }
+
+  function fillCollabTemplate(templateObj, rows, message, overrides) {
     var json = JSON.parse(JSON.stringify(templateObj));
     var g = json.invitation_group || json;
     if (message != null && g.message != null) g.message = message;
+    var P = pagingApi();
+    if (overrides && P) {
+      if (overrides.invitationName && g.name != null) g.name = String(overrides.invitationName).slice(0, 80);
+      if (overrides.endTime && g.end_time != null) g.end_time = P.endRaw(g.end_time, overrides.endTime);
+      (g.product_list || []).forEach(function (p) {
+        if (!p || p.target_commission == null) return;
+        if (overrides.commissionPct == null || overrides.commissionPct === '') return;
+        p.target_commission = P.commissionRaw(p.target_commission, overrides.commissionPct);
+      });
+    }
     var proto = (g.creator_id_list && g.creator_id_list[0])
       ? JSON.parse(JSON.stringify(g.creator_id_list[0]))
       : { base_info: { creator_id: '', nick_name: '', creator_oec_id: '' } };
@@ -186,10 +200,14 @@
       productId: product.product_id ? String(product.product_id) : '',
       productName: title,
       commissionPct: pct,
-      invitationName: g && g.name || '',
-      endTime: g && g.end_time || '',
+      commissionRaw: rawComm == null ? null : rawComm,
+      invitationName: g && g.name != null ? g.name : '',
+      endTime: g && g.end_time != null ? g.end_time : '',
       recordedCreators: g && g.creator_id_list ? g.creator_id_list.length : 0,
-      hasMessage: hasMessage
+      hasMessage: hasMessage,
+      hasCommission: rawComm != null,
+      hasName: !!(g && g.name != null),
+      hasEnd: !!(g && g.end_time != null)
     };
   }
 
@@ -245,6 +263,23 @@
     data.updatedAt = Date.now();
     await saveStore(data);
     return { channel: channel, url: raw.url };
+  }
+
+  function searchKind(entry) {
+    var P = pagingApi();
+    if (!P || !entry) return 'unknown';
+    var spec = P.describeSearch(parseMaybe(entry.reqBody));
+    if (spec.handleLookup) return 'handle';
+    if (spec.page || spec.offset || spec.cursor) return 'list';
+    return 'unknown';
+  }
+
+  function latestList(data) {
+    var list = (data && data.search) || [];
+    for (var i = 0; i < list.length; i++) {
+      if (searchKind(list[i]) === 'list') return list[i];
+    }
+    return null;
   }
 
   function latest(data, channel) {
@@ -323,6 +358,8 @@
     fillTemplate: fillTemplate,
     fillCollabTemplate: fillCollabTemplate,
     fillSearchTemplate: fillSearchTemplate,
+    searchKind: searchKind,
+    latestList: latestList,
     collabSku: collabSku,
     ingest: ingest,
     loadStore: loadStore,

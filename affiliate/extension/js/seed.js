@@ -8,7 +8,8 @@ window.LARIS_AFFILIATE_SEED = {
     commissionPct: 15,
     shopName: '',
     allowLiveSend: false,
-    allowKalodataRead: false
+    allowKalodataRead: false,
+    allowKalodataPages: false
   },
   quota: {
     dailyCap: 1000,

@@ -147,7 +147,8 @@
         channel: ctx.channel || 'im',
         body: compose(ctx.template, vars),
         dryRun: dryRun,
-        allowLiveSend: !dryRun && !!(ctx.account && ctx.account.allowLiveSend)
+        allowLiveSend: !dryRun && !!(ctx.account && ctx.account.allowLiveSend),
+        invite: ctx.invite || null
       }
     };
     return runtimeSend(payload).then(function (res) {
@@ -192,6 +193,26 @@
 
   async function kaloRead() {
     return runtimeSend({ type: 'laris-kalodata-read' });
+  }
+
+  async function kaloPages(limit) {
+    return runtimeSend({ type: 'laris-kalodata-pages', limit: limit });
+  }
+
+  async function kaloStop() {
+    return runtimeSend({ type: 'laris-kalodata-stop' });
+  }
+
+  async function openKalodata() {
+    return runtimeSend({ type: 'laris-open-kalodata' });
+  }
+
+  async function findPages(limit, step) {
+    return runtimeSend({ type: 'laris-find-pages', limit: limit, step: step || {} });
+  }
+
+  async function findStop() {
+    return runtimeSend({ type: 'laris-find-stop' });
   }
 
   async function bisectDispatch(creators, ctx, sendFn, opts) {
@@ -254,6 +275,11 @@
     sendBatch: sendBatch,
     bisectDispatch: bisectDispatch,
     kaloRead: kaloRead,
+    kaloPages: kaloPages,
+    kaloStop: kaloStop,
+    openKalodata: openKalodata,
+    findPages: findPages,
+    findStop: findStop,
     workers: {
       sellerCenter: sellerCenterSend,
       tiktokApp: tiktokAppSend

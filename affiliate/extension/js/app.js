@@ -3,8 +3,20 @@
   var SEED = window.LARIS_AFFILIATE_SEED;
   var Send = window.LarisAffiliateSend;
   var KEY = 'laris-affiliate-ext-v1';
+  var LOCK = 'laris-affiliate-runner-lock';
+  var SURFACE_OVERLAY = /(?:\?|&)surface=overlay(?:&|$)/.test(location.search);
+  var SURFACE = (SURFACE_OVERLAY ? 'overlay-' : 'panel-') + Math.random().toString(36).slice(2);
   var JAKARTA = 'Asia/Jakarta';
   var $ = function (id) { return document.getElementById(id); };
+  if (SURFACE_OVERLAY) {
+    document.documentElement.classList.add('surface-overlay');
+    document.body.classList.add('surface-overlay');
+  }
+
+  function notifyParent(on) {
+    if (!SURFACE_OVERLAY || !window.parent || window.parent === window) return;
+    try { window.parent.postMessage({ source: 'laris-affiliate-panel', running: !!on }, '*'); } catch (e) { /* ignore */ }
+  }
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -57,11 +69,13 @@
         };
       }),
       campaigns: [],
-      template: SEED.template
+      template: SEED.template,
+      blacklist: []
     };
   }
 
-  function hydrate(raw) {
+  function hydrate(raw, opts) {
+    opts = opts || {};
     var s = raw || defaultState();
     if (!s.account) s.account = Object.assign({}, SEED.account);
     if (!s.quota) s.quota = defaultState().quota;
@@ -79,18 +93,22 @@
     });
     if (!s.account.allowLiveSend) s.account.allowLiveSend = false;
     if (!s.account.allowKalodataRead) s.account.allowKalodataRead = false;
-    (s.campaigns || []).forEach(function (c) {
-      (c.rows || []).forEach(function (r) {
-        if (r.status === 'sending') {
-          r.status = 'failed';
-          r.note = 'panel ditutup saat mengirim';
+    if (!s.account.allowKalodataPages) s.account.allowKalodataPages = false;
+    if (!Array.isArray(s.blacklist)) s.blacklist = [];
+    if (!opts.keepRunning) {
+      (s.campaigns || []).forEach(function (c) {
+        (c.rows || []).forEach(function (r) {
+          if (r.status === 'sending') {
+            r.status = 'failed';
+            r.note = 'panel ditutup saat mengirim';
+          }
+        });
+        if (c.status === 'berjalan') {
+          var pending = (c.rows || []).some(function (r) { return r.status === 'pending'; });
+          c.status = pending ? 'jeda' : 'selesai';
         }
       });
-      if (c.status === 'berjalan') {
-        var pending = (c.rows || []).some(function (r) { return r.status === 'pending'; });
-        c.status = pending ? 'jeda' : 'selesai';
-      }
-    });
+    }
     return s;
   }
 
@@ -142,7 +160,7 @@
       (sku.invitationName ? ' · ' + sku.invitationName : '');
   }
   function skuFromReconStore(recon) {
-    var sku = { productId: '', productName: '', commissionPct: null, invitationName: '', hasMessage: false };
+    var sku = { productId: '', productName: '', commissionPct: null, invitationName: '', hasMessage: false, hasCommission: false, hasName: false, hasEnd: false, endTime: '' };
     ((recon && recon.collab) || []).forEach(function (e) {
       var body = null;
       try { body = JSON.parse(e.reqBody || ''); } catch (err) { body = null; }
@@ -151,8 +169,18 @@
       var p = g && g.product_list && g.product_list[0];
       if (p && p.product_id) {
         sku.productId = String(p.product_id);
-        if (p.target_commission != null) sku.commissionPct = p.target_commission >= 100 ? p.target_commission / 100 : p.target_commission;
-        if (g.name) sku.invitationName = g.name;
+        if (p.target_commission != null) {
+          sku.commissionPct = p.target_commission >= 100 ? p.target_commission / 100 : p.target_commission;
+          sku.hasCommission = true;
+        }
+        if (g.name != null) {
+          sku.invitationName = g.name;
+          sku.hasName = true;
+        }
+        if (g.end_time != null) {
+          sku.endTime = g.end_time;
+          sku.hasEnd = true;
+        }
         if (p.title) sku.productName = p.title;
       }
       if (g && (g.message != null || g.invitation_msg != null || g.invite_msg != null)) sku.hasMessage = true;
@@ -348,7 +376,7 @@
           '<button type="button" class="btn" data-act="kalo-read" style="margin-top:8px"' +
             (db.account.allowKalodataRead ? '' : ' disabled') +
           '>Ambil dari halaman Kalodata</button>' +
-          '<p class="muted">Geser halaman di Kalodata, lalu Ambil lagi. Tidak auto-pagination.</p>' +
+          '<p class="muted">Geser halaman di Kalodata, lalu Ambil lagi. Membaca banyak halaman ada di wizard, dengan opt-in terpisah.</p>' +
           '<label class="field">Import CSV</label>' +
           '<input type="file" accept=".csv,text/csv" data-act="csv">' +
           '<a class="btn-ghost" href="' + esc(sampleCsvUrl()) + '" download="Creator_List_ID_Last30Days_sample.csv" style="margin-top:10px;display:block;text-align:center;text-decoration:none">Unduh contoh Kalodata</a>' +
@@ -499,12 +527,15 @@
           '<label class="toggle"><input type="checkbox" data-act="arm-live"' + (db.account.allowLiveSend ? ' checked' : '') + '></label></div>' +
         (db.account.allowLiveSend ? '<p class="note">Live terbuka. Tes 1 / Kirim minta konfirmasi lagi.</p>' : '') +
         '<div class="setting-row"><div><strong>Baca halaman Kalodata</strong>' +
-          '<span class="meta">Opt-in. Risiko ke akun Kalodata kamu (ToS 4.1.7 / 4.1.8).</span></div>' +
-          '<label class="toggle"><input type="checkbox" data-act="arm-kalo"' + (db.account.allowKalodataRead ? ' checked' : '') + '></label></div>' +
+          '<span class="meta">Opt-in. Risiko ke akun Kalodata kamu (ToS 4.1.7 / 4.1.8). Satu halaman.</span></div>' +
+          '<label class="toggle"><input type="checkbox" data-act="arm-kalo" aria-label="Baca halaman Kalodata"' + (db.account.allowKalodataRead ? ' checked' : '') + '></label></div>' +
+        '<div class="setting-row"><div><strong>Baca semua halaman Kalodata</strong>' +
+          '<span class="meta">Opt-in terpisah. Mengklik Berikutnya di tabel yang terbuka. Risiko yang sama.</span></div>' +
+          '<label class="toggle"><input type="checkbox" data-act="arm-kalo-pages" aria-label="Baca semua halaman Kalodata"' + (db.account.allowKalodataPages ? ' checked' : '') + '></label></div>' +
       '</section>' +
       '<section class="card">' +
         '<h3>Adapter</h3>' +
-        '<p class="muted">Buka Find Creators, ketik handle, jangan undang. Ganti SKU/komisi? Kirim 1 undangan manual lagi.</p>' +
+        '<p class="muted">Untuk daftar: Find Creators, kosongkan pencarian, set filter, buka halaman 2. Ketik satu handle hanya untuk uji cari. Ganti produk: kirim 1 undangan manual lagi.</p>' +
         '<ul class="recon-list">' +
           reconLine(!!recon.collab, 'Target Collab') +
           reconLine(!!recon.im, 'Pesan IM') +
@@ -529,65 +560,174 @@
       '</section>';
   }
 
+  function skuNow() {
+    var sku = ui.conn.sku || {};
+    if (sku.productId) return sku;
+    return (ui.conn.recon && ui.conn.recon.sku) || {};
+  }
+  function endDateInput(raw) {
+    if (raw == null || raw === '') return '';
+    var n = Number(raw);
+    if (!isFinite(n) || n < 1e9) {
+      var s = String(raw);
+      return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : '';
+    }
+    var ms = n > 1e12 ? n : n * 1000;
+    try {
+      return new Intl.DateTimeFormat('en-CA', { timeZone: JAKARTA, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms));
+    } catch (e) { return ''; }
+  }
+  function defaultTake() {
+    var live = ui.conn.liveQuota && ui.conn.liveQuota.remaining;
+    var n = leftDaily();
+    if (typeof live === 'number') n = Math.min(n, live);
+    return Math.max(0, Math.min(Send.DAILY, n));
+  }
+  function blockedHandles() {
+    var set = {};
+    (db.blacklist || []).forEach(function (h) {
+      var n = Send.normHandle(h);
+      if (n) set[n] = 'blacklist';
+    });
+    var pid = skuNow().productId || '';
+    db.campaigns.forEach(function (c) {
+      if (c.dryRun) return;
+      if (pid && c.productId && String(c.productId) !== String(pid)) return;
+      (c.rows || []).forEach(function (r) {
+        if (r.status === 'sent') set[Send.normHandle(r.handle)] = 'dup';
+      });
+    });
+    return set;
+  }
+  function wizardCreators() {
+    var w = ui.wizard || {};
+    var minF = Number(w.minFollowers) || 0;
+    var minR = Number(w.minRevenue) || 0;
+    var q = String(w.filter || '').toLowerCase();
+    var blocked = blockedHandles();
+    return db.creators.filter(function (c) {
+      if (blocked[c.handle]) return false;
+      if (minF && c.followers && c.followers < minF) return false;
+      if (minR && c.revenue && c.revenue < minR) return false;
+      if (q && (c.handle + ' ' + (c.name || '')).toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    });
+  }
+  function removalCounts() {
+    var blocked = blockedHandles();
+    var dup = 0;
+    var black = 0;
+    db.creators.forEach(function (c) {
+      if (blocked[c.handle] === 'dup') dup += 1;
+      if (blocked[c.handle] === 'blacklist') black += 1;
+    });
+    return { dup: dup, black: black };
+  }
+  function shapeFromRecon(recon) {
+    var P = window.LarisAffiliatePaging;
+    if (!P || !recon) return null;
+    var list = recon.search || [];
+    var fallback = null;
+    for (var i = 0; i < list.length; i++) {
+      var body = null;
+      try { body = JSON.parse(list[i].reqBody || ''); } catch (e) { body = null; }
+      if (!body) continue;
+      var spec = P.describeSearch(body);
+      if (!fallback) fallback = spec;
+      if (!spec.handleLookup && (spec.page || spec.offset || spec.cursor)) return spec;
+    }
+    return fallback;
+  }
+  function liveQuotaLine() {
+    var q = ui.conn.liveQuota;
+    if (!q || q.remaining == null) {
+      return 'Kuota TikTok belum terekam. Buka halaman undangan di Affiliate Center supaya rate_limit_info ikut terekam.';
+    }
+    var total = q.total != null ? ' / ' + q.total : '';
+    return 'Kuota TikTok tersisa ' + q.remaining + total + '. Bukan jaminan; toko bisa berhenti lebih awal.';
+  }
+  function findHint() {
+    var shape = ui.conn.searchShape;
+    if (!shape) return 'Buka Find Creators, set filter, lalu buka halaman berikutnya. Setelah itu Cek rekaman.';
+    if (shape.handleLookup) return 'Rekaman terakhir cari satu handle. Kosongkan pencarian, set filter, buka halaman 2, lalu Cek rekaman.';
+    if (!shape.page && !shape.offset && !shape.cursor) return 'Rekaman belum punya nomor halaman. Buka halaman 2 di Find Creators, lalu Cek rekaman.';
+    var bits = ['Filter terekam'];
+    if (shape.filters && shape.filters.followers) bits.push('pengikut min ' + shape.filters.followers.value);
+    if (shape.filters && shape.filters.gmv) bits.push('GMV min ' + shape.filters.gmv.value);
+    if (shape.filters && shape.filters.category) bits.push(shape.filters.category);
+    return bits.join(' · ') + '. Ambil memutar halaman itu.';
+  }
+  function stepHead() {
+    var labels = ['Produk', 'Kreator', 'Undangan', 'Kirim'];
+    return '<div class="step-labels">' + labels.map(function (label, i) {
+      return '<span class="' + (i <= ui.wizard.step ? 'on' : '') + '">' + (i + 1) + '. ' + esc(label) + '</span>';
+    }).join('') + '</div><div class="steps">' + [0, 1, 2, 3].map(function (i) {
+      return '<i' + (i <= ui.wizard.step ? ' class="on"' : '') + '></i>';
+    }).join('') + '</div>';
+  }
+  function wizActions(nextLabel) {
+    var back = ui.wizard.step > 0 ? '<button type="button" class="btn-ghost" data-act="wiz-back">Kembali</button>' : '';
+    var cancel = ui.wizard.step === 0 ? '<button type="button" class="btn-ghost" data-act="wiz-cancel">Batal</button>' : '';
+    return '<div class="sticky-actions"><button type="button" class="btn" data-act="wiz-next">' + esc(nextLabel || 'Lanjut') + '</button>' +
+      back + cancel + '</div>';
+  }
+
   function viewWizard() {
     var w = ui.wizard;
-    var html = '<div class="steps">' + [0, 1, 2, 3].map(function (i) {
-      return '<i' + (i <= w.step ? ' class="on"' : '') + '></i>';
-    }).join('') + '</div>';
+    var sku = skuNow();
+    var html = stepHead();
     if (w.step === 0) {
-      html += '<section class="card"><h2>Channel</h2>' +
-        '<p class="preview-banner">Sesi Affiliate Center · bukan API Partner Center</p>' +
+      html += '<section class="card"><h2>Produk</h2>' +
+        '<p class="preview-banner">Dari undangan manual yang terekam · ganti SKU dengan 1 undangan baru</p>' +
+        (sku.productId
+          ? '<p><strong>' + esc(sku.productName || ('produk ' + sku.productId)) + '</strong></p>' +
+            '<p class="muted">ID ' + esc(sku.productId) + '</p>'
+          : '<div class="note">Belum ada undangan terekam. Kirim 1 Target Collab manual di Affiliate Center untuk produk dan komisi yang akan dipakai.</div>') +
+        (sku.hasCommission
+          ? '<label class="field">Komisi %</label><input type="number" min="1" max="80" step="0.1" data-act="wiz-komisi" value="' + esc(w.commissionPct) + '">'
+          : (sku.productId ? '<p class="muted">Komisi mengikuti rekaman' + (sku.commissionPct != null ? ' (' + esc(sku.commissionPct) + '%)' : '') + '.</p>' : '')) +
+        (sku.hasName
+          ? '<label class="field">Nama undangan</label><input type="text" data-act="wiz-nama" value="' + esc(w.invitationName || '') + '">'
+          : '') +
+        (sku.hasEnd
+          ? '<label class="field">Berlaku sampai</label><input type="date" data-act="wiz-end" value="' + esc(w.endDate || '') + '">'
+          : '') +
+        wizActions() + '</section>';
+    } else if (w.step === 1) {
+      html += viewWizardCreators();
+    } else if (w.step === 2) {
+      html += '<section class="card"><h2>Undangan</h2>' +
         '<button type="button" class="channel' + (w.channel === 'target_collab' ? ' on' : '') + '" data-act="wiz-ch" data-id="target_collab">' +
           '<strong>Kolaborasi Bertarget</strong><em>' + esc(Send.endpointFor('target_collab')) + '</em></button>' +
         '<button type="button" class="channel' + (w.channel === 'im' ? ' on' : '') + '" data-act="wiz-ch" data-id="im">' +
           '<strong>Pesan IM</strong><em>' + esc(Send.endpointFor('im')) + '</em></button>' +
-        '<div class="sticky-actions"><button type="button" class="btn" data-act="wiz-next">Lanjut</button>' +
-        '<button type="button" class="btn-ghost" data-act="wiz-cancel">Batal</button></div></section>';
-    } else if (w.step === 1) {
-      var rows = rankedCreators(newCreators());
-      var all = db.creators;
-      var nNew = rows.length;
-      html += '<section class="card"><h2>Pilih kreator</h2>' +
-        '<p class="muted">Default: status baru saja, diurut omset/pengikut. Take-N: 50 / sisa kuota / max 1000.</p>' +
-        '<div class="row" style="margin:8px 0">' +
-          '<button type="button" class="btn-sm" data-act="wiz-take" data-id="50">Ambil 50</button>' +
-          '<button type="button" class="btn-sm" data-act="wiz-take" data-id="quota">Sisa kuota (' + leftDaily() + ')</button>' +
-          '<button type="button" class="btn-sm" data-act="wiz-take" data-id="1000">Max 1000</button>' +
-        '</div>' +
-        '<label class="muted"><input type="checkbox" data-act="wiz-all"' + (nNew && rows.every(function (c) { return w.ids[c.id]; }) ? ' checked' : '') + '> Pilih semua yang baru (' + nNew + ')</label>' +
-        (all.length ? all.map(function (c) {
-          return '<label class="person">' +
-            '<input type="checkbox" data-act="wiz-sel" data-id="' + esc(c.id) + '"' + (w.ids[c.id] ? ' checked' : '') + '>' +
-            '<span><strong>' + esc(Send.displayHandle(c.handle)) + '</strong><span class="meta">' + esc(c.name || '') +
-            (c.status && c.status !== 'new' ? ' · ' + c.status : '') +
-            (c.creatorOpenId ? '' : ' · handle saja') + '</span></span></label>';
-        }).join('') : '<p class="muted">Tambah handle di Kreator dulu.</p>') +
-        '<div class="sticky-actions"><button type="button" class="btn" data-act="wiz-next">Lanjut</button>' +
-        '<button type="button" class="btn-ghost" data-act="wiz-back">Kembali</button></div></section>';
-    } else if (w.step === 2) {
-      var sku = (ui.conn.recon && ui.conn.recon.sku) || ui.conn.sku || {};
-      html += '<section class="card"><h2>Template</h2>' +
         '<p class="muted">{handle} {name} {toko} {produk} {komisi}</p>' +
-        (ui.conn.recon && ui.conn.recon.collab && sku.hasMessage === false
-          ? '<div class="note">Rekaman Target Collab tidak punya field pesan. Teks di bawah tidak dikirim ke kreator — hanya nama + produk + komisi yang terekam.</div>'
+        (w.channel === 'target_collab' && sku.hasMessage === false
+          ? '<div class="note">Rekaman Target Collab tidak punya field pesan. Teks di bawah tidak dikirim ke kreator — hanya nama, produk, dan komisi yang terekam.</div>'
           : '') +
         '<textarea data-act="wiz-tpl">' + esc(w.template) + '</textarea>' +
-        '<div class="sticky-actions"><button type="button" class="btn" data-act="wiz-next">Lanjut</button>' +
-        '<button type="button" class="btn-ghost" data-act="wiz-back">Kembali</button></div></section>';
+        wizActions() + '</section>';
     } else {
-      var chosen = selectedCreators(w);
+      var chosen = selectedCreators(w).filter(function (c) { return !blockedHandles()[c.handle]; });
       var cap = leftDaily();
+      var liveLeft = ui.conn.liveQuota && ui.conn.liveQuota.remaining;
+      if (typeof liveLeft === 'number') cap = Math.min(cap, liveLeft);
       var n = Math.min(chosen.length, cap, Send.DAILY);
       var batches = n ? Math.ceil(n / Send.BATCH) : 0;
+      var bare = chosen.filter(function (c) { return !c.creatorOpenId; }).length;
+      var dropped = selectedCreators(w).length - chosen.length;
       html += '<section class="card"><h2>Kirim</h2>' +
-        '<p class="note">' + esc(skuLine()) + '</p>' +
+        '<p class="note">' + esc(wizardSkuLine()) + '</p>' +
         '<p><strong>' + n + '</strong> kreator · ' + batches + ' kolaborasi × max ' + Send.BATCH +
-          ' · sisa hitungan lokal ' + cap + '.</p>' +
-        '<p class="muted">Bukan 1.000/hari. Kuota mingguan toko bisa menghentikan lebih awal. Panel + tab Affiliate Center tetap terbuka.</p>' +
+          ' · sisa hitungan lokal ' + leftDaily() + '.</p>' +
+        '<p class="muted">' + esc(liveQuotaLine()) + '</p>' +
+        (bare ? '<p class="muted">' + bare + ' handle masih perlu dicari di TikTok sebelum undangan (belum ada creator_oec_id).</p>' : '') +
+        (dropped ? '<p class="muted">' + dropped + ' tidak ikut: sudah diundang untuk produk ini, atau ada di blacklist.</p>' : '') +
+        '<p class="muted">50 kreator per kolaborasi, jeda 4–7 detik. Jangan tutup overlay atau tab Affiliate Center.</p>' +
         (ui.conn.ok ? '<p class="muted">' + connChip() + '</p>' :
           '<div class="note">Seller Center belum terhubung. Buka tabnya dulu.</div>') +
         (db.account.allowLiveSend
-          ? '<div class="note">Kirim live terbuka. Tes 1 / Kirim kampanye akan minta konfirmasi, lalu benar-benar mengundang.</div>'
+          ? '<div class="note">Kirim live terbuka. Tes 1 / Kirim kampanye minta konfirmasi, lalu benar-benar mengundang.</div>'
           : '<p class="muted">Kirim live terkunci. Uji cari tidak mengirim undangan.</p>') +
         '<div class="sticky-actions">' +
           '<button type="button" class="btn" data-act="wiz-probe"' + (n && ui.conn.ok ? '' : ' disabled') + '>Uji cari (tidak kirim)</button>' +
@@ -597,6 +737,93 @@
           '<button type="button" class="btn-ghost" data-act="wiz-back">Kembali</button></div></section>';
     }
     return html;
+  }
+
+  function viewWizardCreators() {
+    var w = ui.wizard;
+    var shape = ui.conn.searchShape;
+    var rows = wizardCreators();
+    var removed = removalCounts();
+    var kalo = ui.conn.kalodata && ui.conn.kalodata.present
+      ? '<span class="chip ok">Kalodata · ' + (ui.conn.kalodata.count || 0) + ' baris terlihat</span>'
+      : '<span class="chip locked">Kalodata belum tab</span>';
+    var shown = rows.slice(0, 300);
+    var findFilters = '';
+    if (shape && shape.filters && shape.filters.followers) {
+      findFilters += '<label class="field">Pengikut min (rekaman)</label><input type="number" min="0" data-act="wiz-find-fol" value="' + esc(w.findFollowers != null ? w.findFollowers : shape.filters.followers.value) + '">';
+    }
+    if (shape && shape.filters && shape.filters.gmv) {
+      findFilters += '<label class="field">GMV min (rekaman)</label><input type="number" min="0" data-act="wiz-find-gmv" value="' + esc(w.findGmv != null ? w.findGmv : shape.filters.gmv.value) + '">';
+    }
+    var source = w.kreatorTab === 'kalo'
+      ? '<p class="muted">' + kalo + '</p>' +
+        '<div class="row" style="margin:8px 0">' +
+          '<button type="button" class="btn-sm" data-act="open-kalodata">Buka Kalodata</button>' +
+          '<button type="button" class="btn-sm" data-act="kalo-read"' + (db.account.allowKalodataRead ? '' : ' disabled') + '>Ambil halaman ini</button>' +
+        '</div>' +
+        '<div class="setting-row"><div><strong>Baca halaman ini</strong><span class="meta">Opt-in. ToS Kalodata 4.1.7 / 4.1.8, risiko ke akun kamu.</span></div>' +
+          '<label class="toggle"><input type="checkbox" data-act="arm-kalo" aria-label="Baca halaman ini"' + (db.account.allowKalodataRead ? ' checked' : '') + '></label></div>' +
+        '<div class="setting-row"><div><strong>Baca semua halaman</strong><span class="meta">Klik Berikutnya di tabel yang terbuka. Opt-in terpisah, risiko yang sama.</span></div>' +
+          '<label class="toggle"><input type="checkbox" data-act="arm-kalo-pages" aria-label="Baca semua halaman"' + (db.account.allowKalodataPages ? ' checked' : '') + '></label></div>' +
+        '<button type="button" class="btn" data-act="kalo-pages"' + (db.account.allowKalodataPages ? '' : ' disabled') + '>Baca semua halaman</button>' +
+        '<button type="button" class="btn-ghost" data-act="pull-stop" style="margin-top:8px">Berhenti</button>' +
+        '<label class="field">Tempel dari Kalodata</label>' +
+        '<textarea data-act="paste-handles" placeholder="@handle atau Unique ID, satu per baris"></textarea>' +
+        '<button type="button" class="btn-ghost" data-act="paste-go" style="margin-top:8px">Masukkan tempelan</button>' +
+        '<label class="field">Import CSV</label>' +
+        '<input type="file" accept=".csv,text/csv" data-act="csv">' +
+        '<p class="muted">Unique ID belum terbukti sama dengan creator_oec_id. Pembanding rekaman: @bule_barat = 7495372765352463150.</p>'
+      : '<p class="muted">' + esc(findHint()) + '</p>' +
+        findFilters +
+        '<div class="row" style="margin-top:8px">' +
+          '<button type="button" class="btn-sm" data-act="wiz-refresh">Cek rekaman</button>' +
+          '<button type="button" class="btn-sm" data-act="open-affiliate">Buka Affiliate</button>' +
+        '</div>' +
+        '<button type="button" class="btn" data-act="wiz-find" style="margin-top:8px"' + (ui.finding ? ' disabled' : '') + '>Ambil dari Find Creators</button>' +
+        '<button type="button" class="btn-ghost" data-act="pull-stop" style="margin-top:8px">Berhenti</button>';
+    var list = '<section class="card flat"><div class="list-head">' +
+      '<label class="muted"><input type="checkbox" data-act="wiz-all"' + (rows.length && rows.every(function (c) { return w.ids[c.id]; }) ? ' checked' : '') + '> Pilih yang tampil (' + rows.length + ')</label>' +
+      '<span>' + selectedCreators(w).length + ' dipilih</span></div>' +
+      '<input class="search" type="search" placeholder="Cari handle…" value="' + esc(w.filter || '') + '" data-act="wiz-q">' +
+      '<div class="row" style="padding:8px 12px">' +
+        '<input type="number" min="0" placeholder="Min pengikut" data-act="wiz-min-fol" value="' + esc(w.minFollowers || '') + '" style="width:auto;flex:1">' +
+        '<input type="number" min="0" placeholder="Min omset" data-act="wiz-min-rev" value="' + esc(w.minRevenue || '') + '" style="width:auto;flex:1">' +
+      '</div>' +
+      (removed.dup || removed.black ? '<p class="muted" style="padding:0 12px">Disembunyikan: ' + removed.dup + ' sudah diundang untuk produk ini, ' + removed.black + ' blacklist.</p>' : '') +
+      '<div class="creator-scroll">' +
+      (shown.length ? shown.map(function (c) {
+        return '<label class="person"><input type="checkbox" data-act="wiz-sel" data-id="' + esc(c.id) + '"' + (w.ids[c.id] ? ' checked' : '') + '>' +
+          '<span><strong>' + esc(Send.displayHandle(c.handle)) + '</strong><span class="meta">' + esc(c.name || '') +
+          (c.followers ? ' · ' + fmtStat(c.followers) + ' pengikut' : '') +
+          (c.revenue ? ' · ' + fmtStat(c.revenue) + ' omset' : '') +
+          (c.creatorOpenId ? '' : ' · handle saja') + '</span></span></label>';
+      }).join('') : '<p class="muted" style="padding:16px 12px">Belum ada yang lolos filter.</p>') +
+      (rows.length > shown.length ? '<p class="muted" style="padding:8px 12px">Menampilkan 300 dari ' + rows.length + '.</p>' : '') +
+      '</div>' +
+      '<label class="field" style="padding:0 12px">Blacklist</label>' +
+      '<textarea data-act="wiz-blacklist" placeholder="@handle, satu per baris" style="margin:0 12px 12px;width:calc(100% - 24px)">' + esc((db.blacklist || []).join('\n')) + '</textarea>' +
+      '</section>';
+    return '<div class="wiz-split"><section class="card"><h2>Kreator</h2>' +
+      '<div class="tabs">' +
+        '<button type="button" data-act="wiz-ktab" data-id="find" aria-selected="' + (w.kreatorTab !== 'kalo') + '">Temukan kreator</button>' +
+        '<button type="button" data-act="wiz-ktab" data-id="kalo" aria-selected="' + (w.kreatorTab === 'kalo') + '">Dari Kalodata</button>' +
+      '</div>' +
+      '<label class="field">Jumlah</label>' +
+      '<input type="number" min="1" max="1000" data-act="wiz-taken" value="' + esc(w.takeN) + '">' +
+      '<p class="muted">Default mengikuti sisa kuota. Maks 1.000.</p>' +
+      source +
+      '<p id="pull-note" class="muted">' + esc(ui.pullNote || '') + '</p>' +
+      wizActions() + '</section>' + list + '</div>';
+  }
+
+  function wizardSkuLine() {
+    var sku = skuNow();
+    var w = ui.wizard || {};
+    if (!sku.productId && !sku.productName) return skuLine();
+    var pct = w.commissionPct != null && w.commissionPct !== '' ? w.commissionPct : sku.commissionPct;
+    var comm = pct != null && pct !== '' ? (Math.round(Number(pct) * 10) / 10) + '%' : '—';
+    var name = w.invitationName || sku.invitationName || '';
+    return (sku.productName || ('produk ' + sku.productId)) + ' · komisi ' + comm + (name ? ' · ' + name : '');
   }
 
   function selectedCreators(w) {
@@ -609,7 +836,25 @@
     if (!Object.keys(ids).length) {
       rankedCreators(newCreators()).slice(0, Send.BATCH).forEach(function (c) { ids[c.id] = true; });
     }
-    ui.wizard = { step: 0, channel: 'target_collab', ids: ids, template: db.template };
+    var sku = skuNow();
+    ui.wizard = {
+      step: 0,
+      channel: 'target_collab',
+      ids: ids,
+      template: db.template,
+      kreatorTab: 'find',
+      takeN: defaultTake(),
+      minFollowers: '',
+      minRevenue: '',
+      filter: '',
+      commissionPct: sku.commissionPct != null ? sku.commissionPct : (db.account.commissionPct || ''),
+      invitationName: sku.invitationName || '',
+      endDate: endDateInput(sku.endTime),
+      findFollowers: sku && ui.conn.searchShape && ui.conn.searchShape.filters && ui.conn.searchShape.filters.followers
+        ? ui.conn.searchShape.filters.followers.value : '',
+      findGmv: ui.conn.searchShape && ui.conn.searchShape.filters && ui.conn.searchShape.filters.gmv
+        ? ui.conn.searchShape.filters.gmv.value : ''
+    };
     render();
   }
 
@@ -628,7 +873,13 @@
       toast('Buka Seller Center dulu');
       return;
     }
-    var chosen = selectedCreators(w).slice(0, leftDaily());
+    var blocked = blockedHandles();
+    var pool = selectedCreators(w).filter(function (c) { return !blocked[Send.normHandle(c.handle)]; });
+    var dropped = selectedCreators(w).length - pool.length;
+    var cap = leftDaily();
+    var liveLeft = ui.conn.liveQuota && ui.conn.liveQuota.remaining;
+    if (typeof liveLeft === 'number') cap = Math.min(cap, liveLeft);
+    var chosen = pool.slice(0, cap);
     if (opts.limit) chosen = chosen.slice(0, opts.limit);
     if (!chosen.length) { toast('Tidak ada yang bisa dikirim'); return; }
     if (opts.dryRun) {
@@ -636,7 +887,7 @@
     } else {
       if (!db.account.allowLiveSend) { toast('Kirim live terkunci'); return; }
       var n = chosen.length;
-      if (!confirm('LIVE: kirim ' + (w.channel === 'target_collab' ? 'undangan Target Collab' : 'pesan IM') + ' ke ' + n + ' kreator di toko kamu (max ' + Send.BATCH + ' per kolaborasi). Tes 1 hanya ke akun sendiri. Lanjut?')) return;
+      if (!confirm('LIVE: kirim ' + (w.channel === 'target_collab' ? 'undangan Target Collab' : 'pesan IM') + ' ke ' + n + ' kreator di toko kamu (max ' + Send.BATCH + ' per kolaborasi)' + (dropped ? '. ' + dropped + ' dilewati (duplikat/blacklist)' : '') + '. Lanjut?')) return;
     }
     db.template = w.template;
     var campaign = {
@@ -645,6 +896,12 @@
       channel: w.channel,
       template: w.template,
       dryRun: !!opts.dryRun,
+      productId: skuNow().productId || '',
+      invite: {
+        commissionPct: w.commissionPct,
+        invitationName: w.invitationName || '',
+        endTime: (w.endDate && w.endDate !== endDateInput(skuNow().endTime)) ? w.endDate : ''
+      },
       status: 'berjalan',
       createdAt: new Date().toISOString(),
       cursor: 0,
@@ -668,19 +925,56 @@
     startRunner(campaign.id);
   }
 
+  function claimLock(campaignId) {
+    return new Promise(function (resolve) {
+      if (!chrome.storage) { resolve(true); return; }
+      chrome.storage.local.get(LOCK, function (res) {
+        var lock = res[LOCK];
+        if (lock && lock.owner !== SURFACE && (Date.now() - (lock.at || 0) < 8000)) {
+          resolve(false);
+          return;
+        }
+        chrome.storage.local.set({ [LOCK]: { owner: SURFACE, campaignId: campaignId, at: Date.now() } }, function () {
+          resolve(true);
+        });
+      });
+    });
+  }
+  function beatLock() {
+    if (!runner.id || !chrome.storage) return;
+    chrome.storage.local.set({ [LOCK]: { owner: SURFACE, campaignId: runner.id, at: Date.now() } });
+  }
+  function releaseLock() {
+    if (!chrome.storage) return;
+    chrome.storage.local.get(LOCK, function (res) {
+      var lock = res[LOCK];
+      if (lock && lock.owner === SURFACE) chrome.storage.local.remove(LOCK);
+    });
+    notifyParent(false);
+  }
+
   function stopRunner() {
     if (runner.timer) clearTimeout(runner.timer);
     runner.timer = null;
     runner.id = null;
     runner.busy = false;
     runner.paused = false;
+    releaseLock();
   }
 
-  function startRunner(id) {
-    stopRunner();
+  async function startRunner(id) {
+    if (runner.timer) clearTimeout(runner.timer);
+    runner.timer = null;
+    var ok = await claimLock(id);
+    if (!ok) {
+      toast('Antrian sudah jalan di jendela lain. Tutup overlay atau panel itu dulu.', 'warn', 5000);
+      return;
+    }
     runner.id = id;
     runner.paused = false;
+    runner.busy = false;
     ui.jobId = id;
+    notifyParent(true);
     renderJob(id);
     queueTick(80);
   }
@@ -727,6 +1021,7 @@
 
   async function tickCampaign() {
     if (runner.paused || runner.busy) return;
+    beatLock();
     var id = runner.id;
     var campaign = id && campaignById(id);
     if (!campaign) return;
@@ -770,7 +1065,8 @@
       channel: campaign.channel,
       account: db.account,
       template: campaign.template,
-      dryRun: dryRun
+      dryRun: dryRun,
+      invite: campaign.invite || null
     };
     var leaves;
     var leftover = [];
@@ -860,7 +1156,7 @@
     var done = campaign.status === 'selesai';
     var quotaStop = campaign.status === 'pause' && leftDaily() === 0;
     openOverlay(
-      '<p class="muted"><button type="button" class="btn-ghost" data-act="close-job">Tutup</button> · antrian jalan selama panel terbuka</p>' +
+      '<p class="muted"><button type="button" class="btn-ghost" data-act="close-job">Tutup</button> · jangan tutup halaman Affiliate Center atau overlay ini. Menutupnya menghentikan antrian.</p>' +
       '<section class="card">' +
         '<p class="preview-banner">' + (campaign.dryRun ? 'UJI CARI · tidak kirim undangan' : 'LIVE · ' + esc(Send.endpointFor(campaign.channel))) + '</p>' +
         '<h2>' + esc(campaign.title) + '</h2>' +
@@ -965,6 +1261,109 @@
     });
   }
 
+  function selectHandles(rows) {
+    if (!ui.wizard) return;
+    var blocked = blockedHandles();
+    (rows || []).forEach(function (r) {
+      var c = creatorByHandle(r.handle);
+      if (!c || blocked[c.handle]) return;
+      ui.wizard.ids[c.id] = true;
+    });
+  }
+
+  function pullFind() {
+    if (ui.finding || !ui.wizard) return;
+    ui.finding = true;
+    ui.pullNote = 'Mengambil dari Find Creators…';
+    render();
+    var w = ui.wizard;
+    var n = Math.max(0, Math.min(1000, +w.takeN || 0));
+    if (!n) {
+      ui.finding = false;
+      ui.pullNote = 'Kuota tersisa 0.';
+      toast('Kuota tersisa 0. Tidak ada yang diambil.', 'warn');
+      render();
+      return;
+    }
+    Send.findPages(n, { followers: w.findFollowers, gmv: w.findGmv }).then(function (res) {
+      ui.finding = false;
+      if (!res || !res.ok) {
+        ui.pullNote = (res && res.reason) || 'Gagal ambil.';
+        toast(ui.pullNote, 'bad', 6000);
+        render();
+        return;
+      }
+      var mapped = (res.rows || []).map(function (r) {
+        return {
+          handle: Send.normHandle(r.handle),
+          name: r.name || '',
+          creatorOpenId: r.creatorOpenId || '',
+          followers: r.followers || 0,
+          revenue: r.revenue || 0,
+          source: 'find'
+        };
+      }).filter(function (r) { return r.handle; });
+      if (mapped.length) mergeRows(mapped, 'find');
+      selectHandles(mapped);
+      ui.pullNote = mapped.length + ' kreator dari ' + (res.pages || 0) + ' halaman' +
+        (res.stopped === 'end' ? ' (halaman habis).' : res.stopped === 'abort' ? ' (dihentikan).' : '.');
+      if (!mapped.length) toast(ui.pullNote, 'warn', 5000);
+      render();
+    }).catch(function () {
+      ui.finding = false;
+      ui.pullNote = 'Find Creators tidak menjawab.';
+      toast(ui.pullNote, 'bad');
+      render();
+    });
+  }
+
+  function pullKalodataPages() {
+    if (!db.account.allowKalodataPages) {
+      toast('Izinkan baca semua halaman Kalodata dulu');
+      return;
+    }
+    if (ui.finding) return;
+    ui.finding = true;
+    ui.pullNote = 'Membaca halaman Kalodata…';
+    render();
+    var n = Math.max(0, Math.min(1000, +(ui.wizard && ui.wizard.takeN) || 0));
+    if (!n) {
+      ui.finding = false;
+      ui.pullNote = 'Kuota tersisa 0.';
+      toast('Kuota tersisa 0. Tidak ada yang diambil.', 'warn');
+      render();
+      return;
+    }
+    Send.kaloPages(n).then(function (res) {
+      ui.finding = false;
+      var rows = ((res && res.rows) || []).map(function (r) {
+        return {
+          handle: Send.normHandle(r.handle),
+          name: r.name || '',
+          creatorOpenId: r.creatorOpenId || '',
+          followers: r.followers || 0,
+          revenue: r.revenue || 0,
+          source: 'kalodata-page'
+        };
+      }).filter(function (r) { return r.handle; });
+      if (!rows.length) {
+        ui.pullNote = (res && res.reason) || 'Tidak ada baris baru.';
+        toast(ui.pullNote, 'bad', 5000);
+        render();
+        return;
+      }
+      mergeRows(rows, 'kalodata-page');
+      selectHandles(rows);
+      ui.pullNote = rows.length + ' kreator, ' + (res.pages || 0) + ' halaman' +
+        (res.stopped === 'abort' ? ' (dihentikan).' : res.stopped === 'end' ? ' (halaman habis).' : '.');
+      render();
+    }).catch(function () {
+      ui.finding = false;
+      toast('Kalodata tidak terbaca.', 'bad');
+      render();
+    });
+  }
+
   var kaloPulling = false;
   function pullKalodata(opts) {
     opts = opts || {};
@@ -1058,6 +1457,9 @@
     persist();
     var skipped = rows.length - n - updated;
     var extra = missingId ? ' ' + missingId + ' tanpa Unique ID (perlu Cari kreator terrekam).' : '';
+    if (sourceLabel === 'csv') {
+      extra += ' Unique ID belum terbukti = creator_oec_id (@bule_barat rekaman 7495372765352463150).';
+    }
     if (n) {
       ui.importNotice = 'Berhasil: ' + n + ' kreator ditambahkan' +
         (updated ? ', ' + updated + ' diperbarui' : '') +
@@ -1138,7 +1540,7 @@
 
   async function copyDiagnostics() {
     var recon = await Send.recon();
-    var version = '0.4.0';
+    var version = '0.5.0';
     try { version = chrome.runtime.getManifest().version || version; } catch (e) { /* ignore */ }
     var lastRows = [];
     db.campaigns.forEach(function (c) {
@@ -1170,6 +1572,8 @@
       },
       allowLiveSend: !!db.account.allowLiveSend,
       quota: { used: db.quota.used, dailyCap: db.quota.dailyCap, day: db.quota.day },
+      searchShape: ui.conn.searchShape || null,
+      liveQuota: ui.conn.liveQuota || null,
       recon: clipReconForDiag(recon),
       lastRows: lastRows.slice(0, 20)
     };
@@ -1222,7 +1626,9 @@
         collab: !!(recon && recon.collab && recon.collab.length),
         im: !!(recon && recon.im && recon.im.length)
       },
-      sku: (ping && ping.recon && ping.recon.sku) || {}
+      sku: (ping && ping.recon && ping.recon.sku) || {},
+      searchShape: shapeFromRecon(recon),
+      liveQuota: (window.LarisAffiliatePaging && recon) ? window.LarisAffiliatePaging.parseLiveQuota(recon.quota || []) : null
     };
     if (recon) {
       var parsedSku = skuFromReconStore(recon);
@@ -1270,8 +1676,23 @@
     } else if (act === 'wiz-ch') { ui.wizard.channel = id; render(); }
     else if (act === 'wiz-sel') { ui.wizard.ids[id] = t.checked; }
     else if (act === 'wiz-all') {
-      newCreators().forEach(function (c) { ui.wizard.ids[c.id] = t.checked; });
+      (ui.wizard ? wizardCreators() : newCreators()).forEach(function (c) { ui.wizard.ids[c.id] = t.checked; });
       render();
+    } else if (act === 'wiz-ktab') {
+      ui.wizard.kreatorTab = id === 'kalo' ? 'kalo' : 'find';
+      render();
+    } else if (act === 'wiz-refresh') {
+      refreshConn().then(function () { render(); });
+    } else if (act === 'wiz-find') { pullFind(); }
+    else if (act === 'kalo-pages') { pullKalodataPages(); }
+    else if (act === 'pull-stop') {
+      Send.findStop();
+      Send.kaloStop();
+      ui.pullNote = 'Berhenti diminta. Halaman yang sedang jalan akan selesai dulu.';
+      var note = $('pull-note');
+      if (note) note.textContent = ui.pullNote;
+    } else if (act === 'open-kalodata') {
+      Send.openKalodata().then(function () { toast('Tab Kalodata'); });
     } else if (act === 'wiz-take') {
       var take = id === 'quota' ? leftDaily() : +id;
       applyTakeN(Math.max(0, take));
@@ -1355,7 +1776,7 @@
     }
     else if (act === 'arm-kalo') {
       if (t.checked) {
-        if (!confirm('Izinkan ekstensi membaca baris kreator yang sudah terlihat di tab Kalodata kamu? Ini menyentuh Kalodata ToS 4.1.7 dan 4.1.8. Risikonya ke akun Kalodata kamu, bukan server LarisID. Centang ini mengambil halaman yang sedang terbuka. Tidak ada auto-pagination.')) {
+        if (!confirm('Izinkan ekstensi membaca baris kreator yang sudah terlihat di tab Kalodata kamu? Ini menyentuh Kalodata ToS 4.1.7 dan 4.1.8. Risikonya ke akun Kalodata kamu, bukan server LarisID. Centang ini mengambil halaman yang sedang terbuka.')) {
           t.checked = false;
           return;
         }
@@ -1369,6 +1790,19 @@
       db.account.allowKalodataRead = false;
       persist(); render();
     }
+    else if (act === 'arm-kalo-pages') {
+      if (t.checked) {
+        if (!confirm('Baca semua halaman membalik tabel Kalodata yang sedang terbuka: klik Berikutnya, tunggu, baca baris. Ini menyentuh Kalodata ToS 4.1.7 dan 4.1.8. Risikonya ke akun Kalodata kamu. Kamu bisa berhenti kapan saja. Tidak ada request tersembunyi.')) {
+          t.checked = false;
+          return;
+        }
+        db.account.allowKalodataPages = true;
+      } else {
+        db.account.allowKalodataPages = false;
+      }
+      persist(); render();
+    }
+    else if (act === 'wiz-blacklist') render();
     else if (act === 'csv' && t.files && t.files[0]) {
       var file = t.files[0];
       toast('Membaca ' + file.name + '…');
@@ -1384,12 +1818,38 @@
 
   document.addEventListener('input', function (ev) {
     var t = ev.target;
-    if (t.getAttribute('data-act') === 'filter') {
+    var act = t.getAttribute && t.getAttribute('data-act');
+    if (!ui.wizard && act && act.indexOf('wiz-') === 0) return;
+    if (act === 'filter') {
       ui.filter = t.value;
       render();
       var box = document.querySelector('[data-act="filter"]');
       if (box) { box.focus(); box.setSelectionRange(box.value.length, box.value.length); }
-    } else if (t.getAttribute('data-act') === 'wiz-tpl') ui.wizard.template = t.value;
+    } else if (act === 'wiz-tpl') ui.wizard.template = t.value;
+    else if (act === 'wiz-komisi') {
+      ui.wizard.commissionPct = t.value;
+      db.account.commissionPct = +t.value || db.account.commissionPct;
+      persist();
+    } else if (act === 'wiz-nama') ui.wizard.invitationName = t.value;
+    else if (act === 'wiz-end') ui.wizard.endDate = t.value;
+    else if (act === 'wiz-taken') ui.wizard.takeN = Math.max(1, Math.min(1000, +t.value || 1));
+    else if (act === 'wiz-find-fol') ui.wizard.findFollowers = t.value;
+    else if (act === 'wiz-find-gmv') ui.wizard.findGmv = t.value;
+    else if (act === 'wiz-blacklist') {
+      db.blacklist = String(t.value || '').split(/\r?\n/).map(function (h) { return Send.normHandle(h); }).filter(Boolean);
+      persist();
+    } else if (act === 'wiz-q' || act === 'wiz-min-fol' || act === 'wiz-min-rev') {
+      if (act === 'wiz-q') ui.wizard.filter = t.value;
+      if (act === 'wiz-min-fol') ui.wizard.minFollowers = t.value;
+      if (act === 'wiz-min-rev') ui.wizard.minRevenue = t.value;
+      var pos = t.selectionStart;
+      render();
+      var again = document.querySelector('[data-act="' + act + '"]');
+      if (again) {
+        again.focus();
+        if (again.setSelectionRange && pos != null) again.setSelectionRange(pos, pos);
+      }
+    }
   });
 
   document.addEventListener('submit', function (ev) {
@@ -1400,18 +1860,49 @@
     form.reset();
   });
 
-  function boot(saved) {
-    db = hydrate(saved);
-    persist();
+  function boot(saved, keepRunning) {
+    db = hydrate(saved, { keepRunning: !!keepRunning });
+    if (!keepRunning) persist();
     render();
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
       refreshConn();
       setInterval(refreshConn, 2500);
+      setInterval(function () { if (runner.id) beatLock(); }, 3000);
+      chrome.runtime.onMessage.addListener(function (msg) {
+        if (!msg) return;
+        if (msg.type !== 'laris-find-progress' && msg.type !== 'laris-kalodata-progress') return;
+        ui.pullNote = 'Terkumpul ' + (msg.got || 0) + ' / ' + (msg.limit || 0) + ' · halaman ' + (msg.page || 0);
+        var note = $('pull-note');
+        if (note) note.textContent = ui.pullNote;
+      });
+      window.addEventListener('beforeunload', releaseLock);
+      if (chrome.storage && chrome.storage.onChanged) {
+        chrome.storage.onChanged.addListener(function (changes, area) {
+          if (area !== 'local') return;
+          if (changes[LOCK]) {
+            var lock = changes[LOCK].newValue;
+            if (lock && lock.owner !== SURFACE && runner.id && lock.campaignId === runner.id) {
+              if (runner.timer) clearTimeout(runner.timer);
+              runner.timer = null;
+              runner.id = null;
+              runner.busy = false;
+              notifyParent(false);
+            }
+          }
+          if (changes[KEY] && changes[KEY].newValue && !runner.busy && !runner.id) {
+            db = hydrate(changes[KEY].newValue, { keepRunning: true });
+          }
+        });
+      }
     }
   }
   if (typeof chrome !== 'undefined' && chrome.storage) {
-    chrome.storage.local.get(KEY, function (res) { boot(res[KEY]); });
+    chrome.storage.local.get([KEY, LOCK], function (res) {
+      var lock = res[LOCK];
+      var other = lock && lock.owner !== SURFACE && (Date.now() - (lock.at || 0) < 8000);
+      boot(res[KEY], other);
+    });
   } else {
-    boot(null);
+    boot(null, false);
   }
 })();

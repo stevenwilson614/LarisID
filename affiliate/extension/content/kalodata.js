@@ -128,9 +128,127 @@
     });
   }
 
+  var pageAbort = false;
+
+  function rowSig(rows) {
+    return (rows || []).map(function (r) { return r.handle; }).join('|');
+  }
+
+  function isDisabled(el) {
+    if (!el) return true;
+    if (el.disabled) return true;
+    if (String(el.getAttribute('aria-disabled') || '') === 'true') return true;
+    if (/\bdisabled\b/.test(String(el.className || ''))) return true;
+    return false;
+  }
+
+  function nextButton() {
+    var sels = [
+      '[data-slot="pagination-next"]',
+      'button[aria-label*="next" i]',
+      'a[aria-label*="next" i]',
+      'button[aria-label*="berikut" i]',
+      'a[aria-label*="berikut" i]',
+      '.ant-pagination-next button',
+      '.ant-pagination-next',
+      'button[class*="pagination-next"]',
+      'a[rel="next"]'
+    ];
+    var i;
+    for (i = 0; i < sels.length; i++) {
+      var el = document.querySelector(sels[i]);
+      if (el && !isDisabled(el)) return el;
+    }
+    var nodes = document.querySelectorAll('button, a, [role="button"]');
+    for (i = 0; i < nodes.length; i++) {
+      var t = textOf(nodes[i]).toLowerCase();
+      if (t === '>' || t === '›' || t === '»' || t === 'berikutnya' || t === 'next') {
+        if (!isDisabled(nodes[i])) return nodes[i];
+      }
+    }
+    return null;
+  }
+
+  function sleep(ms) {
+    return new Promise(function (resolve) { setTimeout(resolve, ms); });
+  }
+
+  function waitRows(prevSig, timeout) {
+    var start = Date.now();
+    return new Promise(function (resolve) {
+      (function poll() {
+        var now = readVisible();
+        var sig = rowSig(now.rows);
+        if (sig && sig !== prevSig) return resolve(now);
+        if (Date.now() - start > timeout) return resolve(null);
+        setTimeout(poll, 250);
+      })();
+    });
+  }
+
+  async function readPages(limit) {
+    limit = Math.max(1, Math.min(1000, Number(limit) || 1));
+    var seen = {};
+    var rows = [];
+    var pages = 0;
+    var guard = 0;
+    while (rows.length < limit && guard < 80) {
+      if (pageAbort) break;
+      guard += 1;
+      var shot = readVisible();
+      var added = 0;
+      (shot.rows || []).forEach(function (r) {
+        if (!r.handle || seen[r.handle] || rows.length >= limit) return;
+        seen[r.handle] = true;
+        rows.push(r);
+        added += 1;
+      });
+      pages += 1;
+      try {
+        chrome.runtime.sendMessage({
+          type: 'laris-kalodata-progress',
+          got: rows.length,
+          page: pages,
+          limit: limit
+        });
+      } catch (e) { /* ignore */ }
+      if (rows.length >= limit) break;
+      var btn = nextButton();
+      if (!btn) break;
+      var sig = rowSig(shot.rows);
+      btn.click();
+      await sleep(1500 + Math.floor(Math.random() * 1501));
+      if (pageAbort) break;
+      var changed = await waitRows(sig, 8000);
+      if (!changed) break;
+    }
+    return {
+      ok: true,
+      kalodata: true,
+      href: location.href,
+      count: rows.length,
+      pages: pages,
+      stopped: pageAbort ? 'abort' : (rows.length >= limit ? 'limit' : 'end'),
+      rows: rows
+    };
+  }
+
   chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
-    if (!msg || msg.type !== 'laris-kalodata-read') return;
-    sendResponse(readVisible());
+    if (!msg || !msg.type) return;
+    if (msg.type === 'laris-kalodata-stop') {
+      pageAbort = true;
+      sendResponse({ ok: true });
+      return;
+    }
+    if (msg.type === 'laris-kalodata-read') {
+      sendResponse(readVisible());
+      return;
+    }
+    if (msg.type === 'laris-kalodata-pages') {
+      pageAbort = false;
+      readPages(msg.limit).then(sendResponse);
+      return true;
+    }
   });
 
   hello();

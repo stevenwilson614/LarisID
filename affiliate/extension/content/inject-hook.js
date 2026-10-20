@@ -8,9 +8,11 @@
   var MAX_BODY = 24000;
   var origFetch = window.fetch.bind(window);
 
-  function clip(s) {
+  function clip(s, max) {
     s = String(s == null ? '' : s);
-    if (s.length > MAX_BODY) return s.slice(0, MAX_BODY);
+    var cap = max || MAX_BODY;
+    if (cap > 2000000) cap = 2000000;
+    if (s.length > cap) return s.slice(0, cap);
     return s;
   }
 
@@ -103,7 +105,7 @@
           id: d.id,
           status: res.status,
           ok: res.ok,
-          text: clip(text)
+          text: clip(text, d.maxBody)
         }, '*');
       });
     }).catch(function (err) {

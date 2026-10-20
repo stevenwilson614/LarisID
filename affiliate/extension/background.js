@@ -25,7 +25,11 @@ function injectTab(tabId, url) {
   }).catch(function () {});
   chrome.scripting.executeScript({
     target: { tabId: tabId, allFrames: true },
-    files: ['content/adapter.js', 'content/affiliate-center.js']
+    files: ['js/paging.js', 'content/adapter.js', 'content/affiliate-center.js']
+  }).catch(function () {});
+  chrome.scripting.executeScript({
+    target: { tabId: tabId, allFrames: false },
+    files: ['content/pill.js']
   }).catch(function () {});
 }
 
@@ -277,13 +281,33 @@ chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
     return true;
   }
 
-  if (msg.type === 'laris-kalodata-read') {
+  if (msg.type === 'laris-open-kalodata') {
+    chrome.tabs.query({ url: ['https://www.kalodata.com/*', 'https://kalodata.com/*'] }, function (tabs) {
+      if (tabs && tabs.length) {
+        chrome.tabs.update(tabs[0].id, { active: true }, function () {
+          sendResponse({ ok: true, href: tabs[0].url || '' });
+        });
+        return;
+      }
+      chrome.tabs.create({ url: 'https://www.kalodata.com/creator', active: true }, function (tab) {
+        sendResponse({ ok: true, opened: true, href: tab && tab.url || '' });
+      });
+    });
+    return true;
+  }
+
+  if (msg.type === 'laris-find-pages' || msg.type === 'laris-find-stop') {
+    sendToBestFrame(msg).then(sendResponse);
+    return true;
+  }
+
+  if (msg.type === 'laris-kalodata-read' || msg.type === 'laris-kalodata-pages' || msg.type === 'laris-kalodata-stop') {
     withKaloTab(function (k) {
       if (!k) {
         sendResponse({ ok: false, code: 'no_kalodata', reason: 'Buka tab Kalodata Daftar Kreator dulu.', rows: [], count: 0 });
         return;
       }
-      chrome.tabs.sendMessage(k.tabId, { type: 'laris-kalodata-read' }, { frameId: k.frameId == null ? 0 : k.frameId }, function (res) {
+      chrome.tabs.sendMessage(k.tabId, msg, { frameId: k.frameId == null ? 0 : k.frameId }, function (res) {
         if (chrome.runtime.lastError) {
           sendResponse({ ok: false, code: 'no_listener', reason: 'Tab Kalodata belum siap. Refresh kalodata.com/creator, lalu coba lagi.', rows: [], count: 0 });
           return;

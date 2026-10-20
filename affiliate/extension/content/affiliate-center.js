@@ -8,16 +8,24 @@
   var pending = {};
   var seq = 1;
 
-  function pageFetch(url, init) {
+  function pageFetch(url, init, opts) {
+    opts = opts || {};
     return new Promise(function (resolve) {
       var id = 'f' + (seq += 1);
       pending[id] = resolve;
-      window.postMessage({ source: SRC_ISO, op: 'fetch', id: id, url: url, init: init || {} }, '*');
+      window.postMessage({
+        source: SRC_ISO,
+        op: 'fetch',
+        id: id,
+        url: url,
+        init: init || {},
+        maxBody: opts.maxBody || 0
+      }, '*');
       setTimeout(function () {
         if (!pending[id]) return;
         delete pending[id];
         resolve({ ok: false, status: 0, text: '', error: 'timeout' });
-      }, 20000);
+      }, opts.timeout || 20000);
     });
   }
 
@@ -272,7 +280,7 @@
     }
 
     var filled = channel === 'collab'
-      ? Adapter.fillCollabTemplate(bodyObj, ready, message)
+      ? Adapter.fillCollabTemplate(bodyObj, ready, message, ctx && ctx.invite)
       : Adapter.fillTemplate(bodyObj, ready[0], message);
 
     var init = {
@@ -320,8 +328,121 @@
     return sendBatch([row], ctx);
   }
 
+  var findAbort = false;
+
+  async function findPages(limit, step) {
+    var P = window.LarisAffiliatePaging;
+    if (!P) return { ok: false, code: 'no_paging', reason: 'Helper halaman belum termuat. Reload ekstensi.' };
+    limit = Math.max(1, Math.min(1000, Number(limit) || 1));
+    step = step || {};
+    var data = await Adapter.loadStore();
+    var entry = Adapter.latestList(data);
+    if (!entry) {
+      var any = Adapter.latest(data, 'search');
+      if (any && Adapter.searchKind(any) === 'handle') {
+        return {
+          ok: false,
+          code: 'handle_lookup',
+          reason: 'Rekaman terakhir cari satu handle. Di Find Creators, kosongkan pencarian, set filter, buka halaman berikutnya, lalu Ambil lagi.'
+        };
+      }
+      return {
+        ok: false,
+        code: 'no_search',
+        reason: 'Belum ada rekaman daftar kreator. Buka Find Creators, set filter, ganti halaman sekali, jangan undang.'
+      };
+    }
+    var body = Adapter.parseMaybe(entry.reqBody);
+    var spec = P.describeSearch(body);
+    if (!spec.page && !spec.offset && !spec.cursor) {
+      return {
+        ok: false,
+        code: 'no_page',
+        reason: 'Rekaman Find Creators tidak punya nomor halaman. Set filter, buka halaman 2, lalu Ambil lagi.'
+      };
+    }
+    var rows = [];
+    var seen = {};
+    var page = 0;
+    var cursor = spec.cursor ? spec.cursor.value : '';
+    var size = spec.size ? spec.size.value : 20;
+    var guardMax = Math.min(80, Math.ceil(limit / Math.max(1, size)) + 3);
+    var pages = 0;
+    while (rows.length < limit && pages < guardMax) {
+      if (findAbort) break;
+      var nextBody = P.applyPaging(body, spec, {
+        pageIndex: page,
+        size: size,
+        cursor: cursor,
+        clearQuery: !!step.clearQuery,
+        followers: step.followers,
+        gmv: step.gmv
+      });
+      var init = { method: entry.method || 'POST', headers: { 'content-type': 'application/json' } };
+      if ((entry.method || 'POST') !== 'GET') init.body = JSON.stringify(nextBody);
+      var res = await pageFetch(entry.url, init, { maxBody: 1500000, timeout: 25000 });
+      var json = Adapter.parseMaybe(res.text);
+      if (res.error || !jsonOk(res.status, json)) {
+        if (!rows.length) {
+          return {
+            ok: false,
+            code: 'find_failed',
+            reason: failReason(res, json) || 'Find Creators tidak menjawab.',
+            rows: []
+          };
+        }
+        break;
+      }
+      var batch = P.extractCreatorList(json);
+      var added = 0;
+      batch.forEach(function (rec) {
+        if (rows.length >= limit) return;
+        var key = rec.creatorOpenId || rec.handle;
+        if (!key || seen[key]) return;
+        seen[key] = true;
+        rows.push(rec);
+        added += 1;
+      });
+      pages += 1;
+      try {
+        chrome.runtime.sendMessage({ type: 'laris-find-progress', got: rows.length, page: pages, limit: limit });
+      } catch (e) { /* panel may be closed */ }
+      if (!added) break;
+      if (rows.length >= limit) break;
+      var nxt = P.nextCursor(json);
+      var advanced = false;
+      if (spec.cursor && nxt != null && nxt !== '' && String(nxt) !== String(cursor)) {
+        cursor = nxt;
+        advanced = true;
+      }
+      if (spec.page || spec.offset) {
+        page += 1;
+        advanced = true;
+      }
+      if (!advanced) break;
+      await sleep(1000);
+    }
+    return {
+      ok: true,
+      rows: rows,
+      pages: pages,
+      stopped: findAbort ? 'abort' : (rows.length >= limit ? 'limit' : 'end'),
+      endpoint: (entry.method || 'POST') + ' ' + String(entry.url || '').split('?')[0]
+    };
+  }
+
   chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
     if (!msg) return;
+    if (msg.type === 'laris-find-stop') {
+      findAbort = true;
+      sendResponse({ ok: true });
+      return;
+    }
+    if (msg.type === 'laris-find-pages') {
+      findAbort = false;
+      findPages(msg.limit, msg.step).then(sendResponse);
+      return true;
+    }
     if (msg.type === 'laris-probe') {
       probeOne(msg.row).then(sendResponse);
       return true;
