@@ -16634,8 +16634,9 @@ function sddvCancel() {
  *  Desktop only (cwsExtOfferable). Once per browser, including admins.
  *  The five dives are counted in this page session only — a reload starts
  *  over, so the ad appears when someone hits five in one sitting. Pasang
- *  ekstensi and Lanjut stay locked until the clip fires `ended`. Marked
- *  seen on open so a refresh mid-play never replays. */
+ *  ekstensi and Lanjut stay locked until the clip fires `ended`. After
+ *  unlock the clip loops so the demo keeps playing. Marked seen on open
+ *  so a refresh mid-play never replays. */
 const EDDV_KEY = 'lid_ext_dd5_video_v1';
 const EDDV_SRC = '/images/onboarding/ext-deepdive.mp4';
 const EDDV_DELAY = 2000;
@@ -16699,10 +16700,7 @@ function eddvFire() {
   clarityEvt('ext_dd5_video', { action: 'show' });
 }
 
-function eddvTryPlay(video) {
-  video.muted = false;
-  try { video.currentTime = 0; } catch (_) {}
-  eddvStartCountdown(video);
+function eddvPlay(video) {
   const p = video.play();
   if (p && typeof p.then === 'function') {
     p.then(() => eddvSetMutedUi(false)).catch(() => {
@@ -16711,6 +16709,14 @@ function eddvTryPlay(video) {
       video.play().catch(() => {});
     });
   }
+}
+
+function eddvTryPlay(video) {
+  video.loop = false;
+  video.muted = false;
+  try { video.currentTime = 0; } catch (_) {}
+  eddvStartCountdown(video);
+  eddvPlay(video);
 }
 
 function eddvSetMutedUi(muted) {
@@ -16735,6 +16741,7 @@ function eddvStartCountdown(video) {
 }
 
 function eddvUpdateTimer(video) {
+  if (_eddvEnded) return;
   const el = $('eddv-timer');
   if (!el) return;
   const dur = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 14;
@@ -16770,8 +16777,10 @@ function eddvBind(video) {
     $('ext-dd-video')?.classList.add('eddv-done');
     eddvSetLocked(false);
     const timer = $('eddv-timer');
-    if (timer) timer.textContent = '0:00';
+    if (timer) { timer.textContent = '0:00'; timer.hidden = true; }
     eddvStopCountdown();
+    video.loop = true;
+    eddvPlay(video);
     void logUserEvent('ext_dd5_video', { ui: 'gpt', action: 'complete' });
     clarityEvt('ext_dd5_video', { action: 'complete' });
   });
@@ -16786,7 +16795,10 @@ function eddvClose(reason) {
   overlay.classList.remove('open', 'eddv-done');
   document.body.classList.remove('eddv-open');
   const video = $('eddv-video');
-  if (video) { try { video.pause(); } catch (_) {} }
+  if (video) {
+    try { video.pause(); } catch (_) {}
+    video.loop = false;
+  }
   void logUserEvent('ext_dd5_video', { ui: 'gpt', action: reason || 'close' });
   clarityEvt('ext_dd5_video', { action: reason || 'close' });
 }
