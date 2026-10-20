@@ -5473,22 +5473,56 @@ body.view-edukasi .panel { background: #F7F7F8; }
   color: #6B7280;
 }
 .adm-edu-yes {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: #ECFDF5;
-  color: #047857;
-  font-size: .72rem;
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #059669;
+}
+.adm-edu-yes svg {
+  width: 18px;
+  height: 18px;
+  display: block;
 }
 .adm-edu-no {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: #F3F4F6;
-  color: #6B7280;
-  font-size: .72rem;
+  color: #9CA3AF;
+  font-size: .85rem;
+}
+.adm-edu-pct {
+  font-variant-numeric: tabular-nums;
   font-weight: 650;
+  color: #111827;
+}
+.adm-edu-pct-empty { color: #9CA3AF; font-weight: 500; }
+.adm-edu-people {
+  margin-top: 12px;
+  border-top: 1px solid var(--line, #e5e7eb);
+  padding-top: 10px;
+}
+.adm-edu-people > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+  font-size: .82rem;
+  font-weight: 700;
+  color: #374151;
+  user-select: none;
+}
+.adm-edu-people > summary::-webkit-details-marker { display: none; }
+.adm-edu-people-arrow {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  color: #6B7280;
+  transition: transform .15s ease;
+  flex-shrink: 0;
+}
+.adm-edu-people-arrow svg { width: 16px; height: 16px; display: block; }
+.adm-edu-people[open] > summary .adm-edu-people-arrow { transform: rotate(90deg); }
+.adm-edu-people-count {
+  font-weight: 600;
+  color: #6B7280;
 }
 .adm-edu-kota {
   margin-left: .35em;
@@ -11706,32 +11740,30 @@ body.view-chat .sfb-card {
                   <li class="adm-edu-kota-chip-empty">Memuat…</li>
                 </ul>
               </div>
-              <div class="admin-table-wrap">
-                <table class="admin-table" id="adm-edu-table">
-                  <thead>
-                    <tr>
-                      <th>Nama</th>
-                      <th>Kontak</th>
-                      <th>Buka</th>
-                      <th>Tertarik</th>
-                      <th>Terakhir</th>
-                    </tr>
-                  </thead>
-                  <tbody id="adm-edu-body">
-                    <tr><td colspan="5" class="dd-sub">Memuat…</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </section>
-
-            <section class="adm-card" id="adm-belajar">
-              <div class="adm-users-toolbar">
-                <h3>Belajar — kurikulum</h3>
-                <button type="button" class="adm-tb-btn" id="adm-belajar-refresh">Muat ulang</button>
-                <button type="button" class="adm-tb-btn" id="adm-belajar-open">Buka seperti user</button>
-              </div>
-              <p class="dd-sub" id="adm-belajar-summary">Memuat…</p>
-              <div id="adm-belajar-body"></div>
+              <details class="adm-edu-people" id="adm-edu-people">
+                <summary>
+                  <span class="adm-edu-people-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>
+                  <span>Daftar orang</span>
+                  <span class="adm-edu-people-count" id="adm-edu-people-count"></span>
+                </summary>
+                <div class="admin-table-wrap">
+                  <table class="admin-table" id="adm-edu-table">
+                    <thead>
+                      <tr>
+                        <th>Nama</th>
+                        <th>Kontak</th>
+                        <th>Buka</th>
+                        <th>Kurikulum</th>
+                        <th>Mentor</th>
+                        <th>Terakhir</th>
+                      </tr>
+                    </thead>
+                    <tbody id="adm-edu-body">
+                      <tr><td colspan="6" class="dd-sub">Memuat…</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </details>
             </section>
 
             <section class="adm-card adm-trend-card">

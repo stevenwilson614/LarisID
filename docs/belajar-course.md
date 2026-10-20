@@ -80,7 +80,7 @@ bash scripts/apply-selfhost.sh supabase/migrations/20261017120000_belajar_ide_sc
 
 `user_seller_outcomes` is written when a shop URL is linked: user, platform, url, shop ref, baseline, `linked_at`. One row per user. Changing the URL clears the previous omset, the self-reported number, and `reached_3jt_at`.
 
-Omset refresh runs on link and from Admin → Belajar (no new crawler):
+Omset refresh runs on link (no new crawler):
 
 - Shopee shop id that already appears in `listings_deduped`: sum of `nowcast_omset_monthly` for distinct on-topic `item_id`s, labeled perkiraan. The UI says this is only listings we have, not the whole shop.
 - `reached_3jt_at` is set only when that Laris sum is at least Rp 3.000.000. Once set, it stays until the shop URL changes.
@@ -88,15 +88,11 @@ Omset refresh runs on link and from Admin → Belajar (no new crawler):
 - Lazada, Tokopedia, TikTok, and a Shopee URL with no numeric shop id are recorded. Their Laris omset stays empty.
 - `reported_omset_idr` is the learner’s own number. It never sets `reached_3jt_at`.
 
-Admin → Belajar shows baseline → URL linked → reached 3jt, including linked and reached counts for `no_store` and `no_sales`.
-
 Large drafts live in `user_course_state.listing_draft` (cleaned by `belajar_clean_draft`, max 24k). They are not stuffed into lesson answers.
 
 ## Editing
 
-Admin → **Belajar — kurikulum** edits title, URL, body, points, resources, questions, action JSON, platform, and tayang. Counts are people who marked `done` or `skipped`.
-
-Interactive widgets are keyed by lesson slug in `js/gpt-belajar.js`. Changing the slug in admin detaches the widget.
+Curriculum copy is edited via SQL migrations / DB, not an Admin dashboard editor. The old **Belajar — kurikulum** admin card (module/lesson forms + stop funnel) was removed. Interactive widgets stay keyed by lesson slug in `js/gpt-belajar.js` — changing a slug detaches the widget.
 
 ```bash
 bash scripts/apply-selfhost.sh supabase/migrations/20261014180000_belajar_curriculum_v2.sql
@@ -107,11 +103,11 @@ Never `supabase db push --linked`.
 
 Do not re-apply `supabase/migrations/20261014120000_belajar_course.sql` after the v2 file. That file’s `belajar_course()` does not know baseline, listing draft, or shop outcomes, and it puts the five-module seed back. Re-applying the v2 file overwrites v2 lesson copy for the same slugs — then re-apply the unit1 refresh migration.
 
-## Visits, mentor interest, and where people stop
+## Visits, mentor interest, and kurikulum progress
 
-Signed-in opens of Belajar log `belajar_page_view` once per browser session (`lid_belajar_page_view_v1`). Platform-admin and view-as sessions are not counted, same as the old Edukasi preview. Admin → **Belajar — kunjungan & minat mentor** (`education_admin_overview`) counts unique people across `edu_page_view` and `belajar_page_view`, and every row in `education_interests`.
+Signed-in opens of Belajar log `belajar_page_view` once per browser session (`lid_belajar_page_view_v1`). Platform-admin and view-as sessions are not counted, same as the old Edukasi preview. Admin → **Belajar — kunjungan & minat mentor** (`education_admin_overview`) counts unique people across `edu_page_view` and `belajar_page_view`, and every row in `education_interests`. The people table is collapsed by default; each row shows kurikulum progress % from `belajar_admin_progress` (`done` / published lessons) when they pressed Mulai, and a green check when they opted into mentor interest.
 
-`belajar_touch('mulai', slug)` runs when someone presses **Mulai sekarang** or Beranda **Mulai belajar**. It sets `user_course_state.mulai_at` once. Each lesson they then open calls `belajar_touch('open', slug)`, which sets `last_slug` / `last_at` and advances `furthest_slug` only forward. Admin → Belajar lists where those people stopped (`belajar_admin_progress`: last lesson opened) and how far they got. Do not backfill `mulai_at` from `started_at`.
+`belajar_touch('mulai', slug)` runs when someone presses **Mulai sekarang** or Beranda **Mulai belajar**. It sets `user_course_state.mulai_at` once. Each lesson they then open calls `belajar_touch('open', slug)`, which sets `last_slug` / `last_at` and advances `furthest_slug` only forward. Do not backfill `mulai_at` from `started_at`.
 
 ```bash
 bash scripts/apply-selfhost.sh supabase/migrations/20261017150000_belajar_public.sql

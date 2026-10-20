@@ -26717,7 +26717,6 @@ function openAdminView() {
   void loadAdminFeedback();
   void loadAdminKeywordRequests();
   void loadAdminEdukasi();
-  if (window.LarisBelajar) void window.LarisBelajar.loadAdmin(belajarCtx());
   gptMountWinback();
   try { if (window.LarisCohort) void window.LarisCohort.renderOps(); } catch (_) {}
   void fillAdminCohortPreview();
@@ -26737,13 +26736,15 @@ function admEduFmtWhen(iso) {
 async function loadAdminEdukasi() {
   const body = $('adm-edu-body');
   const sum = $('adm-edu-summary');
+  const peopleCount = $('adm-edu-people-count');
   if (!body || !_supabase) return;
   if (!isPlatformAdmin()) {
-    body.innerHTML = '<tr><td colspan="5" class="dd-sub">Login sebagai admin dulu.</td></tr>';
+    body.innerHTML = '<tr><td colspan="6" class="dd-sub">Login sebagai admin dulu.</td></tr>';
     return;
   }
-  body.innerHTML = '<tr><td colspan="5" class="dd-sub">Memuat…</td></tr>';
+  body.innerHTML = '<tr><td colspan="6" class="dd-sub">Memuat…</td></tr>';
   if (sum) sum.textContent = 'Memuat…';
+  if (peopleCount) peopleCount.textContent = '';
   try {
     const { data, error } = await _supabase.rpc('education_admin_overview');
     if (error) throw error;
@@ -26753,6 +26754,27 @@ async function loadAdminEdukasi() {
     const interested = Number(data.interested || 0);
     const rows = Array.isArray(data.rows) ? data.rows : [];
     const rate = visitors > 0 ? Math.round((interested / visitors) * 100) : null;
+
+    // Kurikulum progress for people who pressed Mulai (done / published lessons).
+    const progressByUser = new Map();
+    try {
+      const { data: prog, error: progErr } = await _supabase.rpc('belajar_admin_progress');
+      if (!progErr && prog && prog.ok !== false) {
+        for (const p of (Array.isArray(prog.people) ? prog.people : [])) {
+          if (!p?.user_id) continue;
+          const done = Number(p.done || 0);
+          const total = Number(p.total || 0);
+          progressByUser.set(String(p.user_id), {
+            done,
+            total,
+            pct: total > 0 ? Math.round((done / total) * 100) : 0,
+            name: p.name || '',
+            mulai_at: p.mulai_at || null,
+          });
+        }
+      }
+    } catch (_) { /* progress is optional enrichment */ }
+
     const kotaMap = new Map(); // lowerKey -> { label, n }
     let noKota = 0;
     for (const r of rows) {
@@ -26803,22 +26825,31 @@ async function loadAdminEdukasi() {
         ? 'dari yang buka halaman'
         : `${rate}% dari yang buka halaman`;
     }
+    const startedN = progressByUser.size;
     if (sum) {
-      sum.textContent = visitors || interested
-        ? `${admFmtNum(visitors)} buka halaman · ${admFmtNum(interested)} tertarik`
+      sum.textContent = visitors || interested || startedN
+        ? `${admFmtNum(visitors)} buka halaman · ${admFmtNum(interested)} tertarik mentor · ${admFmtNum(startedN)} mulai kurikulum`
         : 'Belum ada yang membuka halaman Belajar atau mendaftar minat mentor.';
     }
+    if (peopleCount) {
+      peopleCount.textContent = rows.length ? `(${admFmtNum(rows.length)})` : '';
+    }
     if (!rows.length) {
-      body.innerHTML = '<tr><td colspan="5" class="dd-sub">Belum ada data.</td></tr>';
+      body.innerHTML = '<tr><td colspan="6" class="dd-sub">Belum ada data.</td></tr>';
       return;
     }
+    const mentorCheck = '<span class="adm-edu-yes" title="Tertarik mentor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg></span>';
     body.innerHTML = rows.map((r) => {
       const contact = [r.email, r.whatsapp].filter(Boolean).join(' · ') || '—';
       const viewsLbl = r.views > 0 ? String(r.views) : '—';
-      const yes = r.interested
-        ? '<span class="adm-edu-yes">Ya</span>'
-        : '<span class="adm-edu-no">Belum</span>';
-      const when = admEduFmtWhen(r.last_seen || r.interested_at || r.first_seen);
+      const prog = r.user_id ? progressByUser.get(String(r.user_id)) : null;
+      const pctCell = prog
+        ? `<span class="adm-edu-pct" title="${prog.done}/${prog.total} pelajaran selesai">${prog.pct}%</span>`
+        : '<span class="adm-edu-pct-empty">—</span>';
+      const mentor = r.interested
+        ? mentorCheck
+        : '<span class="adm-edu-no">—</span>';
+      const when = admEduFmtWhen(r.last_seen || r.interested_at || r.first_seen || prog?.mulai_at);
       const kota = String(r.kota || '').trim();
       const nameCell = kota
         ? `${esc(r.display_name || '—')} <span class="adm-edu-kota">${esc(kota)}</span>`
@@ -26827,13 +26858,14 @@ async function loadAdminEdukasi() {
         <td>${nameCell}</td>
         <td>${esc(contact)}</td>
         <td>${esc(viewsLbl)}</td>
-        <td>${yes}</td>
+        <td>${pctCell}</td>
+        <td>${mentor}</td>
         <td>${esc(when)}</td>
       </tr>`;
     }).join('');
   } catch (e) {
     if (sum) sum.textContent = 'Gagal memuat data Edukasi.';
-    body.innerHTML = `<tr><td colspan="5" class="dd-sub">${esc(e.message || 'Gagal memuat.')}</td></tr>`;
+    body.innerHTML = `<tr><td colspan="6" class="dd-sub">${esc(e.message || 'Gagal memuat.')}</td></tr>`;
   }
 }
 
@@ -27237,10 +27269,6 @@ function wireUi() {
   $('adm-komunitas-refresh')?.addEventListener('click', () => { void loadAdminKomunitasOps(); });
   $('adm-edu-refresh')?.addEventListener('click', () => { void loadAdminEdukasi(); });
   $('adm-edu-open')?.addEventListener('click', () => { openEdukasiView(); });
-  $('adm-belajar-refresh')?.addEventListener('click', () => {
-    if (window.LarisBelajar) void window.LarisBelajar.loadAdmin(belajarCtx());
-  });
-  $('adm-belajar-open')?.addEventListener('click', () => { openBelajarView(); });
   $('adm-feedback-refresh')?.addEventListener('click', () => { void loadAdminFeedback(); });
   $('adm-kwreq-refresh')?.addEventListener('click', () => { void loadAdminKeywordRequests(); });
   $('admin-sample-new')?.addEventListener('click', () => adminSampleNewUser());
