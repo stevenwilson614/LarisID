@@ -16631,10 +16631,10 @@ function sddvCancel() {
 }
 
 /* ── After 5 Deep Dives: extension install video ──────────────────────────
- *  Desktop only (cwsExtOfferable). Once per browser. Soft: Pasang ekstensi
- *  and Lanjut are both live on open — no wait for `ended`. Count lives in
- *  localStorage so signed-out dives still add up across sessions. Marked
- *  seen on open so a refresh mid-play never replays. */
+ *  Desktop only (cwsExtOfferable). Once per browser. Pasang ekstensi and
+ *  Lanjut stay locked until the clip fires `ended` (the full ~14s). Count
+ *  lives in localStorage so signed-out dives still add up across sessions.
+ *  Marked seen on open so a refresh mid-play never replays. */
 const EDDV_KEY = 'lid_ext_dd5_video_v1';
 const EDDV_COUNT_KEY = 'lid_dd_count_v1';
 const EDDV_SRC = '/images/onboarding/ext-deepdive.mp4';
@@ -16642,6 +16642,7 @@ const EDDV_DELAY = 2000;
 const EDDV_AFTER = 5;
 let _eddvTimer = null;
 let _eddvBound = false;
+let _eddvEnded = false;
 
 function eddvIsSeen() {
   try { return localStorage.getItem(EDDV_KEY) === '1'; } catch { return false; }
@@ -16694,8 +16695,12 @@ function eddvFire() {
   eddvPrefetch();
   eddvMarkSeen();
   eddvBind(video);
+  _eddvEnded = false;
   overlay.classList.add('open');
+  overlay.classList.remove('eddv-done');
+  eddvSetLocked(true);
   document.body.classList.add('eddv-open');
+  eddvUpdateTimer(video);
   eddvTryPlay(video);
   void logUserEvent('ext_dd5_video', { ui: 'gpt', action: 'show' });
   clarityEvt('ext_dd5_video', { action: 'show' });
@@ -16720,20 +16725,53 @@ function eddvSetMutedUi(muted) {
   btn.hidden = !muted;
 }
 
+function eddvUpdateTimer(video) {
+  const el = $('eddv-timer');
+  if (!el) return;
+  const dur = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 14;
+  el.hidden = false;
+  el.textContent = sddvFmtRemain(dur - (video.currentTime || 0));
+}
+
+function eddvSetLocked(locked) {
+  const install = $('eddv-install');
+  const lanjut = $('eddv-lanjut');
+  if (lanjut) lanjut.disabled = locked;
+  if (!install) return;
+  if (locked) {
+    install.setAttribute('aria-disabled', 'true');
+    install.setAttribute('tabindex', '-1');
+    install.removeAttribute('href');
+  } else {
+    install.removeAttribute('aria-disabled');
+    install.removeAttribute('tabindex');
+    if (typeof CWS_EXT_URL === 'string' && CWS_EXT_URL) install.href = CWS_EXT_URL;
+  }
+}
+
 function eddvBind(video) {
   if (_eddvBound) return;
   _eddvBound = true;
+  video.addEventListener('timeupdate', () => eddvUpdateTimer(video));
+  video.addEventListener('loadedmetadata', () => eddvUpdateTimer(video));
   video.addEventListener('ended', () => {
+    if (_eddvEnded) return;
+    _eddvEnded = true;
+    $('ext-dd-video')?.classList.add('eddv-done');
+    eddvSetLocked(false);
+    const timer = $('eddv-timer');
+    if (timer) timer.textContent = '0:00';
     void logUserEvent('ext_dd5_video', { ui: 'gpt', action: 'complete' });
     clarityEvt('ext_dd5_video', { action: 'complete' });
   });
 }
 
 function eddvClose(reason) {
+  if (!_eddvEnded) return;
   if (_eddvTimer) { clearTimeout(_eddvTimer); _eddvTimer = null; }
   const overlay = $('ext-dd-video');
   if (!overlay || !overlay.classList.contains('open')) return;
-  overlay.classList.remove('open');
+  overlay.classList.remove('open', 'eddv-done');
   document.body.classList.remove('eddv-open');
   const video = $('eddv-video');
   if (video) { try { video.pause(); } catch (_) {} }
@@ -27173,7 +27211,8 @@ function wireUi() {
       return;
     }
     if ($('ext-dd-video')?.classList.contains('open')) {
-      eddvClose('dismiss');
+      if (_eddvEnded) eddvClose('dismiss');
+      return;
     }
   });
 
@@ -27190,8 +27229,14 @@ function wireUi() {
     if (_sddvEnded) sddvClose('backdrop');
   });
 
-  $('eddv-lanjut')?.addEventListener('click', () => eddvClose('dismiss'));
-  $('eddv-install')?.addEventListener('click', () => eddvClose('install'));
+  $('eddv-lanjut')?.addEventListener('click', () => {
+    if (!_eddvEnded) return;
+    eddvClose('dismiss');
+  });
+  $('eddv-install')?.addEventListener('click', (e) => {
+    if (!_eddvEnded) { e.preventDefault(); return; }
+    eddvClose('install');
+  });
   $('eddv-unmute')?.addEventListener('click', () => {
     const video = $('eddv-video');
     if (!video) return;
