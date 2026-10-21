@@ -5862,7 +5862,9 @@ body.view-edukasi .panel { background: #F7F7F8; }
   background: #FEF2F2;
   color: #B5202A;
 }
-.api-note {
+.api-note,
+#api-interest-capture select.api-note,
+#api-interest-capture .field input {
   width: 100%;
   box-sizing: border-box;
   margin: 0 0 14px;
@@ -5871,6 +5873,15 @@ body.view-edukasi .panel { background: #F7F7F8; }
   border-radius: 12px;
   font: inherit;
   font-size: .9rem;
+  background: #fff;
+  color: #111;
+}
+#api-interest-capture .field label {
+  display: block;
+  font-size: .8rem;
+  font-weight: 650;
+  margin-bottom: 7px;
+  color: #1A1A1A;
 }
 .api-yn { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .api-yn .edu-cta { margin-top: 0; }
@@ -11566,7 +11577,7 @@ body.view-chat .sfb-card {
             <header class="meta-hero">
               <p class="meta-kicker">API</p>
               <h2 class="meta-title">API publik LarisID <span class="accent">belum tersedia</span>.</h2>
-              <p class="meta-lead">Kami belum membuka API dan belum punya jadwal. Kalau kamu mau pakai data LarisID di alatmu sendiri, catat minatmu — tanpa harga dan tanpa janji tanggal.</p>
+              <p class="meta-lead">Kami belum membuka API dan belum punya jadwal. Catat minatmu setelah masuk — WhatsApp dan kota wajib diisi. Tanpa harga dan tanpa janji tanggal.</p>
             </header>
             <div class="meta-api-actions">
               <button type="button" class="btn-primary" id="api-interest-open">Catat minat</button>
@@ -12058,12 +12069,15 @@ body.view-chat .sfb-card {
                 <button type="button" class="adm-tb-btn" id="adm-api-open">Buka API</button>
               </div>
               <p class="dd-sub" id="adm-api-summary">Memuat…</p>
+              <div id="adm-api-trends"></div>
               <div class="admin-table-wrap">
                 <table class="admin-table" id="adm-api-table">
                   <thead>
                     <tr>
                       <th>Nama</th>
                       <th>Minat</th>
+                      <th>Kota</th>
+                      <th>Toko</th>
                       <th>Platform</th>
                       <th>Kebutuhan</th>
                       <th>Catatan</th>
@@ -12072,7 +12086,7 @@ body.view-chat .sfb-card {
                     </tr>
                   </thead>
                   <tbody id="adm-api-body">
-                    <tr><td colspan="7" class="dd-sub">Memuat…</td></tr>
+                    <tr><td colspan="9" class="dd-sub">Memuat…</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -12945,7 +12959,7 @@ body.view-chat .sfb-card {
 <script src="/js/expor-pasar.js?v=20260915a" defer></script>
 <script src="/js/gpt-belajar.js?v=20261017f" defer></script>
 <script src="/js/gpt-alat-preview.js?v=20261019door2" defer></script>
-<script src="/js/gpt-app.js?v=20261021api1" defer></script>
+<script src="/js/gpt-app.js?v=20261021api2" defer></script>
 <style>
 .hl-hero-ctas-alat { display: none; }
 html.alat-preview #finder-xp-step { display: none; }

@@ -3478,6 +3478,10 @@ const API_DECLINE = [
   { id: 'ui_enough', label: 'Pakai UI cukup' },
   { id: 'too_hard', label: 'Takut ribet' },
 ];
+const API_TOKO = [
+  { id: 'existing', label: 'Sudah punya toko' },
+  { id: 'first_time', label: 'Belum punya toko' },
+];
 let _apiCtx = null;
 let _apiDraft = { platforms: [], uses: [], note: '', decline: '' };
 let _apiBound = false;
@@ -3518,8 +3522,28 @@ function noteApiInterestShown() {
 }
 
 function apiNeedsContact(ctx) {
-  if (!ctx) return true;
-  return !!(ctx.needName || (ctx.needEmail && ctx.needWa));
+  return !!(ctx && ctx.needName);
+}
+
+function apiNeedsGate(ctx) {
+  return !!(ctx && (ctx.needWa || ctx.needCity || ctx.needToko));
+}
+
+function apiTokoLabel(row) {
+  const status = row?.seller_status || row?.sellerStatus || '';
+  const store = String(row?.store_name || row?.storeName || '').trim();
+  if (status === 'existing' || store) return store ? `Sudah punya toko · ${store}` : 'Sudah punya toko';
+  if (status === 'first_time') return 'Belum punya toko';
+  return 'Belum diisi';
+}
+
+function apiCityOptionsHtml(selected) {
+  const cities = NU_ONB_LOCATIONS.slice();
+  if (selected && !cities.includes(selected)) cities.unshift(selected);
+  const opts = ['<option value="">Pilih kota</option>'].concat(cities.map((c) =>
+    `<option value="${esc(c)}"${c === selected ? ' selected' : ''}>${esc(c)}</option>`
+  ));
+  return `<div class="field"><label for="api-city">Kota</label><select id="api-city" class="api-note" data-api-city>${opts.join('')}</select></div>`;
 }
 
 function syncApiPageStatus(ctx) {
@@ -3530,6 +3554,11 @@ function syncApiPageStatus(ctx) {
     else btn.textContent = currentUser ? 'Catat minat' : 'Masuk untuk catat minat';
   }
   if (!status) return;
+  if (!currentUser) {
+    status.hidden = false;
+    status.textContent = 'Masuk dulu. WhatsApp dan kota wajib diisi sebelum minat tercatat.';
+    return;
+  }
   if (!ctx?.submitted) {
     status.hidden = true;
     status.textContent = '';
@@ -3545,19 +3574,36 @@ async function loadApiInterestContext() {
   const name = _storedPersonName(currentUser, _profileDisplayName);
   let email = eduRealEmail(currentUser);
   let wa = '';
+  let city = String(state.onboarding?.city || '').trim();
+  let sellerStatus = (state.onboarding?.experience === 'existing' || state.onboarding?.experience === 'first_time')
+    ? state.onboarding.experience
+    : '';
+  let storeName = '';
   let submitted = !!(_apiCtx && _apiCtx.submitted && _apiCtx._uid === currentUser?.id);
   let interested = submitted ? !!_apiCtx.interested : false;
   if (_supabase && currentUser) {
     try {
       const { data } = await _supabase.from('user_profiles')
-        .select('display_name, first_name, contact_email, wa_number, public_whatsapp')
+        .select('display_name, first_name, contact_email, wa_number, public_whatsapp, city, seller_status, shopee_store_name')
         .eq('user_id', currentUser.id).maybeSingle();
       const profileName = String(data?.display_name || data?.first_name || '').trim();
       if (profileName) _profileDisplayName = profileName;
       email = eduRealEmail(currentUser, data?.contact_email);
       wa = String(data?.wa_number || data?.public_whatsapp || '').trim();
+      if (data?.city) city = String(data.city).trim();
+      if (data?.seller_status === 'existing' || data?.seller_status === 'first_time') sellerStatus = data.seller_status;
+      storeName = String(data?.shopee_store_name || '').trim();
     } catch (_) {}
     if (!wa) wa = await loadProfileWaNumber();
+    try {
+      const { data } = await _supabase.from('user_onboarding_prefs')
+        .select('region, seller_status')
+        .eq('user_id', currentUser.id).maybeSingle();
+      if (!city && data?.region) city = String(data.region).trim();
+      if (!sellerStatus && (data?.seller_status === 'existing' || data?.seller_status === 'first_time')) {
+        sellerStatus = data.seller_status;
+      }
+    } catch (_) {}
     try {
       const { data, error } = await _supabase.rpc('api_interest_mine');
       if (error) throw error;
@@ -3568,14 +3614,20 @@ async function loadApiInterestContext() {
     }
   }
   const resolvedName = _storedPersonName(currentUser, _profileDisplayName) || name;
+  if (storeName && !sellerStatus) sellerStatus = 'existing';
   return {
     _uid: currentUser?.id || '',
     name: resolvedName,
     email,
     wa,
+    city,
+    sellerStatus,
+    storeName,
     needName: !_isRealPersonName(resolvedName),
     needEmail: !email,
     needWa: !wa,
+    needCity: !city,
+    needToko: !sellerStatus,
     submitted,
     interested,
   };
@@ -3651,6 +3703,20 @@ function paintApiStep(step) {
       <button type="button" class="edu-later" data-api-back="yes">Kembali</button>`;
     return;
   }
+  if (step === 'gate') {
+    const bits = [];
+    if (ctx.needWa) bits.push(eduWaFieldHtml('api', '', true));
+    if (ctx.needCity) bits.push(apiCityOptionsHtml(ctx.city || ''));
+    if (ctx.needToko) {
+      bits.push(`<p class="api-q">Toko Shopee</p>${apiChipsHtml('toko', API_TOKO, ctx.sellerStatus ? [ctx.sellerStatus] : [])}`);
+    }
+    root.innerHTML = `<h3 id="api-interest-title" class="edu-pop-title">WhatsApp dan kota dulu</h3>
+      <p class="edu-pop-lead">Minat baru tercatat setelah kamu masuk, isi WhatsApp, dan pilih kota. Belum ada jadwal API.</p>
+      ${bits.join('')}
+      <div class="auth-err" data-api-error></div>
+      <button type="button" class="edu-cta" data-api-gate><span>Lanjut</span></button>`;
+    return;
+  }
   root.innerHTML = `<h3 id="api-interest-title" class="edu-pop-title">Kamu tertarik pakai API LarisID?</h3>
     <p class="edu-pop-lead">API publik belum tersedia. Kami catat minat, tanpa harga dan tanpa jadwal.</p>
     <div class="api-yn">
@@ -3672,8 +3738,9 @@ function openApiView() {
   if (!currentUser) {
     state.pendingApi = true;
     saveLocalState();
+    const already = state.view === 'api';
     setView('api');
-    openAuthModal('login', 'gpt_gate_api');
+    if (already) openAuthModal('login', 'gpt_gate_api');
     syncApiPageStatus(null);
     return;
   }
@@ -3711,6 +3778,7 @@ async function openApiInterestModal() {
   _apiCtx = ctx;
   syncApiPageStatus(ctx);
   if (ctx.submitted) paintApiStep('done');
+  else if (apiNeedsGate(ctx)) paintApiStep('gate');
   else {
     _apiDraft = { platforms: [], uses: [], note: '', decline: '' };
     paintApiStep('yn');
@@ -3723,6 +3791,68 @@ function apiShowErr(msg) {
   if (!err) return;
   err.textContent = msg;
   err.style.display = 'block';
+}
+
+async function saveApiGate() {
+  const root = $('api-pop-body');
+  const ctx = _apiCtx || {};
+  if (!root || !currentUser || !_supabase) return;
+  let wa = String(ctx.wa || '').trim();
+  const waInput = root.querySelector('[data-edu-field="wa"]');
+  if (waInput) {
+    const dial = String(root.querySelector('[data-edu-cc-btn]')?.getAttribute('data-edu-cc') || '+62');
+    const local = String(waInput.value || '').trim();
+    if (!local) { apiShowErr('Nomor WhatsApp wajib diisi.'); return; }
+    wa = eduNormaliseWa(local, dial);
+    if (!wa) { apiShowErr('Nomor WhatsApp tidak valid. Contoh: 08123456789'); return; }
+  }
+  if (!wa) { apiShowErr('Nomor WhatsApp wajib diisi.'); return; }
+
+  let city = String(ctx.city || '').trim();
+  const citySel = root.querySelector('[data-api-city]');
+  if (citySel) city = String(citySel.value || '').trim();
+  if (!city) { apiShowErr('Pilih kota kamu.'); return; }
+
+  let sellerStatus = ctx.sellerStatus || '';
+  if (root.querySelector('[data-api-chip="toko"]')) {
+    sellerStatus = root.querySelector('[data-api-chip="toko"][aria-pressed="true"]')?.getAttribute('data-value') || '';
+    if (sellerStatus !== 'existing' && sellerStatus !== 'first_time') {
+      apiShowErr('Pilih sudah punya toko atau belum.');
+      return;
+    }
+  }
+
+  const btn = root.querySelector('[data-api-gate]');
+  if (btn) btn.disabled = true;
+  try {
+    if (wa.startsWith('+62')) await saveProfileWaNumber(wa);
+    state.onboarding.city = city;
+    if (sellerStatus) state.onboarding.experience = sellerStatus;
+    await persistOnboardingPrefs();
+    const patch = {
+      user_id: currentUser.id,
+      city,
+      updated_at: new Date().toISOString(),
+    };
+    if (sellerStatus) patch.seller_status = sellerStatus;
+    if (wa.startsWith('+62')) patch.wa_number = wa;
+    const { error } = await _supabase.from('user_profiles').upsert(patch, { onConflict: 'user_id' });
+    if (error) throw error;
+    _apiCtx = {
+      ...ctx,
+      wa,
+      city,
+      sellerStatus: sellerStatus || ctx.sellerStatus || '',
+      needWa: false,
+      needCity: false,
+      needToko: !(sellerStatus || ctx.sellerStatus),
+    };
+    _apiDraft = { platforms: [], uses: [], note: '', decline: '' };
+    paintApiStep('yn');
+  } catch (_) {
+    apiShowErr('Gagal menyimpan. Coba lagi.');
+    if (btn && btn.isConnected) btn.disabled = false;
+  }
 }
 
 async function submitApiInterest(interested) {
@@ -3741,6 +3871,14 @@ async function submitApiInterest(interested) {
   if (interested && root.querySelector('[data-edu-field], [data-edu-known]')) {
     fields = eduReadFields(root, ctx);
   }
+  if (String(fields.wa || '').startsWith('__invalid__:') || !fields.wa) {
+    apiShowErr('Nomor WhatsApp wajib diisi.');
+    return;
+  }
+  if (!ctx.city) {
+    apiShowErr('Pilih kota kamu.');
+    return;
+  }
   if (interested) {
     if (!_apiDraft.platforms.length && !_apiDraft.uses.length) {
       apiShowErr('Pilih minimal satu platform atau kebutuhan.');
@@ -3752,16 +3890,8 @@ async function submitApiInterest(interested) {
         : 'Nama wajib diisi.');
       return;
     }
-    if (String(fields.wa || '').startsWith('__invalid__:')) {
-      apiShowErr('Nomor WhatsApp tidak valid.');
-      return;
-    }
     if (fields.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(fields.email)) {
       apiShowErr('Masukkan alamat email yang valid.');
-      return;
-    }
-    if (!fields.email && !fields.wa && apiNeedsContact(ctx)) {
-      apiShowErr('Isi email atau WhatsApp — salah satu cukup.');
       return;
     }
   }
@@ -3778,6 +3908,8 @@ async function submitApiInterest(interested) {
       p_name: fields.name || null,
       p_email: fields.email || null,
       p_whatsapp: fields.wa || null,
+      p_city: ctx.city || null,
+      p_seller_status: ctx.sellerStatus || null,
     });
     if (error) throw error;
     if (!data || data.ok === false) {
@@ -3794,8 +3926,13 @@ async function submitApiInterest(interested) {
       wa: fields.wa || ctx.wa,
     };
     if (interested && _isRealPersonName(fields.name)) await saveUserDisplayName(fields.name);
-    if (interested && fields.wa && String(fields.wa).startsWith('+62')) await saveProfileWaNumber(fields.wa);
+    if (fields.wa && String(fields.wa).startsWith('+62')) await saveProfileWaNumber(fields.wa);
     void logUserEvent('api_interest', { ui: 'gpt', action: interested ? 'yes' : 'no' });
+    if (interested) {
+      _supabase.functions.invoke('notify-api-interest', { body: {} })
+        .then(({ error: mailErr }) => { if (mailErr) console.warn('notify-api-interest', mailErr.message); })
+        .catch(() => {});
+    }
     syncApiPageStatus(_apiCtx);
     paintApiStep('done');
   } catch (_) {
@@ -3815,9 +3952,9 @@ function bindApiInterestUi() {
     if (chip) {
       e.preventDefault();
       const group = chip.getAttribute('data-api-chip');
-      if (group === 'decline') {
+      if (group === 'decline' || group === 'toko') {
         const on = chip.getAttribute('aria-pressed') === 'true';
-        chip.parentElement?.querySelectorAll('[data-api-chip="decline"]').forEach((el) => {
+        chip.parentElement?.querySelectorAll(`[data-api-chip="${group}"]`).forEach((el) => {
           el.setAttribute('aria-pressed', 'false');
         });
         if (!on) chip.setAttribute('aria-pressed', 'true');
@@ -3849,6 +3986,11 @@ function bindApiInterestUi() {
       paintApiStep(back.getAttribute('data-api-back') || 'yn');
       return;
     }
+    if (e.target.closest('[data-api-gate]')) {
+      e.preventDefault();
+      void saveApiGate();
+      return;
+    }
     const next = e.target.closest('[data-api-next]');
     if (next) {
       e.preventDefault();
@@ -3857,6 +3999,7 @@ function bindApiInterestUi() {
         apiShowErr('Pilih minimal satu platform atau kebutuhan.');
         return;
       }
+      if (apiNeedsGate(_apiCtx)) { paintApiStep('gate'); return; }
       if (apiNeedsContact(_apiCtx)) paintApiStep('contact');
       else void submitApiInterest(true);
       return;
@@ -5376,7 +5519,12 @@ function setView(name, opts = {}) {
   if (name === 'api' && name !== leaving) {
     noteApiPageView();
     if (currentUser) void openApiInterestModal();
-    else syncApiPageStatus(null);
+    else {
+      state.pendingApi = true;
+      saveLocalState();
+      syncApiPageStatus(null);
+      openAuthModal('login', 'gpt_gate_api');
+    }
   }
   if (name === 'belajar' && window.LarisBelajar) {
     void window.LarisBelajar.render(belajarCtx(), {
@@ -5891,8 +6039,15 @@ function openAuthModal(mode, source) {
   renderAuthModal();
   $('auth-overlay')?.classList.add('open');
 }
-function closeAuthModal() {
+function closeAuthModal(force) {
+  // API interest cannot be recorded logged-out. Refresh still leaves the page.
+  if (force !== true && _gateSource === 'gpt_gate_api' && !currentUser) return;
   $('auth-overlay')?.classList.remove('open');
+  if (force === true) {
+    _gateSource = '';
+    const btn = $('auth-close');
+    if (btn) btn.hidden = false;
+  }
 }
 // WhatsApp is always forward. Google + Email sit as collapsed alt rows.
 // Email expands in-place; Google still fires OAuth on click. Reset is email-only.
@@ -5953,6 +6108,7 @@ function renderAuthModal() {
       gpt_gate_history: 'Login untuk cari & simpan riwayat chat.',
       gpt_gate_track: 'Daftar gratis, lalu kami kabari kalau produk ini berubah.',
       gpt_gate_belajar: 'Login untuk lanjut belajar, dari cari produk sampai pantau kompetitor.',
+      gpt_gate_api: 'Masuk dulu untuk catat minat API. WhatsApp dan kota wajib diisi.',
     };
     sub.textContent = reset
       ? 'Masukkan email kamu. Kami kirim link untuk mengatur password baru.'
@@ -5996,6 +6152,8 @@ function renderAuthModal() {
   }
   const err = $('auth-error');
   if (err) { err.style.display = 'none'; err.textContent = ''; }
+  const closeBtn = $('auth-close');
+  if (closeBtn) closeBtn.hidden = _gateSource === 'gpt_gate_api' && !currentUser;
 }
 
 function _authErrMsg(msg) {
@@ -6063,7 +6221,7 @@ async function submitAuth() {
       }
       if (d.is_new_user !== false) _lidFireSignupSuccess();
       _authSave(d);
-      closeAuthModal();
+      closeAuthModal(true);
       await _authOnSignIn(d);
       return;
     }
@@ -6074,7 +6232,7 @@ async function submitAuth() {
     const d = await r.json().catch(() => ({}));
     if (!r.ok || !d.access_token) { showErr(d.msg || d.error_description || d.error || 'Login gagal.'); return; }
     _authSave(d);
-    closeAuthModal();
+    closeAuthModal(true);
     await _authOnSignIn(d);
   } catch (_) {
     showErr('Gagal terhubung ke server. Coba lagi.');
@@ -6238,7 +6396,7 @@ async function verifyWhatsappOtp() {
     }
     if (data.is_new_user) _lidFireSignupSuccess();
     _authSave(session);
-    closeAuthModal();
+    closeAuthModal(true);
     await _authOnSignIn(session);
     const wa = _waNormalisePhone(_waPhone)
       || _waNormalisePhone(session.user?.phone)
@@ -27479,29 +27637,67 @@ async function loadAdminEdukasi() {
   }
 }
 
+function apiCountChips(rows, labelOf) {
+  const map = new Map();
+  for (const row of rows) {
+    const label = labelOf(row);
+    if (!label) continue;
+    map.set(label, (map.get(label) || 0) + 1);
+  }
+  return [...map.entries()]
+    .map(([label, n]) => ({ label, n }))
+    .sort((a, b) => b.n - a.n || a.label.localeCompare(b.label, 'id'));
+}
+
+function apiTrendBlock(title, chips) {
+  if (!chips.length) return '';
+  const items = chips.map((c) =>
+    `<li class="adm-edu-kota-chip">${esc(c.label)} <strong>${admFmtNum(c.n)}</strong></li>`
+  ).join('');
+  return `<div class="adm-edu-kota-break"><span class="adm-edu-kota-break-lbl">${esc(title)}</span><ul class="adm-edu-kota-list">${items}</ul></div>`;
+}
+
 async function loadAdminApi() {
   const body = $('adm-api-body');
   const sum = $('adm-api-summary');
+  const trends = $('adm-api-trends');
   if (!body || !_supabase) return;
   if (!isPlatformAdmin()) {
-    body.innerHTML = '<tr><td colspan="7" class="dd-sub">Login sebagai admin dulu.</td></tr>';
+    body.innerHTML = '<tr><td colspan="9" class="dd-sub">Login sebagai admin dulu.</td></tr>';
     return;
   }
-  body.innerHTML = '<tr><td colspan="7" class="dd-sub">Memuat…</td></tr>';
+  body.innerHTML = '<tr><td colspan="9" class="dd-sub">Memuat…</td></tr>';
   if (sum) sum.textContent = 'Memuat…';
+  if (trends) trends.innerHTML = '';
   try {
     const { data, error } = await _supabase.rpc('api_interests_list');
     if (error) throw error;
     const rows = Array.isArray(data) ? data : [];
-    const yesN = rows.filter((r) => r && r.interested).length;
+    const yesRows = rows.filter((r) => r && r.interested);
+    const yesN = yesRows.length;
     const noN = rows.length - yesN;
+    const tokoN = yesRows.filter((r) => r.seller_status === 'existing' || r.store_name).length;
     if (sum) {
       sum.textContent = rows.length
-        ? `${admFmtNum(yesN)} tertarik · ${admFmtNum(noN)} tidak`
+        ? `${admFmtNum(yesN)} tertarik · ${admFmtNum(noN)} tidak · ${admFmtNum(tokoN)} yang tertarik sudah punya toko`
         : 'Belum ada yang mengisi minat API.';
     }
+    if (trends) {
+      const kota = apiCountChips(yesRows, (r) => String(r.city || '').trim() || 'Tanpa kota');
+      const toko = apiCountChips(yesRows, (r) => {
+        if (r.seller_status === 'existing' || r.store_name) return 'Sudah punya toko';
+        if (r.seller_status === 'first_time') return 'Belum punya toko';
+        return 'Toko belum diisi';
+      });
+      const platforms = apiCountChips(yesRows.flatMap((r) =>
+        apiAsList(r.platforms).map((id) => ({ id }))
+      ), (r) => apiLabel(API_PLATFORMS, r.id));
+      trends.innerHTML = yesN
+        ? apiTrendBlock('Tertarik per kota', kota) + apiTrendBlock('Toko', toko) + apiTrendBlock('Platform', platforms)
+        : '';
+    }
     if (!rows.length) {
-      body.innerHTML = '<tr><td colspan="7" class="dd-sub">Belum ada data.</td></tr>';
+      body.innerHTML = '<tr><td colspan="9" class="dd-sub">Belum ada data.</td></tr>';
       return;
     }
     body.innerHTML = rows.map((r) => {
@@ -27513,6 +27709,8 @@ async function loadAdminApi() {
       return `<tr>
         <td>${esc(r.display_name || '—')}</td>
         <td>${esc(minat)}</td>
+        <td>${esc(r.city || '—')}</td>
+        <td>${esc(apiTokoLabel(r))}</td>
         <td>${esc(apiJoinLabels(API_PLATFORMS, r.platforms))}</td>
         <td>${esc(apiJoinLabels(API_USES, r.use_cases))}</td>
         <td>${esc(noteBits.join(' · ') || '—')}</td>
@@ -27522,7 +27720,7 @@ async function loadAdminApi() {
     }).join('');
   } catch (e) {
     if (sum) sum.textContent = 'Gagal memuat minat API.';
-    body.innerHTML = `<tr><td colspan="7" class="dd-sub">${esc(e.message || 'Gagal memuat.')}</td></tr>`;
+    body.innerHTML = `<tr><td colspan="9" class="dd-sub">${esc(e.message || 'Gagal memuat.')}</td></tr>`;
   }
 }
 

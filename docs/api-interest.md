@@ -6,11 +6,21 @@ Do not add API claims to `llms.txt`, the sitemap, or marketing pages until a rea
 
 ## What we ask
 
-1. **Tertarik pakai API LarisID?** Ya / Tidak. Nanti saja closes without saving.
-2. **Ya** — multi-select platform and what they want, plus an optional note. Contact (name, and email or WhatsApp) is asked only when the signed-in profile does not already have a real name, or has neither email nor WhatsApp.
-3. **Tidak** — one optional reason, then save. No contact step.
+Someone who is not signed in cannot dismiss the login modal from this page. The survey does not open until they are in.
 
-Logged-out visitors hit the existing login modal first (`state.pendingApi`), then the survey.
+Before Ya / Tidak, if anything is missing:
+
+- **WhatsApp** — required. An Indonesian number is saved on the profile.
+- **Kota** — required, from the same city list as onboarding.
+- **Toko** — required only when we do not already know: Sudah punya toko / Belum punya toko. A saved `seller_status` or Shopee store name is reused.
+
+Then:
+
+1. **Tertarik pakai API LarisID?** Ya / Tidak. Nanti saja closes without saving.
+2. **Ya** — multi-select platform and what they want, plus an optional note. Name is asked only when the profile does not already have one.
+3. **Tidak** — one optional reason, then save.
+
+A yes emails `stevenwilson614@gmail.com` once (`notify-api-interest`, `api_interests.notified_at`). A no does not.
 
 If they already submitted, the modal shows the done state instead of asking again.
 
@@ -31,15 +41,18 @@ Table `public.api_interests` (one row per user). Writes only through `api_submit
 | `decline_reason` | `curious` Cuma penasaran · `ui_enough` Pakai UI cukup · `too_hard` Takut ribet |
 | `other_note` | Optional free text, max 240 characters |
 
-A yes requires at least one platform or one use case, plus a name and either email or WhatsApp (profile values count).
+A submit requires WhatsApp and a city. A yes also requires at least one platform or one use case, plus a name (profile values count).
+
+Admin → **Minat API** lists every answer and, for people who said yes, groups them by kota, toko, and platform.
 
 ## Where it lives
 
 - Page and modal: [index.html](../index.html) (`#view-api`, `#api-interest-capture`)
 - Behavior: [js/gpt-app.js](../js/gpt-app.js)
 - Admin: dashboard section **Minat API**
-- Migration: [supabase/migrations/20261021110000_api_interests.sql](../supabase/migrations/20261021110000_api_interests.sql)
+- Migration: [supabase/migrations/20261021110000_api_interests.sql](../supabase/migrations/20261021110000_api_interests.sql) and [supabase/migrations/20261021120000_api_interest_gate.sql](../supabase/migrations/20261021120000_api_interest_gate.sql)
+- Email: [supabase/functions/notify-api-interest/index.ts](../supabase/functions/notify-api-interest/index.ts)
 
-Apply on Contabo with `bash scripts/apply-selfhost.sh supabase/migrations/20261021110000_api_interests.sql`. Never `supabase db push`.
+Apply on Contabo with `bash scripts/apply-selfhost.sh`. Deploy the mail function with `bash scripts/deploy-function-selfhost.sh notify-api-interest`. Never `supabase db push`.
 
 Events: `api_page_view`, `api_interest_shown`, `api_interest` (`yes` / `no`). Platform-admin sessions are not counted as page views.
