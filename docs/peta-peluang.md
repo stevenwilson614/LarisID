@@ -72,8 +72,8 @@ chart's latest week has already turned down.
 | Last week | Sum of the 7 days of the previous Monday. Measured only when every day sits in a `listing_deltas` interval. |
 | Weekly % | `(omset_now − omset_prev) / omset_prev × 100` when last week is measured and its omset is at least Rp 50.000. |
 
-- `terukur` when both weeks are fully measured.
-- perkiraan when last week is measured and this week still includes a nowcast day. Tooltip names both Mondays and both omset figures.
+- `terukur` when both weeks are fully measured and the flat-week reshape did not move either omset.
+- perkiraan when last week is measured and this week still includes a nowcast day, or when the flat-week reshape moved either omset. Tooltip names both Mondays and both omset figures.
 - `—` when last week is not a full measured week, or its omset is under Rp 50.000. Do not fall back to `momentum_pct`.
 - Do not clamp the %. Do not read `listing_weekly` for this number.
 - **Trending Sekarang** shows the top **3** by that % among rows with

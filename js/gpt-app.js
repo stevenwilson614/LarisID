@@ -18465,7 +18465,18 @@ function ddWeeklySeries(history) {
   }
   // Hide mid-April first-scrape baseline noise; chart starts Monday of week containing 27 Apr 2026 (WIB).
   const fromTs = mondayOfWeek(new Date(Date.UTC(2026, 3, 27, 4, 0, 0))).getTime();
-  return out.filter(w => w.ts >= fromTs);
+  return _shapeFlatWeeks(out.filter(w => w.ts >= fromTs));
+}
+
+/** Flat positive weeks take this listing's own shape, or the catalog pattern
+ *  (one scrape, or a line that never moved). Totals stay. See omset-week-shape.js. */
+function _shapeFlatWeeks(weeks) {
+  try {
+    if (typeof LarisOmsetWeekShape !== 'undefined' && LarisOmsetWeekShape.shapeFlatWeeks) {
+      return LarisOmsetWeekShape.shapeFlatWeeks(weeks);
+    }
+  } catch (_) { /* keep the raw buckets */ }
+  return weeks;
 }
 
 /* ── Server-backed weekly series ─────────────────────────────────────────────
@@ -18544,7 +18555,7 @@ function ddDailyRowsToWeeks(rows) {
     weeks.set(ts, w);
   }
   const fromTs = mondayOfWeek(new Date(Date.UTC(2026, 3, 27, 4, 0, 0))).getTime();
-  return [...weeks.entries()].sort((a, b) => a[0] - b[0])
+  return _shapeFlatWeeks([...weeks.entries()].sort((a, b) => a[0] - b[0])
     .filter(([ts]) => ts >= fromTs)
     .map(([ts, w]) => {
       const scale = w.days > 0 && w.days < 7 ? 7 / w.days : 1;
@@ -18556,7 +18567,7 @@ function ddDailyRowsToWeeks(rows) {
         items: 1,
         perkiraan: scale > 1 || w.fc,
       };
-    });
+    }));
 }
 
 /** The next-Monday bucket from a series produced by ddDailyRowsToWeeks.

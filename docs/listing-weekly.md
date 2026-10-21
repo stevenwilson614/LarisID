@@ -152,6 +152,18 @@ closed-form decay (`W(t') = W(t)·exp(−Δ/τ)`) revises this week and next wee
 - UI sequence: last 6 WIB weeks through today (this week = nowcast, perkiraan
   unless `source=measured`) → next week (forecast, perkiraan). Chart labels
   are week starts (`10 Agu`), not calendar months (`Agu 26`).
+- A flat positive omset line is reshaped in `js/omset-week-shape.js` (and the
+  same SQL helpers behind the directory % and the Excel weeks). Two or more
+  weeks with the same positive omset take this listing's own earlier shape
+  when those weeks actually moved. A one-scrape line, or any line that never
+  moved, takes the catalog pattern: median |week-to-week| **0.3743** on
+  measured pairs (2026-10-21, 607,977 pairs), laid on the last-4-week median
+  shape so the recent week is a bit higher and the peak-to-peak is that
+  0.3743. The stretch total does not change. A week whose number moved stays
+  perkiraan. A series that already changes week to week is left alone. A real
+  zero stays zero. The directory % still needs last week measured and at least
+  Rp 50.000; if the reshape moved either week the chip says perkiraan instead
+  of a flat 0%.
 - Deep Dive tren graphs (Laris AI `#ddr-trend-canvas`, dashboard
   `#tren-main-chart` / `#ap-demand-chart` / `#dd-chart-trend`) plot weekly
   scrape-interval rates. They take the last 6 **non-empty** weeks (skipping
