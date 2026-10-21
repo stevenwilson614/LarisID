@@ -5800,6 +5800,94 @@ body.view-edukasi .panel { background: #F7F7F8; }
   cursor: pointer;
 }
 #edu-interest-capture .edu-later:hover { color: #111; }
+#api-interest-capture {
+  background: rgba(17, 17, 17, .42);
+  backdrop-filter: blur(2px);
+}
+#api-interest-capture .edu-pop-modal {
+  max-width: 480px;
+  padding: 22px 24px 26px;
+  border-radius: 22px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .18);
+}
+#api-interest-capture .edu-pop-title {
+  margin: 0 0 8px;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -.03em;
+  line-height: 1.2;
+  color: #111;
+}
+#api-interest-capture .edu-pop-lead {
+  margin: 0 0 18px;
+  font-size: .9rem;
+  line-height: 1.55;
+  color: #4B5563;
+}
+#api-interest-capture .edu-later {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 6px;
+  border: 0;
+  background: transparent;
+  color: #4B5563;
+  font: inherit;
+  font-size: .88rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+}
+#api-interest-capture .edu-later:hover { color: #111; }
+.api-q {
+  margin: 0 0 8px;
+  font-size: .78rem;
+  font-weight: 750;
+  color: #374151;
+}
+.api-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+.api-chip {
+  border: 1px solid #E5E7EB;
+  background: #fff;
+  color: #1A1A1A;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font: inherit;
+  font-size: .82rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.api-chip[aria-pressed="true"] {
+  border-color: #B5202A;
+  background: #FEF2F2;
+  color: #B5202A;
+}
+.api-note {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  font: inherit;
+  font-size: .9rem;
+}
+.api-yn { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.api-yn .edu-cta { margin-top: 0; }
+.api-yn .api-no {
+  background: #fff;
+  color: #1A1A1A;
+  border: 1px solid #E5E7EB;
+}
+.meta-api-actions { text-align: center; margin-top: 18px; }
+.meta-api-status {
+  margin: 14px auto 0;
+  max-width: 460px;
+  text-align: center;
+  font-size: .9rem;
+  line-height: 1.5;
+  color: var(--meta-muted, #6B7280);
+}
 @media (max-width: 720px) {
   .edu-form-card { padding: 24px 18px 20px; border-radius: 20px; }
   .edu-benefits { gap: 14px 10px; }
@@ -10252,6 +10340,10 @@ body.view-chat .sfb-card {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 4H6.2A2.2 2.2 0 0 0 4 6.2v8.6A2.2 2.2 0 0 0 6.2 17H7v3.2a.5.5 0 0 0 .85.36L11.4 17h6.4A2.2 2.2 0 0 0 20 14.8V6.2A2.2 2.2 0 0 0 17.8 4Z"/><path class="ic-a" d="M9.9 8.5a2.1 2.1 0 1 1 2.85 1.96c-.75.3-1.05.85-1.05 1.64"/><path class="ic-a" d="M11.7 14.4h.01"/></svg>
             <span class="side-btn-label">FAQ</span>
           </button>
+          <button type="button" class="side-btn" id="btn-api" title="API">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 8 5 12l3 4"/><path d="M16 8l3 4-3 4"/><path class="ic-a" d="M13 6l-2 12"/></svg>
+            <span class="side-btn-label">API</span>
+          </button>
           <button type="button" class="side-btn" id="btn-tentang" title="Tentang LarisID">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ic-af" fill-rule="evenodd" d="M1.19 5.03Q1.37 5.12 1.65 5.77Q1.92 6.41 2.6 7.1Q3.29 7.78 5.4 8.7Q7.51 9.62 8.56 10.58Q9.62 11.54 10.17 12.73Q10.72 13.93 10.95 15.44Q11.18 16.95 11.59 15.8Q12 14.66 12.64 13.56Q13.28 12.46 14.88 11.04Q16.49 9.62 18.69 8.52Q20.89 7.42 21.58 6.73Q22.27 6.04 22.59 5.45Q22.91 4.85 22.95 5.63Q23 6.41 22.81 7.05Q22.63 7.69 21.85 8.75Q21.07 9.8 18.23 11.09Q15.39 12.37 14.71 12.96Q14.02 13.56 14.15 13.61Q14.29 13.65 15.66 12.82Q17.04 12 18.23 11.63Q19.43 11.27 20.34 10.81Q21.26 10.35 21.9 9.8Q22.54 9.25 22.22 10.12Q21.9 10.99 21.3 11.68Q20.71 12.37 19.98 12.82Q19.24 13.28 18.05 13.55Q16.86 13.83 15.53 14.52Q14.2 15.21 16.72 14.43Q19.24 13.65 19.93 13.42Q20.62 13.19 19.75 14.06Q18.88 14.93 18.05 15.3Q17.23 15.67 16.13 15.85Q15.03 16.03 14.52 16.26Q14.02 16.49 14.34 16.53Q14.66 16.58 15.76 16.3Q16.86 16.03 17.09 16.08Q17.32 16.12 17.18 16.26Q17.04 16.4 16.21 16.86Q15.39 17.32 14.2 17.69Q13.01 18.05 12.27 18.6Q11.54 19.15 11.36 19.15Q11.18 19.15 10.81 18.41Q10.44 17.68 10.54 18.23Q10.63 18.78 8.93 17.55Q7.23 16.31 8.29 16.63Q9.34 16.95 9.48 16.91Q9.62 16.86 9.48 16.72Q9.34 16.58 7.32 15.85Q5.31 15.12 4.44 14.25Q3.57 13.38 5.54 13.98Q7.51 14.57 8.25 15.03Q8.98 15.48 9.12 15.44Q9.25 15.39 8.38 14.79Q7.51 14.2 5.58 13.46Q3.66 12.73 2.88 11.96Q2.1 11.18 1.78 10.21Q1.46 9.25 2.38 9.98Q3.29 10.72 4.85 11.27Q6.41 11.82 7.7 12.64Q8.98 13.47 9.03 13.33Q9.07 13.19 8.38 12.59Q7.69 12 5.68 11.18Q3.66 10.35 2.88 9.66Q2.1 8.97 1.64 8.05Q1.18 7.14 1.09 6.04Q1 4.94 1.19 5.03ZM11.96 9.12Q12.28 9.07 12.83 9.34Q13.38 9.62 13.61 9.94Q13.83 10.26 13.42 10.3Q13.01 10.35 12.78 10.58Q12.55 10.81 12.09 11.82Q11.63 12.82 11.45 13.92Q11.27 15.02 11.18 14.75Q11.08 14.47 10.8 13.1Q10.53 11.72 10.71 11.08Q10.9 10.44 11.13 10.48Q11.36 10.53 11.77 10.3Q12.18 10.07 11.5 10.12Q10.81 10.17 10.49 10.03Q10.17 9.89 10.9 9.53Q11.63 9.16 11.96 9.12ZM9.75 16.99Q9.89 16.95 10.12 17.27Q10.35 17.59 9.98 17.31Q9.62 17.04 9.75 16.99Z"/></svg>
             <span class="side-btn-label">Tentang</span>
@@ -11469,6 +11561,20 @@ body.view-chat .sfb-card {
           </article>
         </div>
 
+        <div class="view" id="view-api">
+          <article class="meta-card meta-api">
+            <header class="meta-hero">
+              <p class="meta-kicker">API</p>
+              <h2 class="meta-title">API publik LarisID <span class="accent">belum tersedia</span>.</h2>
+              <p class="meta-lead">Kami belum membuka API dan belum punya jadwal. Kalau kamu mau pakai data LarisID di alatmu sendiri, catat minatmu — tanpa harga dan tanpa janji tanggal.</p>
+            </header>
+            <div class="meta-api-actions">
+              <button type="button" class="btn-primary" id="api-interest-open">Catat minat</button>
+              <p class="meta-api-status" id="api-interest-status" hidden></p>
+            </div>
+          </article>
+        </div>
+
         <div class="view" id="view-community">
           <div id="community-board-root"></div>
         </div>
@@ -11945,6 +12051,33 @@ body.view-chat .sfb-card {
               </details>
             </section>
 
+            <section class="adm-card adm-api-card" id="adm-api">
+              <div class="adm-users-toolbar">
+                <h3>Minat API</h3>
+                <button type="button" class="adm-tb-btn" id="adm-api-refresh">Muat ulang</button>
+                <button type="button" class="adm-tb-btn" id="adm-api-open">Buka API</button>
+              </div>
+              <p class="dd-sub" id="adm-api-summary">Memuat…</p>
+              <div class="admin-table-wrap">
+                <table class="admin-table" id="adm-api-table">
+                  <thead>
+                    <tr>
+                      <th>Nama</th>
+                      <th>Minat</th>
+                      <th>Platform</th>
+                      <th>Kebutuhan</th>
+                      <th>Catatan</th>
+                      <th>Kontak</th>
+                      <th>Kapan</th>
+                    </tr>
+                  </thead>
+                  <tbody id="adm-api-body">
+                    <tr><td colspan="7" class="dd-sub">Memuat…</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
             <section class="adm-card adm-trend-card">
               <div class="adm-trend-head">
                 <h3 class="adm-card-title">Landing Page Views vs Sign Ups</h3>
@@ -12402,6 +12535,19 @@ body.view-chat .sfb-card {
   </div>
 </div>
 
+<div class="modal-overlay" id="api-interest-capture" hidden>
+  <div class="modal edu-pop-modal" role="dialog" aria-modal="true" aria-labelledby="api-interest-title">
+    <div class="edu-pop-head">
+      <img class="edu-pop-logo" src="/images/brand/logo-horizontal-red.webp" alt="LARIS" height="28" width="120">
+      <button type="button" class="edu-pop-close" data-api-close aria-label="Tutup">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="edu-pop-rule" aria-hidden="true"></div>
+    <div id="api-pop-body"></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="edu-interest-capture" hidden>
   <div class="modal edu-pop-modal" role="dialog" aria-modal="true" aria-labelledby="edu-interest-title">
     <div class="edu-pop-head">
@@ -12799,7 +12945,7 @@ body.view-chat .sfb-card {
 <script src="/js/expor-pasar.js?v=20260915a" defer></script>
 <script src="/js/gpt-belajar.js?v=20261017f" defer></script>
 <script src="/js/gpt-alat-preview.js?v=20261019door2" defer></script>
-<script src="/js/gpt-app.js?v=20261020eddv4" defer></script>
+<script src="/js/gpt-app.js?v=20261021api1" defer></script>
 <style>
 .hl-hero-ctas-alat { display: none; }
 html.alat-preview #finder-xp-step { display: none; }

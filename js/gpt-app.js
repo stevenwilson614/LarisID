@@ -1827,6 +1827,7 @@ const state = {
   pendingBelajar: false, // Belajar course opened behind the login gate
   pendingBelajarMulai: false, // pressed Mulai before login
   pendingMentor: false, // pressed mentor interest before login
+  pendingApi: false, // opened API interest behind the login gate
   pendingAlat: null, // 'existing' after My Toko sift / claim_shop, resumed after sign-in
   everOpenedDeepdive: false,
   lastDeepDiveKeyword: '',
@@ -1900,6 +1901,7 @@ function loadLocalState() {
     if (raw.pendingBelajar) state.pendingBelajar = !!raw.pendingBelajar;
     if (raw.pendingBelajarMulai) state.pendingBelajarMulai = !!raw.pendingBelajarMulai;
     if (raw.pendingMentor) state.pendingMentor = !!raw.pendingMentor;
+    if (raw.pendingApi) state.pendingApi = !!raw.pendingApi;
     if (raw.pendingAlat) state.pendingAlat = raw.pendingAlat;
     if (raw.everOpenedDeepdive != null) state.everOpenedDeepdive = !!raw.everOpenedDeepdive;
     if (raw.lastDeepDiveKeyword) state.lastDeepDiveKeyword = String(raw.lastDeepDiveKeyword);
@@ -1925,6 +1927,7 @@ function saveLocalState() {
       pendingBelajar: !!state.pendingBelajar,
       pendingBelajarMulai: !!state.pendingBelajarMulai,
       pendingMentor: !!state.pendingMentor,
+      pendingApi: !!state.pendingApi,
       pendingAlat: state.pendingAlat || null,
       everOpenedDeepdive: state.everOpenedDeepdive || false,
       lastDeepDiveKeyword: state.lastDeepDiveKeyword || '',
@@ -3454,6 +3457,425 @@ function bindEduInterestUi() {
   });
 }
 
+const API_PLATFORMS = [
+  { id: 'sheets', label: 'Google Sheets / Excel' },
+  { id: 'app', label: 'App sendiri' },
+  { id: 'bot', label: 'Bot WhatsApp / Telegram' },
+  { id: 'zapier', label: 'Zapier / Make' },
+  { id: 'warehouse', label: 'Database / warehouse' },
+  { id: 'other', label: 'Lainnya' },
+];
+const API_USES = [
+  { id: 'search', label: 'Cari keyword / listing' },
+  { id: 'omset', label: 'Omset & tren' },
+  { id: 'deepdive', label: 'Deep Dive' },
+  { id: 'alert', label: 'Alert otomatis' },
+  { id: 'export', label: 'Export bulk' },
+  { id: 'other', label: 'Lainnya' },
+];
+const API_DECLINE = [
+  { id: 'curious', label: 'Cuma penasaran' },
+  { id: 'ui_enough', label: 'Pakai UI cukup' },
+  { id: 'too_hard', label: 'Takut ribet' },
+];
+let _apiCtx = null;
+let _apiDraft = { platforms: [], uses: [], note: '', decline: '' };
+let _apiBound = false;
+let _apiSaving = false;
+
+function apiLabel(list, id) {
+  return list.find((row) => row.id === id)?.label || id;
+}
+
+function apiAsList(v) {
+  if (Array.isArray(v)) return v.map((x) => String(x || '').trim()).filter(Boolean);
+  if (typeof v !== 'string' || !v || v === '{}') return [];
+  return v.replace(/^\{|\}$/g, '').split(',').map((x) => x.replace(/^"|"$/g, '').trim()).filter(Boolean);
+}
+
+function apiJoinLabels(list, ids) {
+  const have = new Set(apiAsList(ids));
+  const labels = list.filter((row) => have.has(row.id)).map((row) => row.label);
+  return labels.length ? labels.join(' · ') : '—';
+}
+
+function noteApiPageView() {
+  if (isPlatformAdmin() || adminIsPreviewing()) return;
+  try {
+    if (sessionStorage.getItem('lid_api_page_view_v1')) return;
+    sessionStorage.setItem('lid_api_page_view_v1', '1');
+  } catch (_) {}
+  void logUserEvent('api_page_view', { ui: 'gpt' });
+}
+
+function noteApiInterestShown() {
+  if (isPlatformAdmin() || adminIsPreviewing()) return;
+  try {
+    if (sessionStorage.getItem('lid_api_interest_shown_v1')) return;
+    sessionStorage.setItem('lid_api_interest_shown_v1', '1');
+  } catch (_) {}
+  void logUserEvent('api_interest_shown', { ui: 'gpt' });
+}
+
+function apiNeedsContact(ctx) {
+  if (!ctx) return true;
+  return !!(ctx.needName || (ctx.needEmail && ctx.needWa));
+}
+
+function syncApiPageStatus(ctx) {
+  const status = $('api-interest-status');
+  const btn = $('api-interest-open');
+  if (btn) {
+    if (ctx?.submitted) btn.textContent = 'Lihat catatan';
+    else btn.textContent = currentUser ? 'Catat minat' : 'Masuk untuk catat minat';
+  }
+  if (!status) return;
+  if (!ctx?.submitted) {
+    status.hidden = true;
+    status.textContent = '';
+    return;
+  }
+  status.hidden = false;
+  status.textContent = ctx.interested
+    ? 'Minatmu sudah tercatat. API publik belum tersedia dan belum ada jadwal.'
+    : 'Jawabanmu sudah tercatat. Terima kasih.';
+}
+
+async function loadApiInterestContext() {
+  const name = _storedPersonName(currentUser, _profileDisplayName);
+  let email = eduRealEmail(currentUser);
+  let wa = '';
+  let submitted = !!(_apiCtx && _apiCtx.submitted && _apiCtx._uid === currentUser?.id);
+  let interested = submitted ? !!_apiCtx.interested : false;
+  if (_supabase && currentUser) {
+    try {
+      const { data } = await _supabase.from('user_profiles')
+        .select('display_name, first_name, contact_email, wa_number, public_whatsapp')
+        .eq('user_id', currentUser.id).maybeSingle();
+      const profileName = String(data?.display_name || data?.first_name || '').trim();
+      if (profileName) _profileDisplayName = profileName;
+      email = eduRealEmail(currentUser, data?.contact_email);
+      wa = String(data?.wa_number || data?.public_whatsapp || '').trim();
+    } catch (_) {}
+    if (!wa) wa = await loadProfileWaNumber();
+    try {
+      const { data, error } = await _supabase.rpc('api_interest_mine');
+      if (error) throw error;
+      submitted = !!(data && data.submitted);
+      interested = !!(data && data.interested);
+    } catch (_) {
+      submitted = false;
+    }
+  }
+  const resolvedName = _storedPersonName(currentUser, _profileDisplayName) || name;
+  return {
+    _uid: currentUser?.id || '',
+    name: resolvedName,
+    email,
+    wa,
+    needName: !_isRealPersonName(resolvedName),
+    needEmail: !email,
+    needWa: !wa,
+    submitted,
+    interested,
+  };
+}
+
+function apiChipsHtml(group, items, selected) {
+  const set = new Set(selected || []);
+  return `<div class="api-chips">${items.map((it) =>
+    `<button type="button" class="api-chip" data-api-chip="${group}" data-value="${esc(it.id)}" aria-pressed="${set.has(it.id) ? 'true' : 'false'}">${esc(it.label)}</button>`
+  ).join('')}</div>`;
+}
+
+function apiReadDraft(root) {
+  const pick = (group) => [...(root?.querySelectorAll(`[data-api-chip="${group}"][aria-pressed="true"]`) || [])]
+    .map((el) => el.getAttribute('data-value'))
+    .filter(Boolean);
+  const has = (group) => !!root?.querySelector(`[data-api-chip="${group}"]`);
+  const noteEl = root?.querySelector('[data-api-note]');
+  return {
+    platforms: has('platform') ? pick('platform') : _apiDraft.platforms,
+    uses: has('use') ? pick('use') : _apiDraft.uses,
+    decline: has('decline') ? (pick('decline')[0] || '') : _apiDraft.decline,
+    note: noteEl ? String(noteEl.value || '').trim() : _apiDraft.note,
+  };
+}
+
+function apiDoneHtml(interested) {
+  if (interested) {
+    return `<h3 id="api-interest-title" class="edu-pop-title">Tercatat.</h3>
+      <p class="edu-pop-lead">Kami belum buka API publik dan belum punya jadwal. Kalau dibuka, kami hubungi kamu.</p>`;
+  }
+  return `<h3 id="api-interest-title" class="edu-pop-title">Tercatat.</h3>
+    <p class="edu-pop-lead">Terima kasih. Jawaban ini membantu kami tahu API belum kamu butuhkan.</p>`;
+}
+
+function paintApiStep(step) {
+  const root = $('api-pop-body');
+  if (!root) return;
+  const ctx = _apiCtx || {};
+  if (step === 'done') {
+    root.innerHTML = apiDoneHtml(!!ctx.interested);
+    return;
+  }
+  if (step === 'yes') {
+    root.innerHTML = `<h3 id="api-interest-title" class="edu-pop-title">Kamu mau pakai datanya di mana?</h3>
+      <p class="edu-pop-lead">Boleh pilih lebih dari satu. Belum ada harga dan belum ada jadwal.</p>
+      <p class="api-q">Platform</p>
+      ${apiChipsHtml('platform', API_PLATFORMS, _apiDraft.platforms)}
+      <p class="api-q">Data yang kamu butuhkan</p>
+      ${apiChipsHtml('use', API_USES, _apiDraft.uses)}
+      <label class="api-q" for="api-note">Catatan (opsional)</label>
+      <input id="api-note" class="api-note" data-api-note type="text" maxlength="240" placeholder="Misalnya: laporan klien tiap Senin" value="${esc(_apiDraft.note || '')}">
+      <div class="auth-err" data-api-error></div>
+      <button type="button" class="edu-cta" data-api-next="yes"><span>Lanjut</span></button>
+      <button type="button" class="edu-later" data-api-back="yn">Kembali</button>`;
+    return;
+  }
+  if (step === 'no') {
+    root.innerHTML = `<h3 id="api-interest-title" class="edu-pop-title">Boleh tahu kenapa?</h3>
+      <p class="edu-pop-lead">Opsional. Boleh langsung simpan.</p>
+      ${apiChipsHtml('decline', API_DECLINE, _apiDraft.decline ? [_apiDraft.decline] : [])}
+      <div class="auth-err" data-api-error></div>
+      <button type="button" class="edu-cta" data-api-submit="no"><span>Simpan</span></button>
+      <button type="button" class="edu-later" data-api-back="yn">Kembali</button>`;
+    return;
+  }
+  if (step === 'contact') {
+    root.innerHTML = `<h3 id="api-interest-title" class="edu-pop-title">Supaya kami bisa kabari</h3>
+      <p class="edu-pop-lead">Kalau API dibuka, kami hubungi lewat data ini. Belum ada jadwal.</p>
+      ${eduFormFieldsHtml(ctx, 'api', { popup: true })}
+      <div class="auth-err" data-api-error></div>
+      <button type="button" class="edu-cta" data-api-submit="yes"><span>Simpan minat</span></button>
+      <button type="button" class="edu-later" data-api-back="yes">Kembali</button>`;
+    return;
+  }
+  root.innerHTML = `<h3 id="api-interest-title" class="edu-pop-title">Kamu tertarik pakai API LarisID?</h3>
+    <p class="edu-pop-lead">API publik belum tersedia. Kami catat minat, tanpa harga dan tanpa jadwal.</p>
+    <div class="api-yn">
+      <button type="button" class="edu-cta" data-api-choice="yes"><span>Ya</span></button>
+      <button type="button" class="edu-cta api-no" data-api-choice="no"><span>Tidak</span></button>
+    </div>
+    <button type="button" class="edu-later" data-api-close>Nanti saja</button>`;
+}
+
+function closeApiInterestModal() {
+  const overlay = $('api-interest-capture');
+  if (!overlay) return;
+  overlay.classList.remove('open');
+  overlay.hidden = true;
+  eduCloseCcMenus();
+}
+
+function openApiView() {
+  if (!currentUser) {
+    state.pendingApi = true;
+    saveLocalState();
+    setView('api');
+    openAuthModal('login', 'gpt_gate_api');
+    syncApiPageStatus(null);
+    return;
+  }
+  const already = state.view === 'api';
+  setView('api');
+  if (already) void openApiInterestModal();
+}
+
+async function openApiInterestModal() {
+  const overlay = $('api-interest-capture');
+  const body = $('api-pop-body');
+  if (!overlay || !body) return;
+  if (!currentUser) {
+    state.pendingApi = true;
+    saveLocalState();
+    openAuthModal('login', 'gpt_gate_api');
+    return;
+  }
+  body.innerHTML = '<h3 id="api-interest-title" class="edu-pop-title">Memuat…</h3>';
+  overlay.hidden = false;
+  overlay.classList.add('open');
+  let ctx;
+  try {
+    ctx = await loadApiInterestContext();
+  } catch (_) {
+    ctx = null;
+  }
+  if (!overlay.classList.contains('open')) return;
+  if (!ctx) {
+    body.innerHTML = `<h3 id="api-interest-title" class="edu-pop-title">Gagal memuat</h3>
+      <p class="edu-pop-lead">Coba lagi sebentar.</p>
+      <button type="button" class="edu-cta" data-api-retry><span>Coba lagi</span></button>`;
+    return;
+  }
+  _apiCtx = ctx;
+  syncApiPageStatus(ctx);
+  if (ctx.submitted) paintApiStep('done');
+  else {
+    _apiDraft = { platforms: [], uses: [], note: '', decline: '' };
+    paintApiStep('yn');
+  }
+  noteApiInterestShown();
+}
+
+function apiShowErr(msg) {
+  const err = $('api-pop-body')?.querySelector('[data-api-error]');
+  if (!err) return;
+  err.textContent = msg;
+  err.style.display = 'block';
+}
+
+async function submitApiInterest(interested) {
+  if (_apiSaving) return;
+  const root = $('api-pop-body');
+  if (!root || !_supabase) return;
+  if (!currentUser) {
+    state.pendingApi = true;
+    saveLocalState();
+    openAuthModal('login', 'gpt_gate_api');
+    return;
+  }
+  _apiDraft = apiReadDraft(root);
+  const ctx = _apiCtx || {};
+  let fields = { name: ctx.name || '', email: ctx.email || '', wa: ctx.wa || '' };
+  if (interested && root.querySelector('[data-edu-field], [data-edu-known]')) {
+    fields = eduReadFields(root, ctx);
+  }
+  if (interested) {
+    if (!_apiDraft.platforms.length && !_apiDraft.uses.length) {
+      apiShowErr('Pilih minimal satu platform atau kebutuhan.');
+      return;
+    }
+    if (!_isRealPersonName(fields.name)) {
+      apiShowErr(_looksLikePhoneName(fields.name)
+        ? 'Pakai nama kamu, bukan nomor HP.'
+        : 'Nama wajib diisi.');
+      return;
+    }
+    if (String(fields.wa || '').startsWith('__invalid__:')) {
+      apiShowErr('Nomor WhatsApp tidak valid.');
+      return;
+    }
+    if (fields.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(fields.email)) {
+      apiShowErr('Masukkan alamat email yang valid.');
+      return;
+    }
+    if (!fields.email && !fields.wa && apiNeedsContact(ctx)) {
+      apiShowErr('Isi email atau WhatsApp — salah satu cukup.');
+      return;
+    }
+  }
+  const btn = root.querySelector('[data-api-submit]');
+  _apiSaving = true;
+  if (btn) btn.disabled = true;
+  try {
+    const { data, error } = await _supabase.rpc('api_submit_interest', {
+      p_interested: !!interested,
+      p_platforms: interested ? _apiDraft.platforms : [],
+      p_use_cases: interested ? _apiDraft.uses : [],
+      p_other_note: interested ? (_apiDraft.note || null) : null,
+      p_decline_reason: interested ? null : (_apiDraft.decline || null),
+      p_name: fields.name || null,
+      p_email: fields.email || null,
+      p_whatsapp: fields.wa || null,
+    });
+    if (error) throw error;
+    if (!data || data.ok === false) {
+      apiShowErr(data?.error || 'Gagal menyimpan. Coba lagi.');
+      return;
+    }
+    _apiCtx = {
+      ...(ctx || {}),
+      _uid: currentUser.id,
+      submitted: true,
+      interested: !!interested,
+      name: fields.name || ctx.name,
+      email: fields.email || ctx.email,
+      wa: fields.wa || ctx.wa,
+    };
+    if (interested && _isRealPersonName(fields.name)) await saveUserDisplayName(fields.name);
+    if (interested && fields.wa && String(fields.wa).startsWith('+62')) await saveProfileWaNumber(fields.wa);
+    void logUserEvent('api_interest', { ui: 'gpt', action: interested ? 'yes' : 'no' });
+    syncApiPageStatus(_apiCtx);
+    paintApiStep('done');
+  } catch (_) {
+    apiShowErr('Gagal menyimpan. Coba lagi.');
+  } finally {
+    _apiSaving = false;
+    if (btn && btn.isConnected) btn.disabled = false;
+  }
+}
+
+function bindApiInterestUi() {
+  if (_apiBound) return;
+  _apiBound = true;
+  $('api-interest-capture')?.addEventListener('click', (e) => {
+    if (eduHandleCcClick(e)) return;
+    const chip = e.target.closest('[data-api-chip]');
+    if (chip) {
+      e.preventDefault();
+      const group = chip.getAttribute('data-api-chip');
+      if (group === 'decline') {
+        const on = chip.getAttribute('aria-pressed') === 'true';
+        chip.parentElement?.querySelectorAll('[data-api-chip="decline"]').forEach((el) => {
+          el.setAttribute('aria-pressed', 'false');
+        });
+        if (!on) chip.setAttribute('aria-pressed', 'true');
+      } else {
+        chip.setAttribute('aria-pressed', chip.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+      }
+      return;
+    }
+    if (e.target.id === 'api-interest-capture' || e.target.closest('[data-api-close]')) {
+      e.preventDefault();
+      closeApiInterestModal();
+      return;
+    }
+    if (e.target.closest('[data-api-retry]')) {
+      e.preventDefault();
+      void openApiInterestModal();
+      return;
+    }
+    const choice = e.target.closest('[data-api-choice]');
+    if (choice) {
+      e.preventDefault();
+      paintApiStep(choice.getAttribute('data-api-choice') === 'no' ? 'no' : 'yes');
+      return;
+    }
+    const back = e.target.closest('[data-api-back]');
+    if (back) {
+      e.preventDefault();
+      _apiDraft = apiReadDraft($('api-pop-body'));
+      paintApiStep(back.getAttribute('data-api-back') || 'yn');
+      return;
+    }
+    const next = e.target.closest('[data-api-next]');
+    if (next) {
+      e.preventDefault();
+      _apiDraft = apiReadDraft($('api-pop-body'));
+      if (!_apiDraft.platforms.length && !_apiDraft.uses.length) {
+        apiShowErr('Pilih minimal satu platform atau kebutuhan.');
+        return;
+      }
+      if (apiNeedsContact(_apiCtx)) paintApiStep('contact');
+      else void submitApiInterest(true);
+      return;
+    }
+    const submit = e.target.closest('[data-api-submit]');
+    if (submit) {
+      e.preventDefault();
+      void submitApiInterest(submit.getAttribute('data-api-submit') !== 'no');
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const overlay = $('api-interest-capture');
+    if (!overlay?.classList.contains('open')) return;
+    if (overlay.querySelector('[data-edu-cc-menu]:not([hidden])')) return;
+    closeApiInterestModal();
+  }, true);
+}
+
 function skipWaCapture() {
   if (currentUser) _waCaptureMarkSkip(currentUser.id);
   void logUserEvent('wa_capture_later', { ui: 'gpt' });
@@ -4884,7 +5306,7 @@ function setView(name, opts = {}) {
   if (name === 'edukasi') name = 'belajar';
   const leaving = state.view;
   state.view = name;
-  ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'edukasi', 'belajar', 'cohort', 'audit', 'sift', 'kalkulator', 'profil'].forEach(v => {
+  ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'api', 'admin', 'tracker', 'community', 'edukasi', 'belajar', 'cohort', 'audit', 'sift', 'kalkulator', 'profil'].forEach(v => {
     const el = $(`view-${v}`);
     if (el) el.classList.toggle('active', v === name);
     document.body.classList.toggle(`view-${v}`, v === name);
@@ -4904,8 +5326,8 @@ function setView(name, opts = {}) {
   // .composer-dock display rule) — everywhere else now hides the bar
   // entirely rather than just clearing its chips, so this list stops
   // mattering for those views, but chips are still irrelevant on them either way.
-  if (name === 'home' || name === 'landing' || name === 'directory' || name === 'harga' || name === 'admin' || name === 'tracker' || name === 'community' || name === 'edukasi' || name === 'belajar' || name === 'cohort' || name === 'audit' || name === 'sift' || name === 'kalkulator' || name === 'profil') setComposerChips(null);
-  ['btn-ask-laris', 'btn-produk', 'btn-harga', 'btn-faq', 'btn-tentang', 'btn-admin', 'btn-tracker', 'btn-community', 'btn-edukasi', 'btn-belajar', 'btn-cohort', 'btn-audit', 'btn-kalkulator-alat'].forEach(id => {
+  if (name === 'home' || name === 'landing' || name === 'directory' || name === 'harga' || name === 'api' || name === 'admin' || name === 'tracker' || name === 'community' || name === 'edukasi' || name === 'belajar' || name === 'cohort' || name === 'audit' || name === 'sift' || name === 'kalkulator' || name === 'profil') setComposerChips(null);
+  ['btn-ask-laris', 'btn-produk', 'btn-harga', 'btn-faq', 'btn-api', 'btn-tentang', 'btn-admin', 'btn-tracker', 'btn-community', 'btn-edukasi', 'btn-belajar', 'btn-cohort', 'btn-audit', 'btn-kalkulator-alat'].forEach(id => {
     const el = $(id);
     if (!el) return;
     el.classList.toggle('active',
@@ -4913,6 +5335,7 @@ function setView(name, opts = {}) {
       (id === 'btn-produk' && name === 'directory') ||
       (id === 'btn-harga' && name === 'harga') ||
       (id === 'btn-faq' && name === 'faq') ||
+      (id === 'btn-api' && name === 'api') ||
       // Tentang shares the marketing landing with the logo.
       (id === 'btn-tentang' && name === 'landing') ||
       (id === 'btn-admin' && name === 'admin') ||
@@ -4926,7 +5349,7 @@ function setView(name, opts = {}) {
   });
   $('btn-user')?.classList.toggle('is-on', name === 'profil');
   // Mobile Tentang accordion: highlight the parent when a child page is current.
-  const aboutChildActive = name === 'harga' || name === 'faq' || name === 'landing';
+  const aboutChildActive = name === 'harga' || name === 'faq' || name === 'api' || name === 'landing';
   $('btn-side-about')?.classList.toggle('is-child-active', aboutChildActive);
   syncSellerToolsMenu();
   if (leaving === 'tracker' && name !== 'tracker' && window.LarisTracker) {
@@ -4949,6 +5372,12 @@ function setView(name, opts = {}) {
   }
   if (name === 'edukasi') void paintEduPanel();
   if (name === 'belajar') noteBelajarPageView();
+  if (leaving === 'api' && name !== 'api') closeApiInterestModal();
+  if (name === 'api' && name !== leaving) {
+    noteApiPageView();
+    if (currentUser) void openApiInterestModal();
+    else syncApiPageStatus(null);
+  }
   if (name === 'belajar' && window.LarisBelajar) {
     void window.LarisBelajar.render(belajarCtx(), {
       lesson: opts.lesson || null,
@@ -4977,7 +5406,7 @@ function setView(name, opts = {}) {
   }
 }
 
-const HISTORY_VIEWS = ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'edukasi', 'belajar', 'cohort', 'audit', 'sift', 'kalkulator', 'profil'];
+const HISTORY_VIEWS = ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'api', 'admin', 'tracker', 'community', 'edukasi', 'belajar', 'cohort', 'audit', 'sift', 'kalkulator', 'profil'];
 // Old sessions may still have { view: 'tentang' } in history — map to landing.
 const HISTORY_VIEW_ALIASES = { tentang: 'landing' };
 
@@ -6050,6 +6479,12 @@ async function _authOnSignIn(session, opts) {
     state.pendingMentor = false;
     saveLocalState();
     openBelajarView({ mulai, mentor });
+  } else if (state.pendingApi) {
+    state.pendingApi = false;
+    saveLocalState();
+    const alreadyOnApi = state.view === 'api';
+    setView('api');
+    if (alreadyOnApi) void openApiInterestModal();
   } else if (state.pendingAlat === 'existing' && window.LarisAlatPreview?.active?.()) {
     state.pendingAlat = null;
     saveLocalState();
@@ -26891,6 +27326,7 @@ function openAdminView() {
   void loadAdminFeedback();
   void loadAdminKeywordRequests();
   void loadAdminEdukasi();
+  void loadAdminApi();
   gptMountWinback();
   try { if (window.LarisCohort) void window.LarisCohort.renderOps(); } catch (_) {}
   void fillAdminCohortPreview();
@@ -27040,6 +27476,53 @@ async function loadAdminEdukasi() {
   } catch (e) {
     if (sum) sum.textContent = 'Gagal memuat data Edukasi.';
     body.innerHTML = `<tr><td colspan="6" class="dd-sub">${esc(e.message || 'Gagal memuat.')}</td></tr>`;
+  }
+}
+
+async function loadAdminApi() {
+  const body = $('adm-api-body');
+  const sum = $('adm-api-summary');
+  if (!body || !_supabase) return;
+  if (!isPlatformAdmin()) {
+    body.innerHTML = '<tr><td colspan="7" class="dd-sub">Login sebagai admin dulu.</td></tr>';
+    return;
+  }
+  body.innerHTML = '<tr><td colspan="7" class="dd-sub">Memuat…</td></tr>';
+  if (sum) sum.textContent = 'Memuat…';
+  try {
+    const { data, error } = await _supabase.rpc('api_interests_list');
+    if (error) throw error;
+    const rows = Array.isArray(data) ? data : [];
+    const yesN = rows.filter((r) => r && r.interested).length;
+    const noN = rows.length - yesN;
+    if (sum) {
+      sum.textContent = rows.length
+        ? `${admFmtNum(yesN)} tertarik · ${admFmtNum(noN)} tidak`
+        : 'Belum ada yang mengisi minat API.';
+    }
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="7" class="dd-sub">Belum ada data.</td></tr>';
+      return;
+    }
+    body.innerHTML = rows.map((r) => {
+      const contact = [r.email, r.whatsapp].filter(Boolean).join(' · ') || '—';
+      const noteBits = [];
+      if (r.other_note) noteBits.push(String(r.other_note));
+      if (r.decline_reason) noteBits.push(apiLabel(API_DECLINE, r.decline_reason));
+      const minat = r.interested ? 'Ya' : 'Tidak';
+      return `<tr>
+        <td>${esc(r.display_name || '—')}</td>
+        <td>${esc(minat)}</td>
+        <td>${esc(apiJoinLabels(API_PLATFORMS, r.platforms))}</td>
+        <td>${esc(apiJoinLabels(API_USES, r.use_cases))}</td>
+        <td>${esc(noteBits.join(' · ') || '—')}</td>
+        <td>${esc(contact)}</td>
+        <td>${esc(admEduFmtWhen(r.updated_at || r.created_at))}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    if (sum) sum.textContent = 'Gagal memuat minat API.';
+    body.innerHTML = `<tr><td colspan="7" class="dd-sub">${esc(e.message || 'Gagal memuat.')}</td></tr>`;
   }
 }
 
@@ -27428,6 +27911,9 @@ function wireUi() {
   $('btn-edukasi')?.addEventListener('click', () => { openEdukasiView(); });
   $('btn-belajar')?.addEventListener('click', () => { openBelajarView(); });
   bindEduInterestUi();
+  bindApiInterestUi();
+  $('btn-api')?.addEventListener('click', () => { openApiView(); });
+  $('api-interest-open')?.addEventListener('click', () => { openApiView(); });
   $('btn-harga')?.addEventListener('click', () => setView('harga'));
   $('btn-faq')?.addEventListener('click', () => setView('faq'));
   $('btn-tentang')?.addEventListener('click', goHome);
@@ -27464,6 +27950,8 @@ function wireUi() {
   $('adm-komunitas-refresh')?.addEventListener('click', () => { void loadAdminKomunitasOps(); });
   $('adm-edu-refresh')?.addEventListener('click', () => { void loadAdminEdukasi(); });
   $('adm-edu-open')?.addEventListener('click', () => { openEdukasiView(); });
+  $('adm-api-refresh')?.addEventListener('click', () => { void loadAdminApi(); });
+  $('adm-api-open')?.addEventListener('click', () => { openApiView(); });
   $('adm-feedback-refresh')?.addEventListener('click', () => { void loadAdminFeedback(); });
   $('adm-kwreq-refresh')?.addEventListener('click', () => { void loadAdminKeywordRequests(); });
   $('admin-sample-new')?.addEventListener('click', () => adminSampleNewUser());
