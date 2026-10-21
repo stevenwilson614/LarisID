@@ -4193,14 +4193,36 @@ async function gptSubmitFeedback() {
       _fbBonusPending = false;
       awarded = await gptClaimFeedbackBonus(inserted.id);
     }
-    const thanks = awarded
+    const wantsApi = sfbChoseApi(msg);
+    const bingung = !wantsApi && sfbChoseBingung(msg);
+    let thanks = awarded
       ? `Makasih! Aku baca pesanmu. +${awarded} pencarian buat hari ini ya.`
       : 'Makasih! Aku baca setiap pesan yang masuk.';
+    if (wantsApi) {
+      thanks += ` ${SFB_API_INVITE}<button type="button" class="sfb-edu-link" data-gpt-fb-go="api">${SFB_API_CTA}</button>`;
+    } else if (bingung) {
+      thanks += ` ${SFB_EDU_INVITE}<button type="button" class="sfb-edu-link" data-gpt-fb-go="edukasi">${SFB_EDU_CTA}</button>`;
+    }
     gptFbAppendBubble('in', thanks);
     if (st) { st.textContent = ''; st.className = 'sfb-status is-ok'; }
     const composer = document.getElementById('gpt-fb-composer');
     if (composer) composer.hidden = true;
-    setTimeout(gptFeedbackClose, awarded ? 2200 : 2800);
+    // Keep open when routing so they can tap the CTA; otherwise auto-close.
+    if (wantsApi || bingung) {
+      const card = document.getElementById('gpt-feedback-modal');
+      card?.addEventListener('click', function onGo(e) {
+        const btn = e.target.closest('[data-gpt-fb-go]');
+        if (!btn) return;
+        e.preventDefault();
+        card.removeEventListener('click', onGo);
+        const go = btn.getAttribute('data-gpt-fb-go');
+        gptFeedbackClose();
+        if (go === 'api') openApiView();
+        else openEdukasiView();
+      });
+    } else {
+      setTimeout(gptFeedbackClose, awarded ? 2200 : 2800);
+    }
   } catch (err) {
     // Log the cause. `catch (_)` here is why a hard 23514 constraint violation
     // sat in production silently rejecting every message — the user saw a
@@ -4843,12 +4865,20 @@ let _sfbStatus  = null;   // cached my_feedback_prompt_status() for this page lo
 let _sfbAnswered = false;
 let _sfbFollowup = null;  // { id, lead, go, cta } pending steven_followup notice
 const SFB_EDU_CTA = 'Buka Belajar';
-const SFB_EDU_INVITE = 'Kalau masih bingung cara pakainya, buka halaman Belajar di menu kiri ya. Langkahnya pelan-pelan, dari cari produk sampai pantau toko.';
+const SFB_EDU_INVITE = 'Kalau masih bingung atau pusing cara pakainya, buka halaman Belajar di menu kiri ya. Langkahnya pelan-pelan, dari cari produk sampai pantau toko.';
+const SFB_API_CTA = 'Buka halaman API';
+const SFB_API_INVITE = 'Kalau kamu nanya soal API, buka halaman API di menu kiri ya. Di situ bisa catat minat dan WhatsApp-mu — belum ada jadwal rilis, tapi kami catat siapa yang butuh.';
 const SFB_KURANG_LENGKAP_ASK =
   'Hai! Makasih sudah jawab. Kamu bilang datanya kurang lengkap — informasi apa lagi yang paling ingin kamu lihat di LarisID? Ceritain di sini ya, aku baca.';
 
 function sfbChoseBingung(msg) {
-  return /bingung|binggung/i.test(String(msg || ''));
+  // "pusing" = overwhelmed / confused (common Indonesian phrasing)
+  return /bingung|binggung|pusing/i.test(String(msg || ''));
+}
+
+function sfbChoseApi(msg) {
+  // Word-ish match so "tapi" does not fire. Covers "API", "API-nya", "apinya".
+  return /(?:^|[^a-z0-9])api(?:[^a-z0-9]|$)|api-?nya/i.test(String(msg || ''));
 }
 
 function sfbChoseKurangLengkap(msg) {
@@ -5016,13 +5046,21 @@ function sfbApplyPromptCopy() {
   if (_sfbFollowup?.lead) {
     if (msg) msg.textContent = _sfbFollowup.lead;
     if (edu) {
-      const showEdu = _sfbFollowup.go === 'edukasi';
-      edu.hidden = !showEdu;
-      if (showEdu) edu.textContent = _sfbFollowup.cta || SFB_EDU_CTA;
+      const go = _sfbFollowup.go || '';
+      const showGo = go === 'edukasi' || go === 'api';
+      edu.hidden = !showGo;
+      if (showGo) {
+        edu.textContent = _sfbFollowup.cta
+          || (go === 'api' ? SFB_API_CTA : SFB_EDU_CTA);
+        edu.dataset.sfbGo = go === 'api' ? 'api' : 'edukasi';
+      }
     }
     return;
   }
-  if (edu) edu.hidden = true;
+  if (edu) {
+    edu.hidden = true;
+    delete edu.dataset.sfbGo;
+  }
   if (msg && !msg.dataset.sfbDefault) {
     msg.dataset.sfbDefault = msg.textContent.trim();
   }
@@ -5137,9 +5175,15 @@ function sfbBind() {
 
   $('sfb-close')?.addEventListener('click', () => sfbMinimize('close'));
   $('sfb-card')?.addEventListener('click', (e) => {
-    if (!e.target.closest('[data-sfb-edu]')) return;
+    const btn = e.target.closest('[data-sfb-edu], [data-sfb-api]');
+    if (!btn) return;
     e.preventDefault();
-    void sfbOpenEdukasi();
+    const dest = (btn.getAttribute('data-sfb-go') === 'api'
+      || btn.dataset?.sfbGo === 'api'
+      || btn.hasAttribute('data-sfb-api'))
+      ? 'api'
+      : 'edukasi';
+    void sfbOpenFollowupGo(dest);
   });
 
   input?.addEventListener('input', () => {
@@ -5241,18 +5285,27 @@ async function sfbSubmit() {
     let granted = 0;
     if (inserted?.id) granted = await sfbClaimGrant(inserted.id);
     sfbSetMandatoryUi(false);
-    const bingung = sfbChoseBingung(msg);
-    const kurang = !bingung && sfbChoseKurangLengkap(msg);
-    // Bingung → Belajar page (saved notice, so it is still there next login).
-    // Kurang lengkap → enqueue the "what are you looking for?" follow-up so it
-    // opens next (and in this same session after the thank-you paints).
+    // API ask wins over confusion — more specific intent.
+    const wantsApi = sfbChoseApi(msg);
+    const bingung = !wantsApi && sfbChoseBingung(msg);
+    const kurang = !wantsApi && !bingung && sfbChoseKurangLengkap(msg);
+    // API → API page; bingung/pusing → Belajar; kurang lengkap → ask what they want.
+    // Saved notices survive the next login.
     let kurangNotice = null;
-    let bingungNotice = null;
-    if (bingung) {
+    let routeNotice = null;
+    if (wantsApi) {
+      try {
+        const { data, error } = await _supabase.rpc('enqueue_sfb_api_followup');
+        if (error) throw error;
+        routeNotice = data || null;
+      } catch (e) {
+        console.warn('enqueue_sfb_api_followup:', e?.message || e);
+      }
+    } else if (bingung) {
       try {
         const { data, error } = await _supabase.rpc('enqueue_sfb_bingung_followup');
         if (error) throw error;
-        bingungNotice = data || null;
+        routeNotice = data || null;
       } catch (e) {
         console.warn('enqueue_sfb_bingung_followup:', e?.message || e);
       }
@@ -5265,15 +5318,20 @@ async function sfbSubmit() {
         console.warn('enqueue_sfb_kurang_lengkap_followup:', e?.message || e);
       }
     }
-    if (bingungNotice?.id) {
+    if (routeNotice?.id) {
+      const go = wantsApi
+        ? (routeNotice.payload?.go || 'api')
+        : (routeNotice.payload?.go || 'edukasi');
       _sfbFollowup = {
-        id: bingungNotice.id,
-        lead: bingungNotice.payload?.lead || SFB_EDU_INVITE,
-        go: bingungNotice.payload?.go || 'edukasi',
-        cta: bingungNotice.payload?.cta || SFB_EDU_CTA,
+        id: routeNotice.id,
+        lead: routeNotice.payload?.lead
+          || (wantsApi ? SFB_API_INVITE : SFB_EDU_INVITE),
+        go,
+        cta: routeNotice.payload?.cta
+          || (wantsApi ? SFB_API_CTA : SFB_EDU_CTA),
       };
     }
-    sfbThankYou(granted, fromLeft, { bingung, kurangLengkap: kurang });
+    sfbThankYou(granted, fromLeft, { bingung, wantsApi, kurangLengkap: kurang });
     if (kurangNotice?.id && kurangNotice?.payload?.lead) {
       // Soft reopen as a personal follow-up after the thank-you settles.
       setTimeout(() => sfbStartFollowup({
@@ -5310,7 +5368,8 @@ async function sfbClaimGrant(feedbackId) {
   return 0;
 }
 
-async function sfbOpenEdukasi() {
+async function sfbOpenFollowupGo(dest) {
+  const go = dest === 'api' ? 'api' : 'edukasi';
   const id = _sfbFollowup?.id || null;
   if (id && _supabase) {
     try { await _supabase.rpc('dismiss_notice', { p_id: id }); } catch (_) {}
@@ -5321,8 +5380,16 @@ async function sfbOpenEdukasi() {
   sfbSetMandatoryUi(false);
   sfbHideCard();
   sfbPaintFab();
-  void logUserEvent('superuser_feedback_prompt', { ui: 'gpt', action: 'open_edukasi' });
-  openEdukasiView();
+  void logUserEvent('superuser_feedback_prompt', {
+    ui: 'gpt',
+    action: go === 'api' ? 'open_api' : 'open_edukasi',
+  });
+  if (go === 'api') openApiView();
+  else openEdukasiView();
+}
+
+function sfbOpenEdukasi() {
+  return sfbOpenFollowupGo('edukasi');
 }
 
 function sfbThankYou(granted, fromLeft, opts = {}) {
@@ -5333,13 +5400,16 @@ function sfbThankYou(granted, fromLeft, opts = {}) {
   const thanks = granted
     ? `Makasih, aku baca semua. Aku tambahin <strong>${granted.toLocaleString('id-ID')} baris unduhan</strong> ke akun kamu ya \u2014 dipakai kapan saja.`
     : 'Makasih, aku baca semua pesan yang masuk.';
+  const wantsApi = !!opts.wantsApi;
   const bingung = !!opts.bingung;
   const kurangLengkap = !!opts.kurangLengkap;
-  const bubble = bingung
-    ? `${thanks} ${SFB_EDU_INVITE}<button type="button" class="sfb-edu-link" data-sfb-edu>${SFB_EDU_CTA}</button>`
-    : kurangLengkap
-      ? `${thanks} ${SFB_KURANG_LENGKAP_ASK}`
-      : thanks;
+  const bubble = wantsApi
+    ? `${thanks} ${SFB_API_INVITE}<button type="button" class="sfb-edu-link" data-sfb-api data-sfb-go="api">${SFB_API_CTA}</button>`
+    : bingung
+      ? `${thanks} ${SFB_EDU_INVITE}<button type="button" class="sfb-edu-link" data-sfb-edu data-sfb-go="edukasi">${SFB_EDU_CTA}</button>`
+      : kurangLengkap
+        ? `${thanks} ${SFB_KURANG_LENGKAP_ASK}`
+        : thanks;
   const thread = $('sfb-thread');
   const composer = $('sfb-card')?.querySelector('.sfb-composer');
   const edu = $('sfb-edu-link');
@@ -5357,9 +5427,9 @@ function sfbThankYou(granted, fromLeft, opts = {}) {
     `<div class="sfb-bubble">${bubble}</div>`;
   host.appendChild(inn);
   body.scrollTop = body.scrollHeight;
-  // Keep the card open for bingung (Edukasi CTA) and kurang lengkap (follow-up
+  // Keep the card open for API / Belajar CTAs and kurang lengkap (follow-up
   // ask takes over the composer next). Grant slam still runs.
-  if (bingung || kurangLengkap) {
+  if (wantsApi || bingung || kurangLengkap) {
     if (granted > 0) sfbPlayGrantSlam(granted, fromLeft);
     return;
   }
