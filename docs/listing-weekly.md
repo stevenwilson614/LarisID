@@ -175,6 +175,18 @@ closed-form decay (`W(t') = W(t)·exp(−Δ/τ)`) revises this week and next wee
   **next week only** — overlaying it onto this week mixed two estimators and
   caused a spike. Partial this week is scaled `7/days`. Card / row omset stays
   monthly (`×30`).
+- A listing with no real second scrape does not draw that own line. A real
+  second scrape is a `listing_weekly` row with `source=measured` and
+  `span_days >= 2` (a same-day extension double hit is not one). Tren Produk
+  then calls `peer_trend_for`: last 6 WIB Mondays, all perkiraan. The shape is
+  the median measured weekly omset of the same category and sold scale-band
+  (reviews pick the band only when lifetime sold is missing; a thin category
+  falls back to the band-only cohort). The newest cohort week is scaled to
+  `price × v_peer × 7`, this Monday is that same level, and weeks with too
+  few measured peers are a gap. Next week is that peer rate, still dashed.
+  If the cohort has no usable weeks the line is flat at the level and the
+  footnote says so. Top 10 Toko stays off until the listing has its own weeks.
+  This does not change card omset or `source=measured`.
 - Favorit Aku **list** chart is the last 13 non-empty WIB Mondays (~3 months)
   from the same `product_daily_series` weekly bucket as Deep Dive Tren produk
   (omset + units, dual Y-axis, solid lines, week-start labels). Do **not**

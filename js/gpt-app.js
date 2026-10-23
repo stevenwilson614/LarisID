@@ -19223,24 +19223,102 @@ function ddTrendExportBtnHtml() {
   </button>`;
 }
 
-function ddHeroChartHtml(hasTrend) {
-  if (!hasTrend) {
+function ddPeerWeekTs(iso) {
+  const d = String(iso || '').slice(0, 10);
+  const ts = Date.parse(d + 'T00:00:00Z');
+  return Number.isFinite(ts) ? ts : NaN;
+}
+
+function ddPeerNote(p) {
+  const n = p.peerN > 0 ? `${fmtSold(p.peerN)} produk` : '';
+  const shapeCat = String(p.shapeCategory || '').trim();
+  const cat = String(p.category || '').trim();
+  let who;
+  if (p.shape === 'level') {
+    who = cat
+      ? `produk sejenis (kategori ${cat}, skala terjual)`
+      : 'produk sejenis di skala terjual yang sama';
+  } else if (!shapeCat) {
+    who = 'produk sejenis di skala terjual yang sama, semua kategori';
+  } else {
+    who = `produk sejenis (kategori ${shapeCat}, skala terjual)`;
+  }
+  const via = p.fromReviews ? 'Skala terjual dari jumlah review. ' : '';
+  const flat = p.shape === 'level'
+    ? 'Belum cukup riwayat produk sejenis untuk bentuk mingguan, jadi garisnya datar di level perkiraan. '
+    : '';
+  const nBit = n ? `, ${n}` : '';
+  return `Satu scrape. ${via}${flat}Perkiraan dari ${who}${nBit}. Bukan riwayat produk ini.`;
+}
+
+/** Cohort weekly shape for a listing that has no real second scrape.
+ *  Returns null on failure. realSecond means the caller should keep the
+ *  listing's own line. */
+async function ddFetchPeerTrend(product) {
+  if (!_supabase || product?.item_id == null || product?.shop_id == null) return null;
+  try {
+    const r = await _supabase.rpc('peer_trend_for', {
+      p_item_id: product.item_id,
+      p_shop_id: product.shop_id,
+    });
+    if (r.error || !r.data || r.data.ok !== true) return null;
+    const raw = r.data;
+    if (raw.real_second_scrape) return { realSecond: true, weeks: [] };
+    const weeks = (Array.isArray(raw.weeks) ? raw.weeks : []).map((w) => {
+      const d = String(w.week_start || '').slice(0, 10);
+      const omset = w.omset == null ? null : Math.round(Number(w.omset) || 0);
+      return {
+        ts: ddPeerWeekTs(d),
+        d,
+        omset: omset > 0 ? omset : null,
+        units: 0,
+        perkiraan: true,
+      };
+    }).filter(w => Number.isFinite(w.ts));
+    const nextD = String(raw.next_week_start || '').slice(0, 10);
+    const peer = {
+      realSecond: false,
+      category: raw.category || '',
+      shapeCategory: raw.shape_category || '',
+      peerN: Number(raw.peer_n) || 0,
+      fromReviews: !!raw.from_reviews,
+      shape: raw.shape || 'cohort',
+      weeks,
+      fcWeek: nextD ? {
+        ts: ddPeerWeekTs(nextD),
+        d: nextD,
+        omset: Math.round(Number(raw.next_omset) || 0),
+        perkiraan: true,
+      } : null,
+    };
+    peer.note = ddPeerNote(peer);
+    return peer;
+  } catch (_) {
+    return null;
+  }
+}
+
+function ddHeroChartHtml(chartMode) {
+  if (chartMode !== 'own' && chartMode !== 'peer') {
     return `<div class="ddr-card ddr-hero-chart" data-dd-sec="tren">
       <div class="ddr-trend-head">
         <h3>Tren Produk</h3>
         <div class="ddr-trend-toggles">${ddTrendExportBtnHtml()}</div>
       </div>
-      <p class="dd-sub">Belum cukup riwayat scrape untuk tren omset listing ini — butuh beberapa gelombang panel. Bagian lain tetap dari data asli. Kamu tetap bisa unduh riwayat omset yang kami punya.</p>
+      <p class="dd-sub">Belum ada perkiraan tren untuk listing ini. Kamu tetap bisa unduh riwayat omset yang kami punya.</p>
     </div>`;
   }
+  const toggles = chartMode === 'own'
+    ? `<div class="ddr-seg" id="ddr-trend-view" role="group" aria-label="Pilih tampilan">
+          <button type="button" class="ddr-seg-btn is-on" data-dd-view="produk">Produk</button>
+          <button type="button" class="ddr-seg-btn" data-dd-view="top10">Top 10 Toko</button>
+        </div>`
+    : '';
   return `<div class="ddr-card ddr-hero-chart" data-dd-sec="tren">
     <div class="ddr-trend-head">
       <h3>Tren Produk</h3>
       <div class="ddr-trend-toggles">
-        <div class="ddr-seg" id="ddr-trend-view" role="group" aria-label="Pilih tampilan">
-          <button type="button" class="ddr-seg-btn is-on" data-dd-view="produk">Produk</button>
-          <button type="button" class="ddr-seg-btn" data-dd-view="top10">Top 10 Toko</button>
-        </div>
+        ${toggles}
         ${ddTrendExportBtnHtml()}
       </div>
     </div>
@@ -19249,10 +19327,10 @@ function ddHeroChartHtml(hasTrend) {
   </div>`;
 }
 
-function ddHeroRowHtml(product, stats, peers, hasTrend) {
+function ddHeroRowHtml(product, stats, peers, chartMode) {
   return `<div class="ddr-hero-row" data-dd-sec="quick_stats">
     ${ddHeroNumsHtml(product, peers)}
-    ${ddHeroChartHtml(hasTrend)}
+    ${ddHeroChartHtml(chartMode)}
   </div>`;
 }
 
@@ -20141,10 +20219,10 @@ async function openDeepDive(product, ddOpts = {}) {
   const productWeekly = (await ddServerWeeklySeries(product, 119))
     || ddWeeklySeries(productHistory);
   const series = ddLast6Weeks(productWeekly);
-  // Nothing on this chart comes from listing_weekly/keyword_weekly — that table
-  // is a different estimator (nowcast/peer) over a different population, and it
-  // drew a one-week spike wherever it was spliced in. Next-week forecast comes
-  // off the same product series, via ddNextWeekPoint.
+  // Own weeks stay on product_daily_series. listing_weekly is not spliced onto
+  // that line (it drew a one-week spike). A listing with no real second scrape
+  // uses peer_trend_for instead: cohort shape, scaled to price * v_peer * 7,
+  // every point perkiraan. Next-week forecast on the own line is ddNextWeekPoint.
   const fcWeek = ddNextWeekPoint(productWeekly);
   const scoreInfo = ddScore(product, stats, niche);
   const share = ddShareData(peers);
@@ -20175,11 +20253,23 @@ async function openDeepDive(product, ddOpts = {}) {
   // reaches it (DD itself is a separate view, not part of the message list).
   if (chat) upsertDeepDiveChatMessage(chat, product, scoreInfo, stats);
 
-  const hasTrend = series.filter(w => (w.units || w.omset)).length >= 2;
-  // Trend-chart state: this listing's weekly omset plus top-10 store lines.
-  // Toggling re-reads this — nothing is refetched.
-  const topShops = hasTrend ? await ddTopShopWeeklySeries(share, history) : [];
-  _dd.trend = { series, fcWeek, topShops, view: 'produk' };
+  const ownWeeks = series.filter(w => (w.units || w.omset)).length;
+  // One scrape, or a same-day second hit (span under 2 days): borrow the
+  // cohort shape. A real second scrape keeps this listing's own line.
+  const peer = await ddFetchPeerTrend(product);
+  let chartMode = 'none';
+  if (peer?.realSecond && ownWeeks >= 2) chartMode = 'own';
+  else if (peer && !peer.realSecond && peer.weeks.filter(w => w.omset > 0).length >= 2) chartMode = 'peer';
+  else if (ownWeeks >= 2) chartMode = 'own';
+  // Top 10 Toko needs this listing's own weeks. The peer line does not.
+  const topShops = chartMode === 'own' ? await ddTopShopWeeklySeries(share, history) : [];
+  _dd.trend = {
+    series: chartMode === 'peer' ? peer.weeks : series,
+    fcWeek: chartMode === 'peer' ? peer.fcWeek : fcWeek,
+    topShops,
+    view: 'produk',
+    peer: chartMode === 'peer' ? peer : null,
+  };
   const bandLo = stats.p25, bandHi = stats.p75;
   const segLeft = stats.max > stats.min ? Math.round((bandLo - stats.min) / (stats.max - stats.min) * 100) : 0;
   const segWidth = stats.max > stats.min ? Math.max(4, Math.round((bandHi - bandLo) / (stats.max - stats.min) * 100)) : 100;
@@ -20232,7 +20322,7 @@ async function openDeepDive(product, ddOpts = {}) {
     </div>
     ${ddToolPillsHtml(product)}
     ${ddFeeStripHtml(product)}
-    ${ddHeroRowHtml(product, stats, peers, hasTrend)}
+    ${ddHeroRowHtml(product, stats, peers, chartMode)}
     ${isDesktopDeepDive ? kompCardHtml : ''}
     ${ddAksiCepatHtml(product)}
     ${ddAlertCardHtml(product)}
@@ -20388,7 +20478,7 @@ async function openDeepDive(product, ddOpts = {}) {
 
   // Charts + sparklines (Chart.js lazy; sparklines are raw canvas).
   await larisEnsureChart();
-  if (hasTrend) {
+  if (chartMode === 'own' || chartMode === 'peer') {
     ddRenderTrendChart();
     requestAnimationFrame(ddResizeTrendChart);
   }
@@ -20596,6 +20686,10 @@ const ddBrokenAxisPlugin = {
 function ddTrendLegendHtml() {
   const t = _dd?.trend;
   if (!t) return '';
+  if (t.peer) {
+    return `<span class="row"><span class="swatch" style="background:#16A34A"></span>Perkiraan</span>
+      <p class="dd-sub ddr-legend-note">${esc(t.peer.note || '')}</p>`;
+  }
   if (t.view === 'top10') {
     const shops = t.topShops || [];
     if (!shops.length) {
@@ -20635,9 +20729,60 @@ function ddTrendChartEmptyNote(show, text) {
 // Real series stays SHORTER than the labels — only Perkiraan touches the future
 // Monday. Next-week point is the same product_daily_series grain (not ×30/7).
 // last-2-weeks avg is fallback only.
+function ddRenderPeerTrendChart(t) {
+  ddTrendChartEmptyNote(false);
+  const series = t.series || [];
+  const plotted = series.filter(w => w.omset > 0);
+  if (plotted.length < 2) return;
+  const labels = series.map(w => _ddFmtWk(w.ts));
+  const nextTs = t.fcWeek?.ts || Date.parse(listingNextWeekStartISO() + 'T00:00:00Z');
+  labels.push(_ddFmtWk(nextTs) + ' ▶');
+  const data = series.map(w => (w.omset > 0 ? w.omset : null));
+  data.push(Math.round(Number(t.fcWeek?.omset) || 0) || null);
+  makeChart('ddr-trend-canvas', {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Perkiraan',
+        data,
+        borderColor: '#16A34A',
+        borderDash: [5, 5],
+        borderWidth: 2,
+        tension: .35,
+        pointRadius: 3,
+        spanGaps: false,
+      }],
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            label: c => (c.parsed.y == null ? '' : `Perkiraan omset: ${fmtRpShort(c.parsed.y)}`),
+          },
+        },
+      },
+      scales: {
+        y: {
+          display: true, position: 'left', min: 0,
+          ticks: { callback: _ddRpTick, maxTicksLimit: 6 },
+        },
+      },
+    },
+  });
+}
+
 function ddRenderTrendChart() {
   const t = _dd?.trend;
   if (typeof Chart === 'undefined' || !t) return;
+  if (t.peer) {
+    ddRenderPeerTrendChart(t);
+    return;
+  }
 
   if (t.view === 'top10') {
     const shops = t.topShops || [];
