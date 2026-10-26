@@ -12972,7 +12972,7 @@ body.view-chat .sfb-card {
 <script src="/js/gpt-belajar.js?v=20261017f" defer></script>
 <script src="/js/gpt-alat-preview.js?v=20261019door2" defer></script>
 <script src="/js/omset-week-shape.js?v=20261021shape1" defer></script>
-<script src="/js/gpt-app.js?v=20261026rail" defer></script>
+<script src="/js/gpt-app.js?v=20261026nav" defer></script>
 <style>
 .hl-hero-ctas-alat { display: none; }
 html.alat-preview #finder-xp-step { display: none; }
@@ -12998,6 +12998,10 @@ body.alat-focus .sidebar-backdrop,
 body.alat-focus .composer-dock,
 body.alat-focus .menu-btn,
 body.alat-focus #msg-steven-fab { display: none !important; }
+/* Narrow-desktop rail still sets .app { padding-left: 72px }. With the
+   sidebar display:none that gutter is an empty white strip — drop it. */
+body.view-sift .app,
+body.alat-focus .app { padding-left: 0; }
 /* Sidebar logo is gone — force the topbar brand on all widths. */
 body.view-sift .topbar-mobile-brand,
 body.alat-focus .topbar-mobile-brand { display: flex !important; }

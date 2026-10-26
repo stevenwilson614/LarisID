@@ -5524,6 +5524,13 @@ function setView(name, opts = {}) {
     if (el) el.classList.toggle('active', v === name);
     document.body.classList.toggle(`view-${v}`, v === name);
   });
+  // alat-focus hides the left nav (and the mobile menu button). That is only
+  // for the Temukan Produk / My Toko wizard. Deep Dive and every other normal
+  // surface need the rail back — otherwise a leftover focus leaves a blank
+  // gutter with no way to navigate.
+  if (name !== 'home' && name !== 'audit' && name !== 'sift') {
+    try { window.LarisAlatPreview?.exitFocus?.(); } catch (_) {}
+  }
   if (leaving === 'deepdive' && name !== 'deepdive') {
     dwellStop();
     destroyAllCharts();
