@@ -45,7 +45,7 @@
   pill.className = 'pill';
   pill.textContent = 'Laris';
   pill.setAttribute('aria-expanded', 'false');
-  pill.title = 'Laris Affiliate · overlay 0.5.3';
+  pill.title = 'Laris Affiliate · overlay 0.5.4';
 
   var back = document.createElement('div');
   back.className = 'back';

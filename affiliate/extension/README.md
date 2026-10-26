@@ -1,14 +1,14 @@
 # Laris Affiliate — Chrome extension (unpacked)
 
-Local **v0.5.3**. **Not** on the Chrome Web Store, **not** on larisid.com, **not** copied into `_site`.
+Local **v0.5.4**. **Not** on the Chrome Web Store, **not** on larisid.com, **not** copied into `_site`.
 
 Sends Target Collab through **your already-open Seller Center session**. Cookies stay in Chrome. No Partner Center. No password field.
 
 **Kirim live is locked by default.** Uji cari only looks up a creator. It does not invite.
 
-Toolbar icon opens the **on-page overlay** when you are on Seller / Affiliate Center (red **Laris** pill on the right). Side panel is fallback only. Badge shows `Overlay · v0.5.3` or `Panel · v0.5.3`. UI chrome matches larisid.com (white + merah accent + Plus Jakarta Sans).
+Toolbar icon opens the **on-page overlay** when you are on Seller / Affiliate Center (red **Laris** pill on the right). Side panel is fallback only. Badge shows `Overlay · v0.5.4` or `Panel · v0.5.4`. UI chrome matches larisid.com (white + merah accent + Plus Jakarta Sans).
 
-Class zip (no git needed): `affiliate/dist/laris-affiliate-0.5.3.zip` — unzip, then Load unpacked on that folder. Prefer Load unpacked on `affiliate/extension` so reloads pick up edits.
+Class zip (no git needed): `affiliate/dist/laris-affiliate-0.5.4.zip` — unzip, then Load unpacked on that folder. Prefer Load unpacked on `affiliate/extension` so reloads pick up edits.
 
 ## Caps (honest)
 
@@ -28,7 +28,7 @@ Satu sesi: **overlay atau panel tetap terbuka + tab Affiliate Center terbuka + l
 2. Developer mode on
 3. **Load unpacked** → this folder (`affiliate/extension`)
 4. After a code pull: **Reload** the extension (version is on the card, now **0.5.0**)
-5. Pin the icon. Open Affiliate Center, **refresh that tab**, then click the icon (or the red **Laris** pill). You should see a wide overlay, badge `Overlay · v0.5.3` — not the narrow side panel alone.
+5. Pin the icon. Open Affiliate Center, **refresh that tab**, then click the icon (or the red **Laris** pill). You should see a wide overlay, badge `Overlay · v0.5.4` — not the narrow side panel alone.
 6. Log into [Seller Center](https://seller-id.tokopedia.com/) → **Affiliate → Get Started**
 7. Refresh the Affiliate Center tab after reload so the adapter + pill attach.
 
@@ -69,7 +69,7 @@ Seller needs, before you sit down:
 
 Order:
 
-1. Load unpacked **0.5.3** (folder `affiliate/extension`, or unzip the class zip). Pin the icon. Open Affiliate Center, refresh, click icon or Laris pill.
+1. Load unpacked **0.5.4** (folder `affiliate/extension`, or unzip the class zip). Pin the icon. Open Affiliate Center, refresh, click icon or Laris pill.
 2. Refresh the Affiliate Center tab. Akun → Affiliate Center = terhubung.
 3. **Daftar kreator terekam:** Find Creators, clear search, set a filter, open the next page. Do **not** invite. Wizard → Cek rekaman should no longer say the recording is a single handle.
 4. **Target Collab terrekam:** send **one** manual Target Collab invite on the product + commission you will use. Changing SKU later needs another manual invite. Open the invite page once so `rate_limit_info` can show on Kirim.

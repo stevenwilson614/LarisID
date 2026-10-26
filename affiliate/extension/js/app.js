@@ -8,7 +8,7 @@
   var SURFACE = (SURFACE_OVERLAY ? 'overlay-' : 'panel-') + Math.random().toString(36).slice(2);
   var JAKARTA = 'Asia/Jakarta';
   var $ = function (id) { return document.getElementById(id); };
-  var VERSION = (chrome.runtime.getManifest && chrome.runtime.getManifest().version) || '0.5.3';
+  var VERSION = (chrome.runtime.getManifest && chrome.runtime.getManifest().version) || '0.5.4';
   if (SURFACE_OVERLAY) {
     document.documentElement.classList.add('surface-overlay');
     document.body.classList.add('surface-overlay');
@@ -845,8 +845,10 @@
       rankedCreators(newCreators()).slice(0, Send.BATCH).forEach(function (c) { ids[c.id] = true; });
     }
     var sku = skuNow();
+    /* Empty library → open on Kreator (Temukan / Kalodata). Otherwise start at Produk. */
+    var startStep = db.creators.length ? 0 : 1;
     ui.wizard = {
-      step: 0,
+      step: startStep,
       channel: 'target_collab',
       ids: ids,
       template: db.template,
@@ -1674,7 +1676,7 @@
       ui.campFilter = id;
       render();
     } else if (act === 'new-campaign') {
-      if (!db.creators.length) { toast('Tambah handle di Kreator dulu'); ui.tab = 'kreator'; render(); return; }
+      /* Wizard can pull creators via Find Creators / Kalodata — do not bounce to Kreator tab. */
       startWizard();
     } else if (act === 'wiz-cancel') { ui.wizard = null; render(); }
     else if (act === 'wiz-back') { ui.wizard.step = Math.max(0, ui.wizard.step - 1); render(); }
