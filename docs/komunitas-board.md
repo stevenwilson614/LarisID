@@ -40,7 +40,7 @@ Public Diskusi is for **process and lessons**. Niche, supplier, margin, and winn
 ## Entry points
 
 - Main nav **Komunitas** (`#btn-community`), next to Favorit Aku — not under Tentang.
-- Beranda `#home-komunitas` (after onboarding finder is done): *Pertanyaan minggu ini* (latest staff `question` in 14 days) + up to 2 unanswered. **Hidden when empty.** Not a popup.
+- Beranda no longer shows a `#home-komunitas` strip (Belum terjawab / Pertanyaan minggu ini). Open Komunitas from the nav or “Tanya seller lain”.
 - Deep Dive Aksi Cepat and Cari Produk `#dir-ask-sellers`: *Tanya seller lain tentang “keyword”*.
 - Email deep link: `https://larisid.com/?komunitas=<uuid>` (optional `&tab=usulan`). Login gate stashes `state.pendingKomunitas`.
 

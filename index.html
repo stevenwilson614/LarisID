@@ -6306,7 +6306,6 @@ body.home-finder-done .home-sub { display: none !important; }
 /* Landing: 4 questions + submit only. Composer stays on Laris AI. */
 body.view-home:not(.home-finder-done) .home-composer,
   body.view-home:not(.home-finder-done) .finder-atau,
-  body.view-home:not(.home-finder-done) .home-prompts,
   body.view-home:not(.home-finder-done) .home-retention { display: none !important; }
 body.home-finder-done .home-hero {
   justify-content: center;
@@ -6473,34 +6472,6 @@ body.home-finder-done .home-hero {
   border: 1px solid var(--line); border-radius: 10px;
   padding: 7px 10px; line-height: 1.35; margin-top: auto;
 }
-.home-foot { margin-top: 44px; font-size: .7rem; color: var(--muted); }
-.home-prompts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 100%; max-width: 720px; margin: 14px auto 0; }
-.home-prompt {
-  display: flex; align-items: center; gap: 10px; text-align: left;
-  padding: 12px 13px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg);
-  font-size: .74rem; line-height: 1.35; color: var(--ink-soft);
-  transition: background .12s, border-color .12s;
-}
-.home-prompt:hover { background: var(--bg-user); border-color: #d4d4d4; }
-.home-prompt-ico {
-  flex-shrink: 0; width: 30px; height: 30px; border-radius: 10px;
-  display: grid; place-items: center;
-}
-.home-prompt-ico svg { width: 16px; height: 16px; }
-.home-prompt-ico[data-tone="red"] { background: var(--merah-tint); color: var(--accent); }
-.home-prompt-ico[data-tone="green"] { background: var(--green-bg); color: var(--green); }
-.home-prompt-ico[data-tone="tan"] { background: #F7EEDC; color: var(--accent-2); }
-.home-prompt-ico[data-tone="black"] { background: #EFEFEF; color: #1a1a1a; }
-/* Link cluster back into the content estate (/riset/, /panduan/, ...). Those
-   pages all link here, so this closes the loop — keep it crawlable on mobile
-   too, since Google indexes mobile-first. */
-.home-links {
-  margin-top: 18px; display: flex; flex-wrap: wrap; justify-content: center;
-  gap: 6px 16px; font-size: .7rem;
-}
-.home-links a { color: var(--muted); text-decoration: none; }
-.home-links a:hover { color: var(--ink); text-decoration: underline; }
-
 /* ── Mobile landing: composer pinned; content above scrolls clear ── */
 @media (max-width: 860px) {
   body.view-home .panel {
@@ -6650,20 +6621,13 @@ body.home-finder-done .home-hero {
   .home-composer .composer { padding: 10px 8px 10px 14px; }
   .home-composer textarea { min-height: 40px; font-size: 16px; }
   .home-composer .composer-under { display: none; }
-  /* The mobile landing is a tuned one-screen column with a docked composer, so
-     the footer cluster is desktop-only. The same links live in .side-links,
-     which is only transform-hidden — mobile-first indexing still sees them.
-     Prompt chips are hidden here too while the finder wizard is still active
-     (they'd overlap its steps) — body.home-finder-done below re-enables them
-     once the wizard is skipped/done, the common case. */
-  .home-foot, .home-links, .home-prompts { display: none; }
 
   /* Once the multi-step finder wizard is skipped/done (the common case —
      most visitors never see the wizard), there's nothing tall enough to need
-     its own scroll region: let the composer and prompt chips flow in the
-     centered column instead of being split into a docked-bottom bar with the
-     chips hidden. The wizard-in-progress state keeps the docked/scrolling
-     layout above untouched — that form can genuinely overflow a short screen. */
+     its own scroll region: let the composer flow in the centered column
+     instead of a docked-bottom bar. The wizard-in-progress state keeps the
+     docked/scrolling layout above untouched — that form can overflow a short
+     screen. */
   body.home-finder-done.view-home .panel { overflow-y: auto; }
   body.home-finder-done .home-hero {
     position: static;
@@ -6684,16 +6648,6 @@ body.home-finder-done .home-hero {
     box-shadow: none;
     margin: 0;
   }
-  body.home-finder-done .home-prompts {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-    width: 100%;
-    max-width: 100%;
-    margin: 16px 0 0;
-  }
-  body.home-finder-done .home-prompt { padding: 10px; font-size: .78rem; }
-  body.home-finder-done .home-prompt-txt { font-size: .74rem; line-height: 1.3; }
 
   /* 3 across on mobile, not 2 — landing / leftover card grids only.
      Cari Produk uses listing rows (`.dir-grid` is `display:block`). */
@@ -7907,14 +7861,6 @@ body.home-finder-done .home-hero {
   font-size: .9rem; line-height: 1.4; color: var(--ink); cursor: pointer;
 }
 .home-langkah-list input { margin-top: 3px; accent-color: var(--accent); }
-.home-komunitas-q {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  gap: 10px; margin-top: 10px;
-}
-.home-komunitas-q + .home-komunitas-q {
-  padding-top: 10px; border-top: 1px solid var(--line);
-}
-.home-komunitas-q p { margin: 0; font-size: .88rem; font-weight: 650; color: var(--ink); }
 .dir-ask-sellers {
   margin: 0 0 12px; padding: 12px 14px;
   background: #fff; border: 1px solid var(--line); border-radius: 14px;
@@ -11124,47 +11070,9 @@ body.view-chat .sfb-card {
                 <div id="home-first-dd" class="home-ret-card" hidden></div>
                 <div id="home-langkah" class="home-ret-card" hidden></div>
                 <div id="home-belajar" class="home-ret-card" hidden></div>
-                <div id="home-komunitas" class="home-ret-card" hidden></div>
               </div>
               </div>
             </div>
-            <div class="home-prompts" id="home-prompts" aria-label="Contoh pertanyaan">
-              <button type="button" class="home-prompt" data-home-prompt="Produk apa yang bagus dijual untuk perlengkapan mendaki?">
-                <span class="home-prompt-ico" data-tone="red" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 20 6.5-11L13 16l3-4 6 8Z"/><path d="M9.5 20 13 16"/></svg>
-                </span>
-                <span class="home-prompt-txt">Produk apa yang bagus dijual untuk perlengkapan mendaki?</span>
-              </button>
-              <button type="button" class="home-prompt" data-home-prompt="Jenis senter apa yang lagi laris di Shopee?">
-                <span class="home-prompt-ico" data-tone="green" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6l1 4-2 2v11a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V8L8 6Z"/><path d="M9 11h6"/></svg>
-                </span>
-                <span class="home-prompt-txt">Jenis senter apa yang lagi laris di Shopee?</span>
-              </button>
-              <button type="button" class="home-prompt" data-home-prompt="Produk bayi apa yang demand-nya tinggi tapi persaingannya rendah?">
-                <span class="home-prompt-ico" data-tone="tan" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5"/><path d="M9.5 13.5 7 16a2.5 2.5 0 0 0 3.5 3.5"/><circle cx="12" cy="9" r="1.3" fill="currentColor" stroke="none"/></svg>
-                </span>
-                <span class="home-prompt-txt">Produk bayi apa yang demand-nya tinggi tapi persaingannya rendah?</span>
-              </button>
-              <button type="button" class="home-prompt" data-home-prompt="Peralatan dapur apa yang paling menguntungkan saat ini?">
-                <span class="home-prompt-ico" data-tone="black" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16v3a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5Z"/><path d="M4 12a8 2.2 0 0 1 16 0"/><path d="M18 8c1.5 0 3-1 3-2.5"/></svg>
-                </span>
-                <span class="home-prompt-txt">Peralatan dapur apa yang paling menguntungkan saat ini?</span>
-              </button>
-            </div>
-            <div class="home-foot">Data dari Shopee via LarisID — jawaban dari data asli, bukan tebakan AI.</div>
-            <nav class="home-links" aria-label="Jelajahi LarisID">
-              <a href="/riset/">Riset pasar</a>
-              <a href="/panduan/">Panduan seller</a>
-              <a href="/kota/">Pasar per kota</a>
-              <a href="/perbandingan/">Perbandingan alat</a>
-              <a href="/kalkulator/">Kalkulator</a>
-              <a href="/harga/">Harga</a>
-              <a href="/cara-kerja/">Cara kerja</a>
-              <a href="/privacy/">Privasi</a>
-            </nav>
           </div>
         </div>
         <div class="view active" id="view-chat">
@@ -13050,9 +12958,6 @@ body.alat-focus.view-audit #alat-root {
 }
 /* Seller-baru questionnaire: finder only, no Laris AI chrome. */
 body.alat-focus.view-home .home-ask-intro,
-body.alat-focus.view-home .home-prompts,
-body.alat-focus.view-home .home-foot,
-body.alat-focus.view-home .home-links,
 body.alat-focus.view-home .home-composer,
 body.alat-focus.view-home .finder-atau,
 body.alat-focus.view-home #home-retention,

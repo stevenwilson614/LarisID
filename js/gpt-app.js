@@ -7556,61 +7556,6 @@ async function syncHomeRetentionCards() {
   const belajarCard = $('home-belajar');
   if (window.LarisBelajar && currentUser) await window.LarisBelajar.syncHome(belajarCtx());
   else if (belajarCard) { belajarCard.hidden = true; belajarCard.innerHTML = ''; }
-  await syncHomeKomunitasCard();
-}
-
-async function syncHomeKomunitasCard() {
-  const card = $('home-komunitas');
-  if (!card) return;
-  if (!currentUser || shouldShowLandingFinder() || !_supabase) {
-    card.hidden = true;
-    card.innerHTML = '';
-    return;
-  }
-  try {
-    const { data, error } = await _supabase.rpc('komunitas_beranda_cards');
-    if (error || !data) {
-      card.hidden = true;
-      card.innerHTML = '';
-      return;
-    }
-    const weekly = data.weekly || null;
-    const unanswered = Array.isArray(data.unanswered) ? data.unanswered : [];
-    if (!weekly && !unanswered.length) {
-      card.hidden = true;
-      card.innerHTML = '';
-      return;
-    }
-    const rows = [];
-    if (weekly) {
-      rows.push(`<div class="home-komunitas-q">
-        <div>
-          <p class="home-ret-kicker">Pertanyaan minggu ini</p>
-          <p>${esc(weekly.title)}</p>
-        </div>
-        <button type="button" class="home-ret-link" data-komunitas-open="${esc(weekly.id)}">Bantu jawab</button>
-      </div>`);
-    }
-    unanswered.forEach((row) => {
-      rows.push(`<div class="home-komunitas-q">
-        <div>
-          <p class="home-ret-kicker">Belum terjawab</p>
-          <p>${esc(row.title)}</p>
-        </div>
-        <button type="button" class="home-ret-link" data-komunitas-open="${esc(row.id)}">Bantu jawab</button>
-      </div>`);
-    });
-    card.hidden = false;
-    card.innerHTML = rows.join('');
-    card.querySelectorAll('[data-komunitas-open]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        openCommunityBoard({ tab: 'diskusi', postId: btn.getAttribute('data-komunitas-open') });
-      });
-    });
-  } catch (_) {
-    card.hidden = true;
-    card.innerHTML = '';
-  }
 }
 
 async function syncHomeFirstDdCard() {
@@ -28514,12 +28459,6 @@ function wireUi() {
       });
     });
   }
-
-  $('home-prompts')?.addEventListener('click', e => {
-    const btn = e.target.closest('[data-home-prompt]');
-    if (!btn) return;
-    submitFromHome(btn.dataset.homePrompt);
-  });
 
   $('btn-set-lokasi')?.addEventListener('click', () => {
     closeSidebar();

@@ -18,7 +18,7 @@ The logged-in product UI lives in **`index.html` + `js/gpt-app.js`** (not Astro 
 
 **Do not** reintroduce a blocking popup for onboarding. **Do not** fabricate price/sales deltas in return strips. Leaders and platform admins bypass journey gating.
 
-Komunitas (ex-Ajukan Fitur) is a logged-in peer board: Diskusi default, Usulan Fitur second. Before changing tabs, unanswered sort, Beranda `#home-komunitas`, or “Tanya seller lain”, read **[docs/komunitas-board.md](./docs/komunitas-board.md)**. Do not auto-post as a user. Do not pay or quota-gate Deep Dives for replies.
+Komunitas (ex-Ajukan Fitur) is a logged-in peer board: Diskusi default, Usulan Fitur second. Before changing tabs, unanswered sort, or “Tanya seller lain”, read **[docs/komunitas-board.md](./docs/komunitas-board.md)**. Do not auto-post as a user. Do not pay or quota-gate Deep Dives for replies. Beranda no longer shows a `#home-komunitas` strip.
 
 **Belajar** (`#btn-belajar`, `#view-belajar`, `js/gpt-belajar.js`) is the free seller course: cari produk → sumber produk → pilih tempat jual → pantau. The tab and page are public (book icon, label Belajar). Edukasi is folded in: a mentor banner on that page, not a second tab or auto popup. Before changing lessons, the store-owner skip, verify keys, the mentor banner, visit / Mulai tracking, or the Rp 3 juta omset milestone, read **[docs/belajar-course.md](./docs/belajar-course.md)**. Do not paywall it. Do not mark a step done unless the user did it or the verify signal is real. Lessons stay sequential — do not let someone open a later step while an earlier applicable lesson is unfinished. The 3 juta mark is gross perkiraan omset from Shopee listings we already have, not profit and not a self-reported number.
 
