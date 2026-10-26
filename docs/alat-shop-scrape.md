@@ -20,6 +20,8 @@ home with My Toko in nav so they can paste later.
 | SPA | `js/gpt-alat-preview.js` — URL → Kabar → poll → Kompetitor |
 | Mac worker | `~/shopee_scraper/shop_claim_worker.py` |
 
+`match_titles_to_keywords` maps a shop's titles onto product markets (token coverage ≥ 0.6 and the keyword's first word in the title). A brand or shop keyword returns `parent_keyword` when one is set, so Kompetitor is not a list of one reseller. See [search-resolver.md](./search-resolver.md).
+
 RPCs:
 
 - `request_shop_scrape(client, url, shop_id?, name?)` — anon/auth

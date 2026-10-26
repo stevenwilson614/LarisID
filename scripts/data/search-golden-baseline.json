@@ -1,0 +1,525 @@
+{
+  "captured_at": "2026-10-26T15:20:17.722Z",
+  "method": "search_listings RPC (pre-resolver) plus dir-timing on larisid.com for the three reported queries",
+  "dir_timing": {
+    "ayam grepuk": {
+      "match": "keyword",
+      "listings": 201,
+      "note": "dry cat food (makanan kucing kering)"
+    },
+    "sorel boots": {
+      "match": "keyword",
+      "listings": 120,
+      "note": "booth tent 3x3"
+    },
+    "birkenstok sandel": {
+      "match": "keyword",
+      "listings": 155,
+      "note": "generic sandals, no birkenstock"
+    }
+  },
+  "queries": {
+    "ayam grepuk": {
+      "n": 0,
+      "keywords": [],
+      "sample": "",
+      "dir_timing": {
+        "match": "keyword",
+        "listings": 201,
+        "note": "dry cat food (makanan kucing kering)"
+      }
+    },
+    "sorel boots": {
+      "n": 0,
+      "keywords": [],
+      "sample": "",
+      "dir_timing": {
+        "match": "keyword",
+        "listings": 120,
+        "note": "booth tent 3x3"
+      }
+    },
+    "birkenstok sandel": {
+      "n": 0,
+      "keywords": [],
+      "sample": "",
+      "dir_timing": {
+        "match": "keyword",
+        "listings": 155,
+        "note": "generic sandals, no birkenstock"
+      }
+    },
+    "sendok bayi silikon": {
+      "n": 8,
+      "keywords": [
+        "sendok bayi silikon"
+      ],
+      "sample": "LAKOEOFFICIALMALL Sendok Makan Bayi Bpa Free Bahan Silikon Lembut",
+      "dir_timing": null
+    },
+    "rayban": {
+      "n": 8,
+      "keywords": [
+        "kaca film mobil waterproof",
+        "kaca film mobil"
+      ],
+      "sample": "Stiker Sticker Kaca Film Jendela Rumah Rayban Hitam Riben Peredam Tolak Panas Ka",
+      "dir_timing": null
+    },
+    "ray-ban": {
+      "n": 8,
+      "keywords": [
+        "kacamata ar",
+        "kacamata hitam fashion pria",
+        "ray bans",
+        "kacamata casual unisex"
+      ],
+      "sample": "Ray-Ban Meta Wayfarer Gen 2 Smart Glasses Kacamata Pintar",
+      "dir_timing": null
+    },
+    "gelang manik": {
+      "n": 8,
+      "keywords": [
+        "gelang manik"
+      ],
+      "sample": "ASB - [GTN006] Gelang tali Nylon smooth mote mix Korean beads bracalate premium",
+      "dir_timing": null
+    },
+    "tumbler": {
+      "n": 8,
+      "keywords": [
+        "tumbler"
+      ],
+      "sample": "Le Ding Ding-Tumblr Termos Tahan Panas & Dingin Stainless Steel Bottle 750ml 100",
+      "dir_timing": null
+    },
+    "cross stitch": {
+      "n": 8,
+      "keywords": [
+        "cross stitch kit"
+      ],
+      "sample": "Cross stitch DIY Kerajinan tangan Punch Needle Setik Silang Starter Kit Pajangan",
+      "dir_timing": null
+    },
+    "dress wanita": {
+      "n": 8,
+      "keywords": [
+        "dress wanita casual"
+      ],
+      "sample": "Ladies Collection | Dress Mola 975 | Swing Dress | Dress wanita babydoll | Dress",
+      "dir_timing": null
+    },
+    "hijab": {
+      "error": "search_listings 500: canceling statement due to statement timeout"
+    },
+    "jilbab anak": {
+      "n": 8,
+      "keywords": [
+        "jilbab anak"
+      ],
+      "sample": "G-MOOI jilbab anak bayi 0 6 bulan 1-10 tahun HIJAB BERGO ZEEVA ANAK kerudung ana",
+      "dir_timing": null
+    },
+    "masker n95": {
+      "n": 8,
+      "keywords": [
+        "masker n95"
+      ],
+      "sample": "Masker KF94 Isi 50pcs 4Ply Korea Earloop Disposable",
+      "dir_timing": null
+    },
+    "crocs classic": {
+      "n": 3,
+      "keywords": [
+        "sandal anak perempuan lucu",
+        "sandal wanita kekinian"
+      ],
+      "sample": "Sandal Anak Crocs butterfly gliter / Sandal crocs Classic butterfy gliters / Cro",
+      "dir_timing": null
+    },
+    "Crocs": {
+      "n": 8,
+      "keywords": [
+        "sepatu sandal pria",
+        "sandal anak perempuan lucu",
+        "baju anjing lucu"
+      ],
+      "sample": "Crocs / Crocs Yukon / Sepatu Sandal Pria / Sandal Pria / Crocs Pria / Sepatu San",
+      "dir_timing": null
+    },
+    "botol minyak": {
+      "n": 8,
+      "keywords": [
+        "botol minyak dispenser kaca"
+      ],
+      "sample": "Botol minyak dapur rumah tangga pot minyak kontrol  botol bumbu saus cuka minyak",
+      "dir_timing": null
+    },
+    "choper elektrik": {
+      "n": 3,
+      "keywords": [
+        "blender portable USB 6 blade"
+      ],
+      "sample": "(Ath) Blender Mini Choper Elektrik Tanpa Kabel",
+      "dir_timing": null
+    },
+    "galang manik": {
+      "n": 0,
+      "keywords": [],
+      "sample": "",
+      "dir_timing": null
+    },
+    "olive oil": {
+      "n": 8,
+      "keywords": [
+        "parfum rambut"
+      ],
+      "sample": "[SPECIAL PRICE] Grace and Glow Silky and Protect Care Hair Mist Hair Perfume - P",
+      "dir_timing": null
+    },
+    "wine": {
+      "n": 8,
+      "keywords": [
+        "alat pembuka kaleng",
+        "kutek gel",
+        "gelas",
+        "kopi lokal daerah"
+      ],
+      "sample": "HC Tutup Botol Multifungsi Wine Kecap Madu Sirup Minyak Wine Spirit Liquor Bahan",
+      "dir_timing": null
+    },
+    "hijab dinas": {
+      "n": 8,
+      "keywords": [
+        "hijab dinas"
+      ],
+      "sample": "Jilbab Dinas premium tersedia 45 warna untuk dinas dan olahraga by Jilbab dinas.",
+      "dir_timing": null
+    },
+    "sepatu boots wanita": {
+      "n": 8,
+      "keywords": [
+        "sepatu boots wanita"
+      ],
+      "sample": "Sepatu Boot Tinggi SAINT ADIRA Hitam Anti Slip Air Lentur Nyaman Ringan Lokal Ka",
+      "dir_timing": null
+    },
+    "sandal wanita": {
+      "n": 8,
+      "keywords": [
+        "sandal wanita"
+      ],
+      "sample": "Dejavu Sendal Wanita Terbaru Jelly Karet Sandal Slop Flat Rumahan Empuk Elastis ",
+      "dir_timing": null
+    },
+    "kristik": {
+      "n": 8,
+      "keywords": [
+        "bantal kristik",
+        "bantal kristik kecil"
+      ],
+      "sample": "PROMO bantal Vablo memory foam  - bantal hotel - Wool Knitting - memory foam mic",
+      "dir_timing": null
+    },
+    "pakan kucing": {
+      "n": 8,
+      "keywords": [
+        "makanan kucing kering premium",
+        "makanan kucing kering murah",
+        "makanan kucing kering",
+        "makanan kucing kering import",
+        "makanan kucing kering lucu"
+      ],
+      "sample": "AWINDO CHESTER 800GR - Makanan Pakan Kucing Kering Chester Dewasa Adult Cat Dryf",
+      "dir_timing": null
+    },
+    "makanan kucing kering": {
+      "n": 8,
+      "keywords": [
+        "makanan kucing kering"
+      ],
+      "sample": "BOLT Makanan Kucing Kering usia 1 tahun ke atas / Dry food Makanan Kucing",
+      "dir_timing": null
+    },
+    "pokana": {
+      "n": 8,
+      "keywords": [
+        "pampers bayi 1 pack",
+        "pampers bayi",
+        "masker n95 earloop",
+        "masker medis n95"
+      ],
+      "sample": "POKANA PANTS MEGA PACK POPOK CELANA S60 M58 L48 XL42 XXL36 PEREKAT NB-S26 SURPRI",
+      "dir_timing": null
+    },
+    "navana": {
+      "n": 8,
+      "keywords": [
+        "sunscreen gel korea",
+        "toner essence hydrating",
+        "toner wajah bpom"
+      ],
+      "sample": "Navana Hydra Barrier Sunshield Gel - Sunscreen UVA UVB Protection melembapkan ja",
+      "dir_timing": null
+    },
+    "fire starter": {
+      "n": 8,
+      "keywords": [
+        "paracord survival",
+        "gelang survival"
+      ],
+      "sample": "Gelang Outdoor Peluit Paracord Survival Bracelet flint Fire Starter",
+      "dir_timing": null
+    },
+    "backpack": {
+      "n": 8,
+      "keywords": [
+        "tas ransel wanita premium",
+        "tas ransel wanita murah"
+      ],
+      "sample": "TAS AMELIA RANSEL PUNGGUNG SMILE - Tas Sekolah Backpack Korea Fashion",
+      "dir_timing": null
+    },
+    "women clothes": {
+      "n": 0,
+      "keywords": [],
+      "sample": "",
+      "dir_timing": null
+    },
+    "storage stool": {
+      "n": 8,
+      "keywords": [
+        "kotak penyimpanan mainan",
+        "kotak penyimpanan mainan anak",
+        "tray sofa multifungsi"
+      ],
+      "sample": "NA Storage Box Organizer Motif / Kotak Penyimpanan Multifungsi / Storage Stool /",
+      "dir_timing": null
+    },
+    "hanging car perfume": {
+      "n": 2,
+      "keywords": [
+        "parfum mobil gantung"
+      ],
+      "sample": "Malanir Parfum Mobil 10 ml Tahan Lama Wangi Elegan dan Long lasting Hanging Car ",
+      "dir_timing": null
+    },
+    "rtx 5060": {
+      "n": 8,
+      "keywords": [
+        "pc rakitan gaming"
+      ],
+      "sample": "AGRES PYROLITE AMD PC RYZEN 7 5700X RTX 5060 8GB - RAM 32GB 1TB WINDOWS 11 - RAK",
+      "dir_timing": null
+    },
+    "sea moss gel": {
+      "n": 8,
+      "keywords": [
+        "selai rumput laut",
+        "rumput laut untuk kosmetik",
+        "sea grapes segar",
+        "jam tangan pria rantai silver"
+      ],
+      "sample": "500gr SEA MOSS GEL BLUEBERRY seamoss gel",
+      "dir_timing": null
+    },
+    "perlengkapan mendaki": {
+      "n": 0,
+      "keywords": [],
+      "sample": "",
+      "dir_timing": null
+    },
+    "pematik api": {
+      "n": 0,
+      "keywords": [],
+      "sample": "",
+      "dir_timing": null
+    },
+    "stiker custom": {
+      "n": 8,
+      "keywords": [
+        "sticker label produk custom",
+        "stiker label produk custom",
+        "stiker label nama",
+        "label kemasan makanan custom"
+      ],
+      "sample": "STIKER BULAT / STIKER / STICKER / KISS CUT / STIKER LABEL / STIKER BULAT / CUTTI",
+      "dir_timing": null
+    },
+    "wardah": {
+      "n": 8,
+      "keywords": [
+        "sunscreen spf 50 murah",
+        "sunscreen spf 50 original",
+        "krim siang spf",
+        "lip cream transferproof",
+        "lipstik matte"
+      ],
+      "sample": "[ BELIA ] WARDAH UV Shield Aqua Fresh Essence | Active Protection Serum | SPF 50",
+      "dir_timing": null
+    },
+    "yupi": {
+      "n": 8,
+      "keywords": [
+        "lampu depan motor"
+      ],
+      "sample": "Bohlam Lampu Depan Yamaha 12V Bisa untuk motor Mio Yupiter Beat Vario Fino Mio S",
+      "dir_timing": null
+    },
+    "worksheet": {
+      "n": 8,
+      "keywords": [
+        "mainan edukasi anak 5 tahun",
+        "mainan anak 3 tahun edukatif",
+        "buku anak bergambar"
+      ],
+      "sample": "Latihan Menggunting Kertas Mainan Edukasi Worksheet Aktivitas Untuk Anak Paud TK",
+      "dir_timing": null
+    },
+    "aksesoris motor": {
+      "n": 8,
+      "keywords": [
+        "bendera stiker mobil"
+      ],
+      "sample": "Stiker Bendera Robek Vinyl Lentur Anti Gores 7x 4cm Bendera Vietnam Thailand Jap",
+      "dir_timing": null
+    },
+    "sepatu": {
+      "error": "search_listings 500: canceling statement due to statement timeout"
+    },
+    "botol": {
+      "error": "search_listings 500: canceling statement due to statement timeout"
+    },
+    "kacamata hitam": {
+      "n": 8,
+      "keywords": [
+        "kacamata hitam"
+      ],
+      "sample": "ALOY RETAIL PL-H004 \"PROMO\"  Kacamata Hitam  Pria/Wanita Sunglasses Korean INS F",
+      "dir_timing": null
+    },
+    "gaun pesta": {
+      "n": 8,
+      "keywords": [
+        "gaun pesta anak tile"
+      ],
+      "sample": "DRESS GAMAR DRESS ANAK DRESS BAJU ANAK KONVEKSI BAJU ANAK",
+      "dir_timing": null
+    },
+    "minyak zaitun": {
+      "n": 8,
+      "keywords": [
+        "minyak zaitun"
+      ],
+      "sample": "Herborist Minyak Zaitun+Collagen 150ml | Minyak Zaitun Menjaga Elastisitas Kulit",
+      "dir_timing": null
+    },
+    "futsol": {
+      "n": 0,
+      "keywords": [],
+      "sample": "",
+      "dir_timing": null
+    },
+    "sendal gunung": {
+      "n": 8,
+      "keywords": [
+        "sandal gunung anak"
+      ],
+      "sample": "babyfit [size 21-35] BRAVO sandal anak sendal gunung anak laki-laki ml-0815r",
+      "dir_timing": null
+    },
+    "birkenstock": {
+      "n": 8,
+      "keywords": [
+        "madrid big buckle birkenstock",
+        "womens single strap birkenstock"
+      ],
+      "sample": "SANDAL WANITA BIRKEN  2171-B2",
+      "dir_timing": null
+    },
+    "helm full face": {
+      "n": 8,
+      "keywords": [
+        "helm full face murah"
+      ],
+      "sample": "[PROMO] Kaos Polos Lengan Pendek Cotton Combed 30S",
+      "dir_timing": null
+    },
+    "pupuk npk": {
+      "n": 8,
+      "keywords": [
+        "pupuk npk"
+      ],
+      "sample": "Venetian Blind Sharp Point Kosei Teduh Kerai Alumunium / Horizontal Blind Aestet",
+      "dir_timing": null
+    },
+    "kompor portable": {
+      "n": 8,
+      "keywords": [
+        "kompor portable gas mini",
+        "kompor portable camping"
+      ],
+      "sample": "[JAMINAN TERMURAH] OMICKO TECSTAR KOMPOR PORTABLE GAS PORTABLE CAMPING (1TUNGKU)",
+      "dir_timing": null
+    },
+    "tas wanita": {
+      "n": 8,
+      "keywords": [
+        "tas wanita branded murah"
+      ],
+      "sample": "The Originote Hyalucera Moisturizer Gel 50ml - Pelembap Wajah Moisturizer Cerami",
+      "dir_timing": null
+    },
+    "cooler bag": {
+      "n": 8,
+      "keywords": [
+        "cooler bag ikan",
+        "cooler bag kecil travel"
+      ],
+      "sample": "Tas Thermal Cooler Bag / Cooler Bag Aluminium Foil Thermal / Tas Bekal Makanan A",
+      "dir_timing": null
+    },
+    "jilbab": {
+      "n": 8,
+      "keywords": [
+        "jilbab olahraga",
+        "jilbab instan"
+      ],
+      "sample": "JILBAB SPORT BERKUALITAS HARGA TERJANGKAU",
+      "dir_timing": null
+    },
+    "dresses": {
+      "n": 7,
+      "keywords": [
+        "flowy dress",
+        "dress midi wanita",
+        "mainan salon anak",
+        "gaun anak perempuan"
+      ],
+      "sample": "Chinese Style Summer Short Sleeve Yellow Women Dresses",
+      "dir_timing": null
+    },
+    "beads bracelet": {
+      "n": 8,
+      "keywords": [
+        "gelang manik",
+        "gelang wanita fashion korea",
+        "gelang tangan wanita"
+      ],
+      "sample": "Beads Bracelet//BISA PILIH HURUF//NEW PRODUK//Gelang Beads Bracelet Tali Serut",
+      "dir_timing": null
+    },
+    "skechers": {
+      "n": 8,
+      "keywords": [
+        "kaos kaki wanita motif",
+        "sepatu sekolah anak perempuan",
+        "tas ransel pria premium",
+        "sandal selop",
+        "sepatu casual pria murah"
+      ],
+      "sample": "Kaos Kaki Skechers Low Cut Sport Socks Original",
+      "dir_timing": null
+    }
+  }
+}

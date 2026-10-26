@@ -31,7 +31,7 @@ kompor portable camping outdoor  2026-08-11, 2026-07-29, 2026-07-24
 lampu camping LED rechargeable   2026-08-10, 2026-07-06, 2026-06-29
 ```
 
-The newest baseline at least 7 days old is typically **12-17 days** back, not 7.
+The newest baseline at least 7 days old is typically **12-17 days** back, not 7. Rechecked 2026-10-26: `mv_keyword_weekly.wk_span_days` median was 22 (min 7, max 28) even though the queue SLA is 7 days. Keep this line until that median actually moves.
 Publishing that raw delta as "terjual minggu ini" would overstate a week by
 roughly 2x — the fabricated-delta failure `AGENTS.md` and `MISSION.md` forbid.
 

@@ -6,6 +6,8 @@ Read **[MISSION.md](../MISSION.md)** first. Do not reintroduce a blocking onboar
 
 **QA checklist:** [journey-funnel-test.md](./journey-funnel-test.md)
 
+**Cari Produk search:** [search-resolver.md](./search-resolver.md). A miss opens Minta Produk. It does not paint a confident grid of the wrong category.
+
 **Laris AI replies:** [ask-laris.md](./ask-laris.md) — lookup / weekly / filter / refer / promo / judgment. Do not send every typed prompt through visible thinking.
 
 **Retention re-read:** [RETENTION.sql](./RETENTION.sql). Signup-day activity vs later return: [ACTIVITY_RETURN_CORR.sql](./ACTIVITY_RETURN_CORR.sql).

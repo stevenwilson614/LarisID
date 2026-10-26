@@ -40,7 +40,7 @@ Logged-out visitors never hit the agent or `cari_web`.
 
 `lastShown` is stored on `chat.context` whenever rows are painted. “Crocs Bandung” with no demonstrative is LOOKUP-with-city, not FILTER. `Lanjutkan jawaban` / `Ya, lanjut` are never FILTER.
 
-LOOKUP is `handleLookupIntent` → `resolveListingPool` + `tightenLookupPool` (2+ token queries keep only keywords that contain the full phrase / both pivots) → `lookupOverviewHtml` + compact listing rows. It does **not** call `replyWithPasarTypes` (that dump of head-token chips is what made “botol minyak” return baby-bottle soap). No Peta / Trending Sekarang in the LOOKUP bubble. Default chip is **Semua**. Signed-in users with ≥5 painted listing rows get an **Unduh** button above the table (same Excel/CSV snapshot flow and 90-row/day budget as Cari Produk — see [export-xlsx.md](./export-xlsx.md)).
+LOOKUP is `handleLookupIntent` → `resolveListingPool` (`resolve_market`; `?resolver=legacy` until 2026-11-09) + `tightenLookupPool` (skipped when the pool already has a server tier) → `lookupOverviewHtml` + compact listing rows. Tiers `exact` and `strong` are a real market. `nearby`, `title`, and `brand_missing` must say so in the first sentence. `none` is an empty result plus Minta Produk, not a confident grid. It does **not** call `replyWithPasarTypes` (that dump of head-token chips is what made “botol minyak” return baby-bottle soap). No Peta / Trending Sekarang in the LOOKUP bubble. Default chip is **Semua**. Signed-in users with ≥5 painted listing rows get an **Unduh** button above the table (same Excel/CSV snapshot flow and 90-row/day budget as Cari Produk — see [export-xlsx.md](./export-xlsx.md)).
 
 ---
 
@@ -50,7 +50,7 @@ LOOKUP is `handleLookupIntent` → `resolveListingPool` + `tightenLookupPool` (2
 
 | Tool | Role |
 |---|---|
-| `cari_pasar` | Free-text market search |
+| `cari_pasar` | Free-text market search. Returns `tier`, `confidence`, `corrected_query`. Nearby, title, and brand_missing require the first sentence to say the exact market or brand is not in the data. |
 | `pasar_kota` | What shops in one city actually sell |
 | `pasar_kategori` | Markets in one canonical category |
 | `ringkasan_kategori` | Top-N pasar per category in one RPC |

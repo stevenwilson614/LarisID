@@ -10895,6 +10895,14 @@ async function _resolveListingPoolViaMarket(query) {
   }
   out.listings = dedupeListings(out.listings || []);
   if (row.tier === 'fresh') out.listings.forEach(p => { p._fresh = true; });
+  if (row.tier === 'brand' && row.brand) {
+    const re = new RegExp('(?:^|[^a-z0-9])' + String(row.brand).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:[^a-z0-9]|$)', 'i');
+    out.listings.forEach(p => {
+      const hit = re.test(String(p.product_name || ''));
+      p._relTier = hit ? 0 : 1;
+      p._relScore = hit ? 1 : 0;
+    });
+  }
   rememberProducts(out.listings);
   registerTypes(out.keywords);
   return out;

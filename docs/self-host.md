@@ -52,6 +52,10 @@ Scraper-owned DDL (`listing_weekly`, `product_velocity`, daily series) still
 lives in `~/shopee_scraper` and is applied the same SSH+psql way — see
 [listing-weekly.md](./listing-weekly.md).
 
+Search resolver (apply in this order, then `select public.rebuild_market_search(false)`):
+
+`20261026220000_market_search_index.sql`, `20261026221000_resolve_market.sql`, `20261026222000_market_search_bridges.sql`, `20261026223000_express_scrape.sql`, `20261026224000_market_taxonomy.sql`. Details: [search-resolver.md](./search-resolver.md).
+
 ## Deploy an edge function
 
 1. Keep the source in **this** repo: `supabase/functions/<slug>/index.ts`
