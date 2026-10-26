@@ -15,6 +15,8 @@ const SLUG = 'obrolan.marketing';
 const MAX_STATE = 5 * 1024 * 1024;
 const MAX_PART = 8 * 1024 * 1024;
 const MAX_VIDEO = 1024 * 1024 * 1024;
+const MAX_IMAGE = 5 * 1024 * 1024;
+const MAX_FILE = 20 * 1024 * 1024;
 const MAX_EVENT_BYTES = 16 * 1024;
 
 const stateDir = path.join(DATA, 'state');
@@ -109,6 +111,19 @@ function adminAuthed(req, q) {
   if (!ADMIN_KEY) return false;
   if (sameSecret(q.key, ADMIN_KEY)) return true;
   return cookieValue(req, 'anton_admin') === '1';
+}
+
+function adminCookie(req, value, maxAge) {
+  const proto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+  const secure = proto === 'https' ? '; Secure' : '';
+  const age = maxAge == null ? '' : '; Max-Age=' + maxAge;
+  return 'anton_admin=' + value + '; HttpOnly; SameSite=Lax; Path=/obrolan.marketing' + secure + age;
+}
+
+function uploadCap(kind) {
+  if (kind === 'image') return MAX_IMAGE;
+  if (kind === 'file') return MAX_FILE;
+  return MAX_VIDEO;
 }
 
 function queryOf(url) {
@@ -504,7 +519,28 @@ const server = http.createServer((req, res) => {
       json(res, 403, { ok: false });
       return;
     }
+    if (sameSecret(q.key, ADMIN_KEY)) {
+      res.writeHead(200, {
+        'content-type': 'application/json; charset=utf-8',
+        'cache-control': 'no-store',
+        'x-robots-tag': 'noindex',
+        'set-cookie': adminCookie(req, '1')
+      });
+      res.end(JSON.stringify({ ok: true }));
+      return;
+    }
     json(res, 200, { ok: true });
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/admin/logout') {
+    res.writeHead(200, {
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': 'no-store',
+      'x-robots-tag': 'noindex',
+      'set-cookie': adminCookie(req, '', 0)
+    });
+    res.end(JSON.stringify({ ok: true }));
     return;
   }
 
@@ -551,6 +587,10 @@ const server = http.createServer((req, res) => {
           json(res, 403, { error: 'forbidden' });
           return;
         }
+        if (body && body.reset === true && !adminAuthed(req, q)) {
+          json(res, 403, { error: 'reset_forbidden' });
+          return;
+        }
         const incomingRev = Number(body && body.rev) || 0;
         if (rec && incomingRev <= (Number(rec.rev) || 0)) {
           json(res, 409, { error: 'stale', rev: rec.rev });
@@ -583,9 +623,11 @@ const server = http.createServer((req, res) => {
         json(res, 400, { error: 'bad_json' });
         return;
       }
+      const kind = body.kind === 'image' || body.kind === 'file' ? body.kind : 'video';
+      const cap = uploadCap(kind);
       const size = Number(body.size) || 0;
-      if (!size || size > MAX_VIDEO) {
-        json(res, 413, { error: 'too_large' });
+      if (!size || size > cap) {
+        json(res, 413, { error: 'too_large', max: cap });
         return;
       }
       const lecId = String(body.lecId || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64);
@@ -602,6 +644,8 @@ const server = http.createServer((req, res) => {
         name: String(body.name || 'video.mp4').slice(0, 180),
         type: String(body.type || 'video/mp4').slice(0, 80),
         size,
+        kind,
+        maxSize: cap,
         createdAt: new Date().toISOString()
       }));
       json(res, 200, { uploadId, key });
@@ -662,7 +706,8 @@ const server = http.createServer((req, res) => {
         fs.appendFileSync(dest, fs.readFileSync(path.join(dir, name)));
       });
       const size = fs.statSync(dest).size;
-      if (size > MAX_VIDEO) {
+      const cap = Number(meta.maxSize) || MAX_VIDEO;
+      if (size > cap) {
         fs.unlinkSync(dest);
         json(res, 413, { error: 'too_large' });
         return;
@@ -940,6 +985,16 @@ const server = http.createServer((req, res) => {
     })).catch((err) => {
       if (!res.headersSent) json(res, err.status || 500, { error: 'lynk' });
     });
+    return;
+  }
+
+  // Fonnte and Mayar are not wired on this host. Answer so older pages do not poll 404s.
+  if (pathname === '/wa/status' || pathname === '/wa/inbox' || pathname === '/wa/thread' || pathname === '/wa/send') {
+    json(res, 200, { ok: true, live: false, deviceReady: false, configured: false, threads: [], messages: [] });
+    return;
+  }
+  if (pathname === '/pay/status' || pathname === '/pay/invoice' || pathname === '/pay/webhook') {
+    json(res, 200, { configured: false, mode: 'unset', error: 'not_configured' });
     return;
   }
 

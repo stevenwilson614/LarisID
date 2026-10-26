@@ -2818,8 +2818,8 @@
   function fileKey(lecId, n) { return 'file-' + lecId + '-' + n; }
   function avatarHtml(s, cls) {
     const c = cls || 'avatar';
-    if (s && s.photoBlob) return '<img class="' + c + '" data-blob="' + esc(photoKey(s.id)) + '" alt="">';
     if (s && s.photoUrl) return '<img class="' + c + '" src="' + esc(s.photoUrl) + '" alt="">';
+    if (s && s.photoBlob) return '<img class="' + c + '" data-blob="' + esc(photoKey(s.id)) + '" alt="">';
     return '<span class="' + c + ' avatar-fallback" aria-hidden="true">' + esc(initialsOf(s && s.name)) + '</span>';
   }
   function fmtPhone(wa) {
@@ -2916,8 +2916,8 @@
   }
   function coverHtml(kind, id, cls) {
     const rec = kind === 'week' ? (db.weeks.find((w) => w.id === id) || {}) : (lectureById(id) || {});
-    if (rec.coverBlob) return '<img class="' + (cls || 'cover-thumb') + '" data-blob="' + esc(coverKey(kind, id)) + '" alt="">';
     if (rec.coverUrl) return '<img class="' + (cls || 'cover-thumb') + '" src="' + esc(rec.coverUrl) + '" alt="">';
+    if (rec.coverBlob) return '<img class="' + (cls || 'cover-thumb') + '" data-blob="' + esc(coverKey(kind, id)) + '" alt="">';
     return '';
   }
   function fetchTikTokAvatar(handle) {
@@ -2936,7 +2936,8 @@
   function refreshPersonPhoto(id, force) {
     const s = people().find((x) => x.id === id);
     if (!s || !s.tiktok) return Promise.resolve(false);
-    if ((s.photoBlob || s.photoUrl) && !force) return Promise.resolve(true);
+    if (s.photoUrl && !force) return Promise.resolve(true);
+    if (!syncEnabled() && s.photoBlob && !force) return Promise.resolve(true);
     return fetchTikTokAvatar(s.tiktok).then((blob) => {
       if (!blob) {
         patchPerson(id, { photoFailed: true });
@@ -3064,7 +3065,7 @@
     ui.tagQuery = '';
     render();
     const s = people().find((x) => x.id === id);
-    if (s && s.tiktok && !s.photoBlob) {
+    if (s && s.tiktok && !s.photoUrl && (syncEnabled() || !s.photoBlob)) {
       refreshPersonPhoto(id, false).then((ok) => { if (ok) render(); });
     }
   }
@@ -4021,7 +4022,7 @@
                 '<button type="button" class="btn-sm" data-act="cal-ics-all">Unduh semua sesi (.ics)</button>' +
               '</div>'
             : '') +
-          '<p class="muted" style="margin-top:10px">Grup WA kelas: undangan hanya lewat Anton. Prototype tidak mengirim WA sungguhan.</p>' +
+          '<p class="muted" style="margin-top:10px">Grup WA kelas: undangan hanya lewat Anton.</p>' +
         '</section>' +
       '</div>' +
       '<div class="grid-2" style="margin-top:14px">' +
@@ -4411,7 +4412,7 @@
     } else if (lec.type === 'document') {
       body = '<div class="article">' + (cover || '') + '<h3>' + esc(lec.title) + '</h3>' +
         ((lec.resources || []).length ? resourceListHtml(lec) : '<p>File kelas: <a href="' + esc(lec.url || '#') + '" target="_blank" rel="noopener">' + esc(lec.title) + '</a></p>') +
-        '<p class="muted">Prototype. Produksi nanti: bucket cohort-docs.</p></div>';
+        '</div>';
     } else {
       body = '<div class="article">' + (cover || '') + '<h3>' + esc(lec.title) + '</h3>' + mdish(lec.body || '') + '</div>';
     }
@@ -4589,7 +4590,7 @@
           '<img class="catalog-mark" src="' + esc(sch.logo) + '" alt="">' +
           '<div><strong>MasterMind with Anton GC</strong><span>by Coach Anton GC</span></div>' +
         '</div>' +
-        '<p class="muted" style="margin:6px 0 0">Kelas: <a href="' + esc(schoolLocalUrl()) + '">larisid.com/s/' + esc(schoolSlug()) + '</a> · etalase: lynk.id/' + esc(schoolSlug()) + '</p>' +
+        '<p class="muted" style="margin:6px 0 0">Kelas: <a href="' + esc(schoolLocalUrl()) + '">' + esc(schoolPublicUrl().replace(/^https?:\/\//, '')) + '</a> · etalase: lynk.id/' + esc(schoolSlug()) + '</p>' +
         '<a class="btn secondary" href="' + esc(sch.lynk) + '" target="_blank" rel="noopener" style="margin-top:8px">Etalase lynk.id</a>' +
       '</div></section>';
   }
@@ -6698,7 +6699,8 @@
       fields[k] = val;
       patchPerson(id, fields);
       save();
-        if (k === 'tiktok') {
+      if (k === 'wa' || k === 'email') render();
+      if (k === 'tiktok') {
         refreshPersonPhoto(id, true).then((ok) => {
           toast(ok ? (syncEnabled() ? 'Foto TikTok tersimpan di kelas.' : 'Foto TikTok tersimpan.') : 'Foto gagal. Inisial + unggah.');
           render();
