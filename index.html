@@ -9159,14 +9159,23 @@ body.thread-wide .composer-chips { max-width: 1080px; }
 }
 @media (max-width: 640px) { .gpt-kalc-recs { grid-template-columns: 1fr; } }
 .gpt-kalc-rec {
-  border-radius: 12px; padding: 12px; border: 1.5px solid var(--line); background: #fff;
+  border-radius: 12px; padding: 12px; border: 2px solid var(--line); background: #fff;
 }
-.gpt-kalc-rec.bep { border-color: #fca5a5; background: #fef2f2; }
-.gpt-kalc-rec.good { border-color: #fdba74; background: #fff7ed; }
-.gpt-kalc-rec.healthy { border-color: #86efac; background: #f0fdf4; }
-.gpt-kalc-rec .lbl { font-size: .66rem; font-weight: 650; color: var(--muted); }
+.gpt-kalc-rec.bep { border-color: #ef4444; background: #fecaca; }
+.gpt-kalc-rec.good { border-color: #f59e0b; background: #fde68a; }
+.gpt-kalc-rec.healthy { border-color: #22c55e; background: #86efac; }
+.gpt-kalc-rec .lbl { font-size: .66rem; font-weight: 700; color: var(--muted); }
 .gpt-kalc-rec .sub { font-size: .6rem; color: var(--muted); margin: 2px 0 6px; }
 .gpt-kalc-rec .price { font-size: .95rem; font-weight: 800; }
+.gpt-kalc-rec.bep .lbl,
+.gpt-kalc-rec.bep .price { color: #b91c1c; }
+.gpt-kalc-rec.bep .sub { color: #991b1b; }
+.gpt-kalc-rec.good .lbl,
+.gpt-kalc-rec.good .price { color: #92400e; }
+.gpt-kalc-rec.good .sub { color: #78350f; }
+.gpt-kalc-rec.healthy .lbl,
+.gpt-kalc-rec.healthy .price { color: #14532d; }
+.gpt-kalc-rec.healthy .sub { color: #166534; }
 .gpt-kalc-detail-tog {
   margin-top: 12px; width: 100%; display: flex; justify-content: space-between;
   align-items: center; gap: 8px; padding: 10px 0 0; border: none; background: none;
