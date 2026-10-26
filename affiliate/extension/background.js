@@ -6,9 +6,50 @@ var frames = {};
 var kaloFrames = {};
 var lastReconMeta = { origin: '', shopName: '' };
 
+/* Icon opens the on-page overlay when on Seller/Affiliate Center.
+   Side panel stays available as fallback (right-click → Open side panel). */
 try {
-  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
 } catch (err) { /* older Chrome */ }
+
+function openSidePanel(tabId) {
+  try {
+    chrome.sidePanel.open({ tabId: tabId }).catch(function () {});
+  } catch (err) { /* ignore */ }
+}
+
+function openOverlayOnTab(tabId, url) {
+  injectTab(tabId, url);
+  setTimeout(function () {
+    chrome.tabs.sendMessage(tabId, { type: 'laris-open-overlay' }, function () {
+      if (chrome.runtime.lastError) openSidePanel(tabId);
+    });
+  }, 250);
+}
+
+chrome.action.onClicked.addListener(function (tab) {
+  if (tab && tab.id && tab.url && hostOk(tab.url)) {
+    openOverlayOnTab(tab.id, tab.url);
+    return;
+  }
+  findOrOpenAffiliateTab().then(function (res) {
+    if (!res || !res.tabId) {
+      if (tab && tab.id) openSidePanel(tab.id);
+      return;
+    }
+    var wait = res.opened ? 1200 : 300;
+    setTimeout(function () {
+      chrome.tabs.get(res.tabId, function (t) {
+        if (chrome.runtime.lastError || !t) {
+          openSidePanel(res.tabId);
+          return;
+        }
+        if (t.url && hostOk(t.url)) openOverlayOnTab(t.id, t.url);
+        else openSidePanel(t.id);
+      });
+    }, wait);
+  });
+});
 
 function injectTab(tabId, url) {
   if (url && KALO_RE.test(safeHost(url))) {

@@ -44,7 +44,7 @@
   pill.className = 'pill';
   pill.textContent = 'Laris';
   pill.setAttribute('aria-expanded', 'false');
-  pill.title = 'Laris Affiliate';
+  pill.title = 'Laris Affiliate · overlay 0.5.1';
 
   var back = document.createElement('div');
   back.className = 'back';
@@ -86,6 +86,13 @@
     if (!d || d.source !== 'laris-affiliate-panel') return;
     if (typeof d.running === 'boolean') running = d.running;
     if (d.close) setOpen(false);
+  });
+
+  chrome.runtime.onMessage.addListener(function (msg, _sender, sendResponse) {
+    if (!msg || msg.type !== 'laris-open-overlay') return;
+    mount();
+    setOpen(true);
+    try { sendResponse({ ok: true }); } catch (e) { /* ignore */ }
   });
 
   function mount() {

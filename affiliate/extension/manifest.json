@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "minimum_chrome_version": "114",
   "name": "Laris Affiliate",
-  "version": "0.5.0",
-  "description": "Kampanye Target Collab lewat sesi Affiliate Center di Chrome ini. Unofficial. Cookie tidak dikirim ke LarisID.",
+  "version": "0.5.1",
+  "description": "Overlay + pill Target Collab lewat sesi Affiliate Center. Unofficial. Cookie tidak dikirim ke LarisID.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",

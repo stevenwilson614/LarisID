@@ -8,10 +8,18 @@
   var SURFACE = (SURFACE_OVERLAY ? 'overlay-' : 'panel-') + Math.random().toString(36).slice(2);
   var JAKARTA = 'Asia/Jakarta';
   var $ = function (id) { return document.getElementById(id); };
+  var VERSION = (chrome.runtime.getManifest && chrome.runtime.getManifest().version) || '0.5.1';
   if (SURFACE_OVERLAY) {
     document.documentElement.classList.add('surface-overlay');
     document.body.classList.add('surface-overlay');
   }
+  (function markBuild() {
+    var badge = $('build-badge');
+    if (!badge) return;
+    badge.textContent = SURFACE_OVERLAY
+      ? ('Overlay · v' + VERSION)
+      : ('Panel · v' + VERSION + ' · klik ikon di Affiliate Center untuk overlay');
+  })();
 
   function notifyParent(on) {
     if (!SURFACE_OVERLAY || !window.parent || window.parent === window) return;
