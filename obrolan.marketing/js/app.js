@@ -2529,7 +2529,7 @@
   }
 
   const MAX_VID_LOCAL = 80 * 1024 * 1024;
-  const MAX_VID_CLASS = 1024 * 1024 * 1024;
+  const MAX_VID_CLASS = 5 * 1024 * 1024 * 1024;
   const MAX_IMG = 5 * 1024 * 1024;
   const MAX_FILE = 20 * 1024 * 1024;
 
@@ -2629,7 +2629,7 @@
     const cap = syncEnabled() ? MAX_VID_CLASS : MAX_VID_LOCAL;
     if (file.size > cap) {
       toast(syncEnabled()
-        ? 'Maks 1 GB. Untuk video lebih besar, tempel tautan YouTube atau Drive.'
+        ? 'Maks 5 GB. Untuk video lebih besar, tempel tautan YouTube atau Drive.'
         : 'Maks 80 MB di browser ini. Unggah ke YouTube/Drive lalu tempel tautan.');
       return;
     }
@@ -6047,7 +6047,7 @@
             : l.type === 'text'
             ? ''
             : '<h4>Video</h4>' +
-              '<p class="muted">YouTube paling lancar. Drive juga bisa. Atau unggah MP4 (maks 1 GB, tersimpan di kelas).</p>' +
+              '<p class="muted">YouTube paling lancar. Drive juga bisa. Atau unggah MP4 (maks 5 GB, tersimpan di kelas).</p>' +
               '<input data-act="lec-field" data-id="' + esc(l.id) + '" data-k="url" value="' + esc(l.url || '') + '" placeholder="https://youtube.com/…">' +
               '<label class="vid-drop" data-act="vid-drop" data-id="' + esc(l.id) + '">' +
                 '<input type="file" data-act="vid-file" data-id="' + esc(l.id) + '" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v" hidden>' +
