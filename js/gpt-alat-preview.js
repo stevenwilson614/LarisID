@@ -17,7 +17,7 @@
   var SS_INTENT = 'lid_alat_intent';
   var PROFILE_KEY = 'lid_alat_shop_v1';
   var CLIENT_KEY = 'lid_alat_client_v1';
-  var TRACK_MAX = 20;
+  var TRACK_MAX = 30; // Favorit Aku product cap — products + kompetitor checks share this budget
   var LIST_PREVIEW = 40;
   var SCRAPE_WAIT_MS = 90000;
   var SCRAPE_POLL_MS = 2000;
@@ -1368,6 +1368,77 @@
     );
   }
 
+  function peerCountFor(mineIdx) {
+    var n = 0;
+    var prefix = String(mineIdx) + ':';
+    Object.keys(_peerChecks).forEach(function (k) {
+      if (_peerChecks[k] && k.indexOf(prefix) === 0) n++;
+    });
+    return n;
+  }
+
+  /** Selected own products + kompetitor checks (only for selected products). */
+  function trackBudgetUsed() {
+    var peers = 0;
+    Object.keys(_peerChecks).forEach(function (k) {
+      if (!_peerChecks[k]) return;
+      var mineIdx = Number(k.split(':')[0]);
+      if (_trackSelected.indexOf(mineIdx) >= 0) peers++;
+    });
+    // Own products already tracked (profile) that are not in the current selection
+    // still consume Favorit slots.
+    var trackedExtra = 0;
+    var selectedIds = Object.create(null);
+    _trackSelected.forEach(function (i) {
+      var p = _listings[i];
+      if (p) selectedIds[String(p.item_id)] = true;
+    });
+    (_trackedIds || []).forEach(function (id) {
+      if (!selectedIds[String(id)]) trackedExtra++;
+    });
+    return _trackSelected.length + peers + trackedExtra;
+  }
+
+  function trackBudgetLabel() {
+    return trackBudgetUsed() + ' / ' + TRACK_MAX;
+  }
+
+  function selectedStripHtml(mine) {
+    if (!_trackSelected.length) {
+      return '<div class="alat-sel-strip" id="alat-sel-strip" hidden></div>';
+    }
+    var cards = _trackSelected.map(function (idx) {
+      var p = mine[idx] || _listings[idx];
+      if (!p) return '';
+      var focused = idx === _trackFocus;
+      var peers = peerCountFor(idx);
+      return (
+        '<button type="button" class="alat-sel-card' + (focused ? ' is-focus' : '') + '" data-alat-sel="' + idx + '" aria-pressed="' + (focused ? 'true' : 'false') + '">' +
+          (p.image_url
+            ? '<img class="alat-sel-img" src="' + esc(p.image_url) + '" alt="">'
+            : '<span class="alat-sel-img alat-ph"></span>') +
+          (focused
+            ? '<span class="alat-sel-meta">' +
+                '<span class="alat-sel-peers">' + peers + ' kompetitor</span>' +
+                '<span class="alat-sel-budget" id="alat-sel-budget">' + trackBudgetLabel() + '</span>' +
+              '</span>'
+            : (peers
+              ? '<span class="alat-sel-peers-mini">' + peers + '</span>'
+              : '')) +
+        '</button>'
+      );
+    }).join('');
+    return (
+      '<div class="alat-sel-strip" id="alat-sel-strip">' +
+        '<div class="alat-sel-strip-head">' +
+          '<span class="alat-hint" style="margin:0">Dipilih · ketuk untuk pilih kompetitor</span>' +
+          '<span class="alat-sel-budget-top" id="alat-sel-budget-top">' + trackBudgetLabel() + '</span>' +
+        '</div>' +
+        '<div class="alat-sel-rail" role="list">' + cards + '</div>' +
+      '</div>'
+    );
+  }
+
   function renderTrackStep(shop) {
     var root = $('alat-root');
     if (!root) return;
@@ -1380,8 +1451,10 @@
       // default-check top 2 peers for first product once loaded
       void peersForKeyword(shop, mine[0].keyword).then(function (rows) {
         rows.slice(0, 2).forEach(function (r) {
+          if (trackBudgetUsed() >= TRACK_MAX) return;
           _peerChecks[peerKey(0, r.shop_id)] = true;
         });
+        refreshSelectedStrip(shop, mine);
         paintTrackPeers(shop);
       });
     }
@@ -1390,8 +1463,8 @@
     var html = progressHtml(3, 'Pantau kompetitor') +
       '<section class="alat-card">' +
         '<p class="alat-kicker">Toko · ' + esc(shop.store_name) + '</p>' +
-        '<h2>Pilih hingga ' + TRACK_MAX + ' produk</h2>' +
-        '<p class="alat-lead">Ketuk kartu produkmu. Kompetitor di bawah mengikuti produk yang aktif. Geser ke samping kalau banyak.</p>' +
+        '<h2>Pilih produk &amp; kompetitor</h2>' +
+        '<p class="alat-lead">Ketuk kartu di carousel untuk memilih. Produk terpilih muncul di bawah — yang aktif sedikit lebih besar untuk pilih kompetitor. Kuota pantauan ' + TRACK_MAX + ' (produk + kompetitor).</p>' +
         '<div class="alat-pcard-rail" id="alat-mine-rail" role="list">' +
           mine.map(function (p, i) {
             return productCardHtml(p, i, {
@@ -1400,7 +1473,7 @@
             });
           }).join('') +
         '</div>' +
-        '<p class="alat-hint" id="alat-sel-count">' + _trackSelected.length + ' / ' + TRACK_MAX + ' dipilih</p>' +
+        selectedStripHtml(mine) +
         '<div id="alat-peer-panel"></div>' +
         '<div class="alat-row alat-row-end">' +
           '<button type="button" class="btn-ghost" id="alat-back-kabar">Kembali</button>' +
@@ -1410,6 +1483,7 @@
       '</section>';
     root.innerHTML = html;
     wireTrackCards(shop, mine);
+    wireSelectedStrip(shop, mine);
     paintTrackPeers(shop);
     $('alat-back-kabar')?.addEventListener('click', function () {
       log('alat_track_back', {});
@@ -1435,15 +1509,18 @@
         var pos = _trackSelected.indexOf(idx);
         if (pos >= 0) {
           if (_trackFocus === idx) {
-            // deselect focused
+            // deselect focused — drop its peer checks too
             _trackSelected.splice(pos, 1);
+            Object.keys(_peerChecks).forEach(function (k) {
+              if (k.indexOf(String(idx) + ':') === 0) delete _peerChecks[k];
+            });
             _trackFocus = _trackSelected.length ? _trackSelected[_trackSelected.length - 1] : -1;
           } else {
             _trackFocus = idx;
           }
         } else {
-          if (_trackSelected.length >= TRACK_MAX) {
-            if (host && host.showToast) host.showToast('Maksimal ' + TRACK_MAX + ' produk.');
+          if (trackBudgetUsed() >= TRACK_MAX) {
+            if (host && host.showToast) host.showToast('Kuota pantauan penuh (' + TRACK_MAX + ').');
             return;
           }
           _trackSelected.push(idx);
@@ -1453,6 +1530,33 @@
         paintTrackPeers(shop);
       });
     });
+  }
+
+  function wireSelectedStrip(shop, mine) {
+    var strip = $('alat-sel-strip');
+    if (!strip) return;
+    strip.querySelectorAll('[data-alat-sel]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var idx = Number(btn.getAttribute('data-alat-sel'));
+        if (_trackSelected.indexOf(idx) < 0) return;
+        _trackFocus = idx;
+        refreshTrackRail(shop, mine);
+        paintTrackPeers(shop);
+      });
+    });
+  }
+
+  function refreshSelectedStrip(shop, mine) {
+    var hostEl = $('alat-sel-strip');
+    var rail = $('alat-mine-rail');
+    if (!rail) return;
+    var html = selectedStripHtml(mine);
+    if (hostEl) {
+      hostEl.outerHTML = html;
+    } else {
+      rail.insertAdjacentHTML('afterend', html);
+    }
+    wireSelectedStrip(shop, mine);
   }
 
   function refreshTrackRail(shop, mine) {
@@ -1465,8 +1569,7 @@
       });
     }).join('');
     wireTrackCards(shop, mine);
-    var cnt = $('alat-sel-count');
-    if (cnt) cnt.textContent = _trackSelected.length + ' / ' + TRACK_MAX + ' dipilih';
+    refreshSelectedStrip(shop, mine);
   }
 
   function paintTrackPeers(shop) {
@@ -1481,9 +1584,11 @@
       panel.innerHTML = '';
       return;
     }
+    var listMine = _listings.slice(0, LIST_PREVIEW);
     panel.innerHTML =
       '<h3 class="alat-h3">Kompetitor untuk “' + esc((mine.product_name || '').slice(0, 40)) + '”</h3>' +
-      '<p class="alat-hint">Keyword: ' + esc(mine.keyword || '—') + ' · centang yang mau dipantau</p>' +
+      '<p class="alat-hint">Keyword: ' + esc(mine.keyword || '—') + ' · centang yang mau dipantau · ' +
+        '<span id="alat-peer-budget">' + trackBudgetLabel() + '</span></p>' +
       '<div class="alat-list" id="alat-peers"><p class="alat-lead">Memuat kompetitor…</p></div>';
     void peersForKeyword(shop, mine.keyword).then(function (rows) {
       var box = $('alat-peers');
@@ -1506,8 +1611,19 @@
       box.querySelectorAll('input[data-alat-peer-key]').forEach(function (inp) {
         inp.addEventListener('change', function () {
           var k = inp.getAttribute('data-alat-peer-key');
-          if (inp.checked) _peerChecks[k] = true;
-          else delete _peerChecks[k];
+          if (inp.checked) {
+            if (!_peerChecks[k] && trackBudgetUsed() >= TRACK_MAX) {
+              inp.checked = false;
+              if (host && host.showToast) host.showToast('Kuota pantauan penuh (' + TRACK_MAX + ').');
+              return;
+            }
+            _peerChecks[k] = true;
+          } else {
+            delete _peerChecks[k];
+          }
+          refreshSelectedStrip(shop, listMine);
+          var bud = $('alat-peer-budget');
+          if (bud) bud.textContent = trackBudgetLabel();
         });
       });
     });
