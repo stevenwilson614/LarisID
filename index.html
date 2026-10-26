@@ -6116,6 +6116,17 @@ body.view-edukasi .panel { background: #F7F7F8; }
     padding-left: 0;
     padding-right: 0;
   }
+  /* Location card is a white bordered pill at full width — in the 72px rail
+     that chrome reads as a fat bar bleeding past the icons. Match side-btn. */
+  .sidebar:not(:hover):not(:focus-within) .side-loc-card {
+    width: auto;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 9px;
+    border-color: transparent;
+    background: transparent;
+    border-radius: 999px;
+  }
   .sidebar:not(:hover):not(:focus-within) .side-btn-label,
   .sidebar:not(:hover):not(:focus-within) .side-loc-txt,
   .sidebar:not(:hover):not(:focus-within) .side-label,
@@ -12961,7 +12972,7 @@ body.view-chat .sfb-card {
 <script src="/js/gpt-belajar.js?v=20261017f" defer></script>
 <script src="/js/gpt-alat-preview.js?v=20261019door2" defer></script>
 <script src="/js/omset-week-shape.js?v=20261021shape1" defer></script>
-<script src="/js/gpt-app.js?v=20261026smsred" defer></script>
+<script src="/js/gpt-app.js?v=20261026rail" defer></script>
 <style>
 .hl-hero-ctas-alat { display: none; }
 html.alat-preview #finder-xp-step { display: none; }

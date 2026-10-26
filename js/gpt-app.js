@@ -28226,6 +28226,16 @@ function wireUi() {
   }, true);
   $('btn-menu')?.addEventListener('click', openSidebar);
   $('sidebar-backdrop')?.addEventListener('click', closeSidebar);
+  // Narrow-desktop rail (861–1279px) expands on :hover and :focus-within.
+  // A pointer click leaves focus on the side button, so the rail stays open
+  // after the cursor leaves — blur mouse/pen clicks (detail > 0). Keyboard
+  // activation keeps focus so Tab users can still expand the rail.
+  $('sidebar')?.addEventListener('click', (ev) => {
+    if (!ev.detail) return;
+    const el = ev.target.closest('a.sidebar-brand, a.side-btn, button');
+    if (!el || el.closest('.chat-search')) return;
+    requestAnimationFrame(() => { try { el.blur(); } catch (_) {} });
+  });
   $('btn-home')?.addEventListener('click', goHome);
   $('btn-home-mobile')?.addEventListener('click', goHome);
   $('chat-search-input')?.addEventListener('input', () => renderChatList());
