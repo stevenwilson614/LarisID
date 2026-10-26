@@ -594,15 +594,32 @@
         '<div id="alat-shop-picker" class="alat-picker" hidden></div>' +
         '<p class="alat-hint">Sudah punya ekstensi? Di halaman toko Shopee, ketuk “Ini toko saya”.</p>' +
         '<div class="alat-row-actions">' +
+          '<button type="button" class="btn-ghost" id="alat-shop-back">Kembali</button>' +
           '<button type="button" class="btn-ghost" id="alat-shop-skip">Lewati dulu</button>' +
         '</div>' +
         '<p class="alat-hint" style="margin-top:10px;text-align:right">Bisa tempel kapan saja di My Toko.</p>' +
       '</section>';
     $('alat-shop-go')?.addEventListener('click', function () { void searchShop(); });
+    $('alat-shop-back')?.addEventListener('click', backFromConnect);
     $('alat-shop-skip')?.addEventListener('click', skipConnect);
     $('alat-shop-q')?.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') { e.preventDefault(); void searchShop(); }
     });
+  }
+
+  /** Connect step → door choice (or Beranda if wizard already finished). */
+  function backFromConnect() {
+    log('alat_connect_back', {});
+    if (!isWizardDone()) {
+      clearDoorChoice();
+      exitFocus();
+      openSift();
+      return;
+    }
+    exitFocus();
+    dismissSignupCta();
+    if (host && host.renderLanding) host.renderLanding();
+    else if (host && host.setView) host.setView('landing');
   }
 
   function skipConnect() {
@@ -1361,6 +1378,7 @@
         '<p class="alat-hint" id="alat-sel-count">' + _trackSelected.length + ' / ' + TRACK_MAX + ' dipilih</p>' +
         '<div id="alat-peer-panel"></div>' +
         '<div class="alat-row alat-row-end">' +
+          '<button type="button" class="btn-ghost" id="alat-back-kabar">Kembali</button>' +
           '<button type="button" class="btn-ghost" id="alat-skip-track">Lewati</button>' +
           '<button type="button" class="btn-primary" id="alat-confirm">Simpan &amp; lanjut</button>' +
         '</div>' +
@@ -1368,6 +1386,10 @@
     root.innerHTML = html;
     wireTrackCards(shop, mine);
     paintTrackPeers(shop);
+    $('alat-back-kabar')?.addEventListener('click', function () {
+      log('alat_track_back', {});
+      renderPersonalInfo(shop);
+    });
     $('alat-confirm')?.addEventListener('click', function () { void confirmTracks(shop, true); });
     $('alat-skip-track')?.addEventListener('click', function () {
       log('alat_tracks_skipped', {});
@@ -1688,7 +1710,10 @@
           '<button type="button" class="btn-primary" id="alat-finish">Selesai</button>' +
         '</div>' +
       '</section>';
-    $('alat-back-track')?.addEventListener('click', function () { renderTrackStep(shop); });
+    $('alat-back-track')?.addEventListener('click', function () {
+      log('alat_analyze_back', {});
+      renderTrackStep(shop);
+    });
     $('alat-finish')?.addEventListener('click', function () {
       log('alat_analyze_done', { products: products.length });
       finishAuditWizard();
