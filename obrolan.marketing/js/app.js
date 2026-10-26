@@ -429,6 +429,12 @@
     merged.applications = Object.assign({}, JSON.parse(JSON.stringify(SEED.applications || {})), merged.applications || {});
     merged.timeline = Object.assign({}, JSON.parse(JSON.stringify(SEED.timelineSeed || {})), merged.timeline || {});
     merged.tasks = Array.isArray(merged.tasks) ? merged.tasks : JSON.parse(JSON.stringify(SEED.tasksSeed || []));
+    const staffIds = (SEED.staff || []).map((s) => s.id);
+    const defaultAssignee = (SEED.school && SEED.school.ownerId) || staffIds[0] || 'u-anton';
+    merged.tasks.forEach((t) => {
+      if (!t || typeof t !== 'object') return;
+      if (!t.assignee || staffIds.indexOf(t.assignee) < 0) t.assignee = defaultAssignee;
+    });
     merged.waQueue = Array.isArray(merged.waQueue) ? merged.waQueue : JSON.parse(JSON.stringify(SEED.waQueueSeed || []));
     merged.emailQueue = Array.isArray(merged.emailQueue) ? merged.emailQueue : JSON.parse(JSON.stringify(SEED.emailQueueSeed || []));
     if (!Array.isArray(merged.waThreads) || !merged.waThreads.length) {
@@ -599,6 +605,7 @@
     stageFilter: '',
     queueKind: 'wa',
     taskPerson: '',
+    taskAssignee: '',
     taskComposer: '',
     calYM: '',
     calDay: '',
@@ -686,22 +693,26 @@
     clearTimeout(syncTimer);
     syncTimer = setTimeout(pushState, 800);
   }
-  async function pushState(force) {
-    if (!syncEnabled()) return;
-    if (syncInFlight && !force) return;
+  // Two browsers can save at once. The older rev gets 409 and reloads the server
+  // copy, so the losing edit disappears. Known limitation; sync is last-write-wins.
+  async function pushState(force, opts) {
+    if (!syncEnabled()) return false;
+    if (syncInFlight && !force) return false;
     const payload = {
       rev: (syncRev || 0) + 1,
       updatedAt: new Date().toISOString(),
       state: db
     };
+    if (opts && opts.reset) payload.reset = true;
     let body;
-    try { body = JSON.stringify(payload); } catch (err) { return; }
+    try { body = JSON.stringify(payload); } catch (err) { return false; }
     if (body.length > SYNC_MAX) {
       syncStatus = 'terlalu besar';
       toast('State terlalu besar untuk sync');
-      return;
+      return false;
     }
     syncInFlight = true;
+    let ok = false;
     try {
       const res = await fetch(syncUrl(), {
         method: 'PUT',
@@ -713,12 +724,18 @@
         syncStatus = 'revisi lama';
         syncInFlight = false;
         await pullState();
-        return;
+        return false;
+      }
+      if (res.status === 403 && payload.reset) {
+        syncStatus = 'reset ditolak';
+        toast('Reset kelas hanya untuk admin.');
+        return false;
       }
       if (res.ok) {
         const data = await res.json().catch(() => ({}));
         syncRev = Number(data.rev) || payload.rev;
         syncStatus = 'ok · rev ' + syncRev;
+        ok = true;
       } else {
         syncStatus = 'gagal ' + res.status;
       }
@@ -726,14 +743,8 @@
       syncStatus = 'offline';
     } finally {
       syncInFlight = false;
-      if (isStaff()) {
-        const clock = $('clock-bar');
-        if (clock && !clock.hidden) {
-          const el = clock.querySelector('[data-sync]');
-          if (el) el.textContent = 'Sync ' + syncStatus;
-        }
-      }
     }
+    return ok;
   }
   async function pullState() {
     if (!syncEnabled() || syncInFlight) return;
@@ -1325,7 +1336,8 @@
     if (!Array.isArray(db.waMessages)) db.waMessages = JSON.parse(JSON.stringify(SEED.waMessagesSeed || []));
   }
   function waApiEnabled() {
-    return syncEnabled();
+    // This host has no Fonnte bridge. Keep chat inside the CRM instead of polling /wa.
+    return false;
   }
   function waApiUrl(path, extra) {
     const q = new URLSearchParams();
@@ -1601,8 +1613,6 @@
     });
     const tab = document.querySelector('#tabs [data-act="tab"][data-id="tugas"]');
     if (tab) tab.textContent = total ? ('Tugas · ' + total) : 'Tugas';
-    const clockUnread = document.querySelector('[data-wa-unread-total]');
-    if (clockUnread) clockUnread.textContent = total ? ('WA ' + total + ' baru') : 'WA 0 baru';
   }
   function scrollWaThread() {
     const el = document.getElementById('wa-thread');
@@ -1703,11 +1713,29 @@
     db.timeline[id] = db.timeline[id] || [];
     db.timeline[id].unshift({ at: isoNow(), kind: kind, body: body });
   }
-  function addTask(personId, title, body, dueAt, kind) {
+  function staffMembers() {
+    return (SEED.staff || []).slice();
+  }
+  function defaultAssigneeId() {
+    return (SEED.school && SEED.school.ownerId) || (staffMembers()[0] && staffMembers()[0].id) || 'u-anton';
+  }
+  function assigneeIdOf(t) {
+    const id = t && t.assignee;
+    if (id && staffMembers().some((s) => s.id === id)) return id;
+    return defaultAssigneeId();
+  }
+  function assigneeOptionsHtml(cur) {
+    const selected = cur || defaultAssigneeId();
+    return staffMembers().map((s) =>
+      '<option value="' + esc(s.id) + '"' + (s.id === selected ? ' selected' : '') + '>' +
+      esc(s.name) + (s.role === 'owner' ? ' · mentor' : (s.role === 'asisten' ? ' · asisten' : '')) +
+      '</option>').join('');
+  }
+  function addTask(personId, title, body, dueAt, kind, assignee) {
     const row = {
       id: 'task-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
       personId: personId,
-      assignee: 'u-anton',
+      assignee: assigneeIdOf({ assignee: assignee || defaultAssigneeId() }),
       title: title,
       body: body || '',
       dueAt: dueAt || isoNow(),
@@ -1758,7 +1786,7 @@
       '<input name="title" required placeholder="Follow up, cek transfer…">' +
       '<div class="row2">' +
         '<div><label class="muted">Jenis</label><select name="kind">' + taskKindOptions('wa') + '</select></div>' +
-        '<div></div></div>' +
+        '<div><label class="muted">Ditugaskan ke</label><select name="assignee">' + assigneeOptionsHtml(defaultAssigneeId()) + '</select></div></div>' +
       '<div class="row2">' +
         '<div><label class="muted">Tanggal</label><input name="date" type="date" required value="' + esc(due.date) + '"></div>' +
         '<div><label class="muted">Jam</label><input name="time" type="time" required value="' + esc(due.time) + '"></div>' +
@@ -1967,7 +1995,7 @@
       heard: heard,
       at: isoNow()
     };
-    const waDigits = String(d.wa).replace(/\D/g, '') || s.wa;
+    const waDigits = normalizeWa(d.wa) || normalizeWa(s.wa);
     db.liveStudents = db.liveStudents || [];
     if (String(sid).indexOf('live-') === 0 && !db.liveStudents.some((x) => x.id === sid)) {
       db.liveStudents.push({
@@ -2247,24 +2275,8 @@
     return !!(ui.mayar && ui.mayar.configured);
   }
   async function refreshMayarStatus() {
-    const k = syncInvite();
-    if (!k) {
-      ui.mayar = { configured: false, mode: 'unset' };
-      return ui.mayar;
-    }
-    try {
-      const res = await fetch(apiBase() + '/pay/status?k=' + encodeURIComponent(k) +
-        '&slug=' + encodeURIComponent(schoolSlug()), { cache: 'no-store' });
-      if (!res.ok) {
-        ui.mayar = { configured: false, mode: 'unset' };
-        return ui.mayar;
-      }
-      ui.mayar = await res.json();
-      return ui.mayar;
-    } catch (err) {
-      ui.mayar = { configured: false, mode: 'unset' };
-      return ui.mayar;
-    }
+    ui.mayar = { configured: false, mode: 'unset' };
+    return ui.mayar;
   }
   async function requestMayarInvoice(opts) {
     const k = syncInvite();
@@ -2568,17 +2580,19 @@
       body: JSON.stringify({ key: key })
     }).catch(() => {});
   }
-  function uploadClassVideo(file, lecId, onProgress) {
+  function uploadClassVideo(file, lecId, onProgress, kind) {
     const partSize = 8 * 1024 * 1024;
+    const mediaKind = kind === 'image' || kind === 'file' ? kind : 'video';
     return fetch(apiBase() + '/media/init?k=' + encodeURIComponent(syncInvite()), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         name: file.name,
-        type: file.type || 'video/mp4',
+        type: file.type || (mediaKind === 'image' ? 'image/jpeg' : 'video/mp4'),
         size: file.size,
         lecId: lecId,
-        slug: schoolSlug()
+        slug: schoolSlug(),
+        kind: mediaKind
       })
     }).then((res) => {
       if (!res.ok) throw new Error('init');
@@ -2695,14 +2709,27 @@
       toast('Cover maks 5 MB.');
       return;
     }
-    blobPut(coverKey(kind, id), file).then(() => {
+    const applyCover = (patch) => {
       if (kind === 'week') {
         const w = db.weeks.find((x) => x.id === id);
-        if (w) w.coverBlob = true;
+        if (w) Object.assign(w, patch);
       } else {
         const l = lectureById(id);
-        if (l) l.coverBlob = true;
+        if (l) Object.assign(l, patch);
       }
+    };
+    if (syncEnabled()) {
+      toast('Mengunggah cover…');
+      uploadClassVideo(file, coverKey(kind, id), null, 'image').then((info) => {
+        applyCover({ coverUrl: mediaFileUrl(info.key), coverKey: info.key, coverBlob: false });
+        save();
+        toast('Cover tersimpan di kelas.');
+        render();
+      }).catch(() => toast('Gagal unggah cover.'));
+      return;
+    }
+    blobPut(coverKey(kind, id), file).then(() => {
+      applyCover({ coverBlob: true });
       save();
       toast('Cover tersimpan di browser ini.');
       render();
@@ -2711,14 +2738,23 @@
   function ingestResourceFile(file, lecId) {
     if (!file) return;
     if (file.size > MAX_FILE) {
-      toast('File maks 20 MB di prototype.');
+      toast('File maks 20 MB.');
       return;
     }
     const l = lectureById(lecId);
     if (!l) return;
     l.resources = l.resources || [];
-    const n = l.resources.length;
     const blobId = fileKey(lecId, Date.now());
+    if (syncEnabled()) {
+      toast('Mengunggah file…');
+      uploadClassVideo(file, blobId, null, 'file').then((info) => {
+        l.resources.push({ name: file.name, url: mediaFileUrl(info.key), blob: false, fileKey: info.key });
+        save();
+        toast('File tersimpan di kelas.');
+        render();
+      }).catch(() => toast('Gagal unggah file.'));
+      return;
+    }
     blobPut(blobId, file).then(() => {
       l.resources.push({ name: file.name, url: '', blob: true, blobId: blobId });
       save();
@@ -2900,12 +2936,31 @@
   function refreshPersonPhoto(id, force) {
     const s = people().find((x) => x.id === id);
     if (!s || !s.tiktok) return Promise.resolve(false);
-    if (s.photoBlob && !force) return Promise.resolve(true);
+    if ((s.photoBlob || s.photoUrl) && !force) return Promise.resolve(true);
     return fetchTikTokAvatar(s.tiktok).then((blob) => {
       if (!blob) {
         patchPerson(id, { photoFailed: true });
         save();
         return false;
+      }
+      if (syncEnabled()) {
+        const file = new File([blob], 'tiktok.jpg', { type: blob.type || 'image/jpeg' });
+        if (file.size > MAX_IMG) {
+          patchPerson(id, { photoFailed: true });
+          save();
+          return false;
+        }
+        return uploadClassVideo(file, photoKey(id), null, 'image').then((info) => {
+          if (s.photoKey && s.photoKey !== info.key) deleteRemoteVideo(s.photoKey);
+          patchPerson(id, {
+            photoUrl: mediaFileUrl(info.key),
+            photoKey: info.key,
+            photoBlob: false,
+            photoFailed: false
+          });
+          save();
+          return true;
+        });
       }
       return blobPut(photoKey(id), blob).then(() => {
         patchPerson(id, { photoBlob: true, photoFailed: false });
@@ -3253,22 +3308,10 @@
       if (inp && document.activeElement !== inp) inp.value = ui.cariSiswa || '';
       paintCariDrop();
     }
-    const clock = $('clock-bar');
-    if (clock) {
-      clock.hidden = !isStaff();
-      if (isStaff()) {
-        clock.innerHTML =
-          '<span class="muted">Simulasi jam: <strong>' + esc(fmtWhen(isoNow())) + '</strong></span>' +
-          '<button type="button" class="ghost" data-act="clock" data-ms="3600000">+1 jam</button>' +
-          '<button type="button" class="ghost" data-act="clock" data-ms="43200000">+12 jam</button>' +
-          '<button type="button" class="ghost" data-act="clock" data-ms="86400000">+1 hari</button>' +
-          '<button type="button" class="ghost" data-act="clock-reset">Reset jam</button>' +
-          '<span class="muted">Tugas ' + db.tasks.filter((t) => !t.done).length +
-          ' · antrian ' + ((db.waQueue.filter((w) => w.status === 'queued').length) + ((db.emailQueue || []).filter((w) => w.status === 'queued').length)) + '</span>' +
-          '<span class="muted" data-wa-unread-total>' + (waUnreadTotal() ? ('WA ' + waUnreadTotal() + ' baru') : 'WA 0 baru') + '</span>' +
-          (syncEnabled() ? '<span class="muted" data-sync>Sync ' + esc(syncStatus || '…') + '</span>' : '');
-      }
-    }
+    const resetBtn = $('btn-reset');
+    if (resetBtn) resetBtn.hidden = syncEnabled() && !ui.admin;
+    const outBtn = $('btn-admin-out');
+    if (outBtn) outBtn.hidden = !(ui.admin && syncEnabled());
     if (!isStaff()) {
       const allowed = studentTabs().map((t) => t.id).concat(['sku', 'alat', 'daftar', 'tes', 'sertifikat']);
       if (needsWizard(ui.personaId) && ui.tab !== 'daftar') ui.tab = 'daftar';
@@ -5244,7 +5287,12 @@
     const t2 = t0 + 2 * 86400000;
     const weekEnd = t0 + 7 * 86400000;
     const pid = ui.taskPerson || '';
-    const list = db.tasks.concat(queuedItems()).filter((t) => !pid || t.personId === pid);
+    const aid = ui.taskAssignee || '';
+    const list = db.tasks.concat(queuedItems()).filter((t) => {
+      if (pid && t.personId !== pid) return false;
+      if (aid && !t.queue && assigneeIdOf(t) !== aid) return false;
+      return true;
+    });
     const overdue = [];
     const hari = [];
     const besok = [];
@@ -5297,6 +5345,8 @@
         '<div class="task-title"><span class="task-kind kind-' + esc(kind) + '">' + esc(taskKindLabel(kind)) + '</span> ' + esc(t.title) +
           (t.queue ? ' <span class="chip warn">Antrian</span>' : '') + '</div>' +
         (t.body ? '<div class="muted">' + esc(t.body) + '</div>' : '') +
+        (t.queue ? '' : '<label class="muted task-assignee">Untuk <select data-act="task-assign" data-id="' + esc(t.id) + '">' +
+          assigneeOptionsHtml(assigneeIdOf(t)) + '</select></label>') +
       '</div>' +
       '<div class="task-meta"><span class="muted">' + esc(fmtClock(t.dueAt)) + '</span>' +
         '<span class="row">' + action + '</span></div></div>';
@@ -5310,15 +5360,19 @@
     const open = ui.taskComposer === 'new';
     return '<div class="task-board">' +
       '<div class="task-toolbar">' +
-        '<div><h2 style="margin:0">Tugas</h2><p class="muted" style="margin:4px 0 0">Hari ini, besok, minggu ini. Klik nama untuk profil. WA dan email membuka aplikasi.</p></div>' +
+        '<div><h2 style="margin:0">Tugas</h2><p class="muted" style="margin:4px 0 0">Hari ini, besok, minggu ini. Klik nama untuk profil. WA dan email membuka aplikasi. Default ditugaskan ke Anton.</p></div>' +
         '<button type="button" class="btn" data-act="task-compose" data-id="new">' + (open ? 'Tutup' : '+ Tugas') + '</button>' +
       '</div>' +
       (open ? '<div class="card" style="margin-bottom:14px"><h3>Buat tugas</h3>' + taskComposerHtml('') + '</div>' : '') +
       waInboxHtml() +
-      '<div class="row" style="margin-bottom:12px">' +
+      '<div class="row" style="margin-bottom:12px;gap:12px;flex-wrap:wrap">' +
         '<label class="muted">Filter orang <select data-act="task-person">' +
           '<option value="">Semua</option>' +
           people().map((s) => '<option value="' + esc(s.id) + '"' + (ui.taskPerson === s.id ? ' selected' : '') + '>' + esc(s.name) + '</option>').join('') +
+        '</select></label>' +
+        '<label class="muted">Ditugaskan ke <select data-act="task-assignee-filter">' +
+          '<option value="">Semua</option>' +
+          staffMembers().map((s) => '<option value="' + esc(s.id) + '"' + (ui.taskAssignee === s.id ? ' selected' : '') + '>' + esc(s.name) + '</option>').join('') +
         '</select></label></div>' +
       block('Terlambat', g.overdue) +
       block('Hari ini', g.hari) +
@@ -5598,23 +5652,6 @@
         lynkField('half', '6 bulan') +
         '<button class="btn" type="submit">Simpan paket Lynk</button>' +
       '</form></section>';
-  }
-  function mayarSettingsHtml() {
-    const m = ui.mayar || {};
-    const label = !m.configured ? 'Belum dikonfigurasi' : (m.mode === 'live' ? 'Live' : (m.mode === 'sandbox' ? 'Sandbox' : (m.mode || 'custom')));
-    const hook = m.webhookUrl || (location.origin + apiBase() + '/pay/webhook');
-    return '<section class="card" style="margin-top:12px"><h2>Mayar</h2>' +
-      '<p>Status: <strong>' + esc(label) + '</strong></p>' +
-      (m.lastWebhookAt
-        ? '<p class="muted">Webhook terakhir ' + esc(fmtWhen(m.lastWebhookAt)) +
-          (m.lastEvent ? ' · ' + esc(m.lastEvent) : '') + '</p>'
-        : '<p class="muted">Belum ada webhook.</p>') +
-      '<p class="muted">Kunci API ada di Cloudflare (bukan di form ini). Invoice Headless, bukan produk Kelas Online Mayar.</p>' +
-      '<p><code>' + esc(hook) + '</code> ' +
-        '<button type="button" class="btn-sm" data-act="copy-url" data-url="' + esc(hook) + '">Salin webhook</button></p>' +
-      '<button type="button" class="btn" data-act="mayar-test"' + (m.configured ? '' : ' disabled') + '>Tes invoice Rp10.000</button>' +
-      '<p class="muted">Tes tidak membuka akses kelas. Rekening di atas tetap untuk transfer manual.</p>' +
-      '</section>';
   }
   function viewPerson(id) {
     const s = people().find((x) => x.id === id);
@@ -6604,16 +6641,49 @@
       const id = t.getAttribute('data-id');
       if (!file || !id) return;
       if (file.size > MAX_IMG) { toast('Foto maks 5 MB.'); return; }
-      blobPut(photoKey(id), file).then(() => {
+      const finishLocal = () => blobPut(photoKey(id), file).then(() => {
         patchPerson(id, { photoBlob: true, photoFailed: false });
         save();
         toast('Foto diunggah di browser ini.');
         render();
       });
+      if (syncEnabled()) {
+        toast('Mengunggah foto…');
+        uploadClassVideo(file, photoKey(id), null, 'image').then((info) => {
+          const prev = people().find((x) => x.id === id);
+          if (prev && prev.photoKey && prev.photoKey !== info.key) deleteRemoteVideo(prev.photoKey);
+          patchPerson(id, {
+            photoUrl: mediaFileUrl(info.key),
+            photoKey: info.key,
+            photoBlob: false,
+            photoFailed: false
+          });
+          save();
+          toast('Foto tersimpan di kelas.');
+          render();
+        }).catch(() => toast('Gagal unggah foto.'));
+        return;
+      }
+      finishLocal();
       return;
     }
     if (t.matches('[data-act="task-person"]')) {
       ui.taskPerson = t.value;
+      render();
+      return;
+    }
+    if (t.matches('[data-act="task-assignee-filter"]')) {
+      ui.taskAssignee = t.value;
+      render();
+      return;
+    }
+    if (t.matches('[data-act="task-assign"]')) {
+      const row = db.tasks.find((x) => x.id === t.getAttribute('data-id'));
+      if (row) {
+        row.assignee = assigneeIdOf({ assignee: t.value });
+        save();
+        toast('Ditugaskan ke ' + nameOf(row.assignee));
+      }
       render();
       return;
     }
@@ -6628,9 +6698,9 @@
       fields[k] = val;
       patchPerson(id, fields);
       save();
-      if (k === 'tiktok') {
+        if (k === 'tiktok') {
         refreshPersonPhoto(id, true).then((ok) => {
-          toast(ok ? 'Foto TikTok tersimpan.' : 'Foto gagal. Inisial + unggah.');
+          toast(ok ? (syncEnabled() ? 'Foto TikTok tersimpan di kelas.' : 'Foto TikTok tersimpan.') : 'Foto gagal. Inisial + unggah.');
           render();
         });
       }
@@ -7478,16 +7548,6 @@
       save();
       toast('Antrian palsu dari ' + shop.display + ': ' + chosen.length + ' DM. Tidak masuk TikTok.');
       render();
-    } else if (act === 'clock') {
-      db.clockOffsetMs = (db.clockOffsetMs || 0) + (+btn.getAttribute('data-ms') || 0);
-      save();
-      toast('Jam majukan');
-      render();
-    } else if (act === 'clock-reset') {
-      db.clockOffsetMs = 0;
-      save();
-      toast('Jam kembali ke sekarang');
-      render();
     } else if (act === 'pick-term') {
       ui.payTerm = btn.getAttribute('data-id');
       render();
@@ -7872,7 +7932,14 @@
       advanceWiz();
     } else if (act === 'add-task') {
       const due = joinLocal(fd.get('date'), fd.get('time'));
-      addTask(String(fd.get('personId')), String(fd.get('title')), String(fd.get('body') || ''), due, String(fd.get('kind') || 'wa'));
+      addTask(
+        String(fd.get('personId')),
+        String(fd.get('title')),
+        String(fd.get('body') || ''),
+        due,
+        String(fd.get('kind') || 'wa'),
+        String(fd.get('assignee') || defaultAssigneeId())
+      );
       ui.taskComposer = '';
       save();
       toast('Tugas ditambah');
@@ -7973,8 +8040,9 @@
 
   $('btn-reset').addEventListener('click', () => {
     if (ui.present) return;
+    if (syncEnabled() && !ui.admin) return;
     if (!confirm(syncEnabled()
-      ? 'Hapus data lokal dan shared demo di semua perangkat?'
+      ? 'Reset mengembalikan kelas bersama ke data awal di server. Kurikulum, siswa yang daftar sendiri, dan progres di luar seed ikut terhapus. Lanjutkan?'
       : 'Hapus data lokal prototype ini?')) return;
     localStorage.removeItem(KEY);
     blobClearAll();
@@ -7988,8 +8056,18 @@
     render();
     if (syncEnabled()) {
       syncReady = true;
-      pushState(true);
+      pushState(true, { reset: true }).then((ok) => {
+        if (!ok) pullState();
+      });
     }
+  });
+  const adminOut = $('btn-admin-out');
+  if (adminOut) adminOut.addEventListener('click', () => {
+    if (!confirm('Keluar dari admin di browser ini? Tab ini jadi pengunjung.')) return;
+    try { sessionStorage.removeItem('anton-admin'); } catch (err) { /* private mode */ }
+    fetch(apiBase() + '/admin/logout', { method: 'POST', cache: 'no-store' }).finally(() => {
+      location.href = location.pathname;
+    });
   });
   $('drawer-scrim').addEventListener('click', closeDrawer);
 

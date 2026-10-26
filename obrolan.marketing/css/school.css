@@ -747,12 +747,6 @@ html[data-mode="mentor"] #wa-fab-host { display: none; }
 .form-grid { display: grid; gap: 8px; }
 .inline-form { display: grid; gap: 8px; }
 
-.clock-bar {
-  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
-  padding: 8px 14px; border-bottom: 1px solid var(--line);
-  background: var(--ink-2);
-}
-.clock-bar[hidden] { display: none !important; }
 .pay-terms { display: grid; gap: 8px; margin-top: 12px; grid-template-columns: 1fr 1fr; }
 .pay-terms .current-term { border-color: #fff; }
 .onboard-choice { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
@@ -920,7 +914,7 @@ html[data-mode="student"] .ob-foot.is-end {
 .cert-sheet h2 { font-size: 1.4rem; }
 .cert-sheet h3 { font-size: 1.2rem; margin: 12px 0; }
 @media print {
-  .topbar, .tabs, .dock, .clock-bar, .off-badge { display: none !important; }
+  .topbar, .tabs, .dock, .off-badge { display: none !important; }
   #app { box-shadow: none; max-width: none; }
 }
 
@@ -968,7 +962,6 @@ html[data-mode="student"] .topbar-actions { flex-wrap: nowrap; flex: none; }
 html[data-mode="student"] .brand strong {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 11.5rem;
 }
-html[data-mode="student"] .clock-bar { flex: none; }
 html[data-mode="student"] .tabs { display: none; }
 html[data-mode="student"] .workspace {
   display: flex;
@@ -1881,6 +1874,12 @@ html[data-mode="mentor"] .main:has(.fub-page) { padding: 0; }
 .task-kind.kind-wa { color: var(--ok-soft); }
 .task-kind.kind-email { color: #93c5fd; }
 .task-kind.kind-call { color: #fde68a; }
+.task-assignee {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-size: .78rem;
+}
+.task-assignee select {
+  min-width: 8.5rem; max-width: 12rem; font-size: .78rem; padding: 4px 8px;
+}
 .task-meta { text-align: right; display: grid; gap: 6px; justify-items: end; }
 .task-create { display: grid; gap: 8px; }
 
