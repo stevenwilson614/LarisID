@@ -14440,12 +14440,25 @@ async function searchListingsFanout(queries, limitEach = 40) {
 function searchMatchLeadHtml(q, pool) {
   const level = pool?.matchLevel || (pool?.nearby ? 'nearby' : '');
   const query = String(q || '').trim();
-  if (!query || !level || level === 'keyword') return '';
+  if (!query || !level || level === 'keyword') {
+    const correctedOnly = String(pool?.correctedQuery || '').trim();
+    if (correctedOnly && correctedOnly.toLowerCase() !== query.toLowerCase()) {
+      return `<p class="dd-sub dir-nearby-lead">Menampilkan <strong>${esc(correctedOnly)}</strong> — dari “${esc(query)}”.</p>`;
+    }
+    return '';
+  }
+  const corrected = String(pool?.correctedQuery || '').trim();
+  const rewritten = corrected && corrected.toLowerCase() !== query.toLowerCase()
+    ? `<p class="dd-sub dir-nearby-lead">Menampilkan <strong>${esc(corrected)}</strong> — dari “${esc(query)}”.</p>`
+    : '';
   const kws = (pool.keywords || []).map(t => t.keyword).filter(Boolean);
   const named = kws.slice(0, 3).map(esc);
+  if (level === 'none') {
+    return `${rewritten}<p class="dd-sub dir-nearby-lead">Belum ada “<strong>${esc(query)}</strong>” di data kami. Pilih pasar terdekat, atau minta kami ukur kata ini.</p>`;
+  }
   if (level === 'title') {
     const from = named.length ? ` — dari pasar ${named.join(', ')}` : '';
-    return `<p class="dd-sub dir-nearby-lead">Produk yang judulnya cocok dengan “<strong>${esc(query)}</strong>”${from}.</p>`;
+    return `${rewritten}<p class="dd-sub dir-nearby-lead">Produk yang judulnya cocok dengan “<strong>${esc(query)}</strong>”${from}.</p>`;
   }
   if (level === 'brand') {
     const brand = pool.brand || query;
@@ -14453,17 +14466,17 @@ function searchMatchLeadHtml(q, pool) {
     const typeLabel = typeKw || 'produk';
     const pasar = typeKw ? ` di pasar ${esc(typeKw)}` : '';
     if (pool.brandMissing) {
-      return `<p class="dd-sub dir-nearby-lead">Brand <strong>${esc(brand)}</strong> belum ada di data kami — menampilkan tipe produk yang paling mirip${typeKw ? ` (${esc(typeKw)})` : ''}.</p>`;
+      return `${rewritten}<p class="dd-sub dir-nearby-lead">Brand <strong>${esc(brand)}</strong> belum ada di data kami — menampilkan tipe produk yang paling mirip${typeKw ? ` (${esc(typeKw)})` : ''}.</p>`;
     }
-    return `<p class="dd-sub dir-nearby-lead">Produk ${esc(brand)} dan ${esc(typeLabel)} sejenis — merek dulu, lalu produk mirip${pasar}.</p>`;
+    return `${rewritten}<p class="dd-sub dir-nearby-lead">Produk ${esc(brand)} dan ${esc(typeLabel)} sejenis — merek dulu, lalu produk mirip${pasar}.</p>`;
   }
   if (level === 'chooser') {
-    return `<p class="dd-sub dir-nearby-lead">Semua listing untuk “<strong>${esc(query)}</strong>”. Pilih pasar lebih spesifik di bawah untuk mempersempit.</p>`;
+    return `${rewritten}<p class="dd-sub dir-nearby-lead">Semua listing untuk “<strong>${esc(query)}</strong>”. Pilih pasar lebih spesifik di bawah untuk mempersempit.</p>`;
   }
   if (level === 'nearby') {
-    return `<p class="dd-sub dir-nearby-lead">Belum ketemu produk untuk “<strong>${esc(query)}</strong>”. Ini produk dari pasar terdekat:</p>`;
+    return `${rewritten}<p class="dd-sub dir-nearby-lead">Belum ketemu produk untuk “<strong>${esc(query)}</strong>”. Ini produk dari pasar terdekat:</p>`;
   }
-  return '';
+  return rewritten;
 }
 
 async function productTypeExactKeyword(text) {
@@ -14490,6 +14503,7 @@ function emptyListingPool() {
   return {
     keywords: [], listings: [], primaryKw: '', nearby: false,
     matchLevel: '', unsold: 0, brand: '', brandMissing: false,
+    tier: '', confidence: null, correctedQuery: '',
   };
 }
 
@@ -15023,11 +15037,13 @@ async function logUncoveredSearch(rawText, opts = {}) {
       query_raw,
       brand: opts.brand || null,
       category: opts.category || null,
-      // 'none' is the historical meaning of every row in this table; 'fuzzy'
-      // and 'loose' are the cases it used to miss entirely.
-      match_quality: opts.match_quality || 'none',
+      match_quality: opts.match_quality || opts.tier || 'none',
       via: opts.via || 'search',
       user_id: currentUser?.id || null,
+      tier: opts.tier || null,
+      confidence: opts.confidence == null ? null : opts.confidence,
+      corrected_query: opts.corrected_query || opts.correctedQuery || null,
+      top_keyword: opts.top_keyword || null,
     });
   } catch (_) { /* best-effort only */ }
 }
@@ -15062,11 +15078,12 @@ const KWREQ_MAX_ROWS = 5;
 let _kwReqWa = null;      // cached user_profiles.wa_number, '' once looked up
 let _kwReqBound = false;
 
-function kwReqHtml(query, source) {
+function kwReqHtml(query, source, opts) {
   const q = String(query || '').trim().slice(0, 60);
+  const open = !!(opts && opts.open);
   return `<div class="kwreq" data-kwreq data-kwreq-src="${esc(source || 'chat')}">
-    <button type="button" class="kwreq-open" data-kwreq-open>Produk yang kamu cari belum ada di sini? <strong>Minta kami ukur</strong></button>
-    <div class="kwreq-form" data-kwreq-form hidden>
+    <button type="button" class="kwreq-open" data-kwreq-open aria-expanded="${open ? 'true' : 'false'}">Produk yang kamu cari belum ada di sini? <strong>Minta kami ukur</strong></button>
+    <div class="kwreq-form" data-kwreq-form ${open ? '' : 'hidden'}>
       <p class="kwreq-lead">Tulis kata kunci produknya persis seperti kamu mencarinya di Shopee. Yang belum ada di data kami, kami ukur malam ini juga.</p>
       <div class="kwreq-rows" data-kwreq-rows>
         <input class="kwreq-input" type="text" maxlength="60" value="${esc(q)}" placeholder="mis. hijab dinas polwan" aria-label="Kata kunci produk">
@@ -15103,12 +15120,16 @@ async function kwReqFillWa(root) {
 }
 
 const KWREQ_VERDICT = {
-  queued:          kw => `<strong>${esc(kw)}</strong> — dicatat. Kami ukur malam ini, hasilnya siap besok.`,
-  already_queued:  kw => `<strong>${esc(kw)}</strong> — sudah masuk antrean. Kami kabari begitu datanya siap.`,
-  already_live:    kw => `<strong>${esc(kw)}</strong> — ternyata sudah ada di data kami. <button type="button" class="kwreq-go" data-kwreq-go="${esc(kw)}">Lihat pasarnya</button>`,
-  rejected_brand:  kw => `<strong>${esc(kw)}</strong> — ini terbaca sebagai merek, bukan jenis produk. Tambahkan kata produknya, mis. “${esc(kw)} kacamata hitam”.`,
-  rejected_length: kw => `<strong>${esc(kw)}</strong> — terlalu pendek atau terlalu panjang (3–60 huruf).`,
-  rate_limited:    kw => `<strong>${esc(kw)}</strong> — batas 3 kata kunci baru per hari sudah tercapai. Sisanya bisa besok.`,
+  queued:          (kw) => `<strong>${esc(kw)}</strong> — dicatat. Kami ukur, dan hasilnya muncul di sini begitu scraper-nya selesai.`,
+  already_queued:  (kw) => `<strong>${esc(kw)}</strong> — sudah masuk antrean. Kami kabari begitu datanya siap.`,
+  already_live:    (kw) => `<strong>${esc(kw)}</strong> — ternyata sudah ada di data kami. <button type="button" class="kwreq-go" data-kwreq-go="${esc(kw)}">Lihat pasarnya</button>`,
+  already_live_brand: (kw) => `<strong>${esc(kw)}</strong> — merek ini sudah ada di data kami. <button type="button" class="kwreq-go" data-kwreq-go="${esc(kw)}">Lihat pasarnya</button>`,
+  rejected_brand:  (kw, row) => {
+    const near = row && row.nearest ? ` Pasar terdekat yang sudah kami ukur: ${esc(row.nearest)}.` : '';
+    return `<strong>${esc(kw)}</strong> — ini terbaca sebagai merek, bukan jenis produk.${near} Tambahkan kata produknya, mis. “${esc(kw)} kacamata hitam”.`;
+  },
+  rejected_length: (kw) => `<strong>${esc(kw)}</strong> — terlalu pendek atau terlalu panjang (3–60 huruf).`,
+  rate_limited:    (kw) => `<strong>${esc(kw)}</strong> — batas 3 kata kunci baru per hari sudah tercapai. Sisanya bisa besok.`,
 };
 
 async function kwReqSubmit(root) {
@@ -15155,9 +15176,9 @@ async function kwReqSubmit(root) {
   if (resultEl) {
     resultEl.innerHTML = list.map(r => {
       const fn = KWREQ_VERDICT[r.verdict];
-      const cls = r.verdict === 'queued' || r.verdict === 'already_queued' ? 'ok'
-        : r.verdict === 'already_live' ? 'live' : 'warn';
-      return `<p class="kwreq-line ${cls}">${fn ? fn(r.keyword || '') : esc(r.keyword || '')}</p>`;
+    const cls = r.verdict === 'queued' || r.verdict === 'already_queued' ? 'ok'
+      : (r.verdict === 'already_live' || r.verdict === 'already_live_brand') ? 'live' : 'warn';
+      return `<p class="kwreq-line ${cls}">${fn ? fn(r.keyword || '', r) : esc(r.keyword || '')}</p>`;
     }).join('');
   }
   list.forEach(r => _supLog('kwreq_verdict', { verdict: r.verdict, source }));
@@ -25633,8 +25654,14 @@ function updateDirHeading() {
   if (!h) return;
   const q = (state.dirSearch || '').trim();
   const n = (state.dirRows || []).length;
+  if (q && state.dirMatchLevel === 'none') {
+    h.textContent = `Belum ada “${q}”`;
+    return;
+  }
   if (q) {
-    h.textContent = `Hasil: ${q}${n ? ` · ${n} produk` : ''}`;
+    const shown = state.dirCorrected && state.dirCorrected.toLowerCase() !== q.toLowerCase()
+      ? state.dirCorrected : q;
+    h.textContent = `Hasil: ${shown}${n ? ` · ${n} produk` : ''}`;
     return;
   }
   if (isDirHomeBrowse()) {
@@ -25964,7 +25991,9 @@ function paintDirKwReq(q) {
     return;
   }
   host.hidden = false;
-  host.innerHTML = kwReqHtml(label, 'directory');
+  const open = state.dirMatchLevel === 'none' || state.dirMatchLevel === 'nearby' || state.dirBrandMissing;
+  const prefill = state.dirCorrected || label;
+  host.innerHTML = kwReqHtml(prefill, 'directory', { open });
 }
 
 function dirChooserHtml(q, types) {
@@ -26021,10 +26050,12 @@ function paintDirectoryTable(opts = {}) {
     keywords: state.dirTypes,
     brand: state.dirBrand,
     brandMissing: state.dirBrandMissing,
+    correctedQuery: state.dirCorrected,
   });
   paintDirAskSellers(q, state.dirTypes);
   paintDirKwReq(q);
-  const chooser = state.dirMatchLevel === 'chooser' ? dirChooserHtml(q, state.dirTypes) : '';
+  const chooser = (state.dirMatchLevel === 'chooser' || state.dirMatchLevel === 'none')
+    ? dirChooserHtml(q, state.dirTypes) : '';
   const sum = slice.length && window.LarisDirWorkbench ? LarisDirWorkbench.rangkumanHtml(filtered) : '';
   const kartu = !isExporPasar() && window.LarisDirWorkbench?.viewMode?.() === 'kartu';
   const rowsHtml = slice.length
@@ -26090,6 +26121,9 @@ function applyDirectoryPool(pool, { q, cats, sub }) {
   state.dirMatchLevel = pool.matchLevel || (state.dirNearby ? 'nearby' : '');
   state.dirBrand = pool.brand || '';
   state.dirBrandMissing = !!pool.brandMissing;
+  state.dirTier = pool.tier || '';
+  state.dirCorrected = pool.correctedQuery || '';
+  state.dirConfidence = pool.confidence == null ? null : pool.confidence;
   state.dirPoolListings = pool.listings;
   state.dirUnsold = pool.unsold || 0;
   rememberProducts(pool.listings);
@@ -26150,11 +26184,29 @@ async function renderDirectory() {
     else scrollPanelToTop();
     paintDirectoryTable({ remountPeta: true });
   }
-  if (!isExporPasar() && q && pool.matchLevel !== 'chooser' && (pool.matchLevel !== 'keyword' || !pool.listings.length)) {
-    void logUncoveredSearch(q, {
-      category: detectSearchDomain(q.toLowerCase())?.id || null,
-      brand: pool.brand || null,
+  if (!isExporPasar() && q) {
+    logSearchResolve(q, 'directory', {
+      tier: pool.tier || pool.matchLevel,
+      keywords: pool.keywords,
+      correctedQuery: pool.correctedQuery,
+      listings: pool.listings,
     });
+    const tier = pool.tier || '';
+    const confident = tier
+      ? (tier === 'exact' || tier === 'strong' || tier === 'fresh')
+      : (pool.matchLevel === 'chooser' || (pool.matchLevel === 'keyword' && (pool.listings || []).length));
+    if (!confident) {
+      void logUncoveredSearch(q, {
+        category: detectSearchDomain(q.toLowerCase())?.id || null,
+        brand: pool.brand || null,
+        via: 'search',
+        tier: tier || pool.matchLevel || 'none',
+        confidence: pool.confidence,
+        corrected_query: pool.correctedQuery || null,
+        top_keyword: (pool.keywords && pool.keywords[0] && pool.keywords[0].keyword) || null,
+        match_quality: tier || pool.matchLevel || 'none',
+      });
+    }
   }
 }
 
