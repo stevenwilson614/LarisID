@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "minimum_chrome_version": "114",
   "name": "Laris Affiliate",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Overlay + pill Target Collab lewat sesi Affiliate Center. Unofficial. Cookie tidak dikirim ke LarisID.",
   "icons": {
     "16": "icons/icon16.png",
@@ -34,7 +34,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["panel.html", "css/app.css", "js/*", "icons/*"],
+      "resources": ["panel.html", "css/app.css", "js/*", "icons/*", "fonts/*"],
       "matches": [
         "https://seller-id.tokopedia.com/*",
         "https://affiliate-id.tokopedia.com/*",

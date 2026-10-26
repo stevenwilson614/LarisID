@@ -8,7 +8,7 @@
   var SURFACE = (SURFACE_OVERLAY ? 'overlay-' : 'panel-') + Math.random().toString(36).slice(2);
   var JAKARTA = 'Asia/Jakarta';
   var $ = function (id) { return document.getElementById(id); };
-  var VERSION = (chrome.runtime.getManifest && chrome.runtime.getManifest().version) || '0.5.1';
+  var VERSION = (chrome.runtime.getManifest && chrome.runtime.getManifest().version) || '0.5.2';
   if (SURFACE_OVERLAY) {
     document.documentElement.classList.add('surface-overlay');
     document.body.classList.add('surface-overlay');

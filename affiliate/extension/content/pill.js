@@ -17,15 +17,15 @@
     '  position: fixed; z-index: 2147483646; right: 0; top: 42%;',
     '  border: 0; cursor: pointer;',
     '  background: #B5202A; color: #fff;',
-    '  font: 700 13px/1 system-ui, sans-serif;',
+    '  font: 750 13px/1 "Plus Jakarta Sans", system-ui, sans-serif;',
     '  letter-spacing: .02em;',
-    '  padding: 12px 10px; border-radius: 12px 0 0 12px;',
-    '  box-shadow: 0 8px 20px rgba(0,0,0,.18);',
+    '  padding: 14px 11px; border-radius: 14px 0 0 14px;',
+    '  box-shadow: 0 10px 28px rgba(181,32,42,.28);',
     '}',
     '.pill:focus-visible { outline: 2px solid #C9974B; outline-offset: 2px; }',
     '.back {',
     '  position: fixed; inset: 0; z-index: 2147483646;',
-    '  background: rgba(26,26,26,.45);',
+    '  background: rgba(31,31,31,.48);',
     '  display: flex; align-items: center; justify-content: center;',
     '  padding: 24px;',
     '}',
@@ -33,10 +33,11 @@
     '.card {',
     '  width: min(1080px, calc(100vw - 48px));',
     '  height: min(860px, calc(100vh - 48px));',
-    '  background: #F5EFE0; border-radius: 16px; overflow: hidden;',
-    '  box-shadow: 0 24px 60px rgba(0,0,0,.28);',
+    '  background: #fff; border-radius: 20px; overflow: hidden;',
+    '  border: 1px solid #e5e5e5;',
+    '  box-shadow: 0 24px 60px rgba(0,0,0,.22);',
     '}',
-    '.card iframe { width: 100%; height: 100%; border: 0; background: #F5EFE0; }'
+    '.card iframe { width: 100%; height: 100%; border: 0; background: #fff; }'
   ].join('\n');
 
   var pill = document.createElement('button');
@@ -44,7 +45,7 @@
   pill.className = 'pill';
   pill.textContent = 'Laris';
   pill.setAttribute('aria-expanded', 'false');
-  pill.title = 'Laris Affiliate · overlay 0.5.1';
+  pill.title = 'Laris Affiliate · overlay 0.5.2';
 
   var back = document.createElement('div');
   back.className = 'back';
