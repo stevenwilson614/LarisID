@@ -866,14 +866,16 @@
       if (shop.shop_id) {
         try { already = await fetchTokoListings(shop.shop_id); } catch (_) { already = []; }
       }
-      var waitMs = already.length ? 12000 : SCRAPE_WAIT_MS;
+      // Always wait the full scrape budget. Keyword-DB "already" is often 1–few
+      // products (whatever hit our scrapes), not the full toko — a 12s early exit
+      // left sellers stuck with that partial set while the Mac snap finished later.
       setKabarBusy(already.length
-        ? 'Menyegarkan produk toko…'
+        ? 'Mengambil semua produk toko…'
         : 'Mengambil produk toko…');
       var started = Date.now();
       var job = null;
       var client = sb();
-      while (client && Date.now() - started < waitMs) {
+      while (client && Date.now() - started < SCRAPE_WAIT_MS) {
         try {
           var res = await client.rpc('get_shop_scrape_job', {
             p_job_id: _scrapeJobId,
@@ -894,7 +896,7 @@
         await new Promise(function (r) { setTimeout(r, SCRAPE_POLL_MS); });
       }
       if (!job || (job.status !== 'done' && job.status !== 'failed')) {
-        job = { ok: true, status: already.length ? 'skip' : 'timeout', job_id: _scrapeJobId };
+        job = { ok: true, status: 'timeout', job_id: _scrapeJobId };
       }
       if (job && job.status === 'done' && job.snap_id) {
         _claimSnapId = String(job.snap_id);
@@ -1189,6 +1191,27 @@
     await beginOnboard(row, 'https://shopee.co.id/shop/' + row.shop_id, false);
   }
 
+  /** If the kabar step bailed before the Mac finished, adopt the snap on reopen. */
+  async function maybeAdoptScrapeSnap(shop) {
+    if (_claimSnapId || !_scrapeJobId) return shop;
+    var client = sb();
+    if (!client) return shop;
+    try {
+      var res = await client.rpc('get_shop_scrape_job', {
+        p_job_id: _scrapeJobId,
+        p_client: clientId(),
+      });
+      var job = res && res.data;
+      if (!(job && job.ok && job.status === 'done' && job.snap_id)) return shop;
+      _claimSnapId = String(job.snap_id);
+      if (job.shop_id) shop.shop_id = job.shop_id;
+      if (job.store_name) shop.store_name = job.store_name;
+      rememberShop(shop);
+      persistProfile();
+    } catch (_) {}
+    return shop;
+  }
+
   async function loadShopWork(shop, opts) {
     opts = opts || {};
     var root = $('alat-root');
@@ -1202,6 +1225,8 @@
       root.innerHTML = progressHtml(1, 'Hubungkan toko') +
         '<p class="alat-lead" style="padding:8px 4px">Memuat listing toko…</p>';
     }
+
+    shop = await maybeAdoptScrapeSnap(shop);
 
     // Reuse in-memory listings when reopening the same shop (nav / finish).
     var sameShop = _shop && Number(_shop.shop_id) === Number(shop.shop_id) && _listings.length;
