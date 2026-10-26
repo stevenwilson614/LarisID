@@ -22,6 +22,9 @@ rsync -a --exclude '*.bak' --exclude 'laris-app.js' \
   --exclude 'laris-side-panel.js' --exclude 'laris-trending.js' \
   --exclude 'lp-scroll-story.js' --exclude 'vendor/gsap*' \
   "$ROOT"/js/ "$OUT/js/"
+# Anton's class. Static files only — the Node API lives in larisid-infra.
+# Omit this copy and the next deploy-static.sh --delete removes the live folder.
+rsync -a --exclude 'server' "$ROOT"/obrolan.marketing/ "$OUT"/obrolan.marketing/
 # Do not ship brand source / debug art (moved or leftover).
 rm -rf "$OUT/images/brand/generated" \
        "$OUT/images/branding-sheet.png" \
