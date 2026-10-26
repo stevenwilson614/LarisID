@@ -9073,55 +9073,67 @@ body.thread-wide .composer-chips { max-width: 1080px; }
   background: #fff; border-radius: 50%; transition: .2s;
 }
 .gpt-kalc-tog input:checked + i { background: #10b981; }
+.gpt-kalc-ads:not(.gpt-kalc-prog) .gpt-kalc-tog input:checked + i { background: var(--kalc-mp, #EE4D2D); }
 .gpt-kalc-tog input:checked + i:before { transform: translateX(18px); }
+.gpt-kalc { --kalc-mp: #EE4D2D; }
 .gpt-kalc-hero {
-  margin-top: 12px; display: grid; gap: 14px;
-  grid-template-columns: 1.2fr 1fr;
-  padding: 16px 18px; border-radius: 14px;
-  background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
-  border: 1.5px solid #86efac;
+  margin-top: 12px; display: grid; gap: 12px;
+  grid-template-columns: 1.25fr 1fr; align-items: stretch;
+  padding: 10px; border-radius: 16px; border: 0;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--kalc-mp) 14%, #fff),
+    color-mix(in srgb, var(--kalc-mp) 5%, #fff));
 }
 @media (max-width: 640px) { .gpt-kalc-hero { grid-template-columns: 1fr; } }
-.gpt-kalc-hero .eyebrow { font-size: .68rem; font-weight: 700; color: #059669; margin-bottom: 4px; }
+.gpt-kalc-hero-main {
+  position: relative; overflow: hidden; border-radius: 14px;
+  padding: 16px 34% 16px 16px; color: #fff;
+  background: linear-gradient(155deg,
+    var(--kalc-mp) 0%,
+    color-mix(in srgb, var(--kalc-mp) 76%, #fff) 100%);
+}
+.gpt-kalc-hero-main .eyebrow,
+.gpt-kalc-hero-main .profit,
+.gpt-kalc-hero-main .margin-pill,
+.gpt-kalc-hero-main .sent { position: relative; z-index: 1; }
+.gpt-kalc-hero .eyebrow { font-size: .68rem; font-weight: 700; color: rgba(255,255,255,.92); margin-bottom: 4px; }
 .gpt-kalc-hero .profit {
   font-size: 1.65rem; font-weight: 800; letter-spacing: -.02em;
-  color: #059669; line-height: 1.1; margin: 2px 0 6px;
+  color: #fff; line-height: 1.1; margin: 2px 0 6px;
 }
-.gpt-kalc-hero .profit.is-neg { color: var(--accent); }
 .gpt-kalc-hero .margin-pill {
-  display: inline-block; background: #dcfce7; color: #16a34a;
+  display: inline-block; background: #fff; color: var(--kalc-mp);
   font-size: .7rem; font-weight: 700; padding: 3px 9px; border-radius: 999px;
 }
-.gpt-kalc-hero .margin-pill.is-neg { background: #fee2e2; color: var(--accent); }
-.gpt-kalc-hero .sent { font-size: .76rem; color: var(--ink-soft); line-height: 1.45; margin: 8px 0 0; }
-.gpt-kalc-bd { display: flex; flex-direction: column; gap: 7px; font-size: .74rem; }
+.gpt-kalc-hero .sent {
+  font-size: .76rem; color: rgba(255,255,255,.92); line-height: 1.45; margin: 8px 0 0;
+}
+.gpt-kalc-wing {
+  position: absolute; right: 0; top: 0; height: 100%; width: 58%;
+  color: #fff; pointer-events: none;
+}
+.gpt-kalc-bd {
+  display: flex; flex-direction: column; justify-content: center;
+  gap: 8px; font-size: .78rem; padding: 6px 8px 6px 2px;
+}
 .gpt-kalc-bd div { display: flex; justify-content: space-between; gap: 8px; }
 .gpt-kalc-bd span:first-child { color: var(--muted); }
-.gpt-kalc-bd span:last-child { font-weight: 700; }
-.gpt-kalc-bd .cost span:last-child { color: #dc2626; }
+.gpt-kalc-bd span:last-child { font-weight: 700; color: var(--ink); }
+.gpt-kalc-bd .cost span:last-child { color: var(--kalc-mp); }
 .gpt-kalc-recs {
   display: grid; gap: 8px; margin-top: 12px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 @media (max-width: 640px) { .gpt-kalc-recs { grid-template-columns: 1fr; } }
 .gpt-kalc-rec {
-  border-radius: 12px; padding: 12px; border: 2px solid var(--line); background: #fff;
+  border-radius: 12px; padding: 12px; border: 1.5px solid var(--line); background: #fff;
 }
-.gpt-kalc-rec.bep { border-color: #ef4444; background: #fecaca; }
-.gpt-kalc-rec.good { border-color: #f59e0b; background: #fde68a; }
-.gpt-kalc-rec.healthy { border-color: #22c55e; background: #86efac; }
-.gpt-kalc-rec .lbl { font-size: .66rem; font-weight: 700; color: var(--muted); }
+.gpt-kalc-rec.bep { border-color: #fca5a5; background: #fef2f2; }
+.gpt-kalc-rec.good { border-color: #fdba74; background: #fff7ed; }
+.gpt-kalc-rec.healthy { border-color: #86efac; background: #f0fdf4; }
+.gpt-kalc-rec .lbl { font-size: .66rem; font-weight: 650; color: var(--muted); }
 .gpt-kalc-rec .sub { font-size: .6rem; color: var(--muted); margin: 2px 0 6px; }
 .gpt-kalc-rec .price { font-size: .95rem; font-weight: 800; }
-.gpt-kalc-rec.bep .lbl,
-.gpt-kalc-rec.bep .price { color: #b91c1c; }
-.gpt-kalc-rec.bep .sub { color: #991b1b; }
-.gpt-kalc-rec.good .lbl,
-.gpt-kalc-rec.good .price { color: #92400e; }
-.gpt-kalc-rec.good .sub { color: #78350f; }
-.gpt-kalc-rec.healthy .lbl,
-.gpt-kalc-rec.healthy .price { color: #14532d; }
-.gpt-kalc-rec.healthy .sub { color: #166534; }
 .gpt-kalc-detail-tog {
   margin-top: 12px; width: 100%; display: flex; justify-content: space-between;
   align-items: center; gap: 8px; padding: 10px 0 0; border: none; background: none;
@@ -9136,7 +9148,8 @@ body.thread-wide .composer-chips { max-width: 1080px; }
 }
 @media (max-width: 640px) { .gpt-kalc-detail-grid { grid-template-columns: 1fr; } }
 
-.kalc-page { max-width: 720px; margin: 0 auto; padding: 20px 16px 72px; }
+.kalc-page { --kalc-mp: #EE4D2D; max-width: 720px; margin: 0 auto; padding: 20px 16px 72px; }
+#kalc-save-riwayat { background: var(--kalc-mp); color: #fff; }
 .kalc-page-head h2 { margin: 0 0 6px; font-size: 1.45rem; letter-spacing: -.02em; }
 .kalc-page-head p { margin: 0 0 18px; color: #666; font-size: .92rem; line-height: 1.45; }
 .kalc-page-pick { position: relative; margin-bottom: 18px; z-index: 5; }
@@ -12889,7 +12902,7 @@ body.view-chat .sfb-card {
 <script src="/js/gpt-belajar.js?v=20261017f" defer></script>
 <script src="/js/gpt-alat-preview.js?v=20261019door2" defer></script>
 <script src="/js/omset-week-shape.js?v=20261021shape1" defer></script>
-<script src="/js/gpt-app.js?v=20261026nav" defer></script>
+<script src="/js/gpt-app.js?v=20261026kalc" defer></script>
 <style>
 .hl-hero-ctas-alat { display: none; }
 html.alat-preview #finder-xp-step { display: none; }

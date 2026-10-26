@@ -12452,11 +12452,17 @@ function gptKalcHtml(opts = {}) {
       <div class="gpt-kalc-rp"><span>Rp</span><input type="number" min="0" data-k="ads" value="${d.ads}"></div>
     </div>
     <div class="gpt-kalc-hero">
-      <div>
+      <div class="gpt-kalc-hero-main">
         <div class="eyebrow">Uang yang kamu dapat</div>
         <div class="profit" data-out="profit">—</div>
         <span class="margin-pill" data-out="margin-pill">—</span>
         <p class="sent" data-out="sent">—</p>
+        <svg class="gpt-kalc-wing" viewBox="0 0 160 200" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">
+          <path fill="currentColor" opacity=".55" d="M36 198c26-44 58-86 112-138-16 30-26 64-20 100-10 16-32 30-92 38z"/>
+          <path fill="currentColor" opacity=".4" d="M12 188c34-40 72-78 136-116-20 32-32 68-24 106-18 10-48 16-112 10z"/>
+          <path fill="currentColor" opacity=".28" d="M0 164c38-26 86-56 154-82-22 30-38 62-28 98-24 4-64 0-126-16z"/>
+          <path fill="currentColor" opacity=".18" d="M6 138c42-16 94-32 150-42-18 26-40 50-32 80-30-2-72-12-118-38z"/>
+        </svg>
       </div>
       <div class="gpt-kalc-bd">
         <div><span>Omset / pesanan</span><span data-out="omset">—</span></div>
@@ -12535,6 +12541,10 @@ function gptKalcRefresh(root) {
   const r = gptKalcCompute(inp);
   const rate = inp.rate;
   const f = LARIS_MP.FEES[inp.mpKey];
+  const mpColor = (f && f.color) || '#EE4D2D';
+  root.style.setProperty('--kalc-mp', mpColor);
+  const kalcPage = root.closest('#kalc-page');
+  if (kalcPage) kalcPage.style.setProperty('--kalc-mp', mpColor);
   const set = (k, v) => { const el = root.querySelector(`[data-out="${k}"]`); if (el) el.textContent = v; };
 
   // Every tile shows the baseline potongan (komisi + biaya admin) for the
