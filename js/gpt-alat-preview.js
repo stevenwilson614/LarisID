@@ -1586,9 +1586,9 @@
     }
     var listMine = _listings.slice(0, LIST_PREVIEW);
     panel.innerHTML =
-      '<h3 class="alat-h3">Kompetitor untuk “' + esc((mine.product_name || '').slice(0, 40)) + '”</h3>' +
-      '<p class="alat-hint">Keyword: ' + esc(mine.keyword || '—') + ' · centang yang mau dipantau · ' +
-        '<span id="alat-peer-budget">' + trackBudgetLabel() + '</span></p>' +
+      '<h3 class="alat-h3">Kompetitor untuk “' + esc((mine.product_name || '').slice(0, 36)) + '”</h3>' +
+      '<p class="alat-hint">Keyword: ' + esc(mine.keyword || '—') +
+        ' · <span id="alat-peer-budget">' + trackBudgetLabel() + '</span></p>' +
       '<div class="alat-list" id="alat-peers"><p class="alat-lead">Memuat kompetitor…</p></div>';
     void peersForKeyword(shop, mine.keyword).then(function (rows) {
       var box = $('alat-peers');

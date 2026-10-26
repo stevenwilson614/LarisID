@@ -13034,7 +13034,10 @@ body.alat-focus.view-audit #alat-root {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
   width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 /* Seller-baru questionnaire: finder only, no Laris AI chrome. */
 body.alat-focus.view-home .home-ask-intro,
@@ -13128,10 +13131,13 @@ body.alat-focus.view-home .home-finder::after {
   display: flex;
   gap: 12px;
   overflow-x: auto;
+  overflow-y: hidden;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
-  padding: 6px 2px 14px;
-  margin: 0 -4px 4px;
+  padding: 10px 4px 16px;
+  margin: 0 0 4px;
+  max-width: 100%;
+  min-width: 0;
 }
 .alat-pcard-rail::-webkit-scrollbar { height: 6px; }
 .alat-pcard-rail::-webkit-scrollbar-thumb { background: #D8D8D8; border-radius: 999px; }
@@ -13158,8 +13164,7 @@ body.alat-focus.view-home .home-finder::after {
   box-shadow: 0 0 0 1px rgba(181, 32, 42, .28);
 }
 .alat-pcard.is-focus {
-  flex-basis: 176px;
-  transform: scale(1.04);
+  flex-basis: 168px;
   border-color: var(--accent, #B5202A);
   box-shadow: 0 8px 22px rgba(181, 32, 42, .16);
   z-index: 1;
@@ -13186,10 +13191,14 @@ body.alat-focus.view-home .home-finder::after {
 .alat-pcard-price { font-size: .72rem; color: #444; margin-top: 2px; }
 .alat-sel-strip {
   margin: 4px 0 12px;
-  padding: 10px 12px 12px;
+  padding: 10px 10px 12px;
   border: 1px solid #EFEFEF;
   border-radius: 14px;
   background: #FAFAFA;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 .alat-sel-strip-head {
   display: flex;
@@ -13197,39 +13206,52 @@ body.alat-focus.view-home .home-finder::after {
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 8px;
+  min-width: 0;
+}
+.alat-sel-strip-head .alat-hint {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .alat-sel-budget-top {
   font-size: .78rem;
   font-weight: 700;
   color: #B5202A;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 .alat-sel-rail {
   display: flex;
   gap: 10px;
   overflow-x: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
-  padding: 4px 2px 2px;
+  padding: 6px 4px 4px;
   align-items: flex-end;
+  max-width: 100%;
+  min-width: 0;
 }
 .alat-sel-card {
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 0;
+  gap: 4px;
+  width: 56px;
+  padding: 3px;
   border: 2px solid transparent;
   border-radius: 12px;
   background: transparent;
   cursor: pointer;
   font: inherit;
   color: inherit;
-  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+  transition: border-color .18s ease, box-shadow .18s ease, width .18s ease;
+  box-sizing: border-box;
 }
 .alat-sel-img {
-  width: 52px;
-  height: 52px;
+  width: 48px;
+  height: 48px;
   object-fit: cover;
   border-radius: 10px;
   background: #F1F1F2;
@@ -13237,15 +13259,15 @@ body.alat-focus.view-home .home-finder::after {
   border: 1px solid #E4E4E4;
 }
 .alat-sel-card.is-focus {
-  transform: scale(1.12);
+  width: 92px;
   border-color: var(--accent, #B5202A);
   box-shadow: 0 6px 16px rgba(181, 32, 42, .14);
-  padding: 4px;
+  padding: 5px;
   z-index: 1;
 }
 .alat-sel-card.is-focus .alat-sel-img {
-  width: 68px;
-  height: 68px;
+  width: 64px;
+  height: 64px;
   border-color: rgba(181, 32, 42, .35);
 }
 .alat-sel-meta {
@@ -13253,8 +13275,10 @@ body.alat-focus.view-home .home-finder::after {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  max-width: 88px;
+  width: 100%;
+  max-width: 100%;
   text-align: center;
+  min-width: 0;
 }
 .alat-sel-peers {
   font-size: .68rem;
@@ -13458,10 +13482,12 @@ body.alat-focus.view-home .home-finder::after {
 .alat-page {
   --alat-page-w: 640px;
   width: min(var(--alat-page-w), 100%);
-  max-width: var(--alat-page-w);
+  max-width: min(var(--alat-page-w), 100%);
+  min-width: 0;
   margin: 0 auto;
   padding: 28px 20px 40px;
   box-sizing: border-box;
+  overflow-x: hidden;
 }
 /* Wizard steps: fill the frame under header; spacers keep short pages centered. */
 body.alat-focus.view-audit .alat-page:not(.alat-page--wide) {
@@ -13469,7 +13495,9 @@ body.alat-focus.view-audit .alat-page:not(.alat-page--wide) {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
   width: min(var(--alat-page-w), 100%);
+  max-width: 100%;
 }
 body.alat-focus.view-audit .alat-page:not(.alat-page--wide)::before,
 body.alat-focus.view-audit .alat-page:not(.alat-page--wide)::after {
@@ -13842,8 +13870,14 @@ body.alat-focus.view-audit .alat-page--wide::after { display: none; }
   background: #fff; border: 1px solid var(--line, #E8E8E8); border-radius: 16px;
   padding: 22px 24px; margin-bottom: 0;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   box-sizing: border-box;
   position: relative;
+  overflow-x: hidden;
+}
+@media (max-width: 640px) {
+  .alat-card { padding: 18px 14px; }
 }
 .alat-card.is-busy > :not(.alat-busy) {
   opacity: .38;
@@ -13882,8 +13916,21 @@ body.alat-focus.view-audit .alat-page--wide::after { display: none; }
 }
 .alat-kicker { font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted, #8A8A8A); margin: 0 0 6px; }
 .alat-card h2 { margin: 0 0 8px; font-size: clamp(1.1rem, 2vw, 1.25rem); }
-.alat-h3 { margin: 18px 0 8px; font-size: .92rem; }
-.alat-lead { color: var(--muted, #666); font-size: .9rem; line-height: 1.5; margin: 0 0 16px; }
+.alat-h3 {
+  margin: 18px 0 8px;
+  font-size: .92rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
+}
+.alat-lead {
+  color: var(--muted, #666);
+  font-size: .9rem;
+  line-height: 1.5;
+  margin: 0 0 16px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
 .alat-label { display: block; font-size: .78rem; font-weight: 650; margin-bottom: 6px; }
 .alat-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .alat-row-actions {
@@ -13901,7 +13948,15 @@ body.alat-focus.view-audit .alat-page--wide::after { display: none; }
   padding: 10px 12px; font: inherit;
 }
 .alat-err { color: var(--accent, #B5202A); font-size: .8rem; margin: 8px 0 0; }
-.alat-hint { font-size: .75rem; color: var(--muted, #8A8A8A); margin: 12px 0 0; }
+.alat-hint {
+  font-size: .75rem;
+  color: var(--muted, #8A8A8A);
+  margin: 12px 0 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
+}
+#alat-peer-panel { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
 .alat-picker { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
 .alat-pick {
   display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
