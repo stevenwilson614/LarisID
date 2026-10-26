@@ -12346,7 +12346,7 @@ function ddSampleReviewsHtml(detail) {
   const top = rows.filter((r) => r.bucket === 'top'
     || (!r.bucket && Number(r.rating_star) >= 4)).slice(0, 3);
   const bottom = rows.filter((r) => r.bucket === 'bottom'
-    || (!r.bucket && Number(r.rating_star) > 0 && Number(r.rating_star) <= 2)).slice(0, 3);
+    || (!r.bucket && Number(r.rating_star) > 0 && Number(r.rating_star) <= 3)).slice(0, 3);
   // Legacy rows without bucket / star split: show as one list.
   const legacy = (!top.length && !bottom.length) ? rows.slice(0, 6) : [];
   const block = (title, list) => {
@@ -12357,8 +12357,8 @@ function ddSampleReviewsHtml(detail) {
   return `<div class="ddr-sample-reviews">
     ${legacy.length
       ? block('Contoh ulasan', legacy)
-      : `${block('3 ulasan terbaik (5★)', top)}${block('3 ulasan terburuk (1★)', bottom)}`}
-    <p class="dd-sub">Cuplikan dari filter bintang Shopee (bukan seluruh ulasan). Kalau sisi terbaik atau terburuk kosong, produk itu memang jarang dapat bintang itu.</p>
+      : `${block('3 ulasan terbaik (5★)', top)}${block('3 ulasan terburuk', bottom)}`}
+    <p class="dd-sub">Cuplikan dari filter bintang Shopee (bukan seluruh ulasan). Terburuk diisi dari 1★, lalu 2★, lalu 3★ sampai 3 ulasan. Kosong berarti tidak ada ulasan di bawah 4★.</p>
   </div>`;
 }
 
