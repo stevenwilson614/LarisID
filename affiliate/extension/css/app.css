@@ -70,14 +70,14 @@ a { color: var(--merah); }
 }
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .brand-mark {
-  width: 32px; height: 32px; border-radius: 9px;
+  width: 32px; height: 32px; border-radius: 0;
   background: transparent; flex: none;
   display: grid; place-items: center;
-  overflow: hidden;
+  overflow: visible;
 }
 .brand-mark img {
-  width: 32px; height: 32px; object-fit: cover;
-  border-radius: 9px;
+  width: 28px; height: 28px; object-fit: contain;
+  border-radius: 0;
   filter: none;
 }
 .brand strong {

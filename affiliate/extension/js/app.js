@@ -8,7 +8,7 @@
   var SURFACE = (SURFACE_OVERLAY ? 'overlay-' : 'panel-') + Math.random().toString(36).slice(2);
   var JAKARTA = 'Asia/Jakarta';
   var $ = function (id) { return document.getElementById(id); };
-  var VERSION = (chrome.runtime.getManifest && chrome.runtime.getManifest().version) || '0.5.2';
+  var VERSION = (chrome.runtime.getManifest && chrome.runtime.getManifest().version) || '0.5.3';
   if (SURFACE_OVERLAY) {
     document.documentElement.classList.add('surface-overlay');
     document.body.classList.add('surface-overlay');
@@ -366,13 +366,13 @@
       ? '<span class="chip ok">Kalodata · ' + (ui.conn.kalodata.count || 0) + ' baris terlihat</span>'
       : '<span class="chip locked">Kalodata belum tab</span>';
     return '<div class="page-head"><h2>Kreator</h2>' +
-      '<p>Temukan dan pilih kreator, lalu kirim kolaborasi.</p></div>' +
+      '<p>Daftar yang sudah diimport. Untuk Ambil dari Find Creators: Kampanye → Buat kampanye → langkah Kreator → Temukan kreator.</p></div>' +
       (ui.importNotice ? '<div class="notice-ok" role="status">' + esc(ui.importNotice) + '</div>' : '') +
       '<input class="search" type="search" placeholder="Cari handle atau nama kreator…" value="' + esc(ui.filter) + '" data-act="filter">' +
       '<section class="card flat" style="margin-top:10px">' +
         '<details class="import-box">' +
-          '<summary>Import kreator</summary>' +
-          '<p class="muted">Tempel baris Kalodata, ambil halaman yang terlihat, atau CSV. Starter Kalodata tidak bisa ekspor.</p>' +
+          '<summary>Import kreator (Kalodata / tempel / CSV)</summary>' +
+          '<p class="muted">Tempel baris Kalodata, ambil halaman yang terlihat, atau CSV. Starter Kalodata tidak bisa ekspor. Temukan kreator (TikTok) ada di wizard kampanye.</p>' +
           '<form data-act="add-handle" class="row" style="margin-bottom:10px">' +
             '<input name="handle" type="text" placeholder="@handle" required autocomplete="off" style="flex:1;min-width:0">' +
             '<button class="btn-sm" type="submit">Tambah</button>' +
