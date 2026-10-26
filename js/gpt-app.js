@@ -6119,11 +6119,17 @@ function closeAuthModal(force) {
     if (btn) btn.hidden = false;
   }
 }
-// WhatsApp is always forward. Google + Email sit as collapsed alt rows.
-// Email expands in-place; Google still fires OAuth on click. Reset is email-only.
+// Flip to true to bring WhatsApp OTP login/signup back (UI + client calls).
+// Edge functions send-/verify-whatsapp-otp also gate on WA_OTP_ENABLED.
+const WA_OTP_ENABLED = false;
+
+// When WA OTP is on: WhatsApp is forward; Google + Email are collapsed alt rows.
+// When off: Google + Email only. Email expands in-place; Google fires OAuth.
+// Reset is always email-only.
 let _authEmailOpen = false;
 function _applyAuthEmailCollapse() {
   const reset = _authMode === 'reset';
+  const waOn = WA_OTP_ENABLED && !reset;
   const block = $('auth-email-block');
   const toggle = $('auth-email-toggle');
   const sepWa = $('auth-sep-wa');
@@ -6137,8 +6143,8 @@ function _applyAuthEmailCollapse() {
     toggle.classList.toggle('is-open', open && !reset);
     toggle.setAttribute('aria-expanded', open && !reset ? 'true' : 'false');
   }
-  if (waPanel) waPanel.style.display = reset ? 'none' : '';
-  if (sepWa) sepWa.style.display = reset ? 'none' : '';
+  if (waPanel) waPanel.style.display = waOn ? '' : 'none';
+  if (sepWa) sepWa.style.display = waOn ? '' : 'none';
   if (googleBtn) googleBtn.style.display = reset ? 'none' : '';
   if (altStack) altStack.style.display = '';
 }
@@ -6182,7 +6188,11 @@ function renderAuthModal() {
     };
     sub.textContent = reset
       ? 'Masukkan email kamu. Kami kirim link untuk mengatur password baru.'
-      : map[_gateSource] || (signup ? 'Gratis. Selamanya. Paling gampang daftar pakai WhatsApp.' : 'Masuk untuk lanjut riset produk');
+      : map[_gateSource] || (signup
+        ? (WA_OTP_ENABLED
+          ? 'Gratis. Selamanya. Paling gampang daftar pakai WhatsApp.'
+          : 'Gratis. Selamanya. Daftar dengan Google atau Email.')
+        : 'Masuk untuk lanjut riset produk');
   }
   if (nameWrap) nameWrap.style.display = signup ? '' : 'none';
   // Reset only needs the email field — no password, no Google button.
@@ -6377,6 +6387,10 @@ async function sendWhatsappOtp(isResend) {
   const btn = $('wa-send-btn');
   const rawPhone = (phoneEl?.value || '').trim() || _waPhone;
   const showErr = (el, msg) => { if (!el) return; el.textContent = msg; el.style.display = 'block'; };
+  if (!WA_OTP_ENABLED) {
+    showErr(isResend && otpErr ? otpErr : errEl, 'Login WhatsApp sementara tidak tersedia. Gunakan Google atau Email.');
+    return;
+  }
   if (!rawPhone) {
     showErr(errEl, 'Masukkan nomor WhatsApp kamu.');
     return;
@@ -6437,6 +6451,10 @@ async function verifyWhatsappOtp() {
   const errEl = $('wa-otp-error');
   const btn = $('wa-verify-btn');
   const showErr = (msg) => { if (!errEl) return; errEl.textContent = msg; errEl.style.display = 'block'; };
+  if (!WA_OTP_ENABLED) {
+    showErr('Login WhatsApp sementara tidak tersedia. Gunakan Google atau Email.');
+    return;
+  }
   const otp = (otpEl?.value || '').replace(/\s/g, '');
   if (!otp || !/^\d{6}$/.test(otp)) {
     showErr('Masukkan 6 digit kode OTP.');

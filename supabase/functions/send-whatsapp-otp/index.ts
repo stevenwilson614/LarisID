@@ -30,8 +30,18 @@ function randomHex(bytes: number): string {
   return hexEncode(arr)
 }
 
+// Flip with the WA_OTP_ENABLED const in js/gpt-app.js when re-enabling.
+const WA_OTP_ENABLED = false
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
+
+  if (!WA_OTP_ENABLED) {
+    return new Response(
+      JSON.stringify({ error: 'Login WhatsApp sementara tidak tersedia. Gunakan Google atau Email.' }),
+      { status: 503, headers: { ...CORS, 'Content-Type': 'application/json' } },
+    )
+  }
 
   try {
     const body = await req.json()
