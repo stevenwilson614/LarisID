@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Assemble the static tree Contabo + Cloudflare Pages serve.
+# Assemble the static tree Contabo Caddy serves at larisid.com.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${1:-$ROOT/_site}"

@@ -1,9 +1,8 @@
-# Deploy static site to Contabo + Cloudflare Pages on every push to main.
-# GitHub Pages is retired (ToS / commercial SaaS). Live domain DNS points at Contabo;
-# Cloudflare Pages is the CDN mirror at larisid.pages.dev.
+# Deploy static site to Contabo on every push to main.
+# GitHub Pages and Cloudflare Pages mirrors are retired.
+# Live domain DNS points at Contabo (larisid.com).
 #
-# Repo secrets (set 2026-08-24): CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID,
-# CONTABO_SSH_KEY (private key for root@84.247.147.205).
+# Repo secret: CONTABO_SSH_KEY (private key for root@84.247.147.205).
 #
 # Manual fallback: bash scripts/deploy-static.sh
 
@@ -30,13 +29,6 @@ jobs:
 
       - name: Static checks
         run: bash scripts/ci-static-checks.sh
-
-      - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy _site --project-name=larisid --branch=main
 
       - name: Sync to Contabo (larisid.com)
         # rsync --delete updates files in place (same directory inode) so the

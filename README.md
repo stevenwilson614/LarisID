@@ -18,7 +18,7 @@ It defines **what we are building, why, how, who is involved, and what we will n
 | Shared static styles | `styles/seo-pages.css` |
 | Privacy policy | `privacy/` |
 | Supabase (DB, auth, edge functions) | `supabase/` — see [supabase/README.md](./supabase/README.md) |
-| Deploy | Contabo Caddy (`larisid.com`) + Cloudflare Pages (`larisid.pages.dev`) — `bash scripts/deploy-static.sh` |
+| Deploy | Contabo Caddy (`larisid.com`) — `bash scripts/deploy-static.sh` |
 | Sitemap | `sitemap.xml` (submit in Search Console) |
 
 ### Local docs (`docs/`)
@@ -38,7 +38,7 @@ LarisID is a **static site** — *not* an Astro or Next build, despite the `Lari
 
 - **App + landing:** `index.html` + `js/gpt-app.js` (chat-first SPA). `js/laris-app.js` is a retired dashboard and is not loaded. `js/perf-loader.js` lazy-loads Supabase/Chart.js and the tracker.
 - **Generated content pages:** `/riset/`, `/perbandingan/`, `/panduan/` are produced by `scripts/build-seo-pages.mjs`, `build-comparisons.mjs`, and `build-guides.mjs` from the data in `scripts/seo-*.json`. **Edit the generators, not the generated HTML.**
-- **Deploy:** GitHub Pages is **retired**. Ship with `bash scripts/deploy-static.sh` (Contabo serves `larisid.com`; Cloudflare Pages mirrors at `larisid.pages.dev`). Keep `scripts/assemble-site.sh` in sync when adding top-level static dirs. CI workflow: `.github/workflows/deploy-pages.yml` (needs Cloudflare + Contabo secrets once GitHub Actions is available again).
+- **Deploy:** GitHub Pages and Cloudflare Pages mirrors are **retired**. Ship with `bash scripts/deploy-static.sh` (Contabo serves `larisid.com`). Keep `scripts/assemble-site.sh` in sync when adding top-level static dirs. CI workflow: `.github/workflows/deploy-pages.yml` (needs the Contabo SSH secret once GitHub Actions is available again).
 - **Images:** keep web assets as **WebP** (convert with Pillow / `cwebp`). Only files referenced by `index.html`, the generators, or CSS belong in `images/` — everything else is dead weight that ships on every deploy.
 - **Not committed / regenerable:** `node_modules/`, `dist/`, `.astro/`, `.venv-*/` are git-ignored build/tooling cruft — safe to delete locally.
 

@@ -14,8 +14,7 @@ The site, scrapers, and edge functions talk to **`https://api.larisid.com`**.
 | Infra repo | https://github.com/stevenwilson614/larisid-infra |
 
 The public site (`larisid.com`) is static HTML/JS served by **Contabo Caddy**
-(DNS A → `84.247.147.205`), with a **Cloudflare Pages** mirror at
-`larisid.pages.dev`. Ship static changes with `bash scripts/deploy-static.sh`
+(DNS A → `84.247.147.205`). Ship static changes with `bash scripts/deploy-static.sh`
 in this repo — that does **not** change schema or edge functions.
 
 ## Never do this
@@ -29,7 +28,7 @@ in this repo — that does **not** change schema or edge functions.
 
 Those commands either fail (“Resource has been removed”) or write to the
 wrong place. That is how the HUT RI unlimited-dives work almost shipped
-only to the static hosts (Contabo / Cloudflare Pages), not the DB.
+only to the static host (Contabo), not the DB.
 
 ## Apply a SQL migration
 

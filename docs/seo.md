@@ -6,18 +6,17 @@
 
 Rank for Indonesian **Shopee / e-commerce product research** queries and give AI models a **single, honest source of truth** about LarisID vs **Datapinter**, **Tokpee**, and **Shoptik** (mission, price, features).
 
-## Site architecture (static Contabo + Cloudflare Pages)
+## Site architecture (static Contabo)
 
 The public site is **not** a multi-route Astro app in production. It is assembled
-into `_site/` and shipped to:
+into `_site/` and shipped to Contabo Caddy:
 
 | Host | Role |
 |------|------|
 | Contabo Caddy (`84.247.147.205`) | Live `https://larisid.com` (DNS A for `@` / `www`) |
-| Cloudflare Pages project `larisid` | Mirror `https://larisid.pages.dev` |
 | Contabo `api.larisid.com` | Backend only — scrapers and the SPA talk here |
 
-GitHub Pages is **retired** (not allowed for commercial SaaS).
+GitHub Pages and Cloudflare Pages mirrors are **retired**.
 
 | Path | Role |
 |------|------|
@@ -313,7 +312,7 @@ in `build-seo-pages.mjs` writing `riset/<slug>/og.png`, then point `og:image` at
 
 ## Post-deploy checklist
 
-1. Run `bash scripts/deploy-static.sh` (Contabo + Cloudflare Pages; IndexNow from CI when Actions runs)
+1. Run `bash scripts/deploy-static.sh` (Contabo; IndexNow from CI when Actions runs)
 2. Verify: `/riset/`, `/panduan/`, `/perbandingan/alat-riset-produk-shopee-terbaik/`,
    `/llms.txt`, `/llms-full.txt` on **https://larisid.com**
 3. Google Search Console → submit `sitemap.xml` (~2,384 URLs as of Oct 2026; grows with `/riset/` batches)
