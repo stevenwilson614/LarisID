@@ -22,6 +22,9 @@ const mediaDir = path.join(DATA, 'media');
 const uploadDir = path.join(DATA, 'uploads');
 const eventsFile = path.join(DATA, 'events.jsonl');
 const issuesFile = path.join(DATA, 'issues.json');
+const lynkPayFile = path.join(DATA, 'lynk-payments.jsonl');
+const lynkUnmatchedFile = path.join(DATA, 'lynk-unmatched.json');
+const LYNK_KEY = String(process.env.LYNK_MERCHANT_KEY || '');
 
 for (const dir of [stateDir, mediaDir, uploadDir]) fs.mkdirSync(dir, { recursive: true });
 if (!fs.existsSync(issuesFile)) fs.writeFileSync(issuesFile, '[]');
@@ -244,8 +247,202 @@ function summary() {
     issues: openIssues,
     resolved,
     users: userRows,
-    diskusi
+    diskusi,
+    lynkUnmatched: readUnmatched().slice(-40).reverse()
   };
+}
+
+function readUnmatched() {
+  try {
+    const list = JSON.parse(fs.readFileSync(lynkUnmatchedFile, 'utf8'));
+    return Array.isArray(list) ? list : [];
+  } catch (err) {
+    return [];
+  }
+}
+
+function writeUnmatched(list) {
+  const tmp = lynkUnmatchedFile + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify(list.slice(-200)));
+  fs.renameSync(tmp, lynkUnmatchedFile);
+}
+
+function seenLynkRef(refId) {
+  if (!refId || !fs.existsSync(lynkPayFile)) return false;
+  const stat = fs.statSync(lynkPayFile);
+  const start = Math.max(0, stat.size - 1024 * 1024);
+  const fd = fs.openSync(lynkPayFile, 'r');
+  const buf = Buffer.alloc(stat.size - start);
+  fs.readSync(fd, buf, 0, buf.length, start);
+  fs.closeSync(fd);
+  const lines = buf.toString('utf8').split('\n');
+  if (start > 0) lines.shift();
+  return lines.some((line) => {
+    if (!line) return false;
+    try { return JSON.parse(line).refId === refId; } catch (err) { return false; }
+  });
+}
+
+function recordLynkPayment(row) {
+  fs.appendFileSync(lynkPayFile, JSON.stringify(row) + '\n');
+}
+
+function lynkSignature(amount, refId, messageId) {
+  return crypto.createHash('sha256')
+    .update(String(amount) + String(refId) + String(messageId) + LYNK_KEY)
+    .digest('hex');
+}
+
+function sigEqual(a, b) {
+  const left = Buffer.from(String(a || '').toLowerCase());
+  const right = Buffer.from(String(b || '').toLowerCase());
+  if (!left.length || left.length !== right.length) return false;
+  return crypto.timingSafeEqual(left, right);
+}
+
+function dig(obj, paths) {
+  for (const keys of paths) {
+    let cur = obj;
+    let ok = true;
+    for (const key of keys) {
+      if (!cur || typeof cur !== 'object' || cur[key] == null || cur[key] === '') {
+        ok = false;
+        break;
+      }
+      cur = cur[key];
+    }
+    if (ok) return cur;
+  }
+  return '';
+}
+
+function amountString(value) {
+  if (typeof value === 'string') return value.trim();
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  return '';
+}
+
+function phoneKey(raw) {
+  let d = String(raw == null ? '' : raw).replace(/\D/g, '');
+  if (!d) return '';
+  if (d.indexOf('0') === 0) d = '62' + d.slice(1);
+  if (d.indexOf('8') === 0 && d.length >= 9) d = '62' + d;
+  return d;
+}
+
+function phonesMatch(a, b) {
+  const left = phoneKey(a);
+  const right = phoneKey(b);
+  if (left.length < 10 || right.length < 10) return false;
+  if (left === right) return true;
+  return left.slice(-10) === right.slice(-10);
+}
+
+function addPeople(map, id, wa, name) {
+  if (!id || !wa) return;
+  const prev = map.get(id) || { id: String(id), wa: '', name: '' };
+  prev.wa = String(wa);
+  if (name) prev.name = String(name);
+  map.set(id, prev);
+}
+
+function peopleInState(state) {
+  const map = new Map();
+  (state.liveStudents || []).forEach((s) => s && addPeople(map, s.id, s.wa, s.name));
+  const people = state.people || {};
+  Object.keys(people).forEach((id) => addPeople(map, id, people[id] && people[id].wa, people[id] && people[id].name));
+  const apps = state.applications || {};
+  Object.keys(apps).forEach((id) => addPeople(map, id, apps[id] && apps[id].wa, apps[id] && apps[id].name));
+  const billing = state.billing || {};
+  Object.keys(billing).forEach((id) => addPeople(map, id, billing[id] && billing[id].payerWa, ''));
+  return Array.from(map.values());
+}
+
+function normTitle(s) {
+  return String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function lynkCatalog(state) {
+  const raw = (state && state.lynkProducts) || {};
+  return ['month', 'quarter', 'half'].map((term) => {
+    const row = raw[term] || {};
+    return {
+      term,
+      title: String(row.title || '').trim(),
+      url: String(row.url || '').trim(),
+      price: Number(row.price) || 0
+    };
+  }).filter((row) => row.title);
+}
+
+function itemTitles(body) {
+  const raw = dig(body, [['items'], ['data', 'items'], ['products'], ['data', 'products']]);
+  const list = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' ? [raw] : []);
+  return list.map((item) => String((item && (item.title || item.name || item.product_name || item.productName)) || '').trim()).filter(Boolean);
+}
+
+function termMonths(term) {
+  if (term === 'quarter') return 3;
+  if (term === 'half') return 6;
+  return 1;
+}
+
+function termLabel(term) {
+  if (term === 'quarter') return '3 bulan';
+  if (term === 'half') return '6 bulan';
+  return '1 bulan';
+}
+
+function grantLynk(state, person, product, amount, refId) {
+  const id = person.id;
+  const now = new Date();
+  const until = new Date(now.getTime());
+  until.setMonth(until.getMonth() + termMonths(product.term));
+  state.billing = state.billing || {};
+  const prev = state.billing[id] || {};
+  const products = Array.isArray(prev.products) ? prev.products : [];
+  state.billing[id] = Object.assign({}, prev, {
+    status: 'lunas',
+    plan: 'mentoring',
+    products,
+    term: product.term,
+    source: 'lynk',
+    amount: Number(amount) || product.price || prev.amount || 0,
+    paidAt: now.toISOString(),
+    accessUntil: until.toISOString(),
+    note: 'Lynk · ' + termLabel(product.term),
+    lynkRef: refId,
+    payerWa: person.wa
+  });
+  delete state.billing[id].pendingTerm;
+  delete state.billing[id].pendingAmount;
+  delete state.billing[id].pendingAt;
+  delete state.billing[id].offerExpiresAt;
+  state.crm = state.crm || {};
+  const crm = state.crm[id] || {};
+  if (crm.stage !== 'mentee') {
+    state.crm[id] = Object.assign({}, crm, { stage: 'mentee' });
+    state.timeline = state.timeline || {};
+    const line = state.timeline[id] || [];
+    state.timeline[id] = [{ at: now.toISOString(), kind: 'stage', body: 'Lunas mentoring · ' + product.term }].concat(line);
+  }
+  state.timeline = state.timeline || {};
+  state.timeline[id] = [{
+    at: now.toISOString(),
+    kind: 'pay',
+    body: 'Bayar Lynk · ' + termLabel(product.term)
+  }].concat(state.timeline[id] || []);
+  state.enrollments = state.enrollments || {};
+  const enrolled = Array.isArray(state.enrollments[id]) ? state.enrollments[id] : [];
+  if (!enrolled.some((row) => row && (row.planId === 'onboarding' || row === 'onboarding'))) {
+    state.enrollments[id] = enrolled.concat([{ planId: 'onboarding', at: now.toISOString() }]);
+  }
+}
+
+function rememberUnmatched(row) {
+  const list = readUnmatched().filter((item) => item.refId !== row.refId);
+  list.push(row);
+  writeUnmatched(list);
 }
 
 function parseRange(header, size) {
@@ -623,6 +820,92 @@ const server = http.createServer((req, res) => {
       json(res, 200, { ok: true });
     })).catch(() => {
       if (!res.headersSent) json(res, 400, { error: 'resolve' });
+    });
+    return;
+  }
+
+  if (pathname === '/webhooks/lynk' && req.method === 'POST') {
+    if (!LYNK_KEY) {
+      json(res, 503, { error: 'unconfigured' });
+      return;
+    }
+    readBody(req, 256 * 1024).then((buf) => lock(() => {
+      let body;
+      try { body = JSON.parse(buf.toString('utf8') || '{}'); } catch (err) {
+        json(res, 400, { error: 'bad_json' });
+        return;
+      }
+      const event = String(dig(body, [['event'], ['type']]) || '');
+      if (event && event !== 'payment.received') {
+        json(res, 200, { ok: true, ignored: event });
+        return;
+      }
+      const refId = String(dig(body, [['refId'], ['data', 'refId'], ['ref_id'], ['data', 'ref_id']]) || '');
+      const messageId = String(dig(body, [['message_id'], ['data', 'message_id'], ['messageId'], ['data', 'messageId']]) || '');
+      const amountRaw = dig(body, [['grandTotal'], ['data', 'grandTotal'], ['amount'], ['data', 'amount']]);
+      const amount = amountString(amountRaw);
+      const got = String(req.headers['x-lynk-signature'] || '');
+      if (!refId || !messageId || !amount || !sigEqual(got, lynkSignature(amount, refId, messageId))) {
+        json(res, 401, { error: 'signature' });
+        return;
+      }
+      if (seenLynkRef(refId)) {
+        json(res, 200, { ok: true, duplicate: true });
+        return;
+      }
+      const phone = String(dig(body, [
+        ['customer', 'phone'], ['data', 'customer', 'phone'],
+        ['customer', 'mobile'], ['data', 'customer', 'mobile'],
+        ['customer', 'whatsapp'], ['data', 'customer', 'whatsapp'],
+        ['phone'], ['data', 'phone']
+      ]) || '');
+      const name = String(dig(body, [['customer', 'name'], ['data', 'customer', 'name'], ['name']]) || '');
+      const titles = itemTitles(body);
+      const rec = readState();
+      const state = rec && rec.state;
+      const catalog = lynkCatalog(state);
+      const matchedProducts = catalog.filter((row) => titles.some((title) => normTitle(title) === normTitle(row.title)));
+      const base = {
+        at: new Date().toISOString(),
+        refId,
+        messageId,
+        amount,
+        phone,
+        name: name.slice(0, 120),
+        titles: titles.slice(0, 8)
+      };
+      if (!state || matchedProducts.length !== 1) {
+        rememberUnmatched(Object.assign({ reason: !state ? 'no_state' : (matchedProducts.length ? 'ambiguous_title' : 'not_mentoring') }, base));
+        json(res, 200, { ok: true, matched: false });
+        return;
+      }
+      const product = matchedProducts[0];
+      const hits = peopleInState(state).filter((person) => phonesMatch(person.wa, phone));
+      if (hits.length !== 1) {
+        rememberUnmatched(Object.assign({ reason: hits.length ? 'ambiguous_phone' : 'no_phone', term: product.term }, base));
+        json(res, 200, { ok: true, matched: false });
+        return;
+      }
+      grantLynk(state, hits[0], product, amount, refId);
+      writeUnmatched(readUnmatched().filter((item) => item.refId !== refId));
+      const stored = {
+        key: rec.key || DEFAULT_INVITE,
+        rev: (Number(rec.rev) || 0) + 1,
+        updatedAt: new Date().toISOString(),
+        state
+      };
+      writeState(stored);
+      recordLynkPayment({
+        refId,
+        at: base.at,
+        personId: hits[0].id,
+        term: product.term,
+        amount,
+        matched: true
+      });
+      json(res, 200, { ok: true, matched: true, rev: stored.rev });
+    })).catch((err) => {
+      if (!res.headersSent) json(res, err.status || 500, { error: 'lynk' });
     });
     return;
   }

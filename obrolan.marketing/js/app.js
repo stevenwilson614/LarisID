@@ -392,6 +392,19 @@
   function hydrateFunnel(merged) {
     merged.schoolSlug = isValidSlug(merged.schoolSlug) ? normalizeSlug(merged.schoolSlug) : SEED.school.slug;
     merged.inviteCode = String(merged.inviteCode || (SEED.cohort && SEED.cohort.invite) || '').trim() || SEED.cohort.invite;
+    merged.lynkProducts = Object.assign({
+      month: { url: '', title: '', price: 0 },
+      quarter: { url: '', title: '', price: 0 },
+      half: { url: '', title: '', price: 0 }
+    }, merged.lynkProducts || {});
+    ['month', 'quarter', 'half'].forEach((term) => {
+      const row = merged.lynkProducts[term] || {};
+      merged.lynkProducts[term] = {
+        url: String(row.url || '').trim(),
+        title: String(row.title || '').trim(),
+        price: Number(row.price) || 0
+      };
+    });
     merged.pricing = Object.assign({}, SEED.pricing, merged.pricing || {});
     merged.bank = Object.assign({}, SEED.bank, merged.bank || {});
     merged.dunning = Object.assign({}, SEED.dunning, merged.dunning || {});
@@ -524,7 +537,8 @@
       daftarCols: defaultDaftarCols(),
       daftarCustom: [],
       liveStudents: [],
-      ownerContact: { wa: '', email: '' }
+      ownerContact: { wa: '', email: '' },
+      lynkProducts: { month: { url: '', title: '', price: 0 }, quarter: { url: '', title: '', price: 0 }, half: { url: '', title: '', price: 0 } }
     };
     rebaseDemoClocks(state);
     return state;
@@ -2169,6 +2183,48 @@
     pushTimeline(id, 'pay', 'Klaim transfer ' + fmtRp(amount) + ' · menunggu konfirmasi');
     addTask(id, 'Cek transfer ' + nameOf(id), 'Jumlah ' + fmtRp(amount) + ' ke ' + db.bank.bank + ' ' + db.bank.number, isoNow(), 'reminder');
   }
+  function lynkProduct(term) {
+    const all = db.lynkProducts || {};
+    const row = all[term] || {};
+    return {
+      url: String(row.url || '').trim(),
+      title: String(row.title || '').trim(),
+      price: Number(row.price) || 0
+    };
+  }
+  function lynkCheckoutUrl(term) {
+    const url = lynkProduct(term).url;
+    return /^https:\/\//i.test(url) ? url : '';
+  }
+  function lynkWebhookUrl() {
+    return 'https://larisid.com/obrolan.marketing/api/webhooks/lynk';
+  }
+  function openLynk(url) {
+    if (!url) return;
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+  function markPendingLynk(id, term, amount, url) {
+    const b = billingOf(id);
+    const who = people().find((s) => s.id === id) || {};
+    b.status = 'pending';
+    b.pendingTerm = term;
+    b.pendingAmount = amount;
+    b.pendingAt = isoNow();
+    b.amount = amount;
+    b.term = term;
+    b.source = 'lynk';
+    b.lynkUrl = url;
+    b.payerWa = who.wa || b.payerWa || '';
+    b.note = 'Menunggu Lynk · ' + termLabel(term);
+    if (!b.plan) b.plan = 'preview';
+    pushTimeline(id, 'pay', 'Bayar Lynk ' + fmtRp(amount) + ' · menunggu konfirmasi');
+  }
   function markPendingMayar(id, term, amount, inv) {
     const b = billingOf(id);
     b.status = 'pending';
@@ -3742,6 +3798,18 @@
   function viewPayPage(sid) {
     const b = billingOf(sid);
     if (b.status === 'pending') {
+      if (b.source === 'lynk') {
+        const again = b.lynkUrl || lynkCheckoutUrl(b.pendingTerm || b.term);
+        return obWrap(WIZ_PAY,
+          '<p class="ob-kicker">Lynk</p>' +
+          '<h1 class="ob-q">Menunggu konfirmasi Lynk</h1>' +
+          '<p class="ob-sub">Checkout ' + fmtRp(b.pendingAmount || b.amount || 0) +
+          ' (' + esc(termLabel(b.pendingTerm || b.term)) +
+          '). Anton yang menerima uangnya. Kurikulum kebuka setelah Lynk mengonfirmasi. Video 1 tetap kebuka.</p>',
+          (again ? '<a class="btn ob-cta" href="' + esc(again) + '" target="_blank" rel="noopener">Buka halaman Lynk</a>' : '') +
+          '<button class="btn secondary ob-cta" data-act="tab" data-id="home">Kembali ke Home</button>',
+          true);
+      }
       if (b.source === 'mayar') {
         return obWrap(WIZ_PAY,
           '<p class="ob-kicker">Mayar</p>' +
@@ -3788,9 +3856,7 @@
         : '');
     const inner = '<p class="ob-kicker">Paket</p>' +
       '<h1 class="ob-q">Yang kamu dapat</h1>' +
-      '<p class="ob-sub">' + (mayarReady()
-        ? 'Bayar di Mayar (VA atau QRIS). Anton merchant. LarisID tidak menahan uang.'
-        : 'Bayar ke rekening Anton. LarisID tidak menahan uang. Tidak ada sisa kursi.') + '</p>' +
+      '<p class="ob-sub">Anton yang menerima pembayaran. LarisID tidak menahan uang. Kurikulum kebuka setelah Lynk mengonfirmasi, atau setelah Anton menandai transfer manual.</p>' +
       include +
       '<p class="ob-note">' + (inWin
         ? 'Harga perkenalan 24 jam untuk 1 bulan &amp; autopay · sisa <strong>' + esc(fmtRemain(exp)) + '</strong>. 3 &amp; 6 bulan sudah diskon program, tidak ditumpuk.'
@@ -3802,42 +3868,29 @@
         termCard('autopay', term, inWin && welcome) +
       '</div>' +
       '<div class="ob-bank">' +
-        (mayarReady()
+        (lynkCheckoutUrl(term)
           ? '<div class="ob-tf">' +
-              '<p class="ob-tf-kicker">Bayar lewat Mayar</p>' +
-              '<p class="muted">VA atau QRIS di halaman Mayar. Akses kebuka otomatis setelah pembayaran masuk. Anton merchant — LarisID tidak menahan uang.</p>' +
-              '<p class="muted">Jumlah sekarang: <strong>' + fmtRp(price) + '</strong>' +
+              '<p class="ob-tf-kicker">Bayar di Lynk</p>' +
+              '<p class="muted">Halaman checkout Anton. Kurikulum kebuka setelah Lynk mengirim konfirmasi.</p>' +
+              '<p class="muted">Jumlah di kelas: <strong>' + fmtRp(price) + '</strong>' +
               (price < list ? ' <span class="price-coret">' + fmtRp(list) + '</span>' : '') +
-              ' · ' + esc(termLabel(term)) + '</p>' +
-              (b.mayarLink && b.source === 'mayar' && b.status === 'pending'
-                ? '<p><a class="btn" href="' + esc(b.mayarLink) + '" target="_blank" rel="noopener">Buka halaman bayar</a></p>'
-                : '') +
+              ' · ' + esc(termLabel(term)) +
+              (lynkProduct(term).title ? ' · ' + esc(lynkProduct(term).title) : '') + '</p>' +
             '</div>'
-          : '<div class="ob-pay-ways">' +
-              '<div class="ob-qris" aria-label="Contoh QRIS">' +
-                qrisPlaceholderSvg() +
-                '<span class="ob-qris-badge">QRIS · contoh</span>' +
-                '<span class="ob-qris-nm">' + esc(db.bank.name) + '</span>' +
-                '<span class="muted">Mayar belum dikonfigurasi — ini bukan kode bayar</span>' +
-              '</div>' +
-              '<div class="ob-tf">' +
-                '<p class="ob-tf-kicker">Transfer manual</p>' +
-                '<p><strong>' + esc(db.bank.bank) + '</strong> ' + esc(db.bank.number) + '<br>a.n. ' + esc(db.bank.name) + '</p>' +
-                '<p class="muted">Jumlah sekarang: <strong>' + fmtRp(price) + '</strong>' +
-                (price < list ? ' <span class="price-coret">' + fmtRp(list) + '</span>' : '') +
-                ' · ' + esc(termLabel(term)) + '</p>' +
-                '<p class="muted">Tanpa kunci Mayar, kartu autopay tetap mock.</p>' +
-              '</div>' +
+          : '<div class="ob-tf">' +
+              '<p class="ob-tf-kicker">Transfer manual</p>' +
+              '<p><strong>' + esc(db.bank.bank) + '</strong> ' + esc(db.bank.number) + '<br>a.n. ' + esc(db.bank.name) + '</p>' +
+              '<p class="muted">Tautan Lynk untuk paket ini belum diisi. Jumlah sekarang: <strong>' + fmtRp(price) + '</strong> · ' + esc(termLabel(term)) + '</p>' +
             '</div>') +
-        (mayarReady()
+        (lynkCheckoutUrl(term)
           ? '<details class="ob-manual"><summary>Sudah transfer ke rekening Anton</summary>' +
               '<p><strong>' + esc(db.bank.bank) + '</strong> ' + esc(db.bank.number) + '<br>a.n. ' + esc(db.bank.name) + '</p>' +
-              '<p class="muted">Anton menandai lunas di CRM. Bukan webhook.</p></details>'
+              '<p class="muted">Anton menandai lunas di CRM kalau webhook Lynk tidak cocok.</p></details>'
           : '') +
       '</div>';
     const foot =
-      (mayarReady()
-        ? '<button class="btn ob-cta" data-act="pay-mayar" data-term="' + esc(term) + '">Bayar sekarang</button>' +
+      (lynkCheckoutUrl(term)
+        ? '<button class="btn ob-cta" data-act="pay-lynk" data-term="' + esc(term) + '">Bayar di Lynk</button>' +
           '<button type="button" class="btn secondary ob-cta" data-act="pay-manual" data-term="' + esc(term) + '">Saya sudah transfer</button>'
         : '<button class="btn ob-cta" data-act="pay-now" data-term="' + esc(term) + '">' +
           (term === 'autopay' ? 'Bayar kartu (mock)' : 'Saya sudah transfer / scan') + '</button>') +
@@ -5437,6 +5490,21 @@
           arrivals.slice(0, 40).map(fmtRow).join('') + '</tbody></table>'
         : '<p class="muted">Belum ada kunjungan.</p>') +
       '</section>' +
+      '<section class="card" style="margin-top:12px"><h2>Lynk belum cocok</h2>' +
+      '<p class="muted">Pembayaran yang tanda-tangannya sah, tapi nomor atau judulnya tidak membuka mentoring. Kalkulator dan rekaman masuk sini.</p>' +
+      ((s.lynkUnmatched || []).length
+        ? (s.lynkUnmatched || []).map((row) => '<article class="thread"><strong>' + esc((row.titles && row.titles[0]) || 'Tanpa judul') + '</strong>' +
+            '<p>' + esc(row.name || 'Tanpa nama') + (row.phone ? ' · ' + esc(row.phone) : '') +
+            ' · ' + esc(row.amount ? ('Rp' + Number(row.amount).toLocaleString('id-ID')) : '') + '</p>' +
+            '<p class="muted">' + esc(({
+              not_mentoring: 'Bukan paket mentoring',
+              no_phone: 'Nomor tidak ketemu',
+              ambiguous_phone: 'Nomor cocok ke lebih dari satu siswa',
+              ambiguous_title: 'Judul cocok ke lebih dari satu paket',
+              no_state: 'Kelas belum tersimpan'
+            })[row.reason] || row.reason || '') + ' · ' + esc(row.refId || '') + ' · ' + esc(relWhen(row.at)) + '</p></article>').join('')
+        : '<p class="muted">Tidak ada pembayaran yang tertahan.</p>') +
+      '</section>' +
       '<section class="card" style="margin-top:12px"><h2>Masalah</h2>' +
       (issues.length
         ? issues.map((item) => '<article class="thread"><strong>' + esc(item.lessonTitle || item.kind || 'Laporan') + '</strong>' +
@@ -5501,7 +5569,30 @@
         '<label class="muted">Atas nama</label><input name="name" value="' + esc(b.name) + '">' +
         '<button class="btn" type="submit">Simpan rekening</button></form>' +
       '<p class="muted">Siswa menyalin ini kalau transfer manual. Anton menandai lunas di baris siswa / profil.</p>' +
-      '</section></div>' + mayarSettingsHtml();
+      '</section></div>' + lynkSettingsHtml();
+  }
+  function lynkField(term, label) {
+    const row = lynkProduct(term);
+    return '<h3>' + esc(label) + '</h3>' +
+      '<label class="muted">URL checkout</label>' +
+      '<input name="' + term + 'Url" value="' + esc(row.url) + '" placeholder="https://lynk.id/…" inputmode="url">' +
+      '<label class="muted">Judul di Lynk</label>' +
+      '<input name="' + term + 'Title" value="' + esc(row.title) + '" placeholder="Sama persis dengan judul produk">' +
+      '<label class="muted">Harga IDR</label>' +
+      '<input name="' + term + 'Price" type="number" value="' + esc(row.price || '') + '" placeholder="400000">';
+  }
+  function lynkSettingsHtml() {
+    const hook = lynkWebhookUrl();
+    return '<section class="card" style="margin-top:12px"><h2>Lynk mentoring</h2>' +
+      '<p class="muted">Satu URL webhook per akun Lynk. Merchant Key ada di server, bukan di form ini. Judul yang tidak sama dengan paket di bawah tidak membuka 12 video.</p>' +
+      '<p><code>' + esc(hook) + '</code> ' +
+        '<button type="button" class="btn-sm" data-act="copy-url" data-url="' + esc(hook) + '">Salin webhook</button></p>' +
+      '<form class="compose" data-act="save-lynk">' +
+        lynkField('month', '1 bulan') +
+        lynkField('quarter', '3 bulan') +
+        lynkField('half', '6 bulan') +
+        '<button class="btn" type="submit">Simpan paket Lynk</button>' +
+      '</form></section>';
   }
   function mayarSettingsHtml() {
     const m = ui.mayar || {};
@@ -7422,6 +7513,31 @@
       ui.tab = 'belajar';
       toast('Trial: video 1 kebuka. Diskon 24 jam dari jam form.');
       render();
+    } else if (act === 'pay-lynk') {
+      if (!ensureApplication()) {
+        toast('Isi form dulu.');
+        ui.wizStep = 0;
+        ui.wizFocusedStep = null;
+        ui.tab = 'daftar';
+        render();
+        return;
+      }
+      const term = btn.getAttribute('data-term') || ui.payTerm || 'month';
+      const url = lynkCheckoutUrl(term);
+      if (!url) {
+        toast('Tautan Lynk untuk paket ini belum diisi.');
+        return;
+      }
+      if (!normalizeWa(student().wa)) {
+        toast('Nomor WA di form belum ada.');
+        return;
+      }
+      const welcome = welcomeOpen(ui.personaId) || hoursLeft(billingOf(ui.personaId).offerExpiresAt) > 0;
+      markPendingLynk(ui.personaId, term, priceForTerm(term, welcome), url);
+      save();
+      openLynk(url);
+      toast('Halaman Lynk terbuka. Kelas kebuka setelah pembayaran terkonfirmasi.');
+      render();
     } else if (act === 'pay-manual' || act === 'pay-now') {
       if (!ensureApplication()) {
         toast('Isi form dulu.');
@@ -7813,6 +7929,19 @@
       };
       save();
       toast('Kontak dan undangan disimpan');
+      render();
+    } else if (act === 'save-lynk') {
+      if (!canBill()) return;
+      db.lynkProducts = db.lynkProducts || {};
+      ['month', 'quarter', 'half'].forEach((term) => {
+        db.lynkProducts[term] = {
+          url: String(fd.get(term + 'Url') || '').trim(),
+          title: String(fd.get(term + 'Title') || '').trim(),
+          price: Math.max(0, Number(fd.get(term + 'Price')) || 0)
+        };
+      });
+      save();
+      toast('Paket Lynk disimpan');
       render();
     } else if (act === 'exam') {
       const qs = SEED.exam.questions;
