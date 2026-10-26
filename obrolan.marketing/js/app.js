@@ -77,6 +77,9 @@
     const code = schoolInviteCode();
     return schoolLocalUrl() + (code ? ('?invite=' + encodeURIComponent(code)) : '');
   }
+  function schoolAdminUrl() {
+    return schoolPublicUrl() + 'admin';
+  }
   function resolveVanitySlug() {
     const asked = pathSlug() || qsSlug();
     if (!asked) return true;
@@ -5542,6 +5545,8 @@
           '<button type="button" class="btn-sm" data-act="copy-url" data-url="' + esc(pub) + '">Salin</button></dd></div>' +
         '<div><dt>Gabung + kode</dt><dd><code>' + esc(join) + '</code>' +
           '<button type="button" class="btn-sm" data-act="copy-url" data-url="' + esc(join) + '">Salin</button></dd></div>' +
+        '<div><dt>Admin</dt><dd><code>' + esc(schoolAdminUrl()) + '</code>' +
+          '<button type="button" class="btn-sm" data-act="copy-url" data-url="' + esc(schoolAdminUrl()) + '">Salin</button></dd></div>' +
         '<div><dt>Lokal (demo)</dt><dd><code>' + esc(local) + '</code>' +
           '<button type="button" class="btn-sm" data-act="copy-url" data-url="' + esc(schoolJoinLocalUrl()) + '">Salin + invite</button></dd></div>' +
       '</dl>' +
@@ -6962,7 +6967,7 @@
     } else if (act === 'issue-done') {
       if (!ui.admin) return;
       const id = btn.getAttribute('data-id');
-      fetch(apiBase() + '/issues/resolve?key=' + encodeURIComponent(adminKey()), {
+      fetch(apiBase() + '/issues/resolve' + (adminKey() ? ('?key=' + encodeURIComponent(adminKey())) : ''), {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ id: id })
@@ -8107,19 +8112,27 @@
     const lec = db.lastLecture && db.lastLecture[ui.personaId];
     if (lec) ui.lectureId = lec;
   }
+  function markOwner() {
+    ui.admin = true;
+    ui.role = 'owner';
+    ui.visitorLive = false;
+  }
   async function claimAdmin() {
     captureAdminKey();
+    if (!syncEnabled()) return false;
     const key = adminKey();
-    if (!key || !syncEnabled()) return false;
     try {
-      const res = await fetch(apiBase() + '/admin/check?key=' + encodeURIComponent(key), { cache: 'no-store' });
-      if (!res.ok) {
+      if (key) {
+        const res = await fetch(apiBase() + '/admin/check?key=' + encodeURIComponent(key), { cache: 'no-store' });
+        if (res.ok) {
+          markOwner();
+          return true;
+        }
         try { sessionStorage.removeItem('anton-admin'); } catch (err) { /* ignore */ }
-        return false;
       }
-      ui.admin = true;
-      ui.role = 'owner';
-      ui.visitorLive = false;
+      const res = await fetch(apiBase() + '/admin/check', { cache: 'no-store' });
+      if (!res.ok) return false;
+      markOwner();
       return true;
     } catch (err) {
       return false;
@@ -8128,7 +8141,8 @@
   async function refreshAdmin() {
     if (!ui.admin) return;
     try {
-      const res = await fetch(apiBase() + '/admin/summary?key=' + encodeURIComponent(adminKey()), { cache: 'no-store' });
+      const key = adminKey();
+      const res = await fetch(apiBase() + '/admin/summary' + (key ? ('?key=' + encodeURIComponent(key)) : ''), { cache: 'no-store' });
       ui.adminSummary = res.ok ? await res.json() : { error: true };
     } catch (err) {
       ui.adminSummary = { error: true };

@@ -95,6 +95,22 @@ function sameSecret(a, b) {
   return crypto.timingSafeEqual(left, right);
 }
 
+function cookieValue(req, name) {
+  const raw = String((req.headers && req.headers.cookie) || '');
+  for (const part of raw.split(';')) {
+    const i = part.indexOf('=');
+    if (i < 0) continue;
+    if (part.slice(0, i).trim() === name) return decodeURIComponent(part.slice(i + 1).trim());
+  }
+  return '';
+}
+
+function adminAuthed(req, q) {
+  if (!ADMIN_KEY) return false;
+  if (sameSecret(q.key, ADMIN_KEY)) return true;
+  return cookieValue(req, 'anton_admin') === '1';
+}
+
 function queryOf(url) {
   return Object.fromEntries(url.searchParams.entries());
 }
@@ -466,8 +482,25 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (req.method === 'GET' && pathname === '/admin/enter') {
+    if (!ADMIN_KEY) {
+      json(res, 503, { error: 'unconfigured' });
+      return;
+    }
+    const proto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+    const secure = proto === 'https' ? '; Secure' : '';
+    res.writeHead(200, {
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': 'no-store',
+      'x-robots-tag': 'noindex',
+      'set-cookie': 'anton_admin=1; HttpOnly; SameSite=Lax; Path=/obrolan.marketing' + secure
+    });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
   if (req.method === 'GET' && pathname === '/admin/check') {
-    if (!ADMIN_KEY || !sameSecret(q.key, ADMIN_KEY)) {
+    if (!adminAuthed(req, q)) {
       json(res, 403, { ok: false });
       return;
     }
@@ -476,7 +509,7 @@ const server = http.createServer((req, res) => {
   }
 
   if (req.method === 'GET' && pathname === '/admin/summary') {
-    if (!ADMIN_KEY || !sameSecret(q.key, ADMIN_KEY)) {
+    if (!adminAuthed(req, q)) {
       json(res, 403, { error: 'forbidden' });
       return;
     }
@@ -798,7 +831,7 @@ const server = http.createServer((req, res) => {
   }
 
   if (pathname === '/issues/resolve' && req.method === 'POST') {
-    if (!ADMIN_KEY || !sameSecret(q.key, ADMIN_KEY)) {
+    if (!adminAuthed(req, q)) {
       json(res, 403, { error: 'forbidden' });
       return;
     }
