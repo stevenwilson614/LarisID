@@ -10417,7 +10417,8 @@ function listingIsAdMissing(error) {
  * count (NULL in every model we have ever fetched) — never display either.
  */
 const PDETAIL_COLS = 'item_id,shop_id,detail_scraped_at,brand,condition,preorder_days,'
-  + 'tier_variations_json,models_json,rating_breakdown_json,liked_count,comment_count,shop_location';
+  + 'tier_variations_json,models_json,rating_breakdown_json,liked_count,comment_count,'
+  + 'shop_location,sample_reviews_json';
 let _pdetailAvail = true;
 async function fetchProductDetail(product) {
   const id = product?.item_id;
@@ -10715,6 +10716,178 @@ async function _fetchPoolListings(out, types, chooser) {
   }
 }
 
+// Server resolver (resolve_market). ?resolver=legacy keeps the old client
+// matcher until 2026-11-09. A missing RPC falls back for the rest of the session.
+let _resolverMissing = false;
+const _resolveMemo = new Map();
+
+function useLegacyResolver() {
+  try {
+    const flag = new URLSearchParams(location.search).get('resolver');
+    if (flag === 'legacy') return true;
+    if (flag === 'new') return false;
+  } catch (_) { /* ignore */ }
+  return _resolverMissing;
+}
+
+function _rpcMissing(error) {
+  const code = String(error?.code || '');
+  const msg = String(error?.message || error || '');
+  return code === '42883' || code === 'PGRST202'
+    || /could not find the function/i.test(msg)
+    || /schema cache/i.test(msg);
+}
+
+function _tierMatchLevel(row) {
+  const tier = row?.tier || 'none';
+  if (tier === 'brand') return 'brand';
+  if (tier === 'title') return 'title';
+  if (tier === 'nearby') return 'nearby';
+  if (tier === 'none') return 'none';
+  return row?.chooser ? 'chooser' : 'keyword';
+}
+
+function _tierQuality(tier) {
+  if (tier === 'exact' || tier === 'strong' || tier === 'fresh') return 'exact';
+  if (tier === 'brand') return 'brand';
+  if (tier === 'nearby' || tier === 'title') return 'loose';
+  return 'none';
+}
+
+async function resolveMarket(q, city) {
+  if (!_supabase || useLegacyResolver()) return null;
+  const query = String(q || '').trim();
+  if (query.length < 2) return null;
+  const key = `${query.toLowerCase()}|${city || 'ALL'}`;
+  const hit = _resolveMemo.get(key);
+  if (hit && (Date.now() - hit.at) < 600000) return hit.row;
+  const { data, error } = await _supabase.rpc('resolve_market', {
+    p_q: query,
+    p_city: city || 'ALL',
+    p_limit: 12,
+  });
+  if (error) {
+    if (_rpcMissing(error)) { _resolverMissing = true; return null; }
+    console.warn('[resolve_market]', error.message || error);
+    return null;
+  }
+  _resolveMemo.set(key, { at: Date.now(), row: data });
+  return data;
+}
+
+function logSearchResolve(q, via, pool, n) {
+  const tier = pool?.tier || pool?.matchLevel || '';
+  if (!q || !tier) return;
+  logClientEvent('search_resolve', {
+    q: String(q).slice(0, 120),
+    via: via || 'search',
+    tier,
+    n: n == null ? (pool?.listings || []).length : n,
+    top_kw: (pool?.keywords && pool.keywords[0] && pool.keywords[0].keyword) || '',
+    corrected: pool?.correctedQuery || '',
+  });
+}
+
+async function fetchTypesForKeywords(kws) {
+  const keywords = [...new Set((kws || []).map(k => String(k || '').trim()).filter(Boolean))].slice(0, 16);
+  if (!_supabase || !keywords.length) return [];
+  try {
+    const build = () => _supabase.from('product_types_v')
+      .select(ptypeCols())
+      .eq('city', 'ALL')
+      .in('keyword', keywords);
+    let { data, error } = await build();
+    if (ptypeWeeklyMissing(error)) ({ data, error } = await build());
+    if (error) return keywords.map(keyword => ({ keyword }));
+    const by = new Map((data || []).map(r => [r.keyword, r]));
+    return keywords.map(k => by.get(k) || { keyword: k });
+  } catch (_) {
+    return keywords.map(keyword => ({ keyword }));
+  }
+}
+
+async function fetchListingsForBrand(brand, kws) {
+  const keywords = (kws || []).map(k => String(k || '').trim()).filter(Boolean).slice(0, 12);
+  if (!_supabase || !brand || !keywords.length) return [];
+  const { data, error } = await _supabase.rpc('listings_for_brand', {
+    p_brand: brand,
+    p_keywords: keywords,
+    p_per_kw: 20,
+    p_max: 240,
+  });
+  if (error) {
+    console.warn('[listings_for_brand]', error.message || error);
+    return fetchListingsForKeywords(keywords, 20, 240);
+  }
+  return dedupeListings(data || []);
+}
+
+async function fetchListingsFresh(keyword) {
+  if (!_supabase || !keyword) return [];
+  const { data, error } = await _supabase.rpc('listings_fresh_for_keyword', {
+    p_keyword: keyword,
+    p_max: 80,
+  });
+  if (error) {
+    console.warn('[listings_fresh]', error.message || error);
+    return [];
+  }
+  return (data || []).map(r => ({ ...r, _fresh: true }));
+}
+
+async function _resolveListingPoolViaMarket(query) {
+  const row = await resolveMarket(query, 'ALL');
+  if (!row || !row.tier) return null;
+  const markets = Array.isArray(row.markets) ? row.markets : [];
+  const kws = markets.map(m => m.keyword).filter(Boolean);
+  const types = kws.length ? await fetchTypesForKeywords(kws) : [];
+  const matchLevel = _tierMatchLevel(row);
+  const out = emptyListingPool();
+  out.tier = row.tier;
+  out.confidence = row.confidence;
+  out.correctedQuery = row.corrected_query || '';
+  out.brand = row.brand || '';
+  out.brandMissing = !!row.brand_missing;
+  out.matchLevel = matchLevel;
+  out.nearby = row.tier === 'nearby';
+  out.keywords = markTerlarisMinggu(types.slice());
+  out.primaryKw = (matchLevel === 'chooser' || matchLevel === 'nearby' || matchLevel === 'none')
+    ? '' : (kws[0] || '');
+  if (row.tier === 'fresh') {
+    out.listings = await fetchListingsFresh(kws[0] || row.corrected_query || query);
+    out.primaryKw = kws[0] || row.corrected_query || '';
+    out.matchLevel = 'keyword';
+  } else if (row.tier === 'none') {
+    out.listings = [];
+  } else if (row.tier === 'brand' && row.brand && kws.length) {
+    out.listings = await fetchListingsForBrand(row.brand, kws);
+  } else if (kws.length) {
+    await _fetchPoolListings(out, types, matchLevel === 'chooser' || matchLevel === 'nearby' || matchLevel === 'title');
+  }
+  out.listings = dedupeListings(out.listings || []);
+  if (row.tier === 'fresh') out.listings.forEach(p => { p._fresh = true; });
+  rememberProducts(out.listings);
+  registerTypes(out.keywords);
+  return out;
+}
+
+async function searchProductTypesResolved(raw, limit) {
+  const row = await resolveMarket(raw, 'ALL');
+  if (!row || !row.tier) return null;
+  const kws = (row.markets || []).map(m => m.keyword).filter(Boolean).slice(0, limit || 12);
+  const rows = kws.length ? await fetchTypesForKeywords(kws) : [];
+  rows.forEach(r => { r._tier = row.tier; });
+  return {
+    rows,
+    quality: _tierQuality(row.tier),
+    tier: row.tier,
+    confidence: row.confidence,
+    corrected_query: row.corrected_query || '',
+    brand: row.brand || '',
+    brand_missing: !!row.brand_missing,
+  };
+}
+
 async function resolveListingPool(opts = {}) {
   if (isExporPasar() && window.LarisExpor && typeof window.LarisExpor.resolvePool === 'function') {
     const pool = await window.LarisExpor.resolvePool(opts);
@@ -10742,6 +10915,16 @@ async function _resolveListingPoolUncached({ q, cats, sub, home } = {}, memoKey)
   const query = (q || '').trim();
   const out = emptyListingPool();
   const stages = { _t0: performance.now() };
+  if (query && !useLegacyResolver()) {
+    const via = await _resolveListingPoolViaMarket(query);
+    if (via) {
+      _dirMark(stages, 'total');
+      _dirTimingLog(memoKey, stages, {
+        q: query, listings: (via.listings || []).length, match: via.matchLevel || '', tier: via.tier || '',
+      });
+      return via;
+    }
+  }
   if (query) {
     const planP = planSearch(query, { timeoutMs: PLAN_RACE_MS }).catch(() => ({ queries: [], brand: null }));
     const exactP = productTypeExactKeyword(query);
@@ -11991,9 +12174,38 @@ function pdPeerMedianRating(peers) {
   return rs.length ? rs[Math.floor(rs.length / 2)] : null;
 }
 
+function pdSampleReviews(detail) {
+  const rows = detail?.sample_reviews_json;
+  if (!Array.isArray(rows)) return [];
+  return rows.filter((r) => r && typeof r === 'object').slice(0, 3);
+}
+
+function ddSampleReviewsHtml(detail) {
+  const rows = pdSampleReviews(detail);
+  if (!rows.length) return '';
+  const items = rows.map((r) => {
+    const star = Number(r.rating_star) > 0 ? `${Math.trunc(Number(r.rating_star))}★` : '';
+    const who = String(r.author || 'Pembeli').trim() || 'Pembeli';
+    const model = String(r.model_name || '').trim();
+    const body = String(r.comment || '').trim();
+    const text = body
+      ? esc(body)
+      : '<span class="dd-muted">Pembeli tidak menulis teks — hanya bintang.</span>';
+    const meta = [star, who, model ? `varian ${model}` : '']
+      .filter(Boolean).map(esc).join(' · ');
+    return `<li class="ddr-sample-review"><p class="ddr-sample-meta">${meta}</p><p class="ddr-sample-body">${text}</p></li>`;
+  }).join('');
+  return `<div class="ddr-sample-reviews">
+    <p class="ddr-varian-price">Contoh 3 ulasan teratas</p>
+    <ul class="ddr-sample-list">${items}</ul>
+    <p class="dd-sub">Cuplikan dari halaman produk Shopee — bukan seluruh ulasan, dan urutannya mengikuti Shopee.</p>
+  </div>`;
+}
+
 function ddUlasanCardHtml(product, detail, peers, niche) {
   if (product?._ptype) return '';
   const stars = pdStars(detail);
+  const samples = ddSampleReviewsHtml(detail);
   const reviews = Number(product?.reviews) || 0;
   const rating = Number(product?.rating) || 0;
   const med = pdPeerMedianRating(peers);
@@ -12026,17 +12238,19 @@ function ddUlasanCardHtml(product, detail, peers, niche) {
   const scope = stars
     ? '<p class="dd-sub">Rincian bintang ini dari halaman produk Shopee, khusus listing ini. Kompetitor belum kami buka satu per satu, jadi belum ada pembanding per bintang di keyword ini.</p>'
     : '';
+  const measured = stars || samples
+    ? '<span class="omset-chip omset-chip--terukur" title="Diambil langsung dari halaman produk Shopee.">terukur</span>'
+    : '';
   return `<div class="ddr-card" data-dd-sec="ulasan">
-    <div class="ddr-sec-head"><h3>Kualitas Ulasan</h3>${stars
-      ? '<span class="omset-chip omset-chip--terukur" title="Rincian bintang diambil langsung dari halaman produk Shopee.">terukur</span>'
-      : ''}</div>
+    <div class="ddr-sec-head"><h3>Kualitas Ulasan</h3>${measured}</div>
     <p class="ddr-varian-head">${esc(ratingLine)}</p>
     ${pills}
     ${histo}
     <p class="dd-sub">${esc(badLine)}</p>
+    ${samples}
     ${likedLine}
     ${scope}
-    ${stars ? ddDetailStaleNote(detail) : ''}
+    ${stars || samples ? ddDetailStaleNote(detail) : ''}
   </div>`;
 }
 
@@ -12452,6 +12666,7 @@ function gptKalcHtml(opts = {}) {
       <div class="gpt-kalc-rp"><span>Rp</span><input type="number" min="0" data-k="ads" value="${d.ads}"></div>
     </div>
     <div class="gpt-kalc-hero">
+      <svg class="gpt-kalc-hero-wash" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path fill="currentColor" d="M0 0 H58 C55 22 46 62 38 100 H0 Z"/></svg>
       <div class="gpt-kalc-hero-main">
         <div class="eyebrow">Uang yang kamu dapat</div>
         <div class="profit" data-out="profit">—</div>
