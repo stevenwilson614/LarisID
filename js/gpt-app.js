@@ -3090,6 +3090,18 @@ function belajarCtx() {
       // English filler from the description field. Prefer content tokens.
       const raw = String(q || '').trim();
       if (!raw) return [];
+      if (!useLegacyResolver()) {
+        try {
+          const resolved = await resolveMarket(raw, 'ALL');
+          const kws = (resolved?.markets || []).map(m => m.keyword).filter(Boolean).slice(0, 4);
+          if (kws.length && resolved.tier && resolved.tier !== 'none') {
+            const listings = resolved.tier === 'brand' && resolved.brand
+              ? await fetchListingsForBrand(resolved.brand, kws)
+              : await fetchListingsForKeywords(kws, 12, 24);
+            if (listings.length) return listings.slice(0, 24);
+          }
+        } catch (_) { /* legacy search below */ }
+      }
       const FILLER = new Set([
         'with', 'the', 'and', 'for', 'from', 'that', 'this', 'warna', 'dengan',
         'yang', 'untuk', 'dari', 'pada', 'juga', 'atau', 'ada', 'ini', 'itu',
@@ -8107,6 +8119,23 @@ function wireResultsBar() {
     if (!_supabase) return;
     closeResultsBarMega();
     const gen = ++suggGen;
+    if (!useLegacyResolver()) {
+      try {
+        const { data, error } = await _supabase.rpc('suggest_markets', {
+          p_prefix: raw, p_city: 'ALL', p_limit: 8,
+        });
+        if (gen !== suggGen) return;
+        if (!error && Array.isArray(data) && data.length) {
+          renderSuggestions(data.map(r => ({
+            name: r.keyword,
+            category: r.category || '',
+            score: Number(r.omset_top15) || 0,
+          })), raw);
+          return;
+        }
+        if (error && _rpcMissing(error)) _resolverMissing = true;
+      } catch (_) { /* fall through to the client matcher */ }
+    }
     const tok = raw.split(/\s+/)[0].replace(/[%_,.()\\]/g, '').trim().slice(0, 40);
     if (!tok) return;
     try {
@@ -10797,7 +10826,7 @@ async function fetchTypesForKeywords(kws) {
       .eq('city', 'ALL')
       .in('keyword', keywords);
     let { data, error } = await build();
-    if (ptypeWeeklyMissing(error)) ({ data, error } = await build());
+    if (ptypeWeeklyMissing(error) || ptypeKindMissing(error)) ({ data, error } = await build());
     if (error) return keywords.map(keyword => ({ keyword }));
     const by = new Map((data || []).map(r => [r.keyword, r]));
     return keywords.map(k => by.get(k) || { keyword: k });
@@ -11076,10 +11105,11 @@ function keywordChipsHtml(types, activeKw, opts = {}) {
   list.slice(0, opts.maxChips || 16).forEach(t => {
     const kw = t.keyword || '';
     const on = activeKw === kw;
+    const parent = t.parent_keyword && t.parent_keyword !== kw ? `${t.parent_keyword} · ` : '';
     const badge = t._terlaris
       ? `<span class="lrow-chip-badge" title="${esc(terlarisTooltip(t._terlaris))}">Terlaris</span>`
       : '';
-    chips.push(`<button type="button" class="lrow-chip${on ? ' is-on' : ''}" data-lrow-kw="${esc(kw)}">${esc(t.nama_id || kw)}${badge}</button>`);
+    chips.push(`<button type="button" class="lrow-chip${on ? ' is-on' : ''}" data-lrow-kw="${esc(kw)}">${esc(parent)}${esc(t.nama_id || kw)}${badge}</button>`);
   });
   return `<div class="lrow-chips" role="tablist">${chips.join('')}</div>`;
 }
@@ -11704,6 +11734,7 @@ async function handleExporComposer(text) {
 
 function tightenLookupPool(query, pool) {
   if (!pool) return pool;
+  if (pool.tier) return pool;
   const strong = lookupStrongTypes(query, pool.keywords);
   const phrase = String(query || '').toLowerCase();
   if (strong.length && strong.length < (pool.keywords || []).length) {
@@ -11766,7 +11797,8 @@ async function handleLookupIntent(chat, text) {
   // which often paints zero sold rows.
   const pool = await resolveListingPool({ q });
   if (!isExporPasar()) tightenLookupPool(q, pool);
-  if (!pool.listings.length && (pool.keywords || []).length && !isExporPasar()) {
+  logSearchResolve(q, 'lookup', pool);
+  if (!pool.listings.length && (pool.keywords || []).length && !isExporPasar() && pool.matchLevel !== 'none') {
     const kws = pool.keywords.map(t => t.keyword).filter(Boolean).slice(0, 8);
     pool.listings = dedupeListings(await fetchListingsForKeywords(kws, 40, 200));
     rememberProducts(pool.listings);
@@ -11779,7 +11811,11 @@ async function handleLookupIntent(chat, text) {
     pushMessage(chat, 'assistant', { text: 'Hasil pasar', q }, html);
     // This dead end logged nothing at all before — part of why corpus gaps
     // stayed invisible even when the search plainly failed.
-    if (!isExporPasar()) void logUncoveredSearch(q, { via: 'lookup', match_quality: 'none' });
+    if (!isExporPasar()) void logUncoveredSearch(q, {
+      via: 'lookup', match_quality: pool.tier || 'none', tier: pool.tier || 'none',
+      confidence: pool.confidence, corrected_query: pool.correctedQuery || null,
+      top_keyword: (pool.keywords[0] && pool.keywords[0].keyword) || null, brand: pool.brand || null,
+    });
     return;
   }
   const gate = await ensureIntentChat(chat, q.slice(0, 60), { kind: 'lookup', q });
@@ -11792,7 +11828,7 @@ async function handleLookupIntent(chat, text) {
   const overview = isExporPasar() && window.LarisExpor
     ? window.LarisExpor.lookupOverviewHtml(esc, type, q)
     : lookupOverviewHtml(type, q, placeLabel);
-  const html = `${overview}<div data-lrow-block>${listingBlockHtml(pool, {
+  const html = `${searchMatchLeadHtml(q, pool)}${overview}<div data-lrow-block>${listingBlockHtml(pool, {
     query: q, chipKw: '', compact: true, skipLead: true, sort: 'sesuai', limit: 12, maxChips: 8,
   })}</div>${followupChipsHtml(followups)}${isExporPasar() ? '' : kwReqHtml(q, 'chat')}`;
   await revealAssistant(loading, html);
@@ -12177,13 +12213,11 @@ function pdPeerMedianRating(peers) {
 function pdSampleReviews(detail) {
   const rows = detail?.sample_reviews_json;
   if (!Array.isArray(rows)) return [];
-  return rows.filter((r) => r && typeof r === 'object').slice(0, 3);
+  return rows.filter((r) => r && typeof r === 'object').slice(0, 6);
 }
 
-function ddSampleReviewsHtml(detail) {
-  const rows = pdSampleReviews(detail);
-  if (!rows.length) return '';
-  const items = rows.map((r) => {
+function ddSampleReviewItemsHtml(rows) {
+  return rows.map((r) => {
     const star = Number(r.rating_star) > 0 ? `${Math.trunc(Number(r.rating_star))}★` : '';
     const who = String(r.author || 'Pembeli').trim() || 'Pembeli';
     const model = String(r.model_name || '').trim();
@@ -12195,10 +12229,27 @@ function ddSampleReviewsHtml(detail) {
       .filter(Boolean).map(esc).join(' · ');
     return `<li class="ddr-sample-review"><p class="ddr-sample-meta">${meta}</p><p class="ddr-sample-body">${text}</p></li>`;
   }).join('');
+}
+
+function ddSampleReviewsHtml(detail) {
+  const rows = pdSampleReviews(detail);
+  if (!rows.length) return '';
+  const top = rows.filter((r) => r.bucket === 'top'
+    || (!r.bucket && Number(r.rating_star) >= 4)).slice(0, 3);
+  const bottom = rows.filter((r) => r.bucket === 'bottom'
+    || (!r.bucket && Number(r.rating_star) > 0 && Number(r.rating_star) <= 2)).slice(0, 3);
+  // Legacy rows without bucket / star split: show as one list.
+  const legacy = (!top.length && !bottom.length) ? rows.slice(0, 6) : [];
+  const block = (title, list) => {
+    if (!list.length) return '';
+    return `<p class="ddr-varian-price">${esc(title)}</p>
+      <ul class="ddr-sample-list">${ddSampleReviewItemsHtml(list)}</ul>`;
+  };
   return `<div class="ddr-sample-reviews">
-    <p class="ddr-varian-price">Contoh 3 ulasan teratas</p>
-    <ul class="ddr-sample-list">${items}</ul>
-    <p class="dd-sub">Cuplikan dari halaman produk Shopee — bukan seluruh ulasan, dan urutannya mengikuti Shopee.</p>
+    ${legacy.length
+      ? block('Contoh ulasan', legacy)
+      : `${block('3 ulasan terbaik (5★)', top)}${block('3 ulasan terburuk (1★)', bottom)}`}
+    <p class="dd-sub">Cuplikan dari filter bintang Shopee (bukan seluruh ulasan). Kalau sisi terbaik atau terburuk kosong, produk itu memang jarang dapat bintang itu.</p>
   </div>`;
 }
 
@@ -12666,7 +12717,7 @@ function gptKalcHtml(opts = {}) {
       <div class="gpt-kalc-rp"><span>Rp</span><input type="number" min="0" data-k="ads" value="${d.ads}"></div>
     </div>
     <div class="gpt-kalc-hero">
-      <svg class="gpt-kalc-hero-wash" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path fill="currentColor" d="M0 0 H58 C55 22 46 62 38 100 H0 Z"/></svg>
+      <div class="gpt-kalc-hero-wash" aria-hidden="true"></div>
       <div class="gpt-kalc-hero-main">
         <div class="eyebrow">Uang yang kamu dapat</div>
         <div class="profit" data-out="profit">—</div>
@@ -13128,6 +13179,16 @@ async function searchKalcListingsFast(q, limit = 24) {
   /** Sibling scrape markets that start with the query (prefix only). */
   async function relatedKeywords(needle, take = 6) {
     try {
+      if (!useLegacyResolver()) {
+        const { data, error } = await _supabase.rpc('suggest_markets', {
+          p_prefix: needle, p_city: 'ALL', p_limit: take,
+        });
+        if (!error && Array.isArray(data) && data.length) {
+          return data.map(r => r.keyword)
+            .filter(k => k && k.toLowerCase() !== String(needle).toLowerCase())
+            .slice(0, take);
+        }
+      }
       const build = () => _supabase.from('product_types_v')
         .select('keyword,omset_top15,n_listings')
         .eq('city', 'ALL')
@@ -13632,7 +13693,16 @@ async function handleBandingkanIntent(chat, text) {
   }
   if (!(await ensureSearchAllowed())) return;
   const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Membandingkan dari data…</p>`);
-  const [a, b] = await Promise.all([searchListings(parts[0], [], 20), searchListings(parts[1], [], 20)]);
+  const listingsForCompare = async (q) => {
+    const row = await resolveMarket(q, 'ALL');
+    const kws = (row?.markets || []).map(m => m.keyword).filter(Boolean).slice(0, 4);
+    if (row && row.tier && row.tier !== 'none' && kws.length) {
+      if (row.tier === 'brand' && row.brand) return fetchListingsForBrand(row.brand, kws);
+      return fetchListingsForKeywords(kws, 12, 20);
+    }
+    return searchListings(q, [], 20);
+  };
+  const [a, b] = await Promise.all([listingsForCompare(parts[0]), listingsForCompare(parts[1])]);
   const gate = await ensureIntentChat(chat, `Bandingkan: ${parts[0]} vs ${parts[1]}`, { kind: 'bandingkan', a: parts[0], b: parts[1] });
   if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
   const summarize = rows => {
@@ -15182,8 +15252,63 @@ async function kwReqSubmit(root) {
     }).join('');
   }
   list.forEach(r => _supLog('kwreq_verdict', { verdict: r.verdict, source }));
+  list.filter(r => r.job_id).forEach(r => watchExpressJob(r.job_id, resultEl, r.keyword));
   if (btn) { btn.disabled = false; btn.textContent = 'Kirim lagi'; }
-  if (ok) showToast(wa ? 'Dicatat — kami kabari lewat WhatsApp begitu siap.' : 'Dicatat — kami ukur malam ini.');
+  if (ok) showToast('Dicatat. Status pengukurannya ada di bawah.');
+}
+
+function _expressClientUuid() {
+  try {
+    let id = localStorage.getItem('lid_express_client');
+    if (!/^[0-9a-f-]{36}$/i.test(id || '')) {
+      id = (window.crypto?.randomUUID?.() || '');
+      if (id) localStorage.setItem('lid_express_client', id);
+    }
+    return id || null;
+  } catch (_) { return null; }
+}
+
+async function watchExpressJob(jobId, host, keyword) {
+  if (!_supabase || !jobId || !host) return;
+  const card = document.createElement('div');
+  card.className = 'kwreq-line ok';
+  card.textContent = 'Mengecek apakah scraper sedang menyala…';
+  host.appendChild(card);
+  const client = _expressClientUuid();
+  const started = Date.now();
+  const tick = async () => {
+    if (!card.isConnected) return;
+    const { data, error } = await _supabase.rpc('get_express_scrape_job', {
+      p_job_id: jobId,
+      p_client: client,
+    });
+    if (error || !data || data.ok === false) {
+      card.textContent = 'Permintaan tercatat. Kami ukur pada giliran berikutnya.';
+      return;
+    }
+    if (data.status === 'done') {
+      const n = Number(data.n_listings) || 0;
+      card.textContent = n
+        ? `Selesai — ${n} listing baru. Omset belum bisa dihitung, butuh 2 pengukuran.`
+        : 'Scrape selesai, tapi belum ada listing terjual untuk kata ini.';
+      const q = data.keyword || keyword;
+      if (q && ($('results-bar-input'))) {
+        const inp = $('results-bar-input');
+        inp.value = q;
+        void runResultsBarSearch(q);
+      }
+      return;
+    }
+    if (data.status === 'failed') {
+      card.textContent = 'Pengukuran kali ini gagal (biasanya sesi Shopee). Kami coba lagi di giliran biasa.';
+      return;
+    }
+    card.textContent = data.worker_online
+      ? 'Scraper sedang menyala — biasanya 2–5 menit.'
+      : 'Scraper sedang tidak menyala. Besok pagi, kami kabari.';
+    if (Date.now() - started < 6 * 60 * 1000) setTimeout(tick, 5000);
+  };
+  void tick();
 }
 
 function bindKwReqDelegation() {
@@ -15526,6 +15651,7 @@ function soldPerDayEst(p) {
 }
 
 function estOmsetBulan(p) {
+  if (p && p._fresh) return 0;
   // Nowcast first, for the same reason as soldPerDayEst.
   const no = Number(p.nowcast_omset_monthly);
   if (Number.isFinite(no) && no >= 0 && p.nowcast_omset_monthly != null) return no;
@@ -15931,7 +16057,7 @@ function listingRowHtml(p, opts = {}) {
     ${thumbCell}
     ${prodCell}
     <td class="lrow-num lrow-harga"><span class="lrow-metric-lbl">Harga</span><span class="lrow-metric-val">${priceTxt}</span></td>
-    <td class="lrow-num lrow-omset"><span class="lrow-metric-lbl">Omset</span><span class="lrow-metric-val">${omset ? omsetTxt : '—'}</span>${omsetChip}</td>
+    <td class="lrow-num lrow-omset"${p._fresh ? ' title="butuh 2 pengukuran"' : ''}><span class="lrow-metric-lbl">Omset</span><span class="lrow-metric-val">${omset ? omsetTxt : '—'}</span>${p._fresh ? '<span class="lrow-chip-badge">Baru diukur hari ini</span>' : ''}${omsetChip}</td>
     ${listingTrendCellHtml(p)}
     ${listingTrendSparkCellHtml(p)}
     <td class="lrow-num lrow-sold"><span class="lrow-metric-lbl">${expor ? 'Terjual/bln' : 'Terjual'}</span><span class="lrow-metric-val">${soldTxt}</span></td>
@@ -20259,12 +20385,11 @@ async function openDeepDive(product, ddOpts = {}) {
   } else {
     try {
       if (kw) {
-        // listings_deduped: trgm-indexed, deduped, and carries listing_date
-        // (shop-age proxy) since migration 20260717120000.
+        const peerKw = await peerMarketKeyword(kw);
         const buildPeers = () => _supabase.from('listings_deduped')
           .select(listingCoreSelect())
           .gt('total_sold', 0)
-          .ilike('keyword', kw)
+          .ilike('keyword', peerKw)
           .eq('is_offtopic', false)
           .order('total_sold', { ascending: false })
           .limit(120);
@@ -22987,6 +23112,8 @@ function _aiPackType(t) {
     // when there is no usable snapshot pair — see weeklyStats().
     terjual_minggu: num(t.wk_units),
     listing_gerak_minggu: num(t.wk_items),
+    kind: t.kind || null,
+    parent: t.parent_keyword || null,
   };
 }
 
@@ -23024,7 +23151,7 @@ function _aiHistogram(rows, field, top = 8) {
 const AI_TOOLS = [
   {
     name: 'cari_pasar',
-    description: 'Cari PASAR (product type / keyword) di data LarisID dari teks bebas. Alat utama — hampir semua pertanyaan pasar mulai dari sini. Sudah termasuk ekspansi sinonim EN ke ID ("dresses" jadi "gaun"). Tiap baris membawa skor 0-100.',
+    description: 'Cari PASAR (product type / keyword) di data LarisID dari teks bebas. Alat utama — hampir semua pertanyaan pasar mulai dari sini. Balasan membawa tier: exact/strong = pasarnya ada; nearby/title = hanya mirip; brand + brand_missing = merek belum ada di data; none = tidak ada. Kalau tier nearby, title, atau brand_missing, kalimat pertama WAJIB mengatakan itu.',
     input_schema: {
       type: 'object',
       properties: {
@@ -23188,14 +23315,15 @@ async function _aiToolCariPasar({ query, kota, limit }) {
   const rows = (want <= 12 ? await aiPrefetchGet(query, kota) : null)
     || await searchProductTypes(String(query || ''), kota || '', want, { skipLog: true, meta });
   if (!rows?.length) {
-    // AI_AGENT_ALL routes most typed text through this tool, and it passes
-    // skipLog:true, so before this line an agent miss left no trace anywhere.
-    // That is why a user who searched an uncovered niche five times had zero
-    // rows in uncovered_searches. History logging stays off (the prefetch
-    // calls this too); only the miss is recorded.
-    void logUncoveredSearch(String(query || ''), { via: 'agent', match_quality: 'none' });
+    void logUncoveredSearch(String(query || ''), {
+      via: 'agent', match_quality: meta.tier || 'none', tier: meta.tier || 'none',
+      confidence: meta.confidence, corrected_query: meta.corrected_query || null,
+    });
     return {
       n: 0, pasar: [],
+      tier: meta.tier || 'none',
+      confidence: meta.confidence ?? null,
+      corrected_query: meta.corrected_query || '',
       hint: `LarisID belum punya data untuk "${String(query || '')}". Kamu boleh melebarkan ke `
         + 'kata kunci yang lebih umum atau pasar_kategori, TAPI kalau kamu melakukannya, WAJIB '
         + 'sebut di kalimat pertama: apa yang user minta, bahwa itu belum kami ukur, dan pasar '
@@ -23204,14 +23332,25 @@ async function _aiToolCariPasar({ query, kota, limit }) {
     };
   }
   registerTypes(rows);
-  // A loose or fuzzy hit is the case that produced the "jawabannya masih umum"
-  // report: rows come back, the model answers confidently, and nobody — user
-  // or us — is told the phrase itself was never in the corpus.
-  if (meta.quality === 'fuzzy' || meta.quality === 'loose') {
-    void logUncoveredSearch(String(query || ''), { via: 'agent', match_quality: meta.quality });
+  const soft = meta.tier === 'nearby' || meta.tier === 'title' || meta.brand_missing
+    || meta.quality === 'fuzzy' || meta.quality === 'loose';
+  if (soft) {
+    void logUncoveredSearch(String(query || ''), {
+      via: 'agent', match_quality: meta.tier || meta.quality || 'loose',
+      tier: meta.tier || null, confidence: meta.confidence,
+      corrected_query: meta.corrected_query || null,
+      top_keyword: rows[0]?.keyword || null,
+    });
   }
+  const softHint = (meta.tier === 'nearby' || meta.tier === 'title' || meta.brand_missing)
+    ? 'Kalimat pertama WAJIB bilang pasar persisnya belum terukur, atau mereknya belum ada di data, lalu sebut pasar yang dipakai.'
+    : undefined;
   return {
     n: rows.length,
+    tier: meta.tier || meta.quality || 'exact',
+    confidence: meta.confidence ?? null,
+    corrected_query: meta.corrected_query || '',
+    hint: softHint,
     pasar: rows.slice(0, 15).map(_aiPackType),
     __view: { kind: 'pasar', n: rows.length, rows: rows.slice(0, 8) },
   };
@@ -24354,6 +24493,7 @@ function ptypeCols() {
   let cols = PTYPE_COLS;
   if (_ptypeHasWeekly) cols += `,${PTYPE_WEEKLY_COLS}`;
   if (_ptypeHasPct) cols += `,${PTYPE_PCT_COLS}`;
+  if (_ptypeHasKind) cols += ',kind,parent_keyword';
   return cols;
 }
 
@@ -24367,7 +24507,31 @@ function ptypePctMissing(error) {
   return true;
 }
 
-/** True once, for the error that means "this DB predates the weekly matview". */
+let _ptypeHasKind = true;
+
+function ptypeKindMissing(error) {
+  if (!_ptypeHasKind || !error) return false;
+  const s = `${error.code || ''} ${error.message || ''}`;
+  if (!/42703/.test(s) || !/\bkind\b|parent_keyword/.test(s)) return false;
+  _ptypeHasKind = false;
+  return true;
+}
+
+async function peerMarketKeyword(kw) {
+  if (!kw || !_supabase) return kw;
+  try {
+    const { data, error } = await _supabase.from('market_index')
+      .select('keyword,kind,parent_keyword,n_listings')
+      .eq('keyword', kw)
+      .limit(1);
+    if (error) return kw;
+    const row = data && data[0];
+    if (!row || !row.parent_keyword) return kw;
+    const thin = (Number(row.n_listings) || 0) < 30;
+    if (row.kind === 'brand' || row.kind === 'shop' || thin) return row.parent_keyword;
+  } catch (_) { /* keep the product keyword */ }
+  return kw;
+}
 function ptypeWeeklyMissing(error) {
   if (!_ptypeHasWeekly || !error) return false;
   const s = `${error.code || ''} ${error.message || ''}`;
@@ -24402,9 +24566,12 @@ async function fetchProductTypes(cities, cats, limit = 1000, sub = null) {
     };
     let { data, error } = await build();
     // This is the query that settles _ptypeHasWeekly for every other caller.
-    if (ptypeWeeklyMissing(error)) ({ data, error } = await build());
+    if (ptypeWeeklyMissing(error) || ptypeKindMissing(error)) ({ data, error } = await build());
     if (error) throw error;
-    let rows = data || [];
+    let rows = (data || []).filter(r => {
+      const k = r.kind || 'product';
+      return k === 'product' || k === 'unknown';
+    });
     // Multi-city OR: collapse to one card per keyword (keep largest market).
     if (buckets.length > 1) {
       const best = new Map();
@@ -24460,7 +24627,7 @@ async function searchProductTypes(text, cities, limit = 12, opts) {
   const clauses = _splitSearchIntents(raw);
   if (clauses.length >= 2) {
     const per = Math.max(4, Math.ceil(limit / clauses.length) + 2);
-    const groups = await Promise.all(clauses.map(c => searchProductTypes(c, cities, per, { skipLog: true })));
+    const groups = await Promise.all(clauses.map(c => searchProductTypes(c, cities, per, { skipLog: true, meta: opts && opts.meta })));
     const seen = new Set();
     const out = [];
     for (const rows of groups) {
@@ -24472,6 +24639,19 @@ async function searchProductTypes(text, cities, limit = 12, opts) {
       }
     }
     return out;
+  }
+  if (!(opts && opts._legacy) && !useLegacyResolver()) {
+    const resolved = await searchProductTypesResolved(raw, limit);
+    if (resolved) {
+      _ptypeSetMeta(opts, resolved.quality);
+      if (opts && opts.meta) {
+        opts.meta.tier = resolved.tier;
+        opts.meta.confidence = resolved.confidence;
+        opts.meta.corrected_query = resolved.corrected_query;
+        opts.meta.brand_missing = resolved.brand_missing;
+      }
+      return resolved.rows;
+    }
   }
   let terms = [raw];
   let plan = null;
@@ -27510,6 +27690,13 @@ function adminBindUi() {
   _adminUiBound = true;
   const root = $('view-admin');
   if (!root) return;
+  $('adm-pasar-list')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-pasar-save]');
+    if (!btn) return;
+    const row = btn.closest('[data-pasar-kw]');
+    if (!row) return;
+    void adminSavePasar(row.getAttribute('data-pasar-kw'), row);
+  });
   $('adm-users-search')?.addEventListener('input', () => { _adminUserPage = 1; renderAdminUsers(); });
   $('adm-filter-tipe')?.addEventListener('change', () => { _adminUserPage = 1; renderAdminUsers(); });
   $('adm-filter-cat')?.addEventListener('change', () => { _adminUserPage = 1; renderAdminUsers(); });
@@ -27602,6 +27789,46 @@ function adminBindUi() {
   });
 }
 
+async function renderAdminPasar() {
+  const host = $('adm-pasar-list');
+  if (!host || !_supabase) return;
+  host.innerHTML = '<p class="dd-sub">Memuat…</p>';
+  const { data, error } = await _supabase.rpc('admin_market_review');
+  if (error) {
+    host.innerHTML = `<p class="dd-sub">${esc(error.message || 'Gagal memuat pasar')}</p>`;
+    return;
+  }
+  const rows = Array.isArray(data) ? data : [];
+  if (!rows.length) {
+    host.innerHTML = '<p class="dd-sub">Tidak ada pasar unknown atau merek/toko tanpa induk.</p>';
+    return;
+  }
+  const kinds = ['product', 'brand', 'shop', 'modifier', 'unknown'];
+  host.innerHTML = rows.map(r => `<div class="adm-pasar-row" data-pasar-kw="${esc(r.keyword)}" style="display:flex;gap:8px;align-items:center;margin:6px 0;flex-wrap:wrap">
+    <strong style="min-width:180px">${esc(r.keyword)}</strong>
+    <span class="dd-sub">${esc(r.kind || '')} · ${Number(r.n_listings) || 0} listing</span>
+    <select data-pasar-kind aria-label="Jenis ${esc(r.keyword)}">${kinds.map(k => `<option value="${k}"${k === r.kind ? ' selected' : ''}>${k}</option>`).join('')}</select>
+    <input data-pasar-parent type="text" value="${esc(r.parent_keyword || '')}" placeholder="induk" aria-label="Induk ${esc(r.keyword)}" style="min-width:160px">
+    <button type="button" data-pasar-save>Simpan</button>
+  </div>`).join('');
+}
+
+async function adminSavePasar(keyword, row) {
+  if (!_supabase || !keyword) return;
+  const kind = row.querySelector('[data-pasar-kind]')?.value || 'unknown';
+  const parent = row.querySelector('[data-pasar-parent]')?.value || '';
+  const { error } = await _supabase.rpc('admin_set_market_index', {
+    p_keyword: keyword,
+    p_kind: kind,
+    p_parent: parent,
+    p_brand: null,
+    p_aliases: null,
+    p_note: 'admin pasar',
+  });
+  if (error) showToast(error.message || 'Gagal menyimpan');
+  else showToast(`Pasar ${keyword} dikunci`);
+}
+
 async function loadAdminDirectory() {
   adminBindUi();
   if (!isPlatformAdmin() || !_supabase) {
@@ -27621,6 +27848,7 @@ async function loadAdminDirectory() {
     void renderAdminMap();
     admFillCatFilter(_adminUsers);
     renderAdminUsers();
+    void renderAdminPasar();
     renderAdminKpis(_adminUsers);
     void renderAdminCategories(_adminUsers);
     void adminEnsureCohortOptions();
