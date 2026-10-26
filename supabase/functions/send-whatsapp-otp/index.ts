@@ -15,6 +15,11 @@ function normalisePhone(raw: string): string | null {
   return null
 }
 
+/** OTP.ID wants digits only, e.g. 62812… */
+function toOtpIdDestination(e164: string): string {
+  return e164.replace(/^\+/, '')
+}
+
 function hexEncode(bytes: Uint8Array): string {
   return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
 }
@@ -30,15 +35,16 @@ function randomHex(bytes: number): string {
   return hexEncode(arr)
 }
 
-// Flip with the WA_OTP_ENABLED const in js/gpt-app.js when re-enabling.
-const WA_OTP_ENABLED = false
+// Phone OTP via OTP.ID SMS (instant; no Sender ID paperwork).
+// Slug stays send-whatsapp-otp so Kong limits / client URLs need no cutover.
+const SMS_OTP_ENABLED = true
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
-  if (!WA_OTP_ENABLED) {
+  if (!SMS_OTP_ENABLED) {
     return new Response(
-      JSON.stringify({ error: 'Login WhatsApp sementara tidak tersedia. Gunakan Google atau Email.' }),
+      JSON.stringify({ error: 'Login SMS sementara tidak tersedia. Gunakan Google atau Email.' }),
       { status: 503, headers: { ...CORS, 'Content-Type': 'application/json' } },
     )
   }
@@ -68,10 +74,8 @@ serve(async (req) => {
       )
     }
 
-    // Cleanup stale rows opportunistically
     await supabase.rpc('cleanup_whatsapp_otps')
 
-    // Generate 6-digit OTP
     const digits = new Uint32Array(1)
     crypto.getRandomValues(digits)
     const otp = String(digits[0] % 1000000).padStart(6, '0')
@@ -86,50 +90,62 @@ serve(async (req) => {
 
     if (insertErr) throw insertErr
 
-    // Send via Fonnte (target uses 628xx without the + prefix)
-    const fonnteToken = Deno.env.get('FONNTE_API_TOKEN')
-    if (!fonnteToken) {
+    const apiKey = Deno.env.get('OTP_ID_API_KEY')
+    if (!apiKey) {
       return new Response(
         JSON.stringify({ error: 'Layanan OTP belum dikonfigurasi. Hubungi admin.' }),
         { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } }
       )
     }
-    const message = `Kode OTP LarisID kamu: *${otp}*\n\nBerlaku 10 menit. Jangan bagikan ke siapapun.`
 
-    const fonnteRes = await fetch('https://api.fonnte.com/send', {
+    // We generate + hash the code ourselves; OTP.ID only delivers SMS.
+    const otpIdRes = await fetch('https://api.otp.id/v3/send', {
       method: 'POST',
       headers: {
-        'Authorization': fonnteToken,
+        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        target: phone.replace('+', ''),
-        message,
+        channel: 'sms',
+        destination: toOtpIdDestination(phone),
+        otp,
+        brand: Deno.env.get('OTP_ID_BRAND') || 'LarisID',
+        ttl: 600,
       }),
     })
 
-    const fonnteText = await fonnteRes.text()
-    let fonnteJson: { status?: boolean; Status?: boolean; reason?: string } = {}
-    try { fonnteJson = JSON.parse(fonnteText) } catch { /* non-JSON provider body */ }
-    const fonnteStatus = fonnteJson.status ?? fonnteJson.Status
-    // Fonnte returns HTTP 200 + {status:false} when the WhatsApp device is
-    // disconnected. Treating that as success showed the OTP screen with no code.
-    if (!fonnteRes.ok || fonnteStatus !== true) {
-      console.error('Fonnte error:', fonnteRes.status, fonnteText)
-      // Do not count failed provider deliveries toward rate limits.
+    const otpIdText = await otpIdRes.text()
+    let otpIdJson: {
+      success?: boolean
+      data?: { status?: string; failure?: { code?: string; message?: string } }
+      error?: { code?: string; message?: string }
+    } = {}
+    try { otpIdJson = JSON.parse(otpIdText) } catch { /* non-JSON */ }
+
+    const delivered = otpIdJson.success === true
+      && (otpIdJson.data?.status === 'sent' || otpIdJson.data?.status === 'success')
+
+    if (!otpIdRes.ok || !delivered) {
+      console.error('OTP.ID SMS error:', otpIdRes.status, otpIdText)
       await supabase
         .from('whatsapp_otps')
         .delete()
         .eq('phone', phone)
         .eq('otp_hash', otpHash)
         .eq('used', false)
-      const reason = String(fonnteJson.reason || '').toLowerCase()
-      const msg = reason.includes('disconnect')
-        ? 'WhatsApp lagi gangguan. Pakai Google atau email dulu, atau coba lagi nanti.'
-        : 'Gagal mengirim OTP ke WhatsApp. Periksa nomor kamu.'
+
+      const code = String(otpIdJson.error?.code || otpIdJson.data?.failure?.code || '')
+      let msg = otpIdJson.data?.failure?.message
+        || otpIdJson.error?.message
+        || 'Gagal mengirim OTP via SMS. Periksa nomor kamu.'
+      if (otpIdRes.status === 402 || code === 'INSUFFICIENT_BALANCE') {
+        msg = 'SMS lagi gangguan. Pakai Google atau email dulu, atau coba lagi nanti.'
+      } else if (code === 'DESTINATION_RATE_LIMITED' || otpIdRes.status === 429) {
+        msg = 'Terlalu banyak permintaan OTP. Coba lagi sebentar.'
+      }
       return new Response(
         JSON.stringify({ error: msg }),
-        { status: 502, headers: { ...CORS, 'Content-Type': 'application/json' } }
+        { status: otpIdRes.status === 429 ? 429 : 502, headers: { ...CORS, 'Content-Type': 'application/json' } }
       )
     }
 

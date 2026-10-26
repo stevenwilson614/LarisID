@@ -96,15 +96,16 @@ async function sha256Hex(data: string): Promise<string> {
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
-// Flip with the WA_OTP_ENABLED const in js/gpt-app.js when re-enabling.
-const WA_OTP_ENABLED = false
+// Phone OTP via Zenziva SMS. Flip with SMS_OTP_ENABLED in js/gpt-app.js.
+// Slug stays verify-whatsapp-otp so Kong limits / client URLs need no cutover.
+const SMS_OTP_ENABLED = true
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
-  if (!WA_OTP_ENABLED) {
+  if (!SMS_OTP_ENABLED) {
     return new Response(
-      JSON.stringify({ error: 'Login WhatsApp sementara tidak tersedia. Gunakan Google atau Email.' }),
+      JSON.stringify({ error: 'Login SMS sementara tidak tersedia. Gunakan Google atau Email.' }),
       { status: 503, headers: { ...CORS, 'Content-Type': 'application/json' } },
     )
   }
@@ -166,7 +167,7 @@ serve(async (req) => {
     if (expectedHash !== row.otp_hash) {
       await supabase.from('whatsapp_otps').update({ attempts: (Number(row.attempts) || 0) + 1 }).eq('id', row.id)
       return new Response(
-        JSON.stringify({ error: 'Kode OTP salah. Periksa pesan WhatsApp kamu.' }),
+        JSON.stringify({ error: 'Kode OTP salah. Periksa SMS kamu.' }),
         { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } }
       )
     }
@@ -187,7 +188,7 @@ serve(async (req) => {
       phone: phone,
       phone_confirm: true,
       user_metadata: {
-        provider: 'whatsapp',
+        provider: 'sms',
         phone_number: phone,
       },
     })

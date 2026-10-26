@@ -6119,17 +6119,17 @@ function closeAuthModal(force) {
     if (btn) btn.hidden = false;
   }
 }
-// Flip to true to bring WhatsApp OTP login/signup back (UI + client calls).
-// Edge functions send-/verify-whatsapp-otp also gate on WA_OTP_ENABLED.
-const WA_OTP_ENABLED = false;
+// Phone OTP via Zenziva SMS (UI + client). Edge send-/verify-whatsapp-otp
+// keep that slug for Kong/client URLs but gate on SMS_OTP_ENABLED.
+const SMS_OTP_ENABLED = true;
 
-// When WA OTP is on: WhatsApp is forward; Google + Email are collapsed alt rows.
+// When SMS OTP is on: phone is forward; Google + Email are collapsed alt rows.
 // When off: Google + Email only. Email expands in-place; Google fires OAuth.
 // Reset is always email-only.
 let _authEmailOpen = false;
 function _applyAuthEmailCollapse() {
   const reset = _authMode === 'reset';
-  const waOn = WA_OTP_ENABLED && !reset;
+  const waOn = SMS_OTP_ENABLED && !reset;
   const block = $('auth-email-block');
   const toggle = $('auth-email-toggle');
   const sepWa = $('auth-sep-wa');
@@ -6171,7 +6171,7 @@ function renderAuthModal() {
     if (signup && !mascot.src && mascot.dataset.src) mascot.src = mascot.dataset.src;
   }
   const waHeroTitle = $('auth-wa-hero-title');
-  if (waHeroTitle) waHeroTitle.textContent = signup ? 'Daftar dengan WhatsApp' : 'Masuk dengan WhatsApp';
+  if (waHeroTitle) waHeroTitle.textContent = signup ? 'Daftar dengan SMS' : 'Masuk dengan SMS';
   const googleLabel = $('auth-google-label');
   if (googleLabel) googleLabel.textContent = signup ? 'Daftar dengan Google' : 'Masuk dengan Google';
   const emailLabel = $('auth-email-toggle-label');
@@ -6189,8 +6189,8 @@ function renderAuthModal() {
     sub.textContent = reset
       ? 'Masukkan email kamu. Kami kirim link untuk mengatur password baru.'
       : map[_gateSource] || (signup
-        ? (WA_OTP_ENABLED
-          ? 'Gratis. Selamanya. Paling gampang daftar pakai WhatsApp.'
+        ? (SMS_OTP_ENABLED
+          ? 'Gratis. Selamanya. Paling gampang daftar pakai nomor HP (SMS OTP).'
           : 'Gratis. Selamanya. Daftar dengan Google atau Email.')
         : 'Masuk untuk lanjut riset produk');
   }
@@ -6343,7 +6343,7 @@ async function signInWithProvider(provider) {
   }
 }
 
-// ── WhatsApp OTP (same send/verify functions as laris-app.js) ────────────
+// ── SMS OTP (send-/verify-whatsapp-otp edge functions; Zenziva delivery) ─
 let _waPhone = '';
 let _waResendTimer = null;
 
@@ -6387,12 +6387,12 @@ async function sendWhatsappOtp(isResend) {
   const btn = $('wa-send-btn');
   const rawPhone = (phoneEl?.value || '').trim() || _waPhone;
   const showErr = (el, msg) => { if (!el) return; el.textContent = msg; el.style.display = 'block'; };
-  if (!WA_OTP_ENABLED) {
-    showErr(isResend && otpErr ? otpErr : errEl, 'Login WhatsApp sementara tidak tersedia. Gunakan Google atau Email.');
+  if (!SMS_OTP_ENABLED) {
+    showErr(isResend && otpErr ? otpErr : errEl, 'Login SMS sementara tidak tersedia. Gunakan Google atau Email.');
     return;
   }
   if (!rawPhone) {
-    showErr(errEl, 'Masukkan nomor WhatsApp kamu.');
+    showErr(errEl, 'Masukkan nomor HP kamu.');
     return;
   }
   if (errEl) errEl.style.display = 'none';
@@ -6415,15 +6415,15 @@ async function sendWhatsappOtp(isResend) {
     if (phoneStep) phoneStep.style.display = 'none';
     if (otpStep) otpStep.style.display = '';
     const hint = $('wa-otp-hint');
-    if (hint) hint.textContent = 'Kode OTP sudah dikirim ke WhatsApp ' + _waPhone + '. Masukkan 6 digit di bawah.';
+    if (hint) hint.textContent = 'Kode OTP sudah dikirim via SMS ke ' + _waPhone + '. Masukkan 6 digit di bawah.';
     if (otpErr) { otpErr.textContent = ''; otpErr.style.display = 'none'; }
     setTimeout(() => $('wa-otp-input')?.focus(), 80);
     _waStartResendCooldown();
-    void logUserEvent('auth_wa_otp_sent', { ui: 'gpt', resend: !!isResend, source: _gateSource || '(none)' });
+    void logUserEvent('auth_sms_otp_sent', { ui: 'gpt', resend: !!isResend, source: _gateSource || '(none)' });
   } catch (_) {
     showErr(isResend && otpErr ? otpErr : errEl, 'Gagal terhubung ke server. Coba lagi.');
   } finally {
-    if (btn) { btn.textContent = 'Kirim kode WhatsApp'; btn.disabled = false; }
+    if (btn) { btn.textContent = 'Kirim kode SMS'; btn.disabled = false; }
   }
 }
 
@@ -6451,8 +6451,8 @@ async function verifyWhatsappOtp() {
   const errEl = $('wa-otp-error');
   const btn = $('wa-verify-btn');
   const showErr = (msg) => { if (!errEl) return; errEl.textContent = msg; errEl.style.display = 'block'; };
-  if (!WA_OTP_ENABLED) {
-    showErr('Login WhatsApp sementara tidak tersedia. Gunakan Google atau Email.');
+  if (!SMS_OTP_ENABLED) {
+    showErr('Login SMS sementara tidak tersedia. Gunakan Google atau Email.');
     return;
   }
   const otp = (otpEl?.value || '').replace(/\s/g, '');
@@ -6461,7 +6461,7 @@ async function verifyWhatsappOtp() {
     return;
   }
   if (!_waPhone) {
-    showErr('Nomor WhatsApp hilang. Kirim ulang kode dulu.');
+    showErr('Nomor HP hilang. Kirim ulang kode dulu.');
     return;
   }
   if (errEl) errEl.style.display = 'none';
