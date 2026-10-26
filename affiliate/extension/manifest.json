@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "minimum_chrome_version": "114",
   "name": "Laris Affiliate",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "description": "Overlay + pill Target Collab lewat sesi Affiliate Center. Unofficial. Cookie tidak dikirim ke LarisID.",
   "icons": {
     "16": "icons/icon16.png",
@@ -39,7 +39,9 @@
         "https://seller-id.tokopedia.com/*",
         "https://affiliate-id.tokopedia.com/*",
         "https://*.tiktokshop.com/*",
-        "https://seller.tiktokglobalshop.com/*"
+        "https://seller.tiktokglobalshop.com/*",
+        "https://www.kalodata.com/*",
+        "https://kalodata.com/*"
       ]
     }
   ],
@@ -86,6 +88,16 @@
         "https://kalodata.com/*"
       ],
       "js": ["content/kalodata.js"],
+      "run_at": "document_idle",
+      "all_frames": false,
+      "world": "ISOLATED"
+    },
+    {
+      "matches": [
+        "https://www.kalodata.com/*",
+        "https://kalodata.com/*"
+      ],
+      "js": ["content/pill.js"],
       "run_at": "document_idle",
       "all_frames": false,
       "world": "ISOLATED"

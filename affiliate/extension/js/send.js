@@ -207,6 +207,10 @@
     return runtimeSend({ type: 'laris-open-kalodata' });
   }
 
+  async function returnAffiliate() {
+    return runtimeSend({ type: 'laris-return-affiliate' });
+  }
+
   async function findPages(limit, step) {
     return runtimeSend({ type: 'laris-find-pages', limit: limit, step: step || {} });
   }
@@ -278,6 +282,7 @@
     kaloPages: kaloPages,
     kaloStop: kaloStop,
     openKalodata: openKalodata,
+    returnAffiliate: returnAffiliate,
     findPages: findPages,
     findStop: findStop,
     workers: {

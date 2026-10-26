@@ -8,7 +8,8 @@
   var SURFACE = (SURFACE_OVERLAY ? 'overlay-' : 'panel-') + Math.random().toString(36).slice(2);
   var JAKARTA = 'Asia/Jakarta';
   var $ = function (id) { return document.getElementById(id); };
-  var VERSION = (chrome.runtime.getManifest && chrome.runtime.getManifest().version) || '0.5.4';
+  var VERSION = (chrome.runtime.getManifest && chrome.runtime.getManifest().version) || '0.5.5';
+  var RESUME_KEY = 'laris-panel-resume';
   if (SURFACE_OVERLAY) {
     document.documentElement.classList.add('surface-overlay');
     document.body.classList.add('surface-overlay');
@@ -769,6 +770,7 @@
           '<button type="button" class="btn-sm" data-act="open-kalodata">Buka Kalodata</button>' +
           '<button type="button" class="btn-sm" data-act="kalo-read"' + (db.account.allowKalodataRead ? '' : ' disabled') + '>Ambil halaman ini</button>' +
         '</div>' +
+        '<p class="muted">Buka Kalodata menyimpan tab Seller Center, membuka pill Laris di sana, dan setelah Ambil otomatis kembali.</p>' +
         '<div class="setting-row"><div><strong>Baca halaman ini</strong><span class="meta">Opt-in. ToS Kalodata 4.1.7 / 4.1.8, risiko ke akun kamu.</span></div>' +
           '<label class="toggle"><input type="checkbox" data-act="arm-kalo" aria-label="Baca halaman ini"' + (db.account.allowKalodataRead ? ' checked' : '') + '></label></div>' +
         '<div class="setting-row"><div><strong>Baca semua halaman</strong><span class="meta">Klik Berikutnya di tabel yang terbuka. Opt-in terpisah, risiko yang sama.</span></div>' +
@@ -1366,12 +1368,82 @@
       selectHandles(rows);
       ui.pullNote = rows.length + ' kreator, ' + (res.pages || 0) + ' halaman' +
         (res.stopped === 'abort' ? ' (dihentikan).' : res.stopped === 'end' ? ' (halaman habis).' : '.');
-      render();
+      afterKalodataImport(rows);
     }).catch(function () {
       ui.finding = false;
       toast('Kalodata tidak terbaca.', 'bad');
       render();
     });
+  }
+
+  function afterKalodataImport(rows) {
+    if (!chrome.storage) {
+      render();
+      return;
+    }
+    chrome.storage.local.get(RESUME_KEY, function (res) {
+      var resume = res[RESUME_KEY] || {};
+      if (!resume.returnAfterImport || Date.now() - (resume.at || 0) > 45 * 60 * 1000) {
+        render();
+        return;
+      }
+      chrome.storage.local.set({
+        [RESUME_KEY]: {
+          openWizard: true,
+          step: 1,
+          kreatorTab: 'find',
+          selectImported: true,
+          handles: (rows || []).map(function (r) { return r.handle; }).filter(Boolean),
+          at: Date.now()
+        }
+      }, function () {
+        toast('Import selesai · kembali ke Seller Center…', 'ok', 4000);
+        Send.returnAffiliate().then(function (r) {
+          if (!r || !r.ok) {
+            toast((r && r.reason) || 'Gagal kembali ke Seller Center. Buka tab Affiliate manual.', 'warn', 5000);
+            render();
+            return;
+          }
+          if (SURFACE_OVERLAY) {
+            try { window.parent.postMessage({ source: 'laris-affiliate-panel', close: true }, '*'); } catch (e) { /* ignore */ }
+          }
+        });
+      });
+    });
+  }
+
+  function applyPanelResume(resume) {
+    if (!resume || !resume.openWizard) return false;
+    if (Date.now() - (resume.at || 0) > 45 * 60 * 1000) {
+      chrome.storage.local.remove(RESUME_KEY);
+      return false;
+    }
+    startWizard();
+    if (!ui.wizard) return false;
+    if (resume.step != null) ui.wizard.step = resume.step;
+    ui.wizard.kreatorTab = resume.kreatorTab === 'kalo' ? 'kalo' : 'find';
+    if (resume.selectImported && resume.handles && resume.handles.length) {
+      var want = {};
+      resume.handles.forEach(function (h) { want[Send.normHandle(h)] = true; });
+      ui.wizard.ids = {};
+      db.creators.forEach(function (c) {
+        if (want[c.handle]) ui.wizard.ids[c.id] = true;
+      });
+    }
+    if (resume.returnAfterImport) {
+      chrome.storage.local.set({
+        [RESUME_KEY]: {
+          openWizard: false,
+          step: 1,
+          kreatorTab: 'kalo',
+          returnAfterImport: true,
+          at: resume.at
+        }
+      });
+    } else {
+      chrome.storage.local.remove(RESUME_KEY);
+    }
+    return true;
   }
 
   var kaloPulling = false;
@@ -1398,8 +1470,9 @@
       }).filter(function (r) { return r.handle; });
       if (rows.length) {
         kaloPulling = false;
-        ui.tab = 'kreator';
         mergeRows(rows, 'kalodata-page');
+        selectHandles(rows);
+        afterKalodataImport(rows);
         return;
       }
       if (left > 0) {
@@ -1702,7 +1775,16 @@
       var note = $('pull-note');
       if (note) note.textContent = ui.pullNote;
     } else if (act === 'open-kalodata') {
-      Send.openKalodata().then(function () { toast('Tab Kalodata'); });
+      Send.openKalodata().then(function (r) {
+        if (!r || !r.ok) {
+          toast((r && r.reason) || 'Gagal buka Kalodata', 'bad');
+          return;
+        }
+        toast('Kalodata · pakai pill Laris di sana, Ambil, lalu kembali otomatis', 'ok', 4500);
+        if (SURFACE_OVERLAY) {
+          try { window.parent.postMessage({ source: 'laris-affiliate-panel', close: true }, '*'); } catch (e) { /* ignore */ }
+        }
+      });
     } else if (act === 'wiz-take') {
       var take = id === 'quota' ? leftDaily() : +id;
       applyTakeN(Math.max(0, take));
@@ -1870,10 +1952,12 @@
     form.reset();
   });
 
-  function boot(saved, keepRunning) {
+  function boot(saved, keepRunning, resume) {
     db = hydrate(saved, { keepRunning: !!keepRunning });
     if (!keepRunning) persist();
-    render();
+    var resumed = applyPanelResume(resume || null);
+    if (!resumed) render();
+    else render();
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
       refreshConn();
       setInterval(refreshConn, 2500);
@@ -1902,17 +1986,20 @@
           if (changes[KEY] && changes[KEY].newValue && !runner.busy && !runner.id) {
             db = hydrate(changes[KEY].newValue, { keepRunning: true });
           }
+          if (changes[RESUME_KEY] && changes[RESUME_KEY].newValue && changes[RESUME_KEY].newValue.openWizard && !ui.wizard) {
+            if (applyPanelResume(changes[RESUME_KEY].newValue)) render();
+          }
         });
       }
     }
   }
   if (typeof chrome !== 'undefined' && chrome.storage) {
-    chrome.storage.local.get([KEY, LOCK], function (res) {
+    chrome.storage.local.get([KEY, LOCK, RESUME_KEY], function (res) {
       var lock = res[LOCK];
       var other = lock && lock.owner !== SURFACE && (Date.now() - (lock.at || 0) < 8000);
-      boot(res[KEY], other);
+      boot(res[KEY], other, res[RESUME_KEY]);
     });
   } else {
-    boot(null, false);
+    boot(null, false, null);
   }
 })();
