@@ -10447,7 +10447,7 @@ function listingIsAdMissing(error) {
  */
 const PDETAIL_COLS = 'item_id,shop_id,detail_scraped_at,brand,condition,preorder_days,'
   + 'tier_variations_json,models_json,rating_breakdown_json,liked_count,comment_count,'
-  + 'shop_location,sample_reviews_json';
+  + 'shop_location,ships_from,is_free_shipping,attributes_json,sample_reviews_json';
 let _pdetailAvail = true;
 async function fetchProductDetail(product) {
   const id = product?.item_id;
@@ -12136,6 +12136,107 @@ function ddBrandChipHtml(detail) {
 }
 function pdPctId(n) {
   return `${(Number(n) || 0).toFixed(1).replace('.', ',')}%`;
+}
+function pdNormLoc(s) {
+  return String(s || '').trim().toLowerCase().replace(/\s+/g, ' ')
+    .replace(/\bkota\b/g, '').replace(/\bkab\.?\b/g, '').replace(/\./g, '').trim();
+}
+function pdAttrList(detail) {
+  const rows = detail?.attributes_json;
+  if (!Array.isArray(rows)) return [];
+  return rows.map((a) => ({
+    name: String(a?.name || '').trim(),
+    value: String(a?.value ?? '').trim(),
+  })).filter((a) => a.name && a.value && a.value !== '-' && !/^n\/?a$/i.test(a.value));
+}
+function pdAttrVal(detail, names) {
+  const want = names.map((n) => String(n).toLowerCase());
+  for (const a of pdAttrList(detail)) {
+    if (want.includes(a.name.toLowerCase())) return a.value;
+  }
+  return '';
+}
+/** Specs that make one listing unique vs peers — material, origin, warranty, etc. */
+function pdUniqueSpecs(detail) {
+  const SKIP = new Set([
+    'ships from', 'dikirim dari', 'pengiriman dari', 'ship from',
+    'brand', 'merek', 'merk', 'stock', 'stok',
+    'gratis ongkir', 'cod', 'dipenuhi shopee', 'kirim besok', 'gratis retur',
+  ]);
+  const PRIORITY = [
+    /^material$/i, /^bahan$/i, /^strap material$/i, /^bahan tali$/i,
+    /^product origin$/i, /^asal produk$/i, /^origin$/i,
+    /^warranty/i, /^garansi/i,
+    /^ukuran$/i, /^size$/i, /^kapasitas$/i, /^capacity$/i,
+    /^warna$/i, /^color$/i, /^tipe$/i, /^type$/i, /^model$/i,
+  ];
+  const all = pdAttrList(detail).filter((a) => !SKIP.has(a.name.toLowerCase()));
+  const scored = all.map((a, i) => {
+    const pri = PRIORITY.findIndex((re) => re.test(a.name));
+    return { a, score: pri >= 0 ? pri : 100 + i };
+  }).sort((x, y) => x.score - y.score);
+  return scored.map((x) => x.a).slice(0, 12);
+}
+
+function ddSpecCardHtml(product, detail) {
+  if (product?._ptype) return '';
+  const head = `<div class="ddr-sec-head"><h3>Spesifikasi Unik</h3>${detail
+    ? '<span class="omset-chip omset-chip--terukur" title="Diambil langsung dari halaman produk Shopee.">terukur</span>'
+    : ''}</div>`;
+  if (!detail) {
+    return `<div class="ddr-card" data-dd-sec="spec">${head}
+      <p class="dd-sub">Spesifikasi (bahan, dikirim dari, dll.) baru ada setelah kami buka halaman produknya.</p>
+    </div>`;
+  }
+  const toko = String(detail.shop_location || product?.location || '').trim();
+  const ships = String(detail.ships_from
+    || pdAttrVal(detail, ['Ships From', 'Dikirim Dari', 'Pengiriman Dari', 'Ship From'])
+    || '').trim();
+  const sameShip = ships && toko && pdNormLoc(ships) === pdNormLoc(toko);
+  const freeShip = detail.is_free_shipping === true
+    || /^ya$/i.test(pdAttrVal(detail, ['Gratis Ongkir']));
+  const cod = /^ya$/i.test(pdAttrVal(detail, ['COD']));
+  const pre = Number(detail.preorder_days);
+  const cond = detail.condition === 'new' ? 'Baru'
+    : detail.condition === 'used' ? 'Bekas' : '';
+  const specs = pdUniqueSpecs(detail);
+  const locRows = [];
+  if (toko) locRows.push(['Lokasi toko', toko, '']);
+  if (ships && !sameShip) {
+    locRows.push(['Dikirim dari', ships, 'beda dari toko']);
+  } else if (ships && sameShip) {
+    locRows.push(['Dikirim dari', ships, 'sama dengan toko']);
+  }
+  const chipBits = [];
+  if (freeShip) chipBits.push('Gratis ongkir');
+  if (cod) chipBits.push('COD');
+  if (Number.isFinite(pre) && pre > 0) chipBits.push(`Pre-order ${pre} hari`);
+  if (cond) chipBits.push(cond);
+  const chips = chipBits.length
+    ? `<div class="ddr-spec-chips">${chipBits.map((c) =>
+      `<span class="ddr-spec-chip">${esc(c)}</span>`).join('')}</div>`
+    : '';
+  const rows = [
+    ...locRows.map(([k, v, note]) => {
+      const noteHtml = note
+        ? ` <i class="ddr-spec-note${note.startsWith('beda') ? ' is-diff' : ''}">${esc(note)}</i>`
+        : '';
+      return `<li><span>${esc(k)}</span><b>${esc(v)}${noteHtml}</b></li>`;
+    }),
+    ...specs.map((a) => `<li><span>${esc(a.name)}</span><b>${esc(a.value)}</b></li>`),
+  ].join('');
+  if (!rows && !chips) {
+    return `<div class="ddr-card" data-dd-sec="spec">${head}
+      <p class="dd-sub">Seller belum mengisi spesifikasi di halaman produk, atau field unik belum terdata.</p>
+      ${ddDetailStaleNote(detail)}
+    </div>`;
+  }
+  return `<div class="ddr-card" data-dd-sec="spec">${head}
+    ${chips}
+    ${rows ? `<ul class="ddr-spec-list">${rows}</ul>` : ''}
+    <p class="dd-sub">Lokasi toko vs gudang pengiriman, bahan, dan atribut lain dari halaman produk — supaya listing ini beda dari kompetitor yang mirip.</p>
+    ${ddDetailStaleNote(detail)}
+  </div>`;
 }
 
 function ddVarianCardHtml(product, detail) {
@@ -20664,6 +20765,9 @@ async function openDeepDive(product, ddOpts = {}) {
     ${product._ptype ? '' : `<div class="ddr-hscroll ddr-hscroll--graphs2">
       ${ddVarianCardHtml(product, detail)}
       ${ddUlasanCardHtml(product, detail, peers, niche)}
+    </div>
+    <div class="ddr-hscroll ddr-hscroll--graphs2">
+      ${ddSpecCardHtml(product, detail)}
     </div>`}
     <h2 class="ddr-konteks-head">Konteks pasar: ${esc(kw || 'keyword ini')}</h2>
     <div class="ddr-hscroll ddr-hscroll--graphs2">
@@ -26295,6 +26399,7 @@ function applyDirectoryPool(pool, { q, cats, sub }) {
     state.dirChipKw = '';
     state.dirZoneKeys = null;
     state.dirPage = 1;
+    if (pool.matchLevel === 'brand') state.dirSort = 'sesuai';
   }
   state.dirTypes = pool.keywords;
   state.dirNearby = pool.matchLevel === 'nearby' || !!pool.nearby;

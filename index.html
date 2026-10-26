@@ -7479,9 +7479,30 @@ body.home-finder-done .home-hero {
 }
 .ddr-sample-body { margin: 0; font-size: .84rem; line-height: 1.45; color: var(--ink-soft); overflow-wrap: anywhere; }
 .ddr-sample-body .dd-muted { color: var(--muted); font-style: italic; }
+.ddr-spec-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.ddr-spec-chip {
+  display: inline-block; padding: 2px 8px; border-radius: 5px;
+  border: 1px solid var(--line); background: #fff;
+  font-size: .72rem; font-weight: 650; color: var(--ink-soft);
+}
+.ddr-spec-list { list-style: none; margin: 0 0 10px; padding: 0; }
+.ddr-spec-list li {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 6px 0; border-bottom: 1px solid var(--line); font-size: .78rem;
+}
+.ddr-spec-list li:last-child { border-bottom: 0; }
+.ddr-spec-list li span { flex: 0 0 38%; max-width: 160px; color: var(--muted); }
+.ddr-spec-list li b { flex: 1; font-weight: 650; color: var(--ink); overflow-wrap: anywhere; }
+.ddr-spec-note {
+  display: inline-block; margin-left: 6px; padding: 1px 6px;
+  font-style: normal; font-size: .64rem; font-weight: 650;
+  color: var(--muted); background: var(--bg-user, #f6f7f9); border-radius: 4px;
+}
+.ddr-spec-note.is-diff { color: var(--accent); background: var(--red-bg); }
 /* Stacked honesty lines in these cards read as one wall without a gap. */
 [data-dd-sec="varian"] .dd-sub + .dd-sub,
-[data-dd-sec="ulasan"] .dd-sub + .dd-sub { margin-top: 8px; }
+[data-dd-sec="ulasan"] .dd-sub + .dd-sub,
+[data-dd-sec="spec"] .dd-sub + .dd-sub { margin-top: 8px; }
 [data-dd-sec="ulasan"] .review-wall { margin-bottom: 4px; }
 .ddr-tool-pills {
   display: flex; flex-wrap: nowrap; gap: 8px;
@@ -12923,7 +12944,7 @@ body.view-chat .sfb-card {
 <script src="/js/gpt-belajar.js?v=20261017f" defer></script>
 <script src="/js/gpt-alat-preview.js?v=20261019door2" defer></script>
 <script src="/js/omset-week-shape.js?v=20261021shape1" defer></script>
-<script src="/js/gpt-app.js?v=20261026slant" defer></script>
+<script src="/js/gpt-app.js?v=20261026spec" defer></script>
 <style>
 .hl-hero-ctas-alat { display: none; }
 html.alat-preview #finder-xp-step { display: none; }
