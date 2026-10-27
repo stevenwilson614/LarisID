@@ -5,13 +5,13 @@ branch to `main` unless graduating, do not copy `school/` into
 `scripts/assemble-site.sh` (school deploys on its own path)._
 
 **Live (Contabo / larisid.com):**
-[https://larisid.com/s/obrolan.marketing?invite=ANTON-SEP26](https://larisid.com/s/obrolan.marketing?invite=ANTON-SEP26)
-· also [https://larisid.com/obrolan.marketing/](https://larisid.com/obrolan.marketing/) (same new LMS; replaces the old static tree)
+[https://larisid.com/obrolan.marketing/?invite=ANTON-SEP26](https://larisid.com/obrolan.marketing/?invite=ANTON-SEP26)
+· vanity [https://larisid.com/s/obrolan.marketing](https://larisid.com/s/obrolan.marketing)
 
-Static SPA under `/school/` + vanity `/s/{slug}` (+ legacy `/obrolan.marketing/`).
-Node API (`anton-school:8787`) behind Caddy `/api/*` — disk state, Mayar,
-WhatsApp (Fonnte). Not LarisID Postgres. Not Cloudflare Pages
-(`mastermind-anton.pages.dev` is retired).
+UI source of truth: [`obrolan.marketing/`](../../obrolan.marketing/) (Dashboard, editable Pipa
+stages, daftar filters, CRM). Node API (`anton-school:8787`) behind Caddy
+`/api/*` and `/obrolan.marketing/api/*` — disk state, Mayar, WhatsApp (Fonnte).
+Not LarisID Postgres. Cloudflare Pages `mastermind-anton` is retired.
 
 Redeploy:
 
