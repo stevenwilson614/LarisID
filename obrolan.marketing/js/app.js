@@ -3588,16 +3588,14 @@
   function mentorTabs() {
     const t = [
       { id: 'dash', label: 'Dashboard' },
-      { id: 'siswa', label: 'Siswa' },
-      { id: 'tugas', label: waUnreadTotal() ? ('Tugas · ' + waUnreadTotal()) : 'Tugas' },
-      { id: 'otomasi', label: 'Otomasi' },
+      { id: 'siswa', label: 'Students' },
       { id: 'kurikulum', label: 'Kurikulum' },
+      { id: 'otomasi', label: 'Otomasi' },
       { id: 'pustaka', label: 'Perpustakaan' },
       { id: 'jadwal', label: 'Jadwal' },
       { id: 'diskusi', label: 'Diskusi' }
     ];
     if (canBill()) t.push({ id: 'harga', label: 'Pengaturan bayar' });
-    if (ui.admin) t.push({ id: 'admin', label: 'Admin' });
     return t;
   }
 
