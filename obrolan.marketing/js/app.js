@@ -1,13 +1,15 @@
 /* MasterMind with Anton GC. Hosted at larisid.com/obrolan.marketing/. */
 (function () {
   const SEED = window.ANTON_SEED;
-  const KEY = 'anton-school-v3';
   const FIRST_LEC = 'v1';
   const TOOL_SANDBOX = 'allow-scripts allow-forms allow-same-origin allow-modals allow-popups';
   const PRESENT_QS = new URLSearchParams(location.search);
   const PRESENT = PRESENT_QS.get('present') === '1';
   const PRESENT_PANE = PRESENT_QS.get('pane') === 'mentor' ? 'mentor' : 'student';
-  const BUS = ('BroadcastChannel' in window) ? new BroadcastChannel('anton-school-v3') : null;
+  /** Anton Siswa view iframe: full student app, isolated storage, no writes. */
+  const SISWA_READONLY = PRESENT && PRESENT_QS.get('readonly') === '1';
+  const KEY = SISWA_READONLY ? 'anton-school-v3-siswa-preview' : 'anton-school-v3';
+  const BUS = (!SISWA_READONLY && 'BroadcastChannel' in window) ? new BroadcastChannel('anton-school-v3') : null;
   const SYNC_MAX = 5 * 1024 * 1024;
   const $ = (id) => document.getElementById(id);
 
@@ -1061,11 +1063,77 @@
       '</div>' +
     '</form>';
   }
+  function viewAccountOnboarding() {
+    const steps = [
+      {
+        kicker: 'Kenalan',
+        title: 'Nama depan & nama belakang',
+        why: 'Nama yang Anton panggil di grup.',
+        fields: ['Nama depan (wajib)', 'Nama belakang (opsional)']
+      },
+      {
+        kicker: 'Kontak',
+        title: 'Nomor WhatsApp',
+        why: 'Anton kirim & simpan chat mentoring dari nomor ini.',
+        fields: ['Nomor WA / 08… atau 628… (wajib)']
+      },
+      {
+        kicker: 'Toko',
+        title: 'Sudah punya toko?',
+        why: 'Belum juga boleh. Jujur aja.',
+        fields: [
+          'Pilihan: Belum, masih mau mulai / Sudah punya toko (wajib)',
+          'Kalau sudah: nama toko (wajib)',
+          'Kalau sudah: tautan toko (wajib)'
+        ]
+      },
+      {
+        kicker: 'Tempat',
+        title: 'Kota',
+        why: 'Biar Anton tahu kamu dari mana.',
+        fields: ['Kota (wajib)']
+      },
+      {
+        kicker: 'Cerita',
+        title: 'Dari mana kenal Anton?',
+        why: 'Satu jawaban. Bukan syarat masuk.',
+        fields: [
+          'Pilihan: Grup WA Anton · Teman / murid Anton · TikTok · Instagram · Lainnya (wajib)',
+          'Kalau Lainnya: teks singkat (wajib)'
+        ]
+      }
+    ];
+    return '<div class="ps-form as-form as-onboard">' +
+      '<div class="as-section">' +
+        '<h2>Join / onboarding</h2>' +
+        '<p class="muted">Ini yang dikumpulkan saat siswa baru klik join dan isi form. Urutan sama dengan wizard di sisi siswa. Tidak ada field tersembunyi.</p>' +
+        '<ol class="as-onboard-list">' +
+          steps.map((s, i) =>
+            '<li class="as-onboard-step">' +
+              '<div class="as-onboard-kicker">Langkah ' + (i + 1) + ' · ' + esc(s.kicker) + '</div>' +
+              '<strong>' + esc(s.title) + '</strong>' +
+              '<p class="muted">' + esc(s.why) + '</p>' +
+              '<ul>' + s.fields.map((f) => '<li>' + esc(f) + '</li>').join('') + '</ul>' +
+            '</li>'
+          ).join('') +
+        '</ol>' +
+        '<p class="muted" style="margin-top:14px">Setelah form: siswa melihat paket bayar (diskon 24 jam). Video 1 tetap kebuka; mentoring penuh setelah lunas.</p>' +
+      '</div>' +
+      '<div class="ps-actions">' +
+        '<button type="button" class="btn-sm" data-act="tab" data-id="siswa">Close</button>' +
+      '</div>' +
+    '</div>';
+  }
   function viewAccountSettings() {
     ensureAccountSettings();
     const a = accountSettings();
-    const pane = ui.accountPane === 'notifications' ? 'notifications' : 'security';
+    const pane = ui.accountPane === 'notifications'
+      ? 'notifications'
+      : (ui.accountPane === 'onboarding' ? 'onboarding' : 'security');
     ui.accountPane = pane;
+    const body = pane === 'notifications'
+      ? viewAccountNotifications(a)
+      : (pane === 'onboarding' ? viewAccountOnboarding() : viewAccountSecurity(a));
     return '<section class="ps-page">' +
       '<div class="ps-page-head">' +
         '<h1>Account settings</h1>' +
@@ -1075,11 +1143,20 @@
           (pane === 'security') + '">Account security</button>' +
         '<button type="button" role="tab" data-act="account-pane" data-id="notifications" aria-selected="' +
           (pane === 'notifications') + '">Notifications</button>' +
+        '<button type="button" role="tab" data-act="account-pane" data-id="onboarding" aria-selected="' +
+          (pane === 'onboarding') + '">Onboarding</button>' +
       '</nav>' +
-      '<div class="ps-body">' +
-        (pane === 'notifications' ? viewAccountNotifications(a) : viewAccountSecurity(a)) +
-      '</div>' +
+      '<div class="ps-body">' + body + '</div>' +
     '</section>';
+  }
+  function siswaPreviewSrc() {
+    const u = new URL(location.href);
+    u.search = '';
+    u.hash = '';
+    u.searchParams.set('present', '1');
+    u.searchParams.set('pane', 'student');
+    u.searchParams.set('readonly', '1');
+    return u.pathname + u.search;
   }
   function paintProfilePreview() {
     const host = $('profile-preview');
@@ -1090,13 +1167,26 @@
       return;
     }
     const mode = ui.profilePreview === 'desktop' ? 'desktop' : 'phone';
-    const p = schoolProfile();
+    const frame = host.querySelector('.prof-preview-frame');
+    const iframe = host.querySelector('iframe.siswa-preview-frame');
+    if (frame && iframe && !host.hidden) {
+      frame.classList.toggle('is-phone', mode === 'phone');
+      frame.classList.toggle('is-desktop', mode === 'desktop');
+      host.querySelectorAll('.prof-preview-toggle .btn-sm').forEach((b) => {
+        b.classList.toggle('is-on', b.getAttribute('data-mode') === mode);
+      });
+      document.querySelectorAll('.ps-actions .prof-preview-toggle .btn-sm').forEach((b) => {
+        b.classList.toggle('is-on', b.getAttribute('data-mode') === mode);
+      });
+      return;
+    }
     host.hidden = false;
     host.innerHTML =
       '<div class="prof-preview-scrim" data-act="profile-preview-close"></div>' +
-      '<div class="prof-preview-panel" role="dialog" aria-label="Student view">' +
+      '<div class="prof-preview-panel" role="dialog" aria-label="Siswa view">' +
         '<div class="prof-preview-bar">' +
-          '<strong>Student view</strong>' +
+          '<strong>Siswa view</strong>' +
+          '<span class="muted prof-preview-hint">Navigasi penuh · read-only (tanpa komentar / kirim)</span>' +
           '<div class="prof-preview-toggle" role="group" aria-label="Device">' +
             '<button type="button" class="btn-sm' + (mode === 'phone' ? ' is-on' : '') +
               '" data-act="profile-preview" data-mode="phone">Phone</button>' +
@@ -1106,31 +1196,11 @@
           '<button type="button" class="btn-sm" data-act="profile-preview-close">Close</button>' +
         '</div>' +
         '<div class="prof-preview-stage">' +
-          '<div class="prof-preview-frame is-' + mode + '">' +
-            '<div class="prof-preview-chrome">' +
-              '<div class="brand brand-preview">' +
-                schoolAvatarHtml('school-avatar') +
-                '<div class="brand-copy">' +
-                  '<strong>' + esc(SEED.school.name) + '</strong>' +
-                  ((p.headline || '').trim()
-                    ? '<span class="school-header">' + esc(String(p.headline).trim()) + '</span>'
-                    : '') +
-                  '<span class="school-handle">' + esc(schoolSlug()) + '</span>' +
-                '</div>' +
-              '</div>' +
-            '</div>' +
-            '<div class="prof-preview-body">' + viewSchoolPublic({}) + '</div>' +
+          '<div class="prof-preview-frame is-' + mode + ' is-siswa-app">' +
+            '<iframe class="siswa-preview-frame" title="Tampilan siswa" src="' + esc(siswaPreviewSrc()) + '"></iframe>' +
           '</div>' +
         '</div>' +
       '</div>';
-    host.querySelectorAll('img[data-blob]').forEach((el) => {
-      const id = el.getAttribute('data-blob');
-      blobGet(id).then((file) => {
-        if (!file || !el.isConnected) return;
-        el.src = URL.createObjectURL(file);
-      });
-    });
-    // Keep Save bar toggles in sync without full re-render
     document.querySelectorAll('.ps-actions .prof-preview-toggle .btn-sm').forEach((b) => {
       b.classList.toggle('is-on', b.getAttribute('data-mode') === mode);
     });
@@ -1338,6 +1408,9 @@
     unreadJump: ''
   };
   if (PRESENT) document.documentElement.classList.add('present-pane');
+  if (SISWA_READONLY) document.documentElement.classList.add('siswa-readonly');
+
+  function isSiswaReadonly() { return !!SISWA_READONLY || !!ui.siswaReadonly; }
 
   function save() {
     const copy = { ...db, kolab: db.kolab };
@@ -1905,6 +1978,7 @@
     if (!feed || !el) return;
     const fr = feed.getBoundingClientRect();
     const er = el.getBoundingClientRect();
+    ui.diskusiScrollSilentUntil = Date.now() + 200;
     feed.scrollTop += er.top - fr.top - (feed.clientHeight / 2) + (er.height / 2);
   }
   function nextUnreadJump() {
@@ -1978,6 +2052,7 @@
     });
   }
   function canPostIn(sid, batchId) {
+    if (isSiswaReadonly()) return false;
     if (!batchId) return false;
     if (isStaff()) return true;
     return memberOfChat(sid, batchId);
@@ -5089,13 +5164,13 @@
         if (span) span.textContent = label;
       }
     }
-    if (menuAccount) menuAccount.hidden = !canBill();
-    if (menuSiswa) menuSiswa.hidden = !canBill();
+    if (menuAccount) menuAccount.hidden = !canBill() || isSiswaReadonly();
+    if (menuSiswa) menuSiswa.hidden = !canBill() || isSiswaReadonly();
     const brandBtn = $('brand-btn');
     if (brandBtn) {
-      brandBtn.disabled = false;
-      brandBtn.setAttribute('aria-label', 'Profile menu');
-      brandBtn.title = 'Profile menu';
+      brandBtn.disabled = isSiswaReadonly();
+      brandBtn.setAttribute('aria-label', isSiswaReadonly() ? 'Siswa view' : 'Profile menu');
+      brandBtn.title = isSiswaReadonly() ? 'Siswa view (read-only)' : 'Profile menu';
     }
     const headerEl = $('school-header');
     if (headerEl) {
@@ -5201,14 +5276,26 @@
   }
   function afterDiskusiRender() {
     const feed = document.querySelector('.dk-feed');
-    if (feed && ui.diskusiScroll === 'jump' && ui.unreadJump) {
+    const scrollMode = ui.diskusiScroll;
+    if (feed && scrollMode === 'jump' && ui.unreadJump) {
+      ui.diskusiPinUnread = false;
       scrollFeedTo(document.getElementById(ui.unreadJump));
-    } else if (feed && ui.diskusiScroll === 'unread') {
+    } else if (feed && scrollMode === 'unread') {
       const el = feed.querySelector('.dk-unread-line') || feed.querySelector('[data-unread="1"]');
+      ui.diskusiPinUnread = true;
       if (el) scrollFeedTo(el);
       else feed.scrollTop = feed.scrollHeight;
-    } else if (feed && ui.diskusiScroll) {
-      feed.scrollTop = ui.diskusiScroll === 'bottom' ? feed.scrollHeight : Number(ui.diskusiScroll) || 0;
+      const restick = () => {
+        if (!ui.diskusiPinUnread) return;
+        const target = document.querySelector('.dk-unread-line') || document.querySelector('[data-unread="1"]');
+        if (target) scrollFeedTo(target);
+      };
+      feed.querySelectorAll('img').forEach((img) => {
+        if (!img.complete) img.addEventListener('load', restick, { once: true });
+      });
+      setTimeout(restick, 80);
+    } else if (feed && scrollMode) {
+      feed.scrollTop = scrollMode === 'bottom' ? feed.scrollHeight : Number(scrollMode) || 0;
     }
     ui.diskusiScroll = '';
     ui.unreadJump = '';
@@ -5239,23 +5326,19 @@
       }
       ui.commentFocus = '';
     }
-    if (!diskusiAckLock && feed && acknowledgeUnread()) {
-      diskusiAckLock = true;
-      ui.diskusiScrollHold = true;
-      ui.diskusiScroll = String(feed.scrollTop);
-      render();
-      ui.diskusiScrollHold = false;
-      diskusiAckLock = false;
-      return;
-    }
     if (feed && !feed._unreadBound) {
       feed._unreadBound = true;
       feed.addEventListener('scroll', () => {
         if (ui._unreadScrollTimer) clearTimeout(ui._unreadScrollTimer);
         ui._unreadScrollTimer = setTimeout(() => {
-          if (!acknowledgeUnread()) return;
-          paintUnreadChrome();
-        }, 80);
+          if (Date.now() < (ui.diskusiScrollSilentUntil || 0) || diskusiAckLock || !acknowledgeUnread()) return;
+          diskusiAckLock = true;
+          ui.diskusiScrollHold = true;
+          ui.diskusiScroll = String(feed.scrollTop);
+          render();
+          ui.diskusiScrollHold = false;
+          diskusiAckLock = false;
+        }, 120);
       }, { passive: true });
     }
   }
@@ -7148,6 +7231,9 @@
       '</div></div>';
   }
   function composerHtml(batchId) {
+    if (isSiswaReadonly()) {
+      return '<p class="muted dk-compose-locked">Siswa view · hanya lihat (tidak bisa kirim).</p>';
+    }
     const uploading = !!ui.postUploading;
     return '<form class="dk-compose" data-act="post-new" data-batch="' + esc(batchId) + '">' +
       postDraftHtml() +
@@ -7290,6 +7376,7 @@
           '<span class="dk-replying-copy"><strong>@' + esc(nameOf(target.authorId)) + '</strong> ' + esc(snippet || 'Komentar') + '</span>' +
           '<button type="button" data-act="comment-reply-clear" aria-label="Batal balas">×</button></div>'
       : '';
+    if (isSiswaReadonly()) return '';
     return '<form class="dk-comment-form" data-act="post-comment" data-id="' + esc(post.id) + '" data-reply="' + esc(target ? target.id : '') + '">' +
       bar +
       '<div class="dk-comment-row">' +
@@ -10210,10 +10297,26 @@
     }
   }, true);
 
+  const SISWA_RO_BLOCK = new Set([
+    'post-new', 'post-comment', 'post-files', 'post-attach', 'post-img-remove',
+    'poll-toggle', 'poll-cancel', 'poll-add-opt', 'poll-opt-remove', 'poll-vote',
+    'comment-reply', 'comment-reply-clear', 'comment-like', 'post-like', 'post-pin', 'post-del',
+    'wiz-next', 'wiz-shop', 'wiz-heard', 'wiz-tools', 'apply',
+    'mark-done', 'toggle-done', 'exam', 'exam-submit',
+    'pay-term', 'pay-buy', 'pay-prompt', 'pay-lynk', 'pay-manual', 'pay-now', 'pay-later',
+    'ask', 'reply', 'report-issue', 'chat-member-add', 'chat-member-remove', 'chat-new',
+    'has-shop', 'heard-from'
+  ]);
+
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-act]');
     if (!btn) return;
     const act = btn.getAttribute('data-act');
+    if (isSiswaReadonly() && SISWA_RO_BLOCK.has(act)) {
+      e.preventDefault();
+      toast('Siswa view · hanya lihat.');
+      return;
+    }
     if (act === 'vid-drop' || act === 'vid-file' || act === 'add-lec' || act === 'sec-title' ||
         act === 'lec-field' || act === 'lec-points' || act === 'q-field' || act === 'doc-name' || act === 'doc-url' ||
         act === 'cover-file' || act === 'res-file' || act === 'photo-file' || act === 'lec-body' || act === 'res-name' || act === 'res-url' ||
@@ -10256,10 +10359,11 @@
       return;
     }
     if (act === 'unread-next') {
-      acknowledgeUnread();
+      const changed = acknowledgeUnread();
       const jump = nextUnreadJump();
       if (!jump) {
-        paintUnreadChrome();
+        if (changed) render();
+        else paintUnreadChrome();
         return;
       }
       ui.replyTo = null;
@@ -10695,7 +10799,10 @@
       render();
     } else if (act === 'account-pane') {
       if (!canBill()) return;
-      ui.accountPane = btn.getAttribute('data-id') === 'notifications' ? 'notifications' : 'security';
+      const pane = btn.getAttribute('data-id');
+      ui.accountPane = pane === 'notifications'
+        ? 'notifications'
+        : (pane === 'onboarding' ? 'onboarding' : 'security');
       ui.mentorTab = 'account';
       render();
     } else if (act === 'bio-wrap') {
@@ -11566,6 +11673,10 @@
     if (!form.matches('[data-act]')) return;
     e.preventDefault();
     const act = form.getAttribute('data-act');
+    if (isSiswaReadonly() && SISWA_RO_BLOCK.has(act)) {
+      toast('Siswa view · hanya lihat.');
+      return;
+    }
     const fd = new FormData(form);
     if (act === 'ask') {
       db.threads.push({

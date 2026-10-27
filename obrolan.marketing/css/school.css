@@ -3186,10 +3186,56 @@ html[data-mode="student"] .dk-rename input { font-size: 16px; }
   width: min(880px, 100%); border-radius: 14px;
   min-height: min(560px, calc(100vh - 140px));
 }
+.prof-preview-frame.is-siswa-app {
+  display: flex; flex-direction: column; padding: 0; overflow: hidden;
+}
+.prof-preview-frame.is-phone.is-siswa-app {
+  height: min(720px, calc(100vh - 140px));
+}
+.prof-preview-frame.is-desktop.is-siswa-app {
+  height: min(640px, calc(100vh - 140px));
+}
+.siswa-preview-frame {
+  flex: 1; width: 100%; height: 100%; border: 0; background: var(--ink); display: block;
+}
+.prof-preview-hint { font-size: .72rem; margin-right: auto; }
 .prof-preview-chrome {
   padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--ink-2);
 }
 .prof-preview-body { padding: 14px; }
 .prof-preview-body .school-public { margin: 0; }
 html[data-mode="student"] .school-header { max-width: 11.5rem; }
+
+/* Siswa view iframe: navigate freely, no write UI */
+html.siswa-readonly .dk-compose,
+html.siswa-readonly .dk-comment-form,
+html.siswa-readonly .dk-post-acts [data-act="post-del"],
+html.siswa-readonly .dk-post-acts [data-act="post-pin"],
+html.siswa-readonly [data-act="poll-vote"],
+html.siswa-readonly [data-act="comment-like"],
+html.siswa-readonly [data-act="post-like"],
+html.siswa-readonly [data-act="comment-reply"],
+html.siswa-readonly .ob-cta,
+html.siswa-readonly #ob-form {
+  display: none !important;
+}
+html.siswa-readonly .brand-menu { display: none !important; }
+
+.as-onboard-list {
+  list-style: none; margin: 14px 0 0; padding: 0;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.as-onboard-step {
+  border: 1px solid var(--line); border-radius: 12px;
+  padding: 12px 14px; background: var(--ink-2);
+}
+.as-onboard-step strong { display: block; margin: 2px 0 4px; font-size: .95rem; }
+.as-onboard-step ul {
+  margin: 8px 0 0; padding-left: 1.1rem;
+  font-size: .84rem; color: var(--muted);
+}
+.as-onboard-kicker {
+  font-size: .68rem; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--accent);
+}
 
