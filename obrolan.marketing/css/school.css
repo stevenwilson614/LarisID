@@ -3239,3 +3239,77 @@ html.siswa-readonly .brand-menu { display: none !important; }
   text-transform: uppercase; color: var(--accent);
 }
 
+.ob-ed-head {
+  display: flex; gap: 12px; align-items: flex-start; justify-content: space-between;
+  flex-wrap: wrap; margin-bottom: 12px;
+}
+.ob-ed-head-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.ob-ed-pages {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.ob-ed-page {
+  border: 1px solid var(--line); border-radius: 14px;
+  padding: 14px; background: var(--ink-2);
+}
+.ob-ed-page-h {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; margin-bottom: 10px; flex-wrap: wrap;
+}
+.ob-ed-page-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.ob-ed-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;
+}
+.ob-ed-grid label,
+.ob-ed-opts {
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: .75rem; font-weight: 650; color: var(--muted);
+}
+.ob-ed-grid input,
+.ob-ed-grid textarea,
+.ob-ed-opts textarea,
+.ob-ed-add-field select,
+.ob-ed-field-top select {
+  font: inherit; font-size: .88rem; font-weight: 500; color: var(--text);
+  background: var(--ink); border: 1px solid var(--line); border-radius: 10px;
+  padding: 8px 10px;
+}
+.ob-ed-span2 { grid-column: 1 / -1; }
+.ob-ed-fields { display: flex; flex-direction: column; gap: 10px; }
+.ob-ed-field {
+  border: 1px dashed var(--line); border-radius: 12px;
+  padding: 10px; background: rgba(0,0,0,.12);
+}
+.ob-ed-field-top {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px;
+}
+.ob-ed-field-top select { min-width: 11rem; }
+.ob-ed-req {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: .78rem; color: var(--muted); font-weight: 600;
+}
+.ob-ed-typehint { margin: 8px 0 0; font-size: .72rem; }
+.ob-ed-add-field {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px;
+}
+.ob-ed-add-page { margin-top: 14px; }
+.btn-sm.danger {
+  color: #fecaca; border-color: rgba(248,113,113,.45);
+}
+.ob-field { margin-top: 12px; }
+.ob-field-label {
+  display: block; font-size: .78rem; font-weight: 650; color: var(--muted);
+  margin-bottom: 6px;
+}
+.ob-textarea { min-height: 5.5rem; resize: vertical; }
+.ob-preview-flow {
+  background: var(--ink); overflow: auto;
+  display: flex; flex-direction: column;
+}
+.ob-preview-flow .ob-flow {
+  min-height: 100%; display: flex; flex-direction: column;
+}
+@media (max-width: 720px) {
+  .ob-ed-grid { grid-template-columns: 1fr; }
+}
+

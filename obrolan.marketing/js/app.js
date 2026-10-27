@@ -565,6 +565,7 @@
     merged.accountSettings = Object.assign(defaultAccountSettings(), merged.accountSettings || {}, {
       notifications: Object.assign(defaultAccountSettings().notifications, ((merged.accountSettings || {}).notifications || {}))
     });
+    merged.onboarding = normalizeOnboarding(merged.onboarding);
     merged.inviteCode = String(merged.inviteCode || (SEED.cohort && SEED.cohort.invite) || '').trim() || SEED.cohort.invite;
     merged.lynkProducts = Object.assign({
       month: { url: '', title: '', price: 0 },
@@ -779,6 +780,115 @@
     }
     return db.accountSettings;
   }
+  function uid(prefix) {
+    return (prefix || 'id') + '-' + Date.now().toString(36) + Math.floor(Math.random() * 1e3).toString(36);
+  }
+  const OB_FIELD_TYPES = [
+    { id: 'name', label: 'Nama depan & belakang' },
+    { id: 'wa', label: 'WhatsApp' },
+    { id: 'city', label: 'Kota' },
+    { id: 'shop', label: 'Toko (sudah/belum + nama + tautan)' },
+    { id: 'link', label: 'Tautan (toko / URL)' },
+    { id: 'text', label: 'Teks singkat' },
+    { id: 'textarea', label: 'Teks panjang' },
+    { id: 'single', label: 'Pilihan tunggal' },
+    { id: 'multi', label: 'Pilihan ganda' }
+  ];
+  function defaultOnboarding() {
+    return {
+      pages: [
+        {
+          id: 'ob-name',
+          kicker: 'Kenalan',
+          q: 'Siapa namamu?',
+          sub: 'Nama depan dan belakang. Yang Anton panggil di grup.',
+          fields: [{ id: 'f-name', type: 'name', required: true }]
+        },
+        {
+          id: 'ob-wa',
+          kicker: 'Kontak',
+          q: 'Nomor WhatsApp-mu?',
+          sub: 'Anton kirim & simpan chat mentoring dari nomor ini. Bukan riwayat WA lama.',
+          fields: [{ id: 'f-wa', type: 'wa', required: true }]
+        },
+        {
+          id: 'ob-shop',
+          kicker: 'Toko',
+          q: 'Sudah punya toko?',
+          sub: 'Belum juga boleh. Jujur aja.',
+          fields: [{ id: 'f-shop', type: 'shop', required: true }]
+        },
+        {
+          id: 'ob-city',
+          kicker: 'Tempat',
+          q: 'Kota mana?',
+          sub: 'Biar Anton tahu kamu dari mana.',
+          fields: [{ id: 'f-city', type: 'city', required: true }]
+        },
+        {
+          id: 'ob-heard',
+          kicker: 'Cerita',
+          q: 'Dari mana kenal Anton?',
+          sub: 'Satu jawaban. Bukan syarat masuk.',
+          fields: [{
+            id: 'f-heard',
+            type: 'single',
+            key: 'heard',
+            required: true,
+            allowOther: true,
+            options: ['Grup WA Anton', 'Teman / murid Anton', 'TikTok', 'Instagram', 'Lainnya']
+          }]
+        }
+      ]
+    };
+  }
+  function normalizeObField(raw) {
+    const f = raw && typeof raw === 'object' ? raw : {};
+    const type = OB_FIELD_TYPES.some((t) => t.id === f.type) ? f.type : 'text';
+    const out = {
+      id: String(f.id || uid('f')),
+      type: type,
+      required: f.required !== false,
+      label: String(f.label || '').slice(0, 80),
+      placeholder: String(f.placeholder || '').slice(0, 80),
+      key: String(f.key || '').trim().slice(0, 40)
+    };
+    if (type === 'single' || type === 'multi') {
+      const opts = Array.isArray(f.options) ? f.options : [];
+      out.options = opts.map((o) => String(o || '').trim()).filter(Boolean).slice(0, 12);
+      if (!out.options.length) out.options = ['Opsi 1', 'Opsi 2'];
+      out.allowOther = type === 'single' ? !!f.allowOther : false;
+    }
+    if (type === 'text' || type === 'textarea' || type === 'link' || type === 'single' || type === 'multi') {
+      if (!out.key) out.key = out.id.replace(/[^a-z0-9]+/gi, '_').toLowerCase();
+    }
+    return out;
+  }
+  function normalizeObPage(raw) {
+    const p = raw && typeof raw === 'object' ? raw : {};
+    const fields = Array.isArray(p.fields) ? p.fields.map(normalizeObField) : [];
+    return {
+      id: String(p.id || uid('ob')),
+      kicker: String(p.kicker || '').slice(0, 40),
+      q: String(p.q || 'Pertanyaan').slice(0, 120),
+      sub: String(p.sub || '').slice(0, 240),
+      fields: fields.length ? fields : [normalizeObField({ type: 'text', required: true })]
+    };
+  }
+  function normalizeOnboarding(raw) {
+    const base = defaultOnboarding();
+    const cur = raw && typeof raw === 'object' ? raw : {};
+    const pages = Array.isArray(cur.pages) ? cur.pages.map(normalizeObPage) : [];
+    return { pages: pages.length ? pages : base.pages.map(normalizeObPage) };
+  }
+  function ensureOnboarding() {
+    db.onboarding = normalizeOnboarding(db.onboarding);
+    return db.onboarding;
+  }
+  function wizFormPages() { return ensureOnboarding().pages; }
+  function wizPayIdx() { return wizFormPages().length; }
+  function wizTotalSteps() { return wizPayIdx() + 1; }
+  function isOnboardPreview() { return !!(ui.onboardPreview && ui.onboardPreview.open); }
   function schoolPhotoKey() { return 'photo-school'; }
   function ensureSchoolProfile() {
     if (!db.schoolProfile || typeof db.schoolProfile !== 'object') {
@@ -1063,66 +1173,178 @@
       '</div>' +
     '</form>';
   }
-  function viewAccountOnboarding() {
-    const steps = [
-      {
-        kicker: 'Kenalan',
-        title: 'Nama depan & nama belakang',
-        why: 'Nama yang Anton panggil di grup.',
-        fields: ['Nama depan (wajib)', 'Nama belakang (opsional)']
-      },
-      {
-        kicker: 'Kontak',
-        title: 'Nomor WhatsApp',
-        why: 'Anton kirim & simpan chat mentoring dari nomor ini.',
-        fields: ['Nomor WA / 08… atau 628… (wajib)']
-      },
-      {
-        kicker: 'Toko',
-        title: 'Sudah punya toko?',
-        why: 'Belum juga boleh. Jujur aja.',
-        fields: [
-          'Pilihan: Belum, masih mau mulai / Sudah punya toko (wajib)',
-          'Kalau sudah: nama toko (wajib)',
-          'Kalau sudah: tautan toko (wajib)'
-        ]
-      },
-      {
-        kicker: 'Tempat',
-        title: 'Kota',
-        why: 'Biar Anton tahu kamu dari mana.',
-        fields: ['Kota (wajib)']
-      },
-      {
-        kicker: 'Cerita',
-        title: 'Dari mana kenal Anton?',
-        why: 'Satu jawaban. Bukan syarat masuk.',
-        fields: [
-          'Pilihan: Grup WA Anton · Teman / murid Anton · TikTok · Instagram · Lainnya (wajib)',
-          'Kalau Lainnya: teks singkat (wajib)'
-        ]
+  function obTypeLabel(type) {
+    const hit = OB_FIELD_TYPES.find((t) => t.id === type);
+    return hit ? hit.label : type;
+  }
+  function viewObFieldEditor(pageId, field, fi) {
+    const typeOpts = OB_FIELD_TYPES.map((t) =>
+      '<option value="' + esc(t.id) + '"' + (field.type === t.id ? ' selected' : '') + '>' + esc(t.label) + '</option>'
+    ).join('');
+    const needsKey = field.type === 'text' || field.type === 'textarea' || field.type === 'link' ||
+      field.type === 'single' || field.type === 'multi';
+    const needsOpts = field.type === 'single' || field.type === 'multi';
+    return '<div class="ob-ed-field" data-page="' + esc(pageId) + '" data-field="' + esc(field.id) + '">' +
+      '<div class="ob-ed-field-top">' +
+        '<select data-act="ob-field-type" data-page="' + esc(pageId) + '" data-field="' + esc(field.id) + '">' +
+          typeOpts + '</select>' +
+        '<label class="ob-ed-req"><input type="checkbox" data-act="ob-field-req" data-page="' +
+          esc(pageId) + '" data-field="' + esc(field.id) + '"' + (field.required ? ' checked' : '') + '> Wajib</label>' +
+        '<button type="button" class="btn-sm" data-act="ob-field-up" data-page="' + esc(pageId) +
+          '" data-field="' + esc(field.id) + '"' + (fi === 0 ? ' disabled' : '') + '>↑</button>' +
+        '<button type="button" class="btn-sm" data-act="ob-field-down" data-page="' + esc(pageId) +
+          '" data-field="' + esc(field.id) + '">↓</button>' +
+        '<button type="button" class="btn-sm danger" data-act="ob-field-del" data-page="' +
+          esc(pageId) + '" data-field="' + esc(field.id) + '">Hapus</button>' +
+      '</div>' +
+      (needsKey
+        ? '<div class="ob-ed-grid">' +
+            '<label>Label<input data-ob-ed="label" data-page="' + esc(pageId) + '" data-field="' +
+              esc(field.id) + '" value="' + esc(field.label || '') + '" placeholder="Label di siswa"></label>' +
+            '<label>Key<input data-ob-ed="key" data-page="' + esc(pageId) + '" data-field="' +
+              esc(field.id) + '" value="' + esc(field.key || '') + '" placeholder="shop_link"></label>' +
+            '<label>Placeholder<input data-ob-ed="placeholder" data-page="' + esc(pageId) + '" data-field="' +
+              esc(field.id) + '" value="' + esc(field.placeholder || '') + '" placeholder="Contoh…"></label>' +
+          '</div>'
+        : '') +
+      (needsOpts
+        ? '<label class="ob-ed-opts">Opsi (satu per baris)' +
+            '<textarea data-ob-ed="options" data-page="' + esc(pageId) + '" data-field="' +
+              esc(field.id) + '" rows="3">' + esc((field.options || []).join('\n')) + '</textarea></label>' +
+          (field.type === 'single'
+            ? '<label class="ob-ed-req"><input type="checkbox" data-act="ob-field-other" data-page="' +
+              esc(pageId) + '" data-field="' + esc(field.id) + '"' + (field.allowOther ? ' checked' : '') +
+              '> Izinkan “Lainnya”</label>'
+            : '')
+        : '') +
+      '<p class="muted ob-ed-typehint">' + esc(obTypeLabel(field.type)) + '</p>' +
+    '</div>';
+  }
+  function viewObPageEditor(page, index, total) {
+    return '<li class="ob-ed-page" data-page="' + esc(page.id) + '">' +
+      '<div class="ob-ed-page-h">' +
+        '<strong>Halaman ' + (index + 1) + '</strong>' +
+        '<div class="ob-ed-page-acts">' +
+          '<button type="button" class="btn-sm" data-act="ob-page-up" data-page="' + esc(page.id) + '"' +
+            (index === 0 ? ' disabled' : '') + '>↑</button>' +
+          '<button type="button" class="btn-sm" data-act="ob-page-down" data-page="' + esc(page.id) + '"' +
+            (index >= total - 1 ? ' disabled' : '') + '>↓</button>' +
+          '<button type="button" class="btn-sm danger" data-act="ob-page-del" data-page="' +
+            esc(page.id) + '"' + (total <= 1 ? ' disabled' : '') + '>Hapus halaman</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="ob-ed-grid">' +
+        '<label>Kicker<input data-ob-ed="kicker" data-page="' + esc(page.id) + '" value="' +
+          esc(page.kicker || '') + '" maxlength="40" placeholder="Kenalan"></label>' +
+        '<label class="ob-ed-span2">Pertanyaan<input data-ob-ed="q" data-page="' + esc(page.id) +
+          '" value="' + esc(page.q || '') + '" maxlength="120" placeholder="Siapa namamu?"></label>' +
+        '<label class="ob-ed-span2">Subteks<textarea data-ob-ed="sub" data-page="' + esc(page.id) +
+          '" rows="2" maxlength="240">' + esc(page.sub || '') + '</textarea></label>' +
+      '</div>' +
+      '<div class="ob-ed-fields">' +
+        (page.fields || []).map((f, fi) => viewObFieldEditor(page.id, f, fi)).join('') +
+      '</div>' +
+      '<div class="ob-ed-add-field">' +
+        '<select data-ob-new-type data-page="' + esc(page.id) + '">' +
+          OB_FIELD_TYPES.map((t) => '<option value="' + esc(t.id) + '">' + esc(t.label) + '</option>').join('') +
+        '</select>' +
+        '<button type="button" class="btn-sm" data-act="ob-field-add" data-page="' + esc(page.id) +
+          '">+ Tambah pertanyaan</button>' +
+      '</div>' +
+    '</li>';
+  }
+  function captureOnboardingEditor() {
+    const root = document.querySelector('.as-onboard-editor');
+    if (!root) return;
+    const ob = ensureOnboarding();
+    root.querySelectorAll('[data-ob-ed]').forEach((el) => {
+      const pageId = el.getAttribute('data-page');
+      const fieldId = el.getAttribute('data-field');
+      const kind = el.getAttribute('data-ob-ed');
+      const page = ob.pages.find((p) => p.id === pageId);
+      if (!page) return;
+      if (!fieldId) {
+        if (kind === 'kicker') page.kicker = String(el.value || '').slice(0, 40);
+        if (kind === 'q') page.q = String(el.value || '').slice(0, 120) || 'Pertanyaan';
+        if (kind === 'sub') page.sub = String(el.value || '').slice(0, 240);
+        return;
       }
-    ];
-    return '<div class="ps-form as-form as-onboard">' +
+      const field = (page.fields || []).find((f) => f.id === fieldId);
+      if (!field) return;
+      if (kind === 'label') field.label = String(el.value || '').slice(0, 80);
+      if (kind === 'key') field.key = String(el.value || '').trim().slice(0, 40) || field.id;
+      if (kind === 'placeholder') field.placeholder = String(el.value || '').slice(0, 80);
+      if (kind === 'options') {
+        field.options = String(el.value || '').split('\n').map((s) => s.trim()).filter(Boolean).slice(0, 12);
+        if (!field.options.length) field.options = ['Opsi 1', 'Opsi 2'];
+      }
+    });
+    db.onboarding = normalizeOnboarding(ob);
+  }
+  function viewAccountOnboarding() {
+    const ob = ensureOnboarding();
+    const pages = ob.pages;
+    return '<div class="ps-form as-form as-onboard as-onboard-editor">' +
       '<div class="as-section">' +
-        '<h2>Join / onboarding</h2>' +
-        '<p class="muted">Ini yang dikumpulkan saat siswa baru klik join dan isi form. Urutan sama dengan wizard di sisi siswa. Tidak ada field tersembunyi.</p>' +
-        '<ol class="as-onboard-list">' +
-          steps.map((s, i) =>
-            '<li class="as-onboard-step">' +
-              '<div class="as-onboard-kicker">Langkah ' + (i + 1) + ' · ' + esc(s.kicker) + '</div>' +
-              '<strong>' + esc(s.title) + '</strong>' +
-              '<p class="muted">' + esc(s.why) + '</p>' +
-              '<ul>' + s.fields.map((f) => '<li>' + esc(f) + '</li>').join('') + '</ul>' +
-            '</li>'
-          ).join('') +
+        '<div class="ob-ed-head">' +
+          '<div>' +
+            '<h2>Join / onboarding</h2>' +
+            '<p class="muted">Atur halaman &amp; pertanyaan yang siswa isi saat join. Setelah form: paket bayar (diskon 24 jam).</p>' +
+          '</div>' +
+          '<div class="ob-ed-head-acts">' +
+            '<button type="button" class="btn-sm" data-act="ob-preview">Preview sebagai siswa</button>' +
+            '<button type="button" class="btn-sm" data-act="ob-reset">Reset default</button>' +
+          '</div>' +
+        '</div>' +
+        '<ol class="ob-ed-pages">' +
+          pages.map((p, i) => viewObPageEditor(p, i, pages.length)).join('') +
         '</ol>' +
-        '<p class="muted" style="margin-top:14px">Setelah form: siswa melihat paket bayar (diskon 24 jam). Video 1 tetap kebuka; mentoring penuh setelah lunas.</p>' +
+        '<button type="button" class="btn secondary ob-ed-add-page" data-act="ob-page-add">+ Tambah halaman</button>' +
       '</div>' +
       '<div class="ps-actions">' +
+        '<button type="button" class="btn ps-save" data-act="ob-save">Simpan</button>' +
         '<button type="button" class="btn-sm" data-act="tab" data-id="siswa">Close</button>' +
       '</div>' +
     '</div>';
+  }
+  function paintOnboardPreview() {
+    const host = $('onboard-preview');
+    if (!host) return;
+    if (!isOnboardPreview()) {
+      host.hidden = true;
+      host.innerHTML = '';
+      return;
+    }
+    const pages = wizFormPages();
+    const prev = ui.onboardPreview;
+    let body;
+    if (prev.done || prev.step >= pages.length) {
+      body = '<section class="ob-flow">' +
+        '<div class="ob-body">' +
+          '<p class="ob-kicker">Preview</p>' +
+          '<h1 class="ob-q">Selesai</h1>' +
+          '<p class="ob-sub">Tidak ada data tersimpan. Siswa sungguhan baru mengirim saat join.</p>' +
+        '</div>' +
+        '<div class="ob-foot">' +
+          '<button type="button" class="btn ob-cta" data-act="ob-preview-restart">Ulangi dari awal</button>' +
+          '<button type="button" class="btn secondary ob-cta" data-act="ob-preview-close">Tutup</button>' +
+        '</div></section>';
+    } else {
+      body = viewWizForm(Math.max(0, Number(prev.step) || 0));
+    }
+    host.hidden = false;
+    host.innerHTML =
+      '<div class="prof-preview-scrim" data-act="ob-preview-close"></div>' +
+      '<div class="prof-preview-panel ob-preview-panel" role="dialog" aria-label="Onboarding preview">' +
+        '<div class="prof-preview-bar">' +
+          '<strong>Preview onboarding</strong>' +
+          '<span class="muted prof-preview-hint">Seperti siswa · tidak menyimpan</span>' +
+          '<button type="button" class="btn-sm" data-act="ob-preview-close">Close</button>' +
+        '</div>' +
+        '<div class="prof-preview-stage">' +
+          '<div class="prof-preview-frame is-phone is-siswa-app ob-preview-flow">' + body + '</div>' +
+        '</div>' +
+      '</div>';
   }
   function viewAccountSettings() {
     ensureAccountSettings();
@@ -1262,7 +1484,8 @@
       ownerContact: { wa: '', email: '' },
       lynkProducts: { month: { url: '', title: '', price: 0 }, quarter: { url: '', title: '', price: 0 }, half: { url: '', title: '', price: 0 } },
       schoolProfile: defaultSchoolProfile(),
-      accountSettings: defaultAccountSettings()
+      accountSettings: defaultAccountSettings(),
+      onboarding: defaultOnboarding()
     };
     rebaseDemoClocks(state);
     return state;
@@ -1347,6 +1570,7 @@
     profilePane: 'info',
     accountPane: 'security',
     profilePreview: null,
+    onboardPreview: null,
     socialPick: null,
     shopPick: null,
     waDraft: '',
@@ -3035,13 +3259,6 @@
     }[term] || '—';
   }
   const HEARD_OPTS = ['Grup WA Anton', 'Teman / murid Anton', 'TikTok', 'Instagram', 'Lainnya'];
-  const WIZ_FORM = [
-    { id: 'name', kicker: 'Kenalan', q: 'Siapa namamu?', sub: 'Nama depan dan belakang. Yang Anton panggil di grup.' },
-    { id: 'wa', kicker: 'Kontak', q: 'Nomor WhatsApp-mu?', sub: 'Anton kirim & simpan chat mentoring dari nomor ini. Bukan riwayat WA lama.' },
-    { id: 'shop', kicker: 'Toko', q: 'Sudah punya toko?', sub: 'Belum juga boleh. Jujur aja.' },
-    { id: 'city', kicker: 'Tempat', q: 'Kota mana?', sub: 'Biar Anton tahu kamu dari mana.' },
-    { id: 'heard', kicker: 'Cerita', q: 'Dari mana kenal Anton?', sub: 'Satu jawaban. Bukan syarat masuk.' }
-  ];
   function splitPersonName(full) {
     const parts = String(full || '').trim().split(/\s+/).filter(Boolean);
     if (!parts.length) return { firstName: '', lastName: '' };
@@ -3064,9 +3281,6 @@
   function joinPersonName(firstName, lastName) {
     return [String(firstName || '').trim(), String(lastName || '').trim()].filter(Boolean).join(' ');
   }
-  const WIZ_PAY = WIZ_FORM.length;
-  const WIZ_TOTAL = WIZ_PAY + 1;
-
   function isOnboardScreen() {
     // Hanya langkah isi form yang full-screen. Setelah form, dock Belajar/Diskusi harus kelihatan
     // (halaman bayar tetap bisa dibuka lewat tab daftar / CTA).
@@ -3076,27 +3290,26 @@
     ui.wizDraft = null;
     ui.wizTools = false;
     ui.wizFocusedStep = null;
-    ui.wizStep = db.applications[ui.personaId] ? WIZ_PAY : 0;
+    ui.wizStep = db.applications[ui.personaId] ? wizPayIdx() : 0;
   }
   function wizIdx() {
+    if (isOnboardPreview()) return Math.max(0, Number(ui.onboardPreview.step) || 0);
     if (typeof ui.wizStep === 'number') return ui.wizStep;
-    return db.applications[ui.personaId] ? WIZ_PAY : 0;
+    return db.applications[ui.personaId] ? wizPayIdx() : 0;
   }
   function wizDraft() {
+    if (isOnboardPreview()) {
+      return Object.assign({
+        sid: 'preview',
+        firstName: '', lastName: '', name: '', wa: '',
+        shopPick: '', shopName: '', shopUrl: '', city: '',
+        answers: {}, picks: {}, others: {}
+      }, ui.onboardPreview.draft || {});
+    }
     const sid = ui.personaId;
     const s = student();
     const app = db.applications[sid] || {};
     const prev = (ui.wizDraft && ui.wizDraft.sid === sid) ? ui.wizDraft : {};
-    const heardRaw = prev.heardPick != null || prev.heardOther != null
-      ? ''
-      : (app.heard || '');
-    const known = HEARD_OPTS.indexOf(heardRaw) >= 0;
-    const heardPick = prev.heardPick != null
-      ? prev.heardPick
-      : (known ? heardRaw : (heardRaw ? 'Lainnya' : ''));
-    const heardOther = prev.heardOther != null
-      ? prev.heardOther
-      : (known ? '' : heardRaw);
     const nameSeed = (s.name || '').indexOf('Tamu') >= 0 ? '' : (s.name || '');
     const parts = personNameParts({
       firstName: app.firstName || s.firstName,
@@ -3108,6 +3321,18 @@
       if (app.hasShop === true) shopPick = 'ya';
       else if (app.at) shopPick = 'tidak';
       else shopPick = '';
+    }
+    const answers = Object.assign({}, app.answers || {}, prev.answers || {});
+    const picks = Object.assign({}, prev.picks || {});
+    const others = Object.assign({}, prev.others || {});
+    // Seed heard-style single fields from application.heard if present
+    if (app.heard && picks.heard == null && answers.heard == null) {
+      const heardOpts = (HEARD_OPTS || []);
+      if (heardOpts.indexOf(app.heard) >= 0) picks.heard = app.heard;
+      else {
+        picks.heard = 'Lainnya';
+        others.heard = app.heard;
+      }
     }
     return {
       sid: sid,
@@ -3122,17 +3347,32 @@
       shopName: prev.shopName != null ? prev.shopName : (app.shopName || s.shopName || ''),
       shopUrl: prev.shopUrl != null ? prev.shopUrl : (app.shopUrl || s.shopUrl || ''),
       city: prev.city != null ? prev.city : (app.city || (s.city === '—' ? '' : (s.city || ''))),
-      heardPick: heardPick,
-      heardOther: heardOther
+      answers: answers,
+      picks: picks,
+      others: others
     };
   }
   function wizMerge(patch) {
-    ui.wizDraft = Object.assign({}, wizDraft(), patch, { sid: ui.personaId });
+    if (isOnboardPreview()) {
+      const cur = wizDraft();
+      const next = Object.assign({}, cur, patch);
+      if (patch.answers) next.answers = Object.assign({}, cur.answers || {}, patch.answers);
+      if (patch.picks) next.picks = Object.assign({}, cur.picks || {}, patch.picks);
+      if (patch.others) next.others = Object.assign({}, cur.others || {}, patch.others);
+      ui.onboardPreview.draft = next;
+      return;
+    }
+    const cur = wizDraft();
+    const next = Object.assign({}, cur, patch, { sid: ui.personaId });
+    if (patch.answers) next.answers = Object.assign({}, cur.answers || {}, patch.answers);
+    if (patch.picks) next.picks = Object.assign({}, cur.picks || {}, patch.picks);
+    if (patch.others) next.others = Object.assign({}, cur.others || {}, patch.others);
+    ui.wizDraft = next;
   }
   function captureWizFields() {
-    const root = document.querySelector('.ob-flow');
+    const root = document.querySelector('.ob-flow') || document.querySelector('.ob-preview-flow .ob-flow');
     if (!root) return;
-    const d = {};
+    const d = { answers: {}, others: {} };
     const firstName = root.querySelector('[name=firstName]');
     const lastName = root.querySelector('[name=lastName]');
     const name = root.querySelector('[name=name]');
@@ -3140,11 +3380,13 @@
     const city = root.querySelector('[name=city]');
     const shopName = root.querySelector('[name=shopName]');
     const shopUrl = root.querySelector('[name=shopUrl]');
-    const heardOther = root.querySelector('[name=heardOther]');
     if (firstName) d.firstName = String(firstName.value || '').trim();
     if (lastName) d.lastName = String(lastName.value || '').trim();
     if (firstName || lastName) {
-      d.name = joinPersonName(d.firstName != null ? d.firstName : wizDraft().firstName, d.lastName != null ? d.lastName : wizDraft().lastName);
+      d.name = joinPersonName(
+        d.firstName != null ? d.firstName : wizDraft().firstName,
+        d.lastName != null ? d.lastName : wizDraft().lastName
+      );
     } else if (name) {
       d.name = String(name.value || '').trim();
       const parts = splitPersonName(d.name);
@@ -3155,78 +3397,151 @@
     if (city) d.city = String(city.value || '').trim();
     if (shopName) d.shopName = String(shopName.value || '').trim();
     if (shopUrl) d.shopUrl = String(shopUrl.value || '').trim();
-    if (heardOther) d.heardOther = String(heardOther.value || '').trim();
-    if (Object.keys(d).length) wizMerge(d);
+    root.querySelectorAll('[data-ob-ans]').forEach((el) => {
+      const key = el.getAttribute('data-ob-ans');
+      if (!key) return;
+      d.answers[key] = String(el.value || '').trim();
+    });
+    root.querySelectorAll('[data-ob-other]').forEach((el) => {
+      const key = el.getAttribute('data-ob-other');
+      if (!key) return;
+      d.others[key] = String(el.value || '').trim();
+    });
+    wizMerge(d);
   }
-  function wizHeardValue(d) {
-    if (d.heardPick === 'Lainnya') return String(d.heardOther || '').trim();
-    return String(d.heardPick || '').trim();
+  function answerForField(d, field) {
+    const key = field.key || field.id;
+    if (field.type === 'single') {
+      const pick = (d.picks && d.picks[key]) || '';
+      if (field.allowOther && pick === 'Lainnya') return String((d.others && d.others[key]) || '').trim();
+      return String(pick || '').trim();
+    }
+    if (field.type === 'multi') {
+      const arr = (d.picks && d.picks[key]) || [];
+      return Array.isArray(arr) ? arr.slice() : [];
+    }
+    return String((d.answers && d.answers[key]) || '').trim();
   }
   function validateWizStep() {
-    const spec = WIZ_FORM[wizIdx()];
-    if (!spec) return true;
+    const pages = wizFormPages();
+    const page = pages[wizIdx()];
+    if (!page) return true;
     const d = wizDraft();
-    if (spec.id === 'name' && !String(d.firstName || '').trim()) {
-      toast('Isi nama depan dulu.');
-      return false;
-    }
-    if (spec.id === 'wa' && !d.wa) {
-      toast('Isi nomor WhatsApp dulu.');
-      return false;
-    }
-    if (spec.id === 'shop') {
-      if (d.shopPick !== 'ya' && d.shopPick !== 'tidak') {
-        toast('Pilih sudah atau belum.');
+    for (let i = 0; i < page.fields.length; i += 1) {
+      const f = page.fields[i];
+      if (!f.required) continue;
+      if (f.type === 'name' && !String(d.firstName || '').trim()) {
+        toast('Isi nama depan dulu.');
         return false;
       }
-      if (d.shopPick === 'ya' && (!d.shopName || !d.shopUrl)) {
-        toast('Nama toko dan tautan wajib kalau sudah punya toko.');
+      if (f.type === 'wa' && !d.wa) {
+        toast('Isi nomor WhatsApp dulu.');
         return false;
       }
-    }
-    if (spec.id === 'city' && !d.city) {
-      toast('Isi kota dulu.');
-      return false;
-    }
-    if (spec.id === 'heard') {
-      if (!d.heardPick) {
-        toast('Pilih dari mana kamu kenal Anton.');
+      if (f.type === 'city' && !d.city) {
+        toast('Isi kota dulu.');
         return false;
       }
-      if (d.heardPick === 'Lainnya' && !String(d.heardOther || '').trim()) {
-        toast('Cerita singkat dari mana, ya.');
-        return false;
+      if (f.type === 'shop') {
+        if (d.shopPick !== 'ya' && d.shopPick !== 'tidak') {
+          toast('Pilih sudah atau belum.');
+          return false;
+        }
+        if (d.shopPick === 'ya' && (!d.shopName || !d.shopUrl)) {
+          toast('Nama toko dan tautan wajib kalau sudah punya toko.');
+          return false;
+        }
+      }
+      if (f.type === 'text' || f.type === 'textarea' || f.type === 'link') {
+        if (!answerForField(d, f)) {
+          toast('Isi ' + (f.label || 'kolom ini') + ' dulu.');
+          return false;
+        }
+      }
+      if (f.type === 'single') {
+        const key = f.key || f.id;
+        const pick = (d.picks && d.picks[key]) || '';
+        if (!pick) {
+          toast('Pilih satu opsi dulu.');
+          return false;
+        }
+        if (f.allowOther && pick === 'Lainnya' && !String((d.others && d.others[key]) || '').trim()) {
+          toast('Isi jawaban Lainnya.');
+          return false;
+        }
+      }
+      if (f.type === 'multi') {
+        const arr = answerForField(d, f);
+        if (!arr.length) {
+          toast('Pilih minimal satu opsi.');
+          return false;
+        }
       }
     }
     return true;
   }
+  function collectCustomAnswers(d) {
+    const out = Object.assign({}, d.answers || {});
+    wizFormPages().forEach((page) => {
+      (page.fields || []).forEach((f) => {
+        if (f.type !== 'single' && f.type !== 'multi') return;
+        const key = f.key || f.id;
+        out[key] = answerForField(d, f);
+      });
+    });
+    return out;
+  }
   function commitWizApplication() {
+    if (isOnboardPreview()) return false;
     const d = wizDraft();
     const sid = ui.personaId;
     const s = student();
-    const hasShop = d.shopPick === 'ya';
-    const heard = wizHeardValue(d);
+    const pages = wizFormPages();
+    const hasName = pages.some((p) => (p.fields || []).some((f) => f.type === 'name'));
+    const hasWa = pages.some((p) => (p.fields || []).some((f) => f.type === 'wa'));
+    const hasCity = pages.some((p) => (p.fields || []).some((f) => f.type === 'city'));
+    const hasShop = pages.some((p) => (p.fields || []).some((f) => f.type === 'shop'));
     const firstName = String(d.firstName || '').trim();
     const lastName = String(d.lastName || '').trim();
     const fullName = joinPersonName(firstName, lastName) || String(d.name || '').trim();
-    if (!firstName || !d.wa || !d.city || !heard) {
-      toast('Isi nama depan, WA, kota, dan dari mana tahu Anton.');
+    if (hasName && !firstName) {
+      toast('Isi nama depan dulu.');
       return false;
     }
-    if (hasShop && (!d.shopName || !d.shopUrl)) {
-      toast('Nama toko dan tautan wajib kalau sudah punya toko.');
+    if (hasWa && !d.wa) {
+      toast('Isi nomor WhatsApp dulu.');
       return false;
     }
+    if (hasCity && !d.city) {
+      toast('Isi kota dulu.');
+      return false;
+    }
+    let shopYes = d.shopPick === 'ya';
+    if (hasShop) {
+      if (d.shopPick !== 'ya' && d.shopPick !== 'tidak') {
+        toast('Pilih sudah atau belum punya toko.');
+        return false;
+      }
+      if (shopYes && (!d.shopName || !d.shopUrl)) {
+        toast('Nama toko dan tautan wajib kalau sudah punya toko.');
+        return false;
+      }
+    } else {
+      shopYes = !!(d.shopName || d.shopUrl);
+    }
+    const answers = collectCustomAnswers(d);
+    const heard = answers.heard || '';
     db.applications[sid] = {
-      name: fullName,
+      name: fullName || (s.name || ''),
       firstName: firstName,
       lastName: lastName,
-      wa: d.wa,
-      city: d.city,
-      hasShop: hasShop,
-      shopName: hasShop ? d.shopName : '',
-      shopUrl: hasShop ? d.shopUrl : '',
+      wa: d.wa || s.wa || '',
+      city: d.city || '',
+      hasShop: shopYes,
+      shopName: shopYes ? (d.shopName || '') : '',
+      shopUrl: shopYes ? (d.shopUrl || '') : '',
       heard: heard,
+      answers: answers,
       at: isoNow()
     };
     const waDigits = normalizeWa(d.wa) || normalizeWa(s.wa);
@@ -3234,22 +3549,22 @@
     if (String(sid).indexOf('live-') === 0 && !db.liveStudents.some((x) => x.id === sid)) {
       db.liveStudents.push({
         id: sid,
-        name: fullName,
+        name: fullName || 'Siswa',
         firstName: firstName,
         lastName: lastName,
         wa: waDigits,
         email: '',
-        city: d.city
+        city: d.city || ''
       });
     }
     patchPerson(sid, {
-      name: fullName,
+      name: fullName || s.name,
       firstName: firstName,
       lastName: lastName,
       wa: waDigits,
-      city: d.city,
-      shopName: hasShop ? d.shopName : '',
-      shopUrl: hasShop ? d.shopUrl : ''
+      city: d.city || '',
+      shopName: shopYes ? (d.shopName || '') : '',
+      shopUrl: shopYes ? (d.shopUrl || '') : ''
     });
     const b = billingOf(sid);
     if (!b.offerStartedAt) {
@@ -3270,9 +3585,22 @@
   function advanceWiz() {
     captureWizFields();
     if (!validateWizStep()) return;
-    if (wizIdx() >= WIZ_FORM.length - 1) {
+    const pages = wizFormPages();
+    const last = wizIdx() >= pages.length - 1;
+    if (isOnboardPreview()) {
+      if (last) {
+        toast('Preview selesai — tidak ada data tersimpan.');
+        ui.onboardPreview = { open: true, step: pages.length, draft: ui.onboardPreview.draft || {}, done: true };
+      } else {
+        ui.onboardPreview.step = wizIdx() + 1;
+        ui.onboardPreview.done = false;
+      }
+      paintOnboardPreview();
+      return;
+    }
+    if (last) {
       if (!commitWizApplication()) return;
-      ui.wizStep = WIZ_PAY;
+      ui.wizStep = wizPayIdx();
       ui.wizFocusedStep = null;
       ui.tab = 'daftar';
       toast('Form masuk. Diskon 24 jam jalan — boleh langsung ke Belajar.');
@@ -3286,6 +3614,12 @@
     captureWizFields();
     const i = wizIdx();
     if (i <= 0) return;
+    if (isOnboardPreview()) {
+      ui.onboardPreview.step = i - 1;
+      ui.onboardPreview.done = false;
+      paintOnboardPreview();
+      return;
+    }
     ui.wizStep = i - 1;
     ui.wizFocusedStep = null;
     render();
@@ -5383,6 +5717,7 @@
       }
     }
     paintProfilePreview();
+    paintOnboardPreview();
     bindLazy();
     bindBlobMedia();
     mountLightbox();
@@ -5745,31 +6080,35 @@
     return '<a class="btn" href="' + esc(p.lynk || SEED.school.lynk) + '" target="_blank" rel="noopener">Beli satuan</a>' + mentorLine +
       '<button class="btn secondary" data-act="contoh-sku" data-from="' + (extraClass || 'alat') + '" data-id="' + esc(p.id) + '">Lihat contoh</button>';
   }
-  function obChrome(step) {
+  function obChrome(step, opts) {
+    const o = opts || {};
+    const total = o.total != null ? o.total : wizTotalSteps();
     const back = step > 0
       ? '<button type="button" class="ob-back" data-act="wiz-back" aria-label="Kembali">‹</button>'
       : '<span class="ob-back is-ghost" aria-hidden="true"></span>';
     let segs = '';
-    for (let i = 0; i < WIZ_TOTAL; i += 1) {
+    for (let i = 0; i < total; i += 1) {
       segs += '<i' + (i <= step ? ' class="is-on"' : '') + '></i>';
     }
     return '<header class="ob-top">' + back +
-      '<div class="ob-segs" role="progressbar" aria-valuemin="1" aria-valuemax="' + WIZ_TOTAL +
-      '" aria-valuenow="' + (step + 1) + '" aria-label="Langkah ' + (step + 1) + ' dari ' + WIZ_TOTAL + '">' +
+      '<div class="ob-segs" role="progressbar" aria-valuemin="1" aria-valuemax="' + total +
+      '" aria-valuenow="' + (step + 1) + '" aria-label="Langkah ' + (step + 1) + ' dari ' + total + '">' +
       segs + '</div></header>';
   }
-  function obWrap(step, inner, foot, pay) {
-    return '<section class="ob-flow' + (pay ? ' is-pay' : '') + '">' + obChrome(step) +
+  function obWrap(step, inner, foot, pay, opts) {
+    return '<section class="ob-flow' + (pay ? ' is-pay' : '') + '">' + obChrome(step, opts) +
       '<div class="ob-body">' + inner + '</div>' +
       '<div class="ob-foot' + (pay ? ' is-end' : '') + '">' + foot + '</div></section>';
   }
   function viewWizard() {
     const step = wizIdx();
-    const wantPay = step >= WIZ_PAY || (wizardStep(ui.personaId) === 'pay' && ui.wizStep == null);
+    const payAt = wizPayIdx();
+    const wantPay = step >= payAt || (wizardStep(ui.personaId) === 'pay' && ui.wizStep == null);
     if (wantPay) {
       if (!db.applications[ui.personaId]) {
-        ui.wizStep = Math.min(typeof ui.wizStep === 'number' ? ui.wizStep : WIZ_FORM.length - 1, WIZ_FORM.length - 1);
-        if (ui.wizStep >= WIZ_PAY) ui.wizStep = WIZ_FORM.length - 1;
+        const lastForm = Math.max(0, payAt - 1);
+        ui.wizStep = Math.min(typeof ui.wizStep === 'number' ? ui.wizStep : lastForm, lastForm);
+        if (ui.wizStep >= payAt) ui.wizStep = lastForm;
         ui.wizFocusedStep = null;
         return viewWizForm(ui.wizStep);
       }
@@ -5777,52 +6116,107 @@
     }
     return viewWizForm(step);
   }
-  function viewWizForm(step) {
-    const spec = WIZ_FORM[step] || WIZ_FORM[0];
-    const d = wizDraft();
-    const last = step >= WIZ_FORM.length - 1;
-    let fields = '';
-    if (spec.id === 'name') {
-      fields = '<div class="ob-name-row">' +
-        '<input class="ob-input" data-focus="1" name="firstName" maxlength="40" autocomplete="given-name" value="' +
+  function renderObField(field, d, focusOnce) {
+    const key = field.key || field.id;
+    const label = field.label
+      ? '<label class="ob-field-label">' + esc(field.label) + (field.required ? '' : ' <em class="muted">(opsional)</em>') + '</label>'
+      : '';
+    if (field.type === 'name') {
+      return label + '<div class="ob-name-row">' +
+        '<input class="ob-input"' + (focusOnce ? ' data-focus="1"' : '') +
+          ' name="firstName" maxlength="40" autocomplete="given-name" value="' +
           esc(d.firstName || '') + '" placeholder="Nama depan">' +
         '<input class="ob-input" name="lastName" maxlength="40" autocomplete="family-name" value="' +
           esc(d.lastName || '') + '" placeholder="Nama belakang">' +
         '</div>';
-    } else if (spec.id === 'wa') {
-      fields = '<input class="ob-input" data-focus="1" name="wa" type="tel" inputmode="numeric" autocomplete="tel" value="' +
-        esc(d.wa) + '" placeholder="08… atau 628…">';
-    } else if (spec.id === 'shop') {
-      fields = '<div class="ob-pills" role="group" aria-label="Sudah punya toko">' +
-        '<button type="button" class="ob-pill' + (d.shopPick === 'tidak' ? ' is-on' : '') + '" data-act="wiz-shop" data-id="tidak">Belum, masih mau mulai</button>' +
-        '<button type="button" class="ob-pill' + (d.shopPick === 'ya' ? ' is-on' : '') + '" data-act="wiz-shop" data-id="ya">Sudah punya toko</button>' +
+    }
+    if (field.type === 'wa') {
+      return label + '<input class="ob-input"' + (focusOnce ? ' data-focus="1"' : '') +
+        ' name="wa" type="tel" inputmode="numeric" autocomplete="tel" value="' +
+        esc(d.wa || '') + '" placeholder="' + esc(field.placeholder || '08… atau 628…') + '">';
+    }
+    if (field.type === 'city') {
+      return label + '<input class="ob-input"' + (focusOnce ? ' data-focus="1"' : '') +
+        ' name="city" maxlength="60" autocomplete="address-level2" value="' +
+        esc(d.city || '') + '" placeholder="' + esc(field.placeholder || 'Kota') + '">';
+    }
+    if (field.type === 'shop') {
+      return label + '<div class="ob-pills" role="group" aria-label="Sudah punya toko">' +
+        '<button type="button" class="ob-pill' + (d.shopPick === 'tidak' ? ' is-on' : '') +
+          '" data-act="wiz-shop" data-id="tidak">Belum, masih mau mulai</button>' +
+        '<button type="button" class="ob-pill' + (d.shopPick === 'ya' ? ' is-on' : '') +
+          '" data-act="wiz-shop" data-id="ya">Sudah punya toko</button>' +
         '</div>' +
         (d.shopPick === 'ya'
           ? '<div class="ob-extra">' +
-            '<input class="ob-input" data-focus="1" name="shopName" maxlength="80" value="' + esc(d.shopName) + '" placeholder="Nama toko">' +
-            '<input class="ob-input" name="shopUrl" inputmode="url" autocomplete="url" value="' + esc(d.shopUrl) + '" placeholder="https://…">' +
+            '<input class="ob-input"' + (focusOnce ? ' data-focus="1"' : '') +
+              ' name="shopName" maxlength="80" value="' + esc(d.shopName || '') + '" placeholder="Nama toko">' +
+            '<input class="ob-input" name="shopUrl" inputmode="url" autocomplete="url" value="' +
+              esc(d.shopUrl || '') + '" placeholder="https://…">' +
             '</div>'
           : '');
-    } else if (spec.id === 'city') {
-      fields = '<input class="ob-input" data-focus="1" name="city" maxlength="60" autocomplete="address-level2" value="' +
-        esc(d.city) + '" placeholder="Kota">';
-    } else {
-      fields = '<div class="ob-pills" role="group" aria-label="Dari mana kenal Anton">' +
-        HEARD_OPTS.map((opt) =>
-          '<button type="button" class="ob-pill' + (d.heardPick === opt ? ' is-on' : '') +
-          '" data-act="wiz-heard" data-id="' + esc(opt) + '">' + esc(opt) + '</button>'
+    }
+    if (field.type === 'link') {
+      return label + '<input class="ob-input"' + (focusOnce ? ' data-focus="1"' : '') +
+        ' data-ob-ans="' + esc(key) + '" inputmode="url" autocomplete="url" value="' +
+        esc((d.answers && d.answers[key]) || '') + '" placeholder="' + esc(field.placeholder || 'https://…') + '">';
+    }
+    if (field.type === 'textarea') {
+      return label + '<textarea class="ob-input ob-textarea"' + (focusOnce ? ' data-focus="1"' : '') +
+        ' data-ob-ans="' + esc(key) + '" rows="3" maxlength="500" placeholder="' +
+        esc(field.placeholder || '') + '">' + esc((d.answers && d.answers[key]) || '') + '</textarea>';
+    }
+    if (field.type === 'single') {
+      const opts = (field.options || []).slice();
+      if (field.allowOther && opts.indexOf('Lainnya') < 0) opts.push('Lainnya');
+      const pick = (d.picks && d.picks[key]) || '';
+      return label + '<div class="ob-pills" role="group">' +
+        opts.map((opt) =>
+          '<button type="button" class="ob-pill' + (pick === opt ? ' is-on' : '') +
+          '" data-act="ob-single" data-key="' + esc(key) + '" data-id="' + esc(opt) + '">' + esc(opt) + '</button>'
         ).join('') + '</div>' +
-        (d.heardPick === 'Lainnya'
-          ? '<input class="ob-input ob-extra" data-focus="1" name="heardOther" maxlength="120" value="' +
-            esc(d.heardOther) + '" placeholder="Dari mana, singkat saja">'
+        (field.allowOther && pick === 'Lainnya'
+          ? '<input class="ob-input ob-extra"' + (focusOnce ? ' data-focus="1"' : '') +
+            ' data-ob-other="' + esc(key) + '" maxlength="120" value="' +
+            esc((d.others && d.others[key]) || '') + '" placeholder="Lainnya, singkat saja">'
           : '');
     }
+    if (field.type === 'multi') {
+      const picked = Array.isArray(d.picks && d.picks[key]) ? d.picks[key] : [];
+      return label + '<div class="ob-pills" role="group">' +
+        (field.options || []).map((opt) =>
+          '<button type="button" class="ob-pill' + (picked.indexOf(opt) >= 0 ? ' is-on' : '') +
+          '" data-act="ob-multi" data-key="' + esc(key) + '" data-id="' + esc(opt) + '">' + esc(opt) + '</button>'
+        ).join('') + '</div>';
+    }
+    // text default
+    return label + '<input class="ob-input"' + (focusOnce ? ' data-focus="1"' : '') +
+      ' data-ob-ans="' + esc(key) + '" maxlength="120" value="' +
+      esc((d.answers && d.answers[key]) || '') + '" placeholder="' + esc(field.placeholder || '') + '">';
+  }
+  function viewWizForm(step) {
+    const pages = wizFormPages();
+    const spec = pages[step] || pages[0];
+    const d = wizDraft();
+    const last = step >= pages.length - 1;
+    const preview = isOnboardPreview();
+    let focused = false;
+    const fields = (spec.fields || []).map((f) => {
+      const html = renderObField(f, d, !focused);
+      focused = true;
+      return '<div class="ob-field">' + html + '</div>';
+    }).join('');
+    const cta = preview
+      ? (last ? 'Selesai preview' : 'Lanjut')
+      : (last ? 'Lihat paket' : 'Lanjut');
     return obWrap(step,
-      '<p class="ob-kicker">' + esc(spec.kicker) + '</p>' +
-      '<h1 class="ob-q">' + esc(spec.q) + '</h1>' +
-      '<p class="ob-sub">' + spec.sub + '</p>' +
+      '<p class="ob-kicker">' + esc(spec.kicker || '') + '</p>' +
+      '<h1 class="ob-q">' + esc(spec.q || '') + '</h1>' +
+      (spec.sub ? '<p class="ob-sub">' + esc(spec.sub) + '</p>' : '') +
       '<form id="ob-form" data-act="wiz-next">' + fields + '</form>',
-      '<button class="btn ob-cta" type="button" data-act="wiz-next">' + (last ? 'Lihat paket' : 'Lanjut') + '</button>'
+      '<button class="btn ob-cta" type="button" data-act="wiz-next">' + cta + '</button>',
+      false,
+      { total: preview ? pages.length : wizTotalSteps() }
     );
   }
   function viewPayPage(sid) {
@@ -5830,7 +6224,7 @@
     if (b.status === 'pending') {
       if (b.source === 'lynk') {
         const again = b.lynkUrl || lynkCheckoutUrl(b.pendingTerm || b.term);
-        return obWrap(WIZ_PAY,
+        return obWrap(wizPayIdx(),
           '<p class="ob-kicker">Lynk</p>' +
           '<h1 class="ob-q">Menunggu konfirmasi Lynk</h1>' +
           '<p class="ob-sub">Checkout ' + fmtRp(b.pendingAmount || b.amount || 0) +
@@ -5841,7 +6235,7 @@
           true);
       }
       if (b.source === 'mayar') {
-        return obWrap(WIZ_PAY,
+        return obWrap(wizPayIdx(),
           '<p class="ob-kicker">Mayar</p>' +
           '<h1 class="ob-q">Menunggu pembayaran</h1>' +
           '<p class="ob-sub">Invoice ' + fmtRp(b.pendingAmount || b.amount || 0) +
@@ -5853,7 +6247,7 @@
           '<button class="btn secondary ob-cta" data-act="tab" data-id="home">Kembali ke Home</button>',
           true);
       }
-      return obWrap(WIZ_PAY,
+      return obWrap(wizPayIdx(),
         '<p class="ob-kicker">Transfer</p>' +
         '<h1 class="ob-q">Menunggu konfirmasi Anton</h1>' +
         '<p class="ob-sub">Kamu sudah klaim transfer ' + fmtRp(b.pendingAmount || b.amount || 0) +
@@ -5927,7 +6321,7 @@
       '<button type="button" class="btn secondary ob-cta" data-act="pay-later">Bayar nanti, lihat dulu</button>' +
       '<p class="ob-look-hint">Form sudah masuk — tab <strong>Belajar</strong> &amp; <strong>Diskusi</strong> di bawah. Video 1 kebuka; sisanya blur sampai lunas.</p>' +
       '<button type="button" class="ob-text" data-act="not-interested">Tidak tertarik</button>';
-    return obWrap(WIZ_PAY, inner, foot, true);
+    return obWrap(wizPayIdx(), inner, foot, true);
   }
   function qrisPlaceholderSvg() {
     const cells = [];
@@ -10074,6 +10468,33 @@
 
   document.addEventListener('change', (e) => {
     const t = e.target;
+    if (t.matches('[data-act="ob-field-type"]')) {
+      if (!canBill()) return;
+      captureOnboardingEditor();
+      const ob = ensureOnboarding();
+      const page = ob.pages.find((p) => p.id === t.getAttribute('data-page'));
+      const field = page && page.fields.find((f) => f.id === t.getAttribute('data-field'));
+      if (!field) return;
+      field.type = t.value || 'text';
+      db.onboarding = normalizeOnboarding(ob);
+      save();
+      render();
+      return;
+    }
+    if (t.matches('[data-act="ob-field-req"], [data-act="ob-field-other"]')) {
+      if (!canBill()) return;
+      captureOnboardingEditor();
+      const ob = ensureOnboarding();
+      const page = ob.pages.find((p) => p.id === t.getAttribute('data-page'));
+      const field = page && page.fields.find((f) => f.id === t.getAttribute('data-field'));
+      if (!field) return;
+      if (t.getAttribute('data-act') === 'ob-field-req') field.required = !!t.checked;
+      else field.allowOther = !!t.checked;
+      db.onboarding = normalizeOnboarding(ob);
+      save();
+      render();
+      return;
+    }
     if (t.matches('[data-act="daftar-col-toggle"]')) {
       const id = t.getAttribute('data-id');
       if (!id || id === 'name') return;
@@ -10301,7 +10722,7 @@
     'post-new', 'post-comment', 'post-files', 'post-attach', 'post-img-remove',
     'poll-toggle', 'poll-cancel', 'poll-add-opt', 'poll-opt-remove', 'poll-vote',
     'comment-reply', 'comment-reply-clear', 'comment-like', 'post-like', 'post-pin', 'post-del',
-    'wiz-next', 'wiz-shop', 'wiz-heard', 'wiz-tools', 'apply',
+    'wiz-next', 'wiz-shop', 'wiz-heard', 'wiz-tools', 'ob-single', 'ob-multi', 'apply',
     'mark-done', 'toggle-done', 'exam', 'exam-submit',
     'pay-term', 'pay-buy', 'pay-prompt', 'pay-lynk', 'pay-manual', 'pay-now', 'pay-later',
     'ask', 'reply', 'report-issue', 'chat-member-add', 'chat-member-remove', 'chat-new',
@@ -10696,13 +11117,150 @@
     } else if (act === 'wiz-shop') {
       captureWizFields();
       wizMerge({ shopPick: btn.getAttribute('data-id') });
-      render();
-    } else if (act === 'wiz-heard') {
+      if (isOnboardPreview()) paintOnboardPreview();
+      else render();
+    } else if (act === 'ob-single' || act === 'wiz-heard') {
       captureWizFields();
-      wizMerge({ heardPick: btn.getAttribute('data-id') });
-      render();
+      const key = btn.getAttribute('data-key') || 'heard';
+      const id = btn.getAttribute('data-id') || '';
+      const picks = Object.assign({}, wizDraft().picks || {});
+      picks[key] = id;
+      wizMerge({ picks: picks });
+      if (isOnboardPreview()) paintOnboardPreview();
+      else render();
+    } else if (act === 'ob-multi') {
+      captureWizFields();
+      const key = btn.getAttribute('data-key') || '';
+      const id = btn.getAttribute('data-id') || '';
+      if (!key || !id) return;
+      const picks = Object.assign({}, wizDraft().picks || {});
+      const cur = Array.isArray(picks[key]) ? picks[key].slice() : [];
+      const ix = cur.indexOf(id);
+      if (ix >= 0) cur.splice(ix, 1);
+      else cur.push(id);
+      picks[key] = cur;
+      wizMerge({ picks: picks });
+      if (isOnboardPreview()) paintOnboardPreview();
+      else render();
     } else if (act === 'wiz-tools') {
       ui.wizTools = !ui.wizTools;
+      render();
+    } else if (act === 'ob-preview') {
+      if (!canBill()) return;
+      captureOnboardingEditor();
+      save();
+      ui.onboardPreview = { open: true, step: 0, draft: {}, done: false };
+      paintOnboardPreview();
+    } else if (act === 'ob-preview-close') {
+      ui.onboardPreview = null;
+      paintOnboardPreview();
+    } else if (act === 'ob-preview-restart') {
+      ui.onboardPreview = { open: true, step: 0, draft: {}, done: false };
+      paintOnboardPreview();
+    } else if (act === 'ob-save') {
+      if (!canBill()) return;
+      captureOnboardingEditor();
+      save();
+      toast('Onboarding disimpan.');
+      render();
+    } else if (act === 'ob-reset') {
+      if (!canBill()) return;
+      if (!window.confirm('Kembalikan halaman onboarding ke default?')) return;
+      db.onboarding = defaultOnboarding();
+      save();
+      toast('Onboarding di-reset.');
+      render();
+    } else if (act === 'ob-page-add') {
+      if (!canBill()) return;
+      captureOnboardingEditor();
+      const ob = ensureOnboarding();
+      ob.pages.push(normalizeObPage({
+        kicker: 'Baru',
+        q: 'Pertanyaan baru?',
+        sub: '',
+        fields: [{ type: 'text', required: true, label: 'Jawaban', key: 'q_' + (ob.pages.length + 1) }]
+      }));
+      db.onboarding = normalizeOnboarding(ob);
+      save();
+      render();
+    } else if (act === 'ob-page-del') {
+      if (!canBill()) return;
+      captureOnboardingEditor();
+      const ob = ensureOnboarding();
+      if (ob.pages.length <= 1) {
+        toast('Minimal satu halaman.');
+        return;
+      }
+      const id = btn.getAttribute('data-page');
+      ob.pages = ob.pages.filter((p) => p.id !== id);
+      db.onboarding = normalizeOnboarding(ob);
+      save();
+      render();
+    } else if (act === 'ob-page-up' || act === 'ob-page-down') {
+      if (!canBill()) return;
+      captureOnboardingEditor();
+      const ob = ensureOnboarding();
+      const id = btn.getAttribute('data-page');
+      const i = ob.pages.findIndex((p) => p.id === id);
+      if (i < 0) return;
+      const j = act === 'ob-page-up' ? i - 1 : i + 1;
+      if (j < 0 || j >= ob.pages.length) return;
+      const tmp = ob.pages[i];
+      ob.pages[i] = ob.pages[j];
+      ob.pages[j] = tmp;
+      db.onboarding = normalizeOnboarding(ob);
+      save();
+      render();
+    } else if (act === 'ob-field-add') {
+      if (!canBill()) return;
+      captureOnboardingEditor();
+      const ob = ensureOnboarding();
+      const pageId = btn.getAttribute('data-page');
+      const page = ob.pages.find((p) => p.id === pageId);
+      if (!page) return;
+      const sel = document.querySelector('[data-ob-new-type][data-page="' + pageId + '"]');
+      const type = (sel && sel.value) || 'text';
+      page.fields.push(normalizeObField({
+        type: type,
+        required: true,
+        label: type === 'text' || type === 'textarea' || type === 'link' ? 'Pertanyaan' : '',
+        key: type === 'name' || type === 'wa' || type === 'city' || type === 'shop' ? '' : ('f_' + (page.fields.length + 1)),
+        options: (type === 'single' || type === 'multi') ? ['Opsi 1', 'Opsi 2'] : undefined,
+        allowOther: type === 'single'
+      }));
+      db.onboarding = normalizeOnboarding(ob);
+      save();
+      render();
+    } else if (act === 'ob-field-del') {
+      if (!canBill()) return;
+      captureOnboardingEditor();
+      const ob = ensureOnboarding();
+      const page = ob.pages.find((p) => p.id === btn.getAttribute('data-page'));
+      if (!page || (page.fields || []).length <= 1) {
+        toast('Minimal satu pertanyaan per halaman.');
+        return;
+      }
+      const fid = btn.getAttribute('data-field');
+      page.fields = page.fields.filter((f) => f.id !== fid);
+      db.onboarding = normalizeOnboarding(ob);
+      save();
+      render();
+    } else if (act === 'ob-field-up' || act === 'ob-field-down') {
+      if (!canBill()) return;
+      captureOnboardingEditor();
+      const ob = ensureOnboarding();
+      const page = ob.pages.find((p) => p.id === btn.getAttribute('data-page'));
+      if (!page) return;
+      const fid = btn.getAttribute('data-field');
+      const i = page.fields.findIndex((f) => f.id === fid);
+      if (i < 0) return;
+      const j = act === 'ob-field-up' ? i - 1 : i + 1;
+      if (j < 0 || j >= page.fields.length) return;
+      const tmp = page.fields[i];
+      page.fields[i] = page.fields[j];
+      page.fields[j] = tmp;
+      db.onboarding = normalizeOnboarding(ob);
+      save();
       render();
     } else if (act === 'issue-done') {
       if (!ui.admin) return;
@@ -10715,6 +11273,7 @@
     } else if (act === 'tab') {
       const id = btn.getAttribute('data-id');
       ui.profilePreview = null;
+      if (ui.onboardPreview) ui.onboardPreview = null;
       if (isStaff()) {
         ui.mentorTab = id;
         if (id !== 'orang') ui.personId = null;
@@ -12213,6 +12772,10 @@
     if (ui.profilePreview) {
       ui.profilePreview = null;
       paintProfilePreview();
+    }
+    if (isOnboardPreview()) {
+      ui.onboardPreview = null;
+      paintOnboardPreview();
     }
   });
 
