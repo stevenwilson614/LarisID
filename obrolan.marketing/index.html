@@ -29,8 +29,8 @@
   <link rel="apple-touch-icon" href="./assets/obrolan/profile.png">
   <title>MasterMind with Anton GC</title>
   <link rel="stylesheet" href="/fonts/laris-fonts.css">
-  <link rel="stylesheet" href="./css/school.css?v=20261027diskusi5">
-  <link rel="stylesheet" href="./css/diskusi-chat.css?v=20261027diskusi5">
+  <link rel="stylesheet" href="./css/school.css?v=20261027menu2">
+  <link rel="stylesheet" href="./css/diskusi-chat.css?v=20261027menu2">
 </head>
 <body>
   <div id="prod-block" hidden>
@@ -43,23 +43,32 @@
   <div id="app" class="is-student">
     <header class="topbar">
       <div class="brand">
-        <button type="button" class="brand-btn" id="brand-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="brand-menu" aria-label="Menu akun" disabled>
+        <button type="button" class="brand-btn" id="brand-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="brand-menu" aria-label="Profile menu">
           <img id="school-logo" src="./assets/obrolan/profile.png" alt="" width="32" height="32">
           <span class="brand-caret" aria-hidden="true"><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4l2.5 2.5L7.5 4"/></svg></span>
         </button>
-        <div>
+        <div class="brand-copy">
           <strong id="school-name">MasterMind with Anton GC</strong>
+          <span id="school-header" class="school-header" hidden></span>
           <a id="school-handle" class="school-handle" href="/obrolan.marketing/">obrolan.marketing</a>
           <span class="off-badge">/obrolan.marketing</span>
         </div>
         <div id="brand-menu" class="brand-menu" role="menu" aria-labelledby="brand-btn" hidden>
+          <button type="button" role="menuitem" data-act="open-profil" id="btn-menu-profil">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span class="brand-menu-label">Profile</span>
+          </button>
+          <button type="button" role="menuitem" data-act="open-account" id="btn-menu-account">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.3.6.9 1 1.6 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+            Account settings
+          </button>
+          <button type="button" role="menuitem" data-act="open-siswa-view" id="btn-menu-siswa-view">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
+            Siswa view
+          </button>
           <button type="button" role="menuitem" id="btn-admin-out" hidden>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
             Keluar
-          </button>
-          <button type="button" role="menuitem" class="brand-menu-danger" id="btn-reset" title="Kembalikan kelas ke data awal" hidden>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
-            Reset data
           </button>
         </div>
       </div>
@@ -87,8 +96,9 @@
   </div>
   <aside id="drawer" class="drawer" hidden></aside>
   <div id="drawer-scrim" class="scrim" hidden></div>
+  <div id="profile-preview" class="prof-preview" hidden></div>
   <div id="toast" class="toast" hidden></div>
-  <script src="./js/seed.js?v=20261027diskusi5"></script>
-  <script src="./js/app.js?v=20261027diskusi5"></script>
+  <script src="./js/seed.js?v=20261027menu2"></script>
+  <script src="./js/app.js?v=20261027menu2"></script>
 </body>
 </html>

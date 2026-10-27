@@ -557,6 +557,12 @@
 
   function hydrateFunnel(merged) {
     merged.schoolSlug = isValidSlug(merged.schoolSlug) ? normalizeSlug(merged.schoolSlug) : SEED.school.slug;
+    merged.schoolProfile = Object.assign(defaultSchoolProfile(), merged.schoolProfile || {}, {
+      socials: Object.assign(defaultSchoolProfile().socials, ((merged.schoolProfile || {}).socials || {}))
+    });
+    merged.accountSettings = Object.assign(defaultAccountSettings(), merged.accountSettings || {}, {
+      notifications: Object.assign(defaultAccountSettings().notifications, ((merged.accountSettings || {}).notifications || {}))
+    });
     merged.inviteCode = String(merged.inviteCode || (SEED.cohort && SEED.cohort.invite) || '').trim() || SEED.cohort.invite;
     merged.lynkProducts = Object.assign({
       month: { url: '', title: '', price: 0 },
@@ -693,7 +699,444 @@
     }
   }
 
-  function defaultState() {
+  function defaultSchoolProfile() {
+    const seed = (SEED.school && SEED.school.profile) || {};
+    const staff = (SEED.staff && SEED.staff[0]) || {};
+    const nameParts = String(staff.name || 'Anton').trim().split(/\s+/);
+    return {
+      firstName: String(seed.firstName || nameParts[0] || 'Anton'),
+      lastName: String(seed.lastName || nameParts.slice(1).join(' ') || ''),
+      headline: String(seed.headline || seed.header || SEED.school.slogan || '').slice(0, 60),
+      biography: String(seed.biography || seed.description || ''),
+      photoMode: seed.photoMode === 'social' ? 'social' : 'upload',
+      socialSource: seed.socialSource || 'tiktok',
+      photoBlob: false,
+      socials: Object.assign({
+        website: '',
+        facebook: '',
+        instagram: '',
+        linkedin: '',
+        tiktok: '',
+        x: '',
+        youtube: ''
+      }, seed.socials || {})
+    };
+  }
+  function schoolProfile() {
+    const base = defaultSchoolProfile();
+    const cur = (typeof db !== 'undefined' && db && db.schoolProfile) ? db.schoolProfile : {};
+    const headline = cur.headline != null ? cur.headline : (cur.header != null ? cur.header : base.headline);
+    const biography = cur.biography != null ? cur.biography : (cur.description != null ? cur.description : base.biography);
+    return {
+      firstName: cur.firstName != null ? String(cur.firstName) : base.firstName,
+      lastName: cur.lastName != null ? String(cur.lastName) : base.lastName,
+      headline: String(headline || '').slice(0, 60),
+      biography: String(biography || ''),
+      photoMode: cur.photoMode === 'social' ? 'social' : 'upload',
+      socialSource: cur.socialSource || base.socialSource,
+      photoBlob: !!cur.photoBlob,
+      socials: Object.assign({}, base.socials, cur.socials || {})
+    };
+  }
+  function schoolDisplayName(p) {
+    const prof = p || schoolProfile();
+    const full = (String(prof.firstName || '').trim() + ' ' + String(prof.lastName || '').trim()).trim();
+    return full || SEED.school.name;
+  }
+  function defaultAccountSettings() {
+    const seed = (SEED.school && SEED.school.account) || {};
+    return {
+      email: String(seed.email || 'anton@obrolan.marketing'),
+      twoFactor: !!seed.twoFactor,
+      passwordSet: true,
+      notifications: Object.assign({
+        studentJoin: true,
+        studentPay: true,
+        lessonComplete: false,
+        comment: true
+      }, seed.notifications || {})
+    };
+  }
+  function accountSettings() {
+    const base = defaultAccountSettings();
+    const cur = (typeof db !== 'undefined' && db && db.accountSettings) ? db.accountSettings : {};
+    return {
+      email: cur.email != null ? String(cur.email) : base.email,
+      twoFactor: cur.twoFactor != null ? !!cur.twoFactor : base.twoFactor,
+      passwordSet: cur.passwordSet != null ? !!cur.passwordSet : base.passwordSet,
+      notifications: Object.assign({}, base.notifications, cur.notifications || {})
+    };
+  }
+  function ensureAccountSettings() {
+    if (!db.accountSettings || typeof db.accountSettings !== 'object') {
+      db.accountSettings = defaultAccountSettings();
+    } else {
+      db.accountSettings = Object.assign(defaultAccountSettings(), db.accountSettings, {
+        notifications: Object.assign(defaultAccountSettings().notifications, (db.accountSettings.notifications || {}))
+      });
+    }
+    return db.accountSettings;
+  }
+  function schoolPhotoKey() { return 'photo-school'; }
+  function ensureSchoolProfile() {
+    if (!db.schoolProfile || typeof db.schoolProfile !== 'object') {
+      db.schoolProfile = defaultSchoolProfile();
+    } else {
+      db.schoolProfile = Object.assign(defaultSchoolProfile(), db.schoolProfile, {
+        socials: Object.assign(defaultSchoolProfile().socials, (db.schoolProfile.socials || {}))
+      });
+    }
+    return db.schoolProfile;
+  }
+
+  function socialHandleClean(raw) {
+    return String(raw || '').trim().replace(/^@/, '').replace(/\/+$/, '');
+  }
+  function socialHref(network, raw) {
+    const v = String(raw || '').trim();
+    if (!v) return '';
+    if (/^https?:\/\//i.test(v)) return v;
+    const h = socialHandleClean(v).replace(/^@/, '');
+    if (!h) return '';
+    if (network === 'tiktok') return 'https://www.tiktok.com/@' + h.replace(/^@/, '');
+    if (network === 'instagram') return 'https://www.instagram.com/' + h;
+    if (network === 'facebook') return 'https://www.facebook.com/' + h;
+    if (network === 'linkedin') return 'https://www.linkedin.com/' + h.replace(/^(in\/)?/i, 'in/').replace(/^in\/in\//i, 'in/');
+    if (network === 'youtube') {
+      if (/^(UC|@)/.test(h) || /channel\//i.test(h)) return 'https://www.youtube.com/' + (h.indexOf('@') === 0 || h.indexOf('UC') === 0 ? h : ('@' + h));
+      return 'https://www.youtube.com/@' + h;
+    }
+    if (network === 'x') return 'https://x.com/' + h;
+    if (network === 'website') return 'https://' + h.replace(/^https?:\/\//i, '');
+    return v;
+  }
+  function socialPrefixedInput(label, name, prefix, value, placeholder) {
+    return '<label class="ps-field">' +
+      '<span class="ps-label">' + esc(label) + '</span>' +
+      '<div class="ps-prefixed">' +
+        '<span class="ps-prefix">' + esc(prefix) + '</span>' +
+        '<input name="' + esc(name) + '" value="' + esc(value || '') + '" placeholder="' + esc(placeholder || '') + '" autocomplete="off" spellcheck="false">' +
+      '</div></label>';
+  }
+  function fetchSocialAvatar(network, handle) {
+    if (network === 'tiktok') return fetchTikTokAvatar(handle);
+    const h = socialHandleClean(handle);
+    if (!h) return Promise.resolve(null);
+    const net = network === 'x' ? 'twitter' : network;
+    const unav = 'https://unavatar.io/' + encodeURIComponent(net) + '/' + encodeURIComponent(h);
+    return fetch(unav).then((r) => r.ok ? r.blob() : null).catch(() => null);
+  }
+  function refreshSchoolPhotoFromSocial(force) {
+    ensureSchoolProfile();
+    const p = schoolProfile();
+    const src = p.socialSource || 'tiktok';
+    const handle = (p.socials && p.socials[src]) || '';
+    if (!handle) return Promise.resolve(false);
+    if (p.photoBlob && p.photoMode === 'social' && !force) return Promise.resolve(true);
+    return fetchSocialAvatar(src, handle).then((blob) => {
+      if (!blob) return false;
+      return blobPut(schoolPhotoKey(), blob).then(() => {
+        db.schoolProfile.photoBlob = true;
+        db.schoolProfile.photoMode = 'social';
+        save();
+        return true;
+      });
+    }).catch(() => false);
+  }
+  function schoolAvatarHtml(cls) {
+    const p = schoolProfile();
+    const c = cls || 'school-avatar';
+    if (p.photoBlob) return '<img class="' + c + '" data-blob="' + esc(schoolPhotoKey()) + '" alt="">';
+    return '<img class="' + c + '" src="' + esc(SEED.school.photo || SEED.school.logo) + '" alt="">';
+  }
+  function schoolSocialLinksHtml() {
+    const s = schoolProfile().socials || {};
+    const items = [
+      { k: 'website', label: 'Website' },
+      { k: 'facebook', label: 'Facebook' },
+      { k: 'instagram', label: 'Instagram' },
+      { k: 'linkedin', label: 'LinkedIn' },
+      { k: 'tiktok', label: 'TikTok' },
+      { k: 'x', label: 'X' },
+      { k: 'youtube', label: 'YouTube' }
+    ];
+    const links = items.map((it) => {
+      const href = socialHref(it.k, s[it.k]);
+      if (!href) return '';
+      const raw = String(s[it.k] || '');
+      const text = it.k === 'website'
+        ? (raw.replace(/^https?:\/\//i, '') || it.label)
+        : (raw.indexOf('@') === 0 ? raw : ('@' + socialHandleClean(raw)));
+      return '<a class="prof-social" href="' + esc(href) + '" target="_blank" rel="noopener">' +
+        '<span class="prof-social-net">' + esc(it.label) + '</span>' +
+        '<span>' + esc(text) + '</span></a>';
+    }).filter(Boolean).join('');
+    return links ? '<div class="prof-socials">' + links + '</div>' : '';
+  }
+  function viewSchoolPublic(opts) {
+    const o = opts || {};
+    const p = schoolProfile();
+    const back = o.student
+      ? '<button type="button" class="btn secondary" data-act="tab" data-id="home">← Back</button>'
+      : '';
+    return '<section class="card school-public">' +
+      '<div class="school-public-head">' +
+        schoolAvatarHtml('school-avatar lg') +
+        '<div>' +
+          '<p class="muted" style="margin:0 0 4px">Mentor</p>' +
+          '<h1 class="school-public-name">' + esc(schoolDisplayName(p)) + '</h1>' +
+          ((p.headline || '').trim()
+            ? '<p class="school-public-header">' + esc(String(p.headline).trim()) + '</p>'
+            : '') +
+          '<p class="muted">' + esc(SEED.school.name) + ' · larisid.com/obrolan.marketing' + '</p>' +
+        '</div>' +
+      '</div>' +
+      (p.biography
+        ? '<div class="school-public-desc">' + mdish(p.biography) + '</div>'
+        : '<p class="muted">No biography yet.</p>') +
+      schoolSocialLinksHtml() +
+      (back ? '<div class="row" style="margin-top:14px">' + back + '</div>' : '') +
+    '</section>';
+  }
+  function profileActionsBar(opts) {
+    const o = opts || {};
+    const mode = ui.profilePreview === 'desktop' ? 'desktop' : (ui.profilePreview === 'phone' ? 'phone' : '');
+    const saveBtn = o.photo
+      ? '<button class="btn ps-save" type="button" data-act="profile-pane" data-id="info">Done</button>'
+      : '<button class="btn ps-save" type="submit" form="school-profile-form">Save</button>';
+    return '<div class="ps-actions">' +
+      saveBtn +
+      '<div class="ps-student-view">' +
+        '<span class="muted">Student view</span>' +
+        '<div class="prof-preview-toggle" role="group" aria-label="Student view">' +
+          '<button type="button" class="btn-sm' + (mode === 'phone' ? ' is-on' : '') +
+            '" data-act="profile-preview" data-mode="phone">Phone</button>' +
+          '<button type="button" class="btn-sm' + (mode === 'desktop' ? ' is-on' : '') +
+            '" data-act="profile-preview" data-mode="desktop">Desktop</button>' +
+        '</div>' +
+      '</div>' +
+      '<button type="button" class="btn-sm" data-act="tab" data-id="siswa">Close</button>' +
+    '</div>';
+  }
+  function viewProfilInfoForm(p) {
+    const s = p.socials || {};
+    const hlLeft = Math.max(0, 60 - String(p.headline || '').length);
+    return '<form class="ps-form" id="school-profile-form" data-act="save-school-profile">' +
+      '<div class="ps-columns">' +
+        '<div class="ps-col">' +
+          '<label class="ps-field"><span class="ps-label">First Name</span>' +
+            '<input name="firstName" required maxlength="40" value="' + esc(p.firstName || '') + '" autocomplete="given-name"></label>' +
+          '<label class="ps-field"><span class="ps-label">Last Name</span>' +
+            '<input name="lastName" maxlength="40" value="' + esc(p.lastName || '') + '" autocomplete="family-name"></label>' +
+          '<label class="ps-field"><span class="ps-label">Headline</span>' +
+            '<div class="ps-headline">' +
+              '<input name="headline" maxlength="60" value="' + esc(p.headline || '') +
+                '" placeholder="Instructor at MasterMind" data-act="headline-count">' +
+              '<span class="ps-count" id="headline-count">' + hlLeft + '</span>' +
+            '</div></label>' +
+          '<label class="ps-field"><span class="ps-label">Biography</span>' +
+            '<div class="ps-bio">' +
+              '<div class="ps-bio-tools" role="toolbar" aria-label="Biography formatting">' +
+                '<button type="button" class="ps-tool" data-act="bio-wrap" data-wrap="**" title="Bold"><strong>B</strong></button>' +
+                '<button type="button" class="ps-tool" data-act="bio-wrap" data-wrap="*" title="Italic"><em>I</em></button>' +
+              '</div>' +
+              '<textarea name="biography" id="profile-biography" rows="8" maxlength="2000" placeholder="Tell students who you are…">' +
+                esc(p.biography || '') + '</textarea>' +
+            '</div>' +
+            '<span class="ps-hint">Help learners know you — credibility, empathy, passion, and personality. Aim for at least 50 words. Links and coupon codes are not permitted.</span>' +
+          '</label>' +
+        '</div>' +
+        '<div class="ps-col">' +
+          '<label class="ps-field"><span class="ps-label">Website</span>' +
+            '<input name="website" value="' + esc(s.website || '') + '" placeholder="Website (http(s)://…)" autocomplete="url"></label>' +
+          socialPrefixedInput('Facebook', 'facebook', 'facebook.com/', s.facebook, 'Username') +
+          socialPrefixedInput('Instagram', 'instagram', 'instagram.com/', s.instagram, 'Username') +
+          socialPrefixedInput('LinkedIn', 'linkedin', 'linkedin.com/', s.linkedin, 'Public Profile URL') +
+          socialPrefixedInput('TikTok', 'tiktok', 'tiktok.com/', s.tiktok, '@Username') +
+          socialPrefixedInput('X', 'x', 'x.com/', s.x, 'Username') +
+          socialPrefixedInput('YouTube', 'youtube', 'youtube.com/', s.youtube, 'Username') +
+        '</div>' +
+      '</div>' +
+      profileActionsBar() +
+    '</form>';
+  }
+  function viewProfilPhotoPane(p) {
+    const syncNet = p.socialSource === 'instagram' ? 'Instagram'
+      : (p.socialSource === 'youtube' ? 'YouTube' : 'TikTok');
+    return '<div class="ps-photo-pane">' +
+      '<div class="ps-photo-card">' +
+        schoolAvatarHtml('school-avatar xxl') +
+        '<div class="ps-photo-actions">' +
+          '<label class="btn secondary">Upload image<input type="file" hidden data-act="school-photo-file" accept="image/*"></label>' +
+          '<div class="ps-sync-row">' +
+            '<button type="button" class="btn" data-act="profile-sync-photo">Sync with ' + esc(syncNet) + '</button>' +
+            '<select class="ps-sync-select" data-act="profile-social-source" aria-label="Social for photo sync">' +
+              '<option value="tiktok"' + (p.socialSource === 'tiktok' || !p.socialSource ? ' selected' : '') + '>TikTok</option>' +
+              '<option value="instagram"' + (p.socialSource === 'instagram' ? ' selected' : '') + '>Instagram</option>' +
+              '<option value="youtube"' + (p.socialSource === 'youtube' ? ' selected' : '') + '>YouTube</option>' +
+            '</select>' +
+          '</div>' +
+          '<p class="muted ps-hint">Uses the handle saved on the Profile tab. Sync may fail if the network blocks avatar fetch.</p>' +
+        '</div>' +
+      '</div>' +
+      profileActionsBar({ photo: true }) +
+    '</div>';
+  }
+  function viewProfilEdit() {
+    ensureSchoolProfile();
+    const p = schoolProfile();
+    const pane = ui.profilePane === 'photo' ? 'photo' : 'info';
+    ui.profilePane = pane;
+    return '<section class="ps-page">' +
+      '<div class="ps-page-head">' +
+        '<h1>Profile &amp; settings</h1>' +
+      '</div>' +
+      '<nav class="ps-tabs" role="tablist">' +
+        '<button type="button" role="tab" data-act="profile-pane" data-id="info" aria-selected="' +
+          (pane === 'info') + '">Profile</button>' +
+        '<button type="button" role="tab" data-act="profile-pane" data-id="photo" aria-selected="' +
+          (pane === 'photo') + '">Profile picture</button>' +
+      '</nav>' +
+      '<div class="ps-body">' +
+        (pane === 'photo' ? viewProfilPhotoPane(p) : viewProfilInfoForm(p)) +
+      '</div>' +
+    '</section>';
+  }
+  function viewAccountSecurity(a) {
+    return '<form class="ps-form as-form" id="account-security-form" data-act="save-account-security">' +
+      '<div class="as-section">' +
+        '<h2>Email</h2>' +
+        '<p class="muted">Login email for this school. Prototype stores it locally only.</p>' +
+        '<label class="ps-field"><span class="ps-label">Email address</span>' +
+          '<input name="email" type="email" required value="' + esc(a.email || '') + '" autocomplete="email"></label>' +
+      '</div>' +
+      '<div class="as-section">' +
+        '<h2>Password</h2>' +
+        '<p class="muted">' + (a.passwordSet ? 'Password is set. Enter current + new to change.' : 'No password yet — set one below.') + '</p>' +
+        '<label class="ps-field"><span class="ps-label">Current password</span>' +
+          '<input name="currentPassword" type="password" autocomplete="current-password" placeholder="••••••••"></label>' +
+        '<label class="ps-field"><span class="ps-label">New password</span>' +
+          '<input name="newPassword" type="password" autocomplete="new-password" minlength="8" placeholder="Min. 8 characters"></label>' +
+        '<label class="ps-field"><span class="ps-label">Confirm new password</span>' +
+          '<input name="confirmPassword" type="password" autocomplete="new-password" placeholder="Repeat new password"></label>' +
+      '</div>' +
+      '<div class="as-section">' +
+        '<h2>Two-factor authentication</h2>' +
+        '<p class="muted">Mock toggle for the prototype — no real authenticator app yet.</p>' +
+        '<label class="as-toggle">' +
+          '<input type="checkbox" name="twoFactor"' + (a.twoFactor ? ' checked' : '') + '>' +
+          '<span>Require a second step when signing in</span>' +
+        '</label>' +
+      '</div>' +
+      '<div class="ps-actions">' +
+        '<button class="btn ps-save" type="submit">Save</button>' +
+        '<button type="button" class="btn-sm" data-act="tab" data-id="siswa">Close</button>' +
+      '</div>' +
+    '</form>';
+  }
+  function viewAccountNotifications(a) {
+    const n = a.notifications || {};
+    const rows = [
+      { k: 'studentJoin', label: 'Students join', hint: 'Someone completes the join form or accepts an invite.' },
+      { k: 'studentPay', label: 'Students pay', hint: 'Transfer marked paid, Mayar webhook, or autopay renews.' },
+      { k: 'lessonComplete', label: 'Students complete a lesson', hint: 'They mark a video or materi selesai.' },
+      { k: 'comment', label: 'Students make a comment', hint: 'New diskusi post or reply in class.' }
+    ];
+    return '<form class="ps-form as-form" id="account-notify-form" data-act="save-account-notifications">' +
+      '<div class="as-section">' +
+        '<h2>Email notifications</h2>' +
+        '<p class="muted">Choose what lands in your inbox. Prototype only — nothing is sent yet.</p>' +
+        '<div class="as-notify-list">' +
+          rows.map((r) =>
+            '<label class="as-notify-row">' +
+              '<input type="checkbox" name="' + esc(r.k) + '"' + (n[r.k] ? ' checked' : '') + '>' +
+              '<span><strong>' + esc(r.label) + '</strong><em class="muted">' + esc(r.hint) + '</em></span>' +
+            '</label>'
+          ).join('') +
+        '</div>' +
+      '</div>' +
+      '<div class="ps-actions">' +
+        '<button class="btn ps-save" type="submit">Save</button>' +
+        '<button type="button" class="btn-sm" data-act="tab" data-id="siswa">Close</button>' +
+      '</div>' +
+    '</form>';
+  }
+  function viewAccountSettings() {
+    ensureAccountSettings();
+    const a = accountSettings();
+    const pane = ui.accountPane === 'notifications' ? 'notifications' : 'security';
+    ui.accountPane = pane;
+    return '<section class="ps-page">' +
+      '<div class="ps-page-head">' +
+        '<h1>Account settings</h1>' +
+      '</div>' +
+      '<nav class="ps-tabs" role="tablist">' +
+        '<button type="button" role="tab" data-act="account-pane" data-id="security" aria-selected="' +
+          (pane === 'security') + '">Account security</button>' +
+        '<button type="button" role="tab" data-act="account-pane" data-id="notifications" aria-selected="' +
+          (pane === 'notifications') + '">Notifications</button>' +
+      '</nav>' +
+      '<div class="ps-body">' +
+        (pane === 'notifications' ? viewAccountNotifications(a) : viewAccountSecurity(a)) +
+      '</div>' +
+    '</section>';
+  }
+  function paintProfilePreview() {
+    const host = $('profile-preview');
+    if (!host) return;
+    if (!ui.profilePreview) {
+      host.hidden = true;
+      host.innerHTML = '';
+      return;
+    }
+    const mode = ui.profilePreview === 'desktop' ? 'desktop' : 'phone';
+    const p = schoolProfile();
+    host.hidden = false;
+    host.innerHTML =
+      '<div class="prof-preview-scrim" data-act="profile-preview-close"></div>' +
+      '<div class="prof-preview-panel" role="dialog" aria-label="Student view">' +
+        '<div class="prof-preview-bar">' +
+          '<strong>Student view</strong>' +
+          '<div class="prof-preview-toggle" role="group" aria-label="Device">' +
+            '<button type="button" class="btn-sm' + (mode === 'phone' ? ' is-on' : '') +
+              '" data-act="profile-preview" data-mode="phone">Phone</button>' +
+            '<button type="button" class="btn-sm' + (mode === 'desktop' ? ' is-on' : '') +
+              '" data-act="profile-preview" data-mode="desktop">Desktop</button>' +
+          '</div>' +
+          '<button type="button" class="btn-sm" data-act="profile-preview-close">Close</button>' +
+        '</div>' +
+        '<div class="prof-preview-stage">' +
+          '<div class="prof-preview-frame is-' + mode + '">' +
+            '<div class="prof-preview-chrome">' +
+              '<div class="brand brand-preview">' +
+                schoolAvatarHtml('school-avatar') +
+                '<div class="brand-copy">' +
+                  '<strong>' + esc(SEED.school.name) + '</strong>' +
+                  ((p.headline || '').trim()
+                    ? '<span class="school-header">' + esc(String(p.headline).trim()) + '</span>'
+                    : '') +
+                  '<span class="school-handle">' + esc(schoolSlug()) + '</span>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="prof-preview-body">' + viewSchoolPublic({}) + '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    host.querySelectorAll('img[data-blob]').forEach((el) => {
+      const id = el.getAttribute('data-blob');
+      blobGet(id).then((file) => {
+        if (!file || !el.isConnected) return;
+        el.src = URL.createObjectURL(file);
+      });
+    });
+    // Keep Save bar toggles in sync without full re-render
+    document.querySelectorAll('.ps-actions .prof-preview-toggle .btn-sm').forEach((b) => {
+      b.classList.toggle('is-on', b.getAttribute('data-mode') === mode);
+    });
+  }
+
+    function defaultState() {
     const progress = {};
     Object.entries(SEED.progressSeed).forEach(([sid, ids]) => {
       progress[sid] = Object.fromEntries(ids.map((id) => [id, true]));
@@ -747,7 +1190,9 @@
       daftarCustom: [],
       liveStudents: [],
       ownerContact: { wa: '', email: '' },
-      lynkProducts: { month: { url: '', title: '', price: 0 }, quarter: { url: '', title: '', price: 0 }, half: { url: '', title: '', price: 0 } }
+      lynkProducts: { month: { url: '', title: '', price: 0 }, quarter: { url: '', title: '', price: 0 }, half: { url: '', title: '', price: 0 } },
+      schoolProfile: defaultSchoolProfile(),
+      accountSettings: defaultAccountSettings()
     };
     rebaseDemoClocks(state);
     return state;
@@ -828,6 +1273,10 @@
     kurEdit: false,
     composeMode: 'note',
     personMidTab: 'timeline',
+    brandMenuOpen: false,
+    profilePane: 'info',
+    accountPane: 'security',
+    profilePreview: null,
     socialPick: null,
     shopPick: null,
     waDraft: '',
@@ -879,9 +1328,14 @@
     pollOptions: ['', ''],
     pollFocus: '',
     postImages: [],
+    postFiles: [],
     postBody: '',
     postUploading: false,
-    lightbox: ''
+    lightbox: '',
+    replyTo: null,
+    commentDrafts: {},
+    commentFocus: '',
+    unreadJump: ''
   };
   if (PRESENT) document.documentElement.classList.add('present-pane');
 
@@ -932,13 +1386,20 @@
       existing.pinned = !!post.pinned;
       existing.body = post.body;
       existing.images = post.images || [];
+      existing.files = post.files || [];
       added = true;
     });
     pendingDiskusi.comments.forEach((row) => {
-      if (!db.comments.some((c) => c && c.id === row.id)) {
+      const existing = db.comments.find((c) => c && c.id === row.id);
+      if (!existing) {
         db.comments.push(row);
         added = true;
+        return;
       }
+      existing.body = row.body;
+      existing.likes = Array.isArray(row.likes) ? row.likes.slice() : (existing.likes || []);
+      existing.replyTo = row.replyTo || '';
+      added = true;
     });
     pendingDiskusi.chats.forEach((snap, id) => {
       if (snap.chat) db.chats[id] = snap.chat;
@@ -1312,35 +1773,107 @@
     db.posts.forEach((p) => { if (p && p.batchId) ids.add(p.batchId); });
     return Array.from(ids);
   }
-  function latestPost(id) {
+  function latestActivity(id) {
     let best = null;
+    const inChat = new Set();
     (db.posts || []).forEach((p) => {
       if (!p || p.batchId !== id) return;
-      if (!best || new Date(p.createdAt) > new Date(best.createdAt)) best = p;
+      inChat.add(p.id);
+      if (!best || new Date(p.createdAt) > new Date(best.at)) best = { at: p.createdAt, kind: 'post', post: p, comment: null };
+    });
+    (db.comments || []).forEach((c) => {
+      if (!c || !inChat.has(c.postId)) return;
+      if (!best || new Date(c.createdAt) > new Date(best.at)) best = { at: c.createdAt, kind: 'comment', post: null, comment: c };
     });
     return best;
   }
   function chatActivity(id) {
-    const last = latestPost(id);
+    const last = latestActivity(id);
     const created = db.chats[id] && db.chats[id].createdAt;
-    const times = [last && last.createdAt, created].filter(Boolean).map((t) => new Date(t).getTime()).filter((n) => isFinite(n));
+    const times = [last && last.at, created].filter(Boolean).map((t) => new Date(t).getTime()).filter((n) => isFinite(n));
     return times.length ? Math.max.apply(null, times) : 0;
   }
-  function chatPreviewText(post) {
-    if (!post) return 'Belum ada catatan';
-    if (post.poll && post.poll.question) return 'Poll · ' + post.poll.question;
-    const body = String(post.body || '').replace(/\s+/g, ' ').trim();
+  function chatPreviewText(act) {
+    if (!act) return 'Belum ada catatan';
+    if (act.kind === 'comment' && act.comment) {
+      const body = String(act.comment.body || '').replace(/\s+/g, ' ').trim();
+      const who = nameOf(act.comment.authorId);
+      return ((who ? who + ': ' : '') + (body || 'Balasan')).slice(0, 80);
+    }
+    const post = act.post;
+    if (post && post.poll && post.poll.question) return 'Poll · ' + post.poll.question;
+    const body = String((post && post.body) || '').replace(/\s+/g, ' ').trim();
     if (body) return body.slice(0, 80);
-    if (post.images && post.images.length) return 'Foto';
+    if (post && post.images && post.images.length) return 'Foto';
+    if (post && post.files && post.files.length) return (post.files[0] && post.files[0].name) || 'File';
     return 'Catatan';
   }
+  const DISKUSI_READ_KEY = 'anton-diskusi-read';
+  function diskusiReadStore() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(DISKUSI_READ_KEY) || '{}');
+      return raw && typeof raw === 'object' ? raw : {};
+    } catch (err) { return {}; }
+  }
+  function readCursor(chatId) {
+    const mine = diskusiReadStore()[actorId()];
+    if (!mine || typeof mine !== 'object') return '';
+    return mine[chatId] || '';
+  }
+  function setReadCursor(chatId, at) {
+    if (!chatId || !at) return false;
+    const store = diskusiReadStore();
+    const who = actorId();
+    const mine = store[who] && typeof store[who] === 'object' ? store[who] : {};
+    const prev = mine[chatId] || '';
+    if (prev && new Date(prev).getTime() >= new Date(at).getTime()) return false;
+    mine[chatId] = at;
+    store[who] = mine;
+    localStorage.setItem(DISKUSI_READ_KEY, JSON.stringify(store));
+    return true;
+  }
+  function isUnreadAt(chatId, at, authorId) {
+    if (!at || !authorId || authorId === actorId()) return false;
+    const cursor = readCursor(chatId);
+    if (!cursor) return true;
+    const t = new Date(at).getTime();
+    const c = new Date(cursor).getTime();
+    return isFinite(t) && isFinite(c) && t > c;
+  }
+  function chatEvents(chatId) {
+    const items = [];
+    const postIds = new Set();
+    (db.posts || []).forEach((p) => {
+      if (!p || p.batchId !== chatId) return;
+      postIds.add(p.id);
+      items.push({ kind: 'post', id: p.id, at: p.createdAt, authorId: p.authorId, elId: 'dkp-' + p.id });
+    });
+    (db.comments || []).forEach((c) => {
+      if (!c || !postIds.has(c.postId)) return;
+      items.push({ kind: 'comment', id: c.id, at: c.createdAt, authorId: c.authorId, elId: 'dkc-' + c.id });
+    });
+    items.sort((a, b) => new Date(a.at) - new Date(b.at));
+    return items;
+  }
+  function unreadEntries(chatId) {
+    return chatEvents(chatId).filter((it) => isUnreadAt(chatId, it.at, it.authorId));
+  }
+  function unreadCount(chatId) {
+    return unreadEntries(chatId).length;
+  }
+  function firstUnreadElId(chatId) {
+    const first = unreadEntries(chatId)[0];
+    return first ? first.elId : '';
+  }
   function chatMeta(id) {
+    const act = latestActivity(id);
     return {
       id: id,
       label: batchLabel(id),
       count: chatMembers(id).length,
-      preview: chatPreviewText(latestPost(id)),
-      when: latestPost(id) ? relWhen(latestPost(id).createdAt) : ''
+      preview: chatPreviewText(act),
+      when: act ? relWhen(act.at) : '',
+      unread: unreadCount(id)
     };
   }
   function chatList() {
@@ -1356,6 +1889,93 @@
   }
   function visibleChats() {
     return isStaff() ? chatList() : chatsFor(ui.personaId);
+  }
+  function unreadTotal() {
+    return visibleChats().reduce((sum, c) => sum + (c.unread || 0), 0);
+  }
+  function unreadJumpHtml() {
+    const n = unreadTotal();
+    if (!n) return '';
+    return '<button type="button" class="dk-jump" data-act="unread-next" aria-label="Ke belum dibaca berikutnya">' +
+      '<span class="dk-chevron" data-dir="down" aria-hidden="true"></span>' +
+      '<span class="dk-jump-n">' + (n > 99 ? '99+' : n) + '</span></button>';
+  }
+  function scrollFeedTo(el) {
+    const feed = el && el.closest && el.closest('.dk-feed');
+    if (!feed || !el) return;
+    const fr = feed.getBoundingClientRect();
+    const er = el.getBoundingClientRect();
+    feed.scrollTop += er.top - fr.top - (feed.clientHeight / 2) + (er.height / 2);
+  }
+  function nextUnreadJump() {
+    const current = ui.diskusiSub === 'tanya' ? '' : activeDiskusiBatch();
+    const feed = document.querySelector('.dk-feed');
+    if (current && feed && feed.clientHeight > 40) {
+      const box = feed.getBoundingClientRect();
+      const here = unreadEntries(current);
+      const below = here.find((it) => {
+        const el = document.getElementById(it.elId);
+        return !el || el.getBoundingClientRect().top > box.bottom - 12;
+      });
+      if (below) return { chatId: current, item: below, dir: 'down' };
+      const above = here.slice().reverse().find((it) => {
+        const el = document.getElementById(it.elId);
+        return el && el.getBoundingClientRect().bottom < box.top + 12;
+      });
+      if (above) return { chatId: current, item: above, dir: 'up' };
+    }
+    const list = visibleChats();
+    const start = Math.max(0, list.findIndex((c) => c.id === current));
+    for (let step = 1; step <= list.length; step += 1) {
+      const c = list[(start + step) % list.length];
+      if (!c || c.id === current) continue;
+      const pending = unreadEntries(c.id);
+      if (pending.length) return { chatId: c.id, item: pending[0], dir: 'down' };
+    }
+    return null;
+  }
+  function acknowledgeUnread() {
+    const feed = document.querySelector('.dk-feed');
+    if (!feed || feed.clientHeight < 40 || ui.diskusiSub === 'tanya') return false;
+    const batch = activeDiskusiBatch();
+    if (!batch) return false;
+    const box = feed.getBoundingClientRect();
+    const items = unreadEntries(batch);
+    let cursor = '';
+    for (let i = 0; i < items.length; i += 1) {
+      const el = document.getElementById(items[i].elId);
+      if (!el) break;
+      if (el.getBoundingClientRect().top > box.bottom - 16) break;
+      cursor = items[i].at;
+    }
+    if (!cursor) return false;
+    return setReadCursor(batch, cursor);
+  }
+  function paintUnreadChrome() {
+    document.querySelectorAll('.dk-row[data-act="diskusi-batch"]').forEach((row) => {
+      const n = unreadCount(row.getAttribute('data-id') || '');
+      row.classList.toggle('is-unread', n > 0);
+      const meta = row.querySelector('.dk-row-meta');
+      if (!meta) return;
+      let badge = meta.querySelector('.dk-badge');
+      if (n > 0) {
+        if (!badge) {
+          badge = document.createElement('span');
+          badge.className = 'dk-badge';
+          meta.appendChild(badge);
+        }
+        badge.textContent = n > 99 ? '99+' : String(n);
+      } else if (badge) badge.remove();
+    });
+    const total = unreadTotal();
+    document.querySelectorAll('[data-act="unread-next"]').forEach((btn) => {
+      btn.hidden = !total;
+      const num = btn.querySelector('.dk-jump-n');
+      if (num && total) num.textContent = total > 99 ? '99+' : String(total);
+      const chev = btn.querySelector('.dk-chevron');
+      const jump = total ? nextUnreadJump() : null;
+      if (chev && jump) chev.setAttribute('data-dir', jump.dir || 'down');
+    });
   }
   function canPostIn(sid, batchId) {
     if (!batchId) return false;
@@ -4399,8 +5019,18 @@
     $('school-name').textContent = SEED.school.name;
     const logo = $('school-logo');
     if (logo) {
-      logo.src = SEED.school.photo || SEED.school.logo;
       logo.alt = SEED.school.name;
+      const pLogo = schoolProfile();
+      if (pLogo.photoBlob) {
+        logo.setAttribute('data-blob', schoolPhotoKey());
+        blobGet(schoolPhotoKey()).then((file) => {
+          if (!file || !logo.isConnected) return;
+          logo.src = URL.createObjectURL(file);
+        });
+      } else {
+        logo.removeAttribute('data-blob');
+        logo.src = SEED.school.photo || SEED.school.logo;
+      }
     }
     const badge = document.querySelector('.off-badge');
     if (badge) {
@@ -4444,19 +5074,38 @@
       if (inp && document.activeElement !== inp) inp.value = ui.cariSiswa || '';
       paintCariDrop();
     }
-    const resetBtn = $('btn-reset');
-    if (resetBtn) resetBtn.hidden = ui.present || (syncEnabled() && !ui.admin);
     const outBtn = $('btn-admin-out');
     if (outBtn) outBtn.hidden = !(ui.admin && syncEnabled());
+    const menuProfil = $('btn-menu-profil');
+    const menuAccount = $('btn-menu-account');
+    const menuSiswa = $('btn-menu-siswa-view');
+    if (menuProfil) {
+      menuProfil.hidden = false;
+      const label = canBill() ? 'Profile' : 'View profile';
+      const textNode = Array.from(menuProfil.childNodes).find((n) => n.nodeType === 3 && String(n.textContent || '').trim());
+      if (textNode) textNode.textContent = ' ' + label;
+      else {
+        const span = menuProfil.querySelector('.brand-menu-label');
+        if (span) span.textContent = label;
+      }
+    }
+    if (menuAccount) menuAccount.hidden = !canBill();
+    if (menuSiswa) menuSiswa.hidden = !canBill();
     const brandBtn = $('brand-btn');
     if (brandBtn) {
-      // Avatar only opens a menu when there is something in it (admin: Keluar / Reset).
-      const hasMenu = !!((resetBtn && !resetBtn.hidden) || (outBtn && !outBtn.hidden));
-      brandBtn.disabled = !hasMenu;
-      if (!hasMenu) setBrandMenu(false);
+      brandBtn.disabled = false;
+      brandBtn.setAttribute('aria-label', 'Profile menu');
+      brandBtn.title = 'Profile menu';
+    }
+    const headerEl = $('school-header');
+    if (headerEl) {
+      const prof = schoolProfile();
+      const show = !!(prof.headline || '').trim();
+      headerEl.hidden = !show;
+      headerEl.textContent = show ? String(prof.headline).trim() : '';
     }
     if (!isStaff()) {
-      const allowed = studentTabs().map((t) => t.id).concat(['sku', 'alat', 'daftar', 'tes', 'sertifikat', 'diskusi']);
+      const allowed = studentTabs().map((t) => t.id).concat(['sku', 'alat', 'daftar', 'tes', 'sertifikat', 'diskusi', 'profil']);
       if (needsWizard(ui.personaId) && ui.tab !== 'daftar') ui.tab = 'daftar';
       if (allowed.indexOf(ui.tab) === -1) ui.tab = 'home';
     }
@@ -4537,10 +5186,14 @@
     }
   }
 
+  let diskusiAckLock = false;
   function captureDiskusiScroll() {
+    if (ui.diskusiScroll === 'jump' || ui.diskusiScroll === 'unread' || ui.diskusiScrollHold) return;
     const feed = document.querySelector('.dk-feed');
     if (!feed) {
-      ui.diskusiScroll = ui.diskusiScroll || 'bottom';
+      const onDiskusi = (isStaff() && ui.mentorTab === 'diskusi') || (!isStaff() && ui.tab === 'diskusi');
+      const batch = onDiskusi && ui.diskusiSub !== 'tanya' ? activeDiskusiBatch() : '';
+      ui.diskusiScroll = batch && unreadCount(batch) ? 'unread' : (ui.diskusiScroll || 'bottom');
       return;
     }
     const nearBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 80;
@@ -4548,10 +5201,17 @@
   }
   function afterDiskusiRender() {
     const feed = document.querySelector('.dk-feed');
-    if (feed && ui.diskusiScroll) {
+    if (feed && ui.diskusiScroll === 'jump' && ui.unreadJump) {
+      scrollFeedTo(document.getElementById(ui.unreadJump));
+    } else if (feed && ui.diskusiScroll === 'unread') {
+      const el = feed.querySelector('.dk-unread-line') || feed.querySelector('[data-unread="1"]');
+      if (el) scrollFeedTo(el);
+      else feed.scrollTop = feed.scrollHeight;
+    } else if (feed && ui.diskusiScroll) {
       feed.scrollTop = ui.diskusiScroll === 'bottom' ? feed.scrollHeight : Number(ui.diskusiScroll) || 0;
     }
     ui.diskusiScroll = '';
+    ui.unreadJump = '';
     if (ui.chatPeopleFocus) {
       const q = document.querySelector('[data-act="chat-people-q"]');
       if (q) {
@@ -4569,6 +5229,34 @@
         try { el.setSelectionRange(n, n); } catch (err) { /* poll field */ }
       }
       ui.pollFocus = '';
+    }
+    if (ui.commentFocus) {
+      const form = document.querySelector('.dk-comment-form[data-id="' + String(ui.commentFocus).replace(/"/g, '') + '"] input[name="body"]');
+      if (form) {
+        form.focus();
+        const n = form.value.length;
+        try { form.setSelectionRange(n, n); } catch (err) { /* comment field */ }
+      }
+      ui.commentFocus = '';
+    }
+    if (!diskusiAckLock && feed && acknowledgeUnread()) {
+      diskusiAckLock = true;
+      ui.diskusiScrollHold = true;
+      ui.diskusiScroll = String(feed.scrollTop);
+      render();
+      ui.diskusiScrollHold = false;
+      diskusiAckLock = false;
+      return;
+    }
+    if (feed && !feed._unreadBound) {
+      feed._unreadBound = true;
+      feed.addEventListener('scroll', () => {
+        if (ui._unreadScrollTimer) clearTimeout(ui._unreadScrollTimer);
+        ui._unreadScrollTimer = setTimeout(() => {
+          if (!acknowledgeUnread()) return;
+          paintUnreadChrome();
+        }, 80);
+      }, { passive: true });
     }
   }
 
@@ -4589,6 +5277,8 @@
       else if (tab === 'jadwal') main.innerHTML = viewJadwal(true);
       else if (tab === 'diskusi') main.innerHTML = viewDiskusi(true);
       else if (tab === 'harga' && canBill()) main.innerHTML = viewHarga();
+      else if (tab === 'profil' && canBill()) main.innerHTML = viewProfilEdit();
+      else if (tab === 'account' && canBill()) main.innerHTML = viewAccountSettings();
       else if (tab === 'admin' && ui.admin) main.innerHTML = viewAdmin();
       else main.innerHTML = viewSiswaHub();
     } else {
@@ -4605,9 +5295,11 @@
         else if (tab === 'kolab') main.innerHTML = viewKolab();
         else if (tab === 'tes') main.innerHTML = viewExam();
         else if (tab === 'sertifikat') main.innerHTML = viewSertifikat(ui.personaId);
+        else if (tab === 'profil') main.innerHTML = viewSchoolPublic({ student: true });
         else main.innerHTML = viewHome();
       }
     }
+    paintProfilePreview();
     bindLazy();
     bindBlobMedia();
     mountLightbox();
@@ -6273,16 +6965,44 @@
   }
 
   function dropPostMedia(post) {
-    (post.images || []).forEach((img) => {
+    (post.images || []).concat(post.files || []).forEach((img) => {
       if (img && img.key) deleteRemoteVideo(img.key);
       if (img && img.blob && img.blobKey) blobDel(img.blobKey);
     });
+  }
+
+  async function addPostFiles(files) {
+    capturePostBody();
+    ui.postFiles = ui.postFiles || [];
+    const room = 4 - ui.postFiles.length;
+    if (room <= 0) {
+      toast('Maks 4 file.');
+      return;
+    }
+    const take = Array.from(files || []).slice(0, room);
+    if ((files || []).length > room) toast('Maks 4 file.');
+    for (let i = 0; i < take.length; i += 1) {
+      const file = take[i];
+      if (!file || !file.size) continue;
+      if (file.size > MAX_FILE) {
+        toast('File maks 20 MB.');
+        continue;
+      }
+      ui.postFiles.push({
+        id: 'pf-' + Date.now().toString(36) + Math.floor(Math.random() * 1e3).toString(36),
+        file: file,
+        name: file.name || 'file',
+        size: file.size
+      });
+    }
+    render();
   }
 
   async function submitDiskusiPost(body, batchId) {
     ensureDiskusi();
     const text = String(body || '').trim();
     const images = (ui.postImages || []).slice();
+    const files = (ui.postFiles || []).slice();
     const poll = pollPayload();
     if (ui.pollOn && !poll) {
       toast('Poll butuh pertanyaan dan minimal 2 opsi.');
@@ -6292,8 +7012,8 @@
       toast('Kamu hanya bisa posting di chat yang kamu ikuti.');
       return;
     }
-    if (!text && !images.length && !poll) {
-      toast('Tulis catatan, lampirkan foto, atau buat poll.');
+    if (!text && !images.length && !files.length && !poll) {
+      toast('Tulis catatan, lampirkan foto atau file, atau buat poll.');
       return;
     }
     if (ui.postUploading) return;
@@ -6319,12 +7039,31 @@
           stored.push({ key: '', url: '', name: file.name, blob: true, blobKey: blobKey });
         }
       }
+      const storedFiles = [];
+      for (let i = 0; i < files.length; i += 1) {
+        const file = files[i].file;
+        if (syncEnabled()) {
+          const info = await uploadClassVideo(file, 'post-file-' + postId, null, 'file');
+          storedFiles.push({
+            key: info.key,
+            url: mediaFileUrl(info.key),
+            name: info.name || file.name,
+            size: file.size,
+            blob: false
+          });
+        } else {
+          const blobKey = 'post-file-' + postId + '-' + i;
+          await blobPut(blobKey, file);
+          storedFiles.push({ key: '', url: '', name: file.name, size: file.size, blob: true, blobKey: blobKey });
+        }
+      }
       const post = {
         id: postId,
         batchId: batchId,
         authorId: actorId(),
         body: text,
         images: stored,
+        files: storedFiles,
         poll: poll,
         pinned: false,
         createdAt: isoNow()
@@ -6333,6 +7072,7 @@
       rememberDiskusiPost(post);
       images.forEach((img) => { if (img.preview) URL.revokeObjectURL(img.preview); });
       ui.postImages = [];
+      ui.postFiles = [];
       ui.postBody = '';
       ui.pollOn = false;
       ui.pollQuestion = '';
@@ -6343,18 +7083,29 @@
       render();
     } catch (err) {
       ui.postUploading = false;
-      toast('Gagal unggah foto.');
+      toast('Gagal unggah lampiran.');
       render();
     }
   }
 
+  function fileExt(name) {
+    const m = String(name || '').match(/\.([a-z0-9]{1,5})$/i);
+    return m ? m[1].toUpperCase() : 'FILE';
+  }
   function postDraftHtml() {
     const imgs = ui.postImages || [];
-    if (!imgs.length) return '';
+    const files = ui.postFiles || [];
+    if (!imgs.length && !files.length) return '';
     return '<div class="dk-draft">' + imgs.map((img) =>
       '<span class="dk-draft-item">' +
         '<img src="' + esc(img.preview) + '" alt="">' +
         '<button type="button" data-act="post-img-remove" data-id="' + esc(img.id) + '" aria-label="Hapus foto">×</button>' +
+      '</span>'
+    ).join('') + files.map((file) =>
+      '<span class="dk-draft-file">' +
+        '<span class="dk-file-ext">' + esc(fileExt(file.name)) + '</span>' +
+        '<span class="dk-file-name">' + esc(file.name || 'File') + '</span>' +
+        '<button type="button" data-act="post-file-remove" data-id="' + esc(file.id) + '" aria-label="Hapus file">×</button>' +
       '</span>'
     ).join('') + '</div>';
   }
@@ -6405,6 +7156,9 @@
         '<label class="dk-tool" title="Foto">Foto' +
           '<input type="file" accept="image/*" multiple hidden data-act="post-files"' + (uploading ? ' disabled' : '') + '>' +
         '</label>' +
+        '<label class="dk-tool" title="File">File' +
+          '<input type="file" multiple hidden data-act="post-attach"' + (uploading ? ' disabled' : '') + '>' +
+        '</label>' +
         '<button type="button" class="dk-tool' + (ui.pollOn ? ' is-on' : '') + '" data-act="poll-toggle"' + (uploading ? ' disabled' : '') + '>Poll</button>' +
         '<textarea name="body" rows="1" maxlength="4000" placeholder="Tulis catatan"' +
           (uploading ? ' disabled' : '') + '>' + esc(ui.postBody || '') + '</textarea>' +
@@ -6449,20 +7203,73 @@
     }).join('') + '</div>';
   }
 
-  function commentHtml(row, staff) {
+  function postFilesHtml(files) {
+    const list = (files || []).filter((file) => file && (file.url || (file.blob && file.blobKey)));
+    if (!list.length) return '';
+    return '<div class="dk-files">' + list.map((file) => {
+      const label = '<span class="dk-file-ext">' + esc(fileExt(file.name)) + '</span>' +
+        '<span class="dk-file-name">' + esc(file.name || 'File') + '</span>';
+      if (file.url) {
+        return '<a class="dk-file" href="' + esc(file.url) + '" target="_blank" rel="noopener" download>' + label + '</a>';
+      }
+      return '<a class="dk-file" data-blob-href="' + esc(file.blobKey) + '" download="' + esc(file.name || 'file') + '">' + label + '</a>';
+    }).join('') + '</div>';
+  }
+
+  function commentLikes(row) {
+    return Array.isArray(row && row.likes) ? row.likes.filter(Boolean) : [];
+  }
+  function mentionHtml(body) {
+    let html = esc(body || '');
+    const names = people().concat(SEED.staff || []).map((p) => p && (displayNameOf(p) || p.name)).filter(Boolean);
+    names.sort((a, b) => b.length - a.length);
+    names.forEach((name) => {
+      const safe = esc('@' + name);
+      if (html.indexOf(safe) === -1) return;
+      html = html.split(safe).join('<span class="dk-at">' + safe + '</span>');
+    });
+    return html;
+  }
+  function replyQuoteHtml(row) {
+    if (!row || !row.replyTo) return '';
+    const target = (db.comments || []).find((c) => c && c.id === row.replyTo);
+    if (!target) return '';
+    const snippet = String(target.body || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+    return '<div class="dk-reply">' +
+      '<button type="button" class="dk-quote" data-act="comment-jump" data-id="' + esc(target.id) + '">' +
+        '<strong>@' + esc(nameOf(target.authorId)) + '</strong>' +
+        '<span>' + esc(snippet || 'Komentar') + '</span>' +
+      '</button></div>';
+  }
+  function commentHtml(row, staff, chatId) {
     const mine = row.authorId === actorId();
     const canDel = staff || mine;
-    return '<div class="dk-comment">' +
-      actorAvatar(row.authorId, 'avatar sm') +
-      '<div class="dk-comment-body">' +
-        '<strong>' + esc(nameOf(row.authorId)) + '</strong>' +
-        '<span class="muted"> · ' + esc(relWhen(row.createdAt)) + '</span>' +
-        '<p>' + esc(row.body) + '</p>' +
-      '</div>' +
-      (canDel
-        ? '<button type="button" class="btn-sm" data-act="comment-del" data-id="' + esc(row.id) + '">Hapus</button>'
-        : '') +
-      '</div>';
+    const likes = commentLikes(row);
+    const liked = likes.indexOf(actorId()) !== -1;
+    const unread = isUnreadAt(chatId, row.createdAt, row.authorId);
+    const canWrite = canPostIn(actorId(), chatId);
+    return '<div class="dk-threadlet">' +
+      replyQuoteHtml(row) +
+      '<div class="dk-comment' + (row.replyTo ? ' is-reply' : '') + '" id="dkc-' + esc(row.id) + '"' +
+        (unread ? ' data-unread="1" data-unread-at="' + esc(row.createdAt) + '"' : '') + '>' +
+        (row.replyTo ? '<span class="dk-reply-arrow" aria-hidden="true"></span>' : '') +
+        actorAvatar(row.authorId, 'avatar sm') +
+        '<div class="dk-comment-body">' +
+          '<strong>' + esc(nameOf(row.authorId)) + '</strong>' +
+          '<span class="muted"> · ' + esc(relWhen(row.createdAt)) + '</span>' +
+          '<p>' + mentionHtml(row.body) + '</p>' +
+          '<div class="dk-comment-acts">' +
+            (canWrite
+              ? '<button type="button" class="dk-like' + (liked ? ' is-on' : '') + '" data-act="comment-like" data-id="' + esc(row.id) + '" aria-pressed="' + (liked ? 'true' : 'false') + '">' +
+                  (liked ? '♥' : '♡') + (likes.length ? '<span>' + likes.length + '</span>' : '') + '</button>' +
+                '<button type="button" class="dk-reply-btn" data-act="comment-reply" data-id="' + esc(row.id) + '" data-post="' + esc(row.postId) + '">Balas</button>'
+              : '') +
+          '</div>' +
+        '</div>' +
+        (canDel
+          ? '<button type="button" class="btn-sm" data-act="comment-del" data-id="' + esc(row.id) + '">Hapus</button>'
+          : '') +
+      '</div></div>';
   }
 
   function postsInBatch(batchId) {
@@ -6472,13 +7279,35 @@
     });
   }
 
+  function commentFormHtml(post) {
+    const reply = ui.replyTo && ui.replyTo.postId === post.id ? ui.replyTo : null;
+    const target = reply && (db.comments || []).find((c) => c && c.id === reply.commentId && c.postId === post.id);
+    const draft = (ui.commentDrafts && ui.commentDrafts[post.id]) || '';
+    const snippet = target ? String(target.body || '').replace(/\s+/g, ' ').trim().slice(0, 80) : '';
+    const bar = target
+      ? '<div class="dk-replying">' +
+          '<span class="dk-reply-arrow" aria-hidden="true"></span>' +
+          '<span class="dk-replying-copy"><strong>@' + esc(nameOf(target.authorId)) + '</strong> ' + esc(snippet || 'Komentar') + '</span>' +
+          '<button type="button" data-act="comment-reply-clear" aria-label="Batal balas">×</button></div>'
+      : '';
+    return '<form class="dk-comment-form" data-act="post-comment" data-id="' + esc(post.id) + '" data-reply="' + esc(target ? target.id : '') + '">' +
+      bar +
+      '<div class="dk-comment-row">' +
+        '<input name="body" required maxlength="2000" placeholder="' + (target ? 'Balas @' + esc(nameOf(target.authorId)) : 'Komentar') + '" value="' + esc(draft) + '">' +
+        '<button class="btn" type="submit">Kirim</button>' +
+      '</div></form>';
+  }
   function postCardHtml(post, staff) {
     const mine = post.authorId === actorId();
     const comments = (db.comments || []).filter((c) => c && c.postId === post.id).slice()
       .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     const canDel = !!staff || mine;
     const canWrite = canPostIn(actorId(), post.batchId);
-    return '<article class="dk-post' + (post.pinned ? ' is-pinned' : '') + '">' +
+    const firstUnread = firstUnreadElId(post.batchId);
+    const postUnread = isUnreadAt(post.batchId, post.createdAt, post.authorId);
+    return (firstUnread === 'dkp-' + post.id ? '<div class="dk-unread-line">Belum dibaca</div>' : '') +
+      '<article class="dk-post' + (post.pinned ? ' is-pinned' : '') + '" id="dkp-' + esc(post.id) + '"' +
+        (postUnread ? ' data-unread="1" data-unread-at="' + esc(post.createdAt) + '"' : '') + '>' +
       '<header class="dk-post-h">' +
         actorAvatar(post.authorId, 'avatar') +
         '<div><strong>' + esc(nameOf(post.authorId)) + '</strong>' +
@@ -6495,14 +7324,14 @@
       '</header>' +
       (post.body ? '<div class="dk-body">' + mdish(post.body) + '</div>' : '') +
       postImagesHtml(post.images) +
+      postFilesHtml(post.files) +
       pollHtml(post) +
       '<div class="dk-comments">' +
-        comments.map((c) => commentHtml(c, staff)).join('') +
-        (canWrite
-          ? '<form class="dk-comment-form" data-act="post-comment" data-id="' + esc(post.id) + '">' +
-              '<input name="body" required maxlength="2000" placeholder="Komentar">' +
-              '<button class="btn" type="submit">Kirim</button></form>'
-          : '') +
+        comments.map((c) =>
+          (firstUnread === 'dkc-' + c.id ? '<div class="dk-unread-line">Belum dibaca</div>' : '') +
+          commentHtml(c, staff, post.batchId)
+        ).join('') +
+        (canWrite ? commentFormHtml(post) : '') +
       '</div></article>';
   }
 
@@ -6545,24 +7374,28 @@
     const list = visibleChats();
     const batchId = tanya ? '' : activeDiskusiBatch();
     const showList = staff ? !!ui.diskusiShowList : (!ui.diskusiOpened || !!ui.diskusiShowList);
-    const rows = list.map((c) =>
-      '<button type="button" class="dk-row" data-act="diskusi-batch" data-id="' + esc(c.id) + '" aria-selected="' + (!tanya && c.id === batchId) + '">' +
+    const rows = list.map((c) => {
+      const unread = c.unread || 0;
+      return '<button type="button" class="dk-row' + (unread ? ' is-unread' : '') + '" data-act="diskusi-batch" data-id="' + esc(c.id) + '" aria-selected="' + (!tanya && c.id === batchId) + '">' +
         '<span class="dk-mark" aria-hidden="true">' + esc(initialsOf(c.label)) + '</span>' +
         '<span class="dk-row-copy"><strong>' + esc(c.label) + '</strong>' +
           '<em>' + esc(c.preview) + '</em></span>' +
         '<span class="dk-row-meta">' + (c.when ? '<time>' + esc(c.when) + '</time>' : '') +
-          '<span>' + c.count + '</span></span>' +
-      '</button>'
-    ).join('');
+          '<span class="dk-members">' + c.count + '</span>' +
+          (unread ? '<span class="dk-badge">' + (unread > 99 ? '99+' : unread) + '</span>' : '') +
+        '</span>' +
+      '</button>';
+    }).join('');
     const tanyaRow = staff
       ? '<button type="button" class="dk-row dk-row-tanya" data-act="diskusi-sub" data-id="tanya" aria-selected="' + tanya + '">' +
           '<span class="dk-mark" aria-hidden="true">?</span>' +
           '<span class="dk-row-copy"><strong>Tanya materi</strong><em>Pertanyaan dan pengumuman</em></span>' +
         '</button>'
       : '';
-    const listHtml = '<aside class="dk-list"><div class="dk-list-h"><strong>Chat</strong>' +
+    const listHtml = '<aside class="dk-list"><div class="dk-list-h"><strong>Chat</strong><span class="dk-list-tools">' +
+      unreadJumpHtml() +
       (staff ? '<button type="button" class="btn-sm" data-act="chat-new">Chat baru</button>' : '') +
-      '</div><div class="dk-list-scroll">' +
+      '</span></div><div class="dk-list-scroll">' +
       (rows || '<p class="muted dk-list-empty">Belum ada chat.</p>') +
       tanyaRow +
       '</div></aside>';
@@ -6586,13 +7419,14 @@
       thread = '<section class="dk-thread"><header class="dk-thread-h">' +
         '<button type="button" class="dk-back" data-act="diskusi-back" aria-label="Daftar chat">‹</button>' +
         title +
+        unreadJumpHtml() +
         '<button type="button" class="dk-count" data-act="chat-people">' + count + ' orang</button>' +
         (staff ? '<button type="button" class="btn-sm" data-act="chat-people">Tambah orang</button>' : '') +
         '</header>' +
         '<div class="dk-feed">' +
           (posts.length
             ? posts.map((p) => postCardHtml(p, !!staff)).join('')
-            : '<p class="muted dk-empty-note">Belum ada catatan. Tulis di bawah, tempel foto, atau buat poll.</p>') +
+            : '<p class="muted dk-empty-note">Belum ada catatan. Tulis di bawah, tempel foto, lampirkan file, atau buat poll.</p>') +
         '</div>' +
         (can ? composerHtml(batchId) : '<p class="muted dk-compose-locked">Kamu belum masuk chat ini.</p>') +
         chatPeopleHtml(batchId, !!staff) +
@@ -8673,6 +9507,12 @@
       addPostImages(files);
       return;
     }
+    if (t.matches('[data-act="post-attach"]')) {
+      const files = Array.from(t.files || []);
+      t.value = '';
+      addPostFiles(files);
+      return;
+    }
     if (t.matches('[data-act="filter-siswa"]')) {
       ui.filterSiswa = t.value;
       render();
@@ -8900,6 +9740,34 @@
     if (t.matches('[data-act="res-file"]')) {
       const file = t.files && t.files[0];
       if (file) ingestResourceFile(file, t.getAttribute('data-id'));
+      return;
+    }
+    if (t.matches('[data-act="school-photo-file"]')) {
+      if (!canBill()) return;
+      const file = t.files && t.files[0];
+      if (!file) return;
+      if (file.size > MAX_IMG) { toast('Foto maks 5 MB.'); return; }
+      ensureSchoolProfile();
+      blobPut(schoolPhotoKey(), file).then(() => {
+        db.schoolProfile.photoBlob = true;
+        db.schoolProfile.photoMode = 'upload';
+        save();
+        toast('Foto profil diunggah.');
+        render();
+      });
+      return;
+    }
+    if (t.matches('[data-act="profile-social-source"]')) {
+      if (!canBill()) return;
+      ensureSchoolProfile();
+      db.schoolProfile.socialSource = (t.value === 'instagram' || t.value === 'youtube') ? t.value : 'tiktok';
+      save();
+      render();
+      return;
+    }
+    if (t.matches('[data-act="headline-count"]')) {
+      const el = $('headline-count');
+      if (el) el.textContent = String(Math.max(0, 60 - String(t.value || '').length));
       return;
     }
     if (t.matches('[data-act="photo-file"]')) {
@@ -9154,6 +10022,15 @@
       ui.postBody = t.value;
       return;
     }
+    if (t.matches('.dk-comment-form input[name="body"]')) {
+      const form = t.closest('form');
+      const id = form && form.getAttribute('data-id');
+      if (id) {
+        ui.commentDrafts = ui.commentDrafts || {};
+        ui.commentDrafts[id] = t.value;
+      }
+      return;
+    }
     if (t.matches('[data-act="poll-q"]')) {
       ui.pollQuestion = t.value;
       return;
@@ -9250,6 +10127,11 @@
       render();
       return;
     }
+    if (e.key === 'Escape' && ui.replyTo) {
+      ui.replyTo = null;
+      render();
+      return;
+    }
     if (e.key === 'Enter' && e.target.matches && e.target.matches('[data-act="chat-rename"]')) {
       e.preventDefault();
       e.target.blur();
@@ -9341,8 +10223,9 @@
         act === 'social-input' || act === 'shop-input' || act === 'daftar-sel' || act === 'daftar-sel-all' ||
         act === 'daftar-tag-filter' || act === 'daftar-pay-filter' ||
         act === 'daftar-joined-from' || act === 'daftar-joined-to' ||
-        act === 'post-files' || act === 'person-batch' ||
+        act === 'post-files' || act === 'post-attach' || act === 'person-batch' ||
         act === 'post-new' || act === 'post-comment' || act === 'batch-rename' ||
+        act === 'school-photo-file' || act === 'profile-social-source' || act === 'headline-count' ||
         act === 'chat-rename' || act === 'chat-people-q' || act === 'poll-q' || act === 'poll-opt') {
       return;
     }
@@ -9361,12 +10244,34 @@
       return;
     }
     if (act === 'diskusi-batch') {
-      ui.diskusiBatch = btn.getAttribute('data-id') || '';
+      const id = btn.getAttribute('data-id') || '';
+      ui.diskusiBatch = id;
       ui.diskusiSub = 'batch';
       ui.diskusiShowList = false;
       ui.diskusiOpened = true;
       ui.chatPeopleOpen = false;
-      ui.diskusiScroll = 'bottom';
+      ui.replyTo = null;
+      ui.diskusiScroll = unreadCount(id) ? 'unread' : 'bottom';
+      render();
+      return;
+    }
+    if (act === 'unread-next') {
+      acknowledgeUnread();
+      const jump = nextUnreadJump();
+      if (!jump) {
+        paintUnreadChrome();
+        return;
+      }
+      ui.replyTo = null;
+      if (jump.chatId !== activeDiskusiBatch() || ui.diskusiSub === 'tanya') {
+        ui.diskusiBatch = jump.chatId;
+        ui.diskusiSub = 'batch';
+        ui.diskusiShowList = false;
+        ui.diskusiOpened = true;
+        ui.chatPeopleOpen = false;
+      }
+      ui.unreadJump = jump.item.elId;
+      ui.diskusiScroll = 'jump';
       render();
       return;
     }
@@ -9451,6 +10356,13 @@
       render();
       return;
     }
+    if (act === 'post-file-remove') {
+      capturePostBody();
+      const id = btn.getAttribute('data-id');
+      ui.postFiles = (ui.postFiles || []).filter((x) => x.id !== id);
+      render();
+      return;
+    }
     if (act === 'post-img') {
       const img = btn.querySelector('img');
       const src = img && (img.currentSrc || img.src);
@@ -9496,8 +10408,52 @@
       if (!isStaff() && row.authorId !== actorId()) return;
       pendingDiskusi.comments.delete(row.id);
       db.comments = db.comments.filter((c) => c && c.id !== row.id);
+      if (ui.replyTo && ui.replyTo.commentId === row.id) ui.replyTo = null;
       save();
       render();
+      return;
+    }
+    if (act === 'comment-like') {
+      ensureDiskusi();
+      const row = db.comments.find((c) => c && c.id === btn.getAttribute('data-id'));
+      const post = row && db.posts.find((p) => p && p.id === row.postId);
+      if (!row || !post || !canPostIn(actorId(), post.batchId)) return;
+      const mine = actorId();
+      const likes = commentLikes(row).filter((id) => id !== mine);
+      if (commentLikes(row).indexOf(mine) === -1) likes.push(mine);
+      row.likes = likes;
+      rememberDiskusiComment(row);
+      save();
+      render();
+      return;
+    }
+    if (act === 'comment-reply') {
+      ensureDiskusi();
+      const commentId = btn.getAttribute('data-id') || '';
+      const postId = btn.getAttribute('data-post') || '';
+      const row = db.comments.find((c) => c && c.id === commentId && c.postId === postId);
+      const post = row && db.posts.find((p) => p && p.id === postId);
+      if (!row || !post || !canPostIn(actorId(), post.batchId)) return;
+      ui.replyTo = { postId: postId, commentId: commentId };
+      const prefix = '@' + nameOf(row.authorId) + ' ';
+      ui.commentDrafts = ui.commentDrafts || {};
+      const cur = ui.commentDrafts[postId] || '';
+      if (cur.indexOf('@') !== 0) ui.commentDrafts[postId] = prefix + cur;
+      ui.commentFocus = postId;
+      render();
+      return;
+    }
+    if (act === 'comment-reply-clear') {
+      ui.replyTo = null;
+      render();
+      return;
+    }
+    if (act === 'comment-jump') {
+      const el = document.getElementById('dkc-' + (btn.getAttribute('data-id') || ''));
+      if (!el) return;
+      scrollFeedTo(el);
+      el.classList.add('is-flash');
+      setTimeout(() => el.classList.remove('is-flash'), 1200);
       return;
     }
     if (act === 'pick-social') {
@@ -9654,6 +10610,7 @@
       }).then(() => refreshAdmin()).catch(() => toast('Gagal menutup laporan'));
     } else if (act === 'tab') {
       const id = btn.getAttribute('data-id');
+      ui.profilePreview = null;
       if (isStaff()) {
         ui.mentorTab = id;
         if (id !== 'orang') ui.personId = null;
@@ -9693,6 +10650,82 @@
       requestAnimationFrame(() => {
         const el = document.querySelector('[data-lec-drop="' + id + '"]');
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    } else if (act === 'open-profil') {
+      setBrandMenu(false);
+      ui.profilePreview = null;
+      ui.profilePane = 'info';
+      if (canBill()) {
+        ui.mentorTab = 'profil';
+        ui.personId = null;
+      } else if (isStaff()) {
+        toast('Hanya Anton yang mengubah Profile. Buka sebagai Siswa untuk lihat halaman publik.');
+        return;
+      } else {
+        if (needsWizard(ui.personaId)) {
+          toast('Selesaikan form dulu.');
+          return;
+        }
+        ui.tab = 'profil';
+      }
+      render();
+    } else if (act === 'open-account') {
+      setBrandMenu(false);
+      ui.profilePreview = null;
+      if (!canBill()) {
+        toast('Account settings hanya untuk Anton.');
+        return;
+      }
+      ui.mentorTab = 'account';
+      ui.accountPane = 'security';
+      ui.personId = null;
+      render();
+    } else if (act === 'open-siswa-view') {
+      setBrandMenu(false);
+      if (!canBill()) {
+        toast('Siswa view hanya untuk Anton.');
+        return;
+      }
+      ui.profilePreview = ui.profilePreview === 'desktop' ? 'desktop' : 'phone';
+      paintProfilePreview();
+    } else if (act === 'profile-pane') {
+      if (!canBill()) return;
+      ui.profilePane = btn.getAttribute('data-id') === 'photo' ? 'photo' : 'info';
+      ui.mentorTab = 'profil';
+      render();
+    } else if (act === 'account-pane') {
+      if (!canBill()) return;
+      ui.accountPane = btn.getAttribute('data-id') === 'notifications' ? 'notifications' : 'security';
+      ui.mentorTab = 'account';
+      render();
+    } else if (act === 'bio-wrap') {
+      const ta = $('profile-biography');
+      if (!ta) return;
+      const wrap = btn.getAttribute('data-wrap') || '**';
+      const start = ta.selectionStart || 0;
+      const end = ta.selectionEnd || 0;
+      const val = ta.value || '';
+      const selected = val.slice(start, end) || 'text';
+      const next = val.slice(0, start) + wrap + selected + wrap + val.slice(end);
+      ta.value = next;
+      ta.focus();
+      const caret = start + wrap.length + selected.length + wrap.length;
+      ta.setSelectionRange(caret, caret);
+    } else if (act === 'profile-preview') {
+      if (!canBill()) return;
+      ui.profilePreview = btn.getAttribute('data-mode') === 'desktop' ? 'desktop' : 'phone';
+      paintProfilePreview();
+    } else if (act === 'profile-preview-close') {
+      ui.profilePreview = null;
+      paintProfilePreview();
+    } else if (act === 'profile-sync-photo') {
+      if (!canBill()) return;
+      ensureSchoolProfile();
+      db.schoolProfile.photoMode = 'social';
+      save();
+      refreshSchoolPhotoFromSocial(true).then((ok) => {
+        toast(ok ? 'Photo synced from social.' : 'Could not fetch photo. Check the handle on Profile.');
+        render();
       });
     } else if (act === 'person-mid') {
       const tab = btn.getAttribute('data-id');
@@ -10580,15 +11613,22 @@
       const post = db.posts.find((p) => p && p.id === postId);
       const text = String(fd.get('body') || '').trim();
       if (!post || !text || !canPostIn(actorId(), post.batchId)) return;
+      const replyId = form.getAttribute('data-reply') || '';
+      const replyOk = replyId && (db.comments || []).some((c) => c && c.id === replyId && c.postId === postId);
       const row = {
         id: 'dkc-' + Date.now().toString(36) + Math.floor(Math.random() * 1e3).toString(36),
         postId: postId,
         authorId: actorId(),
         body: text,
+        likes: [],
+        replyTo: replyOk ? replyId : '',
         createdAt: isoNow()
       };
       db.comments.push(row);
       rememberDiskusiComment(row);
+      if (ui.commentDrafts) delete ui.commentDrafts[postId];
+      if (ui.replyTo && ui.replyTo.postId === postId) ui.replyTo = null;
+      ui.diskusiScroll = 'bottom';
       save();
       render();
     } else if (act === 'batch-rename') {
@@ -10943,7 +11983,74 @@
       save();
       toast('Paket Lynk disimpan');
       render();
-    } else if (act === 'exam') {
+    } else if (act === 'save-school-profile') {
+      if (!canBill()) return;
+      ensureSchoolProfile();
+      const next = db.schoolProfile;
+      next.firstName = String(fd.get('firstName') || '').trim().slice(0, 40);
+      next.lastName = String(fd.get('lastName') || '').trim().slice(0, 40);
+      next.headline = String(fd.get('headline') || '').trim().slice(0, 60);
+      next.biography = String(fd.get('biography') || '').trim().slice(0, 2000);
+      next.socials = Object.assign({}, next.socials, {
+        website: String(fd.get('website') || '').trim(),
+        facebook: socialHandleClean(fd.get('facebook')),
+        instagram: socialHandleClean(fd.get('instagram')),
+        linkedin: socialHandleClean(String(fd.get('linkedin') || '').replace(/^in\//i, '')),
+        tiktok: tiktokHandle(fd.get('tiktok')),
+        x: socialHandleClean(fd.get('x')),
+        youtube: socialHandleClean(fd.get('youtube'))
+      });
+      save();
+      toast('Profile saved');
+      if (next.photoMode === 'social') {
+        refreshSchoolPhotoFromSocial(true).then(() => render());
+      } else {
+        render();
+      }
+    } else if (act === 'save-account-security') {
+      if (!canBill()) return;
+      ensureAccountSettings();
+      const email = String(fd.get('email') || '').trim();
+      if (!email || email.indexOf('@') < 1) {
+        toast('Enter a valid email.');
+        return;
+      }
+      const curPw = String(fd.get('currentPassword') || '');
+      const newPw = String(fd.get('newPassword') || '');
+      const conf = String(fd.get('confirmPassword') || '');
+      if (newPw || conf || curPw) {
+        if (newPw.length < 8) {
+          toast('New password must be at least 8 characters.');
+          return;
+        }
+        if (newPw !== conf) {
+          toast('New password and confirmation do not match.');
+          return;
+        }
+        if (db.accountSettings.passwordSet && !curPw) {
+          toast('Enter your current password to change it.');
+          return;
+        }
+        db.accountSettings.passwordSet = true;
+      }
+      db.accountSettings.email = email;
+      db.accountSettings.twoFactor = !!fd.get('twoFactor');
+      save();
+      toast(db.accountSettings.twoFactor ? 'Security saved · 2FA on (mock)' : 'Security saved');
+      render();
+    } else if (act === 'save-account-notifications') {
+      if (!canBill()) return;
+      ensureAccountSettings();
+      db.accountSettings.notifications = {
+        studentJoin: !!fd.get('studentJoin'),
+        studentPay: !!fd.get('studentPay'),
+        lessonComplete: !!fd.get('lessonComplete'),
+        comment: !!fd.get('comment')
+      };
+      save();
+      toast('Notification preferences saved');
+      render();
+} else if (act === 'exam') {
       const qs = SEED.exam.questions;
       let score = 0;
       qs.forEach((q, i) => {
@@ -10992,43 +12099,12 @@
     if (e.key !== 'Escape') return;
     const menu = $('brand-menu');
     if (menu && !menu.hidden) setBrandMenu(false);
-  });
-
-  $('btn-reset').addEventListener('click', () => {
-    setBrandMenu(false);
-    if (ui.present) return;
-    if (syncEnabled() && !ui.admin) return;
-    if (!confirm(syncEnabled()
-      ? 'Reset mengembalikan kelas bersama ke data awal di server. Kurikulum, siswa yang daftar sendiri, dan progres di luar seed ikut terhapus. Lanjutkan?'
-      : 'Hapus data lokal prototype ini?')) return;
-    localStorage.removeItem(KEY);
-    blobClearAll();
-    (ui.postImages || []).forEach((img) => { if (img.preview) URL.revokeObjectURL(img.preview); });
-    ui.postImages = [];
-    ui.postBody = '';
-    ui.postUploading = false;
-    ui.lightbox = '';
-    ui.pollOn = false;
-    ui.pollQuestion = '';
-    ui.pollOptions = ['', ''];
-    ui.chatPeopleOpen = false;
-    ui.chatPeopleQ = '';
-    clearPendingDiskusi();
-    db = defaultState();
-    ui.kolabSel = new Set();
-    ui.editLecId = null;
-    ui.secFold = null;
-    ui.skuFrom = 'alat';
-    resetWizForPersona();
-    closeDrawer();
-    render();
-    if (syncEnabled()) {
-      syncReady = true;
-      pushState(true, { reset: true }).then((ok) => {
-        if (!ok) pullState();
-      });
+    if (ui.profilePreview) {
+      ui.profilePreview = null;
+      paintProfilePreview();
     }
   });
+
   const adminOut = $('btn-admin-out');
   if (adminOut) adminOut.addEventListener('click', () => {
     setBrandMenu(false);
