@@ -305,7 +305,7 @@ ${ANALYTICS}
 <meta name="twitter:title" content="${esc(kTitle)} di Shopee \u2014 Data Harga & Penjualan">
 <meta name="twitter:description" content="${esc(`Harga median ${rp(kw.medPrice)}, ${num(kw.n)} listing, rating ${kw.rating}. Riset pasar ${k}.`)}">
 <meta name="twitter:image" content="${OG_IMAGE}">
-<link rel="icon" type="image/png" href="/images/brand/appicon-red.png">
+<link rel="icon" type="image/png" href="/images/brand/appicon-bird.png">
 <link rel="alternate" href="${SITE}/llms.txt">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -466,7 +466,7 @@ ${ANALYTICS}
 <meta name="twitter:title" content="Riset Pasar Produk Shopee \u2014 LarisID">
 <meta name="twitter:description" content="Data harga, penjualan, dan persaingan untuk ${entries.length} keyword produk Shopee.">
 <meta name="twitter:image" content="${OG_IMAGE}">
-<link rel="icon" type="image/png" href="/images/brand/appicon-red.png">
+<link rel="icon" type="image/png" href="/images/brand/appicon-bird.png">
 <link rel="alternate" href="${SITE}/llms.txt">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

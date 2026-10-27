@@ -1,0 +1,14 @@
+ELEMS=50
+‎Maybe D Londree
+VAL:+62 856‑9177‑9054
+‪+62 856‑9177‑9054‬
+‎Maybe Lukmanul Hakim
+VAL:+62 857‑1476‑1470
+‪+62 857‑1476‑1470‬
+‎Maybe Galih Listiyono
+VAL:+62 857‑2641‑2901
+‪+62 857‑2641‑2901‬
+‎Maybe Linita
+VAL:+62 878‑8583‑3281
+‪+62 878‑8583‑3281‬
+

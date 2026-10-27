@@ -746,6 +746,55 @@
 
       result = { kat: ($('calc-kat') && $('calc-kat').value) || '', priced, sim, strat, rates: s.rates };
       root.__result = result;
+      scheduleProbe('render');
+    }
+
+    let probeTimer = 0;
+    function scheduleProbe(reason) {
+      clearTimeout(probeTimer);
+      probeTimer = setTimeout(() => probeLayout(reason), 80);
+    }
+    function probeLayout(reason) {
+      const split = root.querySelector('.calc-split');
+      const row = root.querySelector('.calc-row2');
+      const strat = root.querySelector('.calc-strat');
+      const main = document.querySelector('.main');
+      const tabs = [];
+      root.querySelectorAll('.calc-tabs button').forEach((b) => {
+        tabs.push({
+          t: (b.textContent || '').trim(),
+          w: Math.round(b.getBoundingClientRect().width),
+          overflow: b.scrollWidth > b.clientWidth + 1
+        });
+      });
+      const clipped = [];
+      root.querySelectorAll('.calc-out .line').forEach((l) => {
+        if (l.scrollWidth > l.clientWidth + 2) {
+          clipped.push((l.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 90));
+        }
+      });
+      let labelClip = 0;
+      root.querySelectorAll('label').forEach((l) => {
+        if (l.scrollWidth > l.clientWidth + 2) labelClip += 1;
+      });
+      const heroes = {};
+      ['calc-hero-ideal', 'calc-hero-now', 'calc-hero-lr', 'st-hero-tr'].forEach((id) => {
+        const el = $(id);
+        if (!el) return;
+        const box = el.getBoundingClientRect();
+        const v = el.querySelector('.v');
+        heroes[id] = {
+          text: (el.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 160),
+          top: Math.round(box.top),
+          h: Math.round(box.height),
+          w: Math.round(box.width),
+          vOverflow: !!(v && v.scrollWidth > v.clientWidth + 1),
+          hidden: !!el.closest('[hidden]')
+        };
+      });
+      // #region agent log
+      fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f3d619'},body:JSON.stringify({sessionId:'f3d619',runId:'pre',hypothesisId:'A-E',location:'calc-engine.js:probeLayout',message:reason,data:{vw:window.innerWidth,mode:document.documentElement.getAttribute('data-mode'),toolW:root.clientWidth,toolOverflow:root.scrollWidth-root.clientWidth,mainOverflow:main?main.scrollWidth-main.clientWidth:null,split:split?getComputedStyle(split).gridTemplateColumns:'',row:row?getComputedStyle(row).gridTemplateColumns:'',rowW:row?Math.round(row.getBoundingClientRect().width):0,strat:strat?getComputedStyle(strat).gridTemplateColumns:'',tabs,clipped:clipped.slice(0,4),labelClip,heroes},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
     }
 
     function fillContoh() {
@@ -792,6 +841,7 @@
       root.querySelectorAll('.calc-tabs button').forEach((b) => {
         b.classList.toggle('on', b.getAttribute('data-pane') === pane);
       });
+      scheduleProbe('tab-' + pane);
     }
 
     function printHtml() {
@@ -842,6 +892,7 @@
       tab
     };
 
+    window.addEventListener('resize', () => scheduleProbe('resize'));
     root.addEventListener('input', (e) => {
       if (e.target && e.target.id === 'calc-kat') showSuggest();
       render();

@@ -36,7 +36,7 @@ button, a { font: inherit; }
   font-size: 1.15rem;
   letter-spacing: -0.02em;
 }
-.brand img { width: 34px; height: 34px; border-radius: 8px; }
+.brand img { width: 32px; height: 32px; display: block; }
 .nav-links { display: flex; align-items: center; gap: 8px; }
 .nav-links > a {
   color: var(--ink);

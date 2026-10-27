@@ -106,7 +106,7 @@ ${ANALYTICS}
 <meta name="twitter:title" content="${esc(title)}">
 <meta name="twitter:description" content="${esc(desc)}">
 <meta name="twitter:image" content="${OG_IMAGE}">
-<link rel="icon" type="image/png" href="/images/brand/appicon-red.png">
+<link rel="icon" type="image/png" href="/images/brand/appicon-bird.png">
 <link rel="alternate" href="${SITE}/llms.txt">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

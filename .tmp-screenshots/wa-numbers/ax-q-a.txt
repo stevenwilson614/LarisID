@@ -1,0 +1,40 @@
+ELEMS=104
+‎Maybe Samiya Putri Anggara
+VAL:+62 851‑3387‑9510
+‪+62 851‑3387‑9510‬
+‎Maybe AS
+VAL:+62 851‑7308‑9960
+‪+62 851‑7308‑9960‬
+‎Maybe Bunda Alesha
+VAL:+62 878‑9903‑1403
+‪+62 878‑9903‑1403‬
+VAL:+62 812‑1007‑1522
+‪+62 812‑1007‑1522‬
+‎Maybe Uda Akbar
+VAL:+62 812‑6782‑5265
+‪+62 812‑6782‑5265‬
+‎Maybe A.gita
+VAL:+62 813‑1600‑0833
+‪+62 813‑1600‑0833‬
+‎Maybe Al Hanan
+VAL:+62 815‑6385‑2720
+‪+62 815‑6385‑2720‬
+‎Maybe Adi Setiyadi
+VAL:+62 816‑1948‑934
+‪+62 816‑1948‑934‬
+‎Maybe Mas Rahman | Accurate.id
+VAL:+62 821‑1272‑9528
+‪+62 821‑1272‑9528‬
+‎Maybe Agum✨
+VAL:+62 821‑7960‑4741
+‪+62 821‑7960‑4741‬
+‎Maybe Aurora - Dubes Diplomat
+VAL:+62 822‑2199‑1325
+‪+62 822‑2199‑1325‬
+‎Maybe Berkah Amanah
+VAL:+62 851‑5501‑9907
+‪+62 851‑5501‑9907‬
+‎Maybe Asasora Food
+VAL:+62 852‑7100‑0900
+‪+62 852‑7100‑0900‬
+

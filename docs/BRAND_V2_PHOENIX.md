@@ -49,7 +49,7 @@ distressed fill in primary (MERAH–EMAS) versions; solid fills in monochrome lo
 | **Long / banner** | Extra-wide horizontal | Website mastheads, conference backdrops, Twitter/X headers. Crop from sheet. |
 | **Round / circle badge** | Logo inside circle | Avatars, stamps, merch, certificate seals. Cream, red, black, or gold fills per scheme. |
 | **Icon / symbol only** | Phoenix mark alone | Favicons at small sizes, watermarks, loading spinners, app switcher. |
-| **App icon / social** | Mark in rounded square | Favicon, JSON-LD logo, iOS/Android icon, social profile image. Asset: `appicon-red.png`. |
+| **App icon / social** | Plain red phoenix mark | Favicon, JSON-LD logo, iOS/Android icon, social profile image. Asset: `appicon-bird.png` (also `appicon-bird-48.png`, `appicon-bird-180.png`). |
 | **Monochrome** | Black or white mark + wordmark | Embossing, fax/low-color print, single-ink merchandise. |
 
 ### 2.4 Logo usage rules
@@ -82,9 +82,11 @@ never SVG recreations):
 | `images/brand/logo-primary.png` | Stacked lockup with tagline. Hero/posters/about. |
 | `images/brand/logo-word-light.png` | Wordmark + tagline only (no bird). Tight spaces. |
 | `images/brand/logo-icon-light.png` | White phoenix icon only. Dark UI chrome. |
-| `images/brand/appicon-red.png` | Red rounded square + gold bird. Favicon + JSON-LD logo. |
+| `images/brand/appicon-bird.png` | Plain red phoenix mark on transparent. Favicon, JSON-LD, nav. |
+| `images/brand/appicon-bird-48.png` | Same mark at 48px. Small favicons and UI chrome. |
+| `images/brand/appicon-bird-180.png` | Same mark at 180px. Apple touch icon. |
 
-The old `favicon.svg` / `logo-mark.svg` recreations are **deleted** — do not reintroduce them.
+The old gold-on-red square (`appicon-red.png`) and the SVG recreations (`favicon.svg` / `logo-mark.svg`) are **deleted** — do not reintroduce them.
 
 ---
 
@@ -257,7 +259,7 @@ width, radius 12/8, section padding 80/48) all carry over from v1 unchanged.
 
 **Applied 2026-06-12 (pass 2):** original sheet art cropped into `images/brand/`; all 4
 index.html lockups + all 5 subpage headers swapped to the real artwork; favicon + JSON-LD
-logo now `appicon-red.png`; `styles/seo-pages.css` recolored (was missed in pass 1);
+logo now `appicon-bird.png`; `styles/seo-pages.css` recolored (was missed in pass 1);
 SVG recreations deleted.
 
 **Updated 2026-06-16 (docs):**

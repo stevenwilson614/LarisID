@@ -1,0 +1,80 @@
+WINDOW: ‎WhatsApp
+sheets=1
+SHEET role/desc ok
+UI elements in sheet: 1
+entire contents count=112
+1: AXGroup name=[missing value] desc=[group] pos=36087 size=480686
+2: AXGroup name=[missing value] desc=[group] pos=36087 size=480686
+3: AXGroup name=[missing value] desc=[group] pos=36087 size=480686
+4: AXGroup name=[missing value] desc=[group] pos=36087 size=480686
+5: AXGroup name=[missing value] desc=[group] pos=36087 size=480686
+6: AXGroup name=[missing value] desc=[Nav bar] pos=36097 size=48046
+7: AXButton name=[missing value] desc=[Back] pos=37097 size=3636
+9: AXGroup name=[missing value] desc=[group] pos=36087 size=480686
+10: AXGroup name=[missing value] desc=[group] pos=36087 size=480686
+11: AXGroup name=[missing value] desc=[group] pos=36087 size=480686
+12: AXGroup name=[missing value] desc=[table] pos=36087 size=480686
+13: AXGroup name=[missing value] desc=[group] pos=360-67 size=480308
+14: AXGroup name=[missing value] desc=[group] pos=368-59 size=464292
+15: AXGroup name=[missing value] desc=[group] pos=368-59 size=464208
+16: AXGroup name=[missing value] desc=[group] pos=368-59 size=464208
+17: AXGroup name=[missing value] desc=[group] pos=368-59 size=464144
+18: AXGroup name=[missing value] desc=[group] pos=368-59 size=464144
+19: AXGroup name=[missing value] desc=[group] pos=540-35 size=120120
+22: AXGroup name=[missing value] desc=[group] pos=36885 size=46464
+23: AXGroup name=[missing value] desc=[group] pos=54097 size=12120
+24: AXGroup name=[missing value] desc=[group] pos=54097 size=12120
+26: AXGroup name=[missing value] desc=[group] pos=537121 size=12716
+27: AXStaticText name=[missing value] desc=[+62 851-8328-5638] pos=537121 size=12716
+28: AXGroup name=[missing value] desc=[group] pos=368149 size=46484
+29: AXGroup name=[missing value] desc=[group] pos=380161 size=44056
+30: AXScrollArea name=[missing value] desc=[scroll area] pos=380161 size=44056
+31: AXGroup name=[missing value] desc=[group] pos=380161 size=44056
+32: AXGroup name=[missing value] desc=[‎Audio call] pos=380161 size=10456
+33: AXGroup name=[missing value] desc=[‎Audio call] pos=380161 size=10456
+34: AXGroup name=[missing value] desc=[group] pos=380161 size=10456
+35: AXButton name=[missing value] desc=[‎Audio call] pos=380161 size=10456
+36: AXStaticText name=[missing value] desc=[‎Voice] pos=417193 size=2914
+37: AXGroup name=[missing value] desc=[‎Video call] pos=492161 size=10456
+38: AXGroup name=[missing value] desc=[‎Video call] pos=492161 size=10456
+39: AXGroup name=[missing value] desc=[group] pos=492161 size=10456
+40: AXButton name=[missing value] desc=[‎Video call] pos=492161 size=10456
+41: AXStaticText name=[missing value] desc=[‎Video] pos=529193 size=3014
+42: AXGroup name=[missing value] desc=[group] pos=604161 size=10456
+43: AXGroup name=[missing value] desc=[group] pos=604161 size=10456
+44: AXGroup name=[missing value] desc=[group] pos=604161 size=10456
+45: AXButton name=[missing value] desc=[‎Message] pos=604161 size=10456
+46: AXStaticText name=[missing value] desc=[‎Message] pos=632193 size=4714
+47: AXGroup name=[missing value] desc=[group] pos=716161 size=10456
+48: AXGroup name=[missing value] desc=[group] pos=716161 size=10456
+49: AXGroup name=[missing value] desc=[group] pos=716161 size=10456
+50: AXButton name=[missing value] desc=[‎Share] pos=716161 size=10456
+51: AXStaticText name=[missing value] desc=[‎Share] pos=752193 size=3014
+52: AXGroup name=[missing value] desc=[group] pos=36087 size=480686
+53: AXGroup name=[missing value] desc=[group] pos=36087 size=48057
+54: AXGroup name=[missing value] desc=[group] pos=36087 size=480686
+55: AXGroup name=[missing value] desc=[group] pos=36087 size=48057
+56: AXScrollArea name=[missing value] desc=[scroll area] pos=376-67 size=448840
+57: AXGroup name=[missing value] desc=[‪+62 851‑8328‑5638‬, ~wandindo2019] pos=376241 size=44861
+58: AXGroup name=[missing value] desc=[group] pos=388253 size=29037
+59: AXGroup name=[missing value] desc=[] pos=388253 size=29013
+60: AXStaticText name=[missing value] desc=[] pos=388253 size=29013
+61: AXGroup name=[missing value] desc=[‪+62 851‑8328‑5638‬] pos=388253 size=29016
+62: AXStaticText name=[missing value] desc=[‪+62 851‑8328‑5638‬] pos=388253 size=29016
+63: AXStaticText name=[missing value] desc=[text] pos=388269 size=2904
+64: AXStaticText name=[missing value] desc=[~wandindo2019] pos=388277 size=29013
+65: AXGroup name=[missing value] desc=[group] pos=376301 size=4481
+66: AXButton name=[missing value] desc=[‎Message] pos=680254 size=3636
+67: AXButton name=[missing value] desc=[‎Start video call] pos=728254 size=3636
+68: AXButton name=[missing value] desc=[‎Start voice call] pos=776254 size=3636
+69: AXGroup name=[missing value] desc=[group] pos=376319 size=44843
+70: AXStaticText name=[missing value] desc=[‎Starred] pos=428333 size=4516
+71: AXStaticText name=[missing value] desc=[‎None] pos=761333 size=3216
+72: AXGroup name=[missing value] desc=[group] pos=376361 size=4481
+74: AXGroup name=[missing value] desc=[group] pos=376380 size=44843
+75: AXStaticText name=[missing value] desc=[‎Encryption] pos=428394 size=36516
+76: AXGroup name=[missing value] desc=[group] pos=376422 size=4481
+78: AXGroup name=[missing value] desc=[group] pos=376479 size=44849
+79: AXStaticText name=[missing value] desc=[‎Create group with ~ wandindo2019] pos=436496 size=37616
+80: AXGroup name=[missing value] desc=[group] pos=436527 size=3781
+

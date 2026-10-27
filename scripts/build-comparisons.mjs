@@ -71,7 +71,7 @@ ${ANALYTICS}
 <meta name="twitter:title" content="${esc(title)}">
 <meta name="twitter:description" content="${esc(desc)}">
 <meta name="twitter:image" content="${OG_IMAGE}">
-<link rel="icon" type="image/png" href="/images/brand/appicon-red.png">
+<link rel="icon" type="image/png" href="/images/brand/appicon-bird.png">
 <link rel="alternate" href="${SITE}/llms.txt">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -231,7 +231,7 @@ function competitorPage(c) {
       { '@type': 'Article', headline: jt(c.title), description: jt(c.desc), inLanguage: 'id',
         datePublished: UPDATED, dateModified: checked, image: OG_IMAGE, mainEntityOfPage: url,
         author: { '@type': 'Organization', name: 'LarisID', url: `${SITE}/` },
-        publisher: { '@type': 'Organization', name: 'LarisID', url: `${SITE}/`, logo: { '@type': 'ImageObject', url: `${SITE}/images/brand/appicon-red.png` } } },
+        publisher: { '@type': 'Organization', name: 'LarisID', url: `${SITE}/`, logo: { '@type': 'ImageObject', url: `${SITE}/images/brand/appicon-bird.png` } } },
       { '@type': 'FAQPage', mainEntity: c.faqs.map((f) => ({ '@type': 'Question', name: jt(f.q), acceptedAnswer: { '@type': 'Answer', text: jt(f.a) } })) },
     ],
   };
@@ -315,7 +315,7 @@ function listiclePage() {
       { '@type': 'Article', headline: jt(title), description: jt(desc), inLanguage: 'id',
         datePublished: UPDATED, dateModified: KALO_UPDATED, image: OG_IMAGE, mainEntityOfPage: url,
         author: { '@type': 'Organization', name: 'LarisID', url: `${SITE}/` },
-        publisher: { '@type': 'Organization', name: 'LarisID', url: `${SITE}/`, logo: { '@type': 'ImageObject', url: `${SITE}/images/brand/appicon-red.png` } } },
+        publisher: { '@type': 'Organization', name: 'LarisID', url: `${SITE}/`, logo: { '@type': 'ImageObject', url: `${SITE}/images/brand/appicon-bird.png` } } },
       { '@type': 'ItemList', name: jt('Alat Riset Produk Shopee Terbaik 2026'),
         itemListElement: tools.map((t, i) => ({ '@type': 'ListItem', position: i + 1, name: t.name })) },
       { '@type': 'FAQPage', mainEntity: faqs.map((f) => ({ '@type': 'Question', name: jt(f.q), acceptedAnswer: { '@type': 'Answer', text: jt(f.a) } })) },
@@ -387,7 +387,7 @@ function anglePage(p) {
       { '@type': 'Article', headline: jt(p.title), description: jt(p.desc), inLanguage: 'id',
         datePublished: UPDATED, dateModified: checked, image: OG_IMAGE, mainEntityOfPage: url,
         author: { '@type': 'Organization', name: 'LarisID', url: `${SITE}/` },
-        publisher: { '@type': 'Organization', name: 'LarisID', url: `${SITE}/`, logo: { '@type': 'ImageObject', url: `${SITE}/images/brand/appicon-red.png` } } },
+        publisher: { '@type': 'Organization', name: 'LarisID', url: `${SITE}/`, logo: { '@type': 'ImageObject', url: `${SITE}/images/brand/appicon-bird.png` } } },
       { '@type': 'FAQPage', mainEntity: p.faqs.map((f) => ({ '@type': 'Question', name: jt(f.q), acceptedAnswer: { '@type': 'Answer', text: jt(f.a) } })) },
     ],
   };

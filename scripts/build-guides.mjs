@@ -75,7 +75,7 @@ function articlePage(g) {
         image: OG_IMAGE,
         mainEntityOfPage: url,
         author: { '@type': 'Person', name: AUTHOR, url: `${SITE}/` },
-        publisher: { '@type': 'Organization', name: 'LarisID', url: `${SITE}/`, logo: { '@type': 'ImageObject', url: `${SITE}/images/brand/appicon-red.png` } },
+        publisher: { '@type': 'Organization', name: 'LarisID', url: `${SITE}/`, logo: { '@type': 'ImageObject', url: `${SITE}/images/brand/appicon-bird.png` } },
       },
       ...faqLd,
     ],
@@ -114,7 +114,7 @@ ${ANALYTICS}
 <meta name="twitter:title" content="${esc(g.title)}">
 <meta name="twitter:description" content="${esc(g.desc)}">
 <meta name="twitter:image" content="${OG_IMAGE}">
-<link rel="icon" type="image/png" href="/images/brand/appicon-red.png">
+<link rel="icon" type="image/png" href="/images/brand/appicon-bird.png">
 <link rel="alternate" href="${SITE}/llms.txt">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -195,7 +195,7 @@ ${ANALYTICS}
 <meta property="og:site_name" content="LarisID">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="${OG_IMAGE}">
-<link rel="icon" type="image/png" href="/images/brand/appicon-red.png">
+<link rel="icon" type="image/png" href="/images/brand/appicon-bird.png">
 <link rel="alternate" href="${SITE}/llms.txt">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
