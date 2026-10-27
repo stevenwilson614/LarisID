@@ -778,6 +778,12 @@
     waSending: false,
     waLive: null,
     daftarColsOpen: false,
+    daftarSelected: new Set(),
+    daftarTagFilter: '',
+    daftarPayFilter: '',
+    daftarJoinedFrom: '',
+    daftarJoinedTo: '',
+    daftarBulk: '',
     pipaSettingsOpen: false,
     pipaDeleteId: null,
     pustakaAddOpen: false,
@@ -3252,10 +3258,214 @@
   function matchPerson(s, q) {
     if (!q) return true;
     const handle = tiktokHandle(s.tiktok);
+    const tags = ((s.tags || []).join(' ')).toLowerCase();
     return s.name.toLowerCase().indexOf(q) >= 0 || (s.wa || '').indexOf(q) >= 0 ||
       (s.email || '').toLowerCase().indexOf(q) >= 0 || (s.city || '').toLowerCase().indexOf(q) >= 0 ||
       handle.toLowerCase().indexOf(q) >= 0 || billingOf(s.id).status.indexOf(q) >= 0 ||
-      stageLabel(crmOf(s.id).stage).toLowerCase().indexOf(q) >= 0;
+      stageLabel(crmOf(s.id).stage).toLowerCase().indexOf(q) >= 0 ||
+      tags.indexOf(q) >= 0;
+  }
+  function personJoinedAt(id) {
+    const app = db.applications[id];
+    if (app && app.at) return app.at;
+    const b = billingOf(id);
+    if (b.paidAt) return b.paidAt;
+    const c = crmOf(id);
+    if (c.watchedFirstAt) return c.watchedFirstAt;
+    const s = people().find((x) => x.id === id);
+    return (s && s.lastActive) || null;
+  }
+  function daftarPayOptions() {
+    return [
+      { id: '', label: 'Semua bayar' },
+      { id: 'lunas', label: 'Lunas' },
+      { id: 'cicilan', label: 'Cicilan' },
+      { id: 'belum', label: 'Belum bayar' },
+      { id: 'trial', label: 'Trial' },
+      { id: 'pending', label: 'Cek transfer' },
+      { id: 'gratis', label: 'Beasiswa' },
+      { id: 'paid', label: 'Sudah bayar*' },
+      { id: 'unpaid', label: 'Belum lunas*' }
+    ];
+  }
+  function matchDaftarPay(status, filter) {
+    if (!filter) return true;
+    if (filter === 'paid') return status === 'lunas' || status === 'cicilan' || status === 'gratis';
+    if (filter === 'unpaid') return status === 'belum' || status === 'trial' || status === 'pending';
+    return status === filter;
+  }
+  function matchDaftarJoined(id, fromYmd, toYmd) {
+    if (!fromYmd && !toYmd) return true;
+    const at = personJoinedAt(id);
+    if (!at) return false;
+    const ymd = ymdOf(at);
+    if (!ymd) return false;
+    if (fromYmd && ymd < fromYmd) return false;
+    if (toYmd && ymd > toYmd) return false;
+    return true;
+  }
+  function daftarHasExtraFilters() {
+    return !!(ui.daftarTagFilter || ui.daftarPayFilter || ui.daftarJoinedFrom || ui.daftarJoinedTo);
+  }
+  function daftarFilteredPeople(q) {
+    const stage = ui.stageFilter || '';
+    const tag = normalizeTag(ui.daftarTagFilter).toLowerCase();
+    const pay = ui.daftarPayFilter || '';
+    const from = ui.daftarJoinedFrom || '';
+    const to = ui.daftarJoinedTo || '';
+    return people().filter((s) => {
+      if (stage && crmOf(s.id).stage !== stage) return false;
+      if (tag) {
+        const tags = (s.tags || []).map((t) => String(t).toLowerCase());
+        if (tags.indexOf(tag) < 0) return false;
+      }
+      if (!matchDaftarPay(billingOf(s.id).status, pay)) return false;
+      if (!matchDaftarJoined(s.id, from, to)) return false;
+      return matchPerson(s, q);
+    });
+  }
+  function daftarSelectedVisible(rows) {
+    if (!(ui.daftarSelected instanceof Set)) ui.daftarSelected = new Set();
+    const visible = new Set((rows || []).map((s) => s.id));
+    return Array.from(ui.daftarSelected).filter((id) => visible.has(id));
+  }
+  function clearDaftarSelection() {
+    ui.daftarSelected = new Set();
+    ui.daftarBulk = '';
+  }
+  function daftarFiltersHtml() {
+    const tags = allKnownTags();
+    const tagCur = ui.daftarTagFilter || '';
+    const payCur = ui.daftarPayFilter || '';
+    const tagOpts = '<option value="">Semua tag</option>' +
+      tags.map((t) => '<option value="' + esc(t) + '"' + (tagCur === t ? ' selected' : '') + '>' + esc(t) + '</option>').join('');
+    const payOpts = daftarPayOptions().map((o) =>
+      '<option value="' + esc(o.id) + '"' + (payCur === o.id ? ' selected' : '') + '>' + esc(o.label) + '</option>'
+    ).join('');
+    return '<div class="daftar-filters">' +
+      '<label class="daftar-filter">' +
+        '<span class="muted">Tag</span>' +
+        '<select data-act="daftar-tag-filter">' + tagOpts + '</select>' +
+      '</label>' +
+      '<label class="daftar-filter">' +
+        '<span class="muted">Bayar</span>' +
+        '<select data-act="daftar-pay-filter">' + payOpts + '</select>' +
+      '</label>' +
+      '<label class="daftar-filter">' +
+        '<span class="muted">Gabung dari</span>' +
+        '<input type="date" data-act="daftar-joined-from" value="' + esc(ui.daftarJoinedFrom || '') + '">' +
+      '</label>' +
+      '<label class="daftar-filter">' +
+        '<span class="muted">sampai</span>' +
+        '<input type="date" data-act="daftar-joined-to" value="' + esc(ui.daftarJoinedTo || '') + '">' +
+      '</label>' +
+      (daftarHasExtraFilters()
+        ? '<button type="button" class="btn-sm" data-act="daftar-filters-clear">Reset filter</button>'
+        : '') +
+    '</div>';
+  }
+  function daftarBulkPanelHtml(ids) {
+    const mode = ui.daftarBulk || '';
+    if (!mode || !ids.length) return '';
+    const n = ids.length;
+    if (mode === 'tag') {
+      const known = allKnownTags();
+      const opts = known.map((t) =>
+        '<button type="button" class="tag-picker-opt" data-act="daftar-bulk-tag-pick" data-tag="' + esc(t) + '">' +
+          '<span class="tag-chip">' + esc(t) + '</span><span class="muted">pakai</span></button>'
+      ).join('');
+      return '<div class="daftar-bulk-panel" id="daftar-bulk-panel">' +
+        '<div class="daftar-bulk-head"><strong>Tambah tag ke ' + n + ' orang</strong>' +
+          '<button type="button" class="cols-dd-ico" data-act="daftar-bulk-close" title="Tutup">×</button></div>' +
+        '<form class="daftar-bulk-form" data-act="daftar-bulk-tag">' +
+          '<input name="tag" required maxlength="40" placeholder="Nama tag…" list="daftar-bulk-tag-list" autocomplete="off">' +
+          '<datalist id="daftar-bulk-tag-list">' + known.map((t) => '<option value="' + esc(t) + '"></option>').join('') + '</datalist>' +
+          '<button class="btn-sm" type="submit">Tambah</button>' +
+        '</form>' +
+        (opts ? '<div class="tag-picker-list daftar-bulk-tags">' + opts + '</div>' : '') +
+      '</div>';
+    }
+    if (mode === 'stage') {
+      const stages = pipelineStages();
+      return '<div class="daftar-bulk-panel" id="daftar-bulk-panel">' +
+        '<div class="daftar-bulk-head"><strong>Ubah stage ' + n + ' orang</strong>' +
+          '<button type="button" class="cols-dd-ico" data-act="daftar-bulk-close" title="Tutup">×</button></div>' +
+        '<form class="daftar-bulk-form" data-act="daftar-bulk-stage">' +
+          '<select name="stage" required>' +
+            '<option value="">Pilih stage…</option>' +
+            stages.map((st) => '<option value="' + esc(st.id) + '">' + esc(st.label) + '</option>').join('') +
+          '</select>' +
+          '<button class="btn" type="submit">Pindahkan</button>' +
+        '</form></div>';
+    }
+    if (mode === 'note') {
+      return '<div class="daftar-bulk-panel" id="daftar-bulk-panel">' +
+        '<div class="daftar-bulk-head"><strong>Catatan ke ' + n + ' orang</strong>' +
+          '<button type="button" class="cols-dd-ico" data-act="daftar-bulk-close" title="Tutup">×</button></div>' +
+        '<form class="compose daftar-bulk-form" data-act="daftar-bulk-note">' +
+          '<textarea name="body" required rows="3" placeholder="Catatan yang sama untuk semua yang dipilih…"></textarea>' +
+          '<button class="btn" type="submit">Simpan catatan</button>' +
+        '</form></div>';
+    }
+    if (mode === 'email') {
+      const withMail = ids.filter((id) => {
+        const s = people().find((x) => x.id === id);
+        return s && s.email;
+      });
+      const missing = n - withMail.length;
+      return '<div class="daftar-bulk-panel" id="daftar-bulk-panel">' +
+        '<div class="daftar-bulk-head"><strong>Email ' + withMail.length + ' orang</strong>' +
+          '<button type="button" class="cols-dd-ico" data-act="daftar-bulk-close" title="Tutup">×</button></div>' +
+        (missing ? '<p class="muted" style="margin:0 0 8px">' + missing + ' tanpa email — dilewati.</p>' : '') +
+        (withMail.length
+          ? '<form class="compose daftar-bulk-form" data-act="daftar-bulk-email">' +
+              '<input name="subject" required placeholder="Subjek" value="MasterMind with Anton GC">' +
+              '<textarea name="body" required rows="4" placeholder="Halo {name}, …"></textarea>' +
+              '<p class="muted" style="margin:0">Pakai {name}. Antrian email + buka mailto BCC.</p>' +
+              '<div class="row" style="gap:8px;flex-wrap:wrap">' +
+                '<button class="btn" type="submit">Antrikan &amp; buka email</button>' +
+              '</div></form>'
+          : '<p class="muted">Tidak ada email di pilihan ini.</p>') +
+        '</div>';
+    }
+    if (mode === 'update') {
+      return '<div class="daftar-bulk-panel" id="daftar-bulk-panel">' +
+        '<div class="daftar-bulk-head"><strong>Kirim update ke ' + n + ' orang</strong>' +
+          '<button type="button" class="cols-dd-ico" data-act="daftar-bulk-close" title="Tutup">×</button></div>' +
+        '<form class="compose daftar-bulk-form" data-act="daftar-bulk-update">' +
+          '<input name="title" required placeholder="Judul singkat" value="Update kelas">' +
+          '<textarea name="body" required rows="4" placeholder="Halo {name}, …"></textarea>' +
+          '<div class="daftar-bulk-checks">' +
+            '<label><input type="checkbox" name="viaWa" checked> Antrikan WA</label>' +
+            '<label><input type="checkbox" name="viaEmail" checked> Antrikan email</label>' +
+          '</div>' +
+          '<p class="muted" style="margin:0">Pakai {name}, {amount}, {until}. Masuk antrean Tugas / otomasi.</p>' +
+          '<button class="btn" type="submit">Kirim ke antrean</button>' +
+        '</form></div>';
+    }
+    return '';
+  }
+  function daftarBulkBarHtml(ids) {
+    const n = ids.length;
+    if (!n) return '';
+    const mode = ui.daftarBulk || '';
+    const btn = (id, label) =>
+      '<button type="button" class="btn-sm' + (mode === id ? ' is-on' : '') +
+        '" data-act="daftar-bulk" data-id="' + esc(id) + '">' + label + '</button>';
+    return '<div class="daftar-bulk-bar">' +
+      '<div class="daftar-bulk-bar-main">' +
+        '<strong>' + n + ' dipilih</strong>' +
+        '<div class="daftar-bulk-acts">' +
+          btn('tag', 'Tambah tag') +
+          btn('email', 'Email') +
+          btn('note', 'Catatan') +
+          btn('stage', 'Ubah stage') +
+          btn('update', 'Kirim update') +
+          '<button type="button" class="btn-sm" data-act="daftar-sel-clear">Batal</button>' +
+        '</div>' +
+      '</div>' +
+      daftarBulkPanelHtml(ids) +
+    '</div>';
   }
   function paintCariDrop() {
     const drop = $('cari-siswa-drop');
@@ -3548,7 +3758,7 @@
     const known = allKnownTags().find((t) => t.toLowerCase() === raw.toLowerCase());
     return known || raw;
   }
-  function addPersonTag(id, tag) {
+  function applyPersonTag(id, tag) {
     const raw = resolveTagLabel(tag);
     if (!raw) return false;
     const s = people().find((x) => x.id === id);
@@ -3556,6 +3766,10 @@
     if (tags.some((t) => t.toLowerCase() === raw.toLowerCase())) return false;
     tags.push(raw);
     patchPerson(id, { tags });
+    return true;
+  }
+  function addPersonTag(id, tag) {
+    if (!applyPersonTag(id, tag)) return false;
     save();
     return true;
   }
@@ -3873,9 +4087,15 @@
     placeWaFab();
     tickRemainers();
     ensureRemainTimer();
+    paintDaftarSelAll();
     if (isStaff() && ui.mentorTab === 'orang' && ui.composeMode === 'wa') {
       requestAnimationFrame(scrollWaThread);
     }
+  }
+  function paintDaftarSelAll() {
+    const el = document.querySelector('[data-act="daftar-sel-all"]');
+    if (!el) return;
+    el.indeterminate = el.getAttribute('data-indeterminate') === '1';
   }
 
   function bindNativeTools() {
@@ -6070,8 +6290,11 @@
   }
   function stageTabsHtml(q) {
     const stages = pipelineStages();
-    const all = people().filter((s) => matchPerson(s, q));
-    const cur = ui.stageFilter || '';
+    const savedStage = ui.stageFilter || '';
+    ui.stageFilter = '';
+    const all = daftarFilteredPeople(q);
+    ui.stageFilter = savedStage;
+    const cur = savedStage;
     const chip = (id, label, n) =>
       '<button type="button" data-act="stage-filter" data-id="' + esc(id) + '" aria-selected="' + (cur === id) + '">' +
         esc(label) + (n ? ' (' + n + ')' : '') + '</button>';
@@ -6081,16 +6304,22 @@
       '</div>';
   }
   function viewSiswaDaftar(q) {
-    const stage = ui.stageFilter || '';
     const cols = daftarCols();
-    const rows = people().filter((s) => {
-      if (stage && crmOf(s.id).stage !== stage) return false;
-      return matchPerson(s, q);
-    });
+    const rows = daftarFilteredPeople(q);
+    if (!(ui.daftarSelected instanceof Set)) ui.daftarSelected = new Set();
+    const selectedIds = daftarSelectedVisible(rows);
+    const allSelected = rows.length > 0 && selectedIds.length === rows.length;
+    const someSelected = selectedIds.length > 0 && !allSelected;
+    const colSpan = cols.length + 1;
     return stageTabsHtml(q) +
+      daftarFiltersHtml() +
+      daftarBulkBarHtml(selectedIds) +
       '<div class="fub-list">' +
       '<div class="fub-toolbar">' +
-        '<span class="muted">Menampilkan ' + rows.length + ' orang</span>' +
+        '<span class="muted">Menampilkan ' + rows.length + ' orang' +
+          (selectedIds.length ? ' · ' + selectedIds.length + ' dipilih' : '') +
+          (daftarHasExtraFilters() ? ' · filter aktif' : '') +
+        '</span>' +
         '<div class="fub-toolbar-acts">' +
           '<div class="cols-dd-wrap' + (ui.daftarColsOpen ? ' is-open' : '') + '" id="daftar-cols-wrap">' +
             '<button type="button" class="cols-dd-btn' + (ui.daftarColsOpen ? ' is-on' : '') +
@@ -6106,16 +6335,27 @@
         '</div>' +
       '</div>' +
       '<table class="table roster"><thead><tr>' +
+        '<th class="roster-check-th">' +
+          '<input type="checkbox" data-act="daftar-sel-all" aria-label="Pilih semua"' +
+            (allSelected ? ' checked' : '') +
+            (someSelected ? ' data-indeterminate="1"' : '') +
+            (rows.length ? '' : ' disabled') + '>' +
+        '</th>' +
         cols.map((id) => {
           const def = daftarColDef(id);
           return '<th>' + esc((def && def.label) || id) + '</th>';
         }).join('') +
       '</tr></thead><tbody>' +
-      (rows.length ? rows.map((s) =>
-        '<tr class="roster-row" data-act="open-student" data-id="' + esc(s.id) + '">' +
+      (rows.length ? rows.map((s) => {
+        const on = ui.daftarSelected.has(s.id);
+        return '<tr class="roster-row' + (on ? ' is-selected' : '') + '" data-act="open-student" data-id="' + esc(s.id) + '">' +
+          '<td class="roster-check-td" data-act="daftar-sel-cell" data-id="' + esc(s.id) + '">' +
+            '<input type="checkbox" data-act="daftar-sel" data-id="' + esc(s.id) + '"' +
+              (on ? ' checked' : '') + ' aria-label="Pilih ' + esc(s.name) + '">' +
+          '</td>' +
           cols.map((id) => '<td>' + daftarCellHtml(id, s) + '</td>').join('') +
-        '</tr>'
-      ).join('') : '<tr><td colspan="' + cols.length + '" class="muted">Tidak ada orang di filter ini.</td></tr>') +
+        '</tr>';
+      }).join('') : '<tr><td colspan="' + colSpan + '" class="muted">Tidak ada orang di filter ini.</td></tr>') +
       '</tbody></table></div>';
   }
   function viewCrm(q) {
@@ -7363,6 +7603,50 @@
       }
       return;
     }
+    if (t.matches('[data-act="daftar-tag-filter"]')) {
+      ui.daftarTagFilter = t.value || '';
+      ui.daftarBulk = '';
+      render();
+      return;
+    }
+    if (t.matches('[data-act="daftar-pay-filter"]')) {
+      ui.daftarPayFilter = t.value || '';
+      ui.daftarBulk = '';
+      render();
+      return;
+    }
+    if (t.matches('[data-act="daftar-joined-from"]')) {
+      ui.daftarJoinedFrom = t.value || '';
+      ui.daftarBulk = '';
+      render();
+      return;
+    }
+    if (t.matches('[data-act="daftar-joined-to"]')) {
+      ui.daftarJoinedTo = t.value || '';
+      ui.daftarBulk = '';
+      render();
+      return;
+    }
+    if (t.matches('[data-act="daftar-sel"]')) {
+      if (!(ui.daftarSelected instanceof Set)) ui.daftarSelected = new Set();
+      const id = t.getAttribute('data-id');
+      if (!id) return;
+      if (t.checked) ui.daftarSelected.add(id);
+      else ui.daftarSelected.delete(id);
+      if (!ui.daftarSelected.size) ui.daftarBulk = '';
+      render();
+      return;
+    }
+    if (t.matches('[data-act="daftar-sel-all"]')) {
+      if (!(ui.daftarSelected instanceof Set)) ui.daftarSelected = new Set();
+      const q = (ui.filterSiswa || ui.crmFilter || '').toLowerCase();
+      const rows = daftarFilteredPeople(q);
+      if (t.checked) rows.forEach((s) => ui.daftarSelected.add(s.id));
+      else rows.forEach((s) => ui.daftarSelected.delete(s.id));
+      if (!ui.daftarSelected.size) ui.daftarBulk = '';
+      render();
+      return;
+    }
     if (t.matches('[data-act="dash-from"]')) {
       ui.dashFrom = t.value;
       ui.dashRange = 'custom';
@@ -7915,7 +8199,9 @@
         act === 'person-field' || act === 'bill-amount' || act === 'sec-due' || act === 'kur-preview-person' ||
         act === 'has-shop' || act === 'heard-from' || act === 'apply' || act === 'cari-siswa' ||
         act === 'daftar-custom-val' || act === 'tag-query' || act === 'crm-stage' || act === 'assign-mentor' ||
-        act === 'social-input' || act === 'shop-input') {
+        act === 'social-input' || act === 'shop-input' || act === 'daftar-sel' || act === 'daftar-sel-all' ||
+        act === 'daftar-tag-filter' || act === 'daftar-pay-filter' ||
+        act === 'daftar-joined-from' || act === 'daftar-joined-to') {
       return;
     }
     if (act === 'pick-social') {
@@ -8307,6 +8593,58 @@
         ui.pipaSettingsOpen = false;
         ui.pipaDeleteId = null;
       }
+      if (ui.siswaView !== 'daftar') {
+        ui.daftarBulk = '';
+        ui.daftarColsOpen = false;
+      }
+      render();
+    } else if (act === 'daftar-sel-cell') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!(ui.daftarSelected instanceof Set)) ui.daftarSelected = new Set();
+      const id = btn.getAttribute('data-id');
+      if (!id) return;
+      if (ui.daftarSelected.has(id)) ui.daftarSelected.delete(id);
+      else ui.daftarSelected.add(id);
+      if (!ui.daftarSelected.size) ui.daftarBulk = '';
+      render();
+    } else if (act === 'daftar-sel-clear') {
+      clearDaftarSelection();
+      render();
+    } else if (act === 'daftar-filters-clear') {
+      ui.daftarTagFilter = '';
+      ui.daftarPayFilter = '';
+      ui.daftarJoinedFrom = '';
+      ui.daftarJoinedTo = '';
+      ui.daftarBulk = '';
+      render();
+    } else if (act === 'daftar-bulk') {
+      const id = btn.getAttribute('data-id') || '';
+      ui.daftarBulk = ui.daftarBulk === id ? '' : id;
+      render();
+      if (ui.daftarBulk) {
+        requestAnimationFrame(() => {
+          const panel = document.getElementById('daftar-bulk-panel');
+          const focusEl = panel && panel.querySelector('input, textarea, select');
+          if (focusEl) focusEl.focus();
+        });
+      }
+    } else if (act === 'daftar-bulk-close') {
+      ui.daftarBulk = '';
+      render();
+    } else if (act === 'daftar-bulk-tag-pick') {
+      const tag = btn.getAttribute('data-tag') || '';
+      const q = (ui.filterSiswa || ui.crmFilter || '').toLowerCase();
+      const ids = daftarSelectedVisible(daftarFilteredPeople(q));
+      let n = 0;
+      ids.forEach((id) => { if (applyPersonTag(id, tag)) n += 1; });
+      if (n) {
+        save();
+        toast('Tag “‘ + resolveTagLabel(tag) + ’” ditambah ke ' + n + ' orang.');
+      } else {
+        toast('Semua sudah punya tag itu.');
+      }
+      ui.daftarBulk = '';
       render();
     } else if (act === 'dash-range') {
       const id = btn.getAttribute('data-id') || '30';
@@ -8976,6 +9314,110 @@
       db.notes[id] = db.notes[id] || [];
       db.notes[id].push({ at: isoNow(), body: String(fd.get('body')) });
       save();
+      render();
+    } else if (act === 'daftar-bulk-tag') {
+      const tag = String(fd.get('tag') || '').trim();
+      const q = (ui.filterSiswa || ui.crmFilter || '').toLowerCase();
+      const ids = daftarSelectedVisible(daftarFilteredPeople(q));
+      if (!tag || !ids.length) return;
+      let n = 0;
+      ids.forEach((id) => { if (applyPersonTag(id, tag)) n += 1; });
+      if (n) {
+        save();
+        toast('Tag “‘ + resolveTagLabel(tag) + ’” ditambah ke ' + n + ' orang.');
+      } else {
+        toast('Semua sudah punya tag itu.');
+      }
+      ui.daftarBulk = '';
+      render();
+    } else if (act === 'daftar-bulk-stage') {
+      const stage = String(fd.get('stage') || '');
+      const q = (ui.filterSiswa || ui.crmFilter || '').toLowerCase();
+      const ids = daftarSelectedVisible(daftarFilteredPeople(q));
+      if (!stage || !ids.length) return;
+      if (!pipelineStages().some((s) => s.id === stage)) {
+        toast('Stage tidak ditemukan.');
+        return;
+      }
+      let n = 0;
+      ids.forEach((id) => {
+        if (crmOf(id).stage === stage) return;
+        setStage(id, stage, 'Bulk: pindah ke ' + stageLabel(stage));
+        n += 1;
+      });
+      save();
+      toast(n ? (n + ' orang pindah ke ' + stageLabel(stage) + '.') : 'Semua sudah di stage itu.');
+      ui.daftarBulk = '';
+      render();
+    } else if (act === 'daftar-bulk-note') {
+      const body = String(fd.get('body') || '').trim();
+      const q = (ui.filterSiswa || ui.crmFilter || '').toLowerCase();
+      const ids = daftarSelectedVisible(daftarFilteredPeople(q));
+      if (!body || !ids.length) return;
+      ids.forEach((id) => {
+        db.notes[id] = db.notes[id] || [];
+        db.notes[id].push({ at: isoNow(), body: body });
+      });
+      save();
+      toast('Catatan ditambah ke ' + ids.length + ' orang.');
+      ui.daftarBulk = '';
+      render();
+    } else if (act === 'daftar-bulk-email') {
+      const subject = String(fd.get('subject') || '').trim();
+      const body = String(fd.get('body') || '').trim();
+      const q = (ui.filterSiswa || ui.crmFilter || '').toLowerCase();
+      const ids = daftarSelectedVisible(daftarFilteredPeople(q));
+      if (!subject || !body || !ids.length) return;
+      const withMail = [];
+      ids.forEach((id) => {
+        const s = people().find((x) => x.id === id);
+        if (!s || !s.email) return;
+        withMail.push(s);
+        queueEmail(id, 'Bulk: ' + subject, subject, body, isoNow());
+        pushTimeline(id, 'email', 'Email bulk diantrikan: ' + subject);
+      });
+      if (!withMail.length) {
+        toast('Tidak ada email di pilihan ini.');
+        return;
+      }
+      save();
+      const first = withMail[0];
+      const bcc = withMail.slice(1).map((s) => s.email).join(',');
+      let href = mailLink(first.email, fillTpl(subject, first.id), fillTpl(body, first.id));
+      if (bcc) href += '&bcc=' + encodeURIComponent(bcc);
+      window.location.href = href;
+      toast(withMail.length + ' email diantrikan.');
+      ui.daftarBulk = '';
+      render();
+    } else if (act === 'daftar-bulk-update') {
+      const title = String(fd.get('title') || '').trim();
+      const body = String(fd.get('body') || '').trim();
+      const viaWa = !!fd.get('viaWa');
+      const viaEmail = !!fd.get('viaEmail');
+      const q = (ui.filterSiswa || ui.crmFilter || '').toLowerCase();
+      const ids = daftarSelectedVisible(daftarFilteredPeople(q));
+      if (!title || !body || !ids.length) return;
+      if (!viaWa && !viaEmail) {
+        toast('Centang WA dan/atau email.');
+        return;
+      }
+      let waN = 0;
+      let emN = 0;
+      ids.forEach((id) => {
+        const s = people().find((x) => x.id === id) || {};
+        if (viaWa && s.wa) {
+          queueWa(id, title, body, isoNow());
+          waN += 1;
+        }
+        if (viaEmail && s.email) {
+          queueEmail(id, title, title, body, isoNow());
+          emN += 1;
+        }
+        pushTimeline(id, 'event', 'Update bulk: ' + title);
+      });
+      save();
+      toast('Update diantrikan · WA ' + waN + ' · email ' + emN + '.');
+      ui.daftarBulk = '';
       render();
     } else if (act === 'daftar-col-add') {
       const label = String(fd.get('label') || '').trim().slice(0, 40);

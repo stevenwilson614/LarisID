@@ -1618,6 +1618,68 @@ html.present-pane[data-mode="student"] .kurikulum-pane.is-open {
 .stage-tabs button[aria-selected="true"] {
   color: var(--text); border-bottom-color: var(--accent);
 }
+.daftar-filters {
+  display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: end;
+  margin: 0 0 12px; padding: 10px 12px;
+  background: var(--ink-2); border: 1px solid var(--line); border-radius: 12px;
+}
+.daftar-filter {
+  display: flex; flex-direction: column; gap: 4px; min-width: 0;
+}
+.daftar-filter span { font-size: .66rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.daftar-filter select,
+.daftar-filter input[type="date"] {
+  font: inherit; font-size: .78rem;
+  padding: 7px 10px; border-radius: 8px;
+  border: 1px solid var(--line-2); background: var(--ink-3); color: var(--text);
+  min-width: 140px;
+}
+.daftar-bulk-bar {
+  margin: 0 0 12px; padding: 10px 12px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--ink-2));
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  border-radius: 12px;
+}
+.daftar-bulk-bar-main {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  justify-content: space-between;
+}
+.daftar-bulk-acts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.daftar-bulk-panel {
+  margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line);
+}
+.daftar-bulk-head {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 8px; margin-bottom: 8px;
+}
+.daftar-bulk-form {
+  display: flex; flex-direction: column; gap: 8px; max-width: 520px;
+}
+.daftar-bulk-form.compose { margin: 0; }
+.daftar-bulk-form input,
+.daftar-bulk-form select,
+.daftar-bulk-form textarea {
+  font: inherit; font-size: .82rem;
+  padding: 8px 10px; border-radius: 8px;
+  border: 1px solid var(--line-2); background: var(--ink-3); color: var(--text);
+}
+.daftar-bulk-form textarea { resize: vertical; min-height: 72px; }
+.daftar-bulk-checks {
+  display: flex; flex-wrap: wrap; gap: 12px;
+  font-size: .78rem; color: var(--muted);
+}
+.daftar-bulk-checks label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.daftar-bulk-tags { max-height: 160px; overflow: auto; margin-top: 6px; }
+.roster-check-th,
+.roster-check-td {
+  width: 36px; padding-left: 12px !important; padding-right: 4px !important;
+  vertical-align: middle;
+}
+.roster-check-th input,
+.roster-check-td input {
+  width: 15px; height: 15px; cursor: pointer; accent-color: var(--accent);
+}
+.roster-row.is-selected { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .fub-list {
   background: var(--ink-2); border: 1px solid var(--line);
   border-radius: 12px; overflow: auto;
