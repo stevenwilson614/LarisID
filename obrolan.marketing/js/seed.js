@@ -252,8 +252,30 @@ window.ANTON_SEED = {
   },
   students: [
     { id: 's-tamu', name: 'Tamu baru (wizard)', city: '—', lastActive: '2026-09-18T10:00:00+07:00', tags: ['WA baru'], wa: '628120000099', email: '', tiktok: '', mentorId: 'u-anton', kind: 'student' },
-    { id: 's-kamu', name: 'Kamu (demo)', city: 'Bekasi', lastActive: '2026-09-15T10:00:00+07:00', tags: ['TTS'], wa: '628120000001', email: 'kamu.demo@example.com', tiktok: 'kamu.toko', mentorId: 'u-anton', kind: 'student' },
-    { id: 's-dina', name: 'Dina Putri', city: 'Bandung', lastActive: '2026-09-14T21:00:00+07:00', tags: ['pemula'], wa: '628120000002', email: 'dina.putri@example.com', tiktok: 'dinaputri.id', mentorId: 'u-anton', kind: 'student' },
+    {
+      id: 's-kamu', name: 'Kamu (demo)', city: 'Bekasi', lastActive: '2026-09-15T10:00:00+07:00', tags: ['TTS'],
+      wa: '628120000001', email: 'kamu.demo@example.com', tiktok: 'kamu.toko', mentorId: 'u-anton', kind: 'student',
+      shopName: 'Kamu Toko',
+      socialLinks: [
+        { id: 'sl-kamu-tt', platform: 'tiktok', handle: 'kamu.toko', url: 'https://www.tiktok.com/@kamu.toko' },
+        { id: 'sl-kamu-ig', platform: 'instagram', handle: 'kamu.toko', url: 'https://instagram.com/kamu.toko' }
+      ],
+      shopLinks: [
+        { id: 'sk-kamu-tts', platform: 'tiktok_shop', handle: 'kamu.toko', url: 'https://www.tiktok.com/@kamu.toko' },
+        { id: 'sk-kamu-shopee', platform: 'shopee', handle: 'kamutoko', url: 'https://shopee.co.id/kamutoko' }
+      ]
+    },
+    {
+      id: 's-dina', name: 'Dina Putri', city: 'Bandung', lastActive: '2026-09-14T21:00:00+07:00', tags: ['pemula'],
+      wa: '628120000002', email: 'dina.putri@example.com', tiktok: 'dinaputri.id', mentorId: 'u-anton', kind: 'student',
+      shopName: 'Dina Finds',
+      socialLinks: [
+        { id: 'sl-dina-tt', platform: 'tiktok', handle: 'dinaputri.id', url: 'https://www.tiktok.com/@dinaputri.id' }
+      ],
+      shopLinks: [
+        { id: 'sk-dina-tts', platform: 'tiktok_shop', handle: 'dinaputri.id', url: 'https://www.tiktok.com/@dinaputri.id' }
+      ]
+    },
     { id: 's-budi', name: 'Budi Santoso', city: 'Solo', lastActive: '2026-09-10T08:00:00+07:00', tags: ['belum bayar'], wa: '628120000003', email: 'budi.solo@example.com', tiktok: '', mentorId: 'u-anton', kind: 'student' },
     { id: 's-sari', name: 'Sari Beasiswa', city: 'Yogyakarta', lastActive: '2026-09-15T07:30:00+07:00', tags: ['beasiswa'], wa: '628120000004', email: 'sari.beasiswa@example.com', tiktok: 'sari.yogya', mentorId: 'u-anton', kind: 'student' },
     { id: 's-eko', name: 'Eko Pras', city: 'Tangerang', lastActive: '2026-09-13T19:00:00+07:00', tags: ['live'], wa: '628120000005', email: 'eko.pras@example.com', tiktok: 'ekolive.finds', mentorId: 'u-anton', kind: 'student' },

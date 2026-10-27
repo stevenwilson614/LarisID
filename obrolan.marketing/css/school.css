@@ -1669,6 +1669,46 @@ html[data-mode="mentor"] .main:has(.fub-page) { padding: 0; }
   padding: 2px 6px; border-radius: 6px;
 }
 .fub-photo-btn { margin-top: 4px; width: fit-content; }
+.fub-section {
+  margin: 0 0 12px; padding: 10px 0 4px;
+  border-top: 1px solid var(--line);
+}
+.fub-section-h {
+  font-size: .62rem; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted); margin-bottom: 8px;
+}
+.fub-linklist { display: grid; gap: 4px; margin-bottom: 8px; }
+.fub-link {
+  display: flex; gap: 6px; align-items: center;
+  font-size: .78rem; min-width: 0;
+}
+.fub-link-plat {
+  flex: none; font-size: .62rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .04em;
+  color: var(--muted); min-width: 4.5rem;
+}
+.fub-link-a {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--text); text-decoration: none;
+}
+.fub-link-a:hover { text-decoration: underline; }
+.fub-link-del {
+  flex: none; padding: 0 6px; line-height: 1.4; opacity: .7;
+}
+.fub-link-del:hover { opacity: 1; }
+.fub-link-empty { margin: 0 0 6px; font-size: .72rem; }
+.fub-plat-pick {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px;
+}
+.fub-plat.is-on {
+  background: var(--accent, #2563eb); color: #fff; border-color: transparent;
+}
+.fub-plat:disabled { opacity: .35; cursor: default; }
+.fub-addrow {
+  display: flex; gap: 6px; align-items: center; margin-bottom: 4px;
+}
+.fub-addrow .inline-edit { flex: 1; min-width: 0; }
+.fub-section > .inline-edit { width: 100%; margin-bottom: 8px; box-sizing: border-box; }
 .fub-contact { display: grid; gap: 2px; margin-bottom: 12px; }
 .fub-contact-row {
   display: flex; gap: 8px; align-items: center;

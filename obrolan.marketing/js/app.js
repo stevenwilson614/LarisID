@@ -2989,10 +2989,11 @@
   function saveShopLinks(id, links) {
     const clean = (links || []).filter((x) => x && x.platform && x.url);
     const first = clean[0];
+    const cur = people().find((x) => x.id === id) || {};
     patchPerson(id, {
       shopLinks: clean,
       shopUrl: first ? first.url : '',
-      shopName: first ? (first.handle || '') : (people().find((x) => x.id === id) || {}).shopName || ''
+      shopName: cur.shopName || (first && first.handle) || ''
     });
   }
   function personLinksHtml(id, s, app) {
@@ -7335,8 +7336,20 @@
     }
   });
   document.addEventListener('keydown', (e) => {
-    if (!e.target.matches('[data-act="tag-query"]')) return;
     if (e.key !== 'Enter') return;
+    if (e.target.matches('[data-act="social-input"]')) {
+      e.preventDefault();
+      const btn = e.target.parentElement && e.target.parentElement.querySelector('[data-act="add-social"]');
+      if (btn) btn.click();
+      return;
+    }
+    if (e.target.matches('[data-act="shop-input"]')) {
+      e.preventDefault();
+      const btn = e.target.parentElement && e.target.parentElement.querySelector('[data-act="add-shop"]');
+      if (btn) btn.click();
+      return;
+    }
+    if (!e.target.matches('[data-act="tag-query"]')) return;
     e.preventDefault();
     const id = e.target.getAttribute('data-id') || ui.tagPickerId;
     const q = normalizeTag(e.target.value || ui.tagQuery);
@@ -7389,7 +7402,89 @@
         act === 'cover-file' || act === 'res-file' || act === 'photo-file' || act === 'lec-body' || act === 'res-name' || act === 'res-url' ||
         act === 'person-field' || act === 'bill-amount' || act === 'sec-due' || act === 'kur-preview-person' ||
         act === 'has-shop' || act === 'heard-from' || act === 'apply' || act === 'cari-siswa' ||
-        act === 'daftar-custom-val' || act === 'tag-query' || act === 'crm-stage' || act === 'assign-mentor') {
+        act === 'daftar-custom-val' || act === 'tag-query' || act === 'crm-stage' || act === 'assign-mentor' ||
+        act === 'social-input' || act === 'shop-input') {
+      return;
+    }
+    if (act === 'pick-social') {
+      ui.socialPick = btn.getAttribute('data-id') || null;
+      render();
+      return;
+    }
+    if (act === 'pick-shop') {
+      ui.shopPick = btn.getAttribute('data-id') || null;
+      render();
+      return;
+    }
+    if (act === 'add-social') {
+      const id = btn.getAttribute('data-id');
+      const plat = ui.socialPick;
+      const inp = btn.parentElement && btn.parentElement.querySelector('[data-act="social-input"]');
+      const parsed = parseSocialLink(plat, inp && inp.value);
+      if (!parsed) {
+        toast('Isi @nama atau tautan yang cocok dengan ' + platLabel(SOCIAL_PLATFORMS, plat) + '.');
+        return;
+      }
+      const s = people().find((x) => x.id === id) || {};
+      const links = personSocialLinks(s).filter((x) => x.platform !== plat);
+      links.push(Object.assign({ id: linkId() }, parsed));
+      saveSocialLinks(id, links);
+      ui.socialPick = null;
+      save();
+      toast(platLabel(SOCIAL_PLATFORMS, plat) + ' ditambah.');
+      if (plat === 'tiktok') {
+        refreshPersonPhoto(id, true).then((ok) => {
+          if (ok) toast(syncEnabled() ? 'Foto TikTok tersimpan di kelas.' : 'Foto TikTok tersimpan.');
+          render();
+        });
+      } else {
+        render();
+      }
+      return;
+    }
+    if (act === 'add-shop') {
+      const id = btn.getAttribute('data-id');
+      const plat = ui.shopPick;
+      const inp = btn.parentElement && btn.parentElement.querySelector('[data-act="shop-input"]');
+      const parsed = parseShopLink(plat, inp && inp.value);
+      if (!parsed) {
+        toast('Isi tautan toko yang cocok dengan ' + platLabel(SHOP_PLATFORMS, plat) + '.');
+        return;
+      }
+      const s = people().find((x) => x.id === id) || {};
+      const links = personShopLinks(s, db.applications[id]);
+      links.push(Object.assign({ id: linkId() }, parsed));
+      saveShopLinks(id, links);
+      ui.shopPick = null;
+      save();
+      toast(platLabel(SHOP_PLATFORMS, plat) + ' ditambah.');
+      render();
+      return;
+    }
+    if (act === 'del-social') {
+      const id = btn.getAttribute('data-id');
+      const lid = btn.getAttribute('data-lid');
+      const plat = btn.getAttribute('data-plat');
+      const s = people().find((x) => x.id === id) || {};
+      const links = personSocialLinks(s).filter((x) => (lid ? x.id !== lid : x.platform !== plat));
+      saveSocialLinks(id, links);
+      save();
+      toast('Tautan sosial dihapus.');
+      render();
+      return;
+    }
+    if (act === 'del-shop') {
+      const id = btn.getAttribute('data-id');
+      const lid = btn.getAttribute('data-lid');
+      const plat = btn.getAttribute('data-plat');
+      const s = people().find((x) => x.id === id) || {};
+      let links = personShopLinks(s, db.applications[id]);
+      if (lid) links = links.filter((x) => x.id !== lid);
+      else links = links.filter((x) => x.platform !== plat);
+      saveShopLinks(id, links);
+      save();
+      toast('Tautan toko dihapus.');
+      render();
       return;
     }
     if (act === 'tag-toggle') {
