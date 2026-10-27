@@ -3106,12 +3106,22 @@ html[data-mode="mentor"] .lesson-head h1 { font-size: 1.28rem; }
 .tool-native input.kuning {
   background: var(--gold-bg); border-color: var(--gold-line); color: var(--text);
 }
+.tool-native h2 {
+  margin: 0 0 4px; font-size: .92rem; letter-spacing: -.02em;
+}
+.tool-native h3 {
+  margin: 0 0 6px; font-size: .78rem; letter-spacing: -.01em;
+}
+.tool-native select {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r);
+  font: inherit; font-size: 16px; background: var(--ink-2); color: var(--text);
+}
 .calc-tabs {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0;
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin: 12px 0;
 }
 .calc-tabs button {
   border: 1px solid var(--line); background: transparent; color: var(--muted);
-  border-radius: var(--r); padding: 10px 8px; font: 700 .76rem inherit; cursor: pointer;
+  border-radius: var(--r); padding: 10px 6px; font: 700 .68rem inherit; cursor: pointer; line-height: 1.2;
 }
 .calc-tabs button.on { background: var(--inv-bg); color: var(--inv-fg); border-color: var(--inv-bg); }
 .calc-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -3147,6 +3157,47 @@ html[data-mode="mentor"] .lesson-head h1 { font-size: 1.28rem; }
   cursor: pointer; font-size: .78rem; font-weight: 700; padding: 10px 0; list-style: none;
 }
 .calc-fees summary::-webkit-details-marker { display: none; }
+.calc-kat { position: relative; }
+.calc-suggest {
+  position: absolute; z-index: 6; left: 0; right: 0; top: calc(100% + 4px);
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--r);
+  max-height: 220px; overflow: auto; box-shadow: 0 10px 24px var(--shadow);
+}
+.calc-suggest button {
+  display: block; width: 100%; text-align: left; background: transparent; color: var(--text);
+  border: 0; border-bottom: 1px solid var(--line); padding: 8px 10px;
+  font: 650 .75rem inherit; cursor: pointer;
+}
+.calc-suggest button:hover { background: var(--ink-3); }
+.calc-checks { display: flex; gap: 14px; align-items: flex-end; min-height: 42px; padding-bottom: 2px; }
+.calc-check {
+  display: flex !important; align-items: center; gap: 6px; margin: 0 !important;
+  font-size: .78rem !important; font-weight: 700;
+}
+.tool-native .calc-check input { width: auto; margin: 0; padding: 0; }
+.calc-fee-note { margin: 8px 0 0; font-size: .74rem; color: var(--muted); line-height: 1.4; }
+.calc-hero {
+  margin: 12px 0; padding: 14px 14px 12px; border-radius: var(--r);
+  background: var(--ink-3); border: 1px solid var(--line);
+}
+.calc-hero .k {
+  font-size: .66rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--muted);
+}
+.calc-hero .v { font-size: 1.45rem; font-weight: 800; letter-spacing: -.03em; margin: 2px 0 6px; }
+.calc-hero-note { margin: 8px 0 0; font-size: .75rem; color: var(--muted); line-height: 1.4; }
+.calc-hero.good { background: var(--ok-deep); border-color: var(--ok-mid); }
+.calc-hero.good .v { color: var(--ok); }
+.calc-hero.bad { background: var(--warn-bg); border-color: var(--warn-line); }
+.calc-hero.bad .v { color: var(--warn); }
+.calc-badge {
+  display: inline-block; font-size: .72rem; font-weight: 800; padding: 2px 8px;
+  border-radius: 999px; background: var(--ink-2); color: var(--text);
+}
+.calc-split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.calc-strat { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 12px; }
+.calc-strat-card {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 10px 12px;
+}
 .tool-native .btns { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 0; }
 .tool-example-card {
   background: var(--card); border: 1px solid var(--line); border-radius: var(--r);
@@ -3160,9 +3211,17 @@ html[data-mode="mentor"] .lesson-head h1 { font-size: 1.28rem; }
   display: flex; justify-content: space-between; gap: 10px; align-items: flex-start;
   flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line);
 }
+@media (max-width: 720px) {
+  .calc-split, .calc-strat { grid-template-columns: 1fr; }
+}
+@media (max-width: 899px) {
+  html[data-mode="student"] .calc-split,
+  html[data-mode="student"] .calc-strat { grid-template-columns: 1fr; }
+}
 @media (max-width: 520px) {
   .calc-prices { grid-template-columns: 1fr; }
   .calc-price strong { font-size: 1.05rem; }
+  .calc-hero .v { font-size: 1.28rem; }
 }
 
 /* ── mobile app chrome (student) ───────────────────────────────────── */
