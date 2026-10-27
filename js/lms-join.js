@@ -27,9 +27,16 @@
   };
 
   function show(id) {
-    ['view-land', 'view-auth', 'view-2fa', 'view-wiz'].forEach((key) => {
-      $(key).hidden = key !== id;
+    const land = id === 'view-land';
+    const landing = $('view-land');
+    const wrap = $('auth-wrap');
+    if (landing) landing.hidden = !land;
+    if (wrap) wrap.hidden = land;
+    ['view-auth', 'view-2fa', 'view-wiz'].forEach((key) => {
+      const el = $(key);
+      if (el) el.hidden = key !== id;
     });
+    if (!land) window.scrollTo(0, 0);
   }
   function err(id, msg) {
     const el = $(id);
@@ -135,16 +142,34 @@
     return true;
   }
 
-  function openAuth() {
+  function setEmailMode(mode) {
+    emailMode = mode === 'login' ? 'login' : 'signup';
+    $('email-form').hidden = emailMode !== 'login';
+    $('email-submit').textContent = emailMode === 'signup' ? 'Daftar dengan Email' : 'Masuk dengan Email';
+    $('email-mode').textContent = emailMode === 'signup' ? 'Sudah punya akun? Masuk' : 'Belum punya akun? Daftar';
+    $('name-label').hidden = emailMode !== 'signup';
+    $('full-name').hidden = emailMode !== 'signup';
+  }
+  function openAuth(mode) {
     show('view-auth');
     err('auth-err', '');
+    if (mode === 'login') setEmailMode('login');
+    else setEmailMode('signup');
+  }
+  function begin(mode) {
+    session = loadSession();
+    if (session && session.access_token) routeAfterAuth().catch(() => openAuth(mode));
+    else openAuth(mode);
   }
 
-  $('start-btn').addEventListener('click', () => {
-    session = loadSession();
-    if (session && session.access_token) routeAfterAuth().catch(() => openAuth());
-    else openAuth();
+  document.querySelectorAll('[data-start]').forEach((btn) => {
+    btn.addEventListener('click', () => begin('signup'));
   });
+  document.querySelectorAll('[data-login]').forEach((btn) => {
+    btn.addEventListener('click', () => begin('login'));
+  });
+  const back = $('auth-back');
+  if (back) back.addEventListener('click', () => show('view-land'));
 
   $('google-btn').addEventListener('click', () => {
     const back = location.origin + '/lms/';
@@ -158,11 +183,8 @@
   $('sms-verify').addEventListener('click', verifySms);
   $('email-open').addEventListener('click', () => { $('email-form').hidden = false; });
   $('email-mode').addEventListener('click', () => {
-    emailMode = emailMode === 'signup' ? 'login' : 'signup';
-    $('email-submit').textContent = emailMode === 'signup' ? 'Daftar dengan Email' : 'Masuk dengan Email';
-    $('email-mode').textContent = emailMode === 'signup' ? 'Sudah punya akun? Masuk' : 'Belum punya akun? Daftar';
-    $('name-label').hidden = emailMode !== 'signup';
-    $('full-name').hidden = emailMode !== 'signup';
+    setEmailMode(emailMode === 'signup' ? 'login' : 'signup');
+    $('email-form').hidden = false;
   });
   $('email-form').addEventListener('submit', (e) => { e.preventDefault(); submitEmail(); });
 
@@ -363,7 +385,7 @@
       ).join('') + '<label for="photo">Foto profil</label><input id="photo" type="file" accept="image/png,image/jpeg,image/webp">';
     } else if (wizStep === 4) {
       form.innerHTML = '<div class="bands">' + BANDS.map((id) =>
-        '<button type="button" class="ghost" data-band="' + id + '" aria-pressed="' + (draft.mentorBand === id) + '">' + BAND_LABEL[id] + '</button>'
+        '<button type="button" class="btn btn-white" data-band="' + id + '" aria-pressed="' + (draft.mentorBand === id) + '">' + BAND_LABEL[id] + '</button>'
       ).join('') + '</div>';
       form.querySelectorAll('[data-band]').forEach((btn) => {
         btn.addEventListener('click', () => {
@@ -495,6 +517,27 @@
       reader.readAsDataURL(file);
     });
   }
+
+  function selectShot(id) {
+    document.querySelectorAll('[data-shot]').forEach((btn) => {
+      const on = btn.getAttribute('data-shot') === id;
+      btn.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    document.querySelectorAll('[data-panel]').forEach((panel) => {
+      panel.hidden = panel.getAttribute('data-panel') !== id;
+    });
+  }
+  document.querySelectorAll('[data-shot]').forEach((btn) => {
+    btn.addEventListener('click', () => selectShot(btn.getAttribute('data-shot')));
+  });
+  document.querySelectorAll('[data-jump]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-jump');
+      selectShot(id);
+      const dest = $('fitur');
+      if (dest) dest.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
 
   if (hashSession()) {
     routeAfterAuth().catch(() => openAuth());

@@ -3,59 +3,162 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kelas kamu — LarisID</title>
-  <meta name="description" content="Buka kelas mentoring di LarisID. Daftar dengan Google, SMS, atau email, lalu dapat tautan larisid.com/nama-kelas.">
+  <title>Laris Mentor — kelas online</title>
+  <meta name="description" content="LMS sederhana untuk membuat kurikulum, mengelola siswa, dan menjalankan kelas online. Daftar, lalu bagikan tautan larisid.com/nama-kelas.">
   <link rel="canonical" href="https://larisid.com/lms/">
   <meta name="robots" content="index, follow">
-  <meta property="og:title" content="Kelas kamu — LarisID">
-  <meta property="og:description" content="Buka kelas mentoring dan dapat tautan sendiri: larisid.com/nama-kelas.">
+  <meta property="og:title" content="Laris Mentor — kelas online">
+  <meta property="og:description" content="Buat dan kelola kelas online. Kurikulum, siswa, diskusi, dan jadwal dalam satu tautan.">
   <meta property="og:url" content="https://larisid.com/lms/">
   <link rel="icon" type="image/png" href="/images/brand/appicon-red.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/lms/lms.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/lms/lms.css?v=20261027land3">
 </head>
 <body>
-  <header class="top">
-    <a class="brand" href="/"><img src="/images/brand/appicon-red.png" alt="">LarisID</a>
-    <nav><a href="/">Riset produk</a></nav>
-  </header>
-  <main class="wrap">
-    <section id="view-land">
-      <p class="hint">Untuk mentor dan coach</p>
+  <div id="view-land">
+    <header class="nav">
+      <a class="brand" href="/lms/">
+        <img src="/images/brand/appicon-red.png" alt="">
+        <span>Laris Mentor</span>
+      </a>
+      <nav class="nav-links">
+        <a href="#fitur">Fitur</a>
+        <button type="button" class="btn btn-ghost" data-login>Login</button>
+        <button type="button" class="btn btn-red" data-start>Daftar Gratis</button>
+      </nav>
+    </header>
+
+    <section class="hero-band">
       <div class="hero">
-        <h1>Buka kelas, bagi tautannya.</h1>
-        <p class="lede">Murid masuk lewat satu link dengan namamu. Kamu yang atur profil, materi, dan siapa yang ikut. Bukan alat riset Shopee — ini pintu kelas.</p>
-        <button type="button" class="cta" id="start-btn">Buat kelas</button>
-      </div>
-      <div class="points">
-        <div><strong>Akun LarisID</strong><span>Google, SMS, atau email. Autentikator bisa ditambah, bisa dilewati.</span></div>
-        <div><strong>Profil kelas</strong><span>Nama, header, bio, sosial, dan foto.</span></div>
-        <div><strong>Tautan sendiri</strong><span>larisid.com/nama-kelas — bisa diubah sebelum dikunci.</span></div>
+        <div class="hero-copy">
+          <h1>Buat dan kelola<br><span>kelas online</span> Anda</h1>
+          <p>LMS sederhana untuk membuat kurikulum, mengelola siswa, dan mengembangkan pembelajaran Anda.</p>
+          <div class="hero-actions">
+            <button type="button" class="btn btn-red" id="start-btn" data-start>Daftar Gratis <span aria-hidden="true">→</span></button>
+            <a class="btn btn-white" href="#fitur">Lihat Fitur</a>
+          </div>
+        </div>
+        <img class="hero-photo" src="/lms/hero.png" alt="Mentor Laris, tangan menyilang, tersenyum">
       </div>
     </section>
 
+    <section class="platform">
+      <h2>Semua yang Anda butuhkan dalam satu platform</h2>
+      <div class="icon-row">
+        <button type="button" data-jump="kurikulum">
+          <span class="ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M10 9.5v5l4.5-2.5L10 9.5z" fill="currentColor" stroke="none"/></svg>
+          </span>
+          <strong>Buat Kelas</strong>
+          <span>Upload video, materi, dan tugas.</span>
+        </button>
+        <button type="button" data-jump="kurikulum">
+          <span class="ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V6.5A2.5 2.5 0 0 1 6.5 4H20v13H6.5A2.5 2.5 0 0 0 4 19z"/><path d="M4 19a2.5 2.5 0 0 1 2.5-2.5H20"/></svg>
+          </span>
+          <strong>Susun Kurikulum</strong>
+          <span>Atur modul dan urutan belajar.</span>
+        </button>
+        <button type="button" data-jump="siswa">
+          <span class="ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.2"/><path d="M3.5 19c.6-3 2.8-4.5 5.5-4.5S14 16 14.5 19"/><path d="M14 14.6c1.6-.4 3.2.1 4.2 1.4.7 1 .9 2 .8 3"/></svg>
+          </span>
+          <strong>Kelola Siswa</strong>
+          <span>Pantau progres dan siapa yang ikut.</span>
+        </button>
+        <button type="button" data-jump="ringkasan">
+          <span class="ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M7 15l4-4 3 2 5-6"/></svg>
+          </span>
+          <strong>Laporan</strong>
+          <span>Lihat perkembangan kelas Anda.</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="fitur" id="fitur">
+      <p class="kicker">Fitur Laris Mentor</p>
+      <h2>Kelola proses siswa dari awal hingga lulus</h2>
+      <p class="lede">Semua fitur terintegrasi untuk membantu Anda menjalankan kelas online dengan mudah.</p>
+      <div class="shot-tabs" role="tablist">
+        <button type="button" role="tab" data-shot="siswa" aria-selected="true">Kelola Siswa</button>
+        <button type="button" role="tab" data-shot="kurikulum" aria-selected="false">Kurikulum</button>
+        <button type="button" role="tab" data-shot="diskusi" aria-selected="false">Diskusi</button>
+        <button type="button" role="tab" data-shot="otomasi" aria-selected="false">Otomasi</button>
+        <button type="button" role="tab" data-shot="jadwal" aria-selected="false">Jadwal</button>
+        <button type="button" role="tab" data-shot="ringkasan" aria-selected="false">Ringkasan</button>
+      </div>
+      <div class="shot-frame">
+        <figure data-panel="siswa">
+          <img src="/lms/shots/siswa.png" alt="Pipa siswa: WA baru, form, nonton belum bayar, dan trial">
+          <figcaption>
+            <strong>Kelola Siswa</strong>
+            <span>Daftar, pipa, dan progres. Geser murid dari form masuk sampai lulus.</span>
+          </figcaption>
+        </figure>
+        <figure data-panel="kurikulum" hidden>
+          <img src="/lms/shots/kurikulum.png" alt="Halaman kurikulum dengan video, dokumen, dan daftar materi">
+          <figcaption>
+            <strong>Kurikulum</strong>
+            <span>Susun modul, video, dan lembar kerja. Murid melihat urutan yang sama di Belajar.</span>
+          </figcaption>
+        </figure>
+        <figure data-panel="diskusi" hidden>
+          <img src="/lms/shots/diskusi.png" alt="Diskusi kelas: pertanyaan murid dan pengumuman sesi">
+          <figcaption>
+            <strong>Diskusi</strong>
+            <span>Pertanyaan di materi, catatan batch, dan pengumuman sesi, di satu tempat.</span>
+          </figcaption>
+        </figure>
+        <figure data-panel="otomasi" hidden>
+          <img src="/lms/shots/otomasi.png" alt="Peta otomasi: pemicu, tunggu, lalu email">
+          <figcaption>
+            <strong>Otomasi</strong>
+            <span>Rencana pesan dan tugas saat murid pindah tahap. Kamu yang menandai kirimnya.</span>
+          </figcaption>
+        </figure>
+        <figure data-panel="jadwal" hidden>
+          <img src="/lms/shots/jadwal.png" alt="Kalender mingguan dengan sesi live dan jatuh tempo materi">
+          <figcaption>
+            <strong>Jadwal</strong>
+            <span>Sesi live, jatuh tempo kurikulum, dan tugas dalam satu minggu.</span>
+          </figcaption>
+        </figure>
+        <figure data-panel="ringkasan" hidden>
+          <img src="/lms/shots/ringkasan.png" alt="Dashboard kelas: form, bayar, lanjut, dan grafik pendapatan">
+          <figcaption>
+            <strong>Ringkasan</strong>
+            <span>Berapa yang isi form, bayar, lanjut, atau berhenti. Angka di gambar ini dari kelas demo.</span>
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+  </div>
+
+  <main class="auth-wrap" id="auth-wrap" hidden>
+    <button type="button" class="back" id="auth-back">← Kembali</button>
     <section id="view-auth" class="panel" hidden>
       <h2 id="auth-title">Masuk untuk buat kelas</h2>
       <p class="sub">Pakai akun LarisID yang sudah ada, atau buat baru.</p>
       <div class="stack">
-        <button type="button" class="cta" id="google-btn">Daftar dengan Google</button>
+        <button type="button" class="btn btn-red" id="google-btn">Daftar dengan Google</button>
         <div id="sms-phone">
           <label for="phone">Nomor HP</label>
           <input id="phone" inputmode="tel" autocomplete="tel" placeholder="08…">
-          <div class="row"><button type="button" class="alt" id="sms-send">Daftar dengan SMS</button></div>
+          <div class="row"><button type="button" class="btn btn-white" id="sms-send">Daftar dengan SMS</button></div>
         </div>
         <div id="sms-code" hidden>
           <p class="hint" id="sms-hint"></p>
           <label for="otp">Kode SMS</label>
           <input id="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6 digit">
           <div class="row">
-            <button type="button" class="cta" id="sms-verify">Lanjut</button>
-            <button type="button" class="ghost" id="sms-resend">Kirim ulang</button>
+            <button type="button" class="btn btn-red" id="sms-verify">Lanjut</button>
+            <button type="button" class="btn btn-white" id="sms-resend">Kirim ulang</button>
           </div>
         </div>
-        <button type="button" class="alt" id="email-open">Daftar dengan Email</button>
+        <button type="button" class="btn btn-white" id="email-open">Daftar dengan Email</button>
         <form id="email-form" hidden>
           <label for="full-name" id="name-label">Nama</label>
           <input id="full-name" autocomplete="name">
@@ -64,8 +167,8 @@
           <label for="password">Password</label>
           <input id="password" type="password" autocomplete="new-password" minlength="6">
           <div class="row">
-            <button type="submit" class="cta" id="email-submit">Daftar dengan Email</button>
-            <button type="button" class="ghost" id="email-mode">Sudah punya akun? Masuk</button>
+            <button type="submit" class="btn btn-red" id="email-submit">Daftar dengan Email</button>
+            <button type="button" class="btn btn-white" id="email-mode">Sudah punya akun? Masuk</button>
           </div>
         </form>
       </div>
@@ -77,8 +180,8 @@
       <p class="sub">Kode dari aplikasi autentikator, selain cara masuk di atas. Boleh dilewati.</p>
       <div id="twofa-offer">
         <div class="row">
-          <button type="button" class="cta" id="twofa-yes">Pasang autentikator</button>
-          <button type="button" class="ghost" id="twofa-skip">Lewati</button>
+          <button type="button" class="btn btn-red" id="twofa-yes">Pasang autentikator</button>
+          <button type="button" class="btn btn-white" id="twofa-skip">Lewati</button>
         </div>
       </div>
       <div id="twofa-enroll" hidden>
@@ -87,13 +190,13 @@
         <p class="secret" id="twofa-secret"></p>
         <label for="twofa-code">Kode 6 digit</label>
         <input id="twofa-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6">
-        <div class="row"><button type="button" class="cta" id="twofa-confirm">Konfirmasi</button></div>
+        <div class="row"><button type="button" class="btn btn-red" id="twofa-confirm">Konfirmasi</button></div>
       </div>
       <div id="twofa-challenge" hidden>
         <p class="sub">Akun ini memakai autentikator. Masukkan kode yang sedang berlaku.</p>
         <label for="twofa-challenge-code">Kode 6 digit</label>
         <input id="twofa-challenge-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6">
-        <div class="row"><button type="button" class="cta" id="twofa-challenge-go">Lanjut</button></div>
+        <div class="row"><button type="button" class="btn btn-red" id="twofa-challenge-go">Lanjut</button></div>
       </div>
       <p class="err" id="twofa-err"></p>
     </section>
@@ -105,11 +208,11 @@
       <form id="wiz-form"></form>
       <p class="err" id="wiz-err"></p>
       <div class="row">
-        <button type="button" class="ghost" id="wiz-back" hidden>Kembali</button>
-        <button type="button" class="cta" id="wiz-next">Lanjut</button>
+        <button type="button" class="btn btn-white" id="wiz-back" hidden>Kembali</button>
+        <button type="button" class="btn btn-red" id="wiz-next">Lanjut</button>
       </div>
     </section>
   </main>
-  <script src="/js/lms-join.js?v=20261027lms1"></script>
+  <script src="/js/lms-join.js?v=20261027land"></script>
 </body>
 </html>
