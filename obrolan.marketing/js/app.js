@@ -5724,40 +5724,25 @@
     if (!isStaff()) {
       const allowed = studentTabs().map((t) => t.id).concat(['sku', 'alat', 'daftar', 'tes', 'sertifikat', 'diskusi', 'profil']);
       if (needsWizard(ui.personaId) && ui.tab !== 'daftar') ui.tab = 'daftar';
-      if (allowed.indexOf(ui.tab) === -1) ui.tab = 'home';
+      if (ui.tab === 'progres') ui.tab = 'diskusi';
+      else if (allowed.indexOf(ui.tab) === -1) ui.tab = 'home';
     }
     renderTabs();
   }
 
   function studentTabs() {
-    if (diskusiVisible(ui.personaId)) {
-      const base = canMentoring(ui.personaId) || canPreview(ui.personaId)
-        ? [
-          { id: 'home', label: 'Home' },
-          { id: 'belajar', label: 'Belajar' },
-          { id: 'alat', label: 'Alat' },
-          { id: 'progres', label: 'Progres' }
-        ]
-        : [
-          { id: 'home', label: 'Home' },
-          { id: 'alat', label: 'Alat' },
-          { id: 'progres', label: 'Progres' }
-        ];
-      base.push({ id: 'diskusi', label: 'Diskusi' });
-      return base;
-    }
-    if (canPreview(ui.personaId)) {
+    if (canMentoring(ui.personaId) || canPreview(ui.personaId)) {
       return [
         { id: 'home', label: 'Home' },
         { id: 'belajar', label: 'Belajar' },
         { id: 'alat', label: 'Alat' },
-        { id: 'progres', label: 'Progres' }
+        { id: 'diskusi', label: 'Diskusi' }
       ];
     }
     return [
       { id: 'home', label: 'Home' },
       { id: 'alat', label: 'Alat' },
-      { id: 'progres', label: 'Progres' }
+      { id: 'diskusi', label: 'Diskusi' }
     ];
   }
   function mentorTabs() {
@@ -12998,7 +12983,7 @@
       }
       pushTimeline(ui.personaId, 'exam', 'Tes akhir ' + score + '/' + qs.length);
       save();
-      ui.tab = c.eligibleMentor ? 'sertifikat' : 'progres';
+      ui.tab = c.eligibleMentor ? 'sertifikat' : 'belajar';
       toast(c.eligibleMentor ? 'Lulus. Sertifikat terbit.' : 'Belum lulus. Ulangi setelah baca materi.');
       render();
     }
