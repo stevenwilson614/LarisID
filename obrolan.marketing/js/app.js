@@ -440,8 +440,53 @@
     db.people = db.people || {};
     const cur = Object.assign({}, db.people[sid] || {});
     cur.fields = Object.assign({}, cur.fields || {});
-    cur.fields[colId] = String(val || '').trim();
+    if (Array.isArray(val)) cur.fields[colId] = JSON.stringify(val);
+    else cur.fields[colId] = String(val == null ? '' : val).trim();
     db.people[sid] = cur;
+  }
+  function parsePersonFieldValue(raw, type) {
+    const s = String(raw == null ? '' : raw);
+    if (type === 'multi') {
+      if (!s) return [];
+      try {
+        const parsed = JSON.parse(s);
+        if (Array.isArray(parsed)) return parsed.map((x) => String(x));
+      } catch (err) { /* plain list */ }
+      return s.split(',').map((x) => x.trim()).filter(Boolean);
+    }
+    return s;
+  }
+  function isObAccountField(field) {
+    return !!(field && ['text', 'textarea', 'link', 'single', 'multi'].indexOf(field.type) >= 0);
+  }
+  function obFieldLabel(field, page) {
+    const label = String((field && field.label) || '').trim();
+    if (label) return label.slice(0, 40);
+    const q = String((page && page.q) || '').trim();
+    if (q) return q.slice(0, 40);
+    return obTypeLabel((field && field.type) || 'text').slice(0, 40);
+  }
+  /** Ensure onboarding custom questions exist as account fields (daftarCustom + people.fields). */
+  function ensureAccountFieldDef(field, page) {
+    if (!isObAccountField(field)) return null;
+    const id = String(field.id);
+    const label = obFieldLabel(field, page) || id;
+    hydrateDaftarCols(db);
+    const list = daftarCustomList();
+    const existing = list.find((c) => c.id === id);
+    if (existing) {
+      if (label && existing.label !== label) existing.label = label;
+    } else {
+      list.push({ id: id, label: label });
+      db.daftarCustom = list;
+    }
+    return id;
+  }
+  function syncOnboardingAccountFields() {
+    ensureOnboarding();
+    wizFormPages().forEach((page) => {
+      (page.fields || []).forEach((f) => ensureAccountFieldDef(f, page));
+    });
   }
   function daftarCellHtml(colId, s) {
     const b = billingOf(s.id);
@@ -833,7 +878,7 @@
           fields: [{
             id: 'f-heard',
             type: 'single',
-            key: 'heard',
+            label: 'Dari mana kenal Anton',
             required: true,
             allowOther: true,
             options: ['Grup WA Anton', 'Teman / murid Anton', 'TikTok', 'Instagram', 'Lainnya']
@@ -850,17 +895,13 @@
       type: type,
       required: f.required !== false,
       label: String(f.label || '').slice(0, 80),
-      placeholder: String(f.placeholder || '').slice(0, 80),
-      key: String(f.key || '').trim().slice(0, 40)
+      placeholder: String(f.placeholder || '').slice(0, 80)
     };
     if (type === 'single' || type === 'multi') {
       const opts = Array.isArray(f.options) ? f.options : [];
       out.options = opts.map((o) => String(o || '').trim()).filter(Boolean).slice(0, 12);
       if (!out.options.length) out.options = ['Opsi 1', 'Opsi 2'];
       out.allowOther = type === 'single' ? !!f.allowOther : false;
-    }
-    if (type === 'text' || type === 'textarea' || type === 'link' || type === 'single' || type === 'multi') {
-      if (!out.key) out.key = out.id.replace(/[^a-z0-9]+/gi, '_').toLowerCase();
     }
     return out;
   }
@@ -884,6 +925,9 @@
   function ensureOnboarding() {
     db.onboarding = normalizeOnboarding(db.onboarding);
     return db.onboarding;
+  }
+  function obStoreId(field) {
+    return String((field && field.id) || '');
   }
   function wizFormPages() { return ensureOnboarding().pages; }
   function wizPayIdx() { return wizFormPages().length; }
@@ -1181,7 +1225,7 @@
     const typeOpts = OB_FIELD_TYPES.map((t) =>
       '<option value="' + esc(t.id) + '"' + (field.type === t.id ? ' selected' : '') + '>' + esc(t.label) + '</option>'
     ).join('');
-    const needsKey = field.type === 'text' || field.type === 'textarea' || field.type === 'link' ||
+    const needsMeta = field.type === 'text' || field.type === 'textarea' || field.type === 'link' ||
       field.type === 'single' || field.type === 'multi';
     const needsOpts = field.type === 'single' || field.type === 'multi';
     return '<div class="ob-ed-field" data-page="' + esc(pageId) + '" data-field="' + esc(field.id) + '">' +
@@ -1197,12 +1241,10 @@
         '<button type="button" class="btn-sm danger" data-act="ob-field-del" data-page="' +
           esc(pageId) + '" data-field="' + esc(field.id) + '">Hapus</button>' +
       '</div>' +
-      (needsKey
+      (needsMeta
         ? '<div class="ob-ed-grid">' +
-            '<label>Label<input data-ob-ed="label" data-page="' + esc(pageId) + '" data-field="' +
-              esc(field.id) + '" value="' + esc(field.label || '') + '" placeholder="Label di siswa"></label>' +
-            '<label>Key<input data-ob-ed="key" data-page="' + esc(pageId) + '" data-field="' +
-              esc(field.id) + '" value="' + esc(field.key || '') + '" placeholder="shop_link"></label>' +
+            '<label>Label di akun siswa<input data-ob-ed="label" data-page="' + esc(pageId) + '" data-field="' +
+              esc(field.id) + '" value="' + esc(field.label || '') + '" placeholder="Mis. Tautan toko"></label>' +
             '<label>Placeholder<input data-ob-ed="placeholder" data-page="' + esc(pageId) + '" data-field="' +
               esc(field.id) + '" value="' + esc(field.placeholder || '') + '" placeholder="Contoh…"></label>' +
           '</div>'
@@ -1272,7 +1314,6 @@
       const field = (page.fields || []).find((f) => f.id === fieldId);
       if (!field) return;
       if (kind === 'label') field.label = String(el.value || '').slice(0, 80);
-      if (kind === 'key') field.key = String(el.value || '').trim().slice(0, 40) || field.id;
       if (kind === 'placeholder') field.placeholder = String(el.value || '').slice(0, 80);
       if (kind === 'options') {
         field.options = String(el.value || '').split('\n').map((s) => s.trim()).filter(Boolean).slice(0, 12);
@@ -1280,16 +1321,18 @@
       }
     });
     db.onboarding = normalizeOnboarding(ob);
+    syncOnboardingAccountFields();
   }
   function viewAccountOnboarding() {
     const ob = ensureOnboarding();
+    syncOnboardingAccountFields();
     const pages = ob.pages;
     return '<div class="ps-form as-form as-onboard as-onboard-editor">' +
       '<div class="as-section">' +
         '<div class="ob-ed-head">' +
           '<div>' +
             '<h2>Join / onboarding</h2>' +
-            '<p class="muted">Atur halaman &amp; pertanyaan yang siswa isi saat join. Setelah form: paket bayar (diskon 24 jam).</p>' +
+            '<p class="muted">Atur halaman &amp; pertanyaan join. Jawaban masuk ke akun siswa — field baru dibuat otomatis kalau belum ada.</p>' +
           '</div>' +
           '<div class="ob-ed-head-acts">' +
             '<button type="button" class="btn-sm" data-act="ob-preview">Preview sebagai siswa</button>' +
@@ -3322,16 +3365,38 @@
       else if (app.at) shopPick = 'tidak';
       else shopPick = '';
     }
-    const answers = Object.assign({}, app.answers || {}, prev.answers || {});
+    const personFields = ((db.people && db.people[sid]) || {}).fields || {};
+    const answers = Object.assign({}, personFields, app.answers || {}, prev.answers || {});
     const picks = Object.assign({}, prev.picks || {});
     const others = Object.assign({}, prev.others || {});
-    // Seed heard-style single fields from application.heard if present
-    if (app.heard && picks.heard == null && answers.heard == null) {
+    wizFormPages().forEach((page) => {
+      (page.fields || []).forEach((f) => {
+        const id = obStoreId(f);
+        if (!id) return;
+        const stored = personFields[id] != null ? personFields[id]
+          : (app.answers && app.answers[id] != null ? app.answers[id]
+            : (f.id === 'f-heard' ? app.heard : null));
+        if (stored == null || stored === '') return;
+        if (f.type === 'single' && picks[id] == null) {
+          const val = String(stored);
+          if ((f.options || []).indexOf(val) >= 0) picks[id] = val;
+          else if (f.allowOther) {
+            picks[id] = 'Lainnya';
+            others[id] = val;
+          } else picks[id] = val;
+        } else if (f.type === 'multi' && picks[id] == null) {
+          picks[id] = parsePersonFieldValue(stored, 'multi');
+        } else if (answers[id] == null) {
+          answers[id] = String(stored);
+        }
+      });
+    });
+    if (app.heard && picks['f-heard'] == null && answers['f-heard'] == null) {
       const heardOpts = (HEARD_OPTS || []);
-      if (heardOpts.indexOf(app.heard) >= 0) picks.heard = app.heard;
+      if (heardOpts.indexOf(app.heard) >= 0) picks['f-heard'] = app.heard;
       else {
-        picks.heard = 'Lainnya';
-        others.heard = app.heard;
+        picks['f-heard'] = 'Lainnya';
+        others['f-heard'] = app.heard;
       }
     }
     return {
@@ -3410,7 +3475,7 @@
     wizMerge(d);
   }
   function answerForField(d, field) {
-    const key = field.key || field.id;
+    const key = obStoreId(field);
     if (field.type === 'single') {
       const pick = (d.picks && d.picks[key]) || '';
       if (field.allowOther && pick === 'Lainnya') return String((d.others && d.others[key]) || '').trim();
@@ -3459,7 +3524,7 @@
         }
       }
       if (f.type === 'single') {
-        const key = f.key || f.id;
+        const key = obStoreId(f);
         const pick = (d.picks && d.picks[key]) || '';
         if (!pick) {
           toast('Pilih satu opsi dulu.');
@@ -3484,8 +3549,8 @@
     const out = Object.assign({}, d.answers || {});
     wizFormPages().forEach((page) => {
       (page.fields || []).forEach((f) => {
-        if (f.type !== 'single' && f.type !== 'multi') return;
-        const key = f.key || f.id;
+        if (!isObAccountField(f)) return;
+        const key = obStoreId(f);
         out[key] = answerForField(d, f);
       });
     });
@@ -3529,8 +3594,17 @@
     } else {
       shopYes = !!(d.shopName || d.shopUrl);
     }
+    syncOnboardingAccountFields();
     const answers = collectCustomAnswers(d);
-    const heard = answers.heard || '';
+    let heard = '';
+    pages.forEach((page) => {
+      (page.fields || []).forEach((f) => {
+        if (f.id === 'f-heard' || (f.type === 'single' && /kenal anton/i.test(obFieldLabel(f, page)))) {
+          heard = String(answerForField(d, f) || heard);
+        }
+      });
+    });
+    if (!heard && answers['f-heard']) heard = String(answers['f-heard']);
     db.applications[sid] = {
       name: fullName || (s.name || ''),
       firstName: firstName,
@@ -3565,6 +3639,14 @@
       city: d.city || '',
       shopName: shopYes ? (d.shopName || '') : '',
       shopUrl: shopYes ? (d.shopUrl || '') : ''
+    });
+    pages.forEach((page) => {
+      (page.fields || []).forEach((f) => {
+        if (!isObAccountField(f)) return;
+        ensureAccountFieldDef(f, page);
+        const val = answerForField(d, f);
+        setPersonCustomVal(sid, obStoreId(f), val);
+      });
     });
     const b = billingOf(sid);
     if (!b.offerStartedAt) {
@@ -4697,6 +4779,55 @@
         '<span class="muted">' + esc(batchId) + '</span>' +
       '</div>' +
       personBatchField(id) +
+    '</div>';
+  }
+  function personOnboardFieldsHtml(id) {
+    syncOnboardingAccountFields();
+    const defs = [];
+    const seen = new Set();
+    wizFormPages().forEach((page) => {
+      (page.fields || []).forEach((f) => {
+        if (!isObAccountField(f)) return;
+        const fid = obStoreId(f);
+        if (!fid || seen.has(fid)) return;
+        seen.add(fid);
+        defs.push({ id: fid, label: obFieldLabel(f, page), type: f.type });
+      });
+    });
+    const person = (db.people && db.people[id]) || {};
+    const fields = person.fields || {};
+    Object.keys(fields).forEach((fid) => {
+      if (seen.has(fid)) return;
+      seen.add(fid);
+      const custom = daftarCustomList().find((c) => c.id === fid);
+      if (!custom) {
+        db.daftarCustom = daftarCustomList().concat([{ id: fid, label: String(fid).slice(0, 40) }]);
+      }
+      defs.push({
+        id: fid,
+        label: (custom && custom.label) || String(fid).slice(0, 40),
+        type: 'text'
+      });
+    });
+    if (!defs.length) {
+      return '<div class="fub-section">' +
+        '<div class="fub-section-h">Join / onboarding</div>' +
+        '<p class="muted fub-link-empty">Belum ada field join. Tambah di Account → Onboarding.</p>' +
+      '</div>';
+    }
+    return '<div class="fub-section">' +
+      '<div class="fub-section-h">Join / onboarding</div>' +
+      defs.map((def) => {
+        const raw = personCustomVal(id, def.id);
+        const shown = def.type === 'multi'
+          ? parsePersonFieldValue(raw, 'multi').join(', ')
+          : raw;
+        return '<label class="fub-ob-field">' +
+          '<span class="muted">' + esc(def.label) + '</span>' +
+          '<input class="inline-edit" data-act="daftar-custom-val" data-id="' + esc(id) +
+            '" data-col="' + esc(def.id) + '" value="' + esc(shown) + '" placeholder="—">' +
+        '</label>';
+      }).join('') +
     '</div>';
   }
   function photoKey(id) { return 'photo-' + id; }
@@ -6117,7 +6248,7 @@
     return viewWizForm(step);
   }
   function renderObField(field, d, focusOnce) {
-    const key = field.key || field.id;
+    const key = obStoreId(field);
     const label = field.label
       ? '<label class="ob-field-label">' + esc(field.label) + (field.required ? '' : ' <em class="muted">(opsional)</em>') + '</label>'
       : '';
@@ -9136,6 +9267,7 @@
         '</div>' +
         personLinksHtml(id, s, app) +
         personGroupsHtml(id) +
+        personOnboardFieldsHtml(id) +
         '<dl class="fub-meta">' +
           '<div class="fub-field"><dt>Stage</dt><dd><select data-act="crm-stage" data-id="' + esc(id) + '">' +
             stages.map((st) => '<option value="' + esc(st.id) + '"' + (c.stage === st.id ? ' selected' : '') + '>' + esc(st.label) + '</option>').join('') +
@@ -10477,6 +10609,7 @@
       if (!field) return;
       field.type = t.value || 'text';
       db.onboarding = normalizeOnboarding(ob);
+      syncOnboardingAccountFields();
       save();
       render();
       return;
@@ -10491,6 +10624,7 @@
       if (t.getAttribute('data-act') === 'ob-field-req') field.required = !!t.checked;
       else field.allowOther = !!t.checked;
       db.onboarding = normalizeOnboarding(ob);
+      syncOnboardingAccountFields();
       save();
       render();
       return;
@@ -10574,7 +10708,15 @@
       return;
     }
     if (t.matches('[data-act="daftar-custom-val"]')) {
-      setPersonCustomVal(t.getAttribute('data-id'), t.getAttribute('data-col'), t.value);
+      const sid = t.getAttribute('data-id');
+      const col = t.getAttribute('data-col');
+      if (col && !daftarColDef(col)) {
+        db.daftarCustom = daftarCustomList().concat([{
+          id: col,
+          label: String(col).replace(/^f-/, '').replace(/[-_]/g, ' ').slice(0, 40) || col
+        }]);
+      }
+      setPersonCustomVal(sid, col, t.value);
       save();
       return;
     }
@@ -11160,13 +11302,15 @@
     } else if (act === 'ob-save') {
       if (!canBill()) return;
       captureOnboardingEditor();
+      syncOnboardingAccountFields();
       save();
-      toast('Onboarding disimpan.');
+      toast('Onboarding disimpan. Field akun siswa ikut diperbarui.');
       render();
     } else if (act === 'ob-reset') {
       if (!canBill()) return;
       if (!window.confirm('Kembalikan halaman onboarding ke default?')) return;
       db.onboarding = defaultOnboarding();
+      syncOnboardingAccountFields();
       save();
       toast('Onboarding di-reset.');
       render();
@@ -11178,9 +11322,10 @@
         kicker: 'Baru',
         q: 'Pertanyaan baru?',
         sub: '',
-        fields: [{ type: 'text', required: true, label: 'Jawaban', key: 'q_' + (ob.pages.length + 1) }]
+        fields: [{ type: 'text', required: true, label: 'Jawaban' }]
       }));
       db.onboarding = normalizeOnboarding(ob);
+      syncOnboardingAccountFields();
       save();
       render();
     } else if (act === 'ob-page-del') {
@@ -11223,12 +11368,14 @@
       page.fields.push(normalizeObField({
         type: type,
         required: true,
-        label: type === 'text' || type === 'textarea' || type === 'link' ? 'Pertanyaan' : '',
-        key: type === 'name' || type === 'wa' || type === 'city' || type === 'shop' ? '' : ('f_' + (page.fields.length + 1)),
+        label: type === 'text' || type === 'textarea' || type === 'link' || type === 'single' || type === 'multi'
+          ? 'Pertanyaan'
+          : '',
         options: (type === 'single' || type === 'multi') ? ['Opsi 1', 'Opsi 2'] : undefined,
         allowOther: type === 'single'
       }));
       db.onboarding = normalizeOnboarding(ob);
+      syncOnboardingAccountFields();
       save();
       render();
     } else if (act === 'ob-field-del') {

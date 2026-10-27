@@ -3293,6 +3293,11 @@ html.siswa-readonly .brand-menu { display: none !important; }
   display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px;
 }
 .ob-ed-add-page { margin-top: 14px; }
+.fub-ob-field {
+  display: flex; flex-direction: column; gap: 4px;
+  margin-top: 8px; font-size: .78rem;
+}
+.fub-ob-field .inline-edit { font-size: .88rem; }
 .btn-sm.danger {
   color: #fecaca; border-color: rgba(248,113,113,.45);
 }
