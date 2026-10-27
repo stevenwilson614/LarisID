@@ -1,4 +1,4 @@
-/* MasterMind with Anton GC. Hosted at larisid.com/obrolan.marketing/. */
+/* MasterMind with Anton GC. Students: /s/{slug}. Mentor: /obrolan.marketing/. */
 (function () {
   const SEED = window.ANTON_SEED;
   const FIRST_LEC = 'v1';
@@ -45,7 +45,7 @@
   const ALL_SKUS = () => (SEED.catalog || []).map((p) => p.id);
   const MENTOR_SKUS = () => (SEED.catalog || []).filter((p) => p.includedInMentoring !== false).map((p) => p.id);
 
-  /* Live class path is fixed: larisid.com/obrolan.marketing/ */
+  /* Students use /s/{slug}; mentor tools stay at /obrolan.marketing/. */
   const SLUG_RESERVED = {
     s: 1, school: 1, sekolah: 1, api: 1, admin: 1, www: 1, app: 1,
     harga: 1, tentang: 1, 'cara-kerja': 1, perbandingan: 1, fonts: 1,
@@ -61,13 +61,19 @@
     if (slug.indexOf('..') >= 0) return false;
     return /^[a-z0-9]([a-z0-9._-]{0,62}[a-z0-9])?$/.test(slug);
   }
-  function onSchoolPath() {
-    const path = location.pathname.replace(/\/index\.html$/, '').replace(/\/+$/, '') || '/';
+  function cleanPath() {
+    return location.pathname.replace(/\/index\.html$/, '').replace(/\/+$/, '') || '/';
+  }
+  function onMentorPath() {
+    const path = cleanPath();
     return path === '/obrolan.marketing' || path === '/school';
   }
+  function onStudentVanityPath() {
+    return /^\/s\/[^/]+$/i.test(cleanPath());
+  }
   function pathSlug() {
-    if (onSchoolPath()) return 'obrolan.marketing';
-    const m = location.pathname.match(/^\/s\/([^/]+)\/?$/i);
+    if (onMentorPath()) return 'obrolan.marketing';
+    const m = cleanPath().match(/^\/s\/([^/]+)$/i);
     return m ? normalizeSlug(decodeURIComponent(m[1])) : '';
   }
   function qsSlug() {
@@ -80,7 +86,12 @@
     const fromDb = (typeof db !== 'undefined' && db && db.inviteCode) ? db.inviteCode : '';
     return String(fromDb || (SEED.cohort && SEED.cohort.invite) || '').trim();
   }
+  /** Public student URL: /s/{slug}/ */
   function schoolPublicPath() {
+    const slug = schoolSlug() || 'obrolan.marketing';
+    return '/s/' + slug + '/';
+  }
+  function schoolMentorPath() {
     return '/obrolan.marketing/';
   }
   function apiBase() {
@@ -110,7 +121,9 @@
     return schoolLocalUrl() + (code ? ('?invite=' + encodeURIComponent(code)) : '');
   }
   function schoolAdminUrl() {
-    return schoolPublicUrl() + 'admin';
+    const path = schoolMentorPath() + 'admin';
+    if (isLocalHost()) return 'https://larisid.com' + path;
+    return location.origin + path;
   }
   function resolveVanitySlug() {
     const asked = pathSlug() || qsSlug();
@@ -125,16 +138,11 @@
       const link = miss.querySelector('a');
       if (askedEl) askedEl.textContent = asked;
       if (knownEl) knownEl.textContent = known;
-      if (link) link.href = '/obrolan.marketing/';
+      if (link) link.href = schoolPublicPath();
     }
     const app = $('app');
     if (app) app.hidden = true;
     return false;
-  }
-
-  if (location.pathname.replace(/\/+$/, '') === '/s/obrolan.marketing') {
-    location.replace('/obrolan.marketing/' + location.search + location.hash);
-    return;
   }
 
   if (PRESENT_QS.get('invite')) {
@@ -1044,7 +1052,7 @@
           ((p.headline || '').trim()
             ? '<p class="school-public-header">' + esc(String(p.headline).trim()) + '</p>'
             : '') +
-          '<p class="muted">' + esc(SEED.school.name) + ' · larisid.com/obrolan.marketing' + '</p>' +
+          '<p class="muted">' + esc(SEED.school.name) + ' · larisid.com' + esc(schoolPublicPath()) + '</p>' +
         '</div>' +
       '</div>' +
       (p.biography
@@ -1415,9 +1423,7 @@
     '</section>';
   }
   function siswaPreviewSrc() {
-    const u = new URL(location.href);
-    u.search = '';
-    u.hash = '';
+    const u = new URL(location.origin + schoolPublicPath());
     u.searchParams.set('present', '1');
     u.searchParams.set('pane', 'student');
     u.searchParams.set('readonly', '1');
@@ -5546,6 +5552,10 @@
   function fillChrome() {
     runAutomations();
     if (ui.present) ui.role = ui.presentPane === 'mentor' ? 'owner' : 'student';
+    if (onStudentVanityPath()) {
+      ui.role = 'student';
+      ui.admin = false;
+    }
     const mode = isStaff() ? 'mentor' : 'student';
     document.documentElement.dataset.mode = mode;
     document.documentElement.dataset.plan = isStaff()
@@ -5574,7 +5584,7 @@
     }
     const badge = document.querySelector('.off-badge');
     if (badge) {
-      badge.textContent = ui.present ? 'Offline · demo' : '/obrolan.marketing';
+      badge.textContent = ui.present ? 'Offline · demo' : schoolPublicPath().replace(/\/$/, '');
       badge.title = schoolPublicUrl();
     }
     const handleEl = $('school-handle');
@@ -9124,7 +9134,7 @@
     const local = schoolLocalUrl();
     return '<section class="card school-url-card">' +
       '<h2>Alamat sekolah</h2>' +
-      '<p class="muted">Kelas siswa ada di <strong>larisid.com/obrolan.marketing/</strong>. Checkout tetap di lynk.</p>' +
+      '<p class="muted">Kelas siswa ada di <strong>larisid.com' + esc(schoolPublicPath()) + '</strong>. Mentor di /obrolan.marketing/. Checkout tetap di lynk.</p>' +
       '<form class="compose" data-act="save-school-url">' +
         '<label class="muted">Kode undangan batch</label>' +
         '<input name="invite" value="' + esc(schoolInviteCode()) + '" maxlength="40" autocomplete="off" spellcheck="false">' +
@@ -10017,7 +10027,7 @@
   document.addEventListener('change', (e) => {
     const t = e.target;
     if (t.id === 'role-switch') {
-      if (ui.present || ui.chromeSync) return;
+      if (ui.present || ui.chromeSync || onStudentVanityPath()) return;
       ui.role = t.value;
       ui.tab = 'home';
       ui.mentorTab = 'dash';
@@ -13107,9 +13117,16 @@
   }
   async function bootHosted() {
     ui.visitorId = visitorId();
-    const admin = await claimAdmin();
+    /* /s/{slug} is always the student app — never claim mentor from the admin cookie. */
+    const forceStudent = onStudentVanityPath() || (PRESENT && PRESENT_PANE === 'student');
+    const admin = forceStudent ? false : await claimAdmin();
     await bootSync();
     if (!admin) ensureLiveVisitor();
+    if (forceStudent) {
+      ui.admin = false;
+      ui.role = 'student';
+      ui.visitorLive = true;
+    }
     render();
     if (admin) refreshAdmin();
     else markPageView();
