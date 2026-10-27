@@ -1369,24 +1369,45 @@ html.present-pane[data-mode="student"] .kurikulum-pane.is-open {
   padding: 12px 12px 8px; border-bottom: 1px solid var(--line);
 }
 .pipa-settings-sec { padding: 8px 10px 10px; border-bottom: 1px solid var(--line); }
-.pipa-stage-list, .pipa-tr-list { display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow: auto; }
+.pipa-stage-list, .pipa-tr-list { display: flex; flex-direction: column; gap: 6px; max-height: 280px; overflow: auto; }
 .pipa-stage-row, .pipa-tr-row {
-  display: flex; align-items: center; gap: 6px;
-  padding: 4px 4px; border-radius: 8px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 6px; border-radius: 10px;
+  border: 1px solid transparent;
+  background: var(--ink-3);
 }
-.pipa-stage-row:hover, .pipa-tr-row:hover { background: var(--ink-3); }
+.pipa-stage-row { cursor: grab; user-select: none; }
+.pipa-stage-row:hover { border-color: var(--line-2); }
+.pipa-stage-row.is-drag { opacity: .45; cursor: grabbing; }
+.pipa-stage-row.is-drop-before { box-shadow: inset 0 2px 0 0 var(--accent); }
+.pipa-stage-row.is-drop-after { box-shadow: inset 0 -2px 0 0 var(--accent); }
+.pipa-stage-grip {
+  flex: none; width: 14px; text-align: center;
+  color: var(--muted); font-size: .72rem; letter-spacing: -1px;
+  line-height: 1; cursor: grab;
+}
+.pipa-stage-swatch {
+  position: relative; flex: none; width: 28px; height: 28px;
+  border-radius: 8px; cursor: pointer; overflow: hidden;
+  border: 1px solid var(--line-2);
+}
+.pipa-stage-swatch-face {
+  display: block; width: 100%; height: 100%;
+}
 .pipa-color {
-  width: 28px; height: 28px; padding: 0; border: 1px solid var(--line-2);
-  border-radius: 8px; background: transparent; cursor: pointer; flex: none;
+  position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%;
+  padding: 0; border: 0; cursor: pointer;
 }
-.pipa-color::-webkit-color-swatch-wrapper { padding: 2px; }
-.pipa-color::-webkit-color-swatch { border: 0; border-radius: 5px; }
 .pipa-stage-name {
-  flex: 1; min-width: 0; font: inherit; font-size: .8rem; font-weight: 650;
-  color: var(--text); background: var(--ink-3); border: 1px solid var(--line-2);
-  border-radius: 7px; padding: 6px 8px;
+  flex: 1; min-width: 0; font: inherit; font-size: .82rem; font-weight: 650;
+  color: var(--text); background: transparent; border: 0;
+  border-radius: 6px; padding: 4px 6px; cursor: text; user-select: text;
 }
-.pipa-stage-count { font-size: .68rem; min-width: 1.2rem; text-align: right; }
+.pipa-stage-name:hover, .pipa-stage-name:focus {
+  background: var(--ink-2); outline: 1px solid var(--line-2);
+}
+.pipa-stage-count { font-size: .68rem; min-width: 1.2rem; text-align: right; flex: none; }
+.pipa-tr-row { background: transparent; }
 .pipa-tr-row select {
   flex: 1; min-width: 0; font: inherit; font-size: .74rem;
   color: var(--text); background: var(--ink-3); border: 1px solid var(--line-2);

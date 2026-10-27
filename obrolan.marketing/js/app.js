@@ -3360,6 +3360,70 @@
       return false;
     });
   }
+  function reorderPipelineStage(fromId, toId, before) {
+    const stages = pipelineStages();
+    const from = stages.findIndex((s) => s.id === fromId);
+    let to = stages.findIndex((s) => s.id === toId);
+    if (from < 0 || to < 0 || from === to) return false;
+    const [row] = stages.splice(from, 1);
+    if (from < to) to -= 1;
+    const insertAt = before ? to : to + 1;
+    stages.splice(insertAt, 0, row);
+    db.pipelineStages = stages;
+    return true;
+  }
+  function bindPipaStageDnD() {
+    const list = document.querySelector('.pipa-stage-list');
+    if (!list) return;
+    const clearMarks = () => {
+      list.querySelectorAll('.pipa-stage-row.is-drop, .pipa-stage-row.is-drop-before, .pipa-stage-row.is-drop-after')
+        .forEach((r) => r.classList.remove('is-drop', 'is-drop-before', 'is-drop-after'));
+    };
+    list.querySelectorAll('.pipa-stage-row[data-drag="pipa-stage"]').forEach((el) => {
+      el.addEventListener('dragstart', (ev) => {
+        if (ev.target.closest('input, button, label.pipa-stage-swatch, a, select, textarea')) {
+          ev.preventDefault();
+          return;
+        }
+        const id = el.getAttribute('data-sid');
+        ev.dataTransfer.setData('text/plain', 'pipa-stage:' + id);
+        ev.dataTransfer.effectAllowed = 'move';
+        el.classList.add('is-drag');
+      });
+      el.addEventListener('dragend', () => {
+        el.classList.remove('is-drag');
+        clearMarks();
+      });
+      el.addEventListener('dragover', (ev) => {
+        const types = Array.prototype.slice.call(ev.dataTransfer.types || []);
+        if (types.indexOf('text/plain') < 0) return;
+        ev.preventDefault();
+        ev.dataTransfer.dropEffect = 'move';
+        const rect = el.getBoundingClientRect();
+        const before = (ev.clientY - rect.top) < rect.height / 2;
+        clearMarks();
+        el.classList.add('is-drop', before ? 'is-drop-before' : 'is-drop-after');
+      });
+      el.addEventListener('dragleave', (ev) => {
+        if (ev.relatedTarget && el.contains(ev.relatedTarget)) return;
+        el.classList.remove('is-drop', 'is-drop-before', 'is-drop-after');
+      });
+      el.addEventListener('drop', (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const raw = ev.dataTransfer.getData('text/plain') || '';
+        if (raw.indexOf('pipa-stage:') !== 0) return;
+        const fromId = raw.slice('pipa-stage:'.length);
+        const toId = el.getAttribute('data-sid');
+        const rect = el.getBoundingClientRect();
+        const before = (ev.clientY - rect.top) < rect.height / 2;
+        clearMarks();
+        if (!reorderPipelineStage(fromId, toId, before)) return;
+        save();
+        render();
+      });
+    });
+  }
   function bindKanbanDnD() {
     const root = $('main');
     if (!root) return;
@@ -3802,6 +3866,7 @@
     bindLazy();
     bindBlobMedia();
     bindKanbanDnD();
+    bindPipaStageDnD();
     bindKurDnD();
     bindNativeTools();
     focusWiz();
@@ -5920,15 +5985,15 @@
       '<option value="' + esc(e.id) + '"' + (cur === e.id ? ' selected' : '') + '>' + esc(e.label) + '</option>'
     ).join('');
     const stageRows = stages.map((st, i) =>
-      '<div class="pipa-stage-row" data-sid="' + esc(st.id) + '">' +
-        '<input type="color" class="pipa-color" data-act="pipa-stage-color" data-id="' + esc(st.id) + '" value="' + esc(stageColorOf(st, i)) + '" title="Warna" aria-label="Warna ' + esc(st.label) + '">' +
-        '<input class="pipa-stage-name" data-act="pipa-stage-label" data-id="' + esc(st.id) + '" value="' + esc(st.label) + '" maxlength="40" aria-label="Nama tahap">' +
-        '<span class="pipa-stage-count muted">' + peopleInStage(st.id).length + '</span>' +
-        '<span class="cols-dd-actions">' +
-          '<button type="button" class="cols-dd-ico" data-act="pipa-stage-up" data-id="' + esc(st.id) + '"' + (i === 0 ? ' disabled' : '') + ' title="Naik">↑</button>' +
-          '<button type="button" class="cols-dd-ico" data-act="pipa-stage-down" data-id="' + esc(st.id) + '"' + (i >= stages.length - 1 ? ' disabled' : '') + ' title="Turun">↓</button>' +
-          '<button type="button" class="cols-dd-ico" data-act="pipa-stage-del" data-id="' + esc(st.id) + '"' + (stages.length <= 1 ? ' disabled' : '') + ' title="Hapus">×</button>' +
-        '</span>' +
+      '<div class="pipa-stage-row" draggable="true" data-sid="' + esc(st.id) + '" data-drag="pipa-stage">' +
+        '<span class="pipa-stage-grip" title="Geser untuk urutkan" aria-hidden="true">⋮⋮</span>' +
+        '<label class="pipa-stage-swatch" title="Warna">' +
+          '<span class="pipa-stage-swatch-face" style="background:' + esc(stageColorOf(st, i)) + '"></span>' +
+          '<input type="color" class="pipa-color" data-act="pipa-stage-color" data-id="' + esc(st.id) + '" value="' + esc(stageColorOf(st, i)) + '" aria-label="Warna ' + esc(st.label) + '">' +
+        '</label>' +
+        '<input class="pipa-stage-name" data-act="pipa-stage-label" data-id="' + esc(st.id) + '" value="' + esc(st.label) + '" maxlength="40" aria-label="Nama tahap" draggable="false">' +
+        '<span class="pipa-stage-count muted" title="Jumlah orang">' + peopleInStage(st.id).length + '</span>' +
+        '<button type="button" class="cols-dd-ico" data-act="pipa-stage-del" data-id="' + esc(st.id) + '"' + (stages.length <= 1 ? ' disabled' : '') + ' title="Hapus">×</button>' +
       '</div>'
     ).join('');
     const trRows = transitions.length
@@ -5961,6 +6026,7 @@
       delPrompt +
       '<div class="pipa-settings-sec">' +
         '<div class="cols-dd-title">Tahap</div>' +
+        '<p class="muted" style="margin:0 0 8px;font-size:.74rem">Geser baris untuk urutkan. Klik warna / nama untuk ubah.</p>' +
         '<div class="pipa-stage-list">' + stageRows + '</div>' +
         '<form class="cols-dd-add" data-act="pipa-stage-add">' +
           '<input name="label" required maxlength="40" placeholder="Nama tahap baru…">' +
@@ -8292,19 +8358,6 @@
       ui.pipaDeleteId = null;
       save();
       toast('Pipa dikembalikan ke default.');
-      render();
-    } else if (act === 'pipa-stage-up' || act === 'pipa-stage-down') {
-      const id = btn.getAttribute('data-id');
-      const stages = pipelineStages();
-      const i = stages.findIndex((s) => s.id === id);
-      if (i < 0) return;
-      const j = act === 'pipa-stage-up' ? i - 1 : i + 1;
-      if (j < 0 || j >= stages.length) return;
-      const tmp = stages[i];
-      stages[i] = stages[j];
-      stages[j] = tmp;
-      db.pipelineStages = stages;
-      save();
       render();
     } else if (act === 'pipa-stage-del') {
       const id = btn.getAttribute('data-id');
