@@ -4,6 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>AI Creative — contoh Anton</title>
+  <script>
+    /* Follow the LMS shell theme (same origin; key set by ../js/app.js). */
+    (function () {
+      var root = document.documentElement;
+      function sync(v) { if (v === 'light') root.dataset.theme = 'light'; else delete root.dataset.theme; }
+      try {
+        sync(localStorage.getItem('anton-theme'));
+        window.addEventListener('storage', function (e) { if (e.key === 'anton-theme') sync(e.newValue); });
+      } catch (e) { /* storage blocked */ }
+    })();
+  </script>
   <style>
     :root { --ink:#0a0a0a; --text:#f3f3f3; --muted:#8a8a8a; --line:#2a2a2a; --card:#161616; --r:8px; }
     * { box-sizing: border-box; }
@@ -21,6 +32,8 @@
       border: 0; background: #fff; color: #111; border-radius: var(--r);
       padding: 10px 14px; font: 700 .78rem inherit; cursor: pointer; margin-top: 8px;
     }
+    html[data-theme="light"] { --ink:#f4f4f5; --text:#18181b; --muted:#6b7280; --line:#dcdce0; --card:#ffffff; color-scheme: light; }
+    html[data-theme="light"] button { background: #18181b; color: #fff; }
   </style>
 </head>
 <body>

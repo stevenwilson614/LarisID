@@ -4,6 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>Kalkulator harga — Anton</title>
+  <script>
+    /* Follow the LMS shell theme (same origin; key set by ../js/app.js). */
+    (function () {
+      var root = document.documentElement;
+      function sync(v) { if (v === 'light') root.dataset.theme = 'light'; else delete root.dataset.theme; }
+      try {
+        sync(localStorage.getItem('anton-theme'));
+        window.addEventListener('storage', function (e) { if (e.key === 'anton-theme') sync(e.newValue); });
+      } catch (e) { /* storage blocked */ }
+    })();
+  </script>
   <style>
     :root { --ink:#0a0a0a; --text:#f3f3f3; --muted:#8a8a8a; --line:#2a2a2a; --card:#161616; --r:8px; --you:#c9b227; }
     * { box-sizing: border-box; }
@@ -78,6 +89,16 @@
       .hl { background: #f3f3f3; }
       h1, h2 { color: #111; }
     }
+    html[data-theme="light"] { --ink:#f4f4f5; --text:#18181b; --muted:#6b7280; --line:#dcdce0; --card:#ffffff; color-scheme: light; --you:#8a6d00; }
+    html[data-theme="light"] .tabs button.on { background: #18181b; color: #fff; border-color: #18181b; }
+    html[data-theme="light"] input { background: #fff; color: #111; }
+    html[data-theme="light"] input.kuning { background: #fdf6d8; border-color: #c9b227; }
+    html[data-theme="light"] .price-card.main { border-color: #111; background: #fff; }
+    html[data-theme="light"] .net strong { color: #111; }
+    html[data-theme="light"] .hl { background: #e9e9eb; }
+    html[data-theme="light"] button.act { background: #18181b; color: #fff; }
+    html[data-theme="light"] button.ghost { color: #111; }
+    html[data-theme="light"] details.fees { background: #fff; }
   </style>
 </head>
 <body>

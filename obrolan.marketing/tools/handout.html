@@ -4,6 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>Lembar kerja — MasterMind with Anton GC</title>
+  <script>
+    /* Follow the LMS shell theme (same origin; key set by ../js/app.js). */
+    (function () {
+      var root = document.documentElement;
+      function sync(v) { if (v === 'light') root.dataset.theme = 'light'; else delete root.dataset.theme; }
+      try {
+        sync(localStorage.getItem('anton-theme'));
+        window.addEventListener('storage', function (e) { if (e.key === 'anton-theme') sync(e.newValue); });
+      } catch (e) { /* storage blocked */ }
+    })();
+  </script>
   <style>
     :root { --ink:#0a0a0a; --text:#f3f3f3; --muted:#8a8a8a; --line:#2a2a2a; --card:#161616; --r:8px; }
     * { box-sizing: border-box; }
@@ -16,6 +27,7 @@
     ol, ul { margin: 0; padding-left: 18px; font-size: .8rem; line-height: 1.55; }
     li { margin: 6px 0; }
     .muted { color: var(--muted); font-size: .74rem; }
+    html[data-theme="light"] { --ink:#f4f4f5; --text:#18181b; --muted:#6b7280; --line:#dcdce0; --card:#ffffff; color-scheme: light; }
   </style>
 </head>
 <body>

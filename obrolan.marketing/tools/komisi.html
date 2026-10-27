@@ -4,6 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>Kalkulator komisi affiliate — Anton</title>
+  <script>
+    /* Follow the LMS shell theme (same origin; key set by ../js/app.js). */
+    (function () {
+      var root = document.documentElement;
+      function sync(v) { if (v === 'light') root.dataset.theme = 'light'; else delete root.dataset.theme; }
+      try {
+        sync(localStorage.getItem('anton-theme'));
+        window.addEventListener('storage', function (e) { if (e.key === 'anton-theme') sync(e.newValue); });
+      } catch (e) { /* storage blocked */ }
+    })();
+  </script>
   <style>
     :root { --ink:#0a0a0a; --text:#f3f3f3; --muted:#8a8a8a; --line:#2a2a2a; }
     * { box-sizing: border-box; }
@@ -14,6 +25,10 @@
     input { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; font: inherit; background: #141414; color: #fff; }
     .out { margin-top: 16px; background: #161616; border-radius: 8px; padding: 14px; border: 1px solid var(--line); }
     .out strong { color: #fff; }
+    html[data-theme="light"] { --ink:#f4f4f5; --text:#18181b; --muted:#6b7280; --line:#dcdce0; --card:#ffffff; color-scheme: light; }
+    html[data-theme="light"] input { background: #fff; color: #111; }
+    html[data-theme="light"] .out { background: #fff; }
+    html[data-theme="light"] .out strong { color: #111; }
   </style>
 </head>
 <body>

@@ -10,6 +10,36 @@
   const BUS = ('BroadcastChannel' in window) ? new BroadcastChannel('anton-school-v3') : null;
   const SYNC_MAX = 5 * 1024 * 1024;
   const $ = (id) => document.getElementById(id);
+
+  /* ── theme (dark default, light via topbar toggle) ─────────────────
+     index.html applies the saved value before CSS paints; this keeps the
+     button, <meta theme-color>, and storage in sync. Tool iframes share
+     the origin and follow the same key through the `storage` event. */
+  const THEME_KEY = 'anton-theme';
+  const THEME_COLOR = { dark: '#18181b', light: '#ffffff' };
+  function currentTheme() {
+    return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+  }
+  function applyTheme(theme, persist) {
+    const light = theme === 'light';
+    if (light) document.documentElement.dataset.theme = 'light';
+    else delete document.documentElement.dataset.theme;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', THEME_COLOR[light ? 'light' : 'dark']);
+    const btn = $('btn-theme');
+    if (btn) {
+      const label = light ? 'Mode gelap' : 'Mode terang';
+      btn.setAttribute('aria-pressed', String(light));
+      btn.setAttribute('aria-label', label);
+      btn.title = label;
+    }
+    if (persist) {
+      try {
+        if (light) localStorage.setItem(THEME_KEY, 'light');
+        else localStorage.removeItem(THEME_KEY);
+      } catch (err) { /* private mode */ }
+    }
+  }
   const ALL_SKUS = () => (SEED.catalog || []).map((p) => p.id);
   const MENTOR_SKUS = () => (SEED.catalog || []).filter((p) => p.includedInMentoring !== false).map((p) => p.id);
 
@@ -10239,6 +10269,11 @@
     }
   });
 
+  applyTheme(currentTheme(), false);
+  $('btn-theme').addEventListener('click', () => {
+    applyTheme(currentTheme() === 'light' ? 'dark' : 'light', true);
+  });
+
   $('btn-reset').addEventListener('click', () => {
     if (ui.present) return;
     if (syncEnabled() && !ui.admin) return;
@@ -10279,6 +10314,10 @@
   $('drawer-scrim').addEventListener('click', closeDrawer);
 
   window.addEventListener('storage', (e) => {
+    if (e.key === THEME_KEY) {
+      applyTheme(e.newValue === 'light' ? 'light' : 'dark', false);
+      return;
+    }
     if (e.key !== KEY || ui.presentApplying) return;
     reloadDb();
   });
