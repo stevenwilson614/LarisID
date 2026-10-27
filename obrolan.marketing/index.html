@@ -29,7 +29,7 @@
   <link rel="apple-touch-icon" href="./assets/obrolan/profile.png">
   <title>MasterMind with Anton GC</title>
   <link rel="stylesheet" href="/fonts/laris-fonts.css">
-  <link rel="stylesheet" href="./css/school.css?v=20261027tema1">
+  <link rel="stylesheet" href="./css/school.css?v=20261027menu1">
 </head>
 <body>
   <div id="prod-block" hidden>
@@ -42,11 +42,24 @@
   <div id="app" class="is-student">
     <header class="topbar">
       <div class="brand">
-        <img id="school-logo" src="./assets/obrolan/profile.png" alt="" width="32" height="32">
+        <button type="button" class="brand-btn" id="brand-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="brand-menu" aria-label="Menu akun" disabled>
+          <img id="school-logo" src="./assets/obrolan/profile.png" alt="" width="32" height="32">
+          <span class="brand-caret" aria-hidden="true"><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4l2.5 2.5L7.5 4"/></svg></span>
+        </button>
         <div>
           <strong id="school-name">MasterMind with Anton GC</strong>
           <a id="school-handle" class="school-handle" href="/obrolan.marketing/">obrolan.marketing</a>
           <span class="off-badge">/obrolan.marketing</span>
+        </div>
+        <div id="brand-menu" class="brand-menu" role="menu" aria-labelledby="brand-btn" hidden>
+          <button type="button" role="menuitem" id="btn-admin-out" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+            Keluar
+          </button>
+          <button type="button" role="menuitem" class="brand-menu-danger" id="btn-reset" title="Kembalikan kelas ke data awal" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+            Reset data
+          </button>
         </div>
       </div>
       <div class="topbar-search" id="topbar-search" hidden>
@@ -63,8 +76,6 @@
           <svg class="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
           <svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
         </button>
-        <button type="button" class="ghost" id="btn-reset" title="Reset data lokal" hidden>Reset</button>
-        <button type="button" class="ghost" id="btn-admin-out" hidden>Keluar</button>
       </div>
     </header>
     <div class="workspace">
@@ -77,6 +88,6 @@
   <div id="drawer-scrim" class="scrim" hidden></div>
   <div id="toast" class="toast" hidden></div>
   <script src="./js/seed.js?v=20261027diskusi2"></script>
-  <script src="./js/app.js?v=20261027tema1"></script>
+  <script src="./js/app.js?v=20261027menu1"></script>
 </body>
 </html>

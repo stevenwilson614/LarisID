@@ -454,7 +454,7 @@
     if (colId === 'name') {
       const tags = (s.tags || []).slice(0, 2);
       return '<button type="button" class="linkish roster-name" data-act="open-student" data-id="' + esc(s.id) + '">' +
-        avatarHtml(s, 'avatar sm') + '<span>' + esc(s.name) + waUnreadBadge(s.id) +
+        avatarHtml(s, 'avatar sm') + '<span>' + esc(displayNameOf(s) || s.name) + waUnreadBadge(s.id) +
         '<div class="muted">' + esc(s.city || '—') +
         (tags.length ? ' · ' + tags.map((t) => esc(t)).join(', ') : '') +
         '</div></span></button>';
@@ -823,6 +823,7 @@
     editLecId: null,
     kurEdit: false,
     composeMode: 'note',
+    personMidTab: 'timeline',
     socialPick: null,
     shopPick: null,
     waDraft: '',
@@ -2192,12 +2193,34 @@
   }
   const HEARD_OPTS = ['Grup WA Anton', 'Teman / murid Anton', 'TikTok', 'Instagram', 'Lainnya'];
   const WIZ_FORM = [
-    { id: 'name', kicker: 'Kenalan', q: 'Siapa namamu?', sub: 'Nama yang Anton panggil di grup. Bukan tes.' },
+    { id: 'name', kicker: 'Kenalan', q: 'Siapa namamu?', sub: 'Nama depan dan belakang. Yang Anton panggil di grup.' },
     { id: 'wa', kicker: 'Kontak', q: 'Nomor WhatsApp-mu?', sub: 'Anton kirim & simpan chat mentoring dari nomor ini. Bukan riwayat WA lama.' },
     { id: 'shop', kicker: 'Toko', q: 'Sudah punya toko?', sub: 'Belum juga boleh. Jujur aja.' },
     { id: 'city', kicker: 'Tempat', q: 'Kota mana?', sub: 'Biar Anton tahu kamu dari mana.' },
     { id: 'heard', kicker: 'Cerita', q: 'Dari mana kenal Anton?', sub: 'Satu jawaban. Bukan syarat masuk.' }
   ];
+  function splitPersonName(full) {
+    const parts = String(full || '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return { firstName: '', lastName: '' };
+    if (parts.length === 1) return { firstName: parts[0], lastName: '' };
+    return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
+  }
+  function displayNameOf(s) {
+    if (!s) return '';
+    const fn = String(s.firstName || '').trim();
+    const ln = String(s.lastName || '').trim();
+    if (fn || ln) return [fn, ln].filter(Boolean).join(' ');
+    return String(s.name || '').trim();
+  }
+  function personNameParts(s) {
+    const fn = String((s && s.firstName) || '').trim();
+    const ln = String((s && s.lastName) || '').trim();
+    if (fn || ln) return { firstName: fn, lastName: ln };
+    return splitPersonName(s && s.name);
+  }
+  function joinPersonName(firstName, lastName) {
+    return [String(firstName || '').trim(), String(lastName || '').trim()].filter(Boolean).join(' ');
+  }
   const WIZ_PAY = WIZ_FORM.length;
   const WIZ_TOTAL = WIZ_PAY + 1;
 
@@ -2232,6 +2255,11 @@
       ? prev.heardOther
       : (known ? '' : heardRaw);
     const nameSeed = (s.name || '').indexOf('Tamu') >= 0 ? '' : (s.name || '');
+    const parts = personNameParts({
+      firstName: app.firstName || s.firstName,
+      lastName: app.lastName || s.lastName,
+      name: app.name || nameSeed
+    });
     let shopPick = prev.shopPick;
     if (shopPick == null) {
       if (app.hasShop === true) shopPick = 'ya';
@@ -2240,7 +2268,12 @@
     }
     return {
       sid: sid,
-      name: prev.name != null ? prev.name : (app.name || nameSeed),
+      firstName: prev.firstName != null ? prev.firstName : parts.firstName,
+      lastName: prev.lastName != null ? prev.lastName : parts.lastName,
+      name: prev.name != null ? prev.name : joinPersonName(
+        prev.firstName != null ? prev.firstName : parts.firstName,
+        prev.lastName != null ? prev.lastName : parts.lastName
+      ) || app.name || nameSeed,
       wa: prev.wa != null ? prev.wa : (app.wa || s.wa || ''),
       shopPick: shopPick,
       shopName: prev.shopName != null ? prev.shopName : (app.shopName || s.shopName || ''),
@@ -2257,13 +2290,24 @@
     const root = document.querySelector('.ob-flow');
     if (!root) return;
     const d = {};
+    const firstName = root.querySelector('[name=firstName]');
+    const lastName = root.querySelector('[name=lastName]');
     const name = root.querySelector('[name=name]');
     const wa = root.querySelector('[name=wa]');
     const city = root.querySelector('[name=city]');
     const shopName = root.querySelector('[name=shopName]');
     const shopUrl = root.querySelector('[name=shopUrl]');
     const heardOther = root.querySelector('[name=heardOther]');
-    if (name) d.name = String(name.value || '').trim();
+    if (firstName) d.firstName = String(firstName.value || '').trim();
+    if (lastName) d.lastName = String(lastName.value || '').trim();
+    if (firstName || lastName) {
+      d.name = joinPersonName(d.firstName != null ? d.firstName : wizDraft().firstName, d.lastName != null ? d.lastName : wizDraft().lastName);
+    } else if (name) {
+      d.name = String(name.value || '').trim();
+      const parts = splitPersonName(d.name);
+      d.firstName = parts.firstName;
+      d.lastName = parts.lastName;
+    }
     if (wa) d.wa = String(wa.value || '').trim();
     if (city) d.city = String(city.value || '').trim();
     if (shopName) d.shopName = String(shopName.value || '').trim();
@@ -2279,8 +2323,8 @@
     const spec = WIZ_FORM[wizIdx()];
     if (!spec) return true;
     const d = wizDraft();
-    if (spec.id === 'name' && !d.name) {
-      toast('Isi nama dulu.');
+    if (spec.id === 'name' && !String(d.firstName || '').trim()) {
+      toast('Isi nama depan dulu.');
       return false;
     }
     if (spec.id === 'wa' && !d.wa) {
@@ -2319,8 +2363,11 @@
     const s = student();
     const hasShop = d.shopPick === 'ya';
     const heard = wizHeardValue(d);
-    if (!d.name || !d.wa || !d.city || !heard) {
-      toast('Isi nama, WA, kota, dan dari mana tahu Anton.');
+    const firstName = String(d.firstName || '').trim();
+    const lastName = String(d.lastName || '').trim();
+    const fullName = joinPersonName(firstName, lastName) || String(d.name || '').trim();
+    if (!firstName || !d.wa || !d.city || !heard) {
+      toast('Isi nama depan, WA, kota, dan dari mana tahu Anton.');
       return false;
     }
     if (hasShop && (!d.shopName || !d.shopUrl)) {
@@ -2328,7 +2375,9 @@
       return false;
     }
     db.applications[sid] = {
-      name: d.name,
+      name: fullName,
+      firstName: firstName,
+      lastName: lastName,
       wa: d.wa,
       city: d.city,
       hasShop: hasShop,
@@ -2342,14 +2391,18 @@
     if (String(sid).indexOf('live-') === 0 && !db.liveStudents.some((x) => x.id === sid)) {
       db.liveStudents.push({
         id: sid,
-        name: d.name,
+        name: fullName,
+        firstName: firstName,
+        lastName: lastName,
         wa: waDigits,
         email: '',
         city: d.city
       });
     }
     patchPerson(sid, {
-      name: d.name,
+      name: fullName,
+      firstName: firstName,
+      lastName: lastName,
       wa: waDigits,
       city: d.city,
       shopName: hasShop ? d.shopName : '',
@@ -2363,7 +2416,7 @@
     applyTransition(sid, 'form', 'form', 'Form masuk. Jam diskon 24 jam dimulai.');
     startTrial(sid);
     save();
-    trackEvent('join', { name: d.name, wa: String(d.wa || ''), stage: 'form', progress: kurProgress(sid).pct });
+    trackEvent('join', { name: fullName, wa: String(d.wa || ''), stage: 'form', progress: kurProgress(sid).pct });
     return true;
   }
   function ensureApplication() {
@@ -3216,6 +3269,66 @@
     const p = list.find((x) => x.id === id);
     return (p && p.label) || id || '—';
   }
+  function icoSvg(path, opts) {
+    const size = (opts && opts.size) || 16;
+    const fill = (opts && opts.fill) || 'currentColor';
+    const cls = (opts && opts.cls) || 'fub-plat-ico';
+    return '<svg class="' + cls + '" width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="' + fill + '" aria-hidden="true">' + path + '</svg>';
+  }
+  function platIcon(platform, size) {
+    const s = size || 16;
+    const map = {
+      instagram: icoSvg('<path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm5 5.2A4.8 4.8 0 1 0 16.8 12 4.8 4.8 0 0 0 12 7.2zm0 7.7A2.9 2.9 0 1 1 14.9 12 2.9 2.9 0 0 1 12 14.9zM17.7 6a1.1 1.1 0 1 0 1.1 1.1A1.1 1.1 0 0 0 17.7 6z"/>', { size: s, cls: 'fub-plat-ico is-ig' }),
+      tiktok: icoSvg('<path d="M14.5 3h2.2a5.4 5.4 0 0 0 3.3 3.1v2.3a7.5 7.5 0 0 1-3.3-1v6.4a5.8 5.8 0 1 1-5.8-5.8c.3 0 .6 0 .9.1v2.5a3.3 3.3 0 1 0 2.4 3.2V3z"/>', { size: s, cls: 'fub-plat-ico is-tt' }),
+      youtube: icoSvg('<path d="M23 12.2s0-3.4-.4-5a2.9 2.9 0 0 0-2-2C18.7 4.7 12 4.7 12 4.7s-6.7 0-8.6.5a2.9 2.9 0 0 0-2 2c-.4 1.6-.4 5-.4 5s0 3.4.4 5a2.9 2.9 0 0 0 2 2c1.9.5 8.6.5 8.6.5s6.7 0 8.6-.5a2.9 2.9 0 0 0 2-2c.4-1.6.4-5 .4-5zM9.8 15.5V8.9l6.3 3.3z"/>', { size: s, cls: 'fub-plat-ico is-yt' }),
+      facebook: icoSvg('<path d="M14 9h3V6h-3c-2.2 0-4 1.8-4 4v2H7v3h3v7h3v-7h3.1l.9-3H13v-2c0-.6.4-1 1-1z"/>', { size: s, cls: 'fub-plat-ico is-fb' }),
+      x: icoSvg('<path d="M4 4h4.2l4.1 5.6L16.8 4H20l-6.1 7.2L20.5 20h-4.2l-4.5-6.1L7.2 20H4l6.5-7.6z"/>', { size: s, cls: 'fub-plat-ico is-x' }),
+      tiktok_shop: icoSvg('<path d="M14.5 3h2.2a5.4 5.4 0 0 0 3.3 3.1v2.3a7.5 7.5 0 0 1-3.3-1v6.4a5.8 5.8 0 1 1-5.8-5.8c.3 0 .6 0 .9.1v2.5a3.3 3.3 0 1 0 2.4 3.2V3z"/>', { size: s, cls: 'fub-plat-ico is-tt' }),
+      shopee: icoSvg('<path d="M6 8h12l1 13H5L6 8zm2.2-3.2A3.8 3.8 0 0 1 12 3a3.8 3.8 0 0 1 3.8 1.8L14.5 6A2 2 0 0 0 12 4.8 2 2 0 0 0 9.5 6z"/>', { size: s, cls: 'fub-plat-ico is-shopee' }),
+      tokopedia: icoSvg('<path d="M12 2 3 7v10l9 5 9-5V7zm0 3.2 5.5 3-5.5 3-5.5-3z"/>', { size: s, cls: 'fub-plat-ico is-tokped' }),
+      lazada: icoSvg('<path d="M4 5h16v3.2H8.5L19 19h-3.8L5.5 8.8V19H4z"/>', { size: s, cls: 'fub-plat-ico is-lazada' }),
+      blibli: icoSvg('<path d="M5 5h6.5a4.5 4.5 0 0 1 0 9H8v5H5zm3 3v3h3.3a1.5 1.5 0 0 0 0-3zM14 10h5v3h-2.2L19 19h-3.3l-2.1-6H14z"/>', { size: s, cls: 'fub-plat-ico is-blibli' }),
+      other: icoSvg('<path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 15h-2v-2h2zm0-4h-2V7h2z"/>', { size: s, cls: 'fub-plat-ico is-other' })
+    };
+    return map[platform] || map.other;
+  }
+  function waIconSvg(size) {
+    return icoSvg('<path d="M17.5 14.4c-.3-.1-1.8-.9-2-.9s-.5-.1-.7.2-.8 1-.9 1.1-.3.2-.6.1a8 8 0 0 1-2.4-1.5 8.9 8.9 0 0 1-1.6-2c-.2-.3 0-.5.1-.6l.5-.5.3-.5c.1-.2 0-.4 0-.5s-.7-1.6-.9-2.2-.5-.5-.7-.5h-.6a1.5 1.5 0 0 0-1.1.5 4.5 4.5 0 0 0-1.4 3.3 7.8 7.8 0 0 0 1.7 4.1 17.8 17.8 0 0 0 6.8 6c.9.4 1.7.6 2.3.8a4 4 0 0 0 1.9.1 3.4 3.4 0 0 0 2.2-1.6 2.8 2.8 0 0 0 .2-1.6c-.1-.1-.3-.2-.6-.3zM12 21.8h0a9.9 9.9 0 0 1-5-.1l-.4-.2-3.7 1 1-3.6-.2-.4A9.9 9.9 0 1 1 12 21.8z"/>', { size: size || 16, cls: 'fub-plat-ico is-wa', fill: 'currentColor' });
+  }
+  function emailIconSvg(size) {
+    return icoSvg('<path d="M3 5h18a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zm0 2.3 9 5.7 9-5.7V7L12 12.7 3 7z"/>', { size: size || 16, cls: 'fub-plat-ico is-email', fill: 'currentColor' });
+  }
+  function payKindLabel(kind) {
+    return { mentoring: 'Mentoring', renewal: 'Perpanjang', sku: 'SKU' }[kind] || (kind || 'Bayar');
+  }
+  function personContributions(id) {
+    ensureDiskusi();
+    const posts = (db.posts || []).filter((p) => p && p.authorId === id).map((p) => ({
+      kind: 'post',
+      id: p.id,
+      at: p.createdAt,
+      body: p.body || '',
+      batchId: p.batchId || ''
+    }));
+    const comments = (db.comments || []).filter((c) => c && c.authorId === id).map((c) => {
+      const post = (db.posts || []).find((p) => p && p.id === c.postId);
+      return {
+        kind: 'comment',
+        id: c.id,
+        at: c.createdAt,
+        body: c.body || '',
+        batchId: (post && post.batchId) || '',
+        postId: c.postId
+      };
+    });
+    return posts.concat(comments).sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0));
+  }
+  function personPayments(id) {
+    return paymentsList()
+      .filter((p) => p && p.personId === id)
+      .slice()
+      .sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0));
+  }
   function hostMatches(hosts, url) {
     if (!hosts) return true;
     try {
@@ -3327,7 +3440,9 @@
     const socialList = socials.length
       ? socials.map((row) =>
           '<div class="fub-link">' +
-            '<span class="fub-link-plat">' + esc(platLabel(SOCIAL_PLATFORMS, row.platform)) + '</span>' +
+            '<a class="fub-link-ico" href="' + esc(row.url) + '" target="_blank" rel="noopener" title="' +
+              esc(platLabel(SOCIAL_PLATFORMS, row.platform) + (row.handle ? ' · ' + row.handle : '')) + '" aria-label="' +
+              esc(platLabel(SOCIAL_PLATFORMS, row.platform)) + '">' + platIcon(row.platform, 18) + '</a>' +
             '<a class="fub-link-a" href="' + esc(row.url) + '" target="_blank" rel="noopener">' + esc(row.handle || row.url) + '</a>' +
             '<button type="button" class="btn-sm fub-link-del" data-act="del-social" data-id="' + esc(id) + '" data-lid="' + esc(row.id || '') + '" data-plat="' + esc(row.platform) + '" title="Hapus">×</button>' +
           '</div>'
@@ -3336,7 +3451,9 @@
     const shopList = shops.length
       ? shops.map((row) =>
           '<div class="fub-link">' +
-            '<span class="fub-link-plat">' + esc(platLabel(SHOP_PLATFORMS, row.platform)) + '</span>' +
+            '<a class="fub-link-ico" href="' + esc(row.url) + '" target="_blank" rel="noopener" title="' +
+              esc(platLabel(SHOP_PLATFORMS, row.platform) + (row.handle ? ' · ' + row.handle : '')) + '" aria-label="' +
+              esc(platLabel(SHOP_PLATFORMS, row.platform)) + '">' + platIcon(row.platform, 18) + '</a>' +
             '<a class="fub-link-a" href="' + esc(row.url) + '" target="_blank" rel="noopener">' + esc(row.handle || row.url) + '</a>' +
             '<button type="button" class="btn-sm fub-link-del" data-act="del-shop" data-id="' + esc(id) + '" data-lid="' + esc(row.id || '') + '" data-plat="' + esc(row.platform) + '" title="Hapus">×</button>' +
           '</div>'
@@ -3345,8 +3462,9 @@
     const socialEditor =
       '<div class="fub-plat-pick" role="group" aria-label="Pilih sosial">' +
         SOCIAL_PLATFORMS.map((p) =>
-          '<button type="button" class="btn-sm fub-plat' + (socialPick === p.id ? ' is-on' : '') + '" data-act="pick-social" data-id="' + p.id + '"' +
-            (socials.some((x) => x.platform === p.id) ? ' disabled title="Sudah ada"' : '') + '>' + esc(p.label) + '</button>'
+          '<button type="button" class="btn-sm fub-plat fub-plat-ico-btn' + (socialPick === p.id ? ' is-on' : '') +
+            '" data-act="pick-social" data-id="' + p.id + '" title="' + esc(p.label) + '" aria-label="' + esc(p.label) + '"' +
+            (socials.some((x) => x.platform === p.id) ? ' disabled' : '') + '>' + platIcon(p.id, 16) + '</button>'
         ).join('') +
       '</div>' +
       (socialPick
@@ -3358,7 +3476,9 @@
     const shopEditor =
       '<div class="fub-plat-pick" role="group" aria-label="Pilih toko">' +
         SHOP_PLATFORMS.map((p) =>
-          '<button type="button" class="btn-sm fub-plat' + (shopPick === p.id ? ' is-on' : '') + '" data-act="pick-shop" data-id="' + p.id + '">' + esc(p.label) + '</button>'
+          '<button type="button" class="btn-sm fub-plat fub-plat-ico-btn' + (shopPick === p.id ? ' is-on' : '') +
+            '" data-act="pick-shop" data-id="' + p.id + '" title="' + esc(p.label) + '" aria-label="' + esc(p.label) + '">' +
+            platIcon(p.id, 16) + '</button>'
         ).join('') +
       '</div>' +
       (shopPick
@@ -3385,6 +3505,23 @@
         shopEditor +
       '</div>';
   }
+  function personGroupsHtml(id) {
+    const batchId = batchOf(id);
+    if (!batchId) {
+      return '<div class="fub-section">' +
+        '<div class="fub-section-h">Grup diskusi</div>' +
+        '<p class="muted fub-link-empty">Belum masuk grup diskusi.</p>' +
+      '</div>';
+    }
+    return '<div class="fub-section">' +
+      '<div class="fub-section-h">Grup diskusi</div>' +
+      '<div class="fub-group-chip">' +
+        '<span class="fub-group-name">' + esc(batchLabel(batchId)) + '</span>' +
+        '<span class="muted">' + esc(batchId) + '</span>' +
+      '</div>' +
+      personBatchField(id) +
+    '</div>';
+  }
   function photoKey(id) { return 'photo-' + id; }
   function coverKey(kind, id) { return 'cover-' + kind + '-' + id; }
   function fileKey(lecId, n) { return 'file-' + lecId + '-' + n; }
@@ -3392,7 +3529,7 @@
     const c = cls || 'avatar';
     if (s && s.photoUrl) return '<img class="' + c + '" src="' + esc(s.photoUrl) + '" alt="">';
     if (s && s.photoBlob) return '<img class="' + c + '" data-blob="' + esc(photoKey(s.id)) + '" alt="">';
-    return '<span class="' + c + ' avatar-fallback" aria-hidden="true">' + esc(initialsOf(s && s.name)) + '</span>';
+    return '<span class="' + c + ' avatar-fallback" aria-hidden="true">' + esc(initialsOf(displayNameOf(s) || (s && s.name))) + '</span>';
   }
   function fmtPhone(wa) {
     const d = String(wa || '').replace(/\D/g, '');
@@ -3439,7 +3576,11 @@
     if (!q) return true;
     const handle = tiktokHandle(s.tiktok);
     const tags = ((s.tags || []).join(' ')).toLowerCase();
-    return s.name.toLowerCase().indexOf(q) >= 0 || (s.wa || '').indexOf(q) >= 0 ||
+    const full = (displayNameOf(s) || s.name || '').toLowerCase();
+    return full.indexOf(q) >= 0 ||
+      String(s.firstName || '').toLowerCase().indexOf(q) >= 0 ||
+      String(s.lastName || '').toLowerCase().indexOf(q) >= 0 ||
+      (s.wa || '').indexOf(q) >= 0 ||
       (s.email || '').toLowerCase().indexOf(q) >= 0 || (s.city || '').toLowerCase().indexOf(q) >= 0 ||
       handle.toLowerCase().indexOf(q) >= 0 || billingOf(s.id).status.indexOf(q) >= 0 ||
       stageLabel(crmOf(s.id).stage).toLowerCase().indexOf(q) >= 0 ||
@@ -3901,6 +4042,7 @@
     ui.personId = id;
     ui.hubBack = ui.siswaView || 'pipa';
     ui.mentorTab = 'orang';
+    ui.personMidTab = 'timeline';
     ui.tagPickerId = null;
     ui.tagQuery = '';
     render();
@@ -4154,9 +4296,16 @@
       paintCariDrop();
     }
     const resetBtn = $('btn-reset');
-    if (resetBtn) resetBtn.hidden = syncEnabled() && !ui.admin;
+    if (resetBtn) resetBtn.hidden = ui.present || (syncEnabled() && !ui.admin);
     const outBtn = $('btn-admin-out');
     if (outBtn) outBtn.hidden = !(ui.admin && syncEnabled());
+    const brandBtn = $('brand-btn');
+    if (brandBtn) {
+      // Avatar only opens a menu when there is something in it (admin: Keluar / Reset).
+      const hasMenu = !!((resetBtn && !resetBtn.hidden) || (outBtn && !outBtn.hidden));
+      brandBtn.disabled = !hasMenu;
+      if (!hasMenu) setBrandMenu(false);
+    }
     if (!isStaff()) {
       const allowed = studentTabs().map((t) => t.id).concat(['sku', 'alat', 'daftar', 'tes', 'sertifikat', 'diskusi']);
       if (needsWizard(ui.personaId) && ui.tab !== 'daftar') ui.tab = 'daftar';
@@ -4666,8 +4815,12 @@
     const last = step >= WIZ_FORM.length - 1;
     let fields = '';
     if (spec.id === 'name') {
-      fields = '<input class="ob-input" data-focus="1" name="name" maxlength="80" autocomplete="name" value="' +
-        esc(d.name) + '" placeholder="Nama kamu">';
+      fields = '<div class="ob-name-row">' +
+        '<input class="ob-input" data-focus="1" name="firstName" maxlength="40" autocomplete="given-name" value="' +
+          esc(d.firstName || '') + '" placeholder="Nama depan">' +
+        '<input class="ob-input" name="lastName" maxlength="40" autocomplete="family-name" value="' +
+          esc(d.lastName || '') + '" placeholder="Nama belakang">' +
+        '</div>';
     } else if (spec.id === 'wa') {
       fields = '<input class="ob-input" data-focus="1" name="wa" type="tel" inputmode="numeric" autocomplete="tel" value="' +
         esc(d.wa) + '" placeholder="08… atau 628…">';
@@ -5407,7 +5560,8 @@
   }
 
   function nameOf(id) {
-    return (people().find((s) => s.id === id) || SEED.staff.find((s) => s.id === id) || { name: id }).name;
+    const found = people().find((s) => s.id === id) || SEED.staff.find((s) => s.id === id);
+    return displayNameOf(found) || (found && found.name) || id;
   }
   /** Anton + anyone in the Mentor pipeline column (for Assigned). */
   function assignableMentors(forId) {
@@ -7296,30 +7450,47 @@
     const openTasks = tsk.filter((t) => !t.done).length;
     const prog = kurProgress(id);
     const mode = ui.composeMode || 'note';
+    const midTab = ui.personMidTab === 'contrib' || ui.personMidTab === 'pay' ? ui.personMidTab : 'timeline';
     const feed = personFeed(id);
+    const contribs = personContributions(id);
+    const pays = personPayments(id);
+    const nameParts = personNameParts(s);
+    const fullName = displayNameOf(s) || s.name || '';
     const left =
       '<aside class="fub-left">' +
         '<div class="fub-iden">' +
           avatarHtml(s, 'avatar lg') +
           '<div class="fub-iden-copy">' +
-            '<input class="inline-edit name-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="name" value="' + esc(s.name) + '">' +
+            '<div class="fub-name-row">' +
+              '<input class="inline-edit name-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="firstName" value="' +
+                esc(nameParts.firstName) + '" placeholder="Nama depan" autocomplete="given-name">' +
+              '<input class="inline-edit name-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="lastName" value="' +
+                esc(nameParts.lastName) + '" placeholder="Nama belakang" autocomplete="family-name">' +
+            '</div>' +
             '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="city" value="' + esc(s.city || '') + '" placeholder="Kota">' +
             '<label class="btn-sm fub-photo-btn">Unggah foto<input type="file" hidden data-act="photo-file" data-id="' + esc(id) + '" accept="image/*"></label>' +
           '</div>' +
         '</div>' +
         '<div class="fub-contact">' +
           '<div class="fub-contact-row">' +
-            '<span class="fub-ico" aria-hidden="true">☎</span>' +
+            '<span class="fub-ico is-wa" aria-hidden="true">' + waIconSvg(16) + '</span>' +
             '<input class="inline-edit ghost-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="wa" value="' + esc(s.wa || '') + '" placeholder="62812…" title="Klik untuk edit WA">' +
-            (s.wa ? '<a class="fub-cell-link" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari MasterMind with Anton GC.')) + '">WA</a>' : '') +
+            (s.wa
+              ? '<a class="fub-cell-link fub-ico-link" href="' + esc(waLink(s.wa, 'Halo ' + fullName + ', dari MasterMind with Anton GC.')) +
+                '" title="Buka WhatsApp" aria-label="Buka WhatsApp">' + waIconSvg(16) + '</a>'
+              : '') +
           '</div>' +
           '<div class="fub-contact-row">' +
-            '<span class="fub-ico" aria-hidden="true">✉</span>' +
+            '<span class="fub-ico is-email" aria-hidden="true">' + emailIconSvg(16) + '</span>' +
             '<input class="inline-edit ghost-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="email" type="email" value="' + esc(s.email || '') + '" placeholder="email" title="Klik untuk edit email">' +
-            (s.email ? '<a class="fub-cell-link" href="' + esc(mailLink(s.email, 'MasterMind with Anton GC', 'Halo ' + s.name)) + '">✉</a>' : '') +
+            (s.email
+              ? '<a class="fub-cell-link fub-ico-link" href="' + esc(mailLink(s.email, 'MasterMind with Anton GC', 'Halo ' + fullName)) +
+                '" title="Buka Email" aria-label="Buka Email">' + emailIconSvg(16) + '</a>'
+              : '') +
           '</div>' +
         '</div>' +
         personLinksHtml(id, s, app) +
+        personGroupsHtml(id) +
         '<dl class="fub-meta">' +
           '<div class="fub-field"><dt>Stage</dt><dd><select data-act="crm-stage" data-id="' + esc(id) + '">' +
             stages.map((st) => '<option value="' + esc(st.id) + '"' + (c.stage === st.id ? ' selected' : '') + '>' + esc(st.label) + '</option>').join('') +
@@ -7329,7 +7500,6 @@
               '<option value="' + esc(m.id) + '"' + (((s.mentorId || 'u-anton') === m.id) ? ' selected' : '') + '>' + esc(m.name) + '</option>'
             ).join('') +
           '</select></dd></div>' +
-          personBatchField(id) +
           '<div class="fub-field"><dt>Tags</dt>' + personTagsHtml(id) + '</div>' +
           '<div class="fub-field"><dt>Sumber</dt><dd>' + esc((app && app.heard) || b.source || '—') +
             (app ? '<div class="muted">' + (app.hasShop ? 'Sudah punya toko' : 'Belum punya toko') + '</div>' : '') +
@@ -7350,7 +7520,7 @@
     } else if (mode === 'email') {
       composerBody = s.email
         ? '<p class="muted">Buka email di aplikasi kamu, lalu catat ringkasannya di bawah jika perlu.</p>' +
-          '<a class="btn" href="' + esc(mailLink(s.email, 'MasterMind with Anton GC', 'Halo ' + s.name)) + '">Buka Email</a>' +
+          '<a class="btn" href="' + esc(mailLink(s.email, 'MasterMind with Anton GC', 'Halo ' + fullName)) + '">Buka Email</a>' +
           '<form class="compose" data-act="note" data-id="' + esc(id) + '" style="margin-top:10px">' +
             '<textarea name="body" required rows="3" placeholder="Catatan setelah email…"></textarea>' +
             '<button class="btn" type="submit">Simpan catatan</button></form>'
@@ -7367,6 +7537,52 @@
         '<button class="btn" type="submit">Simpan catatan</button></form>';
     }
 
+    let midBody = '';
+    if (midTab === 'contrib') {
+      midBody = contribs.length
+        ? '<div class="fub-feed">' + contribs.map((n) =>
+            '<article class="fub-item">' +
+              '<span class="fub-tl-ico ' + (n.kind === 'post' ? 'is-event' : 'is-note') + '" aria-hidden="true">' +
+                (n.kind === 'post' ? 'P' : 'K') + '</span>' +
+              '<div>' +
+                '<div class="fub-item-head"><strong>' + (n.kind === 'post' ? 'Postingan' : 'Komentar') +
+                  (n.batchId ? ' · ' + esc(batchLabel(n.batchId)) : '') + '</strong>' +
+                  '<span class="muted">' + esc(relWhen(n.at)) + '</span></div>' +
+                '<div class="fub-item-body">' + esc(n.body) + '</div>' +
+              '</div></article>'
+          ).join('') + '</div>'
+        : '<p class="muted">Belum ada postingan atau komentar di Diskusi.</p>';
+    } else if (midTab === 'pay') {
+      midBody = pays.length
+        ? '<div class="fub-feed fub-pay-feed">' + pays.map((p) =>
+            '<article class="fub-item">' +
+              '<span class="fub-tl-ico is-task" aria-hidden="true">Rp</span>' +
+              '<div>' +
+                '<div class="fub-item-head"><strong>' + esc(payKindLabel(p.kind)) +
+                  ' · ' + esc(fmtRp(p.amount || 0)) + '</strong>' +
+                  '<span class="muted">' + esc(relWhen(p.at)) + '</span></div>' +
+                '<div class="fub-item-body">' +
+                  esc([p.source, p.term ? termLabel(p.term) : '', Array.isArray(p.products) && p.products.length ? p.products.join(', ') : '']
+                    .filter(Boolean).join(' · ') || '—') +
+                '</div>' +
+              '</div></article>'
+          ).join('') + '</div>'
+        : '<p class="muted">Belum ada aktivitas pembayaran.</p>';
+    } else {
+      midBody = feed.length
+        ? '<div class="fub-feed">' + feed.map((n) => {
+            const meta = feedKindMeta(n.kind);
+            return '<article class="fub-item">' +
+              '<span class="fub-tl-ico ' + meta.cls + '" aria-hidden="true">' + esc(meta.label.charAt(0)) + '</span>' +
+              '<div>' +
+                '<div class="fub-item-head"><strong>' + esc(n.who) + ' · ' + esc(meta.label) + '</strong>' +
+                  '<span class="muted">' + esc(relWhen(n.at)) + '</span></div>' +
+                '<div class="fub-item-body">' + esc(n.body) + '</div>' +
+              '</div></article>';
+          }).join('') + '</div>'
+        : '<p class="muted">Belum ada catatan atau event.</p>';
+    }
+
     const center =
       '<main class="fub-center">' +
         '<div class="fub-composer">' +
@@ -7380,19 +7596,14 @@
           '</div>' +
           composerBody +
         '</div>' +
-        '<div class="fub-tl-label">Linimasa</div>' +
-        (feed.length
-          ? '<div class="fub-feed">' + feed.map((n) => {
-              const meta = feedKindMeta(n.kind);
-              return '<article class="fub-item">' +
-                '<span class="fub-tl-ico ' + meta.cls + '" aria-hidden="true">' + esc(meta.label.charAt(0)) + '</span>' +
-                '<div>' +
-                  '<div class="fub-item-head"><strong>' + esc(n.who) + ' · ' + esc(meta.label) + '</strong>' +
-                    '<span class="muted">' + esc(relWhen(n.at)) + '</span></div>' +
-                  '<div class="fub-item-body">' + esc(n.body) + '</div>' +
-                '</div></article>';
-            }).join('') + '</div>'
-          : '<p class="muted">Belum ada catatan atau event.</p>') +
+        '<div class="fub-mid-tabs" role="tablist">' +
+          '<button type="button" class="btn-sm' + (midTab === 'timeline' ? ' is-on' : '') + '" data-act="person-mid" data-id="timeline">Linimasa</button>' +
+          '<button type="button" class="btn-sm' + (midTab === 'contrib' ? ' is-on' : '') + '" data-act="person-mid" data-id="contrib">Kontribusi' +
+            (contribs.length ? ' · ' + contribs.length : '') + '</button>' +
+          '<button type="button" class="btn-sm' + (midTab === 'pay' ? ' is-on' : '') + '" data-act="person-mid" data-id="pay">Pembayaran' +
+            (pays.length ? ' · ' + pays.length : '') + '</button>' +
+        '</div>' +
+        midBody +
       '</main>';
 
     const right =
@@ -7441,7 +7652,7 @@
     return '<div class="fub-page">' +
       '<div class="fub-page-bar">' +
         '<button class="btn secondary" data-act="close-person">← Orang</button>' +
-        '<strong>' + esc(s.name) + '</strong>' +
+        '<strong>' + esc(fullName) + '</strong>' +
         payChip(b.status, b.source) +
         confirmPaidBtn(id) +
         '<span class="chip">' + esc(stageLabel(c.stage)) + '</span>' +
@@ -8405,9 +8616,20 @@
       let val = t.value;
       if (k === 'wa') val = String(val).replace(/\D/g, '');
       if (k === 'tiktok') val = tiktokHandle(val);
-      if (k === 'email') val = String(val).trim();
+      if (k === 'email' || k === 'firstName' || k === 'lastName' || k === 'name') val = String(val).trim();
       const fields = {};
       fields[k] = val;
+      if (k === 'firstName' || k === 'lastName') {
+        const cur = people().find((x) => x.id === id) || {};
+        const parts = personNameParts(Object.assign({}, cur, fields));
+        fields.firstName = parts.firstName;
+        fields.lastName = parts.lastName;
+        fields.name = joinPersonName(parts.firstName, parts.lastName);
+      } else if (k === 'name') {
+        const parts = splitPersonName(val);
+        fields.firstName = parts.firstName;
+        fields.lastName = parts.lastName;
+      }
       patchPerson(id, fields);
       save();
       if (k === 'wa' || k === 'email') render();
@@ -9003,17 +9225,22 @@
         const el = document.querySelector('[data-lec-drop="' + id + '"]');
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
+    } else if (act === 'person-mid') {
+      const tab = btn.getAttribute('data-id');
+      ui.personMidTab = tab === 'contrib' || tab === 'pay' ? tab : 'timeline';
+      render();
     } else if (act === 'compose-mode') {
       ui.composeMode = btn.getAttribute('data-id') || 'note';
       ui.taskComposer = ui.composeMode === 'task' ? (ui.personId || '') : '';
       const person = people().find((s) => s.id === ui.personId);
+      const greet = displayNameOf(person) || (person && person.name) || '';
       if (ui.composeMode === 'wa' && person && person.wa) {
-        openApp(waLink(person.wa, ui.waDraft || ('Halo ' + person.name + ', dari MasterMind with Anton GC.')));
+        openApp(waLink(person.wa, ui.waDraft || ('Halo ' + greet + ', dari MasterMind with Anton GC.')));
         markWaRead(ui.personId);
         pullWaThread(ui.personId, { silentTimeline: true, noPaint: true });
       }
       if (ui.composeMode === 'email' && person && person.email) {
-        openApp(mailLink(person.email, 'MasterMind with Anton GC', 'Halo ' + person.name));
+        openApp(mailLink(person.email, 'MasterMind with Anton GC', 'Halo ' + greet));
       }
       render();
       if (ui.composeMode === 'wa') requestAnimationFrame(scrollWaThread);
@@ -10274,7 +10501,31 @@
     applyTheme(currentTheme() === 'light' ? 'dark' : 'light', true);
   });
 
+  function setBrandMenu(open) {
+    const btn = $('brand-btn');
+    const menu = $('brand-menu');
+    if (!btn || !menu) return;
+    const show = !!open && !btn.disabled;
+    menu.hidden = !show;
+    btn.setAttribute('aria-expanded', String(show));
+  }
+  $('brand-btn').addEventListener('click', () => {
+    setBrandMenu($('brand-menu').hidden);
+  });
+  document.addEventListener('click', (e) => {
+    const menu = $('brand-menu');
+    if (!menu || menu.hidden) return;
+    if (e.target.closest && e.target.closest('#brand-menu, #brand-btn')) return;
+    setBrandMenu(false);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const menu = $('brand-menu');
+    if (menu && !menu.hidden) setBrandMenu(false);
+  });
+
   $('btn-reset').addEventListener('click', () => {
+    setBrandMenu(false);
     if (ui.present) return;
     if (syncEnabled() && !ui.admin) return;
     if (!confirm(syncEnabled()
@@ -10305,6 +10556,7 @@
   });
   const adminOut = $('btn-admin-out');
   if (adminOut) adminOut.addEventListener('click', () => {
+    setBrandMenu(false);
     if (!confirm('Keluar dari admin di browser ini? Tab ini jadi pengunjung.')) return;
     try { sessionStorage.removeItem('anton-admin'); } catch (err) { /* private mode */ }
     fetch(apiBase() + '/admin/logout', { method: 'POST', cache: 'no-store' }).finally(() => {
