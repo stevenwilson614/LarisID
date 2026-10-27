@@ -2134,12 +2134,27 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
 }
 .notif-empty { margin: 12px; font-size: .8rem; color: var(--ink-soft); }
 .ext-install-hint {
-  display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  margin: 0 16px 8px; padding: 8px 12px; border-radius: 12px;
-  background-color: #FFF7ED; border: 1px solid #F5D0A9; font-size: .8rem;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  flex-shrink: 0; width: 100%; box-sizing: border-box;
+  padding: 8px 36px 8px 16px; position: relative;
+  background: var(--accent, #B5202A); color: #fff;
+  font-size: .8125rem; font-weight: 550; line-height: 1.35;
 }
 .ext-install-hint[hidden] { display: none !important; }
-.ext-install-hint a { font-weight: 800; color: var(--accent, #B5202A); }
+.ext-install-hint-msg { margin: 0; text-align: center; }
+.ext-install-hint-cta {
+  flex-shrink: 0; font-weight: 800; color: #fff;
+  text-decoration: underline; text-underline-offset: 2px; white-space: nowrap;
+}
+.ext-install-hint-cta:hover { opacity: .9; }
+.ext-install-hint-x {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  width: 28px; height: 28px; border: 0; border-radius: 6px;
+  background: transparent; color: #fff; cursor: pointer;
+  font-size: 1.25rem; line-height: 1; font-weight: 500;
+  display: grid; place-items: center; opacity: .85;
+}
+.ext-install-hint-x:hover { opacity: 1; background: rgba(255,255,255,.15); }
 .sup-self { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
 .sup-self-h { margin: 0; font-size: .9rem; }
 .sup-self input, .sup-self select {
@@ -10423,6 +10438,11 @@ body.view-chat .sfb-card {
       <span id="sample-strip-text">Mode sample</span>
       <button type="button" id="sample-strip-exit">Keluar sample</button>
     </div>
+    <div class="ext-install-hint" id="ext-install-hint" hidden role="region" aria-label="Pasang ekstensi">
+      <p class="ext-install-hint-msg">Pasang ekstensi Chrome supaya omset LarisID tampil di halaman Shopee.</p>
+      <a class="ext-install-hint-cta" id="ext-hint-install" hidden target="_blank" rel="noopener">Pasang ekstensi</a>
+      <button type="button" class="ext-install-hint-x" id="ext-hint-skip" aria-label="Tutup">×</button>
+    </div>
     <header class="main-top">
       <div class="main-top-left">
         <button type="button" class="menu-btn" id="btn-menu" aria-label="Menu">
@@ -10498,13 +10518,6 @@ body.view-chat .sfb-card {
         </div>
       </div>
     </header>
-    <div class="ext-install-hint" id="ext-install-hint" hidden>
-      <span>Pasang ekstensi Chrome supaya omset LarisID tampil di halaman Shopee.</span>
-      <span>
-        <a id="ext-hint-install" hidden target="_blank" rel="noopener">Pasang</a>
-        · <button type="button" class="btn-ghost" id="ext-hint-skip">Nanti</button>
-      </span>
-    </div>
 
     <!-- Sticky Produk search strip — sits between header and body panel.
          Kategori mega-menu + autocomplete search (Tokopedia-inspired layout). -->

@@ -30266,7 +30266,31 @@ function wireCwsExtLinks() {
   wireCwsExtClickTracking();
 }
 
-function maybeShowExtHint() {
+/** Best-effort: true only when the Chrome extension answers a ping. */
+function probeCwsExtInstalled() {
+  return new Promise((resolve) => {
+    try {
+      const id = (typeof CWS_EXT_URL === 'string' && CWS_EXT_URL.match(/\/detail\/([a-z]{32})/i) || [])[1];
+      if (!id || !window.chrome?.runtime?.sendMessage) { resolve(false); return; }
+      let settled = false;
+      const done = (v) => { if (settled) return; settled = true; resolve(!!v); };
+      const t = setTimeout(() => done(false), 400);
+      chrome.runtime.sendMessage(id, { type: 'larisid_ping' }, (res) => {
+        clearTimeout(t);
+        if (chrome.runtime.lastError) { done(false); return; }
+        done(!!res);
+      });
+    } catch (_) { resolve(false); }
+  });
+}
+
+function dismissExtHint() {
+  try { localStorage.setItem('lid_ext_hint_v1', '1'); } catch (_) {}
+  const el = $('ext-install-hint');
+  if (el) el.hidden = true;
+}
+
+async function maybeShowExtHint() {
   if (!cwsExtOfferable()) return;
   try {
     if (localStorage.getItem('lid_ext_hint_v1')) return;
@@ -30274,10 +30298,12 @@ function maybeShowExtHint() {
   const el = $('ext-install-hint');
   if (!el) return;
   el.hidden = false;
+  if (await probeCwsExtInstalled()) el.hidden = true;
 }
 
 function initRetentionSurfaces() {
   wireCwsExtLinks();
+  void maybeShowExtHint();
   try {
     window.LarisDirWorkbench?.init({
       esc,
@@ -30328,11 +30354,7 @@ function initRetentionSurfaces() {
   } catch (_) {}
   document.addEventListener('click', (e) => {
     if (e.target?.closest?.('[data-lrow-stop]')) e.stopPropagation();
-    if (e.target?.closest?.('#ext-hint-skip')) {
-      try { localStorage.setItem('lid_ext_hint_v1', '1'); } catch (_) {}
-      const el = $('ext-install-hint');
-      if (el) el.hidden = true;
-    }
+    if (e.target?.closest?.('#ext-hint-skip')) dismissExtHint();
   }, true);
 }
 
