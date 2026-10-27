@@ -13,7 +13,35 @@ window.ANTON_SEED = {
     photo: './assets/obrolan/profile.png',
     logo: './assets/obrolan/logo-mark.png',
     lockup: './assets/obrolan/logo-lockup.png',
-    storefront: './assets/obrolan/storefront-phone.png'
+    storefront: './assets/obrolan/storefront-phone.png',
+    // Mentor public profile (hover avatar → Profile)
+    profile: {
+      firstName: 'Anton',
+      lastName: 'GC',
+      headline: 'Jualan TikTok Shop yang tahan lama',
+      biography: 'Kelas live TikTok Shop dari Anton. Harga, ads, dan jualan yang tahan lama — bukan tips sekali pakai. Mentoring praktis untuk seller yang mau etalase, margin, dan kolab kreator yang masuk akal.',
+      photoMode: 'upload',
+      socialSource: 'tiktok',
+      socials: {
+        website: 'https://lynk.id/obrolan.marketing',
+        facebook: '',
+        instagram: '',
+        linkedin: '',
+        tiktok: 'bule_barat',
+        x: '',
+        youtube: ''
+      }
+    },
+    account: {
+      email: 'anton@obrolan.marketing',
+      twoFactor: false,
+      notifications: {
+        studentJoin: true,
+        studentPay: true,
+        lessonComplete: false,
+        comment: true
+      }
+    }
   },
   staff: [
     { id: 'u-anton', name: 'Anton', role: 'owner', wa: '628111000001', photo: './assets/obrolan/profile.png' },

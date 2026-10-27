@@ -39,6 +39,95 @@
   function schoolSlug() {
     return normalizeSlug((typeof db !== 'undefined' && db && db.schoolSlug) || SEED.school.slug);
   }
+  function defaultSchoolProfile() {
+    const seed = (SEED.school && SEED.school.profile) || {};
+    const staff = (SEED.staff && SEED.staff[0]) || {};
+    const nameParts = String(staff.name || 'Anton').trim().split(/\s+/);
+    return {
+      firstName: String(seed.firstName || nameParts[0] || 'Anton'),
+      lastName: String(seed.lastName || nameParts.slice(1).join(' ') || ''),
+      headline: String(seed.headline || seed.header || SEED.school.slogan || '').slice(0, 60),
+      biography: String(seed.biography || seed.description || ''),
+      photoMode: seed.photoMode === 'social' ? 'social' : 'upload',
+      socialSource: seed.socialSource || 'tiktok',
+      photoBlob: false,
+      socials: Object.assign({
+        website: '',
+        facebook: '',
+        instagram: '',
+        linkedin: '',
+        tiktok: '',
+        x: '',
+        youtube: ''
+      }, seed.socials || {})
+    };
+  }
+  function schoolProfile() {
+    const base = defaultSchoolProfile();
+    const cur = (typeof db !== 'undefined' && db && db.schoolProfile) ? db.schoolProfile : {};
+    const headline = cur.headline != null ? cur.headline : (cur.header != null ? cur.header : base.headline);
+    const biography = cur.biography != null ? cur.biography : (cur.description != null ? cur.description : base.biography);
+    return {
+      firstName: cur.firstName != null ? String(cur.firstName) : base.firstName,
+      lastName: cur.lastName != null ? String(cur.lastName) : base.lastName,
+      headline: String(headline || '').slice(0, 60),
+      biography: String(biography || ''),
+      photoMode: cur.photoMode === 'social' ? 'social' : 'upload',
+      socialSource: cur.socialSource || base.socialSource,
+      photoBlob: !!cur.photoBlob,
+      socials: Object.assign({}, base.socials, cur.socials || {})
+    };
+  }
+  function schoolDisplayName(p) {
+    const prof = p || schoolProfile();
+    const full = (String(prof.firstName || '').trim() + ' ' + String(prof.lastName || '').trim()).trim();
+    return full || SEED.school.name;
+  }
+  function defaultAccountSettings() {
+    const seed = (SEED.school && SEED.school.account) || {};
+    return {
+      email: String(seed.email || 'anton@obrolan.marketing'),
+      twoFactor: !!seed.twoFactor,
+      passwordSet: true,
+      notifications: Object.assign({
+        studentJoin: true,
+        studentPay: true,
+        lessonComplete: false,
+        comment: true
+      }, seed.notifications || {})
+    };
+  }
+  function accountSettings() {
+    const base = defaultAccountSettings();
+    const cur = (typeof db !== 'undefined' && db && db.accountSettings) ? db.accountSettings : {};
+    return {
+      email: cur.email != null ? String(cur.email) : base.email,
+      twoFactor: cur.twoFactor != null ? !!cur.twoFactor : base.twoFactor,
+      passwordSet: cur.passwordSet != null ? !!cur.passwordSet : base.passwordSet,
+      notifications: Object.assign({}, base.notifications, cur.notifications || {})
+    };
+  }
+  function ensureAccountSettings() {
+    if (!db.accountSettings || typeof db.accountSettings !== 'object') {
+      db.accountSettings = defaultAccountSettings();
+    } else {
+      db.accountSettings = Object.assign(defaultAccountSettings(), db.accountSettings, {
+        notifications: Object.assign(defaultAccountSettings().notifications, (db.accountSettings.notifications || {}))
+      });
+    }
+    return db.accountSettings;
+  }
+  function schoolPhotoKey() { return 'photo-school'; }
+  function ensureSchoolProfile() {
+    if (!db.schoolProfile || typeof db.schoolProfile !== 'object') {
+      db.schoolProfile = defaultSchoolProfile();
+    } else {
+      db.schoolProfile = Object.assign(defaultSchoolProfile(), db.schoolProfile, {
+        socials: Object.assign(defaultSchoolProfile().socials, (db.schoolProfile.socials || {}))
+      });
+    }
+    return db.schoolProfile;
+  }
   function schoolInviteCode() {
     const fromDb = (typeof db !== 'undefined' && db && db.inviteCode) ? db.inviteCode : '';
     return String(fromDb || (SEED.cohort && SEED.cohort.invite) || '').trim();
@@ -385,6 +474,12 @@
   function hydrateFunnel(merged) {
     merged.schoolSlug = isValidSlug(merged.schoolSlug) ? normalizeSlug(merged.schoolSlug) : SEED.school.slug;
     merged.inviteCode = String(merged.inviteCode || (SEED.cohort && SEED.cohort.invite) || '').trim() || SEED.cohort.invite;
+    merged.schoolProfile = Object.assign(defaultSchoolProfile(), merged.schoolProfile || {}, {
+      socials: Object.assign(defaultSchoolProfile().socials, ((merged.schoolProfile || {}).socials || {}))
+    });
+    merged.accountSettings = Object.assign(defaultAccountSettings(), merged.accountSettings || {}, {
+      notifications: Object.assign(defaultAccountSettings().notifications, ((merged.accountSettings || {}).notifications || {}))
+    });
     merged.pricing = Object.assign({}, SEED.pricing, merged.pricing || {});
     merged.bank = Object.assign({}, SEED.bank, merged.bank || {});
     merged.dunning = Object.assign({}, SEED.dunning, merged.dunning || {});
@@ -499,6 +594,8 @@
       people: {},
       schoolSlug: SEED.school.slug,
       inviteCode: SEED.cohort.invite,
+      schoolProfile: defaultSchoolProfile(),
+      accountSettings: defaultAccountSettings(),
       pricing: JSON.parse(JSON.stringify(SEED.pricing)),
       bank: JSON.parse(JSON.stringify(SEED.bank)),
       dunning: JSON.parse(JSON.stringify(SEED.dunning)),
@@ -611,7 +708,11 @@
     presentPane: PRESENT_PANE,
     presentApplying: false,
     presentReady: false,
-    mayar: null
+    mayar: null,
+    profilePreview: null,
+    profilePane: 'info',
+    accountPane: 'security',
+    brandMenuOpen: false
   };
   if (PRESENT) document.documentElement.classList.add('present-pane');
 
@@ -2631,6 +2732,352 @@
       return fetch(unav).then((r) => r.ok ? r.blob() : null).catch(() => null);
     });
   }
+  function socialHandleClean(raw) {
+    return String(raw || '').trim().replace(/^@/, '').replace(/\/+$/, '');
+  }
+  function socialHref(network, raw) {
+    const v = String(raw || '').trim();
+    if (!v) return '';
+    if (/^https?:\/\//i.test(v)) return v;
+    const h = socialHandleClean(v).replace(/^@/, '');
+    if (!h) return '';
+    if (network === 'tiktok') return 'https://www.tiktok.com/@' + h.replace(/^@/, '');
+    if (network === 'instagram') return 'https://www.instagram.com/' + h;
+    if (network === 'facebook') return 'https://www.facebook.com/' + h;
+    if (network === 'linkedin') return 'https://www.linkedin.com/' + h.replace(/^(in\/)?/i, 'in/').replace(/^in\/in\//i, 'in/');
+    if (network === 'youtube') {
+      if (/^(UC|@)/.test(h) || /channel\//i.test(h)) return 'https://www.youtube.com/' + (h.indexOf('@') === 0 || h.indexOf('UC') === 0 ? h : ('@' + h));
+      return 'https://www.youtube.com/@' + h;
+    }
+    if (network === 'x') return 'https://x.com/' + h;
+    if (network === 'website') return 'https://' + h.replace(/^https?:\/\//i, '');
+    return v;
+  }
+  function socialPrefixedInput(label, name, prefix, value, placeholder) {
+    return '<label class="ps-field">' +
+      '<span class="ps-label">' + esc(label) + '</span>' +
+      '<div class="ps-prefixed">' +
+        '<span class="ps-prefix">' + esc(prefix) + '</span>' +
+        '<input name="' + esc(name) + '" value="' + esc(value || '') + '" placeholder="' + esc(placeholder || '') + '" autocomplete="off" spellcheck="false">' +
+      '</div></label>';
+  }
+  function fetchSocialAvatar(network, handle) {
+    if (network === 'tiktok') return fetchTikTokAvatar(handle);
+    const h = socialHandleClean(handle);
+    if (!h) return Promise.resolve(null);
+    const net = network === 'x' ? 'twitter' : network;
+    const unav = 'https://unavatar.io/' + encodeURIComponent(net) + '/' + encodeURIComponent(h);
+    return fetch(unav).then((r) => r.ok ? r.blob() : null).catch(() => null);
+  }
+  function refreshSchoolPhotoFromSocial(force) {
+    ensureSchoolProfile();
+    const p = schoolProfile();
+    const src = p.socialSource || 'tiktok';
+    const handle = (p.socials && p.socials[src]) || '';
+    if (!handle) return Promise.resolve(false);
+    if (p.photoBlob && p.photoMode === 'social' && !force) return Promise.resolve(true);
+    return fetchSocialAvatar(src, handle).then((blob) => {
+      if (!blob) return false;
+      return blobPut(schoolPhotoKey(), blob).then(() => {
+        db.schoolProfile.photoBlob = true;
+        db.schoolProfile.photoMode = 'social';
+        save();
+        return true;
+      });
+    }).catch(() => false);
+  }
+  function schoolAvatarHtml(cls) {
+    const p = schoolProfile();
+    const c = cls || 'school-avatar';
+    if (p.photoBlob) return '<img class="' + c + '" data-blob="' + esc(schoolPhotoKey()) + '" alt="">';
+    return '<img class="' + c + '" src="' + esc(SEED.school.photo || SEED.school.logo) + '" alt="">';
+  }
+  function schoolSocialLinksHtml() {
+    const s = schoolProfile().socials || {};
+    const items = [
+      { k: 'website', label: 'Website' },
+      { k: 'facebook', label: 'Facebook' },
+      { k: 'instagram', label: 'Instagram' },
+      { k: 'linkedin', label: 'LinkedIn' },
+      { k: 'tiktok', label: 'TikTok' },
+      { k: 'x', label: 'X' },
+      { k: 'youtube', label: 'YouTube' }
+    ];
+    const links = items.map((it) => {
+      const href = socialHref(it.k, s[it.k]);
+      if (!href) return '';
+      const raw = String(s[it.k] || '');
+      const text = it.k === 'website'
+        ? (raw.replace(/^https?:\/\//i, '') || it.label)
+        : (raw.indexOf('@') === 0 ? raw : ('@' + socialHandleClean(raw)));
+      return '<a class="prof-social" href="' + esc(href) + '" target="_blank" rel="noopener">' +
+        '<span class="prof-social-net">' + esc(it.label) + '</span>' +
+        '<span>' + esc(text) + '</span></a>';
+    }).filter(Boolean).join('');
+    return links ? '<div class="prof-socials">' + links + '</div>' : '';
+  }
+  function viewSchoolPublic(opts) {
+    const o = opts || {};
+    const p = schoolProfile();
+    const back = o.student
+      ? '<button type="button" class="btn secondary" data-act="tab" data-id="home">← Back</button>'
+      : '';
+    return '<section class="card school-public">' +
+      '<div class="school-public-head">' +
+        schoolAvatarHtml('school-avatar lg') +
+        '<div>' +
+          '<p class="muted" style="margin:0 0 4px">Mentor</p>' +
+          '<h1 class="school-public-name">' + esc(schoolDisplayName(p)) + '</h1>' +
+          ((p.headline || '').trim()
+            ? '<p class="school-public-header">' + esc(String(p.headline).trim()) + '</p>'
+            : '') +
+          '<p class="muted">' + esc(SEED.school.name) + ' · larisid.com/s/' + esc(schoolSlug()) + '</p>' +
+        '</div>' +
+      '</div>' +
+      (p.biography
+        ? '<div class="school-public-desc">' + mdish(p.biography) + '</div>'
+        : '<p class="muted">No biography yet.</p>') +
+      schoolSocialLinksHtml() +
+      (back ? '<div class="row" style="margin-top:14px">' + back + '</div>' : '') +
+    '</section>';
+  }
+  function profileActionsBar(opts) {
+    const o = opts || {};
+    const mode = ui.profilePreview === 'desktop' ? 'desktop' : (ui.profilePreview === 'phone' ? 'phone' : '');
+    const saveBtn = o.photo
+      ? '<button class="btn ps-save" type="button" data-act="profile-pane" data-id="info">Done</button>'
+      : '<button class="btn ps-save" type="submit" form="school-profile-form">Save</button>';
+    return '<div class="ps-actions">' +
+      saveBtn +
+      '<div class="ps-student-view">' +
+        '<span class="muted">Student view</span>' +
+        '<div class="prof-preview-toggle" role="group" aria-label="Student view">' +
+          '<button type="button" class="btn-sm' + (mode === 'phone' ? ' is-on' : '') +
+            '" data-act="profile-preview" data-mode="phone">Phone</button>' +
+          '<button type="button" class="btn-sm' + (mode === 'desktop' ? ' is-on' : '') +
+            '" data-act="profile-preview" data-mode="desktop">Desktop</button>' +
+        '</div>' +
+      '</div>' +
+      '<button type="button" class="btn-sm" data-act="tab" data-id="siswa">Close</button>' +
+    '</div>';
+  }
+  function viewProfilInfoForm(p) {
+    const s = p.socials || {};
+    const hlLeft = Math.max(0, 60 - String(p.headline || '').length);
+    return '<form class="ps-form" id="school-profile-form" data-act="save-school-profile">' +
+      '<div class="ps-columns">' +
+        '<div class="ps-col">' +
+          '<label class="ps-field"><span class="ps-label">First Name</span>' +
+            '<input name="firstName" required maxlength="40" value="' + esc(p.firstName || '') + '" autocomplete="given-name"></label>' +
+          '<label class="ps-field"><span class="ps-label">Last Name</span>' +
+            '<input name="lastName" maxlength="40" value="' + esc(p.lastName || '') + '" autocomplete="family-name"></label>' +
+          '<label class="ps-field"><span class="ps-label">Headline</span>' +
+            '<div class="ps-headline">' +
+              '<input name="headline" maxlength="60" value="' + esc(p.headline || '') +
+                '" placeholder="Instructor at MasterMind" data-act="headline-count">' +
+              '<span class="ps-count" id="headline-count">' + hlLeft + '</span>' +
+            '</div></label>' +
+          '<label class="ps-field"><span class="ps-label">Biography</span>' +
+            '<div class="ps-bio">' +
+              '<div class="ps-bio-tools" role="toolbar" aria-label="Biography formatting">' +
+                '<button type="button" class="ps-tool" data-act="bio-wrap" data-wrap="**" title="Bold"><strong>B</strong></button>' +
+                '<button type="button" class="ps-tool" data-act="bio-wrap" data-wrap="*" title="Italic"><em>I</em></button>' +
+              '</div>' +
+              '<textarea name="biography" id="profile-biography" rows="8" maxlength="2000" placeholder="Tell students who you are…">' +
+                esc(p.biography || '') + '</textarea>' +
+            '</div>' +
+            '<span class="ps-hint">Help learners know you — credibility, empathy, passion, and personality. Aim for at least 50 words. Links and coupon codes are not permitted.</span>' +
+          '</label>' +
+        '</div>' +
+        '<div class="ps-col">' +
+          '<label class="ps-field"><span class="ps-label">Website</span>' +
+            '<input name="website" value="' + esc(s.website || '') + '" placeholder="Website (http(s)://…)" autocomplete="url"></label>' +
+          socialPrefixedInput('Facebook', 'facebook', 'facebook.com/', s.facebook, 'Username') +
+          socialPrefixedInput('Instagram', 'instagram', 'instagram.com/', s.instagram, 'Username') +
+          socialPrefixedInput('LinkedIn', 'linkedin', 'linkedin.com/', s.linkedin, 'Public Profile URL') +
+          socialPrefixedInput('TikTok', 'tiktok', 'tiktok.com/', s.tiktok, '@Username') +
+          socialPrefixedInput('X', 'x', 'x.com/', s.x, 'Username') +
+          socialPrefixedInput('YouTube', 'youtube', 'youtube.com/', s.youtube, 'Username') +
+        '</div>' +
+      '</div>' +
+      profileActionsBar() +
+    '</form>';
+  }
+  function viewProfilPhotoPane(p) {
+    const syncNet = p.socialSource === 'instagram' ? 'Instagram'
+      : (p.socialSource === 'youtube' ? 'YouTube' : 'TikTok');
+    return '<div class="ps-photo-pane">' +
+      '<div class="ps-photo-card">' +
+        schoolAvatarHtml('school-avatar xxl') +
+        '<div class="ps-photo-actions">' +
+          '<label class="btn secondary">Upload image<input type="file" hidden data-act="school-photo-file" accept="image/*"></label>' +
+          '<div class="ps-sync-row">' +
+            '<button type="button" class="btn" data-act="profile-sync-photo">Sync with ' + esc(syncNet) + '</button>' +
+            '<select class="ps-sync-select" data-act="profile-social-source" aria-label="Social for photo sync">' +
+              '<option value="tiktok"' + (p.socialSource === 'tiktok' || !p.socialSource ? ' selected' : '') + '>TikTok</option>' +
+              '<option value="instagram"' + (p.socialSource === 'instagram' ? ' selected' : '') + '>Instagram</option>' +
+              '<option value="youtube"' + (p.socialSource === 'youtube' ? ' selected' : '') + '>YouTube</option>' +
+            '</select>' +
+          '</div>' +
+          '<p class="muted ps-hint">Uses the handle saved on the Profile tab. Sync may fail if the network blocks avatar fetch.</p>' +
+        '</div>' +
+      '</div>' +
+      profileActionsBar({ photo: true }) +
+    '</div>';
+  }
+  function viewProfilEdit() {
+    ensureSchoolProfile();
+    const p = schoolProfile();
+    const pane = ui.profilePane === 'photo' ? 'photo' : 'info';
+    ui.profilePane = pane;
+    return '<section class="ps-page">' +
+      '<div class="ps-page-head">' +
+        '<h1>Profile &amp; settings</h1>' +
+      '</div>' +
+      '<nav class="ps-tabs" role="tablist">' +
+        '<button type="button" role="tab" data-act="profile-pane" data-id="info" aria-selected="' +
+          (pane === 'info') + '">Profile</button>' +
+        '<button type="button" role="tab" data-act="profile-pane" data-id="photo" aria-selected="' +
+          (pane === 'photo') + '">Profile picture</button>' +
+      '</nav>' +
+      '<div class="ps-body">' +
+        (pane === 'photo' ? viewProfilPhotoPane(p) : viewProfilInfoForm(p)) +
+      '</div>' +
+    '</section>';
+  }
+  function viewAccountSecurity(a) {
+    return '<form class="ps-form as-form" id="account-security-form" data-act="save-account-security">' +
+      '<div class="as-section">' +
+        '<h2>Email</h2>' +
+        '<p class="muted">Login email for this school. Prototype stores it locally only.</p>' +
+        '<label class="ps-field"><span class="ps-label">Email address</span>' +
+          '<input name="email" type="email" required value="' + esc(a.email || '') + '" autocomplete="email"></label>' +
+      '</div>' +
+      '<div class="as-section">' +
+        '<h2>Password</h2>' +
+        '<p class="muted">' + (a.passwordSet ? 'Password is set. Enter current + new to change.' : 'No password yet — set one below.') + '</p>' +
+        '<label class="ps-field"><span class="ps-label">Current password</span>' +
+          '<input name="currentPassword" type="password" autocomplete="current-password" placeholder="••••••••"></label>' +
+        '<label class="ps-field"><span class="ps-label">New password</span>' +
+          '<input name="newPassword" type="password" autocomplete="new-password" minlength="8" placeholder="Min. 8 characters"></label>' +
+        '<label class="ps-field"><span class="ps-label">Confirm new password</span>' +
+          '<input name="confirmPassword" type="password" autocomplete="new-password" placeholder="Repeat new password"></label>' +
+      '</div>' +
+      '<div class="as-section">' +
+        '<h2>Two-factor authentication</h2>' +
+        '<p class="muted">Mock toggle for the prototype — no real authenticator app yet.</p>' +
+        '<label class="as-toggle">' +
+          '<input type="checkbox" name="twoFactor"' + (a.twoFactor ? ' checked' : '') + '>' +
+          '<span>Require a second step when signing in</span>' +
+        '</label>' +
+      '</div>' +
+      '<div class="ps-actions">' +
+        '<button class="btn ps-save" type="submit">Save</button>' +
+        '<button type="button" class="btn-sm" data-act="tab" data-id="siswa">Close</button>' +
+      '</div>' +
+    '</form>';
+  }
+  function viewAccountNotifications(a) {
+    const n = a.notifications || {};
+    const rows = [
+      { k: 'studentJoin', label: 'Students join', hint: 'Someone completes the join form or accepts an invite.' },
+      { k: 'studentPay', label: 'Students pay', hint: 'Transfer marked paid, Mayar webhook, or autopay renews.' },
+      { k: 'lessonComplete', label: 'Students complete a lesson', hint: 'They mark a video or materi selesai.' },
+      { k: 'comment', label: 'Students make a comment', hint: 'New diskusi post or reply in class.' }
+    ];
+    return '<form class="ps-form as-form" id="account-notify-form" data-act="save-account-notifications">' +
+      '<div class="as-section">' +
+        '<h2>Email notifications</h2>' +
+        '<p class="muted">Choose what lands in your inbox. Prototype only — nothing is sent yet.</p>' +
+        '<div class="as-notify-list">' +
+          rows.map((r) =>
+            '<label class="as-notify-row">' +
+              '<input type="checkbox" name="' + esc(r.k) + '"' + (n[r.k] ? ' checked' : '') + '>' +
+              '<span><strong>' + esc(r.label) + '</strong><em class="muted">' + esc(r.hint) + '</em></span>' +
+            '</label>'
+          ).join('') +
+        '</div>' +
+      '</div>' +
+      '<div class="ps-actions">' +
+        '<button class="btn ps-save" type="submit">Save</button>' +
+        '<button type="button" class="btn-sm" data-act="tab" data-id="siswa">Close</button>' +
+      '</div>' +
+    '</form>';
+  }
+  function viewAccountSettings() {
+    ensureAccountSettings();
+    const a = accountSettings();
+    const pane = ui.accountPane === 'notifications' ? 'notifications' : 'security';
+    ui.accountPane = pane;
+    return '<section class="ps-page">' +
+      '<div class="ps-page-head">' +
+        '<h1>Account settings</h1>' +
+      '</div>' +
+      '<nav class="ps-tabs" role="tablist">' +
+        '<button type="button" role="tab" data-act="account-pane" data-id="security" aria-selected="' +
+          (pane === 'security') + '">Account security</button>' +
+        '<button type="button" role="tab" data-act="account-pane" data-id="notifications" aria-selected="' +
+          (pane === 'notifications') + '">Notifications</button>' +
+      '</nav>' +
+      '<div class="ps-body">' +
+        (pane === 'notifications' ? viewAccountNotifications(a) : viewAccountSecurity(a)) +
+      '</div>' +
+    '</section>';
+  }
+  function paintProfilePreview() {
+    const host = $('profile-preview');
+    if (!host) return;
+    if (!ui.profilePreview) {
+      host.hidden = true;
+      host.innerHTML = '';
+      return;
+    }
+    const mode = ui.profilePreview === 'desktop' ? 'desktop' : 'phone';
+    const p = schoolProfile();
+    host.hidden = false;
+    host.innerHTML =
+      '<div class="prof-preview-scrim" data-act="profile-preview-close"></div>' +
+      '<div class="prof-preview-panel" role="dialog" aria-label="Student view">' +
+        '<div class="prof-preview-bar">' +
+          '<strong>Student view</strong>' +
+          '<div class="prof-preview-toggle" role="group" aria-label="Device">' +
+            '<button type="button" class="btn-sm' + (mode === 'phone' ? ' is-on' : '') +
+              '" data-act="profile-preview" data-mode="phone">Phone</button>' +
+            '<button type="button" class="btn-sm' + (mode === 'desktop' ? ' is-on' : '') +
+              '" data-act="profile-preview" data-mode="desktop">Desktop</button>' +
+          '</div>' +
+          '<button type="button" class="btn-sm" data-act="profile-preview-close">Close</button>' +
+        '</div>' +
+        '<div class="prof-preview-stage">' +
+          '<div class="prof-preview-frame is-' + mode + '">' +
+            '<div class="prof-preview-chrome">' +
+              '<div class="brand brand-preview">' +
+                schoolAvatarHtml('school-avatar') +
+                '<div class="brand-copy">' +
+                  '<strong>' + esc(SEED.school.name) + '</strong>' +
+                  ((p.headline || '').trim()
+                    ? '<span class="school-header">' + esc(String(p.headline).trim()) + '</span>'
+                    : '') +
+                  '<span class="school-handle">' + esc(schoolSlug()) + '</span>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="prof-preview-body">' + viewSchoolPublic({}) + '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    host.querySelectorAll('img[data-blob]').forEach((el) => {
+      const id = el.getAttribute('data-blob');
+      blobGet(id).then((file) => {
+        if (!file || !el.isConnected) return;
+        el.src = URL.createObjectURL(file);
+      });
+    });
+    // Keep Save bar toggles in sync without full re-render
+    document.querySelectorAll('.ps-actions .prof-preview-toggle .btn-sm').forEach((b) => {
+      b.classList.toggle('is-on', b.getAttribute('data-mode') === mode);
+    });
+  }
   function refreshPersonPhoto(id, force) {
     const s = people().find((x) => x.id === id);
     if (!s || !s.tiktok) return Promise.resolve(false);
@@ -2940,10 +3387,47 @@
     $('app').classList.toggle('is-onboard', isOnboardScreen());
     $('app').classList.toggle('is-belajar', !isStaff() && ui.tab === 'belajar');
     $('school-name').textContent = SEED.school.name;
+    const prof = schoolProfile();
     const logo = $('school-logo');
     if (logo) {
-      logo.src = SEED.school.photo || SEED.school.logo;
       logo.alt = SEED.school.name;
+      if (prof.photoBlob) {
+        logo.removeAttribute('src');
+        logo.setAttribute('data-blob', schoolPhotoKey());
+        blobGet(schoolPhotoKey()).then((file) => {
+          if (!file || !logo.isConnected) return;
+          logo.src = URL.createObjectURL(file);
+        });
+      } else {
+        logo.removeAttribute('data-blob');
+        logo.src = SEED.school.photo || SEED.school.logo;
+      }
+    }
+    const headerEl = $('school-header');
+    if (headerEl) {
+      const show = !!(prof.headline || '').trim();
+      headerEl.hidden = !show;
+      headerEl.textContent = show ? String(prof.headline).trim() : '';
+    }
+    const brandMenu = $('brand-menu');
+    const brandDd = $('brand-dd');
+    const brandBtn = $('btn-school-profil');
+    if (brandMenu) brandMenu.classList.toggle('is-open', !!ui.brandMenuOpen);
+    if (brandBtn) {
+      brandBtn.setAttribute('aria-expanded', ui.brandMenuOpen ? 'true' : 'false');
+      brandBtn.title = 'Profile menu';
+      brandBtn.setAttribute('aria-label', 'Profile menu');
+    }
+    if (brandDd) {
+      brandDd.hidden = false; /* visibility via CSS hover / .is-open */
+      if (canBill()) {
+        brandDd.innerHTML =
+          '<button type="button" role="menuitem" data-act="open-profil">Profile</button>' +
+          '<button type="button" role="menuitem" data-act="open-account">Account settings</button>';
+      } else {
+        brandDd.innerHTML =
+          '<button type="button" role="menuitem" data-act="open-profil">View profile</button>';
+      }
     }
     const badge = document.querySelector('.off-badge');
     if (badge) {
@@ -3003,7 +3487,7 @@
       }
     }
     if (!isStaff()) {
-      const allowed = studentTabs().map((t) => t.id).concat(['sku', 'alat', 'daftar', 'tes', 'sertifikat']);
+      const allowed = studentTabs().map((t) => t.id).concat(['sku', 'alat', 'daftar', 'tes', 'sertifikat', 'profil']);
       if (needsWizard(ui.personaId) && ui.tab !== 'daftar') ui.tab = 'daftar';
       if (allowed.indexOf(ui.tab) === -1) ui.tab = 'home';
     }
@@ -3083,6 +3567,8 @@
       else if (tab === 'jadwal') main.innerHTML = viewJadwal(true);
       else if (tab === 'diskusi') main.innerHTML = viewDiskusi(true);
       else if (tab === 'harga' && canBill()) main.innerHTML = viewHarga();
+      else if (tab === 'profil' && canBill()) main.innerHTML = viewProfilEdit();
+      else if (tab === 'account' && canBill()) main.innerHTML = viewAccountSettings();
       else main.innerHTML = viewSiswaHub();
     } else {
       if (needsWizard(ui.personaId) || ui.tab === 'daftar') {
@@ -3097,11 +3583,13 @@
         else if (tab === 'kolab') main.innerHTML = viewKolab();
         else if (tab === 'tes') main.innerHTML = viewExam();
         else if (tab === 'sertifikat') main.innerHTML = viewSertifikat(ui.personaId);
+        else if (tab === 'profil') main.innerHTML = viewSchoolPublic({ student: true });
         else main.innerHTML = viewHome();
       }
     }
     bindLazy();
     bindBlobMedia();
+    paintProfilePreview();
     bindKanbanDnD();
     bindKurDnD();
     bindNativeTools();
@@ -4252,13 +4740,22 @@
 
   function catalogHero() {
     const sch = SEED.school;
+    const p = schoolProfile();
     return '<section class="catalog-hero">' +
-      '<img class="catalog-photo" src="' + esc(sch.photo) + '" alt="Coach Anton">' +
+      schoolAvatarHtml('catalog-photo') +
       '<div>' +
         '<div class="catalog-brand">' +
           '<img class="catalog-mark" src="' + esc(sch.logo) + '" alt="">' +
-          '<div><strong>MasterMind with Anton GC</strong><span>by Coach Anton GC</span></div>' +
+          '<div><strong>' + esc(schoolDisplayName(p)) + '</strong>' +
+            ((p.headline || '').trim()
+              ? '<span>' + esc(String(p.headline).trim()) + '</span>'
+              : '<span>' + esc(sch.name) + '</span>') +
+          '</div>' +
         '</div>' +
+        (p.biography
+          ? '<p class="muted" style="margin:6px 0 0">' + esc(String(p.biography).slice(0, 160)) +
+            (p.biography.length > 160 ? '…' : '') + '</p>'
+          : '') +
         '<p class="muted" style="margin:6px 0 0">Kelas: <a href="' + esc(schoolLocalUrl()) + '">larisid.com/s/' + esc(schoolSlug()) + '</a> · etalase: lynk.id/' + esc(schoolSlug()) + '</p>' +
         '<a class="btn secondary" href="' + esc(sch.lynk) + '" target="_blank" rel="noopener" style="margin-top:8px">Etalase lynk.id</a>' +
       '</div></section>';
@@ -6225,6 +6722,44 @@
       });
       return;
     }
+    if (t.matches('[data-act="school-photo-file"]')) {
+      if (!canBill()) return;
+      const file = t.files && t.files[0];
+      if (!file) return;
+      if (file.size > MAX_IMG) { toast('Foto maks 5 MB.'); return; }
+      ensureSchoolProfile();
+      blobPut(schoolPhotoKey(), file).then(() => {
+        db.schoolProfile.photoBlob = true;
+        db.schoolProfile.photoMode = 'upload';
+        save();
+        toast('Foto profil diunggah.');
+        render();
+      });
+      return;
+    }
+    if (t.matches('[data-act="profile-photo-mode"]')) {
+      if (!canBill()) return;
+      ensureSchoolProfile();
+      db.schoolProfile.photoMode = t.value === 'social' ? 'social' : 'upload';
+      save();
+      if (db.schoolProfile.photoMode === 'social') {
+        refreshSchoolPhotoFromSocial(true).then((ok) => {
+          toast(ok ? 'Foto dari sosial tersimpan.' : 'Gagal ambil foto sosial. Cek handle atau unggah.');
+          render();
+        });
+      } else {
+        render();
+      }
+      return;
+    }
+    if (t.matches('[data-act="profile-social-source"]')) {
+      if (!canBill()) return;
+      ensureSchoolProfile();
+      db.schoolProfile.socialSource = (t.value === 'instagram' || t.value === 'youtube') ? t.value : 'tiktok';
+      save();
+      render();
+      return;
+    }
     if (t.matches('[data-act="task-person"]')) {
       ui.taskPerson = t.value;
       render();
@@ -6384,6 +6919,11 @@
 
   document.addEventListener('input', (e) => {
     const t = e.target;
+    if (t.matches('[data-act="headline-count"]')) {
+      const el = $('headline-count');
+      if (el) el.textContent = String(Math.max(0, 60 - String(t.value || '').length));
+      return;
+    }
     if (t.matches('.wa-compose textarea[name="body"]')) {
       ui.waDraft = t.value;
       return;
@@ -6493,6 +7033,13 @@
         render();
       }
     }
+    if (ui.brandMenuOpen && !e.target.closest('#brand-menu')) {
+      ui.brandMenuOpen = false;
+      const menu = $('brand-menu');
+      const b = $('btn-school-profil');
+      if (menu) menu.classList.remove('is-open');
+      if (b) b.setAttribute('aria-expanded', 'false');
+    }
   }, true);
 
   document.addEventListener('click', (e) => {
@@ -6501,10 +7048,11 @@
     const act = btn.getAttribute('data-act');
     if (act === 'vid-drop' || act === 'vid-file' || act === 'add-lec' || act === 'sec-title' ||
         act === 'lec-field' || act === 'lec-points' || act === 'q-field' || act === 'doc-name' || act === 'doc-url' ||
-        act === 'cover-file' || act === 'res-file' || act === 'photo-file' || act === 'lec-body' || act === 'res-name' || act === 'res-url' ||
+        act === 'cover-file' || act === 'res-file' || act === 'photo-file' || act === 'school-photo-file' || act === 'lec-body' || act === 'res-name' || act === 'res-url' ||
         act === 'person-field' || act === 'bill-amount' || act === 'sec-due' || act === 'kur-preview-person' ||
         act === 'has-shop' || act === 'heard-from' || act === 'apply' || act === 'cari-siswa' ||
-        act === 'daftar-custom-val' || act === 'tag-query' || act === 'crm-stage' || act === 'assign-mentor') {
+        act === 'daftar-custom-val' || act === 'tag-query' || act === 'crm-stage' || act === 'assign-mentor' ||
+        act === 'profile-photo-mode' || act === 'profile-social-source' || act === 'headline-count') {
       return;
     }
     if (act === 'tag-toggle') {
@@ -6570,8 +7118,84 @@
     } else if (act === 'wiz-tools') {
       ui.wizTools = !ui.wizTools;
       render();
+    } else if (act === 'brand-menu-toggle') {
+      e.stopPropagation();
+      ui.brandMenuOpen = !ui.brandMenuOpen;
+      const menu = $('brand-menu');
+      const b = $('btn-school-profil');
+      if (menu) menu.classList.toggle('is-open', ui.brandMenuOpen);
+      if (b) b.setAttribute('aria-expanded', ui.brandMenuOpen ? 'true' : 'false');
+    } else if (act === 'open-profil') {
+      ui.brandMenuOpen = false;
+      ui.profilePreview = null;
+      ui.profilePane = 'info';
+      if (canBill()) {
+        ui.mentorTab = 'profil';
+        ui.personId = null;
+      } else if (isStaff()) {
+        toast('Only Anton edits profile. Switch to Siswa to view the public page.');
+        return;
+      } else {
+        if (needsWizard(ui.personaId)) {
+          toast('Finish join form first.');
+          return;
+        }
+        ui.tab = 'profil';
+      }
+      render();
+    } else if (act === 'open-account') {
+      ui.brandMenuOpen = false;
+      ui.profilePreview = null;
+      if (!canBill()) {
+        toast('Account settings are for Anton.');
+        return;
+      }
+      ui.mentorTab = 'account';
+      ui.accountPane = 'security';
+      ui.personId = null;
+      render();
+    } else if (act === 'profile-pane') {
+      if (!canBill()) return;
+      ui.profilePane = btn.getAttribute('data-id') === 'photo' ? 'photo' : 'info';
+      ui.mentorTab = 'profil';
+      render();
+    } else if (act === 'account-pane') {
+      if (!canBill()) return;
+      ui.accountPane = btn.getAttribute('data-id') === 'notifications' ? 'notifications' : 'security';
+      ui.mentorTab = 'account';
+      render();
+    } else if (act === 'bio-wrap') {
+      const ta = $('profile-biography');
+      if (!ta) return;
+      const wrap = btn.getAttribute('data-wrap') || '**';
+      const start = ta.selectionStart || 0;
+      const end = ta.selectionEnd || 0;
+      const val = ta.value || '';
+      const selected = val.slice(start, end) || 'text';
+      const next = val.slice(0, start) + wrap + selected + wrap + val.slice(end);
+      ta.value = next;
+      ta.focus();
+      const caret = start + wrap.length + selected.length + wrap.length;
+      ta.setSelectionRange(caret, caret);
+    } else if (act === 'profile-preview') {
+      if (!canBill()) return;
+      ui.profilePreview = btn.getAttribute('data-mode') === 'desktop' ? 'desktop' : 'phone';
+      paintProfilePreview();
+    } else if (act === 'profile-preview-close') {
+      ui.profilePreview = null;
+      paintProfilePreview();
+    } else if (act === 'profile-sync-photo') {
+      if (!canBill()) return;
+      ensureSchoolProfile();
+      db.schoolProfile.photoMode = 'social';
+      save();
+      refreshSchoolPhotoFromSocial(true).then((ok) => {
+        toast(ok ? 'Photo synced from social.' : 'Could not fetch photo. Check the handle on Profile.');
+        render();
+      });
     } else if (act === 'tab') {
       const id = btn.getAttribute('data-id');
+      ui.profilePreview = null;
       if (isStaff()) {
         ui.mentorTab = id;
         if (id !== 'orang') ui.personId = null;
@@ -7488,6 +8112,73 @@
         location.href = '/s/' + encodeURIComponent(nextSlug) + (qs ? ('?' + qs) : '');
         return;
       }
+      render();
+    } else if (act === 'save-school-profile') {
+      if (!canBill()) return;
+      ensureSchoolProfile();
+      const next = db.schoolProfile;
+      next.firstName = String(fd.get('firstName') || '').trim().slice(0, 40);
+      next.lastName = String(fd.get('lastName') || '').trim().slice(0, 40);
+      next.headline = String(fd.get('headline') || '').trim().slice(0, 60);
+      next.biography = String(fd.get('biography') || '').trim().slice(0, 2000);
+      next.socials = Object.assign({}, next.socials, {
+        website: String(fd.get('website') || '').trim(),
+        facebook: socialHandleClean(fd.get('facebook')),
+        instagram: socialHandleClean(fd.get('instagram')),
+        linkedin: socialHandleClean(String(fd.get('linkedin') || '').replace(/^in\//i, '')),
+        tiktok: tiktokHandle(fd.get('tiktok')),
+        x: socialHandleClean(fd.get('x')),
+        youtube: socialHandleClean(fd.get('youtube'))
+      });
+      save();
+      toast('Profile saved');
+      if (next.photoMode === 'social') {
+        refreshSchoolPhotoFromSocial(true).then(() => render());
+      } else {
+        render();
+      }
+    } else if (act === 'save-account-security') {
+      if (!canBill()) return;
+      ensureAccountSettings();
+      const email = String(fd.get('email') || '').trim();
+      if (!email || email.indexOf('@') < 1) {
+        toast('Enter a valid email.');
+        return;
+      }
+      const curPw = String(fd.get('currentPassword') || '');
+      const newPw = String(fd.get('newPassword') || '');
+      const conf = String(fd.get('confirmPassword') || '');
+      if (newPw || conf || curPw) {
+        if (newPw.length < 8) {
+          toast('New password must be at least 8 characters.');
+          return;
+        }
+        if (newPw !== conf) {
+          toast('New password and confirmation do not match.');
+          return;
+        }
+        if (db.accountSettings.passwordSet && !curPw) {
+          toast('Enter your current password to change it.');
+          return;
+        }
+        db.accountSettings.passwordSet = true;
+      }
+      db.accountSettings.email = email;
+      db.accountSettings.twoFactor = !!fd.get('twoFactor');
+      save();
+      toast(db.accountSettings.twoFactor ? 'Security saved · 2FA on (mock)' : 'Security saved');
+      render();
+    } else if (act === 'save-account-notifications') {
+      if (!canBill()) return;
+      ensureAccountSettings();
+      db.accountSettings.notifications = {
+        studentJoin: !!fd.get('studentJoin'),
+        studentPay: !!fd.get('studentPay'),
+        lessonComplete: !!fd.get('lessonComplete'),
+        comment: !!fd.get('comment')
+      };
+      save();
+      toast('Notification preferences saved');
       render();
     } else if (act === 'exam') {
       const qs = SEED.exam.questions;

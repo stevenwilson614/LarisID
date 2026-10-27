@@ -16,7 +16,7 @@
   <link rel="apple-touch-icon" href="./assets/obrolan/profile.png">
   <title>MasterMind with Anton GC — prototype offline</title>
   <link rel="stylesheet" href="/fonts/laris-fonts.css">
-  <link rel="stylesheet" href="./css/school.css?v=20261019mayar">
+  <link rel="stylesheet" href="./css/school.css?v=20261027profil3">
 </head>
 <body>
   <div id="prod-block" hidden>
@@ -29,9 +29,18 @@
   <div id="app" class="is-student">
     <header class="topbar">
       <div class="brand">
-        <img id="school-logo" src="./assets/obrolan/profile.png" alt="" width="32" height="32">
-        <div>
+        <div class="brand-menu" id="brand-menu">
+          <button type="button" class="brand-avatar" id="btn-school-profil" data-act="brand-menu-toggle" aria-haspopup="menu" aria-expanded="false" aria-controls="brand-dd" title="Profile menu" aria-label="Profile menu">
+            <img id="school-logo" src="./assets/obrolan/profile.png" alt="" width="32" height="32">
+          </button>
+          <div class="brand-dd" id="brand-dd" role="menu" hidden>
+            <button type="button" role="menuitem" data-act="open-profil">Profile</button>
+            <button type="button" role="menuitem" data-act="open-account">Account settings</button>
+          </div>
+        </div>
+        <div class="brand-copy">
           <strong id="school-name">MasterMind with Anton GC</strong>
+          <span id="school-header" class="school-header" hidden></span>
           <a id="school-handle" class="school-handle" href="/s/obrolan.marketing">obrolan.marketing</a>
           <span class="off-badge">/s/obrolan.marketing</span>
         </div>
@@ -58,8 +67,9 @@
   </div>
   <aside id="drawer" class="drawer" hidden></aside>
   <div id="drawer-scrim" class="scrim" hidden></div>
+  <div id="profile-preview" class="prof-preview" hidden></div>
   <div id="toast" class="toast" hidden></div>
-  <script src="./js/seed.js?v=20260925wa"></script>
-  <script src="./js/app.js?v=20261019mayar"></script>
+  <script src="./js/seed.js?v=20261027profil3"></script>
+  <script src="./js/app.js?v=20261027profil3"></script>
 </body>
 </html>

@@ -32,7 +32,7 @@ bash school/serve.sh
 5. Laptop, transfer manual: peran **Mentor (Anton)** → tab **Siswa** → kartu **Cek transfer** (atau **Tugas**). Mayar: chip **Menunggu Mayar**, tanpa tugas Cek transfer.
 6. Transfer manual: ketuk **Konfirmasi lunas**. Mayar: bayar invoice tes/sandbox, tunggu webhook — stage jadi Mentee tanpa konfirmasi. **Konfirmasi manual** hanya kalau Mayar macet.
 7. HP (tunggu ~5 detik): banner hilang, 12 video kebuka (baca dulu; selesai tetap berurutan). Affiliate tetap satuan.
-8. Laptop: **Pengaturan bayar** — kartu Mayar (status, salin webhook, tes invoice Rp10.000), rekening, harga, slug. **Kurikulum** → Edit materi / + Bagian.
+8. Laptop: hover/klik foto Anton → **Profile** (Udemy-style: name, headline, bio, sosial, foto + Sync with TikTok, Student view Phone/Desktop) atau **Account settings** (security: email/password/2FA · notifications: join/pay/lesson/comment). **Pengaturan bayar** — Mayar, rekening, harga, slug. **Kurikulum** → Edit materi / + Bagian.
 9. Laptop: **Simulasi jam** +1 hari sampai kartu mentee **Akan keluar**, lalu habis → siswa kembali preview video 1.
 10. **Reset** di salah satu perangkat mengosongkan demo di semua perangkat. Tanpa kunci Mayar, autopay kartu tetap mock (langsung lunas). WA: di localhost seed thread Farah/Irma (kirim tercatat, tidak ke HP); di remote demo, Kirim memakai Fonnte jika device ready.
 
