@@ -140,13 +140,13 @@
     return h === 'localhost' || h === '127.0.0.1' || h === '0.0.0.0';
   }
   function isBlockedHost() {
+    /* Live LMS is Contabo larisid.com/s/{slug}. Only block the retired CF Pages mirror of the main site. */
     const h = location.hostname.toLowerCase();
-    return h === 'larisid.com' || h === 'www.larisid.com' || h === 'larisid.pages.dev';
+    return h === 'larisid.pages.dev';
   }
-  /** Share URL: production host on localhost, this origin on the remote demo. */
+  /** Share URL: always the Contabo vanity path. */
   function schoolPublicUrl() {
-    if (isLocalHost()) return 'https://larisid.com' + schoolPublicPath();
-    return location.origin + schoolPublicPath();
+    return 'https://larisid.com' + schoolPublicPath();
   }
   function schoolLocalUrl() {
     return location.origin + schoolPublicPath();

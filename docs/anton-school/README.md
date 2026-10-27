@@ -1,16 +1,24 @@
-# MasterMind with Anton GC — offline prototype + remote demo
+# MasterMind with Anton GC — Contabo LMS
 
-_Internal. Not a public product. Do not apply SQL on Contabo, do not merge
-this branch to `main`, do not copy `school/` into `scripts/assemble-site.sh`._
+_Internal. Do not apply school SQL on Contabo Postgres, do not merge this
+branch to `main` unless graduating, do not copy `school/` into
+`scripts/assemble-site.sh` (school deploys on its own path)._
 
-**Remote demo (Anton, 25 Sep 2026):**
-[https://mastermind-anton.pages.dev/s/obrolan.marketing?invite=ANTON-SEP26](https://mastermind-anton.pages.dev/s/obrolan.marketing?invite=ANTON-SEP26)
+**Live (Contabo / larisid.com):**
+[https://larisid.com/s/obrolan.marketing?invite=ANTON-SEP26](https://larisid.com/s/obrolan.marketing?invite=ANTON-SEP26)
 
-Separate Cloudflare Pages project (`mastermind-anton`), not `larisid.com`.
-Laptop (Mentor) and phone (Siswa) share one KV blob. Anyone with the link
-can switch to Mentor — treat the URL as private.
+Static SPA under `/school/` + vanity `/s/{slug}`. Node API
+(`anton-school:8787`) behind Caddy `/api/*` — disk state, Mayar, WhatsApp
+(Fonnte). Not LarisID Postgres. Not Cloudflare Pages
+(`mastermind-anton.pages.dev` is retired).
 
-Redeploy: `bash scripts/deploy-school-pages.sh`
+Redeploy:
+
+```bash
+bash scripts/deploy-school-contabo.sh
+```
+
+(`scripts/deploy-school-pages.sh` is a thin wrapper to the same Contabo script.)
 
 Run locally from the repo root:
 
@@ -20,12 +28,12 @@ bash school/serve.sh
 # join + invite:  http://127.0.0.1:8765/s/obrolan.marketing?invite=ANTON-SEP26
 # legacy path:    http://127.0.0.1:8765/school/
 # walkthrough:    http://127.0.0.1:8765/school/present.html
-# local sync:     add ?sync=1 (needs wrangler pages dev)
+# local sync:     only if /api proxies to Contabo (or tunnel)
 ```
 
 ## Anton — tes 10 langkah (HP + laptop)
 
-1. HP: buka tautan di atas. Peran **Siswa**, pilih **Tamu baru**.
+1. HP: buka tautan live di atas. Peran **Siswa**, pilih **Tamu baru**.
 2. Isi form (nama → WA → toko → kota → dari mana). Dock Belajar muncul.
 3. Di halaman paket, pilih **1 bulan**. Tanpa kunci Mayar: ketuk **Saya sudah transfer / scan**. Dengan kunci: **Bayar sekarang** (halaman Mayar).
 4. Home siswa: **Menunggu konfirmasi Anton** (transfer manual) atau **Menunggu pembayaran Mayar**. Video 1 tetap kebuka; 2–12 terkunci.
@@ -34,7 +42,7 @@ bash school/serve.sh
 7. HP (tunggu ~5 detik): banner hilang, 12 video kebuka (baca dulu; selesai tetap berurutan). Affiliate tetap satuan.
 8. Laptop: hover/klik foto Anton → **Profile** (Udemy-style: name, headline, bio, sosial, foto + Sync with TikTok, Student view Phone/Desktop) atau **Account settings** (security: email/password/2FA · notifications: join/pay/lesson/comment). **Pengaturan bayar** — Mayar, rekening, harga, slug. **Kurikulum** → Edit materi / + Bagian.
 9. Laptop: **Simulasi jam** +1 hari sampai kartu mentee **Akan keluar**, lalu habis → siswa kembali preview video 1.
-10. **Reset** di salah satu perangkat mengosongkan demo di semua perangkat. Tanpa kunci Mayar, autopay kartu tetap mock (langsung lunas). WA: di localhost seed thread Farah/Irma (kirim tercatat, tidak ke HP); di remote demo, Kirim memakai Fonnte jika device ready.
+10. **Reset** di salah satu perangkat mengosongkan demo di semua perangkat. Tanpa kunci Mayar, autopay kartu tetap mock (langsung lunas). WA: di localhost seed thread Farah/Irma (kirim tercatat, tidak ke HP); di Contabo, Kirim memakai Fonnte jika device ready.
 
 Masih mock tanpa kunci Mayar: transfer manual + autopay. Login dan blob video IndexedDB tetap lokal (tautan YouTube/Drive ikut sync).
 
@@ -42,7 +50,7 @@ Masih mock tanpa kunci Mayar: transfer manual + autopay. Login dan blob video In
 
 Invoice Headless (~1.5% Starter + biaya channel), bukan produk Kelas Online Mayar (~4%). Anton merchant. LarisID tidak menahan uang. Rekening di Pengaturan tetap untuk transfer manual.
 
-Webhook: `https://mastermind-anton.pages.dev/api/pay/webhook`  
+Webhook: `https://larisid.com/api/pay/webhook`  
 Event: `payment.received`.
 
 Anton kirim (jangan tempel kunci di LMS):
@@ -52,20 +60,26 @@ Anton kirim (jangan tempel kunci di LMS):
 3. Setelah URL di atas (atau yang di kartu Mayar, termasuk `?secret=` kalau ada) ditempel di Mayar → Integration → Webhook.
 4. Opsional: bank VA default.
 
-Steven:
+Steven (on Contabo VPS `docker/.env`, then recreate anton-school):
 
 ```bash
-npx wrangler pages secret put MAYAR_API_KEY --project-name=mastermind-anton
+# /root/larisid-infra/docker/.env
+MAYAR_API_KEY=…
+MAYAR_API_BASE=https://api.mayar.io/hl/v2   # live: https://api.mayar.id/hl/v2
+MAYAR_WEBHOOK_SECRET=…                      # optional
+MAYAR_VA_METHOD=…                           # optional
+# then:
+bash scripts/deploy-school-contabo.sh
 ```
 
-`MAYAR_API_BASE` ada di `school/wrangler.toml`, default sandbox `https://api.mayar.io/hl/v2`. Live: ganti ke `https://api.mayar.id/hl/v2`, simpan kunci live, deploy ulang, satu invoice kecil. Opsional: `MAYAR_WEBHOOK_SECRET`, `MAYAR_VA_METHOD`.
+Never put `MAYAR_API_KEY` in git. Opsional: `MAYAR_WEBHOOK_SECRET`, `MAYAR_VA_METHOD`.
 
 ## WhatsApp in the CRM
 
 Anton can **send and see** 1:1 WhatsApp on a student profile (Siswa → orang → WA). Tugas queue uses **Kirim dari CRM**.
 
-- **Live:** Cloudflare Pages Functions + Fonnte device (`FONNTE_API_TOKEN`, `FONNTE_DEVICE_READY=true`, `WA_WEBHOOK_SECRET`). Store is D1 when bound, else KV. Webhook URL: `https://mastermind-anton.pages.dev/api/wa/webhook?secret=…&slug=obrolan.marketing`.
-- **Local:** seed threads, no Fonnte. Add `?sync=1` only if you are running wrangler Pages with the functions.
+- **Live (Contabo):** Node `anton-school` + Fonnte (`FONNTE_API_TOKEN`, `FONNTE_DEVICE_READY=true`, `WA_WEBHOOK_SECRET` in VPS `docker/.env`). Store is disk under `/data/kv`. Webhook: `https://larisid.com/api/wa/webhook?secret=…&slug=obrolan.marketing`.
+- **Local:** seed threads, no Fonnte unless `/api` reaches Contabo.
 - **Limits:** no backfill of old personal chats, no group sync, no media/voice, otomasi does not blast without Anton tapping Kirim.
 - **Privacy:** messages stored for mentoring ops. Join form discloses the number is for Anton’s CRM chat (UU PDP).
 
@@ -75,9 +89,10 @@ Same pattern as lynk / Skool / Whop: one **slug** per school on a shared domain.
 
 | | |
 |---|---|
-| Production target | `https://larisid.com/s/{slug}` |
+| Production | `https://larisid.com/s/{slug}` |
 | Anton | `https://larisid.com/s/obrolan.marketing` (same handle as `lynk.id/obrolan.marketing`) |
 | Join | `…/s/{slug}?invite={batch-code}` |
+| API | `https://larisid.com/api/state/{slug}`, `/api/pay/*`, `/api/wa/*` |
 | Display name | Free-form (`MasterMind with Anton GC`) — not in the path |
 
 Slug rules (draft `schools.slug`): lowercase, letters/digits/`.`/`-`/`_`, no `..`, max 64, reserved path segments blocked. Mentors edit slug + invite under **Pengaturan bayar → Alamat sekolah**. Lynk stays the paid storefront; `/s/{slug}` is the class after they’re in.
@@ -85,7 +100,7 @@ Slug rules (draft `schools.slug`): lowercase, letters/digits/`.`/`-`/`_`, no `..
 Future mentors get their own `schools` row + slug (e.g. `/s/dewi-live`). Do not put Rise kohorts on this path until an explicit go.
 
 Live Kohort Pertama (`js/laris-cohort.js` + `#view-cohort`) is untouched.
-This folder is not copied by `scripts/assemble-site.sh`.
+This folder is not copied by `scripts/assemble-site.sh` — use `deploy-school-contabo.sh`.
 
 ## Two tracks
 
@@ -113,6 +128,7 @@ is **not loaded** and still holds authoring + `wscLazyEmbedHtml`.
 ## Prototype map
 
 - Student shell: [`school/index.html`](../../school/index.html)
+- Contabo API: [`school/server/`](../../school/server/)
 - Schema draft (do not apply): [`school/sql/20260915120000_anton_school_schema.sql`](../../school/sql/20260915120000_anton_school_schema.sql)
 - Open decisions: [`OPEN_DECISIONS.md`](./OPEN_DECISIONS.md)
 
@@ -120,7 +136,7 @@ Gating is Anton’s membership and IP, not LarisID Cari Produk / Deep Dive.
 `gratis` / beasiswa is a first-class billing status. Progress is completed
 items / total — no fake scores.
 
-**Funnel + CRM** (localhost): form → 24h offer or bayar nanti → first-video
+**Funnel + CRM** (localhost + Contabo sync): form → 24h offer or bayar nanti → first-video
 preview → Follow Up Boss pipeline, tasks, queued WA, customizable renewal.
 Finish program → tes + sertifikat → optional mentor with disclosed 20%
 licensing. Laris Affiliate is never bundled. Details:

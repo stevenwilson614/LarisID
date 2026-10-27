@@ -1,27 +1,29 @@
 #!/usr/bin/env bash
-# Offline prototype. Do not deploy. Not for larisid.com / Contabo.
+# Local school shell (static only). Live host is Contabo:
+#   https://larisid.com/s/obrolan.marketing
+# Deploy: bash scripts/deploy-school-contabo.sh
 # Binds the LAN so a phone on the same Wi-Fi can open it.
 #
 # Vanity LMS URLs (creator-mentor schools):
 #   http://127.0.0.1:8765/s/obrolan.marketing
 #   http://127.0.0.1:8765/s/obrolan.marketing?invite=ANTON-SEP26
-# Production target (when graduated): https://larisid.com/s/{slug}
 #
 # Also serves the rest of the repo (school/, fonts/, …) like python -m http.server.
+# Local sync needs Contabo APIs or a tunnel — add ?sync=1 only when /api is reachable.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PORT="${PORT:-8765}"
 HOST="${HOST:-0.0.0.0}"
 LAN_IP="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)"
 cd "$ROOT"
-echo "MasterMind with Anton GC prototype"
+echo "MasterMind with Anton GC (local static)"
 echo "  This Mac              → http://127.0.0.1:${PORT}/s/obrolan.marketing"
 if [ -n "$LAN_IP" ]; then
   echo "  Phone (same Wi-Fi)    → http://${LAN_IP}:${PORT}/s/obrolan.marketing"
 fi
 echo "  School (dev path)     → http://127.0.0.1:${PORT}/school/"
 echo "  Presentasi dual-view  → http://127.0.0.1:${PORT}/school/present.html"
-echo "Offline lock: not on larisid.com, not in _site, not applied to Contabo."
+echo "  Live (Contabo)        → https://larisid.com/s/obrolan.marketing"
 exec python3 - "$PORT" "$HOST" <<'PY'
 import re
 import sys

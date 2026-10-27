@@ -2,17 +2,18 @@
 
 _Internal. Do not apply SQL on Contabo. Do not merge to `main`._
 
-Remote demo: https://mastermind-anton.pages.dev/s/obrolan.marketing?invite=ANTON-SEP26  
+Live (Contabo): https://larisid.com/s/obrolan.marketing?invite=ANTON-SEP26  
 Local: `bash school/serve.sh` → http://127.0.0.1:8765/s/obrolan.marketing  
-Dual-view (localhost): http://127.0.0.1:8765/school/present.html
+Dual-view (localhost): http://127.0.0.1:8765/school/present.html  
+Deploy: `bash scripts/deploy-school-contabo.sh`
 
-This extends [README.md](./README.md).
+This extends [README.md](./README.md). Cloudflare Pages (`mastermind-anton.pages.dev`) is retired.
 
 ## Payment
 
 Anton is merchant. LarisID never holds student fees. Live pay is a Mayar **Headless Invoice** plus webhook. Manual rekening stays as fallback. Do not create a Mayar Kelas Online / membership product (that fee is higher).
 
-**When `MAYAR_API_KEY` is set on Cloudflare:**
+**When `MAYAR_API_KEY` is set on Contabo (`docker/.env` → anton-school):**
 
 1. Siswa ketuk **Bayar sekarang** → `POST /api/pay/invoice`. Prefer VA if `MAYAR_VA_METHOD` is set (`va/bni`, `va/bri`, `va/mandiri`, …); otherwise the Mayar checkout link lets them pick VA or QRIS.
 2. Billing stays `pending`, `source: mayar`. CRM chip **Menunggu Mayar**. No Cek transfer task.
@@ -27,7 +28,7 @@ Anton is merchant. LarisID never holds student fees. Live pay is a Mayar **Headl
 
 Picking ledger **lunas** on a student who is not yet mentoring also grants access. Renewal: 5-day warning → WA task → 1-day grace → video 1 only. Demo clocks: **Simulasi jam**.
 
-Shared state: `GET/PUT /api/state/{slug}?k=ANTON-SEP26` → KV. Poll 4 detik. A paid grant is also stored beside the blob and re-applied on GET and PUT, so a stale browser cannot wipe lunas. Reset clears the school blob; it does not delete old invoice maps. IndexedDB blobs do not sync.
+Shared state: `GET/PUT /api/state/{slug}?k=ANTON-SEP26` → Contabo disk (`/data/state` + `/data/kv`). Poll 4 detik. A paid grant is also stored beside the blob and re-applied on GET and PUT, so a stale browser cannot wipe lunas. Reset clears the school blob; it does not delete old invoice maps. IndexedDB blobs do not sync.
 
 ### What to ask Anton
 
@@ -35,21 +36,20 @@ He does not paste the key into the LMS.
 
 1. Mayar API key, Read & Write. Sandbox first from [web.mayar.io/api-keys](https://web.mayar.io/api-keys), then live from [web.mayar.id/api-keys](https://web.mayar.id/api-keys).
 2. At least one VA bank and QRIS turned on.
-3. After deploy, paste the webhook from **Pengaturan bayar** (or `https://mastermind-anton.pages.dev/api/pay/webhook`) into Mayar → Integration → Webhook, event `payment.received`.
+3. After deploy, paste the webhook from **Pengaturan bayar** (or `https://larisid.com/api/pay/webhook`) into Mayar → Integration → Webhook, event `payment.received`.
 4. Optional: which VA bank should be the default.
 
-Steven, not Anton:
+Steven, not Anton — set on Contabo VPS `/root/larisid-infra/docker/.env`, then redeploy:
 
 ```bash
-npx wrangler pages secret put MAYAR_API_KEY --project-name=mastermind-anton
-# optional
-npx wrangler pages secret put MAYAR_WEBHOOK_SECRET --project-name=mastermind-anton
-npx wrangler pages secret put MAYAR_VA_METHOD --project-name=mastermind-anton
+MAYAR_API_KEY=…
+MAYAR_API_BASE=https://api.mayar.io/hl/v2   # live: https://api.mayar.id/hl/v2
+MAYAR_WEBHOOK_SECRET=…                      # optional
+MAYAR_VA_METHOD=…                           # optional
+bash scripts/deploy-school-contabo.sh
 ```
 
-`MAYAR_API_BASE` lives in `school/wrangler.toml` (not a secret). Default `https://api.mayar.io/hl/v2` (sandbox). Live flip: `https://api.mayar.id/hl/v2`, put the live key, redeploy, Anton saves the webhook URL, one small invoice. If `MAYAR_WEBHOOK_SECRET` is set, Anton must paste the URL that includes `?secret=` (the settings card shows it).
-
-Localhost without Pages Functions keeps the mock. Full path: `npx wrangler pages dev` inside `school/` with the sandbox secret, then open the school with `?sync=1`.
+If `MAYAR_WEBHOOK_SECRET` is set, Anton must paste the URL that includes `?secret=` (the settings card shows it). Localhost without a tunnel to Contabo `/api` keeps the mock.
 
 ## Cycle
 
@@ -81,7 +81,7 @@ Satu tab **Siswa** dengan tiga kamera: **Daftar** (baris orang: nama+foto, telep
 
 **Tugas** = inbox Follow Up Boss: jenis WA / Email / Telepon / pengingat, tanggal+jam, kelompok terlambat / hari ini / besok / minggu ini / nanti / selesai. Klik nama → profil. Antrian WA memakai **Kirim dari CRM** (thread di profil) plus **Buka WA** cadangan. Bagian **Pesan** menampilkan balasan belum dibaca.
 
-**WhatsApp (kirim + lihat).** Profil siswa, mode WA, adalah chat 1:1: bubble masuk/keluar, Kirim, unread. Live path = Fonnte device + Pages Functions (`/api/wa/send`, `/webhook`, `/thread`) on `mastermind-anton`. Localhost tanpa Fonnte memakai seed thread Farah / Irma. Hanya pesan setelah perangkat tersambung — tidak ada import riwayat WA lama, tidak ada grup. Otomasi tetap tidak auto-kirim. Chat mentoring disimpan untuk operasional (UU PDP); form join bilang nomor dipakai Anton untuk chat.
+**WhatsApp (kirim + lihat).** Profil siswa, mode WA, adalah chat 1:1: bubble masuk/keluar, Kirim, unread. Live path = Fonnte device + Contabo `anton-school` (`/api/wa/send`, `/webhook`, `/thread` on larisid.com). Localhost tanpa Fonnte memakai seed thread Farah / Irma. Hanya pesan setelah perangkat tersambung — tidak ada import riwayat WA lama, tidak ada grup. Otomasi tetap tidak auto-kirim. Chat mentoring disimpan untuk operasional (UU PDP); form join bilang nomor dipakai Anton untuk chat.
 
 **Kurikulum:** editor ala Udemy — Bagian N, lecture rows, **+ Item kurikulum** (Lecture / Bacaan / File), **+ Konten** untuk unggah, drag urutan. Cover, file, teks. Blob IndexedDB. Jatuh tempo bagian (Edit) masuk kalender. Tanpa preview HP.
 
@@ -117,7 +117,7 @@ Certified mentors collect from **their** students. CRM **setoran 20%** is expect
 | Dewi Mentor | Mentor · downline Oki (mentoring) + Putri (SKU + Affiliate) |
 | Kamu / Nina / … | Mentee |
 
-Reset clears `localStorage` key `anton-school-v3` and, on the remote demo, the shared KV blob. Fresh Reset also slides seed clocks forward so Ayu / Farah / Hadi / Irma stay demoable.
+Reset clears `localStorage` key `anton-school-v3` and, on Contabo, the shared disk state blob. Fresh Reset also slides seed clocks forward so Ayu / Farah / Hadi / Irma stay demoable.
 
 ## Dual-view presentation
 
