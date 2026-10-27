@@ -618,6 +618,7 @@
     dashFrom: '',
     dashTo: '',
     dashCustomOpen: false,
+    dashFocus: '',
     queueKind: 'wa',
     taskPerson: '',
     taskAssignee: '',
@@ -5460,42 +5461,93 @@
     const t = new Date(iso).getTime();
     return Number.isFinite(t) && t >= bounds.fromMs && t <= bounds.toMs;
   }
+  function dashPersonRow(id, at, detail, amount) {
+    return {
+      id: id,
+      at: at || '',
+      detail: detail || '',
+      amount: Math.max(0, Number(amount) || 0)
+    };
+  }
+  function dashSortRows(rows) {
+    return rows.slice().sort((a, b) => new Date(b.at || 0).getTime() - new Date(a.at || 0).getTime());
+  }
   function dashStats(bounds) {
-    const joinedIds = new Set();
+    const joined = [];
     Object.keys(db.applications || {}).forEach((id) => {
       const a = db.applications[id];
-      if (a && inDashRange(a.at, bounds)) joinedIds.add(id);
+      if (a && inDashRange(a.at, bounds)) {
+        joined.push(dashPersonRow(id, a.at, 'Isi form aplikasi'));
+      }
     });
-    const paidIds = new Set();
-    const continuedIds = new Set();
+    const paidMap = {};
+    const continuedMap = {};
+    const mentorMap = {};
+    const skuMap = {};
+    const totalMap = {};
     let mentorMoney = 0;
     let skuMoney = 0;
     paymentsList().forEach((p) => {
       if (!p || !inDashRange(p.at, bounds)) return;
       const amt = Math.max(0, Number(p.amount) || 0);
+      const pid = p.personId;
       if (p.kind === 'sku') {
         skuMoney += amt;
+        if (!skuMap[pid]) skuMap[pid] = dashPersonRow(pid, p.at, 'Beli produk', 0);
+        skuMap[pid].amount += amt;
+        if (p.at > skuMap[pid].at) skuMap[pid].at = p.at;
+        if (!totalMap[pid]) totalMap[pid] = dashPersonRow(pid, p.at, 'Pembayaran', 0);
+        totalMap[pid].amount += amt;
+        if (p.at > totalMap[pid].at) totalMap[pid].at = p.at;
         return;
       }
       mentorMoney += amt;
-      if (p.kind === 'renewal') continuedIds.add(p.personId);
-      else paidIds.add(p.personId);
+      const label = p.kind === 'renewal' ? 'Perpanjang mentoring' : 'Bayar mentoring';
+      if (p.kind === 'renewal') {
+        if (!continuedMap[pid]) continuedMap[pid] = dashPersonRow(pid, p.at, label, 0);
+        continuedMap[pid].amount += amt;
+        if (p.at > continuedMap[pid].at) continuedMap[pid].at = p.at;
+      } else {
+        if (!paidMap[pid]) paidMap[pid] = dashPersonRow(pid, p.at, label, 0);
+        paidMap[pid].amount += amt;
+        if (p.at > paidMap[pid].at) paidMap[pid].at = p.at;
+      }
+      if (!mentorMap[pid]) mentorMap[pid] = dashPersonRow(pid, p.at, label, 0);
+      mentorMap[pid].amount += amt;
+      if (p.at > mentorMap[pid].at) {
+        mentorMap[pid].at = p.at;
+        mentorMap[pid].detail = label;
+      }
+      if (!totalMap[pid]) totalMap[pid] = dashPersonRow(pid, p.at, 'Pembayaran', 0);
+      totalMap[pid].amount += amt;
+      if (p.at > totalMap[pid].at) totalMap[pid].at = p.at;
     });
-    const endedIds = new Set();
+    const ended = [];
     people().forEach((s) => {
       const c = crmOf(s.id);
       if (c.stage !== 'sudah_keluar' && c.stage !== 'tidak_tertarik') return;
       const at = c.endedAt || c.notInterestedAt;
-      if (inDashRange(at, bounds)) endedIds.add(s.id);
+      if (!inDashRange(at, bounds)) return;
+      ended.push(dashPersonRow(s.id, at, stageLabel(c.stage)));
     });
+    const lists = {
+      joined: dashSortRows(joined),
+      paid: dashSortRows(Object.values(paidMap)),
+      continued: dashSortRows(Object.values(continuedMap)),
+      ended: dashSortRows(ended),
+      mentor: dashSortRows(Object.values(mentorMap)),
+      sku: dashSortRows(Object.values(skuMap)),
+      total: dashSortRows(Object.values(totalMap))
+    };
     return {
-      joined: joinedIds.size,
-      paid: paidIds.size,
-      continued: continuedIds.size,
-      ended: endedIds.size,
+      joined: lists.joined.length,
+      paid: lists.paid.length,
+      continued: lists.continued.length,
+      ended: lists.ended.length,
       mentorMoney: mentorMoney,
       skuMoney: skuMoney,
-      totalMoney: mentorMoney + skuMoney
+      totalMoney: mentorMoney + skuMoney,
+      lists: lists
     };
   }
   function fmtDashDay(ymd) {
@@ -5506,9 +5558,139 @@
       });
     } catch (e) { return ymd; }
   }
+  function dashMonthKey(iso) {
+    const ymd = ymdOf(iso);
+    return ymd ? ymd.slice(0, 7) : '';
+  }
+  function dashMonthSeries(bounds) {
+    const endYmd = bounds.toYmd || splitLocal().date;
+    const endParts = endYmd.split('-').map(Number);
+    let y = endParts[0];
+    let m = endParts[1];
+    const startYmd = bounds.fromYmd || endYmd;
+    const startKey = startYmd.slice(0, 7);
+    const keys = [];
+    for (let i = 0; i < 18; i++) {
+      const key = y + '-' + String(m).padStart(2, '0');
+      keys.unshift(key);
+      if (key <= startKey && keys.length >= 6) break;
+      if (keys.length >= 12) break;
+      m -= 1;
+      if (m < 1) { m = 12; y -= 1; }
+    }
+    if (keys.length < 6) {
+      while (keys.length < 6) {
+        m -= 1;
+        if (m < 1) { m = 12; y -= 1; }
+        keys.unshift(y + '-' + String(m).padStart(2, '0'));
+      }
+    }
+    const by = {};
+    keys.forEach((k) => { by[k] = { key: k, mentor: 0, sku: 0, total: 0 }; });
+    paymentsList().forEach((p) => {
+      if (!p || !p.at) return;
+      const key = dashMonthKey(p.at);
+      if (!by[key]) return;
+      const amt = Math.max(0, Number(p.amount) || 0);
+      if (p.kind === 'sku') by[key].sku += amt;
+      else by[key].mentor += amt;
+      by[key].total += amt;
+    });
+    return keys.map((k) => {
+      const row = by[k];
+      const label = new Date(k + '-01T12:00:00+07:00').toLocaleDateString('id-ID', {
+        month: 'short', year: '2-digit', timeZone: 'Asia/Jakarta'
+      });
+      return Object.assign({ label: label }, row);
+    });
+  }
+  function dashIncomeChartSvg(series) {
+    const W = 640;
+    const H = 220;
+    const padL = 52;
+    const padR = 16;
+    const padT = 18;
+    const padB = 36;
+    const innerW = W - padL - padR;
+    const innerH = H - padT - padB;
+    const maxV = Math.max(1, ...series.map((s) => s.total));
+    const n = Math.max(1, series.length - 1);
+    const xAt = (i) => padL + (series.length === 1 ? innerW / 2 : (i / n) * innerW);
+    const yAt = (v) => padT + innerH - (v / maxV) * innerH;
+    const line = (key, cls) => {
+      const pts = series.map((s, i) => xAt(i).toFixed(1) + ',' + yAt(s[key]).toFixed(1)).join(' ');
+      return '<polyline class="' + cls + '" fill="none" points="' + pts + '"></polyline>' +
+        series.map((s, i) =>
+          '<circle class="' + cls + '-dot" cx="' + xAt(i).toFixed(1) + '" cy="' + yAt(s[key]).toFixed(1) +
+          '" r="3.5"><title>' + esc(s.label) + ': ' + esc(fmtRp(s[key])) + '</title></circle>'
+        ).join('');
+    };
+    const axisLabel = (v) => {
+      if (!v) return '0';
+      if (v >= 1e6) return (v / 1e6).toFixed(v >= 1e7 ? 0 : 1).replace(/\.0$/, '') + 'jt';
+      if (v >= 1e3) return Math.round(v / 1e3) + 'rb';
+      return String(Math.round(v));
+    };
+    const grid = [0, 0.5, 1].map((t) => {
+      const y = yAt(maxV * t);
+      return '<line class="dash-chart-grid" x1="' + padL + '" x2="' + (W - padR) + '" y1="' + y.toFixed(1) +
+        '" y2="' + y.toFixed(1) + '"></line>' +
+        '<text class="dash-chart-axis" x="' + (padL - 8) + '" y="' + (y + 3).toFixed(1) + '" text-anchor="end">' +
+        esc(axisLabel(maxV * t)) + '</text>';
+    }).join('');
+    const labels = series.map((s, i) =>
+      '<text class="dash-chart-axis" x="' + xAt(i).toFixed(1) + '" y="' + (H - 12) + '" text-anchor="middle">' +
+      esc(s.label) + '</text>'
+    ).join('');
+    return '<svg class="dash-chart-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Grafik uang masuk per bulan">' +
+      grid + line('mentor', 'dash-line-mentor') + line('sku', 'dash-line-sku') + line('total', 'dash-line-total') + labels +
+    '</svg>';
+  }
+  function dashFocusMeta(id) {
+    return {
+      joined: { title: 'Gabung form', empty: 'Belum ada yang isi form di rentang ini.' },
+      paid: { title: 'Bayar mentoring', empty: 'Belum ada pembayaran mentoring pertama.' },
+      continued: { title: 'Lanjut / perpanjang', empty: 'Belum ada yang perpanjang di rentang ini.' },
+      ended: { title: 'Berakhir', empty: 'Tidak ada yang keluar di rentang ini.' },
+      mentor: { title: 'Uang mentoring', empty: 'Belum ada uang mentoring.' },
+      sku: { title: 'Uang produk', empty: 'Belum ada pembelian produk.' },
+      total: { title: 'Semua pembayaran', empty: 'Belum ada uang masuk.' }
+    }[id] || { title: 'Detail', empty: 'Kosong.' };
+  }
+  function dashListHtml(focus, lists) {
+    if (!focus || !lists[focus]) return '';
+    const meta = dashFocusMeta(focus);
+    const rows = lists[focus] || [];
+    const showMoney = focus === 'mentor' || focus === 'sku' || focus === 'total' || focus === 'paid' || focus === 'continued';
+    return '<section class="dash-list" aria-live="polite">' +
+      '<div class="dash-list-head">' +
+        '<h3>' + esc(meta.title) + ' · ' + rows.length + '</h3>' +
+        '<button type="button" class="dash-list-close" data-act="dash-focus" data-id="">Tutup</button>' +
+      '</div>' +
+      (rows.length
+        ? '<ul class="dash-list-ul">' + rows.map((r) => {
+            const s = people().find((p) => p.id === r.id) || { id: r.id, name: nameOf(r.id) };
+            return '<li>' +
+              '<button type="button" class="dash-list-row" data-act="open-student" data-id="' + esc(r.id) + '">' +
+                avatarHtml(s, 'avatar sm') +
+                '<span class="dash-list-main">' +
+                  '<strong>' + esc(s.name || r.id) + '</strong>' +
+                  '<span class="dash-list-meta">' + esc(r.detail || stageLabel(crmOf(r.id).stage)) +
+                    (r.at ? ' · ' + esc(fmtWhen(r.at)) : '') + '</span>' +
+                '</span>' +
+                (showMoney && r.amount
+                  ? '<span class="dash-list-amt">' + esc(fmtRp(r.amount)) + '</span>'
+                  : '') +
+              '</button>' +
+            '</li>';
+          }).join('') + '</ul>'
+        : '<p class="dash-list-empty">' + esc(meta.empty) + '</p>') +
+    '</section>';
+  }
   function viewDashboard() {
     const bounds = dashBounds();
     const st = dashStats(bounds);
+    const series = dashMonthSeries(bounds);
     const ranges = [
       { id: '7', label: '7' },
       { id: '14', label: '14' },
@@ -5519,20 +5701,22 @@
       { id: 'custom', label: 'Custom' }
     ];
     const cur = ui.dashRange || '30';
+    const focus = ui.dashFocus || '';
     const today = splitLocal().date;
     const fromVal = ui.dashFrom || bounds.fromYmd || today;
     const toVal = ui.dashTo || bounds.toYmd || today;
-    const card = (label, value, sub) =>
-      '<div class="dash-card">' +
+    const card = (id, label, value, sub) =>
+      '<button type="button" class="dash-card' + (focus === id ? ' is-on' : '') +
+        '" data-act="dash-focus" data-id="' + esc(id) + '" aria-pressed="' + (focus === id) + '">' +
         '<div class="dash-card-label">' + esc(label) + '</div>' +
         '<div class="dash-card-value">' + value + '</div>' +
-        (sub ? '<div class="dash-card-sub muted">' + sub + '</div>' : '') +
-      '</div>';
+        (sub ? '<div class="dash-card-sub">' + esc(sub) + '</div>' : '') +
+      '</button>';
     return '<div class="dash-page">' +
       '<div class="hub-head">' +
         '<div><h2 style="margin:0">Dashboard</h2>' +
-          '<p class="muted">' + esc(fmtDashDay(bounds.fromYmd)) + ' – ' + esc(fmtDashDay(bounds.toYmd)) +
-          ' · WIB · uang masuk mentoring &amp; produk</p></div>' +
+          '<p class="dash-sub">' + esc(fmtDashDay(bounds.fromYmd)) + ' – ' + esc(fmtDashDay(bounds.toYmd)) +
+          ' · WIB · klik kartu untuk daftar siswa</p></div>' +
       '</div>' +
       '<div class="dash-range" role="group" aria-label="Rentang waktu">' +
         ranges.map((r) =>
@@ -5544,24 +5728,36 @@
         ? '<div class="dash-custom">' +
             '<label>Dari <input type="date" data-act="dash-from" value="' + esc(fromVal) + '"></label>' +
             '<label>Sampai <input type="date" data-act="dash-to" value="' + esc(toVal) + '"></label>' +
-            '<button type="button" class="btn-sm" data-act="dash-apply">Terapkan</button>' +
+            '<button type="button" class="btn-sm dash-apply" data-act="dash-apply">Terapkan</button>' +
           '</div>'
         : '') +
       '<div class="dash-grid">' +
-        card('Gabung form', String(st.joined), 'Isi aplikasi di rentang ini') +
-        card('Bayar', String(st.paid), 'Bayar mentoring pertama') +
-        card('Lanjut', String(st.continued), 'Perpanjang / renewal') +
-        card('Berakhir', String(st.ended), 'Sudah keluar / tidak tertarik') +
+        card('joined', 'Gabung form', String(st.joined), 'Isi aplikasi di rentang ini') +
+        card('paid', 'Bayar', String(st.paid), 'Bayar mentoring pertama') +
+        card('continued', 'Lanjut', String(st.continued), 'Perpanjang / renewal') +
+        card('ended', 'Berakhir', String(st.ended), 'Sudah keluar / tidak tertarik') +
       '</div>' +
       '<div class="dash-money">' +
         '<h3>Uang masuk</h3>' +
         '<div class="dash-grid dash-grid-money">' +
-          card('Mentoring', esc(fmtRp(st.mentorMoney)), 'Termasuk perpanjang') +
-          card('Produk', esc(fmtRp(st.skuMoney)), 'Pembelian SKU / lynk') +
-          card('Total', esc(fmtRp(st.totalMoney)), 'Mentoring + produk') +
+          card('mentor', 'Mentoring', esc(fmtRp(st.mentorMoney)), 'Termasuk perpanjang') +
+          card('sku', 'Produk', esc(fmtRp(st.skuMoney)), 'Pembelian SKU / lynk') +
+          card('total', 'Total', esc(fmtRp(st.totalMoney)), 'Mentoring + produk') +
         '</div>' +
       '</div>' +
-      '<p class="muted dash-footnote">Angka dari ledger pembayaran &amp; form. Beasiswa (Rp0) tidak menambah uang masuk. Anton merchant — LarisID tidak menahan uang.</p>' +
+      dashListHtml(focus, st.lists) +
+      '<section class="dash-chart">' +
+        '<div class="dash-chart-head">' +
+          '<h3>Pendapatan per bulan</h3>' +
+          '<div class="dash-legend">' +
+            '<span class="dash-leg dash-leg-total">Total</span>' +
+            '<span class="dash-leg dash-leg-mentor">Mentoring</span>' +
+            '<span class="dash-leg dash-leg-sku">Produk</span>' +
+          '</div>' +
+        '</div>' +
+        dashIncomeChartSvg(series) +
+      '</section>' +
+      '<p class="dash-footnote">Angka dari ledger pembayaran &amp; form. Beasiswa (Rp0) tidak menambah uang masuk. Anton merchant — LarisID tidak menahan uang.</p>' +
     '</div>';
   }
   function hubSeg() {
@@ -7802,6 +7998,16 @@
         ui.dashCustomOpen = true;
       }
       render();
+    } else if (act === 'dash-focus') {
+      const id = btn.getAttribute('data-id') || '';
+      ui.dashFocus = ui.dashFocus === id ? '' : id;
+      render();
+      if (ui.dashFocus) {
+        requestAnimationFrame(() => {
+          const el = document.querySelector('.dash-list');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+      }
     } else if (act === 'dash-apply') {
       ui.dashRange = 'custom';
       const fromEl = document.querySelector('[data-act="dash-from"]');
