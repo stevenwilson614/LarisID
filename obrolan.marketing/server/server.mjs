@@ -1,8 +1,9 @@
 /**
- * School LMS on disk for one class (test tenant: obrolan.marketing).
- * Not the LarisID Postgres database.
- * Staff with the admin cookie get the whole file. A student session gets only
- * that student's row. The invite code is not a credential.
+ * School LMS on disk. Anton (obrolan.marketing) is the test school.
+ * Each new coach gets their own file. Not the LarisID Postgres database.
+ * Staff with the admin cookie get Anton's file only. A coach JWT is staff
+ * only for the school they created. A student session gets only that student's row.
+ * The invite code is not a credential.
  */
 import http from 'node:http';
 import fs from 'node:fs';
@@ -20,6 +21,18 @@ const SESSION_SECRET = String(
   crypto.randomBytes(32).toString('hex')
 );
 const SLUG = 'obrolan.marketing';
+const ANTON_SLUG = SLUG;
+const SUPA_URL = String(process.env.SUPABASE_URL || 'https://api.larisid.com').replace(/\/+$/, '');
+const SUPA_ANON = String(process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzg0MzM2Njc5LCJleHAiOjI0MTUwNTY2Nzl9.IuuxcLjM-ljEyrn2lInAqzESImYfMXlBBTZI2i671Ec');
+const MENTOR_BANDS = ['1-10', '11-20', '21-30', '31-50', '51-100', '100+'];
+const RESERVED_SLUGS = new Set([
+  'lms', 'harga', 'tentang', 'cara-kerja', 'perbandingan', 'riset', 'privacy', 'panduan',
+  'kota', 'kalkulator', 'rise', 'data', 'expor', 'js', 'images', 'fonts', 'styles', 'api',
+  's', 'gpt', 'admin', 'www', 'login', 'daftar', 'sitemap', 'robots', 'llms', 'assets',
+  'school', 'affiliate', 'auth', 'functions', 'rest', 'storage', 'realtime', 'mcp', 'sso',
+  'obrolan', 'index', 'favicon', 'manifest', 'health', 'gate', 'slug', 'schools', 'owners',
+  'media', 'events', 'issues', 'webhooks', 'pay', 'wa', 'state'
+]);
 const MAX_STATE = 5 * 1024 * 1024;
 const MAX_PART = 8 * 1024 * 1024;
 const MAX_VIDEO = 5 * 1024 * 1024 * 1024;
@@ -28,6 +41,7 @@ const MAX_FILE = 20 * 1024 * 1024;
 const MAX_EVENT_BYTES = 16 * 1024;
 
 const stateDir = path.join(DATA, 'state');
+const ownersFile = path.join(DATA, 'owners.json');
 const mediaDir = path.join(DATA, 'media');
 const uploadDir = path.join(DATA, 'uploads');
 const eventsFile = path.join(DATA, 'events.jsonl');
@@ -74,20 +88,183 @@ function readBody(req, limit) {
   });
 }
 
-function statePath() {
-  return path.join(stateDir, SLUG + '.json');
+function statePath(slug) {
+  return path.join(stateDir, (slug || ANTON_SLUG) + '.json');
 }
 
-function readState() {
+function validSchoolSlug(slug) {
+  return /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])?$/.test(String(slug || ''));
+}
+
+function schoolFile(slug) {
+  return path.join(stateDir, slug + '.json');
+}
+
+function slugStatus(raw) {
+  const slug = String(raw || '').trim().toLowerCase();
+  if (!validSchoolSlug(slug) || RESERVED_SLUGS.has(slug) || slug === ANTON_SLUG) return 'reserved';
+  if (fs.existsSync(schoolFile(slug))) return 'taken';
+  return 'free';
+}
+
+function resolveLiveSlug(raw) {
+  const slug = String(raw || ANTON_SLUG).trim().toLowerCase();
+  if (slug === ANTON_SLUG) return ANTON_SLUG;
+  if (slugStatus(slug) === 'taken') return slug;
+  return '';
+}
+
+function readOwners() {
+  try { return JSON.parse(fs.readFileSync(ownersFile, 'utf8')); } catch (err) { return {}; }
+}
+
+function writeOwners(map) {
+  const tmp = ownersFile + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify(map));
+  fs.renameSync(tmp, ownersFile);
+}
+
+function ownerOf(slug) {
+  const map = readOwners();
+  const ids = Object.keys(map);
+  for (let i = 0; i < ids.length; i += 1) {
+    if (map[ids[i]] === slug) return ids[i];
+  }
+  return '';
+}
+
+function bearerToken(req) {
+  const header = String((req.headers && req.headers.authorization) || '');
+  if (header.slice(0, 7).toLowerCase() !== 'bearer ') return '';
+  return header.slice(7).trim();
+}
+
+async function supabaseUser(req) {
+  const token = bearerToken(req);
+  if (!token) return null;
+  if (process.env.LMS_AUTH_STUB === '1' && token.indexOf('stub:') === 0) {
+    const id = token.slice(5).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64);
+    return id ? { id: id, email: id + '@stub.local' } : null;
+  }
   try {
-    return JSON.parse(fs.readFileSync(statePath(), 'utf8'));
+    const res = await fetch(SUPA_URL + '/auth/v1/user', {
+      headers: { apikey: SUPA_ANON, Authorization: 'Bearer ' + token }
+    });
+    if (!res.ok) return null;
+    const user = await res.json();
+    if (!user || !user.id) return null;
+    return user;
   } catch (err) {
     return null;
   }
 }
 
-function writeState(rec) {
-  const file = statePath();
+function isStaffFor(req, q, slug, user) {
+  if (asStudentView(req)) return false;
+  if (slug === ANTON_SLUG && adminAuthed(req, q)) return true;
+  if (!user || !user.id) return false;
+  return ownerOf(slug) === user.id;
+}
+
+function clip(value, max) {
+  return String(value == null ? '' : value).trim().slice(0, max);
+}
+
+function cleanSocials(raw) {
+  const src = raw && typeof raw === 'object' ? raw : {};
+  const out = {};
+  ['website', 'facebook', 'instagram', 'linkedin', 'tiktok', 'x', 'youtube'].forEach((key) => {
+    out[key] = clip(src[key], 200);
+  });
+  return out;
+}
+
+function saveProfilePhoto(slug, dataUrl) {
+  const match = /^data:image\/(png|jpeg|jpg|webp);base64,([A-Za-z0-9+/=\s]+)$/.exec(String(dataUrl || ''));
+  if (!match) return '';
+  const buf = Buffer.from(match[2].replace(/\s/g, ''), 'base64');
+  if (buf.length < 32 || buf.length > 1500000) return '';
+  const ext = match[1] === 'png' ? 'png' : (match[1] === 'webp' ? 'webp' : 'jpg');
+  const key = slug + '/profile.' + ext;
+  const dest = path.join(mediaDir, slug, 'profile.' + ext);
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.writeFileSync(dest, buf);
+  fs.writeFileSync(dest + '.json', JSON.stringify({ key: key, type: 'image/' + (ext === 'jpg' ? 'jpeg' : ext), size: buf.length }));
+  return '/obrolan.marketing/api/media/file?key=' + encodeURIComponent(key);
+}
+
+function emptySchool(slug, user, body, photoUrl) {
+  const ownerId = 'u-' + String(user.id).replace(/[^a-zA-Z0-9]/g, '').slice(0, 16);
+  const socials = cleanSocials(body.socials);
+  return {
+    key: '',
+    rev: 1,
+    updatedAt: new Date().toISOString(),
+    state: {
+      schoolSlug: slug,
+      businessName: clip(body.businessName, 80),
+      mentorBand: body.mentorBand,
+      ownerId: ownerId,
+      ownerUserId: user.id,
+      inviteCode: '',
+      schoolProfile: {
+        firstName: clip(body.firstName, 40),
+        lastName: clip(body.lastName, 80),
+        headline: clip(body.headline, 60),
+        biography: clip(body.biography, 800),
+        photoMode: 'upload',
+        photoUrl: photoUrl || '',
+        socials: socials
+      },
+      lectures: [],
+      catalog: [],
+      weeks: [],
+      sessions: [],
+      pricing: {},
+      bank: {},
+      people: {},
+      liveStudents: [],
+      applications: {},
+      billing: {},
+      crm: {},
+      progress: {},
+      lastLecture: {},
+      enrollments: {},
+      timeline: {},
+      notes: {},
+      tasks: [],
+      payments: [],
+      remittances: [],
+      waQueue: [],
+      emailQueue: [],
+      waThreads: [],
+      waMessages: [],
+      posts: [],
+      comments: [],
+      threads: [],
+      replies: [],
+      announcements: [],
+      chats: {},
+      attendance: {},
+      directory: []
+    }
+  };
+}
+
+function profileKeyOk(key) {
+  return /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?\/profile\.(png|jpe?g|webp)$/.test(String(key || ''));
+}
+
+function readState(slug) {
+  try {
+    return JSON.parse(fs.readFileSync(statePath(slug), 'utf8'));
+  } catch (err) {
+    return null;
+  }
+}
+
+function writeState(rec, slug) {
+  const file = statePath(slug);
   const tmp = file + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify(rec));
   fs.renameSync(tmp, file);
@@ -620,23 +797,23 @@ function stripDemoPeople(state) {
   return changed.n > 0;
 }
 
-function takeState() {
-  const rec = readState();
+function takeState(slug) {
+  const rec = readState(slug);
   if (rec && rec.state && stripDemoPeople(rec.state)) rec._stripped = true;
   return rec;
 }
 
-function writeRecord(rec) {
+function writeRecord(rec, slug) {
   if (!rec) return;
   delete rec._stripped;
-  writeState(rec);
+  writeState(rec, slug);
 }
 
-function persistStrip(rec) {
+function persistStrip(rec, slug) {
   if (!rec || !rec._stripped) return rec;
   rec.rev = (Number(rec.rev) || 0) + 1;
   rec.updatedAt = new Date().toISOString();
-  writeRecord(rec);
+  writeRecord(rec, slug);
   return rec;
 }
 
@@ -753,6 +930,9 @@ function schoolShell(state) {
     threads: pick('threads', []),
     replies: pick('replies', []),
     schoolSlug: pick('schoolSlug', SLUG),
+    businessName: pick('businessName', ''),
+    mentorBand: pick('mentorBand', ''),
+    ownerId: pick('ownerId', ''),
     schoolProfile: pick('schoolProfile', {}),
     pricing: pick('pricing', {}),
     bank: pick('bank', {}),
@@ -1032,15 +1212,98 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (req.method === 'GET' && pathname === '/owners/me') {
+    supabaseUser(req).then((user) => {
+      if (!user) {
+        json(res, 401, { error: 'auth' });
+        return;
+      }
+      const map = readOwners();
+      json(res, 200, { slug: map[user.id] || '' });
+    });
+    return;
+  }
+
+  const slugLook = pathname.match(/^\/slug\/([^/]+)$/);
+  if (req.method === 'GET' && slugLook) {
+    const asked = decodeURIComponent(slugLook[1]).toLowerCase();
+    json(res, 200, { slug: asked, status: slugStatus(asked) });
+    return;
+  }
+
+  const gateLook = pathname.match(/^\/gate\/([^/]+)$/);
+  if (req.method === 'GET' && gateLook) {
+    const asked = decodeURIComponent(gateLook[1]).toLowerCase();
+    const known = slugStatus(asked) === 'taken';
+    res.writeHead(known ? 204 : 404, { 'cache-control': 'no-store', 'x-robots-tag': 'noindex' });
+    res.end();
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/schools') {
+    readBody(req, 3 * 1024 * 1024).then((buf) => lock(async () => {
+      const user = await supabaseUser(req);
+      if (!user) {
+        json(res, 401, { error: 'auth' });
+        return;
+      }
+      const owners = readOwners();
+      if (owners[user.id]) {
+        json(res, 200, { slug: owners[user.id], created: false });
+        return;
+      }
+      let body = {};
+      try { body = JSON.parse(buf.toString('utf8') || '{}'); } catch (err) {
+        json(res, 400, { error: 'bad_json' });
+        return;
+      }
+      const slug = String(body.slug || '').trim().toLowerCase();
+      const status = slugStatus(slug);
+      if (status !== 'free') {
+        json(res, 409, { error: status === 'taken' ? 'taken' : 'reserved' });
+        return;
+      }
+      if (!clip(body.firstName, 40) || !clip(body.lastName, 80) || !clip(body.businessName, 80) || !clip(body.headline, 60)) {
+        json(res, 400, { error: 'profile' });
+        return;
+      }
+      if (MENTOR_BANDS.indexOf(String(body.mentorBand || '')) < 0) {
+        json(res, 400, { error: 'band' });
+        return;
+      }
+      let photoUrl = '';
+      if (body.photo) {
+        photoUrl = saveProfilePhoto(slug, body.photo);
+        if (!photoUrl) {
+          json(res, 400, { error: 'photo' });
+          return;
+        }
+      }
+      writeState(emptySchool(slug, user, body, photoUrl), slug);
+      owners[user.id] = slug;
+      writeOwners(owners);
+      json(res, 201, { slug: slug, created: true });
+    })).catch((err) => {
+      if (!res.headersSent) json(res, err.status || 500, { error: 'school' });
+    });
+    return;
+  }
+
   if (req.method === 'POST' && pathname === '/session') {
-    readBody(req, 64 * 1024).then((buf) => lock(() => {
+    readBody(req, 64 * 1024).then((buf) => lock(async () => {
       let body = {};
       try { body = JSON.parse(buf.toString('utf8') || '{}'); } catch (err) { body = {}; }
-      if (staffRequest(req, q)) {
+      const slug = resolveLiveSlug(body.slug);
+      if (!slug) {
+        json(res, 404, { error: 'slug' });
+        return;
+      }
+      const user = await supabaseUser(req);
+      if (isStaffFor(req, q, slug, user)) {
         json(res, 200, { role: 'staff' });
         return;
       }
-      const rec = persistStrip(takeState());
+      const rec = persistStrip(takeState(slug), slug);
       const state = (rec && rec.state) || {};
       const cookieId = readStudentCookie(req);
       const known = cookieId && lookupPerson(state, cookieId);
@@ -1070,13 +1333,18 @@ const server = http.createServer((req, res) => {
         json(res, 400, { error: 'bad_json' });
         return;
       }
+      const slug = resolveLiveSlug(body.slug);
+      if (!slug) {
+        json(res, 404, { error: 'slug' });
+        return;
+      }
       const wa = phoneKey(body.wa);
       const firstName = String(body.firstName || '').trim();
       if (wa.length < 10 || !firstName) {
         json(res, 400, { error: 'profile' });
         return;
       }
-      const rec = takeState() || { rev: 0, state: {} };
+      const rec = takeState(slug) || { rev: 0, state: {} };
       if (!rec.state || typeof rec.state !== 'object') rec.state = {};
       stripDemoPeople(rec.state);
       const state = rec.state;
@@ -1105,7 +1373,7 @@ const server = http.createServer((req, res) => {
         updatedAt: new Date().toISOString(),
         state: state
       };
-      writeRecord(stored);
+      writeRecord(stored, slug);
       const student = lookupPerson(state, row.id) || { id: row.id, name: row.name, wa: row.wa };
       res.writeHead(200, {
         'content-type': 'application/json; charset=utf-8',
@@ -1139,16 +1407,17 @@ const server = http.createServer((req, res) => {
 
   const stateMatch = pathname.match(/^\/state\/([^/]+)$/);
   if (stateMatch) {
-    const slug = decodeURIComponent(stateMatch[1]);
-    if (slug !== SLUG) {
+    const slug = decodeURIComponent(stateMatch[1]).toLowerCase();
+    if (slug !== ANTON_SLUG && slugStatus(slug) !== 'taken') {
       json(res, 404, { error: 'slug' });
       return;
     }
     if (req.method === 'GET') {
-      lock(() => {
-        const rec = persistStrip(takeState());
+      lock(async () => {
+        const user = await supabaseUser(req);
+        const rec = persistStrip(takeState(slug), slug);
         const studentId = readStudentCookie(req);
-        const staff = staffRequest(req, q);
+        const staff = isStaffFor(req, q, slug, user);
         const updatedAt = rec && rec.updatedAt || null;
         const rev = rec && rec.rev || 0;
         const raw = rec && rec.state;
@@ -1161,14 +1430,15 @@ const server = http.createServer((req, res) => {
       return;
     }
     if (req.method === 'PUT') {
-      readBody(req, MAX_STATE).then((buf) => lock(() => {
-        const rec = persistStrip(takeState());
+      readBody(req, MAX_STATE).then((buf) => lock(async () => {
+        const user = await supabaseUser(req);
+        const rec = persistStrip(takeState(slug), slug);
         let body;
         try { body = JSON.parse(buf.toString('utf8')); } catch (err) {
           json(res, 400, { error: 'bad_json' });
           return;
         }
-        const staff = staffRequest(req, q);
+        const staff = isStaffFor(req, q, slug, user);
         const studentId = readStudentCookie(req);
         if (!staff && !studentId) {
           json(res, 403, { error: 'forbidden' });
@@ -1186,7 +1456,14 @@ const server = http.createServer((req, res) => {
         let nextState;
         if (staff) {
           nextState = body && body.state ? body.state : null;
-          if (nextState && typeof nextState === 'object') stripDemoPeople(nextState);
+          if (nextState && typeof nextState === 'object') {
+            stripDemoPeople(nextState);
+            if (slug !== ANTON_SLUG && rec && rec.state) {
+              nextState.ownerUserId = rec.state.ownerUserId;
+              nextState.ownerId = rec.state.ownerId;
+              nextState.schoolSlug = slug;
+            }
+          }
         } else {
           const base = (rec && rec.state) || {};
           nextState = mergeStudentWrite(base, body && body.state, studentId);
@@ -1197,7 +1474,7 @@ const server = http.createServer((req, res) => {
           updatedAt: (body && body.updatedAt) || new Date().toISOString(),
           state: nextState
         };
-        writeRecord(stored);
+        writeRecord(stored, slug);
         json(res, 200, { rev: stored.rev, updatedAt: stored.updatedAt });
       })).catch((err) => {
         if (!res.headersSent) json(res, err.status || 500, { error: err.message || 'read' });
@@ -1346,12 +1623,15 @@ const server = http.createServer((req, res) => {
   }
 
   if (pathname === '/media/file' && req.method === 'GET') {
-    const rec = readState();
-    if (!sameSecret(q.k, inviteOf(rec))) {
-      json(res, 403, { error: 'forbidden' });
-      return;
+    const publicPhoto = profileKeyOk(q.key);
+    if (!publicPhoto) {
+      const rec = readState();
+      if (!sameSecret(q.k, inviteOf(rec))) {
+        json(res, 403, { error: 'forbidden' });
+        return;
+      }
     }
-    const key = keyOk(q.key) ? q.key : '';
+    const key = (publicPhoto || keyOk(q.key)) ? q.key : '';
     if (!key) {
       json(res, 400, { error: 'key' });
       return;
@@ -1386,16 +1666,22 @@ const server = http.createServer((req, res) => {
   }
 
   if (pathname === '/events' && req.method === 'POST') {
-    const eventStudent = readStudentCookie(req);
-    const eventStaff = adminAuthed(req, q);
-    if (!eventStudent && !eventStaff) {
-      json(res, 401, { error: 'auth' });
-      return;
-    }
-    readBody(req, MAX_EVENT_BYTES).then((buf) => lock(() => {
+    readBody(req, MAX_EVENT_BYTES).then((buf) => lock(async () => {
       let body;
       try { body = JSON.parse(buf.toString('utf8')); } catch (err) {
         json(res, 400, { error: 'bad_json' });
+        return;
+      }
+      const slug = resolveLiveSlug(body.slug);
+      if (!slug) {
+        json(res, 404, { error: 'slug' });
+        return;
+      }
+      const user = await supabaseUser(req);
+      const eventStudent = readStudentCookie(req);
+      const eventStaff = isStaffFor(req, q, slug, user);
+      if (!eventStudent && !eventStaff) {
+        json(res, 401, { error: 'auth' });
         return;
       }
       const type = String(body.type || '').slice(0, 40);
@@ -1403,7 +1689,7 @@ const server = http.createServer((req, res) => {
         json(res, 400, { error: 'type' });
         return;
       }
-      const rec = takeState();
+      const rec = takeState(slug);
       const person = eventStudent ? lookupPerson((rec && rec.state) || {}, eventStudent) : null;
       const row = {
         id: crypto.randomBytes(8).toString('hex'),

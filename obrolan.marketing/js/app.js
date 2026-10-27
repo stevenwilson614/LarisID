@@ -8,9 +8,26 @@
   const PRESENT_PANE = PRESENT_QS.get('pane') === 'mentor' ? 'mentor' : 'student';
   /** Anton Siswa view iframe: full student app, isolated storage, no writes. */
   const SISWA_READONLY = PRESENT && PRESENT_QS.get('readonly') === '1';
-  const KEY = SISWA_READONLY ? 'lms-school-v1-siswa-preview' : 'lms-school-v1';
-  const LEGACY_KEY = SISWA_READONLY ? 'anton-school-v3-siswa-preview' : 'anton-school-v3';
-  const BUS = (!SISWA_READONLY && 'BroadcastChannel' in window) ? new BroadcastChannel('lms-school-v1') : null;
+  function earlySlug() {
+    const path = location.pathname.replace(/\/index\.html$/, '').replace(/\/+$/, '') || '/';
+    if (path === '/obrolan.marketing' || path === '/school') return 'obrolan.marketing';
+    const vanity = path.match(/^\/s\/([^/]+)$/i);
+    if (vanity) return decodeURIComponent(vanity[1]).trim().toLowerCase();
+    const root = path.match(/^\/([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)$/i);
+    if (root) return root[1].toLowerCase();
+    return 'obrolan.marketing';
+  }
+  const PATH_SLUG = earlySlug();
+  const ANTON_STORAGE = PATH_SLUG === 'obrolan.marketing';
+  const KEY = SISWA_READONLY
+    ? 'lms-school-v1-siswa-preview'
+    : (ANTON_STORAGE ? 'lms-school-v1' : ('lms-school-v1:' + PATH_SLUG));
+  const LEGACY_KEY = SISWA_READONLY
+    ? 'anton-school-v3-siswa-preview'
+    : (ANTON_STORAGE ? 'anton-school-v3' : '');
+  const BUS = (!SISWA_READONLY && 'BroadcastChannel' in window)
+    ? new BroadcastChannel(ANTON_STORAGE ? 'lms-school-v1' : ('lms-school-v1:' + PATH_SLUG))
+    : null;
   const SYNC_MAX = 5 * 1024 * 1024;
   const $ = (id) => document.getElementById(id);
 
@@ -72,16 +89,29 @@
   function onStudentVanityPath() {
     return /^\/s\/[^/]+$/i.test(cleanPath());
   }
+  function onCoachRootPath() {
+    if (onMentorPath() || onStudentVanityPath()) return false;
+    return cleanPath() === '/' + PATH_SLUG && PATH_SLUG !== 'obrolan.marketing';
+  }
+  function antonSchoolData() {
+    if (PATH_SLUG === 'obrolan.marketing') return true;
+    return isLocalHost() && PRESENT_QS.get('demo') === '1';
+  }
   function pathSlug() {
     if (onMentorPath()) return 'obrolan.marketing';
     const m = cleanPath().match(/^\/s\/([^/]+)$/i);
-    return m ? normalizeSlug(decodeURIComponent(m[1])) : '';
+    if (m) return normalizeSlug(decodeURIComponent(m[1]));
+    if (onCoachRootPath()) return PATH_SLUG;
+    return '';
   }
   function qsSlug() {
     return normalizeSlug(PRESENT_QS.get('s') || PRESENT_QS.get('school') || '');
   }
   function schoolSlug() {
-    return normalizeSlug((typeof db !== 'undefined' && db && db.schoolSlug) || SEED.school.slug);
+    const fromPath = pathSlug();
+    if (fromPath) return fromPath;
+    const stored = (typeof db !== 'undefined' && db && db.schoolSlug) || '';
+    return normalizeSlug(stored || (antonSchoolData() ? SEED.school.slug : PATH_SLUG));
   }
   function schoolInviteCode() {
     const fromDb = (typeof db !== 'undefined' && db && db.inviteCode) ? db.inviteCode : '';
@@ -93,6 +123,8 @@
     return '/s/' + slug + '/';
   }
   function schoolMentorPath() {
+    const slug = pathSlug();
+    if (slug && slug !== 'obrolan.marketing') return '/' + slug + '/';
     return '/obrolan.marketing/';
   }
   function apiBase() {
@@ -179,6 +211,20 @@
   }
 
   function hydrateCurriculum(merged) {
+    if (!antonSchoolData()) {
+      merged.lectures = Array.isArray(merged.lectures) ? merged.lectures : [];
+      merged.weeks = Array.isArray(merged.weeks) ? merged.weeks : [];
+      merged.sessions = Array.isArray(merged.sessions) ? merged.sessions : [];
+      merged.lectures.forEach((l) => {
+        if (!l.points) l.points = [];
+        if (!l.questions) l.questions = [];
+        if (!l.resources) l.resources = [];
+        if (l.body == null) l.body = '';
+        if (l.coverBlob == null) l.coverBlob = false;
+      });
+      if (!merged.sectionStyle) merged.sectionStyle = 'minggu';
+      return;
+    }
     const seedIds = (SEED.lectures || []).map((l) => l.id).join('|');
     const have = (merged.lectures || []).map((l) => l.id).join('|');
     const legacy = !merged.lectures || !merged.lectures.length ||
@@ -614,7 +660,7 @@
   }
 
   function hydrateFunnel(merged) {
-    merged.schoolSlug = isValidSlug(merged.schoolSlug) ? normalizeSlug(merged.schoolSlug) : SEED.school.slug;
+    merged.schoolSlug = isValidSlug(merged.schoolSlug) ? normalizeSlug(merged.schoolSlug) : (antonSchoolData() ? SEED.school.slug : (pathSlug() || PATH_SLUG));
     merged.schoolProfile = Object.assign(defaultSchoolProfile(), merged.schoolProfile || {}, {
       socials: Object.assign(defaultSchoolProfile().socials, ((merged.schoolProfile || {}).socials || {}))
     });
@@ -622,7 +668,9 @@
       notifications: Object.assign(defaultAccountSettings().notifications, ((merged.accountSettings || {}).notifications || {}))
     });
     merged.onboarding = normalizeOnboarding(merged.onboarding);
-    merged.inviteCode = String(merged.inviteCode || (SEED.cohort && SEED.cohort.invite) || '').trim() || SEED.cohort.invite;
+    merged.inviteCode = antonSchoolData()
+      ? (String(merged.inviteCode || (SEED.cohort && SEED.cohort.invite) || '').trim() || SEED.cohort.invite)
+      : String(merged.inviteCode || '').trim();
     merged.lynkProducts = Object.assign({
       month: { url: '', title: '', price: 0 },
       quarter: { url: '', title: '', price: 0 },
@@ -636,8 +684,8 @@
         price: Number(row.price) || 0
       };
     });
-    merged.pricing = Object.assign({}, SEED.pricing, merged.pricing || {});
-    merged.bank = Object.assign({}, SEED.bank, merged.bank || {});
+    merged.pricing = antonSchoolData() ? Object.assign({}, SEED.pricing, merged.pricing || {}) : (merged.pricing && typeof merged.pricing === 'object' ? merged.pricing : {});
+    merged.bank = antonSchoolData() ? Object.assign({}, SEED.bank, merged.bank || {}) : (merged.bank && typeof merged.bank === 'object' ? merged.bank : {});
     merged.dunning = Object.assign({}, SEED.dunning, merged.dunning || {});
     merged.actionPlans = mergeActionPlans(merged.actionPlans);
     hydratePipeline(merged);
@@ -804,6 +852,14 @@
   }
 
   function defaultSchoolProfile() {
+    const blankSocials = { website: '', facebook: '', instagram: '', linkedin: '', tiktok: '', x: '', youtube: '' };
+    if (!antonSchoolData()) {
+      return {
+        firstName: '', lastName: '', headline: '', biography: '',
+        photoMode: 'upload', socialSource: 'tiktok', photoBlob: false, photoUrl: '',
+        socials: blankSocials
+      };
+    }
     const seed = (SEED.school && SEED.school.profile) || {};
     const staff = (SEED.staff && SEED.staff[0]) || {};
     const nameParts = String(staff.name || 'Anton').trim().split(/\s+/);
@@ -827,6 +883,7 @@
     };
   }
   function demoRosterOn() {
+    if (!antonSchoolData()) return false;
     if (!isLocalHost()) return false;
     if (PRESENT_QS.get('demo') === '1') return true;
     if (PRESENT_QS.get('sync') === '1') return false;
@@ -856,15 +913,25 @@
       photoMode: cur.photoMode === 'social' ? 'social' : 'upload',
       socialSource: cur.socialSource || base.socialSource,
       photoBlob: !!cur.photoBlob,
+      photoUrl: String(cur.photoUrl || base.photoUrl || ''),
       socials: Object.assign({}, base.socials, cur.socials || {})
     };
   }
   function schoolDisplayName(p) {
     const prof = p || schoolProfile();
     const full = (String(prof.firstName || '').trim() + ' ' + String(prof.lastName || '').trim()).trim();
-    return full || SEED.school.name;
+    const business = (typeof db !== 'undefined' && db && db.businessName) || '';
+    return full || business || (antonSchoolData() ? SEED.school.name : 'Kelas');
   }
   function defaultAccountSettings() {
+    if (!antonSchoolData()) {
+      return {
+        email: '',
+        twoFactor: false,
+        passwordSet: false,
+        notifications: { studentJoin: true, studentPay: true, lessonComplete: false, comment: true }
+      };
+    }
     const seed = (SEED.school && SEED.school.account) || {};
     return {
       email: String(seed.email || 'anton@obrolan.marketing'),
@@ -1110,6 +1177,8 @@
     const p = schoolProfile();
     const c = cls || 'school-avatar';
     if (p.photoBlob) return '<img class="' + c + '" data-blob="' + esc(schoolPhotoKey()) + '" alt="">';
+    if (p.photoUrl) return '<img class="' + c + '" src="' + esc(p.photoUrl) + '" alt="">';
+    if (!antonSchoolData()) return '<span class="' + c + '">' + esc((p.firstName || 'K').slice(0, 1)) + '</span>';
     return '<img class="' + c + '" src="' + esc(SEED.school.photo || SEED.school.logo) + '" alt="">';
   }
   function schoolSocialLinksHtml() {
@@ -1743,11 +1812,12 @@
         last[sid] = ids[ids.length - 1] || (SEED.lectures[0] && SEED.lectures[0].id);
       });
     }
+    const anton = antonSchoolData();
     const state = {
-      lectures: cloneLectures(),
-      catalog: SEED.catalog.map((p) => ({ ...p, outline: (p.outline || []).slice() })),
-      weeks: SEED.weeks.map((w) => ({ ...w })),
-      sessions: SEED.sessions.map((s) => ({ ...s })),
+      lectures: anton ? cloneLectures() : [],
+      catalog: anton ? SEED.catalog.map((p) => ({ ...p, outline: (p.outline || []).slice() })) : [],
+      weeks: anton ? SEED.weeks.map((w) => ({ ...w })) : [],
+      sessions: anton ? SEED.sessions.map((s) => ({ ...s })) : [],
       billing: demo ? JSON.parse(JSON.stringify(SEED.billing)) : {},
       crm: demo ? JSON.parse(JSON.stringify(SEED.crm || {})) : {},
       applications: demo ? JSON.parse(JSON.stringify(SEED.applications || {})) : {},
@@ -1761,10 +1831,13 @@
       waMessages: demo ? JSON.parse(JSON.stringify(SEED.waMessagesSeed || [])) : [],
       enrollments: demo ? JSON.parse(JSON.stringify(SEED.enrollmentsSeed || {})) : {},
       people: {},
-      schoolSlug: SEED.school.slug,
-      inviteCode: SEED.cohort.invite,
-      pricing: JSON.parse(JSON.stringify(SEED.pricing)),
-      bank: JSON.parse(JSON.stringify(SEED.bank)),
+      schoolSlug: anton ? SEED.school.slug : (pathSlug() || PATH_SLUG),
+      businessName: '',
+      mentorBand: '',
+      ownerId: anton ? ((SEED.school && SEED.school.ownerId) || 'u-anton') : '',
+      inviteCode: anton ? SEED.cohort.invite : '',
+      pricing: anton ? JSON.parse(JSON.stringify(SEED.pricing)) : {},
+      bank: anton ? JSON.parse(JSON.stringify(SEED.bank)) : {},
       dunning: JSON.parse(JSON.stringify(SEED.dunning)),
       actionPlans: JSON.parse(JSON.stringify(SEED.actionPlans)),
       pipelineStages: JSON.parse(JSON.stringify(SEED.pipelineStages)),
@@ -1778,7 +1851,7 @@
       chats: {},
       attendance: demo ? JSON.parse(JSON.stringify(SEED.attendance)) : {},
       notes: demo ? JSON.parse(JSON.stringify(SEED.notes)) : {},
-      announcements: SEED.announcements.map((a) => ({ ...a })),
+      announcements: anton ? SEED.announcements.map((a) => ({ ...a })) : [],
       progress,
       lastLecture: last,
       kolab: {},
@@ -1801,6 +1874,7 @@
     try {
       const cur = localStorage.getItem(KEY);
       if (cur) return cur;
+      if (!LEGACY_KEY) return null;
       const old = localStorage.getItem(LEGACY_KEY);
       if (!old) return null;
       localStorage.setItem(KEY, old);
@@ -1897,6 +1971,14 @@
       const raw = readStoredRaw();
       if (!raw) return defaultState();
       const merged = Object.assign(defaultState(), JSON.parse(raw));
+      if (!antonSchoolData()) {
+        merged.catalog = Array.isArray(merged.catalog) ? merged.catalog : [];
+        hydrateCurriculum(merged);
+        hydrateFunnel(merged);
+        if (!Array.isArray(merged.directory)) merged.directory = [];
+        stripHeldRoster(merged);
+        return merged;
+      }
       if (!merged.catalog || !merged.catalog.length) {
         merged.catalog = SEED.catalog.map((p) => ({ ...p, outline: (p.outline || []).slice() }));
       } else {
@@ -2759,7 +2841,11 @@
     render();
   }
   function actorId() {
-    if (isStaff()) return ui.role === 'asisten' ? 'u-lia' : ((SEED.school && SEED.school.ownerId) || 'u-anton');
+    if (isStaff()) {
+      if (ui.role === 'asisten') return 'u-lia';
+      if (typeof db !== 'undefined' && db && db.ownerId) return db.ownerId;
+      return (SEED.school && SEED.school.ownerId) || 'u-anton';
+    }
     return ui.personaId;
   }
   function actorOf(id) {
@@ -3112,8 +3198,10 @@
   }
 
   function nextSession() {
+    const list = db.sessions || [];
+    if (!list.length) return null;
     const now = nowMs();
-    return db.sessions.find((s) => new Date(s.startsAt).getTime() >= now) || db.sessions[db.sessions.length - 1];
+    return list.find((s) => new Date(s.startsAt).getTime() >= now) || list[list.length - 1];
   }
   function belumSiap(session) {
     const need = session.required || [];
@@ -3135,7 +3223,9 @@
     return db.ownerContact;
   }
   function ownerWa() {
-    return normalizeWa(ownerContact().wa || (SEED.staff[0] && SEED.staff[0].wa) || '');
+    const own = normalizeWa(ownerContact().wa || '');
+    if (own || !antonSchoolData()) return own;
+    return normalizeWa((SEED.staff[0] && SEED.staff[0].wa) || '');
   }
   function ownerEmail() {
     return String(ownerContact().email || '').trim();
@@ -3176,7 +3266,8 @@
       stage: (db.crm && db.crm[ui.personaId] && db.crm[ui.personaId].stage) || '',
       progress: (typeof kurProgress === 'function' && ui.personaId) ? kurProgress(ui.personaId).pct : null,
       staff: !!ui.admin,
-      demo: demo && !ui.visitorLive
+      demo: demo && !ui.visitorLive,
+      slug: schoolSlug()
     }, extra || {});
     fetch(apiBase() + '/events', {
       method: 'POST',
@@ -3979,16 +4070,23 @@
     });
     return out;
   }
+  function lmsAuth() {
+    try { return JSON.parse(localStorage.getItem('lms-auth-v1') || 'null'); } catch (err) { return null; }
+  }
   function lmsHeaders(extra) {
     const headers = Object.assign({ 'content-type': 'application/json' }, extra || {});
     if (onStudentVanityPath() || !ui.admin) headers['x-lms-view'] = 'student';
+    else {
+      const auth = lmsAuth();
+      if (auth && auth.access_token) headers.authorization = 'Bearer ' + auth.access_token;
+    }
     return headers;
   }
   async function claimStudentRecord(profile) {
     const res = await fetch(apiBase() + '/join', {
       method: 'POST',
       headers: lmsHeaders(),
-      body: JSON.stringify(Object.assign({ visitorId: ui.visitorId || visitorId() }, profile || {}))
+      body: JSON.stringify(Object.assign({ visitorId: ui.visitorId || visitorId(), slug: schoolSlug() }, profile || {}))
     });
     if (!res.ok) return null;
     const data = await res.json().catch(() => ({}));
@@ -6050,12 +6148,17 @@
     $('app').classList.toggle('is-onboard', isOnboardScreen());
     $('app').classList.toggle('is-belajar', !isStaff() && ui.tab === 'belajar');
     $('app').classList.toggle('is-diskusi', isStaff() ? ui.mentorTab === 'diskusi' : ui.tab === 'diskusi');
-    $('school-name').textContent = SEED.school.name;
+    const chromeName = (db && db.businessName) || schoolDisplayName();
+    $('school-name').textContent = chromeName;
+    if (chromeName) document.title = chromeName;
     const logo = $('school-logo');
     if (logo) {
-      logo.alt = SEED.school.name;
+      logo.alt = chromeName;
       const pLogo = schoolProfile();
-      if (pLogo.photoBlob) {
+      if (pLogo.photoUrl && !pLogo.photoBlob) {
+        logo.removeAttribute('data-blob');
+        logo.src = pLogo.photoUrl;
+      } else if (pLogo.photoBlob) {
         logo.setAttribute('data-blob', schoolPhotoKey());
         blobGet(schoolPhotoKey()).then((file) => {
           if (!file || !logo.isConnected) return;
@@ -6063,7 +6166,7 @@
         });
       } else {
         logo.removeAttribute('data-blob');
-        logo.src = SEED.school.photo || SEED.school.logo;
+        logo.src = antonSchoolData() ? (SEED.school.photo || SEED.school.logo) : '';
       }
     }
     const badge = document.querySelector('.off-badge');
@@ -7052,6 +7155,10 @@
     const last = lectureById(lastId) || lectures()[0];
     const ses = nextSession();
     const preview = canPreview(s.id) && !canMentoring(s.id);
+    if (!ses) {
+      return (preview ? offerBanner(s.id) : '') +
+        '<section class="card"><h2>' + esc((db && db.businessName) || 'Kelas') + '</h2><p class="muted">Jadwal belum dipasang.</p></section>';
+    }
     return (
       (preview ? offerBanner(s.id) : '') +
       '<div class="grid-2">' +
@@ -7068,7 +7175,11 @@
             (preview
               ? '<button class="btn" data-act="tab" data-id="daftar">Buka dengan mentoring</button>'
               : '<a class="btn" href="' + esc(ses.meetUrl) + '" target="_blank" rel="noopener">Buka Meet</a>') +
-            '<a class="wa" href="' + esc(waLink(ownerWa(), 'Halo Anton, saya dari Batch September.')) + '">Chat Anton di WA</a>' +
+            (ownerWa()
+              ? '<a class="wa" href="' + esc(waLink(ownerWa(), antonSchoolData()
+                ? 'Halo Anton, saya dari Batch September.'
+                : ('Halo ' + ownerFirstName() + ', saya mau ikut kelas.'))) + '">Chat ' + esc(antonSchoolData() ? 'Anton' : ownerFirstName()) + ' di WA</a>'
+              : '') +
           '</div>' +
           calSyncButtons(ses) +
           (!preview
@@ -7084,6 +7195,16 @@
   }
 
   function viewHomeAlacarte() {
+    if (!antonSchoolData()) {
+      const wa = ownerWa();
+      const headline = schoolProfile().headline || 'Materi belum dipasang.';
+      return '<section class="card"><h2>' + esc((db && db.businessName) || schoolDisplayName()) + '</h2>' +
+        '<p class="muted">' + esc(headline) + '</p>' +
+        (wa
+          ? '<a class="wa" href="' + esc(waLink(wa, 'Halo ' + ownerFirstName() + ', saya mau ikut kelas.')) + '">Chat ' + esc(ownerFirstName()) + ' di WA</a>'
+          : '') +
+        '</section>';
+    }
     const s = student();
     const b = billingOf(s.id);
     const owned = catalog().filter((p) => canSku(s.id, p.id));
@@ -7972,9 +8093,12 @@
       '<section class="card"><h2>Pengumuman & sesi</h2>' +
         db.announcements.map((a) => '<p><strong>' + esc(a.title) + '</strong><br><span class="muted">' + esc(a.body) + '</span></p>').join('') +
         '<hr style="border:0;border-top:1px solid var(--line)">' +
-        '<p><strong>' + esc(ses.title) + '</strong></p>' +
-        '<p class="muted">' + fmtWhen(ses.startsAt) + '</p>' +
-        '<a class="wa" href="' + esc(SEED.school.waGroup) + '" target="_blank" rel="noopener">Grup WA kelas</a>' +
+        (ses
+          ? '<p><strong>' + esc(ses.title) + '</strong></p><p class="muted">' + fmtWhen(ses.startsAt) + '</p>'
+          : '<p class="muted">Belum ada sesi.</p>') +
+        (antonSchoolData()
+          ? '<a class="wa" href="' + esc(SEED.school.waGroup) + '" target="_blank" rel="noopener">Grup WA kelas</a>'
+          : '') +
         (staff ? '<form class="compose" data-act="announce" style="margin-top:12px"><input name="title" required placeholder="Judul pengumuman"><textarea name="body" required rows="2"></textarea><button class="btn" type="submit">Kirim pengumuman</button></form>' : '') +
       '</section></div>';
   }
@@ -9186,7 +9310,7 @@
         '</div>'
       : '';
     const head = '<div class="hub-head">' +
-      '<div><h2 style="margin:0">Siswa · ' + esc(SEED.cohort.name) + '</h2>' +
+      '<div><h2 style="margin:0">Siswa · ' + esc(antonSchoolData() ? SEED.cohort.name : ((db && db.businessName) || 'Kelas')) + '</h2>' +
         '<p class="muted">Klik nama = profil. Geser kartu di Pipa.</p></div>' +
       '<div class="hub-head-acts">' +
         pipaGear +
@@ -10598,7 +10722,7 @@
   document.addEventListener('change', (e) => {
     const t = e.target;
     if (t.id === 'role-switch') {
-      if (ui.present || ui.chromeSync || onStudentVanityPath()) return;
+      if (ui.present || ui.chromeSync || onStudentVanityPath() || (onCoachRootPath() && !ui.admin)) return;
       ui.role = t.value;
       ui.tab = 'home';
       ui.mentorTab = 'dash';
@@ -13707,7 +13831,7 @@
       const res = await fetch(apiBase() + '/session', {
         method: 'POST',
         headers: lmsHeaders(),
-        body: JSON.stringify({ visitorId: ui.visitorId || visitorId() })
+        body: JSON.stringify({ visitorId: ui.visitorId || visitorId(), slug: schoolSlug() })
       });
       if (!res.ok) return;
       const data = await res.json().catch(() => ({}));
@@ -13776,11 +13900,34 @@
     } catch (err) { /* still send */ }
     trackEvent('page_view');
   }
+  async function claimCoach() {
+    const auth = lmsAuth();
+    if (!auth || !auth.access_token) return false;
+    try {
+      const res = await fetch(apiBase() + '/owners/me', {
+        headers: { authorization: 'Bearer ' + auth.access_token },
+        cache: 'no-store'
+      });
+      if (!res.ok) return false;
+      const data = await res.json().catch(() => ({}));
+      if (!data.slug || data.slug !== schoolSlug()) return false;
+      ui.admin = true;
+      ui.role = 'owner';
+      ui.coach = true;
+      ui.visitorLive = false;
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
   async function bootHosted() {
     ui.visitorId = visitorId();
     /* /s/{slug} is always the student app — never claim mentor from the admin cookie. */
     const forceStudent = onStudentVanityPath() || (PRESENT && PRESENT_PANE === 'student');
-    const admin = forceStudent ? false : await claimAdmin();
+    const coachRoot = onCoachRootPath();
+    let admin = false;
+    if (!forceStudent && coachRoot) admin = await claimCoach();
+    else if (!forceStudent) admin = await claimAdmin();
     if (!admin) await bootSession();
     await bootSync();
     if (!admin && !ui.sessionStudentId) ensureLiveVisitor();
