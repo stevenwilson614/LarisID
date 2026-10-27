@@ -3,6 +3,7 @@
 _Internal. Do not apply SQL on Contabo. Do not merge to `main`._
 
 Live (Contabo): https://larisid.com/s/obrolan.marketing?invite=ANTON-SEP26  
+Legacy path (same LMS): https://larisid.com/obrolan.marketing/  
 Local: `bash school/serve.sh` → http://127.0.0.1:8765/s/obrolan.marketing  
 Dual-view (localhost): http://127.0.0.1:8765/school/present.html  
 Deploy: `bash scripts/deploy-school-contabo.sh`

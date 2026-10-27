@@ -13,16 +13,24 @@ APP_REMOTE="/root/larisid-infra/docker/anton-school"
 COMPOSE_REMOTE="/root/larisid-infra/docker"
 CADDY_REMOTE="/root/larisid-infra/docker/volumes/proxy/caddy/Caddyfile"
 
-echo "1/5 Static school/ → Contabo www/larisid/school/"
-"${RSYNC[@]}" --delete \
-  --exclude functions \
-  --exclude pages \
-  --exclude server \
-  --exclude wrangler.toml \
-  --exclude '.kv-namespace-id' \
-  --exclude '.d1-database-id' \
-  --exclude '.DS_Store' \
+echo "1/5 Static school/ → Contabo www/larisid/school/ + www/larisid/obrolan.marketing/"
+RSYNC_EXCLUDES=(
+  --exclude functions
+  --exclude pages
+  --exclude server
+  --exclude wrangler.toml
+  --exclude '.kv-namespace-id'
+  --exclude '.d1-database-id'
+  --exclude '.DS_Store'
+)
+"${RSYNC[@]}" --delete "${RSYNC_EXCLUDES[@]}" \
   "$ROOT/school/" "$HOST:$WWW_REMOTE/school/"
+
+# Legacy public path (bookmarks / WA links). Keep /admin from the older tree.
+"${RSYNC[@]}" --delete "${RSYNC_EXCLUDES[@]}" \
+  --exclude admin \
+  "$ROOT/school/" "$HOST:$WWW_REMOTE/obrolan.marketing/"
+"${SSH[@]}" "$HOST" 'sed -i "s|href=\"/school/\"|href=\"/obrolan.marketing/\"|g" '"$WWW_REMOTE"'/obrolan.marketing/index.html '"$WWW_REMOTE"'/obrolan.marketing/present.html 2>/dev/null || true'
 
 # Fonts used by school shell
 "${RSYNC[@]}" "$ROOT/fonts/" "$HOST:$WWW_REMOTE/fonts/"
@@ -100,15 +108,14 @@ import re
 p = Path("/root/larisid-infra/docker/volumes/proxy/caddy/Caddyfile")
 text = p.read_text()
 # Replace the school-related handlers inside the larisid.com block.
-school_block = """\t# School LMS (Contabo) — https://larisid.com/s/{slug}
+school_block = """\t# School LMS (Contabo) — /s/{slug} + legacy /obrolan.marketing/
 \thandle_path /api/* {
 \t\treverse_proxy anton-school:8787
 \t}
 \thandle_path /obrolan.marketing/api/* {
 \t\treverse_proxy anton-school:8787
 \t}
-\tredir /obrolan.marketing /s/obrolan.marketing 308
-\tredir /obrolan.marketing/ /s/obrolan.marketing 308
+\tredir /obrolan.marketing /obrolan.marketing/ 308
 \thandle /s/* {
 \t\trewrite * /school/index.html
 \t\tfile_server
@@ -134,15 +141,16 @@ PY
 cd /root/larisid-infra/docker
 docker compose -f docker-compose.yml -f docker-compose.larisid.yml -f docker-compose.caddy.yml \
   up -d --force-recreate --no-deps anton-school
-# Caddy picks up the bind-mounted Caddyfile; HUP is enough when the file changed.
-docker kill -s HUP supabase-caddy || docker restart supabase-caddy
+# Full restart — HUP alone often keeps stale routes for school redirs.
+docker restart supabase-caddy
 REMOTE
 
 echo "5/5 Verify"
 sleep 2
-"${SSH[@]}" "$HOST" 'docker exec supabase-anton-school-1 wget -qO- http://127.0.0.1:8787/health; echo; curl -sS -o /dev/null -w "s:%{http_code}\n" --resolve larisid.com:443:127.0.0.1 https://larisid.com/s/obrolan.marketing; curl -sS -o /dev/null -w "api:%{http_code}\n" --resolve larisid.com:443:127.0.0.1 "https://larisid.com/api/state/obrolan.marketing?k=ANTON-SEP26"'
+"${SSH[@]}" "$HOST" 'docker exec supabase-anton-school-1 wget -qO- http://127.0.0.1:8787/health; echo; curl -sS -o /dev/null -w "s:%{http_code}\n" --resolve larisid.com:443:127.0.0.1 https://larisid.com/s/obrolan.marketing; curl -sS -o /dev/null -w "legacy:%{http_code}\n" --resolve larisid.com:443:127.0.0.1 https://larisid.com/obrolan.marketing/; curl -sS -o /dev/null -w "api:%{http_code}\n" --resolve larisid.com:443:127.0.0.1 "https://larisid.com/api/state/obrolan.marketing?k=ANTON-SEP26"'
 
 echo "OK — https://larisid.com/s/obrolan.marketing?invite=ANTON-SEP26"
+echo "Also — https://larisid.com/obrolan.marketing/ (same new LMS)"
 echo "Mayar webhook: https://larisid.com/api/pay/webhook"
 echo "WA webhook:    https://larisid.com/api/wa/webhook?secret=…&slug=obrolan.marketing"
 echo "Secrets (VPS docker/.env): MAYAR_API_KEY, MAYAR_WEBHOOK_SECRET, FONNTE_*, WA_WEBHOOK_SECRET"

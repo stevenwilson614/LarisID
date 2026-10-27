@@ -6,10 +6,11 @@ branch to `main` unless graduating, do not copy `school/` into
 
 **Live (Contabo / larisid.com):**
 [https://larisid.com/s/obrolan.marketing?invite=ANTON-SEP26](https://larisid.com/s/obrolan.marketing?invite=ANTON-SEP26)
+· also [https://larisid.com/obrolan.marketing/](https://larisid.com/obrolan.marketing/) (same new LMS; replaces the old static tree)
 
-Static SPA under `/school/` + vanity `/s/{slug}`. Node API
-(`anton-school:8787`) behind Caddy `/api/*` — disk state, Mayar, WhatsApp
-(Fonnte). Not LarisID Postgres. Not Cloudflare Pages
+Static SPA under `/school/` + vanity `/s/{slug}` (+ legacy `/obrolan.marketing/`).
+Node API (`anton-school:8787`) behind Caddy `/api/*` — disk state, Mayar,
+WhatsApp (Fonnte). Not LarisID Postgres. Not Cloudflare Pages
 (`mastermind-anton.pages.dev` is retired).
 
 Redeploy:
@@ -91,6 +92,7 @@ Same pattern as lynk / Skool / Whop: one **slug** per school on a shared domain.
 |---|---|
 | Production | `https://larisid.com/s/{slug}` |
 | Anton | `https://larisid.com/s/obrolan.marketing` (same handle as `lynk.id/obrolan.marketing`) |
+| Anton legacy path | `https://larisid.com/obrolan.marketing/` (same app; kept for old links) |
 | Join | `…/s/{slug}?invite={batch-code}` |
 | API | `https://larisid.com/api/state/{slug}`, `/api/pay/*`, `/api/wa/*` |
 | Display name | Free-form (`MasterMind with Anton GC`) — not in the path |

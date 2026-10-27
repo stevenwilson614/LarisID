@@ -30,8 +30,12 @@
     return /^[a-z0-9]([a-z0-9._-]{0,62}[a-z0-9])?$/.test(slug);
   }
   function pathSlug() {
-    const m = location.pathname.match(/^\/s\/([^/]+)\/?$/i);
-    return m ? normalizeSlug(decodeURIComponent(m[1])) : '';
+    const path = location.pathname || '';
+    const vanity = path.match(/^\/s\/([^/]+)\/?$/i);
+    if (vanity) return normalizeSlug(decodeURIComponent(vanity[1]));
+    /* Legacy Contabo path before /s/{slug} — same school. */
+    if (/^\/obrolan\.marketing\/?$/i.test(path)) return 'obrolan.marketing';
+    return '';
   }
   function qsSlug() {
     return normalizeSlug(PRESENT_QS.get('s') || PRESENT_QS.get('school') || '');

@@ -19,9 +19,11 @@ The public site (`larisid.com`) is static HTML/JS served by **Contabo Caddy**
 in this repo — that does **not** change schema or edge functions.
 
 **MasterMind school LMS** (Anton) is also Contabo-only: vanity
-`https://larisid.com/s/{slug}`, static under `/school/`, Node
-`anton-school:8787` behind `/api/*` (disk state, Mayar, Fonnte WA — not
-Postgres). Deploy with `bash scripts/deploy-school-contabo.sh`. See
+`https://larisid.com/s/{slug}`, legacy `https://larisid.com/obrolan.marketing/`
+(same new SPA), static under `/school/` (+ synced copy at
+`/obrolan.marketing/`), Node `anton-school:8787` behind `/api/*` (disk
+state, Mayar, Fonnte WA — not Postgres). Deploy with
+`bash scripts/deploy-school-contabo.sh`. See
 [anton-school/README.md](./anton-school/README.md). Do not use Cloudflare
 Pages `mastermind-anton` for school.
 
