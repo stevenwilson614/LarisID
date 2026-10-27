@@ -36,7 +36,7 @@ button, a { font: inherit; }
   font-size: 1.15rem;
   letter-spacing: -0.02em;
 }
-.brand img { width: 32px; height: 32px; display: block; }
+.brand img { height: 36px; width: auto; display: block; }
 .nav-links { display: flex; align-items: center; gap: 8px; }
 .nav-links > a {
   color: var(--ink);
@@ -489,7 +489,7 @@ textarea { min-height: 96px; resize: vertical; }
 [hidden] { display: none !important; }
 @media (max-width: 800px) {
   .nav { padding: 14px 16px; }
-  .brand { font-size: 1rem; white-space: nowrap; }
+  .brand img { height: 28px; }
   .nav-links .btn { padding: 8px 10px; font-size: 0.82rem; white-space: nowrap; }
   .nav-links > a { display: none; }
   .hero { grid-template-columns: 1fr; padding: 8px 18px 0; }
