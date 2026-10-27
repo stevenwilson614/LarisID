@@ -510,6 +510,30 @@ window.ANTON_SEED = {
   replies: [
     { id: 'r1', threadId: 't2', authorId: 'u-anton', body: 'Mulai 7 hari. Naikkan kalau CPA masih masuk.', isStaff: true, createdAt: '2026-09-08T10:00:00+07:00' }
   ],
+  postsSeed: [
+    {
+      id: 'dk-anton-1',
+      batchId: '2026-09',
+      authorId: 'u-anton',
+      body: 'Contoh catatan kelas. Gambar ini aset demo, bukan screenshot GMV toko sungguhan. Cara pakai feed ini: tempel screenshot Seller Center, lalu tulis apa yang kamu lihat.',
+      images: [{ key: '', url: './assets/obrolan/storefront-phone.png', name: 'contoh-etalase.png', blob: false }],
+      pinned: true,
+      createdAt: '2026-09-10T09:00:00+07:00'
+    },
+    {
+      id: 'dk-dina-1',
+      batchId: '2026-09',
+      authorId: 's-dina',
+      body: 'Contoh postingan siswa. Angka di kelas ini fiktif — jangan dianggap omset Dina.',
+      images: [],
+      pinned: false,
+      createdAt: '2026-09-12T14:00:00+07:00'
+    }
+  ],
+  commentsSeed: [
+    { id: 'dkc-1', postId: 'dk-anton-1', authorId: 's-dina', body: 'Kalau Seller Center masih kosong, tulis nol?', createdAt: '2026-09-10T11:00:00+07:00' },
+    { id: 'dkc-2', postId: 'dk-anton-1', authorId: 'u-anton', body: 'Iya. Nol tetap berguna — nanti kelihatan perubahannya.', createdAt: '2026-09-10T11:20:00+07:00' }
+  ],
   attendance: {
     'ses-1': { 's-kamu': 'hadir', 's-dina': 'hadir', 's-budi': 'absen', 's-sari': 'hadir', 's-eko': 'hadir', 's-nina': 'izin', 's-raka': 'hadir', 's-maya': 'hadir', 's-joko': 'hadir', 's-dewi': 'hadir', 's-oki': 'hadir' },
     'ses-2': { 's-kamu': 'hadir', 's-dina': 'izin', 's-sari': 'hadir', 's-eko': 'hadir', 's-nina': 'hadir', 's-raka': 'absen', 's-maya': 'hadir', 's-joko': 'hadir', 's-hadi': 'hadir', 's-irma': 'izin' }

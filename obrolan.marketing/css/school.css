@@ -2925,3 +2925,70 @@ html[data-mode="student"] .dock {
 .prof-preview-body .school-public { margin: 0; }
 html[data-mode="student"] .school-header { max-width: 14rem; }
 
+/* ── Diskusi batch feed ────────────────────────────────────────────── */
+.dk { display: grid; gap: 12px; max-width: 720px; }
+.dk-head h2 { margin: 0; font-size: 1.15rem; letter-spacing: -.02em; }
+.dk-head p { margin: 2px 0 0; }
+.dk-sub { margin-top: 0; }
+.dk-chips {
+  display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px;
+  -webkit-overflow-scrolling: touch;
+}
+.dk-chip {
+  border: 1px solid var(--line); background: transparent; color: var(--text);
+  border-radius: 99px; padding: 7px 12px; font: inherit; font-size: .75rem;
+  font-weight: 650; cursor: pointer; white-space: nowrap;
+}
+.dk-chip[aria-selected="true"] { background: #fff; color: #111; border-color: #fff; }
+.dk-chip span { opacity: .65; }
+.dk-rename { display: flex; gap: 8px; align-items: center; }
+.dk-rename input { flex: 1; min-width: 0; }
+.dk-compose textarea { min-height: 76px; }
+.dk-compose-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.dk-attach { cursor: pointer; margin: 0; }
+.dk-draft { display: flex; gap: 8px; flex-wrap: wrap; }
+.dk-draft-item { position: relative; width: 72px; height: 72px; }
+.dk-draft-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; display: block; }
+.dk-draft-item button {
+  position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; padding: 0;
+  border-radius: 50%; border: 0; background: #fff; color: #111; cursor: pointer; font-weight: 800;
+}
+.dk-post {
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px;
+}
+.dk-post.is-pinned { box-shadow: inset 3px 0 0 var(--accent); }
+.dk-post-h { display: flex; gap: 10px; align-items: flex-start; }
+.dk-post-h > div:nth-child(2) { flex: 1; min-width: 0; }
+.dk-post-h strong { display: block; font-size: .9rem; }
+.dk-post-acts { display: flex; gap: 6px; flex: none; }
+.dk-body { margin-top: 8px; font-size: .92rem; line-height: 1.45; }
+.dk-body p { margin: 0; }
+.dk-imgs { display: grid; gap: 4px; margin-top: 10px; }
+.dk-imgs.is-1 { grid-template-columns: 1fr; }
+.dk-imgs.is-2,
+.dk-imgs.is-3,
+.dk-imgs.is-4 { grid-template-columns: 1fr 1fr; }
+.dk-imgs.is-3 .dk-imgbtn:first-child { grid-column: 1 / -1; }
+.dk-imgbtn {
+  border: 0; padding: 0; background: #111; border-radius: 8px; overflow: hidden; cursor: zoom-in;
+}
+.dk-imgbtn img { display: block; width: 100%; height: 160px; object-fit: cover; }
+.dk-imgs.is-1 .dk-imgbtn img { height: auto; max-height: 420px; object-fit: contain; background: #111; }
+.dk-comments { margin-top: 12px; display: grid; gap: 8px; }
+.dk-comment { display: flex; gap: 8px; align-items: flex-start; }
+.dk-comment-body {
+  flex: 1; min-width: 0; background: var(--ink); border-radius: 10px; padding: 8px 10px; font-size: .84rem;
+}
+.dk-comment-body p { margin: 4px 0 0; white-space: pre-wrap; }
+.dk-comment-form { display: flex; gap: 8px; align-items: center; }
+.dk-comment-form input { flex: 1; min-width: 0; }
+.dk-empty-note { margin: 4px 0 12px; }
+.dk-lightbox {
+  position: fixed; inset: 0; z-index: 80; background: rgba(0,0,0,.86);
+  display: grid; place-items: center; padding: 20px; cursor: zoom-out;
+}
+.dk-lightbox img { max-width: min(960px, 100%); max-height: 100%; object-fit: contain; cursor: zoom-out; }
+html[data-mode="student"] .dk { max-width: none; }
+html[data-mode="student"] .dk-comment-form input,
+html[data-mode="student"] .dk-rename input { font-size: 16px; }
+
