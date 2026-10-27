@@ -581,6 +581,11 @@
     }
     merged.enrollments = Object.assign({}, JSON.parse(JSON.stringify(SEED.enrollmentsSeed || {})), merged.enrollments || {});
     merged.people = merged.people && typeof merged.people === 'object' ? merged.people : {};
+    if (!Array.isArray(merged.posts)) merged.posts = JSON.parse(JSON.stringify(SEED.postsSeed || []));
+    if (!Array.isArray(merged.comments)) merged.comments = JSON.parse(JSON.stringify(SEED.commentsSeed || []));
+    if (!merged.batchNames || typeof merged.batchNames !== 'object' || Array.isArray(merged.batchNames)) {
+      merged.batchNames = {};
+    }
     merged.remittances = Array.isArray(merged.remittances) ? merged.remittances : JSON.parse(JSON.stringify(SEED.remittances || []));
     if (typeof merged.clockOffsetMs !== 'number') merged.clockOffsetMs = 0;
     Object.keys(SEED.billing || {}).forEach((id) => {
@@ -640,6 +645,19 @@
     (state.waMessages || []).forEach((m) => {
       if (m && m.at) m.at = bump(m.at);
     });
+    (state.posts || []).forEach((p) => {
+      if (p && p.createdAt) p.createdAt = bump(p.createdAt);
+    });
+    (state.comments || []).forEach((c) => {
+      if (c && c.createdAt) c.createdAt = bump(c.createdAt);
+    });
+    const kamuPaid = state.billing && state.billing['s-kamu'] && state.billing['s-kamu'].paidAt;
+    const seedBatch = monthKey(kamuPaid);
+    if (seedBatch) {
+      (state.posts || []).forEach((p) => {
+        if (p && String(p.id || '').indexOf('dk-') === 0) p.batchId = seedBatch;
+      });
+    }
   }
 
   function defaultState() {
@@ -681,6 +699,9 @@
       clockOffsetMs: 0,
       threads: SEED.threads.map((t) => ({ ...t })),
       replies: SEED.replies.map((r) => ({ ...r })),
+      posts: JSON.parse(JSON.stringify(SEED.postsSeed || [])),
+      comments: JSON.parse(JSON.stringify(SEED.commentsSeed || [])),
+      batchNames: {},
       attendance: JSON.parse(JSON.stringify(SEED.attendance)),
       notes: JSON.parse(JSON.stringify(SEED.notes)),
       announcements: SEED.announcements.map((a) => ({ ...a })),
@@ -809,7 +830,13 @@
     visitorId: '',
     visitorLive: false,
     adminSummary: null,
-    lastTrackedLec: ''
+    lastTrackedLec: '',
+    diskusiSub: 'batch',
+    diskusiBatch: '',
+    postImages: [],
+    postBody: '',
+    postUploading: false,
+    lightbox: ''
   };
   if (PRESENT) document.documentElement.classList.add('present-pane');
 
@@ -830,6 +857,33 @@
   let syncInFlight = false;
   let syncReady = false;
   let syncStatus = '';
+  const pendingDiskusi = { posts: new Map(), comments: new Map() };
+  function rememberDiskusiPost(post) { pendingDiskusi.posts.set(post.id, post); }
+  function rememberDiskusiComment(row) { pendingDiskusi.comments.set(row.id, row); }
+  function clearPendingDiskusi() {
+    pendingDiskusi.posts.clear();
+    pendingDiskusi.comments.clear();
+  }
+  function reapplyPendingDiskusi() {
+    ensureDiskusi();
+    let added = false;
+    pendingDiskusi.posts.forEach((post) => {
+      if (!db.posts.some((p) => p && p.id === post.id)) {
+        db.posts.push(post);
+        added = true;
+      }
+    });
+    pendingDiskusi.comments.forEach((row) => {
+      if (!db.comments.some((c) => c && c.id === row.id)) {
+        db.comments.push(row);
+        added = true;
+      }
+    });
+    if (!added) return false;
+    save();
+    render();
+    return true;
+  }
 
   function syncEnabled() {
     if (ui.present) return false;
@@ -884,6 +938,7 @@
         syncStatus = 'revisi lama';
         syncInFlight = false;
         await pullState();
+        reapplyPendingDiskusi();
         return false;
       }
       if (res.status === 403 && payload.reset) {
@@ -895,6 +950,7 @@
         const data = await res.json().catch(() => ({}));
         syncRev = Number(data.rev) || payload.rev;
         syncStatus = 'ok · rev ' + syncRev;
+        clearPendingDiskusi();
         ok = true;
       } else {
         syncStatus = 'gagal ' + res.status;
@@ -1088,6 +1144,100 @@
   function productById(id) { return catalog().find((p) => p.id === id); }
   function isStaff() { return ui.role === 'owner' || ui.role === 'asisten'; }
   function canBill() { return ui.role === 'owner'; }
+
+  const BATCH_MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  function monthKey(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (!isFinite(d.getTime())) return '';
+    try {
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit'
+      }).format(d);
+      return String(parts).slice(0, 7);
+    } catch (err) {
+      return '';
+    }
+  }
+  function ensureDiskusi() {
+    if (!Array.isArray(db.posts)) db.posts = [];
+    if (!Array.isArray(db.comments)) db.comments = [];
+    if (!db.batchNames || typeof db.batchNames !== 'object' || Array.isArray(db.batchNames)) db.batchNames = {};
+  }
+  function batchOf(sid) {
+    if (!sid) return '';
+    const person = people().find((s) => s.id === sid);
+    if (person && /^\d{4}-\d{2}$/.test(String(person.batchId || ''))) return person.batchId;
+    const paid = monthKey(billingOf(sid).paidAt);
+    if (paid) return paid;
+    const app = db.applications && db.applications[sid];
+    return monthKey(app && app.at) || '';
+  }
+  function autoBatchOf(sid) {
+    const paid = monthKey(billingOf(sid).paidAt);
+    if (paid) return paid;
+    const app = db.applications && db.applications[sid];
+    return monthKey(app && app.at) || '';
+  }
+  function batchLabel(id) {
+    if (!id) return 'Tanpa batch';
+    ensureDiskusi();
+    if (db.batchNames[id]) return db.batchNames[id];
+    const m = /^(\d{4})-(\d{2})$/.exec(id);
+    if (!m) return id;
+    const name = BATCH_MONTHS[Number(m[2]) - 1] || m[2];
+    return 'Batch ' + name + ' ' + m[1];
+  }
+  function batchList() {
+    ensureDiskusi();
+    const counts = {};
+    function add(id, member) {
+      if (!id) return;
+      if (counts[id] == null) counts[id] = 0;
+      if (member) counts[id] += 1;
+    }
+    people().forEach((s) => {
+      if (!s || !canMentoring(s.id)) return;
+      add(batchOf(s.id), true);
+    });
+    db.posts.forEach((p) => add(p && p.batchId, false));
+    add(monthKey(isoNow()), false);
+    return Object.keys(counts).sort((a, b) => b.localeCompare(a)).map((id) => ({
+      id: id,
+      label: batchLabel(id),
+      count: counts[id]
+    }));
+  }
+  function canPostIn(sid, batchId) {
+    if (!batchId) return false;
+    if (isStaff()) return true;
+    return canMentoring(sid) && batchOf(sid) === batchId;
+  }
+  function actorId() {
+    if (isStaff()) return ui.role === 'asisten' ? 'u-lia' : ((SEED.school && SEED.school.ownerId) || 'u-anton');
+    return ui.personaId;
+  }
+  function actorOf(id) {
+    const person = people().find((s) => s.id === id);
+    if (person) return person;
+    const staff = (SEED.staff || []).find((s) => s.id === id);
+    if (staff) return staff;
+    return { id: id, name: nameOf(id) };
+  }
+  function actorAvatar(id, cls) {
+    const s = actorOf(id);
+    const c = cls || 'avatar';
+    if (s && s.photo && !s.photoUrl && !s.photoBlob) {
+      return '<img class="' + c + '" src="' + esc(s.photo) + '" alt="">';
+    }
+    return avatarHtml(s, c);
+  }
+  function activeDiskusiBatch() {
+    const list = batchList();
+    if (ui.diskusiBatch && list.some((b) => b.id === ui.diskusiBatch)) return ui.diskusiBatch;
+    const withPeople = list.find((b) => b.count > 0);
+    return (withPeople || list[0] || { id: monthKey(isoNow()) }).id;
+  }
 
   function lectures() { return db.lectures; }
   function lectureById(id) {
@@ -3978,7 +4128,7 @@
     const outBtn = $('btn-admin-out');
     if (outBtn) outBtn.hidden = !(ui.admin && syncEnabled());
     if (!isStaff()) {
-      const allowed = studentTabs().map((t) => t.id).concat(['sku', 'alat', 'daftar', 'tes', 'sertifikat']);
+      const allowed = studentTabs().map((t) => t.id).concat(['sku', 'alat', 'daftar', 'tes', 'sertifikat', 'diskusi']);
       if (needsWizard(ui.personaId) && ui.tab !== 'daftar') ui.tab = 'daftar';
       if (allowed.indexOf(ui.tab) === -1) ui.tab = 'home';
     }
@@ -3986,7 +4136,16 @@
   }
 
   function studentTabs() {
-    if (canMentoring(ui.personaId) || canPreview(ui.personaId)) {
+    if (canMentoring(ui.personaId)) {
+      return [
+        { id: 'home', label: 'Home' },
+        { id: 'belajar', label: 'Belajar' },
+        { id: 'alat', label: 'Alat' },
+        { id: 'progres', label: 'Progres' },
+        { id: 'diskusi', label: 'Diskusi' }
+      ];
+    }
+    if (canPreview(ui.personaId)) {
       return [
         { id: 'home', label: 'Home' },
         { id: 'belajar', label: 'Belajar' },
@@ -4071,6 +4230,7 @@
         else if (tab === 'alat') main.innerHTML = viewAlat();
         else if (tab === 'sku') main.innerHTML = viewSkuPage();
         else if (tab === 'progres') main.innerHTML = viewProgres();
+        else if (tab === 'diskusi') main.innerHTML = canMentoring(ui.personaId) ? viewDiskusiFeed(false) : viewLockedDiskusi();
         else if (tab === 'kolab') main.innerHTML = viewKolab();
         else if (tab === 'tes') main.innerHTML = viewExam();
         else if (tab === 'sertifikat') main.innerHTML = viewSertifikat(ui.personaId);
@@ -4079,6 +4239,7 @@
     }
     bindLazy();
     bindBlobMedia();
+    mountLightbox();
     bindKanbanDnD();
     bindPipaStageDnD();
     bindKurDnD();
@@ -5634,7 +5795,7 @@
       '</div>';
   }
 
-  function viewDiskusi(staff) {
+  function viewDiskusiTanya(staff) {
     const open = db.threads.filter((t) => !t.answered);
     const ses = nextSession();
     return '<div class="grid-2">' +
@@ -5649,6 +5810,303 @@
         '<a class="wa" href="' + esc(SEED.school.waGroup) + '" target="_blank" rel="noopener">Grup WA kelas</a>' +
         (staff ? '<form class="compose" data-act="announce" style="margin-top:12px"><input name="title" required placeholder="Judul pengumuman"><textarea name="body" required rows="2"></textarea><button class="btn" type="submit">Kirim pengumuman</button></form>' : '') +
       '</section></div>';
+  }
+
+  function viewDiskusi(staff) {
+    const sub = ui.diskusiSub === 'tanya' ? 'tanya' : 'batch';
+    const tabs = '<div class="subtabs dk-sub">' +
+      '<button type="button" data-act="diskusi-sub" data-id="batch" aria-selected="' + (sub === 'batch') + '">Batch</button>' +
+      '<button type="button" data-act="diskusi-sub" data-id="tanya" aria-selected="' + (sub === 'tanya') + '">Tanya materi</button>' +
+      '</div>';
+    if (sub === 'tanya') return tabs + viewDiskusiTanya(!!staff);
+    return tabs + viewDiskusiFeed(true);
+  }
+
+  function shrinkImage(file) {
+    const maxEdge = 1600;
+    const toFile = (source, sw, sh) => new Promise((resolve) => {
+      let w = sw;
+      let h = sh;
+      if (!w || !h) { resolve(file); return; }
+      const scale = Math.min(1, maxEdge / Math.max(w, h));
+      w = Math.max(1, Math.round(w * scale));
+      h = Math.max(1, Math.round(h * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { resolve(file); return; }
+      ctx.drawImage(source, 0, 0, w, h);
+      if (source.close) source.close();
+      canvas.toBlob((blob) => {
+        if (!blob) { resolve(file); return; }
+        const base = String(file.name || 'foto').replace(/\.[^.]+$/, '') || 'foto';
+        resolve(new File([blob], base + '.jpg', { type: 'image/jpeg' }));
+      }, 'image/jpeg', 0.85);
+    });
+    if (window.createImageBitmap) {
+      const opts = { imageOrientation: 'from-image' };
+      return createImageBitmap(file, opts).then((bmp) => toFile(bmp, bmp.width, bmp.height)).catch(() => {
+        return createImageBitmap(file).then((bmp) => toFile(bmp, bmp.width, bmp.height)).catch(() => null);
+      });
+    }
+    return new Promise((resolve) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        toFile(img, img.naturalWidth || img.width, img.naturalHeight || img.height).then(resolve);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+      img.src = url;
+    });
+  }
+
+  function capturePostBody() {
+    const ta = document.querySelector('.dk-compose textarea[name="body"]');
+    if (ta) ui.postBody = ta.value;
+  }
+
+  async function addPostImages(files) {
+    capturePostBody();
+    ui.postImages = ui.postImages || [];
+    const room = 4 - ui.postImages.length;
+    if (room <= 0) {
+      toast('Maks 4 foto.');
+      return;
+    }
+    const take = Array.from(files || []).slice(0, room);
+    if ((files || []).length > room) toast('Maks 4 foto.');
+    for (let i = 0; i < take.length; i += 1) {
+      const file = take[i];
+      if (file.type && file.type.indexOf('image/') !== 0) {
+        toast('Lampiran harus gambar.');
+        continue;
+      }
+      const shrunk = await shrinkImage(file);
+      if (!shrunk) {
+        toast('Gambar tidak bisa dibaca.');
+        continue;
+      }
+      if (shrunk.size > MAX_IMG) {
+        toast('Foto masih di atas 5 MB.');
+        continue;
+      }
+      ui.postImages.push({
+        id: 'pi-' + Date.now().toString(36) + Math.floor(Math.random() * 1e3).toString(36),
+        file: shrunk,
+        preview: URL.createObjectURL(shrunk)
+      });
+    }
+    render();
+  }
+
+  function dropPostMedia(post) {
+    (post.images || []).forEach((img) => {
+      if (img && img.key) deleteRemoteVideo(img.key);
+      if (img && img.blob && img.blobKey) blobDel(img.blobKey);
+    });
+  }
+
+  async function submitDiskusiPost(body, batchId) {
+    ensureDiskusi();
+    const text = String(body || '').trim();
+    const images = (ui.postImages || []).slice();
+    if (!canPostIn(actorId(), batchId)) {
+      toast('Kamu hanya bisa posting di batch sendiri.');
+      return;
+    }
+    if (!text && !images.length) {
+      toast('Tulis catatan atau lampirkan foto.');
+      return;
+    }
+    if (ui.postUploading) return;
+    ui.postBody = text;
+    ui.postUploading = true;
+    render();
+    const postId = 'dk-' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
+    try {
+      const stored = [];
+      for (let i = 0; i < images.length; i += 1) {
+        const file = images[i].file;
+        if (syncEnabled()) {
+          const info = await uploadClassVideo(file, 'post-' + postId, null, 'image');
+          stored.push({
+            key: info.key,
+            url: mediaFileUrl(info.key),
+            name: info.name || file.name,
+            blob: false
+          });
+        } else {
+          const blobKey = 'post-' + postId + '-' + i;
+          await blobPut(blobKey, file);
+          stored.push({ key: '', url: '', name: file.name, blob: true, blobKey: blobKey });
+        }
+      }
+      const post = {
+        id: postId,
+        batchId: batchId,
+        authorId: actorId(),
+        body: text,
+        images: stored,
+        pinned: false,
+        createdAt: isoNow()
+      };
+      db.posts.push(post);
+      rememberDiskusiPost(post);
+      images.forEach((img) => { if (img.preview) URL.revokeObjectURL(img.preview); });
+      ui.postImages = [];
+      ui.postBody = '';
+      ui.postUploading = false;
+      save();
+      render();
+    } catch (err) {
+      ui.postUploading = false;
+      toast('Gagal unggah foto.');
+      render();
+    }
+  }
+
+  function postDraftHtml() {
+    const imgs = ui.postImages || [];
+    if (!imgs.length) return '';
+    return '<div class="dk-draft">' + imgs.map((img) =>
+      '<span class="dk-draft-item">' +
+        '<img src="' + esc(img.preview) + '" alt="">' +
+        '<button type="button" data-act="post-img-remove" data-id="' + esc(img.id) + '" aria-label="Hapus foto">×</button>' +
+      '</span>'
+    ).join('') + '</div>';
+  }
+
+  function composerHtml(batchId) {
+    const uploading = !!ui.postUploading;
+    return '<form class="compose dk-compose" data-act="post-new" data-batch="' + esc(batchId) + '">' +
+      '<textarea name="body" rows="3" maxlength="4000" placeholder="Catatan. Tempel screenshot GMV, lalu tulis apa yang kamu lihat."' +
+        (uploading ? ' disabled' : '') + '>' + esc(ui.postBody || '') + '</textarea>' +
+      postDraftHtml() +
+      '<div class="dk-compose-row">' +
+        '<label class="btn secondary dk-attach">Foto' +
+          '<input type="file" accept="image/*" multiple hidden data-act="post-files"' + (uploading ? ' disabled' : '') + '>' +
+        '</label>' +
+        '<button class="btn" type="submit"' + (uploading ? ' disabled' : '') + '>' +
+          (uploading ? 'Mengunggah…' : 'Kirim') + '</button>' +
+      '</div></form>';
+  }
+
+  function postImagesHtml(images) {
+    const list = (images || []).filter((img) => img && (img.url || (img.blob && img.blobKey))).slice(0, 4);
+    if (!list.length) return '';
+    return '<div class="dk-imgs is-' + list.length + '">' + list.map((img) => {
+      const inner = img.url
+        ? '<img src="' + esc(img.url) + '" alt="' + esc(img.name || '') + '">'
+        : '<img data-blob="' + esc(img.blobKey) + '" alt="' + esc(img.name || '') + '">';
+      return '<button type="button" class="dk-imgbtn" data-act="post-img">' + inner + '</button>';
+    }).join('') + '</div>';
+  }
+
+  function commentHtml(row, staff) {
+    const mine = row.authorId === actorId();
+    const canDel = staff || mine;
+    return '<div class="dk-comment">' +
+      actorAvatar(row.authorId, 'avatar sm') +
+      '<div class="dk-comment-body">' +
+        '<strong>' + esc(nameOf(row.authorId)) + '</strong>' +
+        '<span class="muted"> · ' + esc(relWhen(row.createdAt)) + '</span>' +
+        '<p>' + esc(row.body) + '</p>' +
+      '</div>' +
+      (canDel
+        ? '<button type="button" class="btn-sm" data-act="comment-del" data-id="' + esc(row.id) + '">Hapus</button>'
+        : '') +
+      '</div>';
+  }
+
+  function postsInBatch(batchId) {
+    return (db.posts || []).filter((p) => p && p.batchId === batchId).slice().sort((a, b) => {
+      if (!!b.pinned !== !!a.pinned) return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0);
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+  }
+
+  function postCardHtml(post, staff) {
+    const mine = post.authorId === actorId();
+    const comments = (db.comments || []).filter((c) => c && c.postId === post.id).slice()
+      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    const canDel = !!staff || mine;
+    const canWrite = canPostIn(actorId(), post.batchId);
+    return '<article class="dk-post' + (post.pinned ? ' is-pinned' : '') + '">' +
+      '<header class="dk-post-h">' +
+        actorAvatar(post.authorId, 'avatar') +
+        '<div><strong>' + esc(nameOf(post.authorId)) + '</strong>' +
+          '<div class="muted">' + esc(relWhen(post.createdAt)) + (post.pinned ? ' · Disematkan' : '') + '</div></div>' +
+        '<div class="dk-post-acts">' +
+          (staff
+            ? '<button type="button" class="btn-sm" data-act="post-pin" data-id="' + esc(post.id) + '">' +
+                (post.pinned ? 'Lepas' : 'Sematkan') + '</button>'
+            : '') +
+          (canDel
+            ? '<button type="button" class="btn-sm" data-act="post-del" data-id="' + esc(post.id) + '">Hapus</button>'
+            : '') +
+        '</div>' +
+      '</header>' +
+      (post.body ? '<div class="dk-body">' + mdish(post.body) + '</div>' : '') +
+      postImagesHtml(post.images) +
+      '<div class="dk-comments">' +
+        comments.map((c) => commentHtml(c, staff)).join('') +
+        (canWrite
+          ? '<form class="dk-comment-form" data-act="post-comment" data-id="' + esc(post.id) + '">' +
+              '<input name="body" required maxlength="2000" placeholder="Komentar">' +
+              '<button class="btn" type="submit">Kirim</button></form>'
+          : '') +
+      '</div></article>';
+  }
+
+  function viewDiskusiFeed(staff) {
+    ensureDiskusi();
+    const batchId = staff ? activeDiskusiBatch() : batchOf(ui.personaId);
+    if (!batchId) {
+      return '<section class="card dk-empty"><h2>Diskusi</h2>' +
+        '<p class="muted">Batch kamu mengikuti bulan pembayaran mentoring. Kalau belum kelihatan, Anton yang mengaturnya.</p></section>';
+    }
+    const list = batchList();
+    const info = list.find((b) => b.id === batchId);
+    const count = info ? info.count : 0;
+    const chips = staff
+      ? '<div class="dk-chips">' + list.map((b) =>
+          '<button type="button" class="dk-chip" data-act="diskusi-batch" data-id="' + esc(b.id) + '" aria-selected="' + (b.id === batchId) + '">' +
+            esc(b.label) + ' <span>' + b.count + '</span></button>'
+        ).join('') + '</div>' +
+        '<form class="dk-rename" data-act="batch-rename" data-id="' + esc(batchId) + '">' +
+          '<input name="name" maxlength="60" placeholder="' + esc(batchLabel(batchId)) + '" value="' + esc(db.batchNames[batchId] || '') + '">' +
+          '<button class="btn secondary" type="submit">Simpan nama</button></form>'
+      : '';
+    const head = '<header class="dk-head"><h2>' + esc(batchLabel(batchId)) + '</h2>' +
+      '<p class="muted">' + count + ' orang</p></header>';
+    const can = canPostIn(actorId(), batchId);
+    const composer = can ? composerHtml(batchId) : '';
+    const posts = postsInBatch(batchId);
+    const feed = posts.length
+      ? posts.map((p) => postCardHtml(p, !!staff)).join('')
+      : '<p class="muted dk-empty-note">Belum ada catatan di batch ini. Posting pertama bisa screenshot dan catatan.</p>';
+    return '<div class="dk">' + chips + head + composer + feed + '</div>';
+  }
+
+  function mountLightbox() {
+    let el = document.getElementById('dk-lightbox');
+    if (!ui.lightbox) {
+      if (el) el.remove();
+      return;
+    }
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'dk-lightbox';
+      el.className = 'dk-lightbox';
+      el.setAttribute('data-act', 'lightbox-close');
+      document.body.appendChild(el);
+    }
+    const img = el.querySelector('img');
+    if (!img || img.getAttribute('src') !== ui.lightbox) {
+      el.innerHTML = '<img src="' + esc(ui.lightbox) + '" alt="">';
+    }
   }
 
   function viewProgres() {
@@ -6775,6 +7233,27 @@
         '<button class="btn" type="submit">Simpan paket Lynk</button>' +
       '</form></section>';
   }
+  function personBatchField(id) {
+    const person = people().find((s) => s.id === id) || {};
+    const current = /^\d{4}-\d{2}$/.test(String(person.batchId || '')) ? person.batchId : '';
+    const list = batchList();
+    if (current && !list.some((b) => b.id === current)) {
+      list.push({ id: current, label: batchLabel(current), count: 0 });
+    }
+    const auto = autoBatchOf(id);
+    const nowId = batchOf(id);
+    return '<div class="fub-field"><dt>Batch</dt><dd>' +
+      '<select data-act="person-batch" data-id="' + esc(id) + '">' +
+        '<option value=""' + (current ? '' : ' selected') + '>Otomatis (bulan bayar)</option>' +
+        list.map((b) => '<option value="' + esc(b.id) + '"' + (b.id === current ? ' selected' : '') + '>' +
+          esc(b.label) + '</option>').join('') +
+      '</select>' +
+      '<div class="muted" style="margin-top:6px">Sekarang: ' +
+        esc(nowId ? batchLabel(nowId) : 'belum ada batch') +
+        (auto ? ' · otomatis ' + esc(batchLabel(auto)) : ' · belum ada bulan bayar') +
+      '</div></dd></div>';
+  }
+
   function viewPerson(id) {
     const s = people().find((x) => x.id === id);
     if (!s) return '<p class="muted">Orang tidak ditemukan.</p><button class="btn" data-act="close-person">Kembali</button>';
@@ -6820,6 +7299,7 @@
               '<option value="' + esc(m.id) + '"' + (((s.mentorId || 'u-anton') === m.id) ? ' selected' : '') + '>' + esc(m.name) + '</option>'
             ).join('') +
           '</select></dd></div>' +
+          personBatchField(id) +
           '<div class="fub-field"><dt>Tags</dt>' + personTagsHtml(id) + '</div>' +
           '<div class="fub-field"><dt>Sumber</dt><dd>' + esc((app && app.heard) || b.source || '—') +
             (app ? '<div class="muted">' + (app.hasShop ? 'Sudah punya toko' : 'Belum punya toko') + '</div>' : '') +
@@ -7592,6 +8072,23 @@
       render();
       return;
     }
+    if (t.matches('[data-act="person-batch"]')) {
+      const id = t.getAttribute('data-id');
+      const val = String(t.value || '');
+      db.people = db.people || {};
+      db.people[id] = Object.assign({}, db.people[id] || {});
+      if (val && /^\d{4}-\d{2}$/.test(val)) db.people[id].batchId = val;
+      else delete db.people[id].batchId;
+      save();
+      render();
+      return;
+    }
+    if (t.matches('[data-act="post-files"]')) {
+      const files = Array.from(t.files || []);
+      t.value = '';
+      addPostImages(files);
+      return;
+    }
     if (t.matches('[data-act="filter-siswa"]')) {
       ui.filterSiswa = t.value;
       render();
@@ -8058,6 +8555,10 @@
 
   document.addEventListener('input', (e) => {
     const t = e.target;
+    if (t.matches('.dk-compose textarea[name="body"]')) {
+      ui.postBody = t.value;
+      return;
+    }
     if (t.matches('.wa-compose textarea[name="body"]')) {
       ui.waDraft = t.value;
       const open = t.closest('form') && t.closest('form').querySelector('[data-wa-open]');
@@ -8127,6 +8628,11 @@
     }
   });
   document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && ui.lightbox) {
+      ui.lightbox = '';
+      render();
+      return;
+    }
     if (e.key !== 'Enter') return;
     if (e.target.matches('[data-act="social-input"]')) {
       e.preventDefault();
@@ -8201,7 +8707,76 @@
         act === 'daftar-custom-val' || act === 'tag-query' || act === 'crm-stage' || act === 'assign-mentor' ||
         act === 'social-input' || act === 'shop-input' || act === 'daftar-sel' || act === 'daftar-sel-all' ||
         act === 'daftar-tag-filter' || act === 'daftar-pay-filter' ||
-        act === 'daftar-joined-from' || act === 'daftar-joined-to') {
+        act === 'daftar-joined-from' || act === 'daftar-joined-to' ||
+        act === 'post-files' || act === 'person-batch' ||
+        act === 'post-new' || act === 'post-comment' || act === 'batch-rename') {
+      return;
+    }
+    if (act === 'diskusi-sub') {
+      ui.diskusiSub = btn.getAttribute('data-id') === 'tanya' ? 'tanya' : 'batch';
+      render();
+      return;
+    }
+    if (act === 'diskusi-batch') {
+      ui.diskusiBatch = btn.getAttribute('data-id') || '';
+      render();
+      return;
+    }
+    if (act === 'post-img-remove') {
+      capturePostBody();
+      const id = btn.getAttribute('data-id');
+      const img = (ui.postImages || []).find((x) => x.id === id);
+      if (img && img.preview) URL.revokeObjectURL(img.preview);
+      ui.postImages = (ui.postImages || []).filter((x) => x.id !== id);
+      render();
+      return;
+    }
+    if (act === 'post-img') {
+      const img = btn.querySelector('img');
+      const src = img && (img.currentSrc || img.src);
+      if (!src || src === location.href) return;
+      ui.lightbox = src;
+      render();
+      return;
+    }
+    if (act === 'lightbox-close') {
+      ui.lightbox = '';
+      render();
+      return;
+    }
+    if (act === 'post-pin') {
+      if (!isStaff()) return;
+      ensureDiskusi();
+      const post = db.posts.find((p) => p && p.id === btn.getAttribute('data-id'));
+      if (!post) return;
+      post.pinned = !post.pinned;
+      save();
+      render();
+      return;
+    }
+    if (act === 'post-del') {
+      ensureDiskusi();
+      const post = db.posts.find((p) => p && p.id === btn.getAttribute('data-id'));
+      if (!post) return;
+      if (!isStaff() && post.authorId !== actorId()) return;
+      if (!confirm('Hapus catatan ini?')) return;
+      dropPostMedia(post);
+      pendingDiskusi.posts.delete(post.id);
+      db.posts = db.posts.filter((p) => p && p.id !== post.id);
+      db.comments = db.comments.filter((c) => c && c.postId !== post.id);
+      save();
+      render();
+      return;
+    }
+    if (act === 'comment-del') {
+      ensureDiskusi();
+      const row = db.comments.find((c) => c && c.id === btn.getAttribute('data-id'));
+      if (!row) return;
+      if (!isStaff() && row.authorId !== actorId()) return;
+      pendingDiskusi.comments.delete(row.id);
+      db.comments = db.comments.filter((c) => c && c.id !== row.id);
+      save();
+      render();
       return;
     }
     if (act === 'pick-social') {
@@ -9271,6 +9846,35 @@
       if (th) th.answered = true;
       save();
       render();
+    } else if (act === 'post-new') {
+      submitDiskusiPost(String(fd.get('body') || ''), form.getAttribute('data-batch') || '');
+    } else if (act === 'post-comment') {
+      ensureDiskusi();
+      const postId = form.getAttribute('data-id');
+      const post = db.posts.find((p) => p && p.id === postId);
+      const text = String(fd.get('body') || '').trim();
+      if (!post || !text || !canPostIn(actorId(), post.batchId)) return;
+      const row = {
+        id: 'dkc-' + Date.now().toString(36) + Math.floor(Math.random() * 1e3).toString(36),
+        postId: postId,
+        authorId: actorId(),
+        body: text,
+        createdAt: isoNow()
+      };
+      db.comments.push(row);
+      rememberDiskusiComment(row);
+      save();
+      render();
+    } else if (act === 'batch-rename') {
+      if (!isStaff()) return;
+      ensureDiskusi();
+      const id = form.getAttribute('data-id') || '';
+      if (!/^\d{4}-\d{2}$/.test(id)) return;
+      const name = String(fd.get('name') || '').trim().slice(0, 60);
+      if (name) db.batchNames[id] = name;
+      else delete db.batchNames[id];
+      save();
+      render();
     } else if (act === 'announce') {
       db.announcements.unshift({
         id: 'an-' + Date.now(),
@@ -9643,6 +10247,12 @@
       : 'Hapus data lokal prototype ini?')) return;
     localStorage.removeItem(KEY);
     blobClearAll();
+    (ui.postImages || []).forEach((img) => { if (img.preview) URL.revokeObjectURL(img.preview); });
+    ui.postImages = [];
+    ui.postBody = '';
+    ui.postUploading = false;
+    ui.lightbox = '';
+    clearPendingDiskusi();
     db = defaultState();
     ui.kolabSel = new Set();
     ui.editLecId = null;
