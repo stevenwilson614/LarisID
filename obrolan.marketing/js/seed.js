@@ -1,4 +1,5 @@
-/* Dummy MasterMind with Anton GC. Local prototype only. */
+/* Demo cast for the local school prototype. Hosted class state ignores ids that start with s-. */
+
 window.ANTON_SEED = {
   school: {
     id: 'sch-anton',
@@ -289,6 +290,7 @@ window.ANTON_SEED = {
       { q: 'Sertifikat mentor Anton artinya apa soal uang downline?', choices: ['Rekrut 5 orang, dapat bonus tanpa mengajar', 'Pakai kurikulum Anton; setor 20% pendapatan ke Anton (disampaikan sebelum terima)', 'Anton menahan uang murid kamu', 'Gratis selamanya'], answer: 1 }
     ]
   },
+  /* Fictional roster. Not written to the hosted school file. */
   students: [
     { id: 's-tamu', name: 'Tamu baru (wizard)', city: '—', lastActive: '2026-09-18T10:00:00+07:00', tags: ['WA baru'], wa: '628120000099', email: '', tiktok: '', mentorId: 'u-anton', kind: 'student' },
     {

@@ -1,6 +1,8 @@
 /**
- * MasterMind with Anton GC — class state, video files, arrivals, issues.
- * Disk only. Not the LarisID Postgres database.
+ * School LMS on disk for one class (test tenant: obrolan.marketing).
+ * Not the LarisID Postgres database.
+ * Staff with the admin cookie get the whole file. A student session gets only
+ * that student's row. The invite code is not a credential.
  */
 import http from 'node:http';
 import fs from 'node:fs';
@@ -11,6 +13,12 @@ const DATA = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 const PORT = Number(process.env.PORT || 8787);
 const ADMIN_KEY = String(process.env.ANTON_ADMIN_KEY || '');
 const DEFAULT_INVITE = String(process.env.ANTON_INVITE || 'ANTON-SEP26');
+// Prefer LMS_SESSION_SECRET. Fall back so a restart keeps sessions when only the admin key is set.
+const SESSION_SECRET = String(
+  process.env.LMS_SESSION_SECRET ||
+  process.env.ANTON_ADMIN_KEY ||
+  crypto.randomBytes(32).toString('hex')
+);
 const SLUG = 'obrolan.marketing';
 const MAX_STATE = 5 * 1024 * 1024;
 const MAX_PART = 8 * 1024 * 1024;
@@ -369,8 +377,16 @@ function phonesMatch(a, b) {
   return left.slice(-10) === right.slice(-10);
 }
 
+function isDemoId(id) {
+  return /^s-/.test(String(id || ''));
+}
+
+function isStudentKey(id) {
+  return /^(stu_[a-f0-9]{8,32}|live-[A-Za-z0-9]{4,40})$/.test(String(id || ''));
+}
+
 function addPeople(map, id, wa, name) {
-  if (!id || !wa) return;
+  if (!id || !wa || isDemoId(id)) return;
   const prev = map.get(id) || { id: String(id), wa: '', name: '' };
   prev.wa = String(wa);
   if (name) prev.name = String(name);
@@ -379,7 +395,7 @@ function addPeople(map, id, wa, name) {
 
 function peopleInState(state) {
   const map = new Map();
-  (state.liveStudents || []).forEach((s) => s && addPeople(map, s.id, s.wa, s.name));
+  (state.liveStudents || []).forEach((s) => s && !isDemoId(s.id) && addPeople(map, s.id, s.wa, s.name));
   const people = state.people || {};
   Object.keys(people).forEach((id) => addPeople(map, id, people[id] && people[id].wa, people[id] && people[id].name));
   const apps = state.applications || {};
@@ -487,6 +503,466 @@ function parseRange(header, size) {
   return { start, end };
 }
 
+function signStudent(id) {
+  const exp = String(Date.now() + 180 * 86400000);
+  const body = id + '.' + exp;
+  const sig = crypto.createHmac('sha256', SESSION_SECRET).update(body).digest('hex');
+  return body + '.' + sig;
+}
+
+function readStudentCookie(req) {
+  const raw = cookieValue(req, 'lms_student');
+  const parts = String(raw || '').split('.');
+  if (parts.length !== 3) return '';
+  const id = parts[0];
+  const exp = parts[1];
+  const sig = parts[2];
+  if (!isStudentKey(id)) return '';
+  if (!/^\d+$/.test(exp) || Number(exp) < Date.now()) return '';
+  const expect = crypto.createHmac('sha256', SESSION_SECRET).update(id + '.' + exp).digest('hex');
+  if (!sameSecret(sig, expect)) return '';
+  return id;
+}
+
+function studentCookie(req, token) {
+  const proto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+  const secure = proto === 'https' ? '; Secure' : '';
+  const value = token ? String(token) : '';
+  const age = token ? '' : '; Max-Age=0';
+  return 'lms_student=' + value + '; HttpOnly; SameSite=Lax; Path=/obrolan.marketing' + age + secure;
+}
+
+function asStudentView(req) {
+  return String(req.headers['x-lms-view'] || '') === 'student';
+}
+
+function staffRequest(req, q) {
+  return adminAuthed(req, q) && !asStudentView(req);
+}
+
+function dropDemoKey(obj, changed) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return changed;
+  Object.keys(obj).forEach((id) => {
+    if (isDemoId(id)) {
+      delete obj[id];
+      changed.n += 1;
+    }
+  });
+  return changed;
+}
+
+function filterDemoRows(list, pred, changed) {
+  if (!Array.isArray(list)) return list;
+  const next = list.filter((row) => {
+    const drop = !row || pred(row);
+    if (drop) changed.n += 1;
+    return !drop;
+  });
+  return next;
+}
+
+/** Remove the fictional seed cast (ids s-*) from a school file. Returns true if anything changed. */
+function stripDemoPeople(state) {
+  if (!state || typeof state !== 'object') return false;
+  const changed = { n: 0 };
+  ['people', 'applications', 'billing', 'crm', 'notes', 'progress', 'lastLecture', 'enrollments', 'timeline', 'kolab'].forEach((key) => {
+    dropDemoKey(state[key], changed);
+  });
+  if (Array.isArray(state.liveStudents)) {
+    state.liveStudents = filterDemoRows(state.liveStudents, (s) => isDemoId(s.id), changed);
+  }
+  state.payments = filterDemoRows(state.payments, (p) => isDemoId(p.personId), changed);
+  state.tasks = filterDemoRows(state.tasks, (t) => isDemoId(t.personId), changed);
+  state.remittances = filterDemoRows(state.remittances, (r) => isDemoId(r.mentorId), changed);
+  state.waQueue = filterDemoRows(state.waQueue, (w) => isDemoId(w.toId), changed);
+  state.emailQueue = filterDemoRows(state.emailQueue, (w) => isDemoId(w.toId), changed);
+  state.threads = filterDemoRows(state.threads, (t) => isDemoId(t.authorId), changed);
+  state.replies = filterDemoRows(state.replies, (r) => isDemoId(r.authorId), changed);
+  state.posts = filterDemoRows(state.posts, (p) => isDemoId(p.authorId), changed);
+  state.comments = filterDemoRows(state.comments, (c) => isDemoId(c.authorId), changed);
+  const dropThreads = new Set();
+  if (Array.isArray(state.waThreads)) {
+    state.waThreads = state.waThreads.filter((t) => {
+      if (t && isDemoId(t.personId)) {
+        dropThreads.add(t.id);
+        changed.n += 1;
+        return false;
+      }
+      return true;
+    });
+  }
+  if (Array.isArray(state.waMessages)) {
+    state.waMessages = state.waMessages.filter((m) => {
+      if (m && dropThreads.has(m.threadId)) {
+        changed.n += 1;
+        return false;
+      }
+      return true;
+    });
+  }
+  if (state.attendance && typeof state.attendance === 'object') {
+    Object.keys(state.attendance).forEach((sid) => dropDemoKey(state.attendance[sid], changed));
+  }
+  if (state.chats && typeof state.chats === 'object') {
+    Object.keys(state.chats).forEach((id) => {
+      const chat = state.chats[id];
+      if (!chat || typeof chat !== 'object') return;
+      ['added', 'removed'].forEach((key) => {
+        if (!Array.isArray(chat[key])) return;
+        const next = chat[key].filter((sid) => !isDemoId(sid));
+        if (next.length !== chat[key].length) {
+          chat[key] = next;
+          changed.n += 1;
+        }
+      });
+    });
+  }
+  return changed.n > 0;
+}
+
+function takeState() {
+  const rec = readState();
+  if (rec && rec.state && stripDemoPeople(rec.state)) rec._stripped = true;
+  return rec;
+}
+
+function writeRecord(rec) {
+  if (!rec) return;
+  delete rec._stripped;
+  writeState(rec);
+}
+
+function persistStrip(rec) {
+  if (!rec || !rec._stripped) return rec;
+  rec.rev = (Number(rec.rev) || 0) + 1;
+  rec.updatedAt = new Date().toISOString();
+  writeRecord(rec);
+  return rec;
+}
+
+function eachPerson(state, fn) {
+  const seen = new Set();
+  (state.liveStudents || []).forEach((row) => {
+    if (!row || !row.id || seen.has(row.id) || isDemoId(row.id)) return;
+    seen.add(row.id);
+    fn(row.id, row);
+  });
+  const people = state.people || {};
+  Object.keys(people).forEach((id) => {
+    if (seen.has(id) || isDemoId(id)) return;
+    seen.add(id);
+    fn(id, people[id] || {});
+  });
+}
+
+function personWa(state, id, row) {
+  const patch = (state.people && state.people[id]) || {};
+  const app = (state.applications && state.applications[id]) || {};
+  return (row && row.wa) || patch.wa || app.wa || '';
+}
+
+function findByVisitor(state, visitorId) {
+  const vid = String(visitorId || '');
+  if (!vid) return null;
+  let found = null;
+  eachPerson(state, (id, row) => {
+    if (found) return;
+    const patch = (state.people && state.people[id]) || {};
+    const ids = []
+      .concat(Array.isArray(row.visitorIds) ? row.visitorIds : [])
+      .concat(Array.isArray(patch.visitorIds) ? patch.visitorIds : []);
+    if (ids.indexOf(vid) >= 0) found = Object.assign({ id: id }, row);
+  });
+  return found;
+}
+
+function findByWa(state, wa) {
+  if (phoneKey(wa).length < 10) return null;
+  let found = null;
+  eachPerson(state, (id, row) => {
+    if (found) return;
+    const have = personWa(state, id, row);
+    if (phonesMatch(have, wa)) found = Object.assign({ id: id }, row, { wa: have });
+  });
+  return found;
+}
+
+function lookupPerson(state, id) {
+  if (!id) return null;
+  const live = (state.liveStudents || []).find((s) => s && s.id === id);
+  const patch = (state.people && state.people[id]) || {};
+  const app = (state.applications && state.applications[id]) || {};
+  const hasPeople = !!(state.people && state.people[id]);
+  const hasApp = !!(state.applications && state.applications[id]);
+  if (!live && !hasPeople && !hasApp) return null;
+  return {
+    id: id,
+    name: patch.name || (live && live.name) || app.name || '',
+    wa: patch.wa || (live && live.wa) || app.wa || '',
+    email: patch.email || (live && live.email) || app.email || ''
+  };
+}
+
+function waTakenByOther(state, wa, selfId) {
+  if (phoneKey(wa).length < 10) return false;
+  let taken = false;
+  eachPerson(state, (id, row) => {
+    if (id !== selfId && phonesMatch(personWa(state, id, row), wa)) taken = true;
+  });
+  return taken;
+}
+
+function authorIds(state) {
+  const ids = new Set();
+  ['posts', 'comments', 'threads', 'replies'].forEach((key) => {
+    (state[key] || []).forEach((row) => {
+      if (row && row.authorId) ids.add(String(row.authorId));
+    });
+  });
+  return ids;
+}
+
+function publicCard(id, state) {
+  if (!id || isDemoId(id)) return null;
+  const live = (state.liveStudents || []).find((s) => s && s.id === id) || {};
+  const patch = (state.people && state.people[id]) || {};
+  const name = patch.name || live.name || '';
+  const firstName = patch.firstName || live.firstName || '';
+  const lastName = patch.lastName || live.lastName || '';
+  if (!name && !firstName && !lastName) return null;
+  return {
+    id: id,
+    name: name,
+    firstName: firstName,
+    lastName: lastName,
+    kind: patch.kind === 'mentor' || live.kind === 'mentor' ? 'mentor' : 'student'
+  };
+}
+
+function schoolShell(state) {
+  const src = state || {};
+  const pick = (key, fallback) => (src[key] != null ? src[key] : fallback);
+  return {
+    lectures: pick('lectures', []),
+    catalog: pick('catalog', []),
+    weeks: pick('weeks', []),
+    sessions: pick('sessions', []),
+    announcements: pick('announcements', []),
+    posts: pick('posts', []),
+    comments: pick('comments', []),
+    threads: pick('threads', []),
+    replies: pick('replies', []),
+    schoolSlug: pick('schoolSlug', SLUG),
+    schoolProfile: pick('schoolProfile', {}),
+    pricing: pick('pricing', {}),
+    bank: pick('bank', {}),
+    onboarding: pick('onboarding', null),
+    sectionStyle: pick('sectionStyle', 'minggu'),
+    daftarCols: pick('daftarCols', []),
+    daftarCustom: pick('daftarCustom', []),
+    lynkProducts: pick('lynkProducts', {}),
+    batchNames: pick('batchNames', {}),
+    chats: pick('chats', {}),
+    ownerContact: pick('ownerContact', { wa: '', email: '' }),
+    clockOffsetMs: typeof src.clockOffsetMs === 'number' ? src.clockOffsetMs : 0,
+    people: {},
+    liveStudents: [],
+    applications: {},
+    billing: {},
+    crm: {},
+    progress: {},
+    lastLecture: {},
+    enrollments: {},
+    timeline: {},
+    kolab: {},
+    directory: [],
+    notes: {},
+    tasks: [],
+    payments: [],
+    remittances: [],
+    waQueue: [],
+    emailQueue: [],
+    waThreads: [],
+    waMessages: [],
+    attendance: {}
+  };
+}
+
+function sliceMap(obj, id) {
+  if (!obj || obj[id] == null) return {};
+  return { [id]: obj[id] };
+}
+
+function projectGuest(state) {
+  const shell = schoolShell(state);
+  const directory = [];
+  authorIds(state || {}).forEach((id) => {
+    const card = publicCard(id, state || {});
+    if (card) directory.push(card);
+  });
+  shell.directory = directory;
+  return shell;
+}
+
+function projectStudent(state, studentId) {
+  const shell = projectGuest(state);
+  const src = state || {};
+  shell.directory = shell.directory.filter((card) => card.id !== studentId);
+  shell.people = sliceMap(src.people, studentId);
+  shell.liveStudents = (src.liveStudents || []).filter((s) => s && s.id === studentId);
+  shell.applications = sliceMap(src.applications, studentId);
+  shell.billing = sliceMap(src.billing, studentId);
+  shell.crm = sliceMap(src.crm, studentId);
+  shell.progress = sliceMap(src.progress, studentId);
+  shell.lastLecture = sliceMap(src.lastLecture, studentId);
+  shell.enrollments = sliceMap(src.enrollments, studentId);
+  shell.timeline = sliceMap(src.timeline, studentId);
+  shell.kolab = sliceMap(src.kolab, studentId);
+  return shell;
+}
+
+function mergeBilling(prev, incoming) {
+  const base = Object.assign({}, prev || {});
+  const next = Object.assign({}, base, incoming || {});
+  const locked = base.status === 'lunas' || base.status === 'gratis' || base.status === 'cicilan';
+  const privileged = next.status === 'lunas' || next.status === 'gratis' || next.status === 'cicilan';
+  if (locked || privileged) {
+    ['status', 'amount', 'source', 'paidAt', 'accessUntil', 'products', 'plan', 'term', 'lynkRef'].forEach((key) => {
+      if (base[key] != null) next[key] = base[key];
+    });
+    if (!locked && privileged) {
+      next.status = base.status || 'trial';
+      next.products = Array.isArray(base.products) ? base.products : [];
+      ['amount', 'source', 'paidAt', 'accessUntil', 'plan', 'term', 'lynkRef'].forEach((key) => {
+        if (base[key] == null) delete next[key];
+      });
+    }
+  }
+  return next;
+}
+
+function mergeCrm(prev, incoming) {
+  const base = Object.assign({}, prev || {});
+  const next = Object.assign({}, base, incoming || {});
+  if (base.stage === 'mentee' || base.stage === 'mentor') next.stage = base.stage;
+  else if (next.stage === 'mentee' || next.stage === 'mentor') next.stage = base.stage || 'form';
+  if (base.stage !== 'mentor') {
+    delete next.acceptedMentorAt;
+    delete next.certSerial;
+    delete next.acceptedOverride;
+  }
+  return next;
+}
+
+function mergeOwnedList(base, src, key, authorField, studentId) {
+  const incoming = Array.isArray(src[key]) ? src[key] : [];
+  const mine = incoming.filter((row) => row && row.id && row[authorField] === studentId);
+  if (!mine.length) return;
+  const list = Array.isArray(base[key]) ? base[key].slice() : [];
+  mine.forEach((row) => {
+    const i = list.findIndex((item) => item && item.id === row.id);
+    if (i >= 0 && list[i][authorField] !== studentId) return;
+    if (i >= 0) list[i] = row;
+    else list.push(row);
+  });
+  base[key] = list;
+}
+
+function mergeStudentWrite(stored, incoming, studentId) {
+  const base = stored && typeof stored === 'object' ? stored : {};
+  const src = incoming && typeof incoming === 'object' ? incoming : {};
+  if (!isStudentKey(studentId)) return base;
+  stripDemoPeople(base);
+  base.people = base.people || {};
+  if (src.people && src.people[studentId] && typeof src.people[studentId] === 'object') {
+    const prev = base.people[studentId] || {};
+    const next = Object.assign({}, prev, src.people[studentId]);
+    next.kind = prev.kind === 'mentor' ? 'mentor' : 'student';
+    next.mentorId = prev.mentorId || next.mentorId || base.ownerId || 'u-anton';
+    if (next.wa && waTakenByOther(base, next.wa, studentId)) next.wa = prev.wa || '';
+    base.people[studentId] = next;
+  }
+  ['applications', 'progress', 'lastLecture', 'enrollments', 'timeline', 'kolab'].forEach((key) => {
+    if (!src[key] || src[key][studentId] == null) return;
+    base[key] = base[key] || {};
+    base[key][studentId] = src[key][studentId];
+  });
+  if (src.billing && src.billing[studentId]) {
+    base.billing = base.billing || {};
+    base.billing[studentId] = mergeBilling(base.billing[studentId], src.billing[studentId]);
+  }
+  if (src.crm && src.crm[studentId]) {
+    base.crm = base.crm || {};
+    base.crm[studentId] = mergeCrm(base.crm[studentId], src.crm[studentId]);
+  }
+  const row = (src.liveStudents || []).find((s) => s && s.id === studentId);
+  if (row) {
+    base.liveStudents = Array.isArray(base.liveStudents) ? base.liveStudents : [];
+    const i = base.liveStudents.findIndex((s) => s && s.id === studentId);
+    const prev = i >= 0 ? base.liveStudents[i] : {};
+    const next = Object.assign({}, prev, row);
+    next.id = studentId;
+    next.kind = prev.kind === 'mentor' ? 'mentor' : 'student';
+    next.visitorIds = Array.isArray(prev.visitorIds) ? prev.visitorIds.slice() : [];
+    next.mentorId = prev.mentorId || next.mentorId || base.ownerId || 'u-anton';
+    if (next.wa && waTakenByOther(base, next.wa, studentId)) next.wa = prev.wa || '';
+    if (i >= 0) base.liveStudents[i] = next;
+    else base.liveStudents.push(next);
+  }
+  mergeOwnedList(base, src, 'posts', 'authorId', studentId);
+  mergeOwnedList(base, src, 'comments', 'authorId', studentId);
+  mergeOwnedList(base, src, 'threads', 'authorId', studentId);
+  mergeOwnedList(base, src, 'replies', 'authorId', studentId);
+  stripDemoPeople(base);
+  return base;
+}
+
+function personName(body) {
+  const first = String(body.firstName || '').trim();
+  const last = String(body.lastName || '').trim();
+  const joined = [first, last].filter(Boolean).join(' ');
+  return String(body.name || joined || first).trim().slice(0, 120);
+}
+
+function applyJoinProfile(row, body) {
+  const firstName = String(body.firstName || '').trim().slice(0, 40);
+  const lastName = String(body.lastName || '').trim().slice(0, 80);
+  row.firstName = firstName || row.firstName || '';
+  row.lastName = lastName || row.lastName || '';
+  row.name = personName(body) || row.name || row.firstName;
+  row.wa = phoneKey(body.wa) || row.wa || '';
+  row.email = String(body.email || row.email || '').trim().slice(0, 160);
+  row.city = String(body.city || row.city || '').trim().slice(0, 60);
+  row.shopName = String(body.shopName || row.shopName || '').trim().slice(0, 80);
+  row.shopUrl = String(body.shopUrl || row.shopUrl || '').trim().slice(0, 300);
+  const vid = String(body.visitorId || '').slice(0, 80);
+  row.visitorIds = Array.isArray(row.visitorIds) ? row.visitorIds : [];
+  if (vid && row.visitorIds.indexOf(vid) < 0) row.visitorIds.push(vid);
+  return row;
+}
+
+function upsertJoined(state, row) {
+  state.liveStudents = Array.isArray(state.liveStudents) ? state.liveStudents : [];
+  const i = state.liveStudents.findIndex((s) => s && s.id === row.id);
+  if (i >= 0) state.liveStudents[i] = Object.assign({}, state.liveStudents[i], row);
+  else state.liveStudents.push(row);
+  state.people = state.people || {};
+  const prev = state.people[row.id] || {};
+  state.people[row.id] = Object.assign({}, prev, {
+    name: row.name,
+    firstName: row.firstName,
+    lastName: row.lastName,
+    wa: row.wa,
+    email: row.email || '',
+    city: row.city || '',
+    shopName: row.shopName || '',
+    shopUrl: row.shopUrl || '',
+    mentorId: row.mentorId,
+    kind: prev.kind === 'mentor' ? 'mentor' : 'student',
+    visitorIds: row.visitorIds
+  });
+}
+
 const server = http.createServer((req, res) => {
   const url = new URL(req.url || '/', 'http://anton-school');
   const q = queryOf(url);
@@ -549,7 +1025,115 @@ const server = http.createServer((req, res) => {
       json(res, 403, { error: 'forbidden' });
       return;
     }
-    json(res, 200, summary());
+    lock(() => {
+      persistStrip(takeState());
+      json(res, 200, summary());
+    });
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/session') {
+    readBody(req, 64 * 1024).then((buf) => lock(() => {
+      let body = {};
+      try { body = JSON.parse(buf.toString('utf8') || '{}'); } catch (err) { body = {}; }
+      if (staffRequest(req, q)) {
+        json(res, 200, { role: 'staff' });
+        return;
+      }
+      const rec = persistStrip(takeState());
+      const state = (rec && rec.state) || {};
+      const cookieId = readStudentCookie(req);
+      const known = cookieId && lookupPerson(state, cookieId);
+      const visitorHit = findByVisitor(state, body.visitorId);
+      const studentId = known ? cookieId : (visitorHit && visitorHit.id);
+      if (!studentId) {
+        json(res, 200, { role: 'guest' });
+        return;
+      }
+      res.writeHead(200, {
+        'content-type': 'application/json; charset=utf-8',
+        'cache-control': 'no-store',
+        'x-robots-tag': 'noindex',
+        'set-cookie': studentCookie(req, signStudent(studentId))
+      });
+      res.end(JSON.stringify({ role: 'student', studentId: studentId }));
+    })).catch((err) => {
+      if (!res.headersSent) json(res, err.status || 500, { error: 'session' });
+    });
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/join') {
+    readBody(req, 64 * 1024).then((buf) => lock(() => {
+      let body = {};
+      try { body = JSON.parse(buf.toString('utf8') || '{}'); } catch (err) {
+        json(res, 400, { error: 'bad_json' });
+        return;
+      }
+      const wa = phoneKey(body.wa);
+      const firstName = String(body.firstName || '').trim();
+      if (wa.length < 10 || !firstName) {
+        json(res, 400, { error: 'profile' });
+        return;
+      }
+      const rec = takeState() || { rev: 0, state: {} };
+      if (!rec.state || typeof rec.state !== 'object') rec.state = {};
+      stripDemoPeople(rec.state);
+      const state = rec.state;
+      let row = findByWa(state, wa);
+      let created = false;
+      if (!row) {
+        created = true;
+        row = {
+          id: 'stu_' + crypto.randomBytes(9).toString('hex'),
+          kind: 'student',
+          mentorId: state.ownerId || 'u-anton',
+          visitorIds: [],
+          tags: []
+        };
+      } else {
+        const live = (state.liveStudents || []).find((s) => s && s.id === row.id);
+        row = Object.assign({}, live || {}, row);
+      }
+      applyJoinProfile(row, body);
+      if (!row.mentorId) row.mentorId = state.ownerId || 'u-anton';
+      if (row.kind !== 'mentor') row.kind = 'student';
+      upsertJoined(state, row);
+      const stored = {
+        key: rec.key || DEFAULT_INVITE,
+        rev: (Number(rec.rev) || 0) + 1,
+        updatedAt: new Date().toISOString(),
+        state: state
+      };
+      writeRecord(stored);
+      const student = lookupPerson(state, row.id) || { id: row.id, name: row.name, wa: row.wa };
+      res.writeHead(200, {
+        'content-type': 'application/json; charset=utf-8',
+        'cache-control': 'no-store',
+        'x-robots-tag': 'noindex',
+        'set-cookie': studentCookie(req, signStudent(row.id))
+      });
+      res.end(JSON.stringify({
+        role: 'student',
+        studentId: row.id,
+        created: created,
+        rev: stored.rev,
+        student: {
+          id: row.id,
+          name: student.name,
+          firstName: row.firstName || '',
+          lastName: row.lastName || '',
+          wa: student.wa,
+          email: row.email || '',
+          city: row.city || '',
+          shopName: row.shopName || '',
+          shopUrl: row.shopUrl || '',
+          mentorId: row.mentorId
+        }
+      }));
+    })).catch((err) => {
+      if (!res.headersSent) json(res, err.status || 500, { error: 'join' });
+    });
     return;
   }
 
@@ -561,33 +1145,36 @@ const server = http.createServer((req, res) => {
       return;
     }
     if (req.method === 'GET') {
-      const rec = readState();
-      if (!sameSecret(q.k, inviteOf(rec))) {
-        json(res, 403, { error: 'forbidden' });
-        return;
-      }
-      if (!rec || !rec.state) {
-        json(res, 404, { rev: 0, updatedAt: null, state: null });
-        return;
-      }
-      json(res, 200, { rev: rec.rev || 0, updatedAt: rec.updatedAt || null, state: rec.state });
+      lock(() => {
+        const rec = persistStrip(takeState());
+        const studentId = readStudentCookie(req);
+        const staff = staffRequest(req, q);
+        const updatedAt = rec && rec.updatedAt || null;
+        const rev = rec && rec.rev || 0;
+        const raw = rec && rec.state;
+        let state;
+        if (staff) state = raw || projectGuest(null);
+        else if (studentId && lookupPerson(raw || {}, studentId)) state = projectStudent(raw || {}, studentId);
+        else state = projectGuest(raw || {});
+        json(res, 200, { rev: rev, updatedAt: updatedAt, state: state });
+      });
       return;
     }
     if (req.method === 'PUT') {
       readBody(req, MAX_STATE).then((buf) => lock(() => {
-        const rec = readState();
+        const rec = persistStrip(takeState());
         let body;
         try { body = JSON.parse(buf.toString('utf8')); } catch (err) {
           json(res, 400, { error: 'bad_json' });
           return;
         }
-        const incomingInvite = (body && body.state && body.state.inviteCode) || '';
-        const allowed = sameSecret(q.k, inviteOf(rec)) || (!rec && sameSecret(q.k, incomingInvite || DEFAULT_INVITE));
-        if (!allowed) {
+        const staff = staffRequest(req, q);
+        const studentId = readStudentCookie(req);
+        if (!staff && !studentId) {
           json(res, 403, { error: 'forbidden' });
           return;
         }
-        if (body && body.reset === true && !adminAuthed(req, q)) {
+        if (body && body.reset === true && !staff) {
           json(res, 403, { error: 'reset_forbidden' });
           return;
         }
@@ -596,13 +1183,21 @@ const server = http.createServer((req, res) => {
           json(res, 409, { error: 'stale', rev: rec.rev });
           return;
         }
+        let nextState;
+        if (staff) {
+          nextState = body && body.state ? body.state : null;
+          if (nextState && typeof nextState === 'object') stripDemoPeople(nextState);
+        } else {
+          const base = (rec && rec.state) || {};
+          nextState = mergeStudentWrite(base, body && body.state, studentId);
+        }
         const stored = {
-          key: q.k,
+          key: (rec && rec.key) || DEFAULT_INVITE,
           rev: incomingRev || ((rec && rec.rev) || 0) + 1,
           updatedAt: (body && body.updatedAt) || new Date().toISOString(),
-          state: body && body.state ? body.state : null
+          state: nextState
         };
-        writeState(stored);
+        writeRecord(stored);
         json(res, 200, { rev: stored.rev, updatedAt: stored.updatedAt });
       })).catch((err) => {
         if (!res.headersSent) json(res, err.status || 500, { error: err.message || 'read' });
@@ -791,6 +1386,12 @@ const server = http.createServer((req, res) => {
   }
 
   if (pathname === '/events' && req.method === 'POST') {
+    const eventStudent = readStudentCookie(req);
+    const eventStaff = adminAuthed(req, q);
+    if (!eventStudent && !eventStaff) {
+      json(res, 401, { error: 'auth' });
+      return;
+    }
     readBody(req, MAX_EVENT_BYTES).then((buf) => lock(() => {
       let body;
       try { body = JSON.parse(buf.toString('utf8')); } catch (err) {
@@ -802,6 +1403,8 @@ const server = http.createServer((req, res) => {
         json(res, 400, { error: 'type' });
         return;
       }
+      const rec = takeState();
+      const person = eventStudent ? lookupPerson((rec && rec.state) || {}, eventStudent) : null;
       const row = {
         id: crypto.randomBytes(8).toString('hex'),
         at: new Date().toISOString(),
@@ -809,17 +1412,17 @@ const server = http.createServer((req, res) => {
         visitorId: String(body.visitorId || '').slice(0, 80),
         path: String(body.path || '').slice(0, 180),
         referrer: String(body.referrer || '').slice(0, 300),
-        name: String(body.name || '').slice(0, 120),
-        wa: String(body.wa || '').slice(0, 32),
-        email: String(body.email || '').slice(0, 160),
+        name: person ? String(person.name || '').slice(0, 120) : '',
+        wa: person ? String(person.wa || '').slice(0, 32) : '',
+        email: person ? String(person.email || '').slice(0, 160) : '',
         lessonId: String(body.lessonId || '').slice(0, 64),
         lessonTitle: String(body.lessonTitle || '').slice(0, 180),
-        personaId: String(body.personaId || '').slice(0, 64),
+        personaId: eventStudent || '',
         message: String(body.message || '').slice(0, 500),
         progress: body.progress == null || body.progress === '' ? null : Number(body.progress),
         stage: String(body.stage || '').slice(0, 40),
-        staff: !!body.staff,
-        demo: !!body.demo || String(body.personaId || '').indexOf('s-') === 0
+        staff: !!eventStaff && !eventStudent,
+        demo: false
       };
       appendEvent(row);
       json(res, 200, { ok: true, id: row.id });
@@ -939,7 +1542,7 @@ const server = http.createServer((req, res) => {
       ]) || '');
       const name = String(dig(body, [['customer', 'name'], ['data', 'customer', 'name'], ['name']]) || '');
       const titles = itemTitles(body);
-      const rec = readState();
+      const rec = persistStrip(takeState());
       const state = rec && rec.state;
       const catalog = lynkCatalog(state);
       const matchedProducts = catalog.filter((row) => titles.some((title) => normTitle(title) === normTitle(row.title)));

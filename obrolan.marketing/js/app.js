@@ -8,8 +8,9 @@
   const PRESENT_PANE = PRESENT_QS.get('pane') === 'mentor' ? 'mentor' : 'student';
   /** Anton Siswa view iframe: full student app, isolated storage, no writes. */
   const SISWA_READONLY = PRESENT && PRESENT_QS.get('readonly') === '1';
-  const KEY = SISWA_READONLY ? 'anton-school-v3-siswa-preview' : 'anton-school-v3';
-  const BUS = (!SISWA_READONLY && 'BroadcastChannel' in window) ? new BroadcastChannel('anton-school-v3') : null;
+  const KEY = SISWA_READONLY ? 'lms-school-v1-siswa-preview' : 'lms-school-v1';
+  const LEGACY_KEY = SISWA_READONLY ? 'anton-school-v3-siswa-preview' : 'anton-school-v3';
+  const BUS = (!SISWA_READONLY && 'BroadcastChannel' in window) ? new BroadcastChannel('lms-school-v1') : null;
   const SYNC_MAX = 5 * 1024 * 1024;
   const $ = (id) => document.getElementById(id);
 
@@ -189,16 +190,18 @@
         ...s,
         required: (s.required || []).slice()
       }));
-      merged.progress = {};
-      Object.entries(SEED.progressSeed).forEach(([sid, ids]) => {
-        merged.progress[sid] = Object.fromEntries(ids.map((id) => [id, true]));
-      });
-      merged.lastLecture = merged.lastLecture || {};
-      Object.keys(merged.progress).forEach((sid) => {
-        const ids = Object.keys(merged.progress[sid]);
-        merged.lastLecture[sid] = ids[ids.length - 1] || (SEED.lectures[0] && SEED.lectures[0].id);
-      });
-      merged.threads = SEED.threads.map((t) => ({ ...t }));
+      if (demoRosterOn()) {
+        merged.progress = {};
+        Object.entries(SEED.progressSeed).forEach(([sid, ids]) => {
+          merged.progress[sid] = Object.fromEntries(ids.map((id) => [id, true]));
+        });
+        merged.lastLecture = merged.lastLecture || {};
+        Object.keys(merged.progress).forEach((sid) => {
+          const ids = Object.keys(merged.progress[sid]);
+          merged.lastLecture[sid] = ids[ids.length - 1] || (SEED.lectures[0] && SEED.lectures[0].id);
+        });
+        merged.threads = SEED.threads.map((t) => ({ ...t }));
+      }
     } else if (have === seedIds) {
       const byId = Object.fromEntries(SEED.lectures.map((l) => [l.id, l]));
       merged.lectures = merged.lectures.map((l) => {
@@ -555,13 +558,13 @@
       return name ? esc(name) : '<span class="muted">—</span>';
     }
     if (colId === 'sumber') {
-      return esc((app && app.heard) || b.source || '—');
+      return esc(ownerText((app && app.heard) || b.source || '—'));
     }
     if (colId === 'progres') {
       const p = kurProgress(s.id);
       return '<span title="' + p.n + '/' + p.total + '">' + p.pct + '%</span>';
     }
-    if (colId === 'upline') return esc(s.mentorId ? nameOf(s.mentorId) : 'Anton');
+    if (colId === 'upline') return esc(s.mentorId ? nameOf(s.mentorId) : ownerFirstName());
     if (colId === 'aktif') return esc(relWhen(s.lastActive) || '—');
     return '<span class="muted">—</span>';
   }
@@ -638,7 +641,10 @@
     merged.dunning = Object.assign({}, SEED.dunning, merged.dunning || {});
     merged.actionPlans = mergeActionPlans(merged.actionPlans);
     hydratePipeline(merged);
-    merged.crm = Object.assign({}, JSON.parse(JSON.stringify(SEED.crm || {})), merged.crm || {});
+    const demoRoster = demoRosterOn();
+    merged.crm = demoRoster
+      ? Object.assign({}, JSON.parse(JSON.stringify(SEED.crm || {})), merged.crm || {})
+      : (merged.crm && typeof merged.crm === 'object' && !Array.isArray(merged.crm) ? merged.crm : {});
     Object.keys(merged.crm).forEach((id) => {
       const c = merged.crm[id];
       if (!c || !c.stage) return;
@@ -651,58 +657,76 @@
       });
     });
     hydrateDaftarCols(merged);
-    merged.applications = Object.assign({}, JSON.parse(JSON.stringify(SEED.applications || {})), merged.applications || {});
-    merged.timeline = Object.assign({}, JSON.parse(JSON.stringify(SEED.timelineSeed || {})), merged.timeline || {});
-    if (!Array.isArray(merged.payments) || !merged.payments.length) {
+    merged.applications = demoRoster
+      ? Object.assign({}, JSON.parse(JSON.stringify(SEED.applications || {})), merged.applications || {})
+      : (merged.applications && typeof merged.applications === 'object' && !Array.isArray(merged.applications) ? merged.applications : {});
+    merged.timeline = demoRoster
+      ? Object.assign({}, JSON.parse(JSON.stringify(SEED.timelineSeed || {})), merged.timeline || {})
+      : (merged.timeline && typeof merged.timeline === 'object' && !Array.isArray(merged.timeline) ? merged.timeline : {});
+    if (demoRoster && (!Array.isArray(merged.payments) || !merged.payments.length)) {
       merged.payments = JSON.parse(JSON.stringify(SEED.paymentsSeed || []));
-    }
-    merged.tasks = Array.isArray(merged.tasks) ? merged.tasks : JSON.parse(JSON.stringify(SEED.tasksSeed || []));
+    } else if (!Array.isArray(merged.payments)) merged.payments = [];
+    merged.tasks = Array.isArray(merged.tasks)
+      ? merged.tasks
+      : (demoRoster ? JSON.parse(JSON.stringify(SEED.tasksSeed || [])) : []);
     const staffIds = (SEED.staff || []).map((s) => s.id);
     const defaultAssignee = (SEED.school && SEED.school.ownerId) || staffIds[0] || 'u-anton';
     merged.tasks.forEach((t) => {
       if (!t || typeof t !== 'object') return;
       if (!t.assignee || staffIds.indexOf(t.assignee) < 0) t.assignee = defaultAssignee;
     });
-    merged.waQueue = Array.isArray(merged.waQueue) ? merged.waQueue : JSON.parse(JSON.stringify(SEED.waQueueSeed || []));
-    merged.emailQueue = Array.isArray(merged.emailQueue) ? merged.emailQueue : JSON.parse(JSON.stringify(SEED.emailQueueSeed || []));
-    if (!Array.isArray(merged.waThreads) || !merged.waThreads.length) {
+    merged.waQueue = Array.isArray(merged.waQueue)
+      ? merged.waQueue
+      : (demoRoster ? JSON.parse(JSON.stringify(SEED.waQueueSeed || [])) : []);
+    merged.emailQueue = Array.isArray(merged.emailQueue)
+      ? merged.emailQueue
+      : (demoRoster ? JSON.parse(JSON.stringify(SEED.emailQueueSeed || [])) : []);
+    if (demoRoster && (!Array.isArray(merged.waThreads) || !merged.waThreads.length)) {
       merged.waThreads = JSON.parse(JSON.stringify(SEED.waThreadsSeed || []));
-    }
-    if (!Array.isArray(merged.waMessages) || !merged.waMessages.length) {
+    } else if (!Array.isArray(merged.waThreads)) merged.waThreads = [];
+    if (demoRoster && (!Array.isArray(merged.waMessages) || !merged.waMessages.length)) {
       merged.waMessages = JSON.parse(JSON.stringify(SEED.waMessagesSeed || []));
-    }
-    merged.enrollments = Object.assign({}, JSON.parse(JSON.stringify(SEED.enrollmentsSeed || {})), merged.enrollments || {});
-    merged.people = merged.people && typeof merged.people === 'object' ? merged.people : {};
-    if (!Array.isArray(merged.posts)) merged.posts = JSON.parse(JSON.stringify(SEED.postsSeed || []));
-    if (!Array.isArray(merged.comments)) merged.comments = JSON.parse(JSON.stringify(SEED.commentsSeed || []));
+    } else if (!Array.isArray(merged.waMessages)) merged.waMessages = [];
+    merged.enrollments = demoRoster
+      ? Object.assign({}, JSON.parse(JSON.stringify(SEED.enrollmentsSeed || {})), merged.enrollments || {})
+      : (merged.enrollments && typeof merged.enrollments === 'object' && !Array.isArray(merged.enrollments) ? merged.enrollments : {});
+    merged.people = merged.people && typeof merged.people === 'object' && !Array.isArray(merged.people) ? merged.people : {};
+    if (!Array.isArray(merged.posts)) merged.posts = demoRoster ? JSON.parse(JSON.stringify(SEED.postsSeed || [])) : [];
+    if (!Array.isArray(merged.comments)) merged.comments = demoRoster ? JSON.parse(JSON.stringify(SEED.commentsSeed || [])) : [];
     if (!merged.batchNames || typeof merged.batchNames !== 'object' || Array.isArray(merged.batchNames)) {
       merged.batchNames = {};
     }
     if (!merged.chats || typeof merged.chats !== 'object' || Array.isArray(merged.chats)) {
       merged.chats = {};
     }
-    merged.remittances = Array.isArray(merged.remittances) ? merged.remittances : JSON.parse(JSON.stringify(SEED.remittances || []));
+    merged.remittances = Array.isArray(merged.remittances)
+      ? merged.remittances
+      : (demoRoster ? JSON.parse(JSON.stringify(SEED.remittances || [])) : []);
     if (typeof merged.clockOffsetMs !== 'number') merged.clockOffsetMs = 0;
-    Object.keys(SEED.billing || {}).forEach((id) => {
-      if (!merged.billing[id]) {
-        merged.billing[id] = JSON.parse(JSON.stringify(SEED.billing[id]));
-        return;
-      }
-      const seed = SEED.billing[id];
-      const b = merged.billing[id];
-      if (seed && seed.status === 'trial' && seed.offerExpiresAt && b.status === 'trial') {
-        const seedLeft = new Date(seed.offerExpiresAt).getTime() - Date.now();
-        if (seedLeft > 0) {
-          b.offerStartedAt = seed.offerStartedAt || b.offerStartedAt;
-          b.offerExpiresAt = seed.offerExpiresAt;
+    if (!merged.billing || typeof merged.billing !== 'object' || Array.isArray(merged.billing)) merged.billing = {};
+    if (!merged.progress || typeof merged.progress !== 'object' || Array.isArray(merged.progress)) merged.progress = {};
+    if (demoRoster) {
+      Object.keys(SEED.billing || {}).forEach((id) => {
+        if (!merged.billing[id]) {
+          merged.billing[id] = JSON.parse(JSON.stringify(SEED.billing[id]));
+          return;
         }
-      }
-    });
-    Object.entries(SEED.progressSeed || {}).forEach(([sid, ids]) => {
-      if (!merged.progress[sid]) {
-        merged.progress[sid] = Object.fromEntries((ids || []).map((id) => [id, true]));
-      }
-    });
+        const seed = SEED.billing[id];
+        const b = merged.billing[id];
+        if (seed && seed.status === 'trial' && seed.offerExpiresAt && b.status === 'trial') {
+          const seedLeft = new Date(seed.offerExpiresAt).getTime() - Date.now();
+          if (seedLeft > 0) {
+            b.offerStartedAt = seed.offerStartedAt || b.offerStartedAt;
+            b.offerExpiresAt = seed.offerExpiresAt;
+          }
+        }
+      });
+      Object.entries(SEED.progressSeed || {}).forEach(([sid, ids]) => {
+        if (!merged.progress[sid]) {
+          merged.progress[sid] = Object.fromEntries((ids || []).map((id) => [id, true]));
+        }
+      });
+    }
   }
 
   function demoClockDeltaMs() {
@@ -802,6 +826,23 @@
       }, seed.socials || {})
     };
   }
+  function demoRosterOn() {
+    if (!isLocalHost()) return false;
+    if (PRESENT_QS.get('demo') === '1') return true;
+    if (PRESENT_QS.get('sync') === '1') return false;
+    return true;
+  }
+  function isDemoPersonId(id) {
+    return /^s-/.test(String(id || ''));
+  }
+  function ownerFirstName() {
+    const prof = (typeof schoolProfile === 'function') ? schoolProfile() : {};
+    const name = String((prof && prof.firstName) || '').trim();
+    return name || 'Mentor';
+  }
+  function ownerText(value) {
+    return String(value == null ? '' : value).replace(/\{owner\}/g, ownerFirstName());
+  }
   function schoolProfile() {
     const base = defaultSchoolProfile();
     const cur = (typeof db !== 'undefined' && db && db.schoolProfile) ? db.schoolProfile : {};
@@ -878,14 +919,14 @@
           id: 'ob-name',
           kicker: 'Kenalan',
           q: 'Siapa namamu?',
-          sub: 'Nama depan dan belakang. Yang Anton panggil di grup.',
+          sub: 'Nama depan dan belakang. Yang {owner} panggil di grup.',
           fields: [{ id: 'f-name', type: 'name', required: true }]
         },
         {
           id: 'ob-wa',
           kicker: 'Kontak',
           q: 'Nomor WhatsApp-mu?',
-          sub: 'Anton kirim & simpan chat mentoring dari nomor ini. Bukan riwayat WA lama.',
+          sub: '{owner} kirim & simpan chat mentoring dari nomor ini. Bukan riwayat WA lama.',
           fields: [{ id: 'f-wa', type: 'wa', required: true }]
         },
         {
@@ -899,21 +940,21 @@
           id: 'ob-city',
           kicker: 'Tempat',
           q: 'Kota mana?',
-          sub: 'Biar Anton tahu kamu dari mana.',
+          sub: 'Biar {owner} tahu kamu dari mana.',
           fields: [{ id: 'f-city', type: 'city', required: true }]
         },
         {
           id: 'ob-heard',
           kicker: 'Cerita',
-          q: 'Dari mana kenal Anton?',
+          q: 'Dari mana kenal {owner}?',
           sub: 'Satu jawaban. Bukan syarat masuk.',
           fields: [{
             id: 'f-heard',
             type: 'single',
-            label: 'Dari mana kenal Anton',
+            label: 'Dari mana kenal {owner}',
             required: true,
             allowOther: true,
-            options: ['Grup WA Anton', 'Teman / murid Anton', 'TikTok', 'Instagram', 'Lainnya']
+            options: ['Grup WA {owner}', 'Teman / murid {owner}', 'TikTok', 'Instagram', 'Lainnya']
           }]
         }
       ]
@@ -948,11 +989,45 @@
       fields: fields.length ? fields : [normalizeObField({ type: 'text', required: true })]
     };
   }
+  const OWNER_STOCK = [
+    ['Nama depan dan belakang. Yang Anton panggil di grup.', 'Nama depan dan belakang. Yang {owner} panggil di grup.'],
+    ['Anton kirim & simpan chat mentoring dari nomor ini. Bukan riwayat WA lama.', '{owner} kirim & simpan chat mentoring dari nomor ini. Bukan riwayat WA lama.'],
+    ['Biar Anton tahu kamu dari mana.', 'Biar {owner} tahu kamu dari mana.'],
+    ['Dari mana kenal Anton?', 'Dari mana kenal {owner}?'],
+    ['Dari mana kenal Anton', 'Dari mana kenal {owner}'],
+    ['Grup WA Anton', 'Grup WA {owner}'],
+    ['Teman / murid Anton', 'Teman / murid {owner}']
+  ];
+  function rewriteOwnerStock(value) {
+    const text = String(value == null ? '' : value);
+    for (let i = 0; i < OWNER_STOCK.length; i += 1) {
+      if (text === OWNER_STOCK[i][0]) return OWNER_STOCK[i][1];
+    }
+    return text;
+  }
+  function rewriteOnboardingStock(ob) {
+    if (!ob || !Array.isArray(ob.pages)) return ob;
+    ob.pages.forEach((page) => {
+      if (!page) return;
+      page.q = rewriteOwnerStock(page.q);
+      page.sub = rewriteOwnerStock(page.sub);
+      page.kicker = rewriteOwnerStock(page.kicker);
+      (page.fields || []).forEach((field) => {
+        if (!field) return;
+        field.label = rewriteOwnerStock(field.label);
+        if (Array.isArray(field.options)) {
+          field.options = field.options.map((opt) => rewriteOwnerStock(opt));
+        }
+      });
+    });
+    return ob;
+  }
   function normalizeOnboarding(raw) {
     const base = defaultOnboarding();
     const cur = raw && typeof raw === 'object' ? raw : {};
     const pages = Array.isArray(cur.pages) ? cur.pages.map(normalizeObPage) : [];
-    return { pages: pages.length ? pages : base.pages.map(normalizeObPage) };
+    const ob = { pages: pages.length ? pages : base.pages.map(normalizeObPage) };
+    return rewriteOnboardingStock(ob);
   }
   function ensureOnboarding() {
     db.onboarding = normalizeOnboarding(db.onboarding);
@@ -1656,32 +1731,35 @@
   }
 
     function defaultState() {
+    const demo = demoRosterOn();
     const progress = {};
-    Object.entries(SEED.progressSeed).forEach(([sid, ids]) => {
-      progress[sid] = Object.fromEntries(ids.map((id) => [id, true]));
-    });
     const last = {};
-    Object.keys(progress).forEach((sid) => {
-      const ids = Object.keys(progress[sid]);
-      last[sid] = ids[ids.length - 1] || (SEED.lectures[0] && SEED.lectures[0].id);
-    });
+    if (demo) {
+      Object.entries(SEED.progressSeed).forEach(([sid, ids]) => {
+        progress[sid] = Object.fromEntries(ids.map((id) => [id, true]));
+      });
+      Object.keys(progress).forEach((sid) => {
+        const ids = Object.keys(progress[sid]);
+        last[sid] = ids[ids.length - 1] || (SEED.lectures[0] && SEED.lectures[0].id);
+      });
+    }
     const state = {
       lectures: cloneLectures(),
       catalog: SEED.catalog.map((p) => ({ ...p, outline: (p.outline || []).slice() })),
       weeks: SEED.weeks.map((w) => ({ ...w })),
       sessions: SEED.sessions.map((s) => ({ ...s })),
-      billing: JSON.parse(JSON.stringify(SEED.billing)),
-      crm: JSON.parse(JSON.stringify(SEED.crm || {})),
-      applications: JSON.parse(JSON.stringify(SEED.applications || {})),
-      remittances: JSON.parse(JSON.stringify(SEED.remittances || [])),
-      payments: JSON.parse(JSON.stringify(SEED.paymentsSeed || [])),
-      tasks: JSON.parse(JSON.stringify(SEED.tasksSeed || [])),
-      timeline: JSON.parse(JSON.stringify(SEED.timelineSeed || {})),
-      waQueue: JSON.parse(JSON.stringify(SEED.waQueueSeed || [])),
-      emailQueue: JSON.parse(JSON.stringify(SEED.emailQueueSeed || [])),
-      waThreads: JSON.parse(JSON.stringify(SEED.waThreadsSeed || [])),
-      waMessages: JSON.parse(JSON.stringify(SEED.waMessagesSeed || [])),
-      enrollments: JSON.parse(JSON.stringify(SEED.enrollmentsSeed || {})),
+      billing: demo ? JSON.parse(JSON.stringify(SEED.billing)) : {},
+      crm: demo ? JSON.parse(JSON.stringify(SEED.crm || {})) : {},
+      applications: demo ? JSON.parse(JSON.stringify(SEED.applications || {})) : {},
+      remittances: demo ? JSON.parse(JSON.stringify(SEED.remittances || [])) : [],
+      payments: demo ? JSON.parse(JSON.stringify(SEED.paymentsSeed || [])) : [],
+      tasks: demo ? JSON.parse(JSON.stringify(SEED.tasksSeed || [])) : [],
+      timeline: demo ? JSON.parse(JSON.stringify(SEED.timelineSeed || {})) : {},
+      waQueue: demo ? JSON.parse(JSON.stringify(SEED.waQueueSeed || [])) : [],
+      emailQueue: demo ? JSON.parse(JSON.stringify(SEED.emailQueueSeed || [])) : [],
+      waThreads: demo ? JSON.parse(JSON.stringify(SEED.waThreadsSeed || [])) : [],
+      waMessages: demo ? JSON.parse(JSON.stringify(SEED.waMessagesSeed || [])) : [],
+      enrollments: demo ? JSON.parse(JSON.stringify(SEED.enrollmentsSeed || {})) : {},
       people: {},
       schoolSlug: SEED.school.slug,
       inviteCode: SEED.cohort.invite,
@@ -1692,14 +1770,14 @@
       pipelineStages: JSON.parse(JSON.stringify(SEED.pipelineStages)),
       pipelineTransitions: JSON.parse(JSON.stringify(SEED.pipelineTransitions || [])),
       clockOffsetMs: 0,
-      threads: SEED.threads.map((t) => ({ ...t })),
-      replies: SEED.replies.map((r) => ({ ...r })),
-      posts: JSON.parse(JSON.stringify(SEED.postsSeed || [])),
-      comments: JSON.parse(JSON.stringify(SEED.commentsSeed || [])),
+      threads: demo ? SEED.threads.map((t) => ({ ...t })) : [],
+      replies: demo ? SEED.replies.map((r) => ({ ...r })) : [],
+      posts: demo ? JSON.parse(JSON.stringify(SEED.postsSeed || [])) : [],
+      comments: demo ? JSON.parse(JSON.stringify(SEED.commentsSeed || [])) : [],
       batchNames: {},
       chats: {},
-      attendance: JSON.parse(JSON.stringify(SEED.attendance)),
-      notes: JSON.parse(JSON.stringify(SEED.notes)),
+      attendance: demo ? JSON.parse(JSON.stringify(SEED.attendance)) : {},
+      notes: demo ? JSON.parse(JSON.stringify(SEED.notes)) : {},
       announcements: SEED.announcements.map((a) => ({ ...a })),
       progress,
       lastLecture: last,
@@ -1708,19 +1786,115 @@
       daftarCols: defaultDaftarCols(),
       daftarCustom: [],
       liveStudents: [],
+      directory: [],
       ownerContact: { wa: '', email: '' },
       lynkProducts: { month: { url: '', title: '', price: 0 }, quarter: { url: '', title: '', price: 0 }, half: { url: '', title: '', price: 0 } },
       schoolProfile: defaultSchoolProfile(),
       accountSettings: defaultAccountSettings(),
       onboarding: defaultOnboarding()
     };
-    rebaseDemoClocks(state);
+    if (demo) rebaseDemoClocks(state);
     return state;
   }
 
+  function readStoredRaw() {
+    try {
+      const cur = localStorage.getItem(KEY);
+      if (cur) return cur;
+      const old = localStorage.getItem(LEGACY_KEY);
+      if (!old) return null;
+      localStorage.setItem(KEY, old);
+      localStorage.removeItem(LEGACY_KEY);
+      return old;
+    } catch (err) {
+      return null;
+    }
+  }
+  function currentUi() {
+    try { return ui || null; } catch (err) { return null; }
+  }
+  function ownPersonIds() {
+    const ids = new Set();
+    try {
+      const vid = localStorage.getItem('anton-visitor') || '';
+      if (vid && typeof livePersonaId === 'function') ids.add(livePersonaId(vid));
+    } catch (err) { /* private */ }
+    const view = currentUi();
+    if (view) {
+      if (view.sessionStudentId) ids.add(view.sessionStudentId);
+      const pid = String(view.personaId || '');
+      if (pid.indexOf('stu_') === 0 || pid.indexOf('live-') === 0) ids.add(pid);
+    }
+    return ids;
+  }
+  function stripDemoKeyed(obj) {
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return;
+    Object.keys(obj).forEach((id) => {
+      if (isDemoPersonId(id)) delete obj[id];
+    });
+  }
+  function stripForeignKeyed(obj, keep) {
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return;
+    Object.keys(obj).forEach((id) => {
+      if (!keep.has(id)) delete obj[id];
+    });
+  }
+  /** Drop the seed cast, and on a student browser drop everyone else's private fields. */
+  function stripHeldRoster(state) {
+    if (!state || demoRosterOn()) return state;
+    ['people', 'applications', 'billing', 'crm', 'notes', 'progress', 'lastLecture', 'enrollments', 'timeline', 'kolab'].forEach((key) => {
+      stripDemoKeyed(state[key]);
+    });
+    if (state.attendance && typeof state.attendance === 'object') {
+      Object.keys(state.attendance).forEach((sid) => stripDemoKeyed(state.attendance[sid]));
+    }
+    const dropRow = (row, field) => !row || isDemoPersonId(row[field]);
+    if (Array.isArray(state.liveStudents)) state.liveStudents = state.liveStudents.filter((s) => s && !isDemoPersonId(s.id));
+    ['payments', 'tasks', 'remittances'].forEach((key) => {
+      const field = key === 'remittances' ? 'mentorId' : 'personId';
+      if (Array.isArray(state[key])) state[key] = state[key].filter((row) => !dropRow(row, field));
+    });
+    ['waQueue', 'emailQueue'].forEach((key) => {
+      if (Array.isArray(state[key])) state[key] = state[key].filter((row) => row && !isDemoPersonId(row.toId));
+    });
+    const dropThreads = new Set();
+    if (Array.isArray(state.waThreads)) {
+      state.waThreads = state.waThreads.filter((t) => {
+        if (t && isDemoPersonId(t.personId)) {
+          dropThreads.add(t.id);
+          return false;
+        }
+        return true;
+      });
+    }
+    if (Array.isArray(state.waMessages)) {
+      state.waMessages = state.waMessages.filter((m) => m && !dropThreads.has(m.threadId));
+    }
+    ['threads', 'replies', 'posts', 'comments'].forEach((key) => {
+      if (Array.isArray(state[key])) state[key] = state[key].filter((row) => row && !isDemoPersonId(row.authorId));
+    });
+    const view = currentUi();
+    const keepForeign = !!(view && view.admin && !onStudentVanityPath());
+    if (keepForeign) return state;
+    const keep = ownPersonIds();
+    ['people', 'applications', 'billing', 'crm', 'notes', 'progress', 'lastLecture', 'enrollments', 'timeline', 'kolab'].forEach((key) => {
+      stripForeignKeyed(state[key], keep);
+    });
+    if (Array.isArray(state.liveStudents)) {
+      state.liveStudents = state.liveStudents.filter((s) => s && keep.has(s.id));
+    }
+    if (Array.isArray(state.payments)) state.payments = state.payments.filter((row) => row && keep.has(row.personId));
+    if (Array.isArray(state.tasks)) state.tasks = state.tasks.filter((row) => row && keep.has(row.personId));
+    state.waQueue = [];
+    state.emailQueue = [];
+    state.waThreads = [];
+    state.waMessages = [];
+    state.remittances = [];
+    return state;
+  }
   function load() {
     try {
-      const raw = localStorage.getItem(KEY);
+      const raw = readStoredRaw();
       if (!raw) return defaultState();
       const merged = Object.assign(defaultState(), JSON.parse(raw));
       if (!merged.catalog || !merged.catalog.length) {
@@ -1748,7 +1922,9 @@
       }
       hydrateCurriculum(merged);
       hydrateFunnel(merged);
-      syncDemoSchedule(merged);
+      if (demoRosterOn()) syncDemoSchedule(merged);
+      if (!Array.isArray(merged.directory)) merged.directory = [];
+      stripHeldRoster(merged);
       return merged;
     } catch {
       return defaultState();
@@ -1985,7 +2161,7 @@
     try {
       const res = await fetch(syncUrl(), {
         method: 'PUT',
-        headers: { 'content-type': 'application/json' },
+        headers: lmsHeaders(),
         body: body,
         cache: 'no-store'
       });
@@ -2020,7 +2196,7 @@
   async function pullState() {
     if (!syncEnabled() || syncInFlight) return;
     try {
-      const res = await fetch(syncUrl(), { cache: 'no-store' });
+      const res = await fetch(syncUrl(), { headers: lmsHeaders(), cache: 'no-store' });
       if (res.status === 404) return;
       if (!res.ok) {
         syncStatus = 'gagal ' + res.status;
@@ -2064,11 +2240,41 @@
   function people() {
     db.people = db.people || {};
     db.liveStudents = db.liveStudents || [];
+    if (!demoRosterOn()) {
+      const live = db.liveStudents
+        .filter((s) => s && s.id && !isDemoPersonId(s.id))
+        .map((s) => Object.assign({}, s, db.people[s.id] || {}));
+      const seen = new Set(live.map((s) => s.id));
+      const directory = (Array.isArray(db.directory) ? db.directory : [])
+        .filter((d) => d && d.id && !seen.has(d.id) && !isDemoPersonId(d.id))
+        .map((d) => ({
+          id: d.id,
+          name: d.name || '',
+          firstName: d.firstName || '',
+          lastName: d.lastName || '',
+          kind: d.kind === 'mentor' ? 'mentor' : 'student'
+        }));
+      return live.concat(directory);
+    }
     const seed = SEED.students.map((s) => Object.assign({}, s, db.people[s.id] || {}));
     const extra = db.liveStudents
       .filter((s) => s && s.id && !SEED.students.some((x) => x.id === s.id))
       .map((s) => Object.assign({}, s, db.people[s.id] || {}));
     return seed.concat(extra);
+  }
+  function rosterPerson(id) {
+    if (!id) return false;
+    if (isDemoPersonId(id)) return demoRosterOn();
+    if (demoRosterOn() && (SEED.students || []).some((s) => s.id === id)) return true;
+    if ((db.liveStudents || []).some((s) => s && s.id === id)) return true;
+    if (db.applications && db.applications[id]) return true;
+    return false;
+  }
+  function blankBill() {
+    return { status: 'belum', plan: '', products: [], amount: 0, source: 'manual' };
+  }
+  function blankCrm() {
+    return { stage: 'wa_baru' };
   }
   function patchPerson(id, fields) {
     db.people = db.people || {};
@@ -2081,15 +2287,25 @@
     return people()[0];
   }
   function billingOf(id) {
-    if (!db.billing[id]) {
-      db.billing[id] = { status: 'belum', plan: '', products: [], amount: 0, source: 'manual' };
+    if (!rosterPerson(id)) {
+      if (db.billing && db.billing[id]) {
+        const held = db.billing[id];
+        if (!Array.isArray(held.products)) held.products = [];
+        return held;
+      }
+      return blankBill();
     }
+    if (!db.billing[id]) db.billing[id] = blankBill();
     const b = db.billing[id];
     if (!Array.isArray(b.products)) b.products = [];
     return b;
   }
   function crmOf(id) {
-    if (!db.crm[id]) db.crm[id] = { stage: 'wa_baru' };
+    if (!rosterPerson(id)) {
+      if (db.crm && db.crm[id]) return db.crm[id];
+      return blankCrm();
+    }
+    if (!db.crm[id]) db.crm[id] = blankCrm();
     return db.crm[id];
   }
   function nowMs() { return Date.now() + (db.clockOffsetMs || 0); }
@@ -3497,7 +3713,7 @@
       .replace(/\{term\}/g, term)
       .replace(/\{bank\}/g, bank.bank || '—')
       .replace(/\{rekening\}/g, bank.number || '—')
-      .replace(/\{anama\}/g, bank.name || 'Anton');
+      .replace(/\{anama\}/g, bank.name || ownerFirstName());
   }
   function termLabel(term) {
     return {
@@ -3508,7 +3724,7 @@
       year: 'tahun'
     }[term] || '—';
   }
-  const HEARD_OPTS = ['Grup WA Anton', 'Teman / murid Anton', 'TikTok', 'Instagram', 'Lainnya'];
+  const HEARD_OPTS = ['Grup WA {owner}', 'Teman / murid {owner}', 'Grup WA Anton', 'Teman / murid Anton', 'TikTok', 'Instagram', 'Lainnya'];
   function splitPersonName(full) {
     const parts = String(full || '').trim().split(/\s+/).filter(Boolean);
     if (!parts.length) return { firstName: '', lastName: '' };
@@ -3763,10 +3979,27 @@
     });
     return out;
   }
-  function commitWizApplication() {
+  function lmsHeaders(extra) {
+    const headers = Object.assign({ 'content-type': 'application/json' }, extra || {});
+    if (onStudentVanityPath() || !ui.admin) headers['x-lms-view'] = 'student';
+    return headers;
+  }
+  async function claimStudentRecord(profile) {
+    const res = await fetch(apiBase() + '/join', {
+      method: 'POST',
+      headers: lmsHeaders(),
+      body: JSON.stringify(Object.assign({ visitorId: ui.visitorId || visitorId() }, profile || {}))
+    });
+    if (!res.ok) return null;
+    const data = await res.json().catch(() => ({}));
+    if (!data || !data.studentId) return null;
+    if (data.rev) syncRev = Number(data.rev) || syncRev;
+    return data;
+  }
+  async function commitWizApplication() {
     if (isOnboardPreview()) return false;
     const d = wizDraft();
-    const sid = ui.personaId;
+    let sid = ui.personaId;
     const s = student();
     const pages = wizFormPages();
     const hasName = pages.some((p) => (p.fields || []).some((f) => f.type === 'name'));
@@ -3806,12 +4039,35 @@
     let heard = '';
     pages.forEach((page) => {
       (page.fields || []).forEach((f) => {
-        if (f.id === 'f-heard' || (f.type === 'single' && /kenal anton/i.test(obFieldLabel(f, page)))) {
+        if (f.id === 'f-heard' || (f.type === 'single' && /kenal (anton|\{owner\})/i.test(obFieldLabel(f, page)))) {
           heard = String(answerForField(d, f) || heard);
         }
       });
     });
     if (!heard && answers['f-heard']) heard = String(answers['f-heard']);
+    const waDigits = normalizeWa(d.wa) || normalizeWa(s.wa);
+    if (syncEnabled()) {
+      const claimed = await claimStudentRecord({
+        firstName: firstName,
+        lastName: lastName,
+        name: fullName,
+        wa: waDigits,
+        email: '',
+        city: d.city || '',
+        shopName: shopYes ? (d.shopName || '') : '',
+        shopUrl: shopYes ? (d.shopUrl || '') : ''
+      });
+      if (!claimed) {
+        toast('Tidak bisa menyimpan siswa. Coba lagi.');
+        return false;
+      }
+      sid = claimed.studentId;
+      ui.personaId = sid;
+      ui.sessionStudentId = sid;
+      ui.visitorLive = true;
+      ui.role = 'student';
+    }
+    const ownerId = (SEED.school && SEED.school.ownerId) || 'u-anton';
     db.applications[sid] = {
       name: fullName || (s.name || ''),
       firstName: firstName,
@@ -3825,9 +4081,9 @@
       answers: answers,
       at: isoNow()
     };
-    const waDigits = normalizeWa(d.wa) || normalizeWa(s.wa);
     db.liveStudents = db.liveStudents || [];
-    if (String(sid).indexOf('live-') === 0 && !db.liveStudents.some((x) => x.id === sid)) {
+    const minted = String(sid).indexOf('live-') === 0 || String(sid).indexOf('stu_') === 0;
+    if (minted && !db.liveStudents.some((x) => x.id === sid)) {
       db.liveStudents.push({
         id: sid,
         name: fullName || 'Siswa',
@@ -3835,7 +4091,9 @@
         lastName: lastName,
         wa: waDigits,
         email: '',
-        city: d.city || ''
+        city: d.city || '',
+        mentorId: ownerId,
+        kind: 'student'
       });
     }
     patchPerson(sid, {
@@ -3845,8 +4103,10 @@
       wa: waDigits,
       city: d.city || '',
       shopName: shopYes ? (d.shopName || '') : '',
-      shopUrl: shopYes ? (d.shopUrl || '') : ''
+      shopUrl: shopYes ? (d.shopUrl || '') : '',
+      mentorId: minted ? ownerId : ((db.people[sid] && db.people[sid].mentorId) || ownerId)
     });
+    if (minted) patchPerson(sid, { kind: 'student' });
     pages.forEach((page) => {
       (page.fields || []).forEach((f) => {
         if (!isObAccountField(f)) return;
@@ -3867,9 +4127,22 @@
     return true;
   }
   function ensureApplication() {
-    if (db.applications[ui.personaId]) return true;
+    if (db.applications[ui.personaId]) return Promise.resolve(true);
     captureWizFields();
-    return commitWizApplication();
+    return Promise.resolve(commitWizApplication());
+  }
+  function withApplication(onOk) {
+    return Promise.resolve(ensureApplication()).then((ok) => {
+      if (!ok) {
+        toast('Isi form dulu.');
+        ui.wizStep = 0;
+        ui.wizFocusedStep = null;
+        ui.tab = 'daftar';
+        render();
+        return;
+      }
+      onOk();
+    });
   }
   function advanceWiz() {
     captureWizFields();
@@ -3888,11 +4161,21 @@
       return;
     }
     if (last) {
-      if (!commitWizApplication()) return;
-      ui.wizStep = wizPayIdx();
-      ui.wizFocusedStep = null;
-      ui.tab = 'daftar';
-      toast('Form masuk. Diskon 24 jam jalan — boleh langsung ke Belajar.');
+      if (ui.joining) return;
+      ui.joining = true;
+      Promise.resolve(commitWizApplication()).then((ok) => {
+        ui.joining = false;
+        if (!ok) return;
+        ui.wizStep = wizPayIdx();
+        ui.wizFocusedStep = null;
+        ui.tab = 'daftar';
+        toast('Form masuk. Diskon 24 jam jalan — boleh langsung ke Belajar.');
+        render();
+      }).catch(() => {
+        ui.joining = false;
+        toast('Tidak bisa menyimpan siswa. Coba lagi.');
+      });
+      return;
     } else {
       ui.wizStep = wizIdx() + 1;
       ui.wizFocusedStep = null;
@@ -5796,7 +6079,7 @@
     }
     $('role-switch').innerHTML =
       '<option value="student">Siswa</option>' +
-      '<option value="owner">Mentor (Anton)</option>' +
+      '<option value="owner">Mentor (' + esc(ownerFirstName()) + ')</option>' +
       '<option value="asisten">Asisten (Lia)</option>';
     ui.chromeSync = true;
     $('role-switch').value = ui.role;
@@ -6515,7 +6798,7 @@
   function renderObField(field, d, focusOnce) {
     const key = obStoreId(field);
     const label = field.label
-      ? '<label class="ob-field-label">' + esc(field.label) + (field.required ? '' : ' <em class="muted">(opsional)</em>') + '</label>'
+      ? '<label class="ob-field-label">' + esc(ownerText(field.label)) + (field.required ? '' : ' <em class="muted">(opsional)</em>') + '</label>'
       : '';
     if (field.type === 'name') {
       return label + '<div class="ob-name-row">' +
@@ -6569,7 +6852,7 @@
       return label + '<div class="ob-pills" role="group">' +
         opts.map((opt) =>
           '<button type="button" class="ob-pill' + (pick === opt ? ' is-on' : '') +
-          '" data-act="ob-single" data-key="' + esc(key) + '" data-id="' + esc(opt) + '">' + esc(opt) + '</button>'
+          '" data-act="ob-single" data-key="' + esc(key) + '" data-id="' + esc(opt) + '">' + esc(ownerText(opt)) + '</button>'
         ).join('') + '</div>' +
         (field.allowOther && pick === 'Lainnya'
           ? '<input class="ob-input ob-extra"' + (focusOnce ? ' data-focus="1"' : '') +
@@ -6582,7 +6865,7 @@
       return label + '<div class="ob-pills" role="group">' +
         (field.options || []).map((opt) =>
           '<button type="button" class="ob-pill' + (picked.indexOf(opt) >= 0 ? ' is-on' : '') +
-          '" data-act="ob-multi" data-key="' + esc(key) + '" data-id="' + esc(opt) + '">' + esc(opt) + '</button>'
+          '" data-act="ob-multi" data-key="' + esc(key) + '" data-id="' + esc(opt) + '">' + esc(ownerText(opt)) + '</button>'
         ).join('') + '</div>';
     }
     // text default
@@ -6607,8 +6890,8 @@
       : (last ? 'Lihat paket' : 'Lanjut');
     return obWrap(step,
       '<p class="ob-kicker">' + esc(spec.kicker || '') + '</p>' +
-      '<h1 class="ob-q">' + esc(spec.q || '') + '</h1>' +
-      (spec.sub ? '<p class="ob-sub">' + esc(spec.sub) + '</p>' : '') +
+      '<h1 class="ob-q">' + esc(ownerText(spec.q || '')) + '</h1>' +
+      (spec.sub ? '<p class="ob-sub">' + esc(ownerText(spec.sub)) + '</p>' : '') +
       '<form id="ob-form" data-act="wiz-next">' + fields + '</form>',
       '<button class="btn ob-cta" type="button" data-act="wiz-next">' + cta + '</button>',
       false,
@@ -7318,12 +7601,12 @@
       seen.add(id);
       list.push({ id, name: name || nameOf(id) || id });
     }
-    add('u-anton', 'Anton');
+    add((SEED.school && SEED.school.ownerId) || 'u-anton', ownerFirstName());
     people().forEach((s) => {
       if (s.kind === 'mentor' || crmOf(s.id).stage === 'mentor') add(s.id, s.name);
     });
     const cur = people().find((x) => x.id === forId);
-    const mid = (cur && cur.mentorId) || 'u-anton';
+    const mid = (cur && cur.mentorId) || ((SEED.school && SEED.school.ownerId) || 'u-anton');
     if (!seen.has(mid)) add(mid, nameOf(mid));
     return list;
   }
@@ -9222,17 +9505,20 @@
       '</div></div>';
   }
   function viewJaringan() {
+    const ownerId = (SEED.school && SEED.school.ownerId) || 'u-anton';
+    const ownerName = ownerFirstName();
     const mentors = people().filter((s) => s.kind === 'mentor' || crmOf(s.id).stage === 'mentor');
-    const antonKids = people().filter((s) => (s.mentorId || 'u-anton') === 'u-anton' && s.kind !== 'mentor');
+    const antonKids = people().filter((s) => (s.mentorId || ownerId) === ownerId && s.kind !== 'mentor' && s.id !== ownerId);
     const override = (db.pricing.overridePct || 20) / 100;
-    let html = '<section class="card"><h2>Jaringan Anton</h2>' +
-      '<p class="muted">Dua lapis. Bukan MLM tak terbatas. 20% = licensing kurikulum/merek, disampaikan sebelum seseorang terima peran mentor. Anton tidak menahan uang murid downline.</p>' +
-      '<h3>Murid langsung Anton · ' + antonKids.length + '</h3>' +
+    let html = '<section class="card"><h2>Jaringan ' + esc(ownerName) + '</h2>' +
+      '<p class="muted">Dua lapis. Bukan MLM tak terbatas. 20% = licensing kurikulum/merek, disampaikan sebelum seseorang terima peran mentor. ' +
+      esc(ownerName) + ' tidak menahan uang murid downline.</p>' +
+      '<h3>Murid langsung ' + esc(ownerName) + ' · ' + antonKids.length + '</h3>' +
       '<table class="table"><thead><tr><th>Nama</th><th>Stage</th><th>Bayar</th></tr></thead><tbody>' +
       antonKids.map((s) => '<tr><td><button class="btn-sm" data-act="open-student" data-id="' + esc(s.id) + '">' + esc(s.name) + '</button></td>' +
         '<td>' + esc(stageLabel(crmOf(s.id).stage)) + '</td><td>' + payChip(billingOf(s.id).status, billingOf(s.id).source) + '</td></tr>').join('') +
       '</tbody></table></section>';
-    html += '<section class="card" style="margin-top:12px"><h3>Mentor yang Anton bimbing</h3>';
+    html += '<section class="card" style="margin-top:12px"><h3>Mentor yang ' + esc(ownerName) + ' bimbing</h3>';
     mentors.forEach((m) => {
       const kids = people().filter((s) => s.mentorId === m.id);
       const earned = kids.reduce((n, s) => n + (Number(billingOf(s.id).amount) || 0), 0);
@@ -10328,7 +10614,7 @@
       return;
     }
     if (t.id === 'persona-switch') {
-      if (ui.present || ui.chromeSync) return;
+      if (ui.present || ui.chromeSync || onStudentVanityPath() || !ui.admin) return;
       ui.personaId = t.value;
       ui.lectureId = db.lastLecture[ui.personaId] || firstLectureId();
       ui.kolabSel = new Set();
@@ -12542,81 +12828,56 @@
       toast(p.title + ' kebuka di harga mentoring (−' + toolDiscountPct() + '%). Prototype, bukan tagihan lynk.');
       render();
     } else if (act === 'pay-later') {
-      if (!ensureApplication()) {
-        toast('Isi form dulu.');
-        ui.wizStep = 0;
-        ui.wizFocusedStep = null;
-        ui.tab = 'daftar';
+      withApplication(() => {
+        startTrial(ui.personaId);
+        save();
+        ui.lectureId = firstLectureId();
+        ui.tab = 'belajar';
+        toast('Trial: video 1 kebuka. Diskon 24 jam dari jam form.');
         render();
-        return;
-      }
-      startTrial(ui.personaId);
-      save();
-      ui.lectureId = firstLectureId();
-      ui.tab = 'belajar';
-      toast('Trial: video 1 kebuka. Diskon 24 jam dari jam form.');
-      render();
+      });
     } else if (act === 'pay-lynk') {
-      if (!ensureApplication()) {
-        toast('Isi form dulu.');
-        ui.wizStep = 0;
-        ui.wizFocusedStep = null;
-        ui.tab = 'daftar';
+      withApplication(() => {
+        const term = btn.getAttribute('data-term') || ui.payTerm || 'month';
+        const url = lynkCheckoutUrl(term);
+        if (!url) {
+          toast('Tautan Lynk untuk paket ini belum diisi.');
+          return;
+        }
+        if (!normalizeWa(student().wa)) {
+          toast('Nomor WA di form belum ada.');
+          return;
+        }
+        const welcome = welcomeOpen(ui.personaId) || hoursLeft(billingOf(ui.personaId).offerExpiresAt) > 0;
+        markPendingLynk(ui.personaId, term, priceForTerm(term, welcome), url);
+        save();
+        openLynk(url);
+        toast('Halaman Lynk terbuka. Kelas kebuka setelah pembayaran terkonfirmasi.');
         render();
-        return;
-      }
-      const term = btn.getAttribute('data-term') || ui.payTerm || 'month';
-      const url = lynkCheckoutUrl(term);
-      if (!url) {
-        toast('Tautan Lynk untuk paket ini belum diisi.');
-        return;
-      }
-      if (!normalizeWa(student().wa)) {
-        toast('Nomor WA di form belum ada.');
-        return;
-      }
-      const welcome = welcomeOpen(ui.personaId) || hoursLeft(billingOf(ui.personaId).offerExpiresAt) > 0;
-      markPendingLynk(ui.personaId, term, priceForTerm(term, welcome), url);
-      save();
-      openLynk(url);
-      toast('Halaman Lynk terbuka. Kelas kebuka setelah pembayaran terkonfirmasi.');
-      render();
+      });
     } else if (act === 'pay-manual' || act === 'pay-now') {
-      if (!ensureApplication()) {
-        toast('Isi form dulu.');
-        ui.wizStep = 0;
-        ui.wizFocusedStep = null;
-        ui.tab = 'daftar';
+      withApplication(() => {
+        const term = btn.getAttribute('data-term') || ui.payTerm || 'month';
+        const welcome = welcomeOpen(ui.personaId) || hoursLeft(billingOf(ui.personaId).offerExpiresAt) > 0;
+        const amount = priceForTerm(term, welcome);
+        if (act === 'pay-now' && term === 'autopay' && !mayarReady()) {
+          grantMentoring(ui.personaId, term, 'mock', amount);
+          toast('Autopay mock · akses kebuka');
+        } else if (act === 'pay-now' && mayarReady()) {
+          toast('Pakai Bayar sekarang.');
+          return;
+        } else {
+          markPendingTransfer(ui.personaId, term, amount);
+          toast('Tercatat. Akses kebuka setelah ' + ownerFirstName() + ' konfirmasi.');
+        }
+        save();
+        ui.tab = 'home';
         render();
-        return;
-      }
-      const term = btn.getAttribute('data-term') || ui.payTerm || 'month';
-      const welcome = welcomeOpen(ui.personaId) || hoursLeft(billingOf(ui.personaId).offerExpiresAt) > 0;
-      const amount = priceForTerm(term, welcome);
-      if (act === 'pay-now' && term === 'autopay' && !mayarReady()) {
-        grantMentoring(ui.personaId, term, 'mock', amount);
-        toast('Autopay mock · akses kebuka');
-      } else if (act === 'pay-now' && mayarReady()) {
-        toast('Pakai Bayar sekarang.');
-        return;
-      } else {
-        markPendingTransfer(ui.personaId, term, amount);
-        toast('Tercatat. Akses kebuka setelah Anton konfirmasi.');
-      }
-      save();
-      ui.tab = 'home';
-      render();
+      });
     } else if (act === 'pay-mayar' || act === 'mayar-test') {
       const test = act === 'mayar-test';
       if (test && !canBill()) return;
-      if (!test && !ensureApplication()) {
-        toast('Isi form dulu.');
-        ui.wizStep = 0;
-        ui.wizFocusedStep = null;
-        ui.tab = 'daftar';
-        render();
-        return;
-      }
+      const runMayar = () => {
       const term = btn.getAttribute('data-term') || ui.payTerm || 'month';
       const welcome = !test && (welcomeOpen(ui.personaId) || hoursLeft(billingOf(ui.personaId).offerExpiresAt) > 0);
       const amount = test ? 10000 : priceForTerm(term, welcome);
@@ -12654,6 +12915,9 @@
         toast('Mayar tidak terjangkau.');
         render();
       });
+      };
+      if (test) runMayar();
+      else withApplication(runMayar);
     } else if (act === 'confirm-paid') {
       const id = btn.getAttribute('data-id');
       if (!id || !canBill()) return;
@@ -13437,8 +13701,28 @@
     const compact = String(vid || '').replace(/[^a-zA-Z0-9]/g, '');
     return 'live-' + (compact || 'anon').slice(0, 16);
   }
+  async function bootSession() {
+    if (!syncEnabled() || ui.present || ui.admin) return;
+    try {
+      const res = await fetch(apiBase() + '/session', {
+        method: 'POST',
+        headers: lmsHeaders(),
+        body: JSON.stringify({ visitorId: ui.visitorId || visitorId() })
+      });
+      if (!res.ok) return;
+      const data = await res.json().catch(() => ({}));
+      if (data && data.role === 'student' && data.studentId) {
+        ui.sessionStudentId = data.studentId;
+        ui.personaId = data.studentId;
+        ui.visitorLive = true;
+        ui.role = 'student';
+        const lec = db.lastLecture && db.lastLecture[ui.personaId];
+        if (lec) ui.lectureId = lec;
+      }
+    } catch (err) { /* guest until the join form */ }
+  }
   function ensureLiveVisitor() {
-    if (ui.admin || ui.present || !syncEnabled()) return;
+    if (ui.admin || ui.present || !syncEnabled() || ui.sessionStudentId) return;
     const vid = ui.visitorId || visitorId();
     ui.visitorId = vid;
     ui.visitorLive = true;
@@ -13497,8 +13781,9 @@
     /* /s/{slug} is always the student app — never claim mentor from the admin cookie. */
     const forceStudent = onStudentVanityPath() || (PRESENT && PRESENT_PANE === 'student');
     const admin = forceStudent ? false : await claimAdmin();
+    if (!admin) await bootSession();
     await bootSync();
-    if (!admin) ensureLiveVisitor();
+    if (!admin && !ui.sessionStudentId) ensureLiveVisitor();
     if (forceStudent) {
       ui.admin = false;
       ui.role = 'student';
