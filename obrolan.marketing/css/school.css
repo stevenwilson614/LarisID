@@ -298,16 +298,59 @@ a { color: inherit; }
   background: transparent; color: var(--text); border: 1px solid var(--line-2);
   border-radius: var(--r); padding: 6px 10px; font-size: .72rem; cursor: pointer;
 }
-.theme-btn {
+.theme-btn,
+.me-btn {
   width: 34px; height: 34px; padding: 0; flex: none;
   display: inline-grid; place-items: center; border-radius: 50%;
   color: var(--muted);
 }
-.theme-btn:hover { color: var(--text); border-color: var(--text); }
-.theme-btn svg { width: 17px; height: 17px; display: block; }
+.theme-btn:hover,
+.me-btn:hover,
+.me-btn.is-on { color: var(--text); border-color: var(--text); }
+.theme-btn svg,
+.me-btn svg { width: 17px; height: 17px; display: block; }
 .theme-btn .ico-moon { display: none; }
 html[data-theme="light"] .theme-btn .ico-sun { display: none; }
 html[data-theme="light"] .theme-btn .ico-moon { display: block; }
+.me-page { display: grid; gap: 12px; max-width: 640px; }
+.me-head {
+  display: flex; align-items: flex-start; gap: 10px; margin-bottom: 2px;
+}
+.me-kicker {
+  margin: 0 0 2px; font-size: .68rem; font-weight: 800;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--muted-2);
+}
+.me-head h1 {
+  margin: 0; font-size: 1.28rem; letter-spacing: -.03em; font-weight: 800;
+}
+.me-card h2 {
+  margin: 0 0 4px; font-size: 1.02rem; letter-spacing: -.02em;
+}
+.me-card > .muted { margin: 0 0 12px; }
+.me-iden {
+  display: flex; gap: 14px; align-items: flex-start; margin-bottom: 14px;
+}
+.me-iden-copy { flex: 1; min-width: 0; display: grid; gap: 8px; }
+.me-bio {
+  width: 100%; min-height: 96px; box-sizing: border-box;
+  border: 1px solid var(--line); border-radius: var(--r);
+  background: var(--ink-2); color: var(--text);
+  padding: 10px 12px; font: inherit; font-size: .88rem; line-height: 1.45;
+  resize: vertical;
+}
+.me-bill { display: grid; gap: 8px; }
+.me-bill-row {
+  display: flex; justify-content: space-between; gap: 12px; align-items: center;
+  font-size: .84rem;
+}
+.me-bill-row span { color: var(--muted); font-weight: 650; }
+.me-bill-row strong { font-weight: 750; text-align: right; }
+.me-theme { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.me-theme .ps-label { margin-bottom: 8px; }
+.me-theme .btn-sm.is-on {
+  background: var(--inv-bg); color: var(--inv-fg); border-color: var(--inv-bg);
+}
+html[data-mode="mentor"] .me-btn { display: none; }
 
 .tabs button {
   border: 0; background: transparent; color: var(--muted);

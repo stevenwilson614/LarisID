@@ -1062,6 +1062,114 @@
       (back ? '<div class="row" style="margin-top:14px">' + back + '</div>' : '') +
     '</section>';
   }
+  function canEditPerson(id) {
+    if (isSiswaReadonly()) return false;
+    if (isStaff()) return true;
+    return !!id && id === ui.personaId;
+  }
+  function studentAuthOf(id) {
+    const p = (db.people && db.people[id]) || {};
+    const s = people().find((x) => x.id === id) || {};
+    return {
+      passwordSet: !!(p.passwordSet || s.passwordSet),
+      email: s.email || p.email || '',
+      wa: s.wa || p.wa || ''
+    };
+  }
+  function viewStudentMe() {
+    const s = student();
+    const id = s.id;
+    const app = db.applications[id];
+    const b = billingOf(id);
+    const parts = personNameParts(s);
+    const auth = studentAuthOf(id);
+    const theme = currentTheme();
+    const unpaid = !canMentoring(id);
+    const pending = isPending(id);
+    return '<section class="me-page">' +
+      '<div class="me-head">' +
+        '<button type="button" class="lesson-back" data-act="tab" data-id="home" aria-label="Kembali">←</button>' +
+        '<div>' +
+          '<p class="muted me-kicker">Profil saya</p>' +
+          '<h1>' + esc(displayNameOf(s) || s.name || 'Siswa') + '</h1>' +
+        '</div>' +
+      '</div>' +
+      '<section class="card me-card">' +
+        '<div class="me-iden">' +
+          avatarHtml(s, 'avatar lg') +
+          '<div class="me-iden-copy">' +
+            '<div class="fub-name-row">' +
+              '<input class="inline-edit name-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="firstName" value="' +
+                esc(parts.firstName) + '" placeholder="Nama depan" autocomplete="given-name">' +
+              '<input class="inline-edit name-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="lastName" value="' +
+                esc(parts.lastName) + '" placeholder="Nama belakang" autocomplete="family-name">' +
+            '</div>' +
+            '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="city" value="' +
+              esc(s.city || '') + '" placeholder="Kota">' +
+            '<label class="btn-sm fub-photo-btn">Unggah foto<input type="file" hidden data-act="photo-file" data-id="' +
+              esc(id) + '" accept="image/*"></label>' +
+          '</div>' +
+        '</div>' +
+        '<label class="ps-field"><span class="ps-label">Bio</span>' +
+          '<textarea class="me-bio" data-act="person-field" data-id="' + esc(id) + '" data-k="bio" rows="4" maxlength="800" placeholder="Cerita singkat soal toko / pengalaman jualan…">' +
+            esc(s.bio || '') + '</textarea>' +
+          '<span class="ps-hint">Bisa dilihat mentor. Tanpa link kupon.</span>' +
+        '</label>' +
+      '</section>' +
+      '<section class="card me-card">' +
+        '<h2>Sosial &amp; toko</h2>' +
+        '<p class="muted">Tambah akun sosial dan tautan marketplace.</p>' +
+        personLinksHtml(id, s, app) +
+      '</section>' +
+      '<section class="card me-card">' +
+        '<h2>Pembayaran &amp; billing</h2>' +
+        '<div class="me-bill">' +
+          '<div class="me-bill-row"><span>Status</span><strong>' + payChip(b.status, b.source) + '</strong></div>' +
+          '<div class="me-bill-row"><span>Paket</span><strong>' + esc(termLabel(b.pendingTerm || b.term) || '—') + '</strong></div>' +
+          '<div class="me-bill-row"><span>Nilai</span><strong>' + esc(fmtRp(b.amount || b.pendingAmount || 0)) + '</strong></div>' +
+          (b.accessUntil
+            ? '<div class="me-bill-row"><span>Akses sampai</span><strong>' + esc(fmtWhen(b.accessUntil)) + '</strong></div>'
+            : '') +
+          (b.note ? '<p class="muted" style="margin:8px 0 0">' + esc(b.note) + '</p>' : '') +
+        '</div>' +
+        (pending
+          ? pendingBanner(id)
+          : (unpaid
+            ? '<div class="row" style="margin-top:12px">' +
+                '<button type="button" class="btn" data-act="tab" data-id="daftar">Bayar mentoring</button>' +
+              '</div>'
+            : '<p class="muted" style="margin:10px 0 0">Mentoring aktif. Perpanjang lewat Bayar mentoring saat masa akses hampir habis.</p>' +
+              '<div class="row" style="margin-top:10px">' +
+                '<button type="button" class="btn secondary" data-act="tab" data-id="daftar">Perpanjang / bayar</button>' +
+              '</div>')) +
+      '</section>' +
+      '<section class="card me-card">' +
+        '<h2>Akun</h2>' +
+        '<p class="muted">Email, WhatsApp, dan password login (prototype lokal).</p>' +
+        '<form class="ps-form as-form" data-act="save-student-account" data-id="' + esc(id) + '">' +
+          '<label class="ps-field"><span class="ps-label">Email</span>' +
+            '<input name="email" type="email" required value="' + esc(auth.email) + '" autocomplete="email"></label>' +
+          '<label class="ps-field"><span class="ps-label">WhatsApp</span>' +
+            '<input name="wa" inputmode="tel" value="' + esc(auth.wa) + '" placeholder="62812…" autocomplete="tel"></label>' +
+          '<label class="ps-field"><span class="ps-label">Password baru</span>' +
+            '<input name="newPassword" type="password" minlength="8" autocomplete="new-password" placeholder="' +
+              (auth.passwordSet ? 'Kosongkan jika tidak diganti' : 'Min. 8 karakter') + '"></label>' +
+          '<label class="ps-field"><span class="ps-label">Ulangi password</span>' +
+            '<input name="confirmPassword" type="password" minlength="8" autocomplete="new-password" placeholder="Ulangi password baru"></label>' +
+          '<div class="ps-actions">' +
+            '<button class="btn ps-save" type="submit">Simpan akun</button>' +
+          '</div>' +
+        '</form>' +
+        '<div class="me-theme">' +
+          '<p class="ps-label">Tampilan</p>' +
+          '<div class="row">' +
+            '<button type="button" class="btn-sm' + (theme === 'dark' ? ' is-on' : '') + '" data-act="set-theme" data-id="dark">Gelap</button>' +
+            '<button type="button" class="btn-sm' + (theme === 'light' ? ' is-on' : '') + '" data-act="set-theme" data-id="light">Terang</button>' +
+          '</div>' +
+        '</div>' +
+      '</section>' +
+    '</section>';
+  }
   function profileActionsBar(opts) {
     const o = opts || {};
     const mode = ui.profilePreview === 'desktop' ? 'desktop' : (ui.profilePreview === 'phone' ? 'phone' : '');
@@ -5697,22 +5805,24 @@
     const menuAccount = $('btn-menu-account');
     const menuSiswa = $('btn-menu-siswa-view');
     if (menuProfil) {
-      menuProfil.hidden = false;
-      const label = canBill() ? 'Profile' : 'View profile';
-      const textNode = Array.from(menuProfil.childNodes).find((n) => n.nodeType === 3 && String(n.textContent || '').trim());
-      if (textNode) textNode.textContent = ' ' + label;
-      else {
-        const span = menuProfil.querySelector('.brand-menu-label');
-        if (span) span.textContent = label;
-      }
+      menuProfil.hidden = !canBill();
+      const span = menuProfil.querySelector('.brand-menu-label');
+      if (span) span.textContent = 'Profile';
     }
     if (menuAccount) menuAccount.hidden = !canBill() || isSiswaReadonly();
     if (menuSiswa) menuSiswa.hidden = !canBill() || isSiswaReadonly();
     const brandBtn = $('brand-btn');
     if (brandBtn) {
-      brandBtn.disabled = isSiswaReadonly();
-      brandBtn.setAttribute('aria-label', isSiswaReadonly() ? 'Siswa view' : 'Profile menu');
-      brandBtn.title = isSiswaReadonly() ? 'Siswa view (read-only)' : 'Profile menu';
+      brandBtn.disabled = isSiswaReadonly() || !isStaff();
+      brandBtn.setAttribute('aria-label', isStaff()
+        ? (isSiswaReadonly() ? 'Siswa view' : 'Profile menu')
+        : SEED.school.name);
+      brandBtn.title = brandBtn.getAttribute('aria-label');
+    }
+    const meBtn = $('btn-me');
+    if (meBtn) {
+      meBtn.hidden = isStaff();
+      meBtn.classList.toggle('is-on', !isStaff() && ui.tab === 'profil');
     }
     const headerEl = $('school-header');
     if (headerEl) {
@@ -5905,7 +6015,7 @@
         else if (tab === 'kolab') main.innerHTML = viewKolab();
         else if (tab === 'tes') main.innerHTML = viewExam();
         else if (tab === 'sertifikat') main.innerHTML = viewSertifikat(ui.personaId);
-        else if (tab === 'profil') main.innerHTML = viewSchoolPublic({ student: true });
+        else if (tab === 'profil') main.innerHTML = viewStudentMe();
         else main.innerHTML = viewHome();
       }
     }
@@ -10475,7 +10585,7 @@
     if (t.matches('[data-act="photo-file"]')) {
       const file = t.files && t.files[0];
       const id = t.getAttribute('data-id');
-      if (!file || !id) return;
+      if (!file || !id || !canEditPerson(id)) return;
       if (file.size > MAX_IMG) { toast('Foto maks 5 MB.'); return; }
       const finishLocal = () => blobPut(photoKey(id), file).then(() => {
         patchPerson(id, { photoBlob: true, photoFailed: false });
@@ -10525,11 +10635,15 @@
     }
     if (t.matches('[data-act="person-field"]')) {
       const id = t.getAttribute('data-id');
+      if (!canEditPerson(id)) return;
       const k = t.getAttribute('data-k');
       let val = t.value;
       if (k === 'wa') val = String(val).replace(/\D/g, '');
       if (k === 'tiktok') val = tiktokHandle(val);
-      if (k === 'email' || k === 'firstName' || k === 'lastName' || k === 'name') val = String(val).trim();
+      if (k === 'email' || k === 'firstName' || k === 'lastName' || k === 'name' || k === 'city' || k === 'shopName') {
+        val = String(val).trim();
+      }
+      if (k === 'bio') val = String(val || '').trim().slice(0, 800);
       const fields = {};
       fields[k] = val;
       if (k === 'firstName' || k === 'lastName') {
@@ -10957,7 +11071,8 @@
     'mark-done', 'toggle-done', 'exam', 'exam-submit',
     'pay-term', 'pay-buy', 'pay-prompt', 'pay-prompt-close', 'pay-prompt-go', 'pay-lynk', 'pay-manual', 'pay-now', 'pay-later',
     'ask', 'reply', 'report-issue', 'chat-member-add', 'chat-member-remove', 'chat-new',
-    'has-shop', 'heard-from'
+    'has-shop', 'heard-from', 'save-student-account', 'open-me', 'set-theme',
+    'pick-social', 'pick-shop', 'add-social', 'add-shop', 'del-social', 'del-shop'
   ]);
 
   document.addEventListener('click', (e) => {
@@ -11213,17 +11328,20 @@
       return;
     }
     if (act === 'pick-social') {
+      if (isSiswaReadonly()) return;
       ui.socialPick = btn.getAttribute('data-id') || null;
       render();
       return;
     }
     if (act === 'pick-shop') {
+      if (isSiswaReadonly()) return;
       ui.shopPick = btn.getAttribute('data-id') || null;
       render();
       return;
     }
     if (act === 'add-social') {
       const id = btn.getAttribute('data-id');
+      if (!canEditPerson(id)) return;
       const plat = ui.socialPick;
       const inp = btn.parentElement && btn.parentElement.querySelector('[data-act="social-input"]');
       const parsed = parseSocialLink(plat, inp && inp.value);
@@ -11250,6 +11368,7 @@
     }
     if (act === 'add-shop') {
       const id = btn.getAttribute('data-id');
+      if (!canEditPerson(id)) return;
       const plat = ui.shopPick;
       const inp = btn.parentElement && btn.parentElement.querySelector('[data-act="shop-input"]');
       const parsed = parseShopLink(plat, inp && inp.value);
@@ -11269,6 +11388,7 @@
     }
     if (act === 'del-social') {
       const id = btn.getAttribute('data-id');
+      if (!canEditPerson(id)) return;
       const lid = btn.getAttribute('data-lid');
       const plat = btn.getAttribute('data-plat');
       const s = people().find((x) => x.id === id) || {};
@@ -11281,6 +11401,7 @@
     }
     if (act === 'del-shop') {
       const id = btn.getAttribute('data-id');
+      if (!canEditPerson(id)) return;
       const lid = btn.getAttribute('data-lid');
       const plat = btn.getAttribute('data-plat');
       const s = people().find((x) => x.id === id) || {};
@@ -11545,6 +11666,20 @@
         const el = document.querySelector('[data-lec-drop="' + id + '"]');
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
+    } else if (act === 'open-me') {
+      setBrandMenu(false);
+      if (isStaff()) {
+        toast('Profil siswa — buka lewat Siswa view.');
+        return;
+      }
+      if (needsWizard(ui.personaId)) {
+        toast('Selesaikan form dulu.');
+        return;
+      }
+      ui.tab = 'profil';
+      ui.socialPick = null;
+      ui.shopPick = null;
+      render();
     } else if (act === 'open-profil') {
       setBrandMenu(false);
       ui.profilePreview = null;
@@ -11561,7 +11696,12 @@
           return;
         }
         ui.tab = 'profil';
+        ui.socialPick = null;
+        ui.shopPick = null;
       }
+      render();
+    } else if (act === 'set-theme') {
+      applyTheme(btn.getAttribute('data-id') === 'light' ? 'light' : 'dark', true);
       render();
     } else if (act === 'open-account') {
       setBrandMenu(false);
@@ -12923,6 +13063,36 @@
       } else {
         render();
       }
+    } else if (act === 'save-student-account') {
+      const id = form.getAttribute('data-id') || ui.personaId;
+      if (!canEditPerson(id)) {
+        toast('Tidak bisa mengubah akun ini.');
+        return;
+      }
+      const email = String(fd.get('email') || '').trim();
+      const wa = String(fd.get('wa') || '').replace(/\D/g, '');
+      if (!email || email.indexOf('@') < 1) {
+        toast('Isi email yang valid.');
+        return;
+      }
+      const newPw = String(fd.get('newPassword') || '');
+      const conf = String(fd.get('confirmPassword') || '');
+      const fields = { email: email, wa: wa };
+      if (newPw || conf) {
+        if (newPw.length < 8) {
+          toast('Password baru minimal 8 karakter.');
+          return;
+        }
+        if (newPw !== conf) {
+          toast('Password dan ulangi tidak sama.');
+          return;
+        }
+        fields.passwordSet = true;
+      }
+      patchPerson(id, fields);
+      save();
+      toast(fields.passwordSet ? 'Akun & password disimpan.' : 'Akun disimpan.');
+      render();
     } else if (act === 'save-account-security') {
       if (!canBill()) return;
       ensureAccountSettings();
@@ -12990,9 +13160,12 @@
   });
 
   applyTheme(currentTheme(), false);
-  $('btn-theme').addEventListener('click', () => {
-    applyTheme(currentTheme() === 'light' ? 'dark' : 'light', true);
-  });
+  const themeBtn = $('btn-theme');
+  if (themeBtn) {
+    themeBtn.addEventListener('click', () => {
+      applyTheme(currentTheme() === 'light' ? 'dark' : 'light', true);
+    });
+  }
 
   function setBrandMenu(open) {
     const btn = $('brand-btn');
