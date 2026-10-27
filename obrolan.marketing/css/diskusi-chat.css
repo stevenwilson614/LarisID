@@ -396,7 +396,7 @@ html[data-mode="student"] .dk-comment-form input { font-size: 16px; }
 @media (min-width: 900px) {
   html[data-mode="student"] #app.is-diskusi .main {
     max-width: none;
-    padding: 0 0 calc(var(--dock-h) + var(--safe-bottom));
+    padding: 0 0 calc(var(--dock-h) + 56px);
   }
   html[data-mode="student"] .dk-shell {
     display: grid;

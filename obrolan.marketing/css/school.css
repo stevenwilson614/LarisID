@@ -1268,7 +1268,7 @@ html[data-mode="student"] .scrim {
     width: 100%;
     max-width: 1080px;
     margin: 0 auto;
-    padding: 24px clamp(20px, 4vw, 40px) calc(var(--dock-h) + 40px);
+    padding: 24px clamp(20px, 4vw, 40px) calc(var(--dock-h) + 56px);
   }
   html[data-mode="student"] .grid-2 {
     grid-template-columns: minmax(0, 1.35fr) minmax(280px, 1fr);
@@ -1315,25 +1315,31 @@ html[data-mode="student"] .scrim {
   html[data-mode="student"] .kur-toggle { display: none; }
   html[data-mode="student"] #app.is-belajar .topbar { display: flex; }
   html[data-mode="student"] #app.is-belajar .main {
-    padding: 20px clamp(20px, 4vw, 40px) calc(var(--dock-h) + 40px);
+    padding: 20px clamp(20px, 4vw, 40px) calc(var(--dock-h) + 56px);
     max-width: 1080px;
     margin: 0 auto;
   }
   html[data-mode="student"] .dock {
     position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: 100%;
-    max-width: none;
-    transform: none;
-    border-top: 1px solid var(--line);
-    background: color-mix(in srgb, var(--ink) 92%, transparent);
-    backdrop-filter: blur(10px);
+    left: 50%;
+    right: auto;
+    bottom: 16px;
+    width: min(420px, calc(100% - 48px));
+    max-width: 420px;
+    transform: translateX(-50%);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 6px 8px;
+    min-height: var(--dock-h);
+    background: color-mix(in srgb, var(--ink-2) 94%, transparent);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 10px 40px var(--shadow);
   }
   html[data-mode="student"] .dock button {
-    max-width: 160px;
-    margin: 0 auto;
+    max-width: none;
+    margin: 0;
+    font-size: .68rem;
+    padding: 8px 6px;
   }
   html[data-mode="student"] .toast {
     left: 50%;
