@@ -1229,78 +1229,121 @@
     const hit = OB_FIELD_TYPES.find((t) => t.id === type);
     return hit ? hit.label : type;
   }
-  function viewObFieldEditor(pageId, field, fi) {
+  function obIco(name) {
+    const common = ' width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
+    if (name === 'eye') return '<svg' + common + '><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+    if (name === 'reset') return '<svg' + common + '><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>';
+    if (name === 'grip') return '<svg' + common + '><circle cx="9" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="9" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="18" r="1" fill="currentColor" stroke="none"/></svg>';
+    if (name === 'up') return '<svg' + common + '><polyline points="18 15 12 9 6 15"/></svg>';
+    if (name === 'down') return '<svg' + common + '><polyline points="6 9 12 15 18 9"/></svg>';
+    if (name === 'trash') return '<svg' + common + '><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
+    if (name === 'plus') return '<svg' + common + '><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+    if (name === 'user') return '<svg' + common + '><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+    if (name === 'phone') return '<svg' + common + '><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.81.36 1.6.7 2.34a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.74.34 1.53.57 2.34.7A2 2 0 0 1 22 16.92z"/></svg>';
+    if (name === 'map') return '<svg' + common + '><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
+    if (name === 'shop') return '<svg' + common + '><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>';
+    if (name === 'link') return '<svg' + common + '><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
+    if (name === 'text') return '<svg' + common + '><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>';
+    if (name === 'area') return '<svg' + common + '><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/></svg>';
+    if (name === 'single') return '<svg' + common + '><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/></svg>';
+    if (name === 'multi') return '<svg' + common + '><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 12l3 3 7-7"/></svg>';
+    return '';
+  }
+  function obTypeIcon(type) {
+    return {
+      name: 'user', wa: 'phone', city: 'map', shop: 'shop', link: 'link',
+      text: 'text', textarea: 'area', single: 'single', multi: 'multi'
+    }[type] || 'text';
+  }
+  function obIconBtn(act, pageId, fieldId, icon, title, opts) {
+    const o = opts || {};
+    return '<button type="button" class="ob-ed-ico' + (o.danger ? ' is-danger' : '') +
+      '" data-act="' + act + '" data-page="' + esc(pageId) + '"' +
+      (fieldId ? ' data-field="' + esc(fieldId) + '"' : '') +
+      (o.disabled ? ' disabled' : '') +
+      ' title="' + esc(title) + '" aria-label="' + esc(title) + '">' + obIco(icon) + '</button>';
+  }
+  function viewObFieldEditor(pageId, field, fi, fieldCount) {
     const typeOpts = OB_FIELD_TYPES.map((t) =>
       '<option value="' + esc(t.id) + '"' + (field.type === t.id ? ' selected' : '') + '>' + esc(t.label) + '</option>'
     ).join('');
     const needsMeta = field.type === 'text' || field.type === 'textarea' || field.type === 'link' ||
       field.type === 'single' || field.type === 'multi';
     const needsOpts = field.type === 'single' || field.type === 'multi';
-    return '<div class="ob-ed-field" data-page="' + esc(pageId) + '" data-field="' + esc(field.id) + '">' +
+    return '<div class="ob-ed-field' + (needsMeta ? ' is-open' : '') + '" data-page="' + esc(pageId) + '" data-field="' + esc(field.id) + '">' +
       '<div class="ob-ed-field-top">' +
-        '<select data-act="ob-field-type" data-page="' + esc(pageId) + '" data-field="' + esc(field.id) + '">' +
+        '<span class="ob-ed-type-ico" aria-hidden="true">' + obIco(obTypeIcon(field.type)) + '</span>' +
+        '<select class="ob-ed-type" data-act="ob-field-type" data-page="' + esc(pageId) + '" data-field="' + esc(field.id) + '">' +
           typeOpts + '</select>' +
-        '<label class="ob-ed-req"><input type="checkbox" data-act="ob-field-req" data-page="' +
-          esc(pageId) + '" data-field="' + esc(field.id) + '"' + (field.required ? ' checked' : '') + '> Wajib</label>' +
-        '<button type="button" class="btn-sm" data-act="ob-field-up" data-page="' + esc(pageId) +
-          '" data-field="' + esc(field.id) + '"' + (fi === 0 ? ' disabled' : '') + '>↑</button>' +
-        '<button type="button" class="btn-sm" data-act="ob-field-down" data-page="' + esc(pageId) +
-          '" data-field="' + esc(field.id) + '">↓</button>' +
-        '<button type="button" class="btn-sm danger" data-act="ob-field-del" data-page="' +
-          esc(pageId) + '" data-field="' + esc(field.id) + '">Hapus</button>' +
+        '<label class="ob-ed-switch" title="Wajib">' +
+          '<input type="checkbox" data-act="ob-field-req" data-page="' + esc(pageId) + '" data-field="' +
+            esc(field.id) + '"' + (field.required ? ' checked' : '') + '>' +
+          '<span class="ob-ed-switch-ui" aria-hidden="true"></span>' +
+          '<span class="ob-ed-switch-label">Wajib</span>' +
+        '</label>' +
+        '<div class="ob-ed-field-acts">' +
+          obIconBtn('ob-field-up', pageId, field.id, 'up', 'Naik', { disabled: fi === 0 }) +
+          obIconBtn('ob-field-down', pageId, field.id, 'down', 'Turun', { disabled: fi >= fieldCount - 1 }) +
+          obIconBtn('ob-field-del', pageId, field.id, 'trash', 'Hapus', { danger: true, disabled: fieldCount <= 1 }) +
+        '</div>' +
       '</div>' +
       (needsMeta
-        ? '<div class="ob-ed-grid">' +
-            '<label>Label di akun siswa<input data-ob-ed="label" data-page="' + esc(pageId) + '" data-field="' +
-              esc(field.id) + '" value="' + esc(field.label || '') + '" placeholder="Mis. Tautan toko"></label>' +
-            '<label>Placeholder<input data-ob-ed="placeholder" data-page="' + esc(pageId) + '" data-field="' +
-              esc(field.id) + '" value="' + esc(field.placeholder || '') + '" placeholder="Contoh…"></label>' +
+        ? '<div class="ob-ed-meta">' +
+            '<label class="ob-ed-lab"><span>Label</span>' +
+              '<input data-ob-ed="label" data-page="' + esc(pageId) + '" data-field="' +
+                esc(field.id) + '" value="' + esc(field.label || '') + '" placeholder="Mis. Tautan toko"></label>' +
+            '<label class="ob-ed-lab"><span>Placeholder</span>' +
+              '<input data-ob-ed="placeholder" data-page="' + esc(pageId) + '" data-field="' +
+                esc(field.id) + '" value="' + esc(field.placeholder || '') + '" placeholder="Contoh…"></label>' +
           '</div>'
         : '') +
       (needsOpts
-        ? '<label class="ob-ed-opts">Opsi (satu per baris)' +
-            '<textarea data-ob-ed="options" data-page="' + esc(pageId) + '" data-field="' +
-              esc(field.id) + '" rows="3">' + esc((field.options || []).join('\n')) + '</textarea></label>' +
-          (field.type === 'single'
-            ? '<label class="ob-ed-req"><input type="checkbox" data-act="ob-field-other" data-page="' +
-              esc(pageId) + '" data-field="' + esc(field.id) + '"' + (field.allowOther ? ' checked' : '') +
-              '> Izinkan “Lainnya”</label>'
-            : '')
+        ? '<div class="ob-ed-meta">' +
+            '<label class="ob-ed-lab ob-ed-lab-full"><span>Opsi (satu per baris)</span>' +
+              '<textarea data-ob-ed="options" data-page="' + esc(pageId) + '" data-field="' +
+                esc(field.id) + '" rows="3">' + esc((field.options || []).join('\n')) + '</textarea></label>' +
+            (field.type === 'single'
+              ? '<label class="ob-ed-switch ob-ed-switch-inline">' +
+                  '<input type="checkbox" data-act="ob-field-other" data-page="' + esc(pageId) +
+                    '" data-field="' + esc(field.id) + '"' + (field.allowOther ? ' checked' : '') + '>' +
+                  '<span class="ob-ed-switch-ui" aria-hidden="true"></span>' +
+                  '<span class="ob-ed-switch-label">Izinkan “Lainnya”</span></label>'
+              : '') +
+          '</div>'
         : '') +
-      '<p class="muted ob-ed-typehint">' + esc(obTypeLabel(field.type)) + '</p>' +
     '</div>';
   }
   function viewObPageEditor(page, index, total) {
+    const title = 'Halaman ' + (index + 1) + (page.kicker ? ' – ' + page.kicker : '');
+    const fieldCount = (page.fields || []).length;
     return '<li class="ob-ed-page" data-page="' + esc(page.id) + '">' +
       '<div class="ob-ed-page-h">' +
-        '<strong>Halaman ' + (index + 1) + '</strong>' +
+        '<div class="ob-ed-page-title">' +
+          '<span class="ob-ed-grip" aria-hidden="true">' + obIco('grip') + '</span>' +
+          '<strong>' + esc(title) + '</strong>' +
+        '</div>' +
         '<div class="ob-ed-page-acts">' +
-          '<button type="button" class="btn-sm" data-act="ob-page-up" data-page="' + esc(page.id) + '"' +
-            (index === 0 ? ' disabled' : '') + '>↑</button>' +
-          '<button type="button" class="btn-sm" data-act="ob-page-down" data-page="' + esc(page.id) + '"' +
-            (index >= total - 1 ? ' disabled' : '') + '>↓</button>' +
-          '<button type="button" class="btn-sm danger" data-act="ob-page-del" data-page="' +
-            esc(page.id) + '"' + (total <= 1 ? ' disabled' : '') + '>Hapus halaman</button>' +
+          obIconBtn('ob-page-up', page.id, '', 'up', 'Naik', { disabled: index === 0 }) +
+          obIconBtn('ob-page-down', page.id, '', 'down', 'Turun', { disabled: index >= total - 1 }) +
+          obIconBtn('ob-page-del', page.id, '', 'trash', 'Hapus halaman', { danger: true, disabled: total <= 1 }) +
         '</div>' +
       '</div>' +
-      '<div class="ob-ed-grid">' +
-        '<label>Kicker<input data-ob-ed="kicker" data-page="' + esc(page.id) + '" value="' +
-          esc(page.kicker || '') + '" maxlength="40" placeholder="Kenalan"></label>' +
-        '<label class="ob-ed-span2">Pertanyaan<input data-ob-ed="q" data-page="' + esc(page.id) +
-          '" value="' + esc(page.q || '') + '" maxlength="120" placeholder="Siapa namamu?"></label>' +
-        '<label class="ob-ed-span2">Subteks<textarea data-ob-ed="sub" data-page="' + esc(page.id) +
-          '" rows="2" maxlength="240">' + esc(page.sub || '') + '</textarea></label>' +
+      '<div class="ob-ed-page-meta">' +
+        '<label class="ob-ed-lab"><span>Kicker</span>' +
+          '<input data-ob-ed="kicker" data-page="' + esc(page.id) + '" value="' +
+            esc(page.kicker || '') + '" maxlength="40" placeholder="Kenalan"></label>' +
+        '<label class="ob-ed-lab"><span>Pertanyaan</span>' +
+          '<input data-ob-ed="q" data-page="' + esc(page.id) +
+            '" value="' + esc(page.q || '') + '" maxlength="120" placeholder="Siapa namamu?"></label>' +
+        '<label class="ob-ed-lab"><span>Subteks</span>' +
+          '<textarea data-ob-ed="sub" data-page="' + esc(page.id) +
+            '" rows="2" maxlength="240" placeholder="Penjelasan singkat…">' + esc(page.sub || '') + '</textarea></label>' +
       '</div>' +
       '<div class="ob-ed-fields">' +
-        (page.fields || []).map((f, fi) => viewObFieldEditor(page.id, f, fi)).join('') +
+        (page.fields || []).map((f, fi) => viewObFieldEditor(page.id, f, fi, fieldCount)).join('') +
       '</div>' +
-      '<div class="ob-ed-add-field">' +
-        '<select data-ob-new-type data-page="' + esc(page.id) + '">' +
-          OB_FIELD_TYPES.map((t) => '<option value="' + esc(t.id) + '">' + esc(t.label) + '</option>').join('') +
-        '</select>' +
-        '<button type="button" class="btn-sm" data-act="ob-field-add" data-page="' + esc(page.id) +
-          '">+ Tambah pertanyaan</button>' +
-      '</div>' +
+      '<button type="button" class="ob-ed-add-q" data-act="ob-field-add" data-page="' + esc(page.id) + '">' +
+        obIco('plus') + ' Tambah pertanyaan</button>' +
     '</li>';
   }
   function captureOnboardingEditor() {
@@ -1336,21 +1379,24 @@
     syncOnboardingAccountFields();
     const pages = ob.pages;
     return '<div class="ps-form as-form as-onboard as-onboard-editor">' +
-      '<div class="as-section">' +
+      '<div class="as-section ob-ed-wrap">' +
         '<div class="ob-ed-head">' +
-          '<div>' +
-            '<h2>Join / onboarding</h2>' +
-            '<p class="muted">Atur halaman &amp; pertanyaan join. Jawaban masuk ke akun siswa — field baru dibuat otomatis kalau belum ada.</p>' +
+          '<div class="ob-ed-head-copy">' +
+            '<h2>Student onboarding</h2>' +
+            '<p class="muted">Atur halaman &amp; pertanyaan yang siswa isi saat join. Setelah form, paket bayar (diskon 24 jam).</p>' +
           '</div>' +
           '<div class="ob-ed-head-acts">' +
-            '<button type="button" class="btn-sm" data-act="ob-preview">Preview sebagai siswa</button>' +
-            '<button type="button" class="btn-sm" data-act="ob-reset">Reset default</button>' +
+            '<button type="button" class="ob-ed-ghost" data-act="ob-preview">' + obIco('eye') +
+              ' Preview sebagai siswa</button>' +
+            '<button type="button" class="ob-ed-ghost" data-act="ob-reset">' + obIco('reset') +
+              ' Reset default</button>' +
           '</div>' +
         '</div>' +
         '<ol class="ob-ed-pages">' +
           pages.map((p, i) => viewObPageEditor(p, i, pages.length)).join('') +
         '</ol>' +
-        '<button type="button" class="btn secondary ob-ed-add-page" data-act="ob-page-add">+ Tambah halaman</button>' +
+        '<button type="button" class="ob-ed-add-page" data-act="ob-page-add">' +
+          obIco('plus') + ' Tambah halaman</button>' +
       '</div>' +
       '<div class="ps-actions">' +
         '<button type="button" class="btn ps-save" data-act="ob-save">Simpan</button>' +
@@ -11373,16 +11419,11 @@
       const pageId = btn.getAttribute('data-page');
       const page = ob.pages.find((p) => p.id === pageId);
       if (!page) return;
-      const sel = document.querySelector('[data-ob-new-type][data-page="' + pageId + '"]');
-      const type = (sel && sel.value) || 'text';
       page.fields.push(normalizeObField({
-        type: type,
+        type: 'text',
         required: true,
-        label: type === 'text' || type === 'textarea' || type === 'link' || type === 'single' || type === 'multi'
-          ? 'Pertanyaan'
-          : '',
-        options: (type === 'single' || type === 'multi') ? ['Opsi 1', 'Opsi 2'] : undefined,
-        allowOther: type === 'single'
+        label: 'Pertanyaan',
+        placeholder: ''
       }));
       db.onboarding = normalizeOnboarding(ob);
       syncOnboardingAccountFields();
