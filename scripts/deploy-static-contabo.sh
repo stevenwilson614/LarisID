@@ -8,6 +8,9 @@ HOST="${LARISID_SSH_HOST:-root@84.247.147.205}"
 if [[ "${1:-}" != "--no-assemble" ]]; then
   bash "$ROOT/scripts/assemble-site.sh" "$ROOT/_site"
 fi
+# Keep school LMS (deploy-school-contabo.sh) and legacy obrolan.marketing assets.
 rsync -az --delete -e "ssh -i $KEY -o BatchMode=yes" \
+  --exclude school/ \
+  --exclude obrolan.marketing/ \
   "$ROOT/_site/" "$HOST:/root/larisid-infra/docker/volumes/www/larisid/"
 echo "OK — Contabo /srv/larisid (larisid.com)"
