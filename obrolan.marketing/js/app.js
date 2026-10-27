@@ -3690,6 +3690,20 @@
     if (p.photoBlob) return '<img class="' + c + '" data-blob="' + esc(schoolPhotoKey()) + '" alt="">';
     return '<img class="' + c + '" src="' + esc(SEED.school.photo || SEED.school.logo) + '" alt="">';
   }
+  function socialIconSrc(network) {
+    /* Brand icons via Iconify CDN (Simple Icons / MDI). */
+    const map = {
+      website: 'mdi:web',
+      facebook: 'simple-icons:facebook',
+      instagram: 'simple-icons:instagram',
+      linkedin: 'simple-icons:linkedin',
+      tiktok: 'simple-icons:tiktok',
+      x: 'simple-icons:x',
+      youtube: 'simple-icons:youtube'
+    };
+    const id = map[network] || 'mdi:link-variant';
+    return 'https://api.iconify.design/' + id + '.svg?color=%23e4e4e7';
+  }
   function schoolSocialLinksHtml() {
     const s = schoolProfile().socials || {};
     const items = [
@@ -3704,15 +3718,11 @@
     const links = items.map((it) => {
       const href = socialHref(it.k, s[it.k]);
       if (!href) return '';
-      const raw = String(s[it.k] || '');
-      const text = it.k === 'website'
-        ? (raw.replace(/^https?:\/\//i, '') || it.label)
-        : (raw.indexOf('@') === 0 ? raw : ('@' + socialHandleClean(raw)));
-      return '<a class="prof-social" href="' + esc(href) + '" target="_blank" rel="noopener">' +
-        '<span class="prof-social-net">' + esc(it.label) + '</span>' +
-        '<span>' + esc(text) + '</span></a>';
+      return '<a class="prof-social" href="' + esc(href) + '" target="_blank" rel="noopener" title="' + esc(it.label) + '" aria-label="' + esc(it.label) + '">' +
+        '<img class="prof-social-ico" src="' + esc(socialIconSrc(it.k)) + '" alt="" width="20" height="20" loading="lazy" decoding="async">' +
+      '</a>';
     }).filter(Boolean).join('');
-    return links ? '<div class="prof-socials">' + links + '</div>' : '';
+    return links ? '<div class="prof-socials" role="list">' + links + '</div>' : '';
   }
   function viewSchoolPublic(opts) {
     const o = opts || {};
@@ -3724,12 +3734,10 @@
       '<div class="school-public-head">' +
         schoolAvatarHtml('school-avatar lg') +
         '<div>' +
-          '<p class="muted" style="margin:0 0 4px">Mentor</p>' +
           '<h1 class="school-public-name">' + esc(schoolDisplayName(p)) + '</h1>' +
           ((p.headline || '').trim()
             ? '<p class="school-public-header">' + esc(String(p.headline).trim()) + '</p>'
             : '') +
-          '<p class="muted">' + esc(SEED.school.name) + ' · larisid.com/obrolan.marketing' + '</p>' +
         '</div>' +
       '</div>' +
       (p.biography
@@ -3952,11 +3960,10 @@
               '<div class="brand brand-preview">' +
                 schoolAvatarHtml('school-avatar') +
                 '<div class="brand-copy">' +
-                  '<strong>' + esc(SEED.school.name) + '</strong>' +
+                  '<strong>' + esc(schoolDisplayName(p)) + '</strong>' +
                   ((p.headline || '').trim()
                     ? '<span class="school-header">' + esc(String(p.headline).trim()) + '</span>'
                     : '') +
-                  '<span class="school-handle">' + esc(schoolSlug()) + '</span>' +
                 '</div>' +
               '</div>' +
             '</div>' +
@@ -4372,11 +4379,12 @@
     $('app').classList.toggle('is-student', !isStaff());
     $('app').classList.toggle('is-onboard', isOnboardScreen());
     $('app').classList.toggle('is-belajar', !isStaff() && ui.tab === 'belajar');
-    $('school-name').textContent = SEED.school.name;
     const prof = schoolProfile();
+    const nameEl = $('school-name');
+    if (nameEl) nameEl.textContent = schoolDisplayName(prof);
     const logo = $('school-logo');
     if (logo) {
-      logo.alt = SEED.school.name;
+      logo.alt = schoolDisplayName(prof);
       if (prof.photoBlob) {
         logo.removeAttribute('src');
         logo.setAttribute('data-blob', schoolPhotoKey());
@@ -4414,17 +4422,6 @@
         brandDd.innerHTML =
           '<button type="button" role="menuitem" data-act="open-profil">View profile</button>';
       }
-    }
-    const badge = document.querySelector('.off-badge');
-    if (badge) {
-      badge.textContent = ui.present ? 'Offline · demo' : '/obrolan.marketing';
-      badge.title = schoolPublicUrl();
-    }
-    const handleEl = $('school-handle');
-    if (handleEl) {
-      handleEl.textContent = schoolSlug();
-      handleEl.href = schoolLocalUrl();
-      handleEl.title = schoolPublicUrl();
     }
     $('role-switch').innerHTML =
       '<option value="student">Siswa</option>' +
