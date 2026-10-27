@@ -705,47 +705,71 @@
     });
   }
 
+  function demoClockDeltaMs() {
+    return Date.now() - new Date('2026-09-18T12:00:00+07:00').getTime();
+  }
+  function bumpDemoIso(iso, delta) {
+    if (!iso) return iso;
+    const t = new Date(iso).getTime();
+    const d = delta == null ? demoClockDeltaMs() : delta;
+    return Number.isFinite(t) ? new Date(t + d).toISOString() : iso;
+  }
+  function bumpDemoYmd(ymd, delta) {
+    if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(String(ymd))) return ymd;
+    return new Date(bumpDemoIso(String(ymd) + 'T12:00:00+07:00', delta)).toLocaleDateString('en-CA', {
+      timeZone: 'Asia/Jakarta'
+    });
+  }
+  function syncDemoSchedule(state) {
+    if (!state) return;
+    const delta = demoClockDeltaMs();
+    const seedSes = Object.fromEntries((SEED.sessions || []).map((s) => [s.id, s]));
+    (state.sessions || []).forEach((s) => {
+      const seed = seedSes[s && s.id];
+      if (seed && seed.startsAt) s.startsAt = bumpDemoIso(seed.startsAt, delta);
+    });
+    const seedWeeks = Object.fromEntries((SEED.weeks || []).map((w) => [w.id, w]));
+    (state.weeks || []).forEach((w) => {
+      const seed = seedWeeks[w && w.id];
+      if (seed && seed.due) w.due = bumpDemoYmd(seed.due, delta);
+    });
+  }
   function rebaseDemoClocks(state) {
-    const anchor = new Date('2026-09-18T12:00:00+07:00').getTime();
-    const delta = Date.now() - anchor;
-    const bump = (iso) => {
-      if (!iso) return iso;
-      const t = new Date(iso).getTime();
-      return Number.isFinite(t) ? new Date(t + delta).toISOString() : iso;
-    };
+    const delta = demoClockDeltaMs();
     Object.keys(state.billing || {}).forEach((id) => {
       const b = state.billing[id];
       if (!b) return;
       ['offerStartedAt', 'offerExpiresAt', 'accessUntil', 'paidAt'].forEach((k) => {
-        if (b[k]) b[k] = bump(b[k]);
+        if (b[k]) b[k] = bumpDemoIso(b[k], delta);
       });
     });
     Object.keys(state.crm || {}).forEach((id) => {
       const c = state.crm[id];
       if (!c) return;
       ['watchedFirstAt', 'notInterestedAt', 'endedAt', 'examAt', 'acceptedMentorAt'].forEach((k) => {
-        if (c[k]) c[k] = bump(c[k]);
+        if (c[k]) c[k] = bumpDemoIso(c[k], delta);
       });
     });
     Object.keys(state.applications || {}).forEach((id) => {
       const a = state.applications[id];
-      if (a && a.at) a.at = bump(a.at);
+      if (a && a.at) a.at = bumpDemoIso(a.at, delta);
     });
     (state.payments || []).forEach((p) => {
-      if (p && p.at) p.at = bump(p.at);
+      if (p && p.at) p.at = bumpDemoIso(p.at, delta);
     });
     (state.waThreads || []).forEach((t) => {
-      if (t && t.updatedAt) t.updatedAt = bump(t.updatedAt);
+      if (t && t.updatedAt) t.updatedAt = bumpDemoIso(t.updatedAt, delta);
     });
     (state.waMessages || []).forEach((m) => {
-      if (m && m.at) m.at = bump(m.at);
+      if (m && m.at) m.at = bumpDemoIso(m.at, delta);
     });
     (state.posts || []).forEach((p) => {
-      if (p && p.createdAt) p.createdAt = bump(p.createdAt);
+      if (p && p.createdAt) p.createdAt = bumpDemoIso(p.createdAt, delta);
     });
     (state.comments || []).forEach((c) => {
-      if (c && c.createdAt) c.createdAt = bump(c.createdAt);
+      if (c && c.createdAt) c.createdAt = bumpDemoIso(c.createdAt, delta);
     });
+    syncDemoSchedule(state);
     const kamuPaid = state.billing && state.billing['s-kamu'] && state.billing['s-kamu'].paidAt;
     const seedBatch = monthKey(kamuPaid);
     if (seedBatch) {
@@ -1724,6 +1748,7 @@
       }
       hydrateCurriculum(merged);
       hydrateFunnel(merged);
+      syncDemoSchedule(merged);
       return merged;
     } catch {
       return defaultState();
