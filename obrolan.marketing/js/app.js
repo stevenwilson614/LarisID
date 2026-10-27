@@ -6957,7 +6957,6 @@
 
   function viewBelajar() {
     if (!canMentoring(ui.personaId) && !canPreview(ui.personaId)) return viewLocked();
-    const preview = canPreview(ui.personaId) && !canMentoring(ui.personaId);
     let lec = lectureById(ui.lectureId) || lectures()[0];
     if (!isStaff() && lec && lec.id !== 'kolab' && !canViewLecture(ui.personaId, lec.id)) {
       const open = lectures().filter((l) => canViewLecture(ui.personaId, l.id));
@@ -6977,12 +6976,10 @@
     }
     const paywalled = isPaywalled(ui.personaId, lec.id) && !isStaff();
     const seqLocked = isSeqLocked(ui.personaId, lec.id) && !isStaff();
-    const kurInline = preview ? trialKurikulumBlock() : '';
     const player = renderLessonPlayer(lec, {
       phone: !isStaff(),
       paywalled: paywalled,
-      seqLocked: seqLocked,
-      after: kurInline
+      seqLocked: seqLocked
     });
     return '<div class="player-layout">' +
       '<div>' + player + '</div>' +
@@ -6995,16 +6992,6 @@
       '</aside>' +
       '</div>';
   }
-  function trialKurikulumBlock() {
-    const p = kurProgress(ui.personaId);
-    const openN = lectures().filter((l) => canOpenLecture(ui.personaId, l.id)).length;
-    return '<section class="card kurikulum-inline" id="kurikulum-trial">' +
-      '<p class="trial-kicker">Kurikulum lengkap</p>' +
-      '<h3>' + p.total + ' materi · ' + openN + ' kebuka di trial</h3>' +
-      '<p class="muted">Yang blur = terkunci sampai mentoring lunas. Ketuk untuk lihat teaser.</p>' +
-      '<div class="kurikulum-inline-list">' + renderKurikulumSidebar() + '</div></section>';
-  }
-
   function progresKurikulumBlock(sid) {
     const unpaid = !canMentoring(sid);
     const openN = lectures().filter((l) => canOpenLecture(sid, l.id)).length;
@@ -11729,14 +11716,11 @@
       render();
     } else if (act === 'scroll-kur') {
       ui.tab = 'belajar';
+      ui.kurOpen = true;
       if (canPreview(ui.personaId) && !canMentoring(ui.personaId)) {
         ui.lectureId = firstLectureId();
       }
       render();
-      requestAnimationFrame(() => {
-        const el = document.getElementById('kurikulum-trial');
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
     } else if (act === 'open-kolab') {
       if (!canMentoring(ui.personaId) && !isStaff()) {
         toast('Live class hanya mentoring.');
