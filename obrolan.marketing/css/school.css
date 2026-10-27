@@ -2624,7 +2624,28 @@ html[data-theme="light"] .fub-plat-ico.is-x { color: #111; }
   .task-meta { grid-column: 1 / -1; text-align: left; justify-items: start; }
 }
 
-.cal-nav { display: flex; gap: 10px; align-items: center; margin: 8px 0 12px; }
+.cal-head {
+  display: flex; flex-wrap: wrap; gap: 10px 14px;
+  align-items: flex-start; justify-content: space-between;
+  margin-bottom: 4px;
+}
+.cal-head h2 { margin: 0 0 2px; }
+.cal-head .muted { margin: 0; }
+.cal-mode {
+  display: inline-flex; gap: 2px; padding: 3px;
+  border-radius: 999px; border: 1px solid var(--line);
+  background: var(--ink-2); flex: none;
+}
+.cal-mode button {
+  border: 0; background: transparent; color: var(--muted);
+  font: inherit; font-size: .72rem; font-weight: 700;
+  padding: 6px 12px; border-radius: 999px; cursor: pointer;
+}
+.cal-mode button[aria-selected="true"] {
+  background: var(--ink-3); color: var(--text);
+}
+.cal-nav { display: flex; gap: 10px; align-items: center; margin: 8px 0 12px; flex-wrap: wrap; }
+.cal-nav strong { flex: 1; min-width: 0; text-align: center; font-size: .9rem; }
 .cal-sync-bar {
   display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
   margin: 0 0 14px; padding: 12px; border: 1px solid var(--line); border-radius: 12px;
@@ -2645,8 +2666,10 @@ html[data-theme="light"] .fub-plat-ico.is-x { color: #111; }
   display: flex; flex-direction: column; gap: 2px; align-items: stretch;
 }
 .cal-cell.is-pad { background: transparent; border-color: transparent; cursor: default; }
-.cal-cell.is-today { border-color: var(--accent); }
-.cal-cell.is-on { background: var(--ink-3); }
+.cal-cell.is-today,
+.cal-week-day.is-today { border-color: var(--accent); }
+.cal-cell.is-on,
+.cal-week-day.is-on { background: var(--ink-3); }
 .cal-n { font-size: .72rem; font-weight: 800; }
 .cal-dot {
   display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -2655,7 +2678,26 @@ html[data-theme="light"] .fub-plat-ico.is-x { color: #111; }
 .cal-dot.kind-meet { background: var(--cal-meet-bg); color: var(--accent); }
 .cal-dot.kind-kur { background: var(--ok-mid); color: var(--ok-soft); }
 .cal-dot.kind-task { background: var(--line); color: var(--warn); }
+.cal-week-list { display: grid; gap: 6px; }
+.cal-week-day {
+  display: grid; grid-template-columns: minmax(7.5rem, auto) minmax(0, 1fr);
+  gap: 10px; align-items: start; text-align: left;
+  width: 100%; padding: 10px 12px; border-radius: 12px;
+  background: var(--ink-2); border: 1px solid var(--line);
+  color: inherit; font: inherit; cursor: pointer;
+}
+.cal-week-label {
+  font-size: .78rem; font-weight: 750; letter-spacing: -.01em; padding-top: 1px;
+}
+.cal-week-evs { display: grid; gap: 4px; min-width: 0; }
+.cal-week-evs .cal-dot { font-size: .68rem; padding: 4px 7px; }
+.cal-week-empty { font-size: .72rem; }
 .cal-day { margin-top: 16px; }
+.home-jadwal .cal-sync-bar { display: none; }
+@media (max-width: 520px) {
+  .cal-week-day { grid-template-columns: 1fr; gap: 6px; }
+  .cal-cell { min-height: 64px; }
+}
 .add-sku { margin: 12px 0 18px; padding: 12px; border: 1px dashed var(--line-2); border-radius: 12px; }
 .pustaka-head {
   display: flex; justify-content: space-between; gap: 12px; align-items: flex-start;

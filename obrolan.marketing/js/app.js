@@ -1755,6 +1755,7 @@
     taskComposer: '',
     calYM: '',
     calDay: '',
+    calView: 'week',
     addItemWeek: '',
     addSecOpen: false,
     editSecId: null,
@@ -6742,8 +6743,6 @@
       : (db.lastLecture[s.id] || firstLectureId());
     const last = lectureById(lastId) || lectures()[0];
     const ses = nextSession();
-    const bill = billingOf(s.id);
-    const ann = db.announcements[0];
     const preview = canPreview(s.id) && !canMentoring(s.id);
     return (
       (preview ? offerBanner(s.id) : '') +
@@ -6772,21 +6771,7 @@
           '<p class="muted" style="margin-top:10px">Grup WA kelas: undangan hanya lewat Anton.</p>' +
         '</section>' +
       '</div>' +
-      '<div class="grid-2" style="margin-top:14px">' +
-        '<section class="card">' +
-          '<h2>Minggu ini</h2>' +
-          weekList(s.id, currentWeekId(s.id)) +
-        '</section>' +
-        '<section class="card">' +
-          '<h2>Pengumuman</h2>' +
-          (ann ? '<p><strong>' + esc(ann.title) + '</strong></p><p class="muted">' + esc(ann.body) + '</p>' : '<p class="muted">Tidak ada.</p>') +
-          '<div style="margin-top:12px">' + payChip(bill.status, bill.source) +
-            '<span class="muted"> · ' + esc(bill.plan || crmOf(s.id).stage) +
-            (bill.accessUntil ? ' · sampai ' + fmtWhen(bill.accessUntil) : '') +
-            (bill.note ? ' · ' + esc(bill.note) : '') + '</span></div>' +
-        '</section>' +
-      '</div>' +
-      alatHomeStrip(s.id)
+      '<div class="home-jadwal" style="margin-top:14px">' + viewJadwal(false) + '</div>'
     );
   }
 
@@ -9939,7 +9924,7 @@
       ).join('') + '</div></div>';
   }
 
-  function calEvents() {
+  function calEvents(staff) {
     const ev = [];
     (db.sessions || []).forEach((s) => ev.push({
       kind: 'meet', at: s.startsAt, title: s.title, id: s.id, loc: s.location, url: s.meetUrl,
@@ -9948,13 +9933,47 @@
     (db.weeks || []).forEach((w) => {
       if (w.due) ev.push({ kind: 'kur', at: joinLocal(w.due, '09:00'), title: w.title, id: w.id });
     });
-    (db.tasks || []).filter((t) => !t.done).forEach((t) => ev.push({
-      kind: 'task', at: t.dueAt, title: t.title, id: t.id, personId: t.personId
-    }));
-    queuedItems().forEach((t) => ev.push({
-      kind: 'task', at: t.dueAt, title: t.title, id: t.id, personId: t.personId
-    }));
+    if (staff) {
+      (db.tasks || []).filter((t) => !t.done).forEach((t) => ev.push({
+        kind: 'task', at: t.dueAt, title: t.title, id: t.id, personId: t.personId
+      }));
+      queuedItems().forEach((t) => ev.push({
+        kind: 'task', at: t.dueAt, title: t.title, id: t.id, personId: t.personId
+      }));
+    }
     return ev;
+  }
+  function shiftYmd(ymd, days) {
+    const base = joinLocal(ymd || splitLocal().date, '12:00');
+    return ymdOf(addMs(base, (Number(days) || 0) * 86400000));
+  }
+  function mondayOf(ymd) {
+    const key = ymd || splitLocal().date;
+    const noon = new Date(joinLocal(key, '12:00'));
+    const dayName = new Intl.DateTimeFormat('en-US', {
+      weekday: 'short', timeZone: 'Asia/Jakarta'
+    }).format(noon);
+    const map = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
+    return shiftYmd(key, -(map[dayName] || 0));
+  }
+  function fmtYmdShort(ymd) {
+    if (!ymd) return '';
+    return new Date(joinLocal(ymd, '12:00')).toLocaleDateString('id-ID', {
+      weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Jakarta'
+    });
+  }
+  function fmtWeekRange(mon) {
+    const sun = shiftYmd(mon, 6);
+    const a = new Date(joinLocal(mon, '12:00'));
+    const b = new Date(joinLocal(sun, '12:00'));
+    const sameMonth = a.getMonth() === b.getMonth();
+    const left = a.toLocaleDateString('id-ID', {
+      day: 'numeric', month: sameMonth ? undefined : 'short', timeZone: 'Asia/Jakarta'
+    });
+    const right = b.toLocaleDateString('id-ID', {
+      day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta'
+    });
+    return left + ' – ' + right;
   }
 
   function icsEscape(s) {
@@ -10034,39 +10053,12 @@
     return '<div class="row cal-sync" style="margin-top:8px">' + gBtn + icsBtn + '</div>';
   }
 
-  function viewJadwal(staff) {
-    const today = splitLocal().date;
-    const ym = ui.calYM || today.slice(0, 7);
-    const [yy, mm] = ym.split('-').map(Number);
-    const dim = new Date(Date.UTC(yy, mm, 0)).getUTCDate();
-    const pad = (new Date(Date.UTC(yy, mm - 1, 1)).getUTCDay() + 6) % 7;
-    const events = calEvents();
-    const byDay = {};
-    events.forEach((ev) => {
-      const d = ymdOf(ev.at);
-      (byDay[d] = byDay[d] || []).push(ev);
-    });
-    const selected = ui.calDay || today;
-    const cells = [];
-    for (let i = 0; i < pad; i++) cells.push('<div class="cal-cell is-pad"></div>');
-    for (let d = 1; d <= dim; d++) {
-      const key = yy + '-' + String(mm).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-      const list = byDay[key] || [];
-      cells.push(
-        '<button type="button" class="cal-cell' + (key === today ? ' is-today' : '') + (key === selected ? ' is-on' : '') +
-          '" data-act="cal-day" data-id="' + esc(key) + '">' +
-          '<span class="cal-n">' + d + '</span>' +
-          list.slice(0, 3).map((ev) =>
-            '<span class="cal-dot kind-' + esc(ev.kind) + '">' + esc(ev.title) + '</span>'
-          ).join('') +
-          (list.length > 3 ? '<span class="muted">+' + (list.length - 3) + '</span>' : '') +
-        '</button>'
-      );
-    }
+  function calDayDetailHtml(staff, selected, byDay) {
     const dayEv = (byDay[selected] || []).slice().sort((a, b) => new Date(a.at) - new Date(b.at));
     const kindLabel = { meet: 'Meet / Zoom', kur: 'Kurikulum', task: 'Tugas' };
-    const detail = '<div class="cal-day">' +
-      '<h3>' + esc(selected) + '</h3>' +
+    const kurTab = staff ? 'kurikulum' : 'belajar';
+    return '<div class="cal-day">' +
+      '<h3>' + esc(fmtYmdShort(selected)) + '</h3>' +
       (dayEv.length
         ? dayEv.map((ev) => {
             if (ev.kind === 'meet') {
@@ -10082,33 +10074,113 @@
             if (ev.kind === 'kur') {
               return '<article class="thread"><h4>Kurikulum · ' + esc(ev.title) + '</h4>' +
                 '<p class="muted">Jatuh tempo bagian</p>' +
-                '<button type="button" class="btn-sm" data-act="tab" data-id="kurikulum">Buka kurikulum</button></article>';
+                '<button type="button" class="btn-sm" data-act="tab" data-id="' + kurTab + '">Buka materi</button></article>';
             }
             return '<article class="thread"><h4>Tugas · ' + esc(ev.title) + '</h4>' +
               '<p class="muted">' + fmtClock(ev.at) + ' · <button type="button" class="linkish" data-act="open-student" data-id="' + esc(ev.personId) + '">' + esc(nameOf(ev.personId)) + '</button></p></article>';
           }).join('')
-        : '<p class="muted">Tidak ada kurikulum, Meet, atau tugas di hari ini.</p>') +
+        : '<p class="muted">Tidak ada sesi atau jatuh tempo di hari ini.</p>') +
       '</div>';
-    const prevM = mm === 1 ? (yy - 1) + '-12' : yy + '-' + String(mm - 1).padStart(2, '0');
-    const nextM = mm === 12 ? (yy + 1) + '-01' : yy + '-' + String(mm + 1).padStart(2, '0');
-    const monthLabel = new Date(Date.UTC(yy, mm - 1, 1)).toLocaleDateString('id-ID', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  }
+  function viewJadwal(staff) {
+    const today = splitLocal().date;
+    const mode = ui.calView === 'month' ? 'month' : 'week';
+    const selected = ui.calDay || today;
+    const events = calEvents(!!staff);
+    const byDay = {};
+    events.forEach((ev) => {
+      const d = ymdOf(ev.at);
+      (byDay[d] = byDay[d] || []).push(ev);
+    });
+    const modeToggle =
+      '<div class="cal-mode" role="tablist" aria-label="Tampilan jadwal">' +
+        '<button type="button" role="tab" data-act="cal-view" data-id="week" aria-selected="' + (mode === 'week') + '">Minggu</button>' +
+        '<button type="button" role="tab" data-act="cal-view" data-id="month" aria-selected="' + (mode === 'month') + '">Bulan</button>' +
+      '</div>';
+    let body = '';
+    if (mode === 'week') {
+      const mon = mondayOf(selected);
+      const prevW = shiftYmd(mon, -7);
+      const nextW = shiftYmd(mon, 7);
+      const days = [];
+      for (let i = 0; i < 7; i += 1) {
+        const key = shiftYmd(mon, i);
+        const list = (byDay[key] || []).slice().sort((a, b) => new Date(a.at) - new Date(b.at));
+        days.push(
+          '<button type="button" class="cal-week-day' + (key === today ? ' is-today' : '') +
+            (key === selected ? ' is-on' : '') + '" data-act="cal-day" data-id="' + esc(key) + '">' +
+            '<span class="cal-week-label">' + esc(fmtYmdShort(key)) + '</span>' +
+            (list.length
+              ? '<span class="cal-week-evs">' + list.map((ev) =>
+                  '<span class="cal-dot kind-' + esc(ev.kind) + '">' +
+                    (ev.kind === 'meet' ? esc(fmtClock(ev.at) + ' · ' + ev.title) : esc(ev.title)) +
+                  '</span>'
+                ).join('') + '</span>'
+              : '<span class="muted cal-week-empty">Kosong</span>') +
+          '</button>'
+        );
+      }
+      body =
+        '<div class="cal-nav">' +
+          '<button type="button" class="btn-sm" data-act="cal-week" data-id="' + esc(prevW) + '">←</button>' +
+          '<strong>' + esc(fmtWeekRange(mon)) + '</strong>' +
+          '<button type="button" class="btn-sm" data-act="cal-week" data-id="' + esc(nextW) + '">→</button>' +
+          '<button type="button" class="btn-sm" data-act="cal-week" data-id="' + esc(today) + '">Hari ini</button>' +
+        '</div>' +
+        '<div class="cal-week-list">' + days.join('') + '</div>' +
+        calDayDetailHtml(staff, selected, byDay);
+    } else {
+      const ym = ui.calYM || selected.slice(0, 7) || today.slice(0, 7);
+      const [yy, mm] = ym.split('-').map(Number);
+      const dim = new Date(Date.UTC(yy, mm, 0)).getUTCDate();
+      const pad = (new Date(Date.UTC(yy, mm - 1, 1)).getUTCDay() + 6) % 7;
+      const cells = [];
+      for (let i = 0; i < pad; i++) cells.push('<div class="cal-cell is-pad"></div>');
+      for (let d = 1; d <= dim; d++) {
+        const key = yy + '-' + String(mm).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+        const list = byDay[key] || [];
+        cells.push(
+          '<button type="button" class="cal-cell' + (key === today ? ' is-today' : '') + (key === selected ? ' is-on' : '') +
+            '" data-act="cal-day" data-id="' + esc(key) + '">' +
+            '<span class="cal-n">' + d + '</span>' +
+            list.slice(0, 3).map((ev) =>
+              '<span class="cal-dot kind-' + esc(ev.kind) + '">' + esc(ev.title) + '</span>'
+            ).join('') +
+            (list.length > 3 ? '<span class="muted">+' + (list.length - 3) + '</span>' : '') +
+          '</button>'
+        );
+      }
+      const prevM = mm === 1 ? (yy - 1) + '-12' : yy + '-' + String(mm - 1).padStart(2, '0');
+      const nextM = mm === 12 ? (yy + 1) + '-01' : yy + '-' + String(mm + 1).padStart(2, '0');
+      const monthLabel = new Date(Date.UTC(yy, mm - 1, 1)).toLocaleDateString('id-ID', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+      body =
+        '<div class="cal-nav">' +
+          '<button type="button" class="btn-sm" data-act="cal-ym" data-id="' + esc(prevM) + '">←</button>' +
+          '<strong>' + esc(monthLabel) + '</strong>' +
+          '<button type="button" class="btn-sm" data-act="cal-ym" data-id="' + esc(nextM) + '">→</button>' +
+          '<button type="button" class="btn-sm" data-act="cal-ym" data-id="' + esc(today.slice(0, 7)) + '">Hari ini</button>' +
+        '</div>' +
+        '<div class="cal-week">' + ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].map((d) => '<span>' + d + '</span>').join('') + '</div>' +
+        '<div class="cal-grid">' + cells.join('') + '</div>' +
+        calDayDetailHtml(staff, selected, byDay);
+    }
     const nSes = (db.sessions || []).length;
-    return '<div class="card"><h2>Jadwal</h2>' +
-      '<p class="muted">Kalender kelas: Meet live, jatuh tempo kurikulum, tugas. Sinkron lewat Google Calendar atau file .ics (Apple Calendar).</p>' +
-      '<div class="cal-sync-bar">' +
-        '<button type="button" class="btn" data-act="cal-ics-all">Unduh semua sesi (.ics)</button>' +
-        '<span class="muted">' + nSes + ' live session · buka di Apple Calendar, atau Google Calendar → Settings → Import</span>' +
+    return '<div class="card"><div class="cal-head">' +
+        '<div><h2>Jadwal</h2>' +
+          '<p class="muted">' + (staff
+            ? 'Meet live, jatuh tempo kurikulum, dan tugas.'
+            : 'Meet live dan jatuh tempo materi kelas.') + '</p></div>' +
+        modeToggle +
       '</div>' +
-      '<div class="cal-nav">' +
-        '<button type="button" class="btn-sm" data-act="cal-ym" data-id="' + esc(prevM) + '">←</button>' +
-        '<strong>' + esc(monthLabel) + '</strong>' +
-        '<button type="button" class="btn-sm" data-act="cal-ym" data-id="' + esc(nextM) + '">→</button>' +
-        '<button type="button" class="btn-sm" data-act="cal-ym" data-id="' + esc(today.slice(0, 7)) + '">Hari ini</button>' +
-      '</div>' +
-      '<div class="cal-week">' + ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].map((d) => '<span>' + d + '</span>').join('') + '</div>' +
-      '<div class="cal-grid">' + cells.join('') + '</div>' +
-      detail +
-      '<a class="wa" href="' + esc(SEED.school.waGroup) + '" target="_blank" rel="noopener">WA grup</a></div>';
+      (staff
+        ? '<div class="cal-sync-bar">' +
+            '<button type="button" class="btn" data-act="cal-ics-all">Unduh semua sesi (.ics)</button>' +
+            '<span class="muted">' + nSes + ' live session · Apple Calendar / Google Import</span>' +
+          '</div>'
+        : '') +
+      body +
+      (staff ? '<a class="wa" href="' + esc(SEED.school.waGroup) + '" target="_blank" rel="noopener">WA grup</a>' : '') +
+      '</div>';
   }
 
   function openDrawer(id) { openPerson(id); }
@@ -11935,9 +12007,27 @@
       render();
     } else if (act === 'cal-day') {
       ui.calDay = btn.getAttribute('data-id');
+      if (ui.calDay) ui.calYM = ui.calDay.slice(0, 7);
       render();
     } else if (act === 'cal-ym') {
       ui.calYM = btn.getAttribute('data-id');
+      ui.calView = 'month';
+      if (ui.calYM) {
+        const today = splitLocal().date;
+        ui.calDay = (today.slice(0, 7) === ui.calYM) ? today : (ui.calYM + '-01');
+      }
+      render();
+    } else if (act === 'cal-week') {
+      const id = btn.getAttribute('data-id') || splitLocal().date;
+      ui.calView = 'week';
+      ui.calDay = id;
+      ui.calYM = id.slice(0, 7);
+      render();
+    } else if (act === 'cal-view') {
+      const next = btn.getAttribute('data-id') === 'month' ? 'month' : 'week';
+      ui.calView = next;
+      if (!ui.calDay) ui.calDay = splitLocal().date;
+      ui.calYM = ui.calDay.slice(0, 7);
       render();
     } else if (act === 'cal-ics-all') {
       const list = db.sessions || [];
