@@ -1238,6 +1238,123 @@ html[data-mode="student"] .scrim {
   transform: translateX(-50%);
 }
 
+/* ── student: desktop / computer ──────────────────────────────────── */
+@media (min-width: 900px) {
+  html[data-mode="student"],
+  html[data-mode="student"] body {
+    background: var(--ink);
+    overflow: hidden;
+  }
+  html[data-mode="student"] #app {
+    position: relative;
+    left: 0;
+    top: 0;
+    transform: none;
+    width: 100%;
+    max-width: none;
+    height: 100svh;
+    height: 100dvh;
+    height: var(--app-height);
+    margin: 0;
+    box-shadow: none;
+    border: 0;
+  }
+  html[data-mode="student"] .topbar {
+    padding-left: clamp(20px, 4vw, 40px);
+    padding-right: clamp(20px, 4vw, 40px);
+  }
+  html[data-mode="student"] .brand strong { max-width: none; }
+  html[data-mode="student"] .main {
+    width: 100%;
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 24px clamp(20px, 4vw, 40px) calc(var(--dock-h) + 40px);
+  }
+  html[data-mode="student"] .grid-2 {
+    grid-template-columns: minmax(0, 1.35fr) minmax(280px, 1fr);
+    gap: 16px;
+    align-items: start;
+  }
+  html[data-mode="student"] .grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  html[data-mode="student"] .tool-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
+  html[data-mode="student"] .alat-cards {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+  html[data-mode="student"] .alat-card {
+    grid-template-columns: 88px minmax(0, 1fr) auto;
+  }
+  html[data-mode="student"] .home-jadwal .cal-grid .cal-cell {
+    min-height: 96px;
+  }
+  html[data-mode="student"] .home-jadwal .cal-day {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 520px;
+  }
+  html[data-mode="student"] .player-layout {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 18px;
+    align-items: start;
+  }
+  html[data-mode="student"] .kurikulum-pane {
+    position: static;
+    transform: none;
+    width: auto;
+    max-height: calc(100dvh - 160px);
+    border-radius: 14px;
+    padding: 12px;
+    box-shadow: none;
+    border: 1px solid var(--line);
+    background: var(--ink-2);
+    overflow: auto;
+  }
+  html[data-mode="student"] .kur-toggle { display: none; }
+  html[data-mode="student"] #app.is-belajar .topbar { display: flex; }
+  html[data-mode="student"] #app.is-belajar .main {
+    padding: 20px clamp(20px, 4vw, 40px) calc(var(--dock-h) + 40px);
+    max-width: 1080px;
+    margin: 0 auto;
+  }
+  html[data-mode="student"] .dock {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-width: none;
+    transform: none;
+    border-top: 1px solid var(--line);
+    background: color-mix(in srgb, var(--ink) 92%, transparent);
+    backdrop-filter: blur(10px);
+  }
+  html[data-mode="student"] .dock button {
+    max-width: 160px;
+    margin: 0 auto;
+  }
+  html[data-mode="student"] .toast {
+    left: 50%;
+    width: min(420px, calc(100% - 48px));
+    transform: translateX(-50%);
+  }
+  html[data-mode="student"] .drawer {
+    left: auto;
+    right: 0;
+    width: min(420px, 100%);
+    transform: none;
+    border-left: 1px solid var(--line);
+  }
+  html[data-mode="student"] .scrim {
+    left: 0;
+    right: 0;
+    width: 100%;
+    transform: none;
+  }
+}
+
 /* ── mentor / asisten: desktop rail ───────────────────────────────── */
 html[data-mode="mentor"] body { background: var(--ink); }
 html[data-mode="mentor"] #app {

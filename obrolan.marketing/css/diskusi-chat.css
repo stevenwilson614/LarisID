@@ -393,6 +393,28 @@ html[data-mode="student"] .dk-poll-edit input,
 html[data-mode="student"] .dk-people input,
 html[data-mode="student"] .dk-comment-form input { font-size: 16px; }
 
+@media (min-width: 900px) {
+  html[data-mode="student"] #app.is-diskusi .main {
+    max-width: none;
+    padding: 0 0 calc(var(--dock-h) + var(--safe-bottom));
+  }
+  html[data-mode="student"] .dk-shell {
+    display: grid;
+    grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+    height: 100%;
+    min-height: 0;
+  }
+  html[data-mode="student"] .dk-shell .dk-list,
+  html[data-mode="student"] .dk-shell .dk-thread {
+    display: flex;
+  }
+  html[data-mode="student"] .dk-shell.is-list .dk-thread,
+  html[data-mode="student"] .dk-shell.is-thread .dk-list {
+    display: flex;
+  }
+  html[data-mode="student"] .dk-back { display: none !important; }
+}
+
 .dk-threadlet { min-width: 0; }
 .dk-reply { margin: 0 8px 2px 46px; }
 .dk-quote, .dk-replying {
