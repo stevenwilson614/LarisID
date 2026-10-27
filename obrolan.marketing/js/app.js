@@ -218,6 +218,139 @@
     }[st] || st;
   }
 
+  const PIPE_STAGE_COLORS = ['#fb923c', '#60a5fa', '#fbbf24', '#34d399', '#a78bfa', '#f472b6', '#22d3ee', '#94a3b8', '#f87171', '#c4b5fd', '#4ade80'];
+  const PIPE_EVENTS = [
+    { id: 'form', label: 'Isi form' },
+    { id: 'bayar', label: 'Bayar lunas' },
+    { id: 'trial', label: 'Mulai trial / bayar nanti' },
+    { id: 'nonton', label: 'Nonton video 1' },
+    { id: 'trial_habis', label: 'Trial 24 jam habis' },
+    { id: 'peringatan', label: 'Peringatan akan habis' },
+    { id: 'akses_habis', label: 'Akses mentoring habis' },
+    { id: 'tidak_tertarik', label: 'Tidak tertarik' },
+    { id: 'mentor', label: 'Terima jadi mentor' },
+    { id: 'lulus_tes', label: 'Lulus tes' }
+  ];
+
+  function defaultPipelineStages() {
+    return JSON.parse(JSON.stringify(SEED.pipelineStages || []));
+  }
+  function defaultPipelineTransitions() {
+    return JSON.parse(JSON.stringify(SEED.pipelineTransitions || []));
+  }
+  function normalizeStageColor(c, i) {
+    const hex = String(c || '').trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(hex)) return hex.toLowerCase();
+    return PIPE_STAGE_COLORS[i % PIPE_STAGE_COLORS.length];
+  }
+  function hydratePipeline(merged) {
+    const seedStages = defaultPipelineStages();
+    const seedById = Object.fromEntries(seedStages.map((s) => [s.id, s]));
+    let stages = Array.isArray(merged.pipelineStages) ? merged.pipelineStages : null;
+    if (!stages || !stages.length) stages = seedStages;
+    stages = stages.filter((s) => s && s.id).map((s, i) => {
+      const seed = seedById[s.id] || {};
+      const label = String(s.label != null ? s.label : seed.label || s.id).trim().slice(0, 40) || s.id;
+      return {
+        id: String(s.id),
+        label: label,
+        color: normalizeStageColor(s.color || seed.color, i)
+      };
+    });
+    if (!stages.length) stages = seedStages;
+    merged.pipelineStages = stages;
+    const stageIds = new Set(stages.map((s) => s.id));
+    let transitions = Array.isArray(merged.pipelineTransitions) ? merged.pipelineTransitions : null;
+    if (!transitions) transitions = defaultPipelineTransitions();
+    const eventIds = new Set(PIPE_EVENTS.map((e) => e.id));
+    merged.pipelineTransitions = transitions.filter((t) => t && t.id && eventIds.has(t.when) && stageIds.has(t.to)).map((t) => ({
+      id: String(t.id),
+      when: String(t.when),
+      to: String(t.to)
+    }));
+  }
+  function pipelineStages() {
+    if (!Array.isArray(db.pipelineStages) || !db.pipelineStages.length) {
+      db.pipelineStages = defaultPipelineStages();
+    }
+    return db.pipelineStages;
+  }
+  function pipelineTransitions() {
+    if (!Array.isArray(db.pipelineTransitions)) {
+      db.pipelineTransitions = defaultPipelineTransitions();
+    }
+    return db.pipelineTransitions;
+  }
+  function stageColorOf(st, i) {
+    if (st && st.color) return normalizeStageColor(st.color, i || 0);
+    return PIPE_STAGE_COLORS[(i || 0) % PIPE_STAGE_COLORS.length];
+  }
+  function slugStageId(label) {
+    const base = String(label || 'tahap').toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_|_$/g, '')
+      .slice(0, 24) || 'tahap';
+    const ids = new Set(pipelineStages().map((s) => s.id));
+    let id = base;
+    let n = 2;
+    while (ids.has(id)) {
+      id = base + '_' + n;
+      n += 1;
+    }
+    return id;
+  }
+  function peopleInStage(stageId) {
+    return people().filter((s) => crmOf(s.id).stage === stageId);
+  }
+  function transitionTarget(when, fallback) {
+    const hit = pipelineTransitions().find((t) => t.when === when && t.to);
+    const stages = pipelineStages();
+    const want = (hit && hit.to) || fallback;
+    if (want && stages.some((s) => s.id === want)) return want;
+    if (fallback && stages.some((s) => s.id === fallback)) return fallback;
+    return stages[0] && stages[0].id;
+  }
+  function applyTransition(personId, when, fallback, note) {
+    const to = transitionTarget(when, fallback);
+    if (!to) return;
+    setStage(personId, to, note || ('Pindah ke ' + stageLabel(to)));
+  }
+  function pipeEventLabel(id) {
+    const e = PIPE_EVENTS.find((x) => x.id === id);
+    return (e && e.label) || id;
+  }
+  function movePeopleFromStage(fromId, toId) {
+    if (!fromId || !toId || fromId === toId) return 0;
+    if (!pipelineStages().some((s) => s.id === toId)) return 0;
+    let n = 0;
+    peopleInStage(fromId).forEach((s) => {
+      setStage(s.id, toId, 'Tahap dihapus · pindah ke ' + stageLabel(toId));
+      n += 1;
+    });
+    return n;
+  }
+  function removePipelineStage(id, moveTo) {
+    const stages = pipelineStages();
+    if (stages.length <= 1) return { ok: false, reason: 'min' };
+    if (!stages.some((s) => s.id === id)) return { ok: false, reason: 'missing' };
+    const stuck = peopleInStage(id);
+    if (stuck.length) {
+      if (!moveTo || moveTo === id || !stages.some((s) => s.id === moveTo)) {
+        return { ok: false, reason: 'move', count: stuck.length };
+      }
+      movePeopleFromStage(id, moveTo);
+    }
+    db.pipelineStages = stages.filter((s) => s.id !== id);
+    db.pipelineTransitions = pipelineTransitions().filter((t) => t.to !== id);
+    (db.actionPlans || []).forEach((p) => {
+      (p.steps || []).forEach((st) => {
+        if (st && st.to === id) st.to = moveTo || (db.pipelineStages[0] && db.pipelineStages[0].id) || '';
+      });
+    });
+    if (ui.stageFilter === id) ui.stageFilter = '';
+    return { ok: true, moved: stuck.length };
+  }
+
   const DAFTAR_COL_DEFS = [
     { id: 'name', label: 'Nama', locked: true },
     { id: 'phone', label: 'Telepon' },
@@ -412,7 +545,7 @@
     merged.bank = Object.assign({}, SEED.bank, merged.bank || {});
     merged.dunning = Object.assign({}, SEED.dunning, merged.dunning || {});
     merged.actionPlans = mergeActionPlans(merged.actionPlans);
-    merged.pipelineStages = JSON.parse(JSON.stringify(SEED.pipelineStages || []));
+    hydratePipeline(merged);
     merged.crm = Object.assign({}, JSON.parse(JSON.stringify(SEED.crm || {})), merged.crm || {});
     Object.keys(merged.crm).forEach((id) => {
       const c = merged.crm[id];
@@ -544,6 +677,7 @@
       dunning: JSON.parse(JSON.stringify(SEED.dunning)),
       actionPlans: JSON.parse(JSON.stringify(SEED.actionPlans)),
       pipelineStages: JSON.parse(JSON.stringify(SEED.pipelineStages)),
+      pipelineTransitions: JSON.parse(JSON.stringify(SEED.pipelineTransitions || [])),
       clockOffsetMs: 0,
       threads: SEED.threads.map((t) => ({ ...t })),
       replies: SEED.replies.map((r) => ({ ...r })),
@@ -644,6 +778,8 @@
     waSending: false,
     waLive: null,
     daftarColsOpen: false,
+    pipaSettingsOpen: false,
+    pipaDeleteId: null,
     pustakaAddOpen: false,
     cariSiswa: '',
     cariOpen: false,
@@ -2038,7 +2174,7 @@
       b.offerStartedAt = isoNow();
       b.offerExpiresAt = addMs(isoNow(), 24 * 36e5);
     }
-    setStage(sid, 'form', 'Form masuk. Jam diskon 24 jam dimulai.');
+    applyTransition(sid, 'form', 'form', 'Form masuk. Jam diskon 24 jam dimulai.');
     startTrial(sid);
     save();
     trackEvent('join', { name: d.name, wa: String(d.wa || ''), stage: 'form', progress: kurProgress(sid).pct });
@@ -2192,7 +2328,7 @@
     return c.stage === 'mentee' || c.stage === 'akan_keluar' || c.stage === 'sudah_keluar' || c.stage === 'perpanjangan' || c.stage === 'grace';
   }
   function stageLabel(id) {
-    const s = (db.pipelineStages || SEED.pipelineStages).find((x) => x.id === id);
+    const s = pipelineStages().find((x) => x.id === id);
     return (s && s.label) || id;
   }
   function monthlyPrice() { return Number(db.pricing.monthlyIdr) || 500000; }
@@ -2248,7 +2384,7 @@
     delete b.offerExpiresAt;
     const c = crmOf(id);
     delete c.endedAt;
-    setStage(id, 'mentee', (renew ? 'Perpanjang mentoring · ' : 'Lunas mentoring · ') + term);
+    applyTransition(id, 'bayar', 'mentee', (renew ? 'Perpanjang mentoring · ' : 'Lunas mentoring · ') + term);
     pushTimeline(id, 'pay', (renew ? 'Perpanjang ' : 'Bayar ') + fmtRp(amount) + ' · ' + (source || 'transfer'));
     recordPayment({
       personId: id,
@@ -2377,7 +2513,7 @@
     b.offerStartedAt = start;
     b.offerExpiresAt = b.offerExpiresAt || addMs(start, 24 * 36e5);
     b.note = 'Bayar nanti · 24 jam';
-    setStage(id, 'trial', 'Bayar nanti. Diskon 24 jam dari jam form.');
+    applyTransition(id, 'trial', 'trial', 'Bayar nanti. Diskon 24 jam dari jam form.');
     pushTimeline(id, 'offer', 'Trial: video 1 + lembar kerja. Jam diskon sampai ' + fmtWhen(b.offerExpiresAt));
   }
   function runAutomations() {
@@ -2402,7 +2538,7 @@
           pushTimeline(s.id, 'wa', 'Antrian WA: 12 jam sisa harga perkenalan.');
         }
         if (left != null && left <= 0 && c.stage !== 'sudah_keluar' && c.stage !== 'tidak_tertarik' && c.stage !== 'mentee') {
-          setStage(s.id, 'sudah_keluar', '24 jam habis, belum bayar → sudah keluar.');
+          applyTransition(s.id, 'trial_habis', 'sudah_keluar', '24 jam habis, belum bayar → sudah keluar.');
           c.expiredToNurture = true;
         }
       }
@@ -2411,7 +2547,7 @@
         const step = plan && plan.steps.find((x) => x.id === 'twatch');
         addTask(s.id, (step && step.title) || 'Anton WA: sudah nonton, belum bayar', fillTpl((step && step.body) || '', s.id), isoNow());
         c.antonWatchTask = true;
-        setStage(s.id, 'nonton', 'Nonton video 1, belum bayar.');
+        applyTransition(s.id, 'nonton', 'nonton', 'Nonton video 1, belum bayar.');
       }
       if (b.plan === 'mentoring' && b.accessUntil && b.status !== 'gratis' && c.stage !== 'tidak_tertarik' && c.stage !== 'mentor') {
         const end = new Date(b.accessUntil).getTime();
@@ -2422,7 +2558,7 @@
           const step = plan && plan.steps.find((x) => x.id === 'r5');
           queueWa(s.id, (step && step.title) || '5 hari sebelum habis', fillTpl((step && step.body) || '', s.id), isoNow());
           c.warn5Sent = true;
-          setStage(s.id, 'akan_keluar', 'Peringatan 5 hari.');
+          applyTransition(s.id, 'peringatan', 'akan_keluar', 'Peringatan 5 hari.');
         }
         if (t >= end && t < end + graceMs()) {
           if (!c.antonRenewTask) {
@@ -2437,12 +2573,12 @@
             queueWa(s.id, (step && step.title) || 'Grace 1 hari', fillTpl((step && step.body) || '', s.id), isoNow());
             c.grace1Sent = true;
           }
-          setStage(s.id, 'akan_keluar', 'Masa tenggang.');
+          applyTransition(s.id, 'peringatan', 'akan_keluar', 'Masa tenggang.');
         }
         if (t >= end + graceMs() && (c.stage === 'akan_keluar' || c.stage === 'mentee' || c.stage === 'perpanjangan' || c.stage === 'grace' || c.stage === 'aktif')) {
           b.status = 'trial';
           b.plan = 'preview';
-          setStage(s.id, 'sudah_keluar', 'Akses habis. Kembali ke preview video 1.');
+          applyTransition(s.id, 'akses_habis', 'sudah_keluar', 'Akses habis. Kembali ke preview video 1.');
         }
       }
       if ((c.stage === 'sudah_keluar' || c.stage === 'nurture') && !c.nurtureQueued) {
@@ -3092,7 +3228,7 @@
     return fmtWhen(iso);
   }
   function stageHue(i) {
-    return ['#fb923c', '#60a5fa', '#fbbf24', '#34d399', '#a78bfa', '#f472b6', '#22d3ee', '#94a3b8', '#f87171', '#c4b5fd', '#4ade80'][i % 11];
+    return PIPE_STAGE_COLORS[i % PIPE_STAGE_COLORS.length];
   }
   function stepKindLabel(k) {
     return { email: 'Email', wa: 'WhatsApp', task: 'Tugas', stage: 'Pindah stage' }[k] || k;
@@ -5771,20 +5907,103 @@
       '<button type="button" data-act="siswa-view" data-id="' + t.id + '" aria-selected="' + (cam === t.id) + '">' + t.label + '</button>'
     ).join('') + '</div>';
   }
+  function pipaSettingsPanelHtml() {
+    const stages = pipelineStages();
+    const transitions = pipelineTransitions();
+    const delId = ui.pipaDeleteId;
+    const delStage = delId && stages.find((s) => s.id === delId);
+    const delCount = delId ? peopleInStage(delId).length : 0;
+    const stageOpts = (cur, skip) => stages.filter((s) => s.id !== skip).map((s) =>
+      '<option value="' + esc(s.id) + '"' + (cur === s.id ? ' selected' : '') + '>' + esc(s.label) + '</option>'
+    ).join('');
+    const eventOpts = (cur) => PIPE_EVENTS.map((e) =>
+      '<option value="' + esc(e.id) + '"' + (cur === e.id ? ' selected' : '') + '>' + esc(e.label) + '</option>'
+    ).join('');
+    const stageRows = stages.map((st, i) =>
+      '<div class="pipa-stage-row" data-sid="' + esc(st.id) + '">' +
+        '<input type="color" class="pipa-color" data-act="pipa-stage-color" data-id="' + esc(st.id) + '" value="' + esc(stageColorOf(st, i)) + '" title="Warna" aria-label="Warna ' + esc(st.label) + '">' +
+        '<input class="pipa-stage-name" data-act="pipa-stage-label" data-id="' + esc(st.id) + '" value="' + esc(st.label) + '" maxlength="40" aria-label="Nama tahap">' +
+        '<span class="pipa-stage-count muted">' + peopleInStage(st.id).length + '</span>' +
+        '<span class="cols-dd-actions">' +
+          '<button type="button" class="cols-dd-ico" data-act="pipa-stage-up" data-id="' + esc(st.id) + '"' + (i === 0 ? ' disabled' : '') + ' title="Naik">↑</button>' +
+          '<button type="button" class="cols-dd-ico" data-act="pipa-stage-down" data-id="' + esc(st.id) + '"' + (i >= stages.length - 1 ? ' disabled' : '') + ' title="Turun">↓</button>' +
+          '<button type="button" class="cols-dd-ico" data-act="pipa-stage-del" data-id="' + esc(st.id) + '"' + (stages.length <= 1 ? ' disabled' : '') + ' title="Hapus">×</button>' +
+        '</span>' +
+      '</div>'
+    ).join('');
+    const trRows = transitions.length
+      ? transitions.map((tr) =>
+          '<div class="pipa-tr-row">' +
+            '<span class="muted">Saat</span>' +
+            '<select data-act="pipa-tr-when" data-id="' + esc(tr.id) + '">' + eventOpts(tr.when) + '</select>' +
+            '<span class="muted">→</span>' +
+            '<select data-act="pipa-tr-to" data-id="' + esc(tr.id) + '">' + stageOpts(tr.to) + '</select>' +
+            '<button type="button" class="cols-dd-ico" data-act="pipa-tr-del" data-id="' + esc(tr.id) + '" title="Hapus">×</button>' +
+          '</div>'
+        ).join('')
+      : '<p class="muted" style="margin:0">Belum ada. Tambah aturan di bawah.</p>';
+    const delPrompt = delStage
+      ? '<div class="pipa-del-prompt">' +
+          '<strong>' + delCount + ' orang di “' + esc(delStage.label) + '”</strong>' +
+          '<p class="muted" style="margin:4px 0 8px">Harus pindah ke tahap lain sebelum dihapus.</p>' +
+          '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center">' +
+            '<select data-act="pipa-move-to" id="pipa-move-to">' + stageOpts('', delId) + '</select>' +
+            '<button type="button" class="btn-sm" data-act="pipa-stage-del-confirm" data-id="' + esc(delId) + '">Pindahkan &amp; hapus</button>' +
+            '<button type="button" class="btn-sm" data-act="pipa-stage-del-cancel">Batal</button>' +
+          '</div>' +
+        '</div>'
+      : '';
+    return '<div class="pipa-settings" id="pipa-settings-panel">' +
+      '<div class="pipa-settings-head">' +
+        '<div><strong>Atur pipa</strong><p class="muted" style="margin:2px 0 0">Tahap, warna, urutan, dan pindah otomatis.</p></div>' +
+        '<button type="button" class="cols-dd-ico" data-act="pipa-settings-close" title="Tutup" aria-label="Tutup">×</button>' +
+      '</div>' +
+      delPrompt +
+      '<div class="pipa-settings-sec">' +
+        '<div class="cols-dd-title">Tahap</div>' +
+        '<div class="pipa-stage-list">' + stageRows + '</div>' +
+        '<form class="cols-dd-add" data-act="pipa-stage-add">' +
+          '<input name="label" required maxlength="40" placeholder="Nama tahap baru…">' +
+          '<button class="btn-sm" type="submit">+</button>' +
+        '</form>' +
+      '</div>' +
+      '<div class="pipa-settings-sec">' +
+        '<div class="cols-dd-title">Transisi</div>' +
+        '<p class="muted" style="margin:0 0 8px;font-size:.74rem">Kalau terjadi X, orang pindah ke tahap Y.</p>' +
+        '<div class="pipa-tr-list">' + trRows + '</div>' +
+        '<button type="button" class="btn-sm" data-act="pipa-tr-add" style="margin-top:8px">+ Transisi</button>' +
+      '</div>' +
+      '<button type="button" class="cols-dd-reset" data-act="pipa-settings-reset">Reset ke default</button>' +
+    '</div>';
+  }
   function viewSiswaHub() {
     const cam = ui.siswaView || 'pipa';
     const q = (ui.filterSiswa || ui.crmFilter || '').toLowerCase();
+    const pipaGear = cam === 'pipa'
+      ? '<div class="cols-dd-wrap' + (ui.pipaSettingsOpen ? ' is-open' : '') + '" id="pipa-settings-wrap">' +
+          '<button type="button" class="cols-dd-btn' + (ui.pipaSettingsOpen ? ' is-on' : '') +
+            '" data-act="pipa-settings-toggle" aria-expanded="' + !!ui.pipaSettingsOpen + '" aria-haspopup="dialog" title="Atur pipa">' +
+            '<span class="cols-dd-btn-ico" aria-hidden="true">' +
+              '<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M6.5 1.5h3l.4 1.6a4.5 4.5 0 0 1 1.2.7l1.6-.5 1.5 2.6-1.2 1.1c.1.4.1.8 0 1.2l1.2 1.1-1.5 2.6-1.6-.5a4.5 4.5 0 0 1-1.2.7L9.5 14.5h-3l-.4-1.6a4.5 4.5 0 0 1-1.2-.7l-1.6.5L1.8 10l1.2-1.1a4.6 4.6 0 0 1 0-1.2L1.8 6.6l1.5-2.6 1.6.5a4.5 4.5 0 0 1 1.2-.7L6.5 1.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="8" cy="8" r="1.8" stroke="currentColor" stroke-width="1.3"/></svg>' +
+            '</span>' +
+            'Atur' +
+          '</button>' +
+          (ui.pipaSettingsOpen ? pipaSettingsPanelHtml() : '') +
+        '</div>'
+      : '';
     const head = '<div class="hub-head">' +
       '<div><h2 style="margin:0">Siswa · ' + esc(SEED.cohort.name) + '</h2>' +
         '<p class="muted">Klik nama = profil. Geser kartu di Pipa.</p></div>' +
-      '<input placeholder="Cari orang…" value="' + esc(q) + '" data-act="filter-siswa" style="max-width:260px;padding:8px 12px;border:1px solid var(--line);border-radius:10px">' +
-      '</div>' + hubSeg();
+      '<div class="hub-head-acts">' +
+        pipaGear +
+        '<input placeholder="Cari orang…" value="' + esc(q) + '" data-act="filter-siswa" style="max-width:260px;padding:8px 12px;border:1px solid var(--line);border-radius:10px">' +
+      '</div></div>' + hubSeg();
     if (cam === 'daftar') return head + viewSiswaDaftar(q);
     if (cam === 'progres') return head + viewMentorProgres();
     return head + viewCrm(q);
   }
   function stageTabsHtml(q) {
-    const stages = db.pipelineStages || SEED.pipelineStages;
+    const stages = pipelineStages();
     const all = people().filter((s) => matchPerson(s, q));
     const cur = ui.stageFilter || '';
     const chip = (id, label, n) =>
@@ -5835,7 +6054,7 @@
   }
   function viewCrm(q) {
     q = (q != null ? q : ui.crmFilter || '').toLowerCase();
-    const stages = db.pipelineStages || SEED.pipelineStages;
+    const stages = pipelineStages();
     const cols = stages.map((st, i) => {
       const rows = people().filter((s) => {
         const stage = crmOf(s.id).stage || 'wa_baru';
@@ -5843,8 +6062,9 @@
         return matchPerson(s, q);
       });
       const sum = rows.reduce((n, s) => n + (Number(billingOf(s.id).amount) || 0), 0);
-      return '<div class="kanban-col" data-stage="' + esc(st.id) + '" style="border-top-color:' + stageHue(i) + '">' +
-        '<div class="kanban-col-head"><h3>' + esc(st.label) + '</h3>' +
+      const color = stageColorOf(st, i);
+      return '<div class="kanban-col" data-stage="' + esc(st.id) + '" style="border-top-color:' + color + '">' +
+        '<div class="kanban-col-head"><h3><span class="pipa-dot" style="background:' + color + '" aria-hidden="true"></span>' + esc(st.label) + '</h3>' +
           '<div class="muted">' + rows.length + ' orang · ' + (sum ? fmtRp(sum) : 'Rp0') + '</div></div>' +
         (rows.length ? rows.map((s) => {
           const b = billingOf(s.id);
@@ -5991,7 +6211,7 @@
       '<select data-act="plan-kind" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '">' + stepKindOptions(st.kind) + '</select>' +
       (st.kind === 'stage'
         ? '<label class="muted">Pindah ke</label><select data-act="plan-to" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '">' +
-          (db.pipelineStages || []).map((sg) => '<option value="' + esc(sg.id) + '"' + (st.to === sg.id ? ' selected' : '') + '>' + esc(sg.label) + '</option>').join('') + '</select>'
+          pipelineStages().map((sg) => '<option value="' + esc(sg.id) + '"' + (st.to === sg.id ? ' selected' : '') + '>' + esc(sg.label) + '</option>').join('') + '</select>'
         : '') +
       '<label class="muted">Judul</label>' +
       '<input data-act="plan-title" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '" value="' + esc(st.title || '') + '">' +
@@ -6255,7 +6475,7 @@
     const b = billingOf(id);
     const c = crmOf(id);
     const app = db.applications[id];
-    const stages = db.pipelineStages || SEED.pipelineStages;
+    const stages = pipelineStages();
     const plans = (db.actionPlans || []).filter((x) => !x.archived);
     const tsk = db.tasks.filter((x) => x.personId === id).slice().sort((a, b) => Number(a.done) - Number(b.done) || new Date(a.dueAt) - new Date(b.dueAt));
     const openTasks = tsk.filter((t) => !t.done).length;
@@ -7367,6 +7587,33 @@
       if (st) { st.to = t.value; save(); }
       return;
     }
+    if (t.matches('[data-act="pipa-stage-color"]')) {
+      const st = pipelineStages().find((s) => s.id === t.getAttribute('data-id'));
+      if (st) {
+        st.color = normalizeStageColor(t.value, 0);
+        save();
+        render();
+      }
+      return;
+    }
+    if (t.matches('[data-act="pipa-stage-label"]')) {
+      const st = pipelineStages().find((s) => s.id === t.getAttribute('data-id'));
+      if (st) {
+        const label = String(t.value || '').trim().slice(0, 40) || st.id;
+        st.label = label;
+        t.value = label;
+        save();
+      }
+      return;
+    }
+    if (t.matches('[data-act="pipa-tr-when"]') || t.matches('[data-act="pipa-tr-to"]')) {
+      const tr = pipelineTransitions().find((x) => x.id === t.getAttribute('data-id'));
+      if (!tr) return;
+      if (t.matches('[data-act="pipa-tr-when"]')) tr.when = t.value;
+      else tr.to = t.value;
+      save();
+      return;
+    }
     if (t.matches('[data-act="q-field"]')) {
       const l = lectureById(t.getAttribute('data-id'));
       if (!l) return;
@@ -7584,6 +7831,11 @@
       } else {
         render();
       }
+    }
+    if (ui.pipaSettingsOpen && !e.target.closest('#pipa-settings-wrap')) {
+      ui.pipaSettingsOpen = false;
+      ui.pipaDeleteId = null;
+      render();
     }
   }, true);
 
@@ -7985,6 +8237,10 @@
       ui.siswaView = btn.getAttribute('data-id');
       ui.hubBack = ui.siswaView;
       ui.mentorTab = 'siswa';
+      if (ui.siswaView !== 'pipa') {
+        ui.pipaSettingsOpen = false;
+        ui.pipaDeleteId = null;
+      }
       render();
     } else if (act === 'dash-range') {
       const id = btn.getAttribute('data-id') || '30';
@@ -8021,8 +8277,99 @@
       ui.hubBack = 'daftar';
       ui.mentorTab = 'siswa';
       render();
+    } else if (act === 'pipa-settings-toggle') {
+      ui.pipaSettingsOpen = !ui.pipaSettingsOpen;
+      if (!ui.pipaSettingsOpen) ui.pipaDeleteId = null;
+      ui.daftarColsOpen = false;
+      render();
+    } else if (act === 'pipa-settings-close') {
+      ui.pipaSettingsOpen = false;
+      ui.pipaDeleteId = null;
+      render();
+    } else if (act === 'pipa-settings-reset') {
+      db.pipelineStages = defaultPipelineStages();
+      db.pipelineTransitions = defaultPipelineTransitions();
+      ui.pipaDeleteId = null;
+      save();
+      toast('Pipa dikembalikan ke default.');
+      render();
+    } else if (act === 'pipa-stage-up' || act === 'pipa-stage-down') {
+      const id = btn.getAttribute('data-id');
+      const stages = pipelineStages();
+      const i = stages.findIndex((s) => s.id === id);
+      if (i < 0) return;
+      const j = act === 'pipa-stage-up' ? i - 1 : i + 1;
+      if (j < 0 || j >= stages.length) return;
+      const tmp = stages[i];
+      stages[i] = stages[j];
+      stages[j] = tmp;
+      db.pipelineStages = stages;
+      save();
+      render();
+    } else if (act === 'pipa-stage-del') {
+      const id = btn.getAttribute('data-id');
+      const stages = pipelineStages();
+      if (stages.length <= 1) {
+        toast('Minimal satu tahap.');
+        return;
+      }
+      const n = peopleInStage(id).length;
+      if (n > 0) {
+        ui.pipaDeleteId = id;
+        ui.pipaSettingsOpen = true;
+        render();
+        return;
+      }
+      const res = removePipelineStage(id);
+      if (!res.ok) {
+        toast(res.reason === 'min' ? 'Minimal satu tahap.' : 'Tidak bisa hapus.');
+        return;
+      }
+      save();
+      toast('Tahap dihapus.');
+      render();
+    } else if (act === 'pipa-stage-del-cancel') {
+      ui.pipaDeleteId = null;
+      render();
+    } else if (act === 'pipa-stage-del-confirm') {
+      const id = btn.getAttribute('data-id') || ui.pipaDeleteId;
+      const sel = document.getElementById('pipa-move-to');
+      const moveTo = (sel && sel.value) || '';
+      if (!id) return;
+      if (!moveTo) {
+        toast('Pilih tahap tujuan.');
+        return;
+      }
+      const res = removePipelineStage(id, moveTo);
+      if (!res.ok) {
+        toast(res.reason === 'move' ? 'Pilih tahap lain untuk orang di situ.' : (res.reason === 'min' ? 'Minimal satu tahap.' : 'Tidak bisa hapus.'));
+        return;
+      }
+      ui.pipaDeleteId = null;
+      save();
+      toast((res.moved ? res.moved + ' orang dipindah. ' : '') + 'Tahap dihapus.');
+      render();
+    } else if (act === 'pipa-tr-add') {
+      const stages = pipelineStages();
+      if (!stages.length) return;
+      const used = new Set(pipelineTransitions().map((t) => t.when));
+      const next = PIPE_EVENTS.find((e) => !used.has(e.id)) || PIPE_EVENTS[0];
+      pipelineTransitions().push({
+        id: 'tr-' + Date.now(),
+        when: next.id,
+        to: stages[0].id
+      });
+      ui.pipaSettingsOpen = true;
+      save();
+      render();
+    } else if (act === 'pipa-tr-del') {
+      const id = btn.getAttribute('data-id');
+      db.pipelineTransitions = pipelineTransitions().filter((t) => t.id !== id);
+      save();
+      render();
     } else if (act === 'daftar-cols-toggle') {
       ui.daftarColsOpen = !ui.daftarColsOpen;
+      ui.pipaSettingsOpen = false;
       render();
     } else if (act === 'daftar-cols-close') {
       ui.daftarColsOpen = false;
@@ -8423,7 +8770,7 @@
       toast('Lunas · akses mentoring kebuka');
       render();
     } else if (act === 'not-interested') {
-      setStage(ui.personaId, 'tidak_tertarik', 'Siswa bilang tidak tertarik.');
+      applyTransition(ui.personaId, 'tidak_tertarik', 'tidak_tertarik', 'Siswa bilang tidak tertarik.');
       const b = billingOf(ui.personaId);
       if (b.status === 'trial') {
         b.status = 'belum';
@@ -8480,7 +8827,7 @@
       const s = student();
       s.kind = 'mentor';
       patchPerson(ui.personaId, { kind: 'mentor' });
-      setStage(ui.personaId, 'mentor', 'Terima peran mentor + 20% licensing.');
+      applyTransition(ui.personaId, 'mentor', 'mentor', 'Terima peran mentor + 20% licensing.');
       save();
       toast('Peran mentor aktif. Murid baru menempel ke kamu.');
       render();
@@ -8588,6 +8935,22 @@
       ui.daftarColsOpen = true;
       save();
       toast('Kolom “' + label + '” ditambah.');
+      render();
+    } else if (act === 'pipa-stage-add') {
+      const label = String(fd.get('label') || '').trim().slice(0, 40);
+      if (!label) return;
+      const stages = pipelineStages();
+      const id = slugStageId(label);
+      stages.push({
+        id: id,
+        label: label,
+        color: normalizeStageColor('', stages.length)
+      });
+      db.pipelineStages = stages;
+      ui.pipaSettingsOpen = true;
+      ui.pipaDeleteId = null;
+      save();
+      toast('Tahap “' + label + '” ditambah.');
       render();
     } else if (act === 'log-call') {
       const id = form.getAttribute('data-id');
@@ -8767,7 +9130,7 @@
       c.eligibleMentor = score >= SEED.exam.passMark;
       if (c.eligibleMentor) {
         c.certSerial = c.certSerial || ('ANT-' + ui.personaId.replace(/\W/g, '').toUpperCase().slice(0, 8) + '-' + String(nowMs()).slice(-4));
-        setStage(ui.personaId, 'mentee', 'Lulus tes ' + score + '/' + qs.length);
+        applyTransition(ui.personaId, 'lulus_tes', 'mentee', 'Lulus tes ' + score + '/' + qs.length);
       }
       pushTimeline(ui.personaId, 'exam', 'Tes akhir ' + score + '/' + qs.length);
       save();

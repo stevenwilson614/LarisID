@@ -182,15 +182,27 @@ window.ANTON_SEED = {
     graceDays: 1
   },
   pipelineStages: [
-    { id: 'wa_baru', label: 'WA baru' },
-    { id: 'form', label: 'Form' },
-    { id: 'nonton', label: 'Nonton belum bayar' },
-    { id: 'trial', label: '24 jam trial' },
-    { id: 'mentee', label: 'Mentee' },
-    { id: 'akan_keluar', label: 'Akan keluar' },
-    { id: 'sudah_keluar', label: 'Sudah keluar' },
-    { id: 'tidak_tertarik', label: 'Tidak tertarik' },
-    { id: 'mentor', label: 'Mentor' }
+    { id: 'wa_baru', label: 'WA baru', color: '#fb923c' },
+    { id: 'form', label: 'Form', color: '#60a5fa' },
+    { id: 'nonton', label: 'Nonton belum bayar', color: '#fbbf24' },
+    { id: 'trial', label: '24 jam trial', color: '#34d399' },
+    { id: 'mentee', label: 'Mentee', color: '#a78bfa' },
+    { id: 'akan_keluar', label: 'Akan keluar', color: '#f472b6' },
+    { id: 'sudah_keluar', label: 'Sudah keluar', color: '#22d3ee' },
+    { id: 'tidak_tertarik', label: 'Tidak tertarik', color: '#94a3b8' },
+    { id: 'mentor', label: 'Mentor', color: '#f87171' }
+  ],
+  pipelineTransitions: [
+    { id: 'tr-form', when: 'form', to: 'form' },
+    { id: 'tr-bayar', when: 'bayar', to: 'mentee' },
+    { id: 'tr-trial', when: 'trial', to: 'trial' },
+    { id: 'tr-nonton', when: 'nonton', to: 'nonton' },
+    { id: 'tr-trial-habis', when: 'trial_habis', to: 'sudah_keluar' },
+    { id: 'tr-peringatan', when: 'peringatan', to: 'akan_keluar' },
+    { id: 'tr-akses-habis', when: 'akses_habis', to: 'sudah_keluar' },
+    { id: 'tr-tidak', when: 'tidak_tertarik', to: 'tidak_tertarik' },
+    { id: 'tr-mentor', when: 'mentor', to: 'mentor' },
+    { id: 'tr-lulus', when: 'lulus_tes', to: 'mentee' }
   ],
   actionPlans: [
     {

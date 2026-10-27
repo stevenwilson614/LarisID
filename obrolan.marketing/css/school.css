@@ -1354,6 +1354,59 @@ html.present-pane[data-mode="student"] .kurikulum-pane.is-open {
   display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
   justify-content: space-between; margin-bottom: 4px;
 }
+.hub-head-acts {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  justify-content: flex-end;
+}
+.pipa-settings {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 40;
+  width: min(420px, calc(100vw - 24px));
+  background: var(--ink-2); border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: 0 14px 36px rgba(0,0,0,.45); overflow: hidden;
+}
+.pipa-settings-head {
+  display: flex; justify-content: space-between; gap: 10px; align-items: flex-start;
+  padding: 12px 12px 8px; border-bottom: 1px solid var(--line);
+}
+.pipa-settings-sec { padding: 8px 10px 10px; border-bottom: 1px solid var(--line); }
+.pipa-stage-list, .pipa-tr-list { display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow: auto; }
+.pipa-stage-row, .pipa-tr-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 4px; border-radius: 8px;
+}
+.pipa-stage-row:hover, .pipa-tr-row:hover { background: var(--ink-3); }
+.pipa-color {
+  width: 28px; height: 28px; padding: 0; border: 1px solid var(--line-2);
+  border-radius: 8px; background: transparent; cursor: pointer; flex: none;
+}
+.pipa-color::-webkit-color-swatch-wrapper { padding: 2px; }
+.pipa-color::-webkit-color-swatch { border: 0; border-radius: 5px; }
+.pipa-stage-name {
+  flex: 1; min-width: 0; font: inherit; font-size: .8rem; font-weight: 650;
+  color: var(--text); background: var(--ink-3); border: 1px solid var(--line-2);
+  border-radius: 7px; padding: 6px 8px;
+}
+.pipa-stage-count { font-size: .68rem; min-width: 1.2rem; text-align: right; }
+.pipa-tr-row select {
+  flex: 1; min-width: 0; font: inherit; font-size: .74rem;
+  color: var(--text); background: var(--ink-3); border: 1px solid var(--line-2);
+  border-radius: 7px; padding: 5px 6px;
+}
+.pipa-del-prompt {
+  margin: 10px 10px 0; padding: 10px 12px;
+  background: rgba(248, 113, 113, .08); border: 1px solid rgba(248, 113, 113, .35);
+  border-radius: 10px;
+}
+.pipa-del-prompt select {
+  font: inherit; font-size: .78rem; color: var(--text);
+  background: var(--ink-3); border: 1px solid var(--line-2);
+  border-radius: 7px; padding: 6px 8px; min-width: 140px;
+}
+.pipa-dot {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  margin-right: 6px; vertical-align: middle;
+}
+.kanban-col-head h3 { display: flex; align-items: center; gap: 0; }
 
 /* Cursor Night palette scoped to the mentor Dashboard */
 .dash-page {
