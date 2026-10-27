@@ -41,3 +41,6 @@ logs/
 # Region-overlay dumps from scripts/build-mascot-rig.py --debug (never ship)
 images/brand/rig/_debug-*.png
 .gstack/
+.tmp-screenshots/
+.tmp-font-preview.html
+data/issues.json

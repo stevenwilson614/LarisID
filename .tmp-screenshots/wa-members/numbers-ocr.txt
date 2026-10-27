@@ -1,3 +1,0 @@
---- sample OCR from page-02.png ---
-
-FILES=21 PHONES=0
