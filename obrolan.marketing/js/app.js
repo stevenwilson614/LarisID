@@ -616,6 +616,9 @@
     if (!merged.batchNames || typeof merged.batchNames !== 'object' || Array.isArray(merged.batchNames)) {
       merged.batchNames = {};
     }
+    if (!merged.chats || typeof merged.chats !== 'object' || Array.isArray(merged.chats)) {
+      merged.chats = {};
+    }
     merged.remittances = Array.isArray(merged.remittances) ? merged.remittances : JSON.parse(JSON.stringify(SEED.remittances || []));
     if (typeof merged.clockOffsetMs !== 'number') merged.clockOffsetMs = 0;
     Object.keys(SEED.billing || {}).forEach((id) => {
@@ -732,6 +735,7 @@
       posts: JSON.parse(JSON.stringify(SEED.postsSeed || [])),
       comments: JSON.parse(JSON.stringify(SEED.commentsSeed || [])),
       batchNames: {},
+      chats: {},
       attendance: JSON.parse(JSON.stringify(SEED.attendance)),
       notes: JSON.parse(JSON.stringify(SEED.notes)),
       announcements: SEED.announcements.map((a) => ({ ...a })),
@@ -864,6 +868,16 @@
     lastTrackedLec: '',
     diskusiSub: 'batch',
     diskusiBatch: '',
+    diskusiShowList: false,
+    diskusiOpened: false,
+    diskusiScroll: '',
+    chatPeopleOpen: false,
+    chatPeopleQ: '',
+    chatPeopleFocus: false,
+    pollOn: false,
+    pollQuestion: '',
+    pollOptions: ['', ''],
+    pollFocus: '',
     postImages: [],
     postBody: '',
     postUploading: false,
@@ -888,27 +902,49 @@
   let syncInFlight = false;
   let syncReady = false;
   let syncStatus = '';
-  const pendingDiskusi = { posts: new Map(), comments: new Map() };
+  const pendingDiskusi = { posts: new Map(), comments: new Map(), chats: new Map() };
   function rememberDiskusiPost(post) { pendingDiskusi.posts.set(post.id, post); }
   function rememberDiskusiComment(row) { pendingDiskusi.comments.set(row.id, row); }
+  function rememberDiskusiChat(id) {
+    ensureDiskusi();
+    pendingDiskusi.chats.set(id, {
+      chat: db.chats[id] ? JSON.parse(JSON.stringify(db.chats[id])) : null,
+      hasName: Object.prototype.hasOwnProperty.call(db.batchNames, id),
+      name: db.batchNames[id] || ''
+    });
+  }
   function clearPendingDiskusi() {
     pendingDiskusi.posts.clear();
     pendingDiskusi.comments.clear();
+    pendingDiskusi.chats.clear();
   }
   function reapplyPendingDiskusi() {
     ensureDiskusi();
     let added = false;
     pendingDiskusi.posts.forEach((post) => {
-      if (!db.posts.some((p) => p && p.id === post.id)) {
+      const existing = db.posts.find((p) => p && p.id === post.id);
+      if (!existing) {
         db.posts.push(post);
         added = true;
+        return;
       }
+      existing.poll = post.poll || null;
+      existing.pinned = !!post.pinned;
+      existing.body = post.body;
+      existing.images = post.images || [];
+      added = true;
     });
     pendingDiskusi.comments.forEach((row) => {
       if (!db.comments.some((c) => c && c.id === row.id)) {
         db.comments.push(row);
         added = true;
       }
+    });
+    pendingDiskusi.chats.forEach((snap, id) => {
+      if (snap.chat) db.chats[id] = snap.chat;
+      if (snap.hasName && snap.name) db.batchNames[id] = snap.name;
+      else if (!snap.hasName) delete db.batchNames[id];
+      added = true;
     });
     if (!added) return false;
     save();
@@ -1194,6 +1230,7 @@
     if (!Array.isArray(db.posts)) db.posts = [];
     if (!Array.isArray(db.comments)) db.comments = [];
     if (!db.batchNames || typeof db.batchNames !== 'object' || Array.isArray(db.batchNames)) db.batchNames = {};
+    if (!db.chats || typeof db.chats !== 'object' || Array.isArray(db.chats)) db.chats = {};
   }
   function batchOf(sid) {
     if (!sid) return '';
@@ -1210,12 +1247,13 @@
     const app = db.applications && db.applications[sid];
     return monthKey(app && app.at) || '';
   }
+  function isMonthChat(id) { return /^\d{4}-\d{2}$/.test(String(id || '')); }
   function batchLabel(id) {
-    if (!id) return 'Tanpa batch';
+    if (!id) return 'Tanpa chat';
     ensureDiskusi();
     if (db.batchNames[id]) return db.batchNames[id];
     const m = /^(\d{4})-(\d{2})$/.exec(id);
-    if (!m) return id;
+    if (!m) return 'Chat baru';
     const name = BATCH_MONTHS[Number(m[2]) - 1] || m[2];
     return 'Batch ' + name + ' ' + m[1];
   }
@@ -1223,7 +1261,7 @@
     ensureDiskusi();
     const counts = {};
     function add(id, member) {
-      if (!id) return;
+      if (!isMonthChat(id)) return;
       if (counts[id] == null) counts[id] = 0;
       if (member) counts[id] += 1;
     }
@@ -1239,10 +1277,121 @@
       count: counts[id]
     }));
   }
+  function ensureChat(id) {
+    ensureDiskusi();
+    if (!db.chats[id]) db.chats[id] = { added: [], removed: [], createdAt: isoNow() };
+    const rec = db.chats[id];
+    if (!Array.isArray(rec.added)) rec.added = [];
+    if (!Array.isArray(rec.removed)) rec.removed = [];
+    return rec;
+  }
+  function chatMembers(id) {
+    if (!id) return [];
+    ensureDiskusi();
+    const rec = db.chats[id] || { added: [], removed: [] };
+    const removed = new Set(rec.removed || []);
+    const ids = new Set();
+    if (isMonthChat(id)) {
+      people().forEach((s) => {
+        if (s && canMentoring(s.id) && batchOf(s.id) === id && !removed.has(s.id)) ids.add(s.id);
+      });
+    }
+    (rec.added || []).forEach((sid) => {
+      if (sid && !removed.has(sid) && people().some((s) => s.id === sid)) ids.add(sid);
+    });
+    return Array.from(ids);
+  }
+  function memberOfChat(sid, id) {
+    return !!sid && chatMembers(id).indexOf(sid) !== -1;
+  }
+  function allChatIds() {
+    ensureDiskusi();
+    const ids = new Set();
+    batchList().forEach((b) => ids.add(b.id));
+    Object.keys(db.chats).forEach((id) => ids.add(id));
+    db.posts.forEach((p) => { if (p && p.batchId) ids.add(p.batchId); });
+    return Array.from(ids);
+  }
+  function latestPost(id) {
+    let best = null;
+    (db.posts || []).forEach((p) => {
+      if (!p || p.batchId !== id) return;
+      if (!best || new Date(p.createdAt) > new Date(best.createdAt)) best = p;
+    });
+    return best;
+  }
+  function chatActivity(id) {
+    const last = latestPost(id);
+    const created = db.chats[id] && db.chats[id].createdAt;
+    const times = [last && last.createdAt, created].filter(Boolean).map((t) => new Date(t).getTime()).filter((n) => isFinite(n));
+    return times.length ? Math.max.apply(null, times) : 0;
+  }
+  function chatPreviewText(post) {
+    if (!post) return 'Belum ada catatan';
+    if (post.poll && post.poll.question) return 'Poll · ' + post.poll.question;
+    const body = String(post.body || '').replace(/\s+/g, ' ').trim();
+    if (body) return body.slice(0, 80);
+    if (post.images && post.images.length) return 'Foto';
+    return 'Catatan';
+  }
+  function chatMeta(id) {
+    return {
+      id: id,
+      label: batchLabel(id),
+      count: chatMembers(id).length,
+      preview: chatPreviewText(latestPost(id)),
+      when: latestPost(id) ? relWhen(latestPost(id).createdAt) : ''
+    };
+  }
+  function chatList() {
+    return allChatIds().map(chatMeta).sort((a, b) => chatActivity(b.id) - chatActivity(a.id) || String(b.id).localeCompare(String(a.id)));
+  }
+  function chatsFor(sid) {
+    if (!sid) return [];
+    return chatList().filter((c) => memberOfChat(sid, c.id));
+  }
+  function diskusiVisible(sid) {
+    if (canMentoring(sid)) return true;
+    return chatsFor(sid).length > 0;
+  }
+  function visibleChats() {
+    return isStaff() ? chatList() : chatsFor(ui.personaId);
+  }
   function canPostIn(sid, batchId) {
     if (!batchId) return false;
     if (isStaff()) return true;
-    return canMentoring(sid) && batchOf(sid) === batchId;
+    return memberOfChat(sid, batchId);
+  }
+  function addChatMember(chatId, sid) {
+    if (!chatId || !sid || !people().some((s) => s.id === sid)) return;
+    const rec = ensureChat(chatId);
+    rec.removed = rec.removed.filter((x) => x !== sid);
+    const auto = isMonthChat(chatId) && canMentoring(sid) && batchOf(sid) === chatId;
+    if (!auto && rec.added.indexOf(sid) < 0) rec.added.push(sid);
+  }
+  function removeChatMember(chatId, sid) {
+    if (!chatId || !sid) return;
+    const rec = ensureChat(chatId);
+    rec.added = rec.added.filter((x) => x !== sid);
+    const auto = isMonthChat(chatId) && canMentoring(sid) && batchOf(sid) === chatId;
+    if (auto && rec.removed.indexOf(sid) < 0) rec.removed.push(sid);
+  }
+  function createChat() {
+    if (!isStaff()) return;
+    ensureDiskusi();
+    const id = 'c-' + Date.now().toString(36) + Math.floor(Math.random() * 1e3).toString(36);
+    db.chats[id] = { added: [], removed: [], createdAt: isoNow() };
+    db.batchNames[id] = 'Batch baru';
+    rememberDiskusiChat(id);
+    ui.diskusiBatch = id;
+    ui.diskusiSub = 'batch';
+    ui.diskusiShowList = false;
+    ui.diskusiOpened = true;
+    ui.chatPeopleOpen = true;
+    ui.chatPeopleQ = '';
+    ui.diskusiScroll = 'bottom';
+    save();
+    render();
   }
   function actorId() {
     if (isStaff()) return ui.role === 'asisten' ? 'u-lia' : ((SEED.school && SEED.school.ownerId) || 'u-anton');
@@ -1264,10 +1413,9 @@
     return avatarHtml(s, c);
   }
   function activeDiskusiBatch() {
-    const list = batchList();
+    const list = visibleChats();
     if (ui.diskusiBatch && list.some((b) => b.id === ui.diskusiBatch)) return ui.diskusiBatch;
-    const withPeople = list.find((b) => b.count > 0);
-    return (withPeople || list[0] || { id: monthKey(isoNow()) }).id;
+    return (list[0] || {}).id || '';
   }
 
   function lectures() { return db.lectures; }
@@ -4247,6 +4395,7 @@
     $('app').classList.toggle('is-student', !isStaff());
     $('app').classList.toggle('is-onboard', isOnboardScreen());
     $('app').classList.toggle('is-belajar', !isStaff() && ui.tab === 'belajar');
+    $('app').classList.toggle('is-diskusi', isStaff() ? ui.mentorTab === 'diskusi' : ui.tab === 'diskusi');
     $('school-name').textContent = SEED.school.name;
     const logo = $('school-logo');
     if (logo) {
@@ -4315,14 +4464,21 @@
   }
 
   function studentTabs() {
-    if (canMentoring(ui.personaId)) {
-      return [
-        { id: 'home', label: 'Home' },
-        { id: 'belajar', label: 'Belajar' },
-        { id: 'alat', label: 'Alat' },
-        { id: 'progres', label: 'Progres' },
-        { id: 'diskusi', label: 'Diskusi' }
-      ];
+    if (diskusiVisible(ui.personaId)) {
+      const base = canMentoring(ui.personaId) || canPreview(ui.personaId)
+        ? [
+          { id: 'home', label: 'Home' },
+          { id: 'belajar', label: 'Belajar' },
+          { id: 'alat', label: 'Alat' },
+          { id: 'progres', label: 'Progres' }
+        ]
+        : [
+          { id: 'home', label: 'Home' },
+          { id: 'alat', label: 'Alat' },
+          { id: 'progres', label: 'Progres' }
+        ];
+      base.push({ id: 'diskusi', label: 'Diskusi' });
+      return base;
     }
     if (canPreview(ui.personaId)) {
       return [
@@ -4381,7 +4537,43 @@
     }
   }
 
+  function captureDiskusiScroll() {
+    const feed = document.querySelector('.dk-feed');
+    if (!feed) {
+      ui.diskusiScroll = ui.diskusiScroll || 'bottom';
+      return;
+    }
+    const nearBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 80;
+    ui.diskusiScroll = (ui.diskusiScroll === 'bottom' || nearBottom) ? 'bottom' : String(feed.scrollTop);
+  }
+  function afterDiskusiRender() {
+    const feed = document.querySelector('.dk-feed');
+    if (feed && ui.diskusiScroll) {
+      feed.scrollTop = ui.diskusiScroll === 'bottom' ? feed.scrollHeight : Number(ui.diskusiScroll) || 0;
+    }
+    ui.diskusiScroll = '';
+    if (ui.chatPeopleFocus) {
+      const q = document.querySelector('[data-act="chat-people-q"]');
+      if (q) {
+        q.focus();
+        const n = q.value.length;
+        try { q.setSelectionRange(n, n); } catch (err) { /* search input */ }
+      }
+      ui.chatPeopleFocus = false;
+    }
+    if (ui.pollFocus) {
+      const el = document.querySelector(ui.pollFocus);
+      if (el) {
+        el.focus();
+        const n = el.value.length;
+        try { el.setSelectionRange(n, n); } catch (err) { /* poll field */ }
+      }
+      ui.pollFocus = '';
+    }
+  }
+
   function render() {
+    captureDiskusiScroll();
     fillChrome();
     const main = $('main');
     if (isStaff()) {
@@ -4409,7 +4601,7 @@
         else if (tab === 'alat') main.innerHTML = viewAlat();
         else if (tab === 'sku') main.innerHTML = viewSkuPage();
         else if (tab === 'progres') main.innerHTML = viewProgres();
-        else if (tab === 'diskusi') main.innerHTML = canMentoring(ui.personaId) ? viewDiskusiFeed(false) : viewLockedDiskusi();
+        else if (tab === 'diskusi') main.innerHTML = diskusiVisible(ui.personaId) ? viewDiskusiFeed(false) : viewLockedDiskusi();
         else if (tab === 'kolab') main.innerHTML = viewKolab();
         else if (tab === 'tes') main.innerHTML = viewExam();
         else if (tab === 'sertifikat') main.innerHTML = viewSertifikat(ui.personaId);
@@ -4431,6 +4623,7 @@
     if (isStaff() && ui.mentorTab === 'orang' && ui.composeMode === 'wa') {
       requestAnimationFrame(scrollWaThread);
     }
+    afterDiskusiRender();
   }
   function paintDaftarSelAll() {
     const el = document.querySelector('[data-act="daftar-sel-all"]');
@@ -5997,13 +6190,7 @@
   }
 
   function viewDiskusi(staff) {
-    const sub = ui.diskusiSub === 'tanya' ? 'tanya' : 'batch';
-    const tabs = '<div class="subtabs dk-sub">' +
-      '<button type="button" data-act="diskusi-sub" data-id="batch" aria-selected="' + (sub === 'batch') + '">Batch</button>' +
-      '<button type="button" data-act="diskusi-sub" data-id="tanya" aria-selected="' + (sub === 'tanya') + '">Tanya materi</button>' +
-      '</div>';
-    if (sub === 'tanya') return tabs + viewDiskusiTanya(!!staff);
-    return tabs + viewDiskusiFeed(true);
+    return viewDiskusiApp(true);
   }
 
   function shrinkImage(file) {
@@ -6096,12 +6283,17 @@
     ensureDiskusi();
     const text = String(body || '').trim();
     const images = (ui.postImages || []).slice();
-    if (!canPostIn(actorId(), batchId)) {
-      toast('Kamu hanya bisa posting di batch sendiri.');
+    const poll = pollPayload();
+    if (ui.pollOn && !poll) {
+      toast('Poll butuh pertanyaan dan minimal 2 opsi.');
       return;
     }
-    if (!text && !images.length) {
-      toast('Tulis catatan atau lampirkan foto.');
+    if (!canPostIn(actorId(), batchId)) {
+      toast('Kamu hanya bisa posting di chat yang kamu ikuti.');
+      return;
+    }
+    if (!text && !images.length && !poll) {
+      toast('Tulis catatan, lampirkan foto, atau buat poll.');
       return;
     }
     if (ui.postUploading) return;
@@ -6133,6 +6325,7 @@
         authorId: actorId(),
         body: text,
         images: stored,
+        poll: poll,
         pinned: false,
         createdAt: isoNow()
       };
@@ -6141,7 +6334,11 @@
       images.forEach((img) => { if (img.preview) URL.revokeObjectURL(img.preview); });
       ui.postImages = [];
       ui.postBody = '';
+      ui.pollOn = false;
+      ui.pollQuestion = '';
+      ui.pollOptions = ['', ''];
       ui.postUploading = false;
+      ui.diskusiScroll = 'bottom';
       save();
       render();
     } catch (err) {
@@ -6162,19 +6359,83 @@
     ).join('') + '</div>';
   }
 
+  function readPollDraft() {
+    const q = document.querySelector('.dk-compose [data-act="poll-q"]');
+    const opts = Array.from(document.querySelectorAll('.dk-compose [data-act="poll-opt"]'));
+    if (q) ui.pollQuestion = q.value;
+    if (opts.length) ui.pollOptions = opts.map((el) => el.value);
+  }
+  function pollPayload() {
+    readPollDraft();
+    if (!ui.pollOn) return null;
+    const question = String(ui.pollQuestion || '').trim().slice(0, 200);
+    const options = (ui.pollOptions || []).map((s) => String(s || '').trim().slice(0, 80)).filter(Boolean).slice(0, 6);
+    if (!question || options.length < 2) return null;
+    return {
+      question: question,
+      options: options.map((text, i) => ({ id: 'o' + i + '-' + Date.now().toString(36), text: text })),
+      votes: {}
+    };
+  }
+  function pollEditHtml() {
+    if (!ui.pollOn) return '';
+    const opts = (ui.pollOptions && ui.pollOptions.length >= 2) ? ui.pollOptions : ['', ''];
+    ui.pollOptions = opts;
+    return '<div class="dk-poll-edit">' +
+      '<input data-act="poll-q" maxlength="200" placeholder="Pertanyaan poll" value="' + esc(ui.pollQuestion || '') + '">' +
+      opts.map((text, i) =>
+        '<div class="dk-poll-opt">' +
+          '<input data-act="poll-opt" data-i="' + i + '" maxlength="80" placeholder="Opsi ' + (i + 1) + '" value="' + esc(text || '') + '">' +
+          (opts.length > 2
+            ? '<button type="button" data-act="poll-opt-remove" data-i="' + i + '" aria-label="Hapus opsi">×</button>'
+            : '') +
+        '</div>'
+      ).join('') +
+      '<div class="dk-poll-edit-row">' +
+        (opts.length < 6 ? '<button type="button" class="btn-sm" data-act="poll-add-opt">Tambah opsi</button>' : '') +
+        '<button type="button" class="btn-sm" data-act="poll-cancel">Batal</button>' +
+      '</div></div>';
+  }
   function composerHtml(batchId) {
     const uploading = !!ui.postUploading;
-    return '<form class="compose dk-compose" data-act="post-new" data-batch="' + esc(batchId) + '">' +
-      '<textarea name="body" rows="3" maxlength="4000" placeholder="Catatan. Tempel screenshot GMV, lalu tulis apa yang kamu lihat."' +
-        (uploading ? ' disabled' : '') + '>' + esc(ui.postBody || '') + '</textarea>' +
+    return '<form class="dk-compose" data-act="post-new" data-batch="' + esc(batchId) + '">' +
       postDraftHtml() +
-      '<div class="dk-compose-row">' +
-        '<label class="btn secondary dk-attach">Foto' +
+      pollEditHtml() +
+      '<div class="dk-bar">' +
+        '<label class="dk-tool" title="Foto">Foto' +
           '<input type="file" accept="image/*" multiple hidden data-act="post-files"' + (uploading ? ' disabled' : '') + '>' +
         '</label>' +
-        '<button class="btn" type="submit"' + (uploading ? ' disabled' : '') + '>' +
-          (uploading ? 'Mengunggah…' : 'Kirim') + '</button>' +
+        '<button type="button" class="dk-tool' + (ui.pollOn ? ' is-on' : '') + '" data-act="poll-toggle"' + (uploading ? ' disabled' : '') + '>Poll</button>' +
+        '<textarea name="body" rows="1" maxlength="4000" placeholder="Tulis catatan"' +
+          (uploading ? ' disabled' : '') + '>' + esc(ui.postBody || '') + '</textarea>' +
+        '<button class="dk-send" type="submit"' + (uploading ? ' disabled' : '') + '>' +
+          (uploading ? '…' : 'Kirim') + '</button>' +
       '</div></form>';
+  }
+  function pollHtml(post) {
+    const poll = post && post.poll;
+    if (!poll || !Array.isArray(poll.options) || !poll.options.length) return '';
+    const votes = poll.votes || {};
+    const mine = votes[actorId()] || '';
+    const counts = {};
+    let total = 0;
+    Object.keys(votes).forEach((uid) => {
+      const oid = votes[uid];
+      if (!oid) return;
+      counts[oid] = (counts[oid] || 0) + 1;
+      total += 1;
+    });
+    const can = canPostIn(actorId(), post.batchId);
+    return '<div class="dk-poll"><strong>' + esc(poll.question || '') + '</strong>' +
+      poll.options.map((opt) => {
+        const n = counts[opt.id] || 0;
+        const pct = total ? Math.round((n / total) * 100) : 0;
+        return '<button type="button" class="dk-opt' + (mine === opt.id ? ' is-mine' : '') + '" data-act="poll-vote" data-post="' + esc(post.id) + '" data-id="' + esc(opt.id) + '"' + (can ? '' : ' disabled') + '>' +
+          '<span class="dk-opt-bar" style="width:' + pct + '%"></span>' +
+          '<span class="dk-opt-label">' + esc(opt.text || '') + '</span>' +
+          '<span class="dk-opt-n">' + n + '</span></button>';
+      }).join('') +
+      '<p class="muted">' + total + ' suara</p></div>';
   }
 
   function postImagesHtml(images) {
@@ -6207,7 +6468,7 @@
   function postsInBatch(batchId) {
     return (db.posts || []).filter((p) => p && p.batchId === batchId).slice().sort((a, b) => {
       if (!!b.pinned !== !!a.pinned) return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0);
-      return new Date(b.createdAt) - new Date(a.createdAt);
+      return new Date(a.createdAt) - new Date(b.createdAt);
     });
   }
 
@@ -6234,6 +6495,7 @@
       '</header>' +
       (post.body ? '<div class="dk-body">' + mdish(post.body) + '</div>' : '') +
       postImagesHtml(post.images) +
+      pollHtml(post) +
       '<div class="dk-comments">' +
         comments.map((c) => commentHtml(c, staff)).join('') +
         (canWrite
@@ -6244,34 +6506,102 @@
       '</div></article>';
   }
 
-  function viewDiskusiFeed(staff) {
+  function chatPeopleHtml(chatId, staff) {
+    if (!ui.chatPeopleOpen || !chatId) return '';
+    const q = String(ui.chatPeopleQ || '').trim().toLowerCase();
+    const members = chatMembers(chatId).map((sid) => people().find((s) => s.id === sid)).filter(Boolean);
+    const shownMembers = members.filter((s) => !q || String(s.name || '').toLowerCase().indexOf(q) !== -1);
+    const candidates = staff
+      ? people().filter((s) => s && members.every((m) => m.id !== s.id) && (!q || String(s.name || '').toLowerCase().indexOf(q) !== -1))
+      : [];
+    return '<aside class="dk-people">' +
+      '<header><strong>Orang</strong>' +
+        '<button type="button" class="btn-sm" data-act="chat-people-close">Tutup</button></header>' +
+      '<input data-act="chat-people-q" placeholder="' + (staff ? 'Cari siswa untuk ditambah' : 'Cari orang') + '" value="' + esc(ui.chatPeopleQ || '') + '">' +
+      '<p class="muted dk-people-note">Siswa bulan bayar masuk otomatis. Tambahan tetap di chat ini.</p>' +
+      '<div class="dk-people-list">' +
+        (shownMembers.length ? shownMembers.map((s) =>
+          '<div class="dk-mem">' + actorAvatar(s.id, 'avatar sm') +
+            '<span>' + esc(s.name || '') + '</span>' +
+            (staff ? '<button type="button" class="btn-sm" data-act="chat-member-remove" data-chat="' + esc(chatId) + '" data-id="' + esc(s.id) + '">Keluarkan</button>' : '') +
+          '</div>'
+        ).join('') : '<p class="muted">Belum ada yang cocok.</p>') +
+      '</div>' +
+      (staff
+        ? '<p class="dk-people-add">Tambah</p><div class="dk-people-list">' +
+          (candidates.length ? candidates.map((s) =>
+            '<div class="dk-mem">' + actorAvatar(s.id, 'avatar sm') +
+              '<span>' + esc(s.name || '') + '</span>' +
+              '<button type="button" class="btn-sm" data-act="chat-member-add" data-chat="' + esc(chatId) + '" data-id="' + esc(s.id) + '">Tambah</button>' +
+            '</div>'
+          ).join('') : '<p class="muted">Semua siswa yang cocok sudah di chat ini.</p>') +
+          '</div>'
+        : '') +
+      '</aside>';
+  }
+  function viewDiskusiApp(staff) {
     ensureDiskusi();
-    const batchId = staff ? activeDiskusiBatch() : batchOf(ui.personaId);
-    if (!batchId) {
-      return '<section class="card dk-empty"><h2>Diskusi</h2>' +
-        '<p class="muted">Batch kamu mengikuti bulan pembayaran mentoring. Kalau belum kelihatan, Anton yang mengaturnya.</p></section>';
-    }
-    const list = batchList();
-    const info = list.find((b) => b.id === batchId);
-    const count = info ? info.count : 0;
-    const chips = staff
-      ? '<div class="dk-chips">' + list.map((b) =>
-          '<button type="button" class="dk-chip" data-act="diskusi-batch" data-id="' + esc(b.id) + '" aria-selected="' + (b.id === batchId) + '">' +
-            esc(b.label) + ' <span>' + b.count + '</span></button>'
-        ).join('') + '</div>' +
-        '<form class="dk-rename" data-act="batch-rename" data-id="' + esc(batchId) + '">' +
-          '<input name="name" maxlength="60" placeholder="' + esc(batchLabel(batchId)) + '" value="' + esc(db.batchNames[batchId] || '') + '">' +
-          '<button class="btn secondary" type="submit">Simpan nama</button></form>'
+    const tanya = !!staff && ui.diskusiSub === 'tanya';
+    const list = visibleChats();
+    const batchId = tanya ? '' : activeDiskusiBatch();
+    const showList = staff ? !!ui.diskusiShowList : (!ui.diskusiOpened || !!ui.diskusiShowList);
+    const rows = list.map((c) =>
+      '<button type="button" class="dk-row" data-act="diskusi-batch" data-id="' + esc(c.id) + '" aria-selected="' + (!tanya && c.id === batchId) + '">' +
+        '<span class="dk-mark" aria-hidden="true">' + esc(initialsOf(c.label)) + '</span>' +
+        '<span class="dk-row-copy"><strong>' + esc(c.label) + '</strong>' +
+          '<em>' + esc(c.preview) + '</em></span>' +
+        '<span class="dk-row-meta">' + (c.when ? '<time>' + esc(c.when) + '</time>' : '') +
+          '<span>' + c.count + '</span></span>' +
+      '</button>'
+    ).join('');
+    const tanyaRow = staff
+      ? '<button type="button" class="dk-row dk-row-tanya" data-act="diskusi-sub" data-id="tanya" aria-selected="' + tanya + '">' +
+          '<span class="dk-mark" aria-hidden="true">?</span>' +
+          '<span class="dk-row-copy"><strong>Tanya materi</strong><em>Pertanyaan dan pengumuman</em></span>' +
+        '</button>'
       : '';
-    const head = '<header class="dk-head"><h2>' + esc(batchLabel(batchId)) + '</h2>' +
-      '<p class="muted">' + count + ' orang</p></header>';
-    const can = canPostIn(actorId(), batchId);
-    const composer = can ? composerHtml(batchId) : '';
-    const posts = postsInBatch(batchId);
-    const feed = posts.length
-      ? posts.map((p) => postCardHtml(p, !!staff)).join('')
-      : '<p class="muted dk-empty-note">Belum ada catatan di batch ini. Posting pertama bisa screenshot dan catatan.</p>';
-    return '<div class="dk">' + chips + head + composer + feed + '</div>';
+    const listHtml = '<aside class="dk-list"><div class="dk-list-h"><strong>Chat</strong>' +
+      (staff ? '<button type="button" class="btn-sm" data-act="chat-new">Chat baru</button>' : '') +
+      '</div><div class="dk-list-scroll">' +
+      (rows || '<p class="muted dk-list-empty">Belum ada chat.</p>') +
+      tanyaRow +
+      '</div></aside>';
+    let thread = '';
+    if (tanya) {
+      thread = '<section class="dk-thread"><header class="dk-thread-h">' +
+        '<button type="button" class="dk-back" data-act="diskusi-back" aria-label="Daftar chat">‹</button>' +
+        '<h2>Tanya materi</h2></header>' +
+        '<div class="dk-feed">' + viewDiskusiTanya(true) + '</div></section>';
+    } else if (!batchId) {
+      thread = '<section class="dk-thread"><header class="dk-thread-h"><h2>Diskusi</h2></header>' +
+        '<div class="dk-feed"><p class="muted">Pilih chat di samping. Kalau belum ada, Anton yang menambahkan kamu.</p></div></section>';
+    } else {
+      const info = list.find((c) => c.id === batchId);
+      const count = info ? info.count : chatMembers(batchId).length;
+      const can = canPostIn(actorId(), batchId);
+      const posts = postsInBatch(batchId);
+      const title = staff
+        ? '<input class="dk-title" data-act="chat-rename" data-id="' + esc(batchId) + '" maxlength="60" value="' + esc(batchLabel(batchId)) + '" aria-label="Nama chat">'
+        : '<h2>' + esc(batchLabel(batchId)) + '</h2>';
+      thread = '<section class="dk-thread"><header class="dk-thread-h">' +
+        '<button type="button" class="dk-back" data-act="diskusi-back" aria-label="Daftar chat">‹</button>' +
+        title +
+        '<button type="button" class="dk-count" data-act="chat-people">' + count + ' orang</button>' +
+        (staff ? '<button type="button" class="btn-sm" data-act="chat-people">Tambah orang</button>' : '') +
+        '</header>' +
+        '<div class="dk-feed">' +
+          (posts.length
+            ? posts.map((p) => postCardHtml(p, !!staff)).join('')
+            : '<p class="muted dk-empty-note">Belum ada catatan. Tulis di bawah, tempel foto, atau buat poll.</p>') +
+        '</div>' +
+        (can ? composerHtml(batchId) : '<p class="muted dk-compose-locked">Kamu belum masuk chat ini.</p>') +
+        chatPeopleHtml(batchId, !!staff) +
+        '</section>';
+    }
+    return '<div class="dk-shell' + (showList ? ' is-list' : ' is-thread') + '">' + listHtml + thread + '</div>';
+  }
+  function viewDiskusiFeed(staff) {
+    return viewDiskusiApp(!!staff);
   }
 
   function mountLightbox() {
@@ -8324,6 +8654,19 @@
       render();
       return;
     }
+    if (t.matches('[data-act="chat-rename"]')) {
+      if (!isStaff()) return;
+      const id = t.getAttribute('data-id') || '';
+      if (!isMonthChat(id) && id.indexOf('c-') !== 0) return;
+      ensureDiskusi();
+      const name = String(t.value || '').trim().slice(0, 60);
+      if (name) db.batchNames[id] = name;
+      else delete db.batchNames[id];
+      rememberDiskusiChat(id);
+      save();
+      render();
+      return;
+    }
     if (t.matches('[data-act="post-files"]')) {
       const files = Array.from(t.files || []);
       t.value = '';
@@ -8811,6 +9154,22 @@
       ui.postBody = t.value;
       return;
     }
+    if (t.matches('[data-act="poll-q"]')) {
+      ui.pollQuestion = t.value;
+      return;
+    }
+    if (t.matches('[data-act="poll-opt"]')) {
+      const i = Number(t.getAttribute('data-i'));
+      ui.pollOptions = (ui.pollOptions || ['', '']).slice();
+      if (isFinite(i) && i >= 0) ui.pollOptions[i] = t.value;
+      return;
+    }
+    if (t.matches('[data-act="chat-people-q"]')) {
+      ui.chatPeopleQ = t.value;
+      ui.chatPeopleFocus = true;
+      render();
+      return;
+    }
     if (t.matches('.wa-compose textarea[name="body"]')) {
       ui.waDraft = t.value;
       const open = t.closest('form') && t.closest('form').querySelector('[data-wa-open]');
@@ -8883,6 +9242,28 @@
     if (e.key === 'Escape' && ui.lightbox) {
       ui.lightbox = '';
       render();
+      return;
+    }
+    if (e.key === 'Escape' && ui.chatPeopleOpen) {
+      ui.chatPeopleOpen = false;
+      ui.chatPeopleQ = '';
+      render();
+      return;
+    }
+    if (e.key === 'Enter' && e.target.matches && e.target.matches('[data-act="chat-rename"]')) {
+      e.preventDefault();
+      e.target.blur();
+      return;
+    }
+    if (e.key === 'Enter' && e.target.closest && e.target.closest('.dk-compose')) {
+      if (e.target.matches('textarea[name="body"]')) {
+        if (e.shiftKey) return;
+        e.preventDefault();
+        const form = e.target.closest('form');
+        if (form && form.requestSubmit) form.requestSubmit();
+      } else if (e.target.matches('input')) {
+        e.preventDefault();
+      }
       return;
     }
     if (e.key !== 'Enter') return;
@@ -8961,16 +9342,103 @@
         act === 'daftar-tag-filter' || act === 'daftar-pay-filter' ||
         act === 'daftar-joined-from' || act === 'daftar-joined-to' ||
         act === 'post-files' || act === 'person-batch' ||
-        act === 'post-new' || act === 'post-comment' || act === 'batch-rename') {
+        act === 'post-new' || act === 'post-comment' || act === 'batch-rename' ||
+        act === 'chat-rename' || act === 'chat-people-q' || act === 'poll-q' || act === 'poll-opt') {
       return;
     }
     if (act === 'diskusi-sub') {
       ui.diskusiSub = btn.getAttribute('data-id') === 'tanya' ? 'tanya' : 'batch';
+      ui.diskusiShowList = false;
+      ui.diskusiOpened = true;
+      ui.chatPeopleOpen = false;
+      render();
+      return;
+    }
+    if (act === 'diskusi-back') {
+      ui.diskusiShowList = true;
+      ui.chatPeopleOpen = false;
       render();
       return;
     }
     if (act === 'diskusi-batch') {
       ui.diskusiBatch = btn.getAttribute('data-id') || '';
+      ui.diskusiSub = 'batch';
+      ui.diskusiShowList = false;
+      ui.diskusiOpened = true;
+      ui.chatPeopleOpen = false;
+      ui.diskusiScroll = 'bottom';
+      render();
+      return;
+    }
+    if (act === 'chat-new') {
+      createChat();
+      return;
+    }
+    if (act === 'chat-people') {
+      ui.chatPeopleOpen = true;
+      render();
+      return;
+    }
+    if (act === 'chat-people-close') {
+      ui.chatPeopleOpen = false;
+      ui.chatPeopleQ = '';
+      render();
+      return;
+    }
+    if (act === 'chat-member-add' || act === 'chat-member-remove') {
+      if (!isStaff()) return;
+      const chatId = btn.getAttribute('data-chat') || '';
+      const sid = btn.getAttribute('data-id') || '';
+      if (act === 'chat-member-add') addChatMember(chatId, sid);
+      else removeChatMember(chatId, sid);
+      rememberDiskusiChat(chatId);
+      save();
+      render();
+      return;
+    }
+    if (act === 'poll-toggle') {
+      readPollDraft();
+      ui.pollOn = !ui.pollOn;
+      if (ui.pollOn && (!ui.pollOptions || ui.pollOptions.length < 2)) ui.pollOptions = ['', ''];
+      render();
+      return;
+    }
+    if (act === 'poll-cancel') {
+      ui.pollOn = false;
+      ui.pollQuestion = '';
+      ui.pollOptions = ['', ''];
+      render();
+      return;
+    }
+    if (act === 'poll-add-opt') {
+      readPollDraft();
+      ui.pollOptions = ui.pollOptions && ui.pollOptions.length ? ui.pollOptions.slice() : ['', ''];
+      if (ui.pollOptions.length >= 6) return;
+      ui.pollOptions.push('');
+      ui.pollFocus = '[data-act="poll-opt"][data-i="' + (ui.pollOptions.length - 1) + '"]';
+      render();
+      return;
+    }
+    if (act === 'poll-opt-remove') {
+      readPollDraft();
+      const i = Number(btn.getAttribute('data-i'));
+      if (!ui.pollOptions || ui.pollOptions.length <= 2 || !isFinite(i)) return;
+      ui.pollOptions = ui.pollOptions.slice();
+      ui.pollOptions.splice(i, 1);
+      render();
+      return;
+    }
+    if (act === 'poll-vote') {
+      ensureDiskusi();
+      const post = db.posts.find((p) => p && p.id === btn.getAttribute('data-post'));
+      const optId = btn.getAttribute('data-id') || '';
+      if (!post || !post.poll || !optId || !canPostIn(actorId(), post.batchId)) return;
+      if (!post.poll.options.some((o) => o && o.id === optId)) return;
+      post.poll.votes = post.poll.votes || {};
+      if (post.poll.votes[actorId()] === optId) delete post.poll.votes[actorId()];
+      else post.poll.votes[actorId()] = optId;
+      rememberDiskusiPost(post);
+      save();
       render();
       return;
     }
@@ -9002,6 +9470,7 @@
       const post = db.posts.find((p) => p && p.id === btn.getAttribute('data-id'));
       if (!post) return;
       post.pinned = !post.pinned;
+      rememberDiskusiPost(post);
       save();
       render();
       return;
@@ -10126,10 +10595,11 @@
       if (!isStaff()) return;
       ensureDiskusi();
       const id = form.getAttribute('data-id') || '';
-      if (!/^\d{4}-\d{2}$/.test(id)) return;
+      if (!isMonthChat(id) && id.indexOf('c-') !== 0) return;
       const name = String(fd.get('name') || '').trim().slice(0, 60);
       if (name) db.batchNames[id] = name;
       else delete db.batchNames[id];
+      rememberDiskusiChat(id);
       save();
       render();
     } else if (act === 'announce') {
@@ -10538,6 +11008,11 @@
     ui.postBody = '';
     ui.postUploading = false;
     ui.lightbox = '';
+    ui.pollOn = false;
+    ui.pollQuestion = '';
+    ui.pollOptions = ['', ''];
+    ui.chatPeopleOpen = false;
+    ui.chatPeopleQ = '';
     clearPendingDiskusi();
     db = defaultState();
     ui.kolabSel = new Set();

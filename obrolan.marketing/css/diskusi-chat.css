@@ -1,0 +1,344 @@
+/* Chat column next to the staff menu. Thread opens on the right; composer stays at the bottom. */
+
+html[data-mode="mentor"] #app.is-diskusi {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+html[data-mode="mentor"] #app.is-diskusi .workspace {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+html[data-mode="mentor"] #app.is-diskusi .tabs { min-height: 0; }
+html[data-mode="mentor"] #app.is-diskusi .main {
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+html[data-mode="student"] #app.is-diskusi .main {
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 calc(var(--dock-h) + var(--safe-bottom));
+  overflow: hidden;
+}
+
+.dk-shell {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+}
+.dk-shell.is-list .dk-thread { display: none; }
+.dk-shell.is-thread .dk-list { display: none; }
+html[data-mode="mentor"] .dk-shell .dk-list,
+html[data-mode="mentor"] .dk-shell .dk-thread { display: flex; }
+
+.dk-list, .dk-thread { min-width: 0; min-height: 0; }
+.dk-list {
+  display: flex;
+  flex-direction: column;
+  background: var(--ink-2);
+  border-right: 1px solid var(--line);
+}
+.dk-list-h {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 12px 8px;
+}
+.dk-list-h strong { font-size: .95rem; letter-spacing: -.02em; }
+.dk-list-scroll { flex: 1; overflow: auto; padding: 0 8px 12px; }
+.dk-list-empty { padding: 8px; }
+
+.dk-row {
+  width: 100%;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  border-radius: 10px;
+  padding: 8px;
+  cursor: pointer;
+  font: inherit;
+}
+.dk-row[aria-selected="true"] { background: var(--ink-3); }
+.dk-row-tanya { margin-top: 8px; }
+.dk-mark {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  color: var(--text);
+  font-size: .72rem;
+  font-weight: 800;
+}
+.dk-row-copy { flex: 1; min-width: 0; display: grid; }
+.dk-row-copy strong {
+  font-size: .82rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dk-row-copy em {
+  font-style: normal;
+  color: var(--muted);
+  font-size: .72rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dk-row-meta {
+  flex: none;
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  color: var(--muted);
+  font-size: .66rem;
+}
+
+.dk-thread {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: var(--ink);
+}
+.dk-thread-h {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.dk-thread-h h2 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 1.05rem;
+  letter-spacing: -.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dk-back {
+  display: none;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.dk-title {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  font-size: 1.05rem;
+  font-weight: 750;
+  letter-spacing: -.02em;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+.dk-title:hover, .dk-title:focus {
+  border-color: var(--line);
+  background: var(--ink-2);
+}
+.dk-count {
+  flex: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: .75rem;
+  cursor: pointer;
+  padding: 6px 4px;
+  white-space: nowrap;
+}
+
+.dk-feed {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 14px 16px 8px;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+.dk-compose {
+  flex: none;
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 12px 12px;
+  border-top: 1px solid var(--line);
+  background: var(--ink-2);
+}
+.dk-compose-locked {
+  flex: none;
+  margin: 0;
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
+}
+.dk-bar { display: flex; align-items: flex-end; gap: 8px; }
+.dk-compose .dk-bar textarea {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  min-height: 40px;
+  max-height: 120px;
+  resize: none;
+  margin: 0;
+  padding: 9px 12px;
+}
+.dk-tool {
+  flex: none;
+  margin: 0;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: .75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.dk-tool.is-on { background: #fff; color: #111; border-color: #fff; }
+.dk-send {
+  flex: none;
+  border: 0;
+  background: #fff;
+  color: #111;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+.dk-send:disabled, .dk-tool:disabled { opacity: .5; cursor: default; }
+
+.dk-poll-edit {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--ink);
+}
+.dk-poll-opt { display: flex; gap: 6px; align-items: center; }
+.dk-poll-opt input { flex: 1; min-width: 0; width: auto; }
+.dk-poll-opt button {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.dk-poll-edit-row { display: flex; gap: 8px; }
+.dk-poll { margin-top: 10px; display: grid; gap: 6px; }
+.dk-poll strong { font-size: .9rem; }
+.dk-opt {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--line);
+  background: var(--ink);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  cursor: pointer;
+  overflow: hidden;
+}
+.dk-opt.is-mine { border-color: #fff; }
+.dk-opt-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(255,255,255,.08);
+  pointer-events: none;
+}
+.dk-opt-label { position: relative; flex: 1; min-width: 0; }
+.dk-opt-n { position: relative; color: var(--muted); font-size: .75rem; }
+
+.dk-people {
+  position: absolute;
+  top: 58px;
+  right: 12px;
+  width: min(340px, calc(100% - 24px));
+  max-height: min(480px, calc(100% - 80px));
+  overflow: auto;
+  z-index: 6;
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 18px 50px rgba(0,0,0,.45);
+}
+.dk-people header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.dk-people input { width: 100%; }
+.dk-people-note { margin: 8px 0; font-size: .72rem; }
+.dk-people-add {
+  margin: 12px 0 6px;
+  font-size: .72rem;
+  font-weight: 750;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.dk-people-list { display: grid; gap: 6px; }
+.dk-mem { display: flex; gap: 8px; align-items: center; }
+.dk-mem span { flex: 1; min-width: 0; font-size: .84rem; }
+
+html[data-mode="student"] .dk-shell {
+  display: flex;
+  flex-direction: column;
+  height: auto;
+  flex: 1;
+}
+html[data-mode="student"] .dk-list,
+html[data-mode="student"] .dk-thread { flex: 1; }
+html[data-mode="student"] .dk-shell.is-thread .dk-back { display: inline-flex; }
+html[data-mode="student"] .dk-bar textarea,
+html[data-mode="student"] .dk-title,
+html[data-mode="student"] .dk-poll-edit input,
+html[data-mode="student"] .dk-people input,
+html[data-mode="student"] .dk-comment-form input { font-size: 16px; }
+
+@media (max-width: 800px) {
+  html[data-mode="mentor"] .dk-shell { display: flex; flex-direction: column; }
+  html[data-mode="mentor"] .dk-shell.is-list .dk-thread { display: none; }
+  html[data-mode="mentor"] .dk-shell.is-thread .dk-list { display: none; }
+  html[data-mode="mentor"] .dk-shell.is-thread .dk-back { display: inline-flex; }
+  html[data-mode="mentor"] .dk-list,
+  html[data-mode="mentor"] .dk-thread { flex: 1; }
+}
