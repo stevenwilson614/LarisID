@@ -1328,7 +1328,7 @@ html[data-mode="mentor"] .kur-toolbar {
 .alat-row h3 { margin: 2px 0; font-size: .92rem; }
 .alat-row-act { display: flex; gap: 8px; flex-wrap: wrap; }
 
-.alat-page { display: grid; gap: 18px; }
+.alat-page { display: grid; gap: 10px; }
 .alat-head h1 {
   margin: 0 0 4px; font-size: 1.55rem; letter-spacing: -.03em; font-weight: 800;
 }

@@ -7476,55 +7476,9 @@
   }
   function viewAlat() {
     const sid = ui.personaId;
-    const tools = toolsCatalog();
-    const mentorTools = tools.filter((p) => bundled(p));
-    const extraTools = tools.filter((p) => !bundled(p));
-    const ownedN = mentorTools.filter((p) => canSku(sid, p.id)).length;
-    const waText = 'Halo Anton, mau tanya alat mana yang cocok buat toko saya.';
+    const tools = toolsCatalog().filter((p) => bundled(p));
     return '<div class="alat-page">' +
-      '<header class="alat-head">' +
-        '<h1>Alat</h1>' +
-        '<p class="muted">Tools praktis untuk bantu kamu jualan di TikTok Shop.</p>' +
-        '<div class="alat-stats">' +
-          '<span class="alat-stat is-ok">' +
-            '<svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="#16a34a"/><path d="M3.4 6.2 5.2 8 8.6 4.2" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>' +
-            ownedN + ' alat tersedia</span>' +
-          (extraTools.length
-            ? '<span class="alat-stat">' +
-              '<span class="alat-stat-dot" aria-hidden="true"></span>' +
-              extraTools.length + ' alat tambahan</span>'
-            : '') +
-        '</div>' +
-      '</header>' +
-      '<section class="alat-sec">' +
-        '<h2>Alat yang termasuk mentoring</h2>' +
-        '<p class="muted">' + (canMentoring(sid)
-          ? 'Sudah bisa kamu akses sekarang.'
-          : 'Buka dengan mentoring. Bisa lihat contoh dulu.') + '</p>' +
-        '<div class="alat-cards">' + mentorTools.map((p) => alatCardHtml(p, sid)).join('') + '</div>' +
-      '</section>' +
-      (extraTools.length
-        ? '<section class="alat-sec">' +
-            '<h2>Alat tambahan</h2>' +
-            '<p class="muted">Tersedia terpisah. Bisa dibeli kapan saja.</p>' +
-            '<div class="alat-cards">' + extraTools.map((p) => alatCardHtml(p, sid)).join('') + '</div>' +
-          '</section>'
-        : '') +
-      (canMentoring(sid)
-        ? '<button type="button" class="alat-card alat-kolab" data-act="open-kolab">' +
-            '<span class="alat-card-cover is-empty" aria-hidden="true"></span>' +
-            '<div class="alat-card-body">' +
-              '<div class="alat-card-title"><h3>Kolab</h3>' +
-                '<span class="alat-badge is-ok">Tersedia</span></div>' +
-              '<p class="alat-card-job">Cari kreator dari CSV Kalodata. Bukan produk lynk — khusus mentoring.</p>' +
-            '</div>' +
-            '<div class="alat-card-act"><span class="btn-sm alat-open">Buka →</span></div>' +
-          '</button>'
-        : '') +
-      '<a class="alat-help" href="' + esc(waLink(ownerWa(), waText)) + '">' +
-        '<span class="alat-help-ico" aria-hidden="true">?</span>' +
-        '<span>Masih bingung alat mana yang cocok? Tanya Anton di WhatsApp.</span>' +
-        '<span class="alat-help-go" aria-hidden="true">›</span></a>' +
+      '<div class="alat-cards">' + tools.map((p) => alatCardHtml(p, sid)).join('') + '</div>' +
       '</div>';
   }
 
