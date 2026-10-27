@@ -49,14 +49,17 @@
     if (nowWk == null || prevWk == null || !(prevWk > 0)) return null;
     return (nowWk - prevWk) / prevWk * 100;
   }
-  // Same two Monday weeks the Tren Produk chart draws. The 3-scrape rate
-  // (units_now_wk vs units_prev_wk) can still be a boom from August while
-  // this week's point on the chart is already down.
+  // Same two Monday weeks the Tren Produk chart draws. Days after the last
+  // scrape are already filled by velocity_at inside listing_chart_wow, so an
+  // unfinished week still has a percent. A previous week of Rp 0 cannot be a
+  // growth rate: the cell shows 0% and the tooltip says so. The Rp 50.000
+  // floor is only for Trending Sekarang / Paling Trending, not this cell.
   function chartWowPct(m) {
-    if (!m || m.chart_prev_measured !== true) return null;
+    if (!m) return null;
     var nowOm = num(m.chart_omset_now);
     var prevOm = num(m.chart_omset_prev);
-    if (nowOm == null || prevOm == null || !(prevOm >= OMSET_PREV_FLOOR)) return null;
+    if (nowOm == null || prevOm == null) return null;
+    if (!(prevOm > 0)) return 0;
     return (nowOm - prevOm) / prevOm * 100;
   }
   function fmtPctSigned(n) {
@@ -108,11 +111,46 @@
       at0: m.chart_week_now || null,
       at1: m.chart_week_prev || null,
       at2: null,
+      prevMeasured: prevMeasured,
       omsetNow: num(m.chart_omset_now),
       omsetPrev: num(m.chart_omset_prev),
       weekNow: m.chart_week_now || null,
       weekPrev: m.chart_week_prev || null
     };
+  }
+  // peta_batch_momentum only emits keys that are already in mv_listing_momentum.
+  // listing_chart_wow still has a week pair for the rest. Fill those so the
+  // cell is not left as "—".
+  function fillUncoveredTrends(sb, list) {
+    var missing = (list || []).filter(function (p) {
+      return !p._petaTrend || p._petaTrend.belum;
+    });
+    if (!missing.length || !sb) return Promise.resolve(list);
+    var missKeys = missing.slice(0, 200).map(function (p) {
+      return { item_id: p.item_id, shop_id: p.shop_id };
+    });
+    return sb.rpc('listing_chart_wow', { p_keys: missKeys }).then(function (wowRes) {
+      var rows = (wowRes && !wowRes.error && wowRes.data) || [];
+      var byKey = {};
+      rows.forEach(function (row) {
+        byKey[String(row.item_id) + '|' + String(row.shop_id)] = row;
+      });
+      missing.forEach(function (p) {
+        var row = byKey[keyOf(p)];
+        if (!row) return;
+        p._petaTrend = trendFromMomentum({
+          chart_omset_now: row.omset_now,
+          chart_omset_prev: row.omset_prev,
+          chart_units_now: row.units_now,
+          chart_units_prev: row.units_prev,
+          chart_now_measured: row.now_measured,
+          chart_prev_measured: row.prev_measured,
+          chart_week_now: row.week_now,
+          chart_week_prev: row.week_prev
+        });
+      });
+      return list;
+    }, function () { return list; });
   }
   function windowOmset(frames, weekList) {
     var sum = 0, n = 0, measured = true, real = false;
@@ -1016,8 +1054,18 @@
         clearBatchMissing();
         var batch = res.data || null;
         attachTrends(list, batch, batch ? 'ok' : 'missing');
-        ping();
-        resolve(list);
+        // Momentum omits listings the matview does not have. Their week pair
+        // is still on listing_chart_wow. Paint once, after that fill, so the
+        // skeleton does not flash into a dash.
+        var painted = false;
+        function paint() {
+          if (painted) return;
+          painted = true;
+          ping();
+          resolve(list);
+        }
+        setTimeout(paint, 8000);
+        fillUncoveredTrends(sb, list).then(paint, paint);
       }, function (err) { fail(err, false); });
     });
   }

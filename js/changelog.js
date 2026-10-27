@@ -11,6 +11,16 @@
 // A plain string is still accepted and renders with no tech line.
 window.LARIS_CHANGELOG = [
   {
+    date: '2026-10-27',
+    title: 'Persen tren tetap ada',
+    items: [
+      {
+        text: 'Di Cari Produk, persen tren tetap muncul kalau minggu lalu belum tertutup scrape. Angka itu perkiraan dari laju terakhir, dan sering mendekati 0% sampai ada scrape baru.',
+        tech: 'chartWowPct shows listing_chart_wow even when chart_prev_measured is false, including 0% when omset_prev is 0. Keys missing from mv_listing_momentum are filled by a second listing_chart_wow call. listingTrendEligible adds omsetPrev >= 50000 for Trending Sekarang and Paling Trending only.',
+      },
+    ],
+  },
+  {
     date: '2026-10-19',
     title: 'Email Komunitas & pesan Steven',
     items: [

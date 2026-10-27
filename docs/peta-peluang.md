@@ -70,15 +70,15 @@ chart's latest week has already turned down.
 |---|---|
 | This week | Sum of the 7 days from this Monday. Days after the last scrape use `velocity_at` (same nowcast as the chart). |
 | Last week | Sum of the 7 days of the previous Monday. Measured only when every day sits in a `listing_deltas` interval. |
-| Weekly % | `(omset_now − omset_prev) / omset_prev × 100` when last week is measured and its omset is at least Rp 50.000. |
+| Weekly % | `(omset_now − omset_prev) / omset_prev × 100` when previous omset is above 0. Days after the last scrape use the velocity fill already in `listing_chart_wow`. A previous week of Rp 0 shows 0% (that is not a growth rate). |
 
 - `terukur` when both weeks are fully measured and the flat-week reshape did not move either omset.
-- perkiraan when last week is measured and this week still includes a nowcast day, or when the flat-week reshape moved either omset. Tooltip names both Mondays and both omset figures.
-- `—` when last week is not a full measured week, or its omset is under Rp 50.000. Do not fall back to `momentum_pct`.
+- perkiraan when any day in the pair is not measured, or when the flat-week reshape moved either omset. Tooltip names both Mondays and both omset figures. An unfinished previous week says the days after the last scrape are the same perkiraan as Tren Produk.
+- The cell shows that percent whenever both omsets came back, including about 0% when the last measured rate is carried forward. `peta_batch_momentum` only returns keys already in `mv_listing_momentum`; the rest are filled from `listing_chart_wow`. `—` only while that is in flight (`…`) or when neither call returned the pair. Do not fall back to `momentum_pct`. Do not invent a rise to avoid 0%.
 - Do not clamp the %. Do not read `listing_weekly` for this number.
 - **Trending Sekarang** shows the top **3** by that % among rows with
-  `unitsNowWk ≥ 20` and `unitsPrevWk ≥ 7`. Skip `—`. The current week may
-  carry a perkiraan mark. Paling Trending uses the same floor.
+  `unitsNowWk ≥ 20`, `unitsPrevWk ≥ 7`, and previous omset at least Rp 50.000.
+  The cell still shows a percent under that floor. Paling Trending uses the same floor.
 - While `peta_batch` is in flight, show a 3-row skeleton (not a grey square).
   Do not invent a %. If the RPC is missing, the strip stays hidden and the
   table Trending column shows `—`.
@@ -90,7 +90,7 @@ chart's latest week has already turned down.
 Never present a raw two-snapshot delta as “minggu ini”. The % is the chart's
 last Monday week against the Monday before it. Days after the last scrape
 are the same velocity nowcast the chart draws, and they are labeled
-perkiraan. A listing with no measured previous week stays `—`.
+perkiraan. A carried-forward rate can read as about 0% and is still shown.
 
 ## Cari Produk layout
 
@@ -108,16 +108,17 @@ Row click is Deep Dive. Checkboxes do not steal the row.
 ## Honesty
 
 Tooltip names both Mondays and both weekly omset figures, the same points as
-the last two marks on Tren Produk. When this week still has a nowcast day,
-the % carries perkiraan. `—` when last week is not fully measured or its
-omset is under Rp 50.000 — do not substitute `momentum_pct`. Do not revive
-`weekly_snapshots`. `listing_weekly` does not feed this %.
+the last two marks on Tren Produk. When any day in the pair is not measured,
+the % carries perkiraan. A previous week of Rp 0 shows 0% with a tooltip that
+it is not a growth rate. `—` only when the request did not return — do not
+substitute `momentum_pct`. Do not revive `weekly_snapshots`. `listing_weekly`
+does not feed this %.
 
 ## Momentum class (same rows)
 
-`naik` if pct ≥ 20, `turun` if pct ≤ −20, else `stabil`. Class `belum` is
-hidden on live hosts (Trending column `—`). Scatter Jejak still reads
-`momentum_class` from `peta_batch`.
+`naik` if pct ≥ 20, `turun` if pct ≤ −20, else `stabil`. Class `belum` is the
+missing-response case (Trending column `—`). A returned week pair always has
+a percent. Scatter Jejak still reads `momentum_class` from `peta_batch`.
 
 ## Scatter module (not mounted)
 
@@ -152,7 +153,7 @@ PetaPeluang.hydrateTrends(listings, {
 })
 ```
 
-`_petaTrend`: `{ wkPct, unitsNowWk, unitsPrevWk, spanNow, spanPrev, at0, at1, at2, terukur, held, belum, pending }`.
+`_petaTrend`: `{ wkPct, unitsNowWk, unitsPrevWk, spanNow, spanPrev, at0, at1, at2, terukur, prevMeasured, held, belum, pending }`.
 
 ## Copy
 

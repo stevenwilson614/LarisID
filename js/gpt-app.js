@@ -16008,19 +16008,29 @@ function listingTrendEligible(p) {
   if (!t || t.belum || t.pending || t.wkPct == null) return false;
   const nowWk = Number(t.unitsNowWk);
   const prevWk = Number(t.unitsPrevWk);
-  if (!Number.isFinite(nowWk) || !Number.isFinite(prevWk)) return false;
-  return nowWk >= 20 && prevWk >= 7;
+  const prevOm = Number(t.omsetPrev);
+  if (!Number.isFinite(nowWk) || !Number.isFinite(prevWk) || !Number.isFinite(prevOm)) return false;
+  // Rail and Paling Trending only. The cell still shows a percent under this floor.
+  return nowWk >= 20 && prevWk >= 7 && prevOm >= 50000;
 }
 
 function listingTrendTitle(t) {
   if (!t || t.pending) return 'Menghitung kenaikan penjualan…';
   if (t.belum || t.wkPct == null) {
-    return 'Belum bisa dibanding minggu lalu: minggu sebelumnya belum terukur, atau omsetnya masih kecil.';
+    return 'Angka tren belum kembali dari server.';
   }
-  const dir = t.wkPct > 0 ? 'naik' : t.wkPct < 0 ? 'turun' : 'stabil';
   const nowLbl = fmtTrendDay(t.weekNow || t.at0);
   const prevLbl = fmtTrendDay(t.weekPrev || t.at1);
+  const prevOm = Number(t.omsetPrev);
+  if (!(prevOm > 0)) {
+    return `Minggu ${prevLbl} belum ada omset, jadi 0% ini bukan kenaikan. Minggu ${nowLbl}: ${fmtRpShort(t.omsetNow)}.`;
+  }
+  const shown = Math.round(Number(t.wkPct) || 0);
+  const dir = shown > 0 ? 'naik' : shown < 0 ? 'turun' : 'stabil';
   const pair = `minggu ${nowLbl} (${fmtRpShort(t.omsetNow)}) vs minggu ${prevLbl} (${fmtRpShort(t.omsetPrev)})`;
+  if (t.prevMeasured === false) {
+    return `Omset ${dir} ${fmtTrendPct(t.wkPct)}: ${pair}. Hari setelah scrape terakhir diisi perkiraan, seri yang sama dengan grafik Tren Produk.`;
+  }
   if (!t.terukur) {
     return `Omset ${dir} ${fmtTrendPct(t.wkPct)}: ${pair}. Minggu berjalan masih perkiraan, seri yang sama dengan grafik Tren Produk.`;
   }
@@ -16031,8 +16041,9 @@ function listingTrendInnerHtml(p, opts = {}) {
   const t = p && p._petaTrend;
   if (!t || t.pending) return '<span class="lrow-trend-pending">…</span>';
   if (t.belum || t.wkPct == null) return '—';
-  const cls = t.wkPct > 0 ? 'is-up' : t.wkPct < 0 ? 'is-down' : 'is-flat';
-  const arrow = t.wkPct > 0 ? ico('arrowUp', 13) : t.wkPct < 0 ? ico('arrowDown', 13) : '';
+  const shown = Math.round(Number(t.wkPct) || 0);
+  const cls = shown > 0 ? 'is-up' : shown < 0 ? 'is-down' : 'is-flat';
+  const arrow = shown > 0 ? ico('arrowUp', 13) : shown < 0 ? ico('arrowDown', 13) : '';
   const est = !!(t.held || !t.terukur);
   const chip = (est && !opts.hidePerkiraan) ? '<small>perkiraan</small>' : '';
   return `<span class="lrow-trend-pct ${cls}${est ? ' is-est' : ''}">${arrow}<span>${fmtTrendPct(t.wkPct)}</span>${chip}</span>`;

@@ -161,9 +161,12 @@ closed-form decay (`W(t') = W(t)·exp(−Δ/τ)`) revises this week and next wee
   shape so the recent week is a bit higher and the peak-to-peak is that
   0.3743. The stretch total does not change. A week whose number moved stays
   perkiraan. A series that already changes week to week is left alone. A real
-  zero stays zero. The directory % still needs last week measured and at least
-  Rp 50.000; if the reshape moved either week the chip says perkiraan instead
-  of a flat 0%.
+  zero stays zero. The directory % uses these same weeks, including days
+  filled after the last scrape. A carried-forward rate can be about 0% and is
+  still shown. perkiraan when any day in the pair is not measured, or the
+  reshape moved either week. Trending Sekarang still requires previous omset
+  of at least Rp 50.000 plus the unit floors. The cell shows the percent
+  under that floor.
 - Deep Dive tren graphs (Laris AI `#ddr-trend-canvas`, dashboard
   `#tren-main-chart` / `#ap-demand-chart` / `#dd-chart-trend`) plot weekly
   scrape-interval rates. They take the last 6 **non-empty** weeks (skipping
