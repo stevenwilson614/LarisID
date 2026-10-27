@@ -524,19 +524,19 @@
       btn.setAttribute('aria-selected', on ? 'true' : 'false');
     });
     document.querySelectorAll('[data-panel]').forEach((panel) => {
-      panel.hidden = panel.getAttribute('data-panel') !== id;
+      const on = panel.getAttribute('data-panel') === id;
+      panel.hidden = !on;
+      const stage = panel.querySelector('.stage');
+      if (!stage) return;
+      stage.classList.remove('is-play');
+      if (on) {
+        void stage.offsetWidth;
+        stage.classList.add('is-play');
+      }
     });
   }
   document.querySelectorAll('[data-shot]').forEach((btn) => {
     btn.addEventListener('click', () => selectShot(btn.getAttribute('data-shot')));
-  });
-  document.querySelectorAll('[data-jump]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const id = btn.getAttribute('data-jump');
-      selectShot(id);
-      const dest = $('fitur');
-      if (dest) dest.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
   });
 
   if (hashSession()) {
