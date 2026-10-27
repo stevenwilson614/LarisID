@@ -2637,15 +2637,58 @@ html[data-mode="student"] #app.is-belajar .player-layout > div,
   max-width: 100%;
   width: 100%;
 }
-.lesson-top {
+.lesson-chrome {
   position: sticky; top: 0; z-index: 6;
-  display: grid;
-  grid-template-columns: 28px auto 1fr 32px 32px;
-  align-items: center; gap: 4px;
-  margin: 0 0 14px; padding: 4px 0 10px;
+  margin: 0 0 14px; padding: 4px 0 8px;
   background: var(--ink);
   max-width: 100%;
   box-sizing: border-box;
+}
+.lesson-top {
+  display: grid;
+  grid-template-columns: 28px auto 1fr 32px 32px;
+  align-items: center; gap: 4px;
+  margin: 0; padding: 0 0 8px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.lesson-dots {
+  padding: 4px 2px 2px;
+}
+.lesson-dots .path-rail {
+  min-height: 24px;
+}
+.kur-pane-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; padding: 6px 8px 10px; position: sticky; top: 0; z-index: 2;
+  background: var(--ink-2);
+}
+.kur-pane-head strong { font-size: .92rem; letter-spacing: -.02em; }
+.kur-pane-close {
+  width: 36px; height: 36px; padding: 0; border-radius: 10px;
+  font-size: 1rem; line-height: 1;
+}
+.pay-prompt {
+  position: fixed; inset: 0; z-index: 60;
+  display: grid; place-items: end center;
+  pointer-events: none;
+}
+.pay-prompt-scrim {
+  position: absolute; inset: 0; border: 0; padding: 0;
+  background: var(--scrim); cursor: pointer; pointer-events: auto;
+}
+.pay-prompt-sheet {
+  position: relative; z-index: 1; pointer-events: auto;
+  width: min(440px, calc(100% - 24px));
+  margin: 0 12px calc(var(--dock-h, 64px) + 18px + var(--safe-bottom, 0px));
+  padding: 18px 16px 16px;
+  border-radius: 18px;
+  box-shadow: 0 18px 50px var(--shadow);
+  animation: pay-prompt-up .22s ease;
+}
+@keyframes pay-prompt-up {
+  from { transform: translateY(18px); opacity: .6; }
+  to { transform: translateY(0); opacity: 1; }
 }
 .lesson-back,
 .lesson-chev {
@@ -2917,6 +2960,13 @@ html[data-mode="student"] .path-node::after {
 html[data-mode="student"] .lesson-top {
   grid-template-columns: 40px auto 1fr 40px 40px;
   touch-action: manipulation;
+}
+html[data-mode="student"] .lesson-dots .path-node::after {
+  inset: -10px;
+}
+html[data-mode="student"] .pay-prompt-sheet {
+  width: calc(100% - 20px);
+  margin-bottom: calc(var(--dock-h) + 14px + var(--safe-bottom));
 }
 html[data-mode="student"] .lesson-back,
 html[data-mode="student"] .lesson-chev {

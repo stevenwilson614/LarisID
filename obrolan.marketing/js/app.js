@@ -1693,6 +1693,7 @@
     payTerm: 'month',
     examAnswers: {},
     payPrompt: false,
+    payPromptLec: '',
     crmFilter: '',
     present: PRESENT,
     presentPane: PRESENT_PANE,
@@ -2451,7 +2452,6 @@
       if (!c.watchedFirstAt) {
         c.watchedFirstAt = isoNow();
         pushTimeline(sid, 'video', 'Selesai video 1.');
-        ui.payPrompt = true;
       }
     }
     save();
@@ -2593,7 +2593,10 @@
   function refreshProgressPath() {
     document.querySelectorAll('[data-progress-path]').forEach((el) => {
       const sid = el.getAttribute('data-sid') || ui.personaId;
-      el.outerHTML = resumePathHtml(sid, currentProgressId(sid));
+      const mode = el.getAttribute('data-progress-mode') || 'board';
+      el.outerHTML = mode === 'dots'
+        ? lessonDotsHtml(sid, currentProgressId(sid))
+        : resumePathHtml(sid, currentProgressId(sid));
     });
   }
   function nextKurMilestone(n, total) {
@@ -2654,21 +2657,21 @@
     }
     return '';
   }
-  function resumePathHtml(sid, currentId) {
+  function pathProgressState(sid, currentId) {
     const list = lectures();
     const p = kurProgress(sid);
-    if (!list.length) return '';
     let curIdx = list.findIndex((l) => l.id === currentId);
     if (curIdx < 0) {
       curIdx = list.findIndex((l) => !isDone(sid, l.id));
-      if (curIdx < 0) curIdx = list.length - 1;
+      if (curIdx < 0) curIdx = Math.max(0, list.length - 1);
     }
     const fill = list.length <= 1 ? 1 : curIdx / (list.length - 1);
-    const remain = Math.max(0, p.total - p.n);
-    const here = Math.round(fill * 100);
-    const nodes = list.map((l, i) => {
+    return { list: list, p: p, curIdx: curIdx, fill: fill };
+  }
+  function pathNodesHtml(sid, state) {
+    return state.list.map((l, i) => {
       const done = isDone(sid, l.id);
-      const now = i === curIdx;
+      const now = i === state.curIdx;
       const locked = !canOpenLecture(sid, l.id) && !isStaff();
       let cls = 'path-node';
       if (now) cls += ' is-now';
@@ -2683,13 +2686,31 @@
         (done && !now ? svgIcon('check') : '') +
         '</button>';
     }).join('');
+  }
+  function pathRailHtml(sid, state) {
+    return '<div class="path-rail" style="--fill:' + state.fill.toFixed(4) + '">' +
+      '<span class="path-rail-bg" aria-hidden="true"></span>' +
+      '<span class="path-rail-fill" aria-hidden="true"></span>' +
+      pathNodesHtml(sid, state) +
+      '</div>';
+  }
+  function lessonDotsHtml(sid, currentId) {
+    const state = pathProgressState(sid, currentId);
+    if (!state.list.length) return '';
+    return '<div class="lesson-dots" data-progress-path data-progress-mode="dots" data-sid="' + esc(sid) +
+      '" role="group" aria-label="Progress kurikulum, ' + state.p.n + ' dari ' + state.p.total + ' selesai">' +
+      pathRailHtml(sid, state) +
+      '</div>';
+  }
+  function resumePathHtml(sid, currentId) {
+    const state = pathProgressState(sid, currentId);
+    const p = state.p;
+    if (!state.list.length) return '';
+    const remain = Math.max(0, p.total - p.n);
+    const here = Math.round(state.fill * 100);
     return '<div class="rj-board" data-progress-path data-sid="' + esc(sid) + '" role="group" aria-label="Progress kurikulum, ' + p.n + ' dari ' + p.total + ' selesai">' +
       '<div class="rj-board-head"><span>Progress kamu</span><span class="rj-pct">' + p.pct + '% selesai</span></div>' +
-      '<div class="path-rail" style="--fill:' + fill.toFixed(4) + '">' +
-        '<span class="path-rail-bg" aria-hidden="true"></span>' +
-        '<span class="path-rail-fill" aria-hidden="true"></span>' +
-        nodes +
-      '</div>' +
+      pathRailHtml(sid, state) +
       '<div class="path-foot" style="--here:' + here + '">' +
         '<div class="path-here"><strong>' + p.n + ' / ' + p.total + ' materi selesai</strong>' +
         '<span>Kamu sedang di sini</span></div>' +
@@ -5914,6 +5935,7 @@
     bindNativeTools();
     focusWiz();
     placeWaFab();
+    placePayPrompt();
     tickRemainers();
     ensureRemainTimer();
     paintDaftarSelAll();
@@ -6219,6 +6241,72 @@
         '<button class="btn" data-act="tab" data-id="daftar">Bayar mentoring</button>' +
         '<button class="btn secondary" data-act="tab" data-id="belajar">Lanjut video 1</button>' +
       '</div></section>';
+  }
+  function payPromptBody(sid) {
+    if (isPending(sid)) {
+      const b = billingOf(sid);
+      if (b.pendingChannel === 'mayar' && b.mayarLink) {
+        return '<p class="trial-kicker">Menunggu pembayaran Mayar</p>' +
+          '<h3>Selesaikan bayar untuk buka materi ini</h3>' +
+          '<p class="muted">Video 1 tetap kebuka. Materi lain setelah pembayaran masuk.</p>' +
+          '<div class="row" style="margin-top:12px">' +
+            '<a class="btn" href="' + esc(b.mayarLink) + '" target="_blank" rel="noopener">Buka halaman bayar</a>' +
+            '<button type="button" class="btn secondary" data-act="pay-prompt-close">Nanti</button>' +
+          '</div>';
+      }
+      return '<p class="trial-kicker">Menunggu konfirmasi Anton</p>' +
+        '<h3>Transfer sudah dicatat</h3>' +
+        '<p class="muted">Materi kebuka setelah Anton konfirmasi. Video 1 tetap kebuka.</p>' +
+        '<div class="row" style="margin-top:12px">' +
+          '<button type="button" class="btn secondary" data-act="pay-prompt-close">Tutup</button>' +
+        '</div>';
+    }
+    const b = billingOf(sid);
+    const exp = b.offerExpiresAt;
+    const open = welcomeOpen(sid);
+    const left = exp ? fmtRemain(exp) : '—';
+    const lec = lectureById(ui.payPromptLec || '') || null;
+    return '<p class="trial-kicker">Materi terkunci</p>' +
+      '<h3>' + (lec ? esc(lec.title) : 'Lanjut mentoring') + '</h3>' +
+      '<p class="muted">Buka semua 12 video + live + alat −' + toolDiscountPct() + '% setelah lunas.</p>' +
+      (open
+        ? '<p class="trial-count">Diskon 24 jam · sisa <strong data-remain="' + esc(exp) + '">' + esc(left) + '</strong></p>'
+        : '<p class="muted">Jendela diskon 24 jam sudah habis. Harga tetap jujur di halaman bayar.</p>') +
+      '<p class="trial-prices">1 bln ' + fmtRp(priceForTerm('month', open)) +
+      ' · 3 bln ' + fmtRp(priceForTerm('quarter', false)) +
+      ' · 6 bln ' + fmtRp(priceForTerm('half', false)) + '</p>' +
+      '<div class="row" style="margin-top:12px">' +
+        '<button type="button" class="btn" data-act="pay-prompt-go">Bayar mentoring</button>' +
+        '<button type="button" class="btn secondary" data-act="pay-prompt-close">Nanti</button>' +
+      '</div>';
+  }
+  function placePayPrompt() {
+    let host = document.getElementById('pay-prompt-host');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'pay-prompt-host';
+      ($('app') || document.body).appendChild(host);
+    }
+    const show = !!ui.payPrompt && !isStaff() && !canMentoring(ui.personaId);
+    if (!show) {
+      host.innerHTML = '';
+      host.hidden = true;
+      return;
+    }
+    host.hidden = false;
+    host.innerHTML =
+      '<div class="pay-prompt" role="dialog" aria-modal="true" aria-label="Bayar mentoring">' +
+        '<button type="button" class="pay-prompt-scrim" data-act="pay-prompt-close" aria-label="Tutup"></button>' +
+        '<div class="pay-prompt-sheet card trial-cta">' +
+          payPromptBody(ui.personaId) +
+        '</div>' +
+      '</div>';
+  }
+  function openPayPrompt(lecId) {
+    if (canMentoring(ui.personaId) || isStaff()) return false;
+    ui.payPrompt = true;
+    ui.payPromptLec = lecId || '';
+    return true;
   }
   function waAntonFab() {
     if (isStaff()) return '';
@@ -6760,6 +6848,16 @@
     ).join('') +
     '<p class="muted">Untuk dipikirkan — bukan ujian, tidak perlu kirim jawaban.</p>';
   }
+  function nextLecActAttrs(sid, next) {
+    if (!next) return ' disabled';
+    if (isStaff() || canOpenLecture(sid, next.id)) {
+      return ' data-act="open-lec" data-id="' + esc(next.id) + '"';
+    }
+    if (isPaywalled(sid, next.id)) {
+      return ' data-act="pay-prompt" data-id="' + esc(next.id) + '"';
+    }
+    return ' disabled';
+  }
   function renderLessonPlayer(lec, opts) {
     opts = opts || {};
     const sid = ui.personaId;
@@ -6774,19 +6872,21 @@
     const tanyaSub = threads.length
       ? (threads.length + ' pertanyaan')
       : 'Belum ada pertanyaan. WhatsApp tetap untuk chat cepat.';
-    const canNext = !!(nb.next && (isStaff() || canOpenLecture(sid, nb.next.id)));
     const paywalled = !!opts.paywalled;
     const seqLocked = !!opts.seqLocked;
     const top = opts.phone
-      ? '<div class="lesson-top">' +
-          '<button type="button" class="lesson-back" data-act="tab" data-id="home" aria-label="Kembali">←</button>' +
-          '<strong class="lesson-tab">Belajar</strong>' +
-          '<button type="button" class="lesson-count" data-act="toggle-kur" aria-label="Kurikulum">' +
-            nb.n + ' / ' + nb.total + '</button>' +
-          '<button type="button" class="lesson-chev"' + (nb.prev ? ' data-act="open-lec" data-id="' + esc(nb.prev.id) + '"' : ' disabled') +
-            ' aria-label="Materi sebelumnya">‹</button>' +
-          '<button type="button" class="lesson-chev"' + (canNext ? ' data-act="open-lec" data-id="' + esc(nb.next.id) + '"' : ' disabled') +
-            ' aria-label="Materi berikutnya">›</button>' +
+      ? '<div class="lesson-chrome">' +
+          '<div class="lesson-top">' +
+            '<button type="button" class="lesson-back" data-act="lihat-kur" aria-label="Kurikulum">←</button>' +
+            '<strong class="lesson-tab">Belajar</strong>' +
+            '<button type="button" class="lesson-count" data-act="toggle-kur" aria-label="Kurikulum">' +
+              nb.n + ' / ' + nb.total + '</button>' +
+            '<button type="button" class="lesson-chev"' + (nb.prev ? ' data-act="open-lec" data-id="' + esc(nb.prev.id) + '"' : ' disabled') +
+              ' aria-label="Materi sebelumnya">‹</button>' +
+            '<button type="button" class="lesson-chev"' + nextLecActAttrs(sid, nb.next) +
+              ' aria-label="Materi berikutnya">›</button>' +
+          '</div>' +
+          lessonDotsHtml(sid, lec.id) +
         '</div>'
       : '';
     const head =
@@ -6794,7 +6894,6 @@
         (week ? '<p class="lesson-kicker">' + esc(week) + '</p>' : '') +
         '<h1>' + esc(lec.title) + '</h1>' +
         '<p class="lesson-meta">Materi ' + nb.n + ' dari ' + nb.total + ' · ' + p.pct + '% selesai</p>' +
-        '<div class="lesson-bar" aria-hidden="true"><span style="width:' + p.pct + '%"></span></div>' +
       '</header>';
     const seqBanner = seqLocked
       ? '<div class="seq-lock-banner" role="status">' +
@@ -6816,9 +6915,9 @@
         '<div class="locked-blur-fg">' +
           '<p class="trial-kicker">Materi terkunci</p>' +
           '<h2>' + esc(lec.title) + '</h2>' +
-          '<p class="muted">Kurikulum lengkap di bawah — yang blur terkunci sampai mentoring lunas.</p>' +
-          '<button class="btn" data-act="open-lec" data-id="' + esc(firstLectureId()) + '">Ke video selamat datang</button>' +
-          '<button class="btn secondary" data-act="tab" data-id="daftar">Bayar mentoring</button>' +
+          '<p class="muted">Materi ini kebuka setelah mentoring lunas.</p>' +
+          '<button class="btn" data-act="pay-prompt" data-id="' + esc(lec.id) + '">Lanjut mentoring</button>' +
+          '<button class="btn secondary" data-act="open-lec" data-id="' + esc(firstLectureId()) + '">Ke video selamat datang</button>' +
         '</div></div>';
     } else if (lec.tool === 'kolab') {
       stage = viewKolab();
@@ -6836,14 +6935,17 @@
       lecAccHtml('help', 'Cek pemahaman', questions.length ? (questions.length + ' prompt') : '',
         lessonQuizHtml(lec)) +
       lecAccHtml('chat', 'Tanya di materi ini', tanyaSub, lessonAskHtml(lec));
+    const nextAttrs = nextLecActAttrs(sid, nb.next);
+    const nextLockedPay = !!(nb.next && isPaywalled(sid, nb.next.id) && !isStaff());
+    const nextSeqLocked = !!(nb.next && isSeqLocked(sid, nb.next.id) && !isStaff());
     const nav = (paywalled || lec.tool === 'kolab') ? '' :
       '<div class="lec-nav">' +
         '<button type="button" class="btn lec-prev"' +
           (nb.prev ? ' data-act="open-lec" data-id="' + esc(nb.prev.id) + '"' : ' disabled') +
           '>← Materi sebelumnya</button>' +
-        '<button type="button" class="btn lec-next"' +
-          (canNext ? ' data-act="open-lec" data-id="' + esc(nb.next.id) + '"' : ' disabled') +
-          (canNext ? '' : ' title="Selesaikan materi ini dulu"') +
+        '<button type="button" class="btn lec-next"' + nextAttrs +
+          (nextLockedPay ? ' title="Mentoring membuka materi ini"' :
+            (nextSeqLocked ? ' title="Selesaikan materi ini dulu"' : '')) +
           '>Materi berikutnya →</button>' +
       '</div>';
     const report = '<form class="compose" data-act="report-issue" data-id="' + esc(lec.id) + '" style="margin-top:12px">' +
@@ -6875,19 +6977,22 @@
     }
     const paywalled = isPaywalled(ui.personaId, lec.id) && !isStaff();
     const seqLocked = isSeqLocked(ui.personaId, lec.id) && !isStaff();
-    const payStrip = preview ? offerBanner(ui.personaId) : '';
     const kurInline = preview ? trialKurikulumBlock() : '';
-    const after = (preview && !paywalled && lec.tool !== 'kolab' ? payAfterFirst(lec) : '') + kurInline;
-    const player = (preview ? payStrip : '') + renderLessonPlayer(lec, {
+    const player = renderLessonPlayer(lec, {
       phone: !isStaff(),
       paywalled: paywalled,
       seqLocked: seqLocked,
-      after: after
+      after: kurInline
     });
     return '<div class="player-layout">' +
       '<div>' + player + '</div>' +
       '<aside class="kurikulum-pane' + (ui.kurOpen ? ' is-open' : '') + '">' +
-        renderKurikulumSidebar() + '</aside>' +
+        '<div class="kur-pane-head">' +
+          '<strong>Kurikulum</strong>' +
+          '<button type="button" class="ghost kur-pane-close" data-act="toggle-kur" aria-label="Tutup">✕</button>' +
+        '</div>' +
+        renderKurikulumSidebar(ui.personaId, { skipProgress: true }) +
+      '</aside>' +
       '</div>';
   }
   function trialKurikulumBlock() {
@@ -9967,6 +10072,7 @@
     cam = cam || {};
     closeDrawer();
     ui.payPrompt = !!cam.payPrompt;
+    ui.payPromptLec = cam.payPromptLec || '';
     ui.kurOpen = !!cam.kurOpen;
     ui.examAnswers = cam.examAnswers || {};
     ui.payTerm = cam.payTerm || 'month';
@@ -10050,6 +10156,7 @@
       ui.skuId = null;
       ui.skuPreview = false;
       ui.payPrompt = false;
+      ui.payPromptLec = '';
       ui.examAnswers = {};
       ui.tab = needsWizard(ui.personaId) ? 'daftar' : 'home';
       resetWizForPersona();
@@ -10876,7 +10983,7 @@
     'comment-reply', 'comment-reply-clear', 'comment-like', 'post-like', 'post-pin', 'post-del',
     'wiz-next', 'wiz-shop', 'wiz-heard', 'wiz-tools', 'ob-single', 'ob-multi', 'apply',
     'mark-done', 'toggle-done', 'exam', 'exam-submit',
-    'pay-term', 'pay-buy', 'pay-prompt', 'pay-lynk', 'pay-manual', 'pay-now', 'pay-later',
+    'pay-term', 'pay-buy', 'pay-prompt', 'pay-prompt-close', 'pay-prompt-go', 'pay-lynk', 'pay-manual', 'pay-now', 'pay-later',
     'ask', 'reply', 'report-issue', 'chat-member-add', 'chat-member-remove', 'chat-new',
     'has-shop', 'heard-from'
   ]);
@@ -11641,12 +11748,30 @@
       ui.tab = 'belajar';
       ui.kurOpen = false;
       render();
+    } else if (act === 'pay-prompt') {
+      openPayPrompt(btn.getAttribute('data-id') || '');
+      render();
+    } else if (act === 'pay-prompt-close') {
+      ui.payPrompt = false;
+      ui.payPromptLec = '';
+      render();
+    } else if (act === 'pay-prompt-go') {
+      ui.payPrompt = false;
+      ui.payPromptLec = '';
+      ui.tab = 'daftar';
+      render();
     } else if (act === 'open-lec') {
       const id = btn.getAttribute('data-id');
       const lec = lectureById(id);
       if (isStaff() && ui.mentorTab === 'kurikulum') {
         ui.lectureId = id;
         ui.kurEdit = false;
+        render();
+        return;
+      }
+      if (isPaywalled(ui.personaId, id) && !isStaff()) {
+        openPayPrompt(id);
+        ui.tab = 'belajar';
         render();
         return;
       }
