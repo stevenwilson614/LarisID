@@ -304,11 +304,11 @@ window.ANTON_SEED = {
     's-nina': { stage: 'mentee' },
     's-raka': { stage: 'mentee' },
     's-maya': { stage: 'mentee' },
-    's-rina': { stage: 'sudah_keluar' },
-    's-toni': { stage: 'sudah_keluar' },
+    's-rina': { stage: 'sudah_keluar', endedAt: '2026-09-13T10:00:00+07:00' },
+    's-toni': { stage: 'sudah_keluar', endedAt: '2026-09-12T10:00:00+07:00' },
     's-ayu': { stage: 'trial' },
     's-farah': { stage: 'nonton', watchedFirstAt: '2026-09-18T08:00:00+07:00', antonWatchTask: true, wa12Sent: true },
-    's-gilang': { stage: 'tidak_tertarik', notInterestedAt: '2026-09-16T12:00:00+07:00', extendedQueued: true },
+    's-gilang': { stage: 'tidak_tertarik', notInterestedAt: '2026-09-16T12:00:00+07:00', endedAt: '2026-09-16T12:00:00+07:00', extendedQueued: true },
     's-hadi': { stage: 'akan_keluar', warn5Sent: true },
     's-irma': { stage: 'akan_keluar', warn5Sent: true, antonRenewTask: true, grace1Sent: true },
     's-joko': { stage: 'mentee', examScore: 5, examAt: '2026-09-17T18:00:00+07:00', eligibleMentor: true, certSerial: 'ANT-JOKO-001' },
@@ -325,6 +325,25 @@ window.ANTON_SEED = {
   },
   remittances: [
     { id: 'rem-dewi-sep', mentorId: 's-dewi', period: '2026-09', expected: 179600, received: 0, note: '20% dari mentoring Oki (500rb) + SKU Putri (398rb)' }
+  ],
+  /* Money-in ledger for Dashboard. kind: mentoring | renewal | sku */
+  paymentsSeed: [
+    { id: 'pay-dewi-1', personId: 's-dewi', at: '2026-07-01T10:00:00+07:00', kind: 'mentoring', amount: 500000, source: 'transfer', term: 'year' },
+    { id: 'pay-joko-1', personId: 's-joko', at: '2026-08-01T10:00:00+07:00', kind: 'mentoring', amount: 500000, source: 'transfer', term: 'month' },
+    { id: 'pay-irma-1', personId: 's-irma', at: '2026-07-18T08:00:00+07:00', kind: 'mentoring', amount: 500000, source: 'transfer', term: 'month' },
+    { id: 'pay-irma-2', personId: 's-irma', at: '2026-08-18T08:00:00+07:00', kind: 'renewal', amount: 500000, source: 'transfer', term: 'month' },
+    { id: 'pay-hadi-1', personId: 's-hadi', at: '2026-07-23T10:00:00+07:00', kind: 'mentoring', amount: 500000, source: 'transfer', term: 'month' },
+    { id: 'pay-hadi-2', personId: 's-hadi', at: '2026-08-23T10:00:00+07:00', kind: 'renewal', amount: 500000, source: 'transfer', term: 'month' },
+    { id: 'pay-eko-1', personId: 's-eko', at: '2026-08-30T10:00:00+07:00', kind: 'mentoring', amount: 450000, source: 'mayar', term: 'autopay' },
+    { id: 'pay-kamu-1', personId: 's-kamu', at: '2026-09-01T10:00:00+07:00', kind: 'mentoring', amount: 500000, source: 'transfer', term: 'month' },
+    { id: 'pay-maya-1', personId: 's-maya', at: '2026-09-01T10:00:00+07:00', kind: 'mentoring', amount: 5100000, source: 'transfer', term: 'year' },
+    { id: 'pay-oki-1', personId: 's-oki', at: '2026-09-01T10:00:00+07:00', kind: 'mentoring', amount: 500000, source: 'transfer', term: 'month' },
+    { id: 'pay-nina-1', personId: 's-nina', at: '2026-09-02T10:00:00+07:00', kind: 'mentoring', amount: 500000, source: 'transfer', term: 'month' },
+    { id: 'pay-dina-1', personId: 's-dina', at: '2026-09-05T10:00:00+07:00', kind: 'mentoring', amount: 250000, source: 'manual', term: 'month' },
+    { id: 'pay-raka-1', personId: 's-raka', at: '2026-09-08T10:00:00+07:00', kind: 'mentoring', amount: 250000, source: 'manual', term: 'month' },
+    { id: 'pay-putri-1', personId: 's-putri', at: '2026-09-10T10:00:00+07:00', kind: 'sku', amount: 398000, source: 'lynk', products: ['calc', 'laris-aff'] },
+    { id: 'pay-toni-1', personId: 's-toni', at: '2026-09-11T10:00:00+07:00', kind: 'sku', amount: 59900, source: 'lynk', products: ['algo'] },
+    { id: 'pay-rina-1', personId: 's-rina', at: '2026-09-12T10:00:00+07:00', kind: 'sku', amount: 99000, source: 'lynk', products: ['calc'] }
   ],
   weeks: [
     { id: 'w1', title: 'Minggu 1 · Fondasi toko', due: '2026-09-07' },

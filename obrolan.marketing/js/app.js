@@ -428,6 +428,9 @@
     hydrateDaftarCols(merged);
     merged.applications = Object.assign({}, JSON.parse(JSON.stringify(SEED.applications || {})), merged.applications || {});
     merged.timeline = Object.assign({}, JSON.parse(JSON.stringify(SEED.timelineSeed || {})), merged.timeline || {});
+    if (!Array.isArray(merged.payments) || !merged.payments.length) {
+      merged.payments = JSON.parse(JSON.stringify(SEED.paymentsSeed || []));
+    }
     merged.tasks = Array.isArray(merged.tasks) ? merged.tasks : JSON.parse(JSON.stringify(SEED.tasksSeed || []));
     const staffIds = (SEED.staff || []).map((s) => s.id);
     const defaultAssignee = (SEED.school && SEED.school.ownerId) || staffIds[0] || 'u-anton';
@@ -487,9 +490,16 @@
     Object.keys(state.crm || {}).forEach((id) => {
       const c = state.crm[id];
       if (!c) return;
-      ['watchedFirstAt', 'notInterestedAt', 'examAt', 'acceptedMentorAt'].forEach((k) => {
+      ['watchedFirstAt', 'notInterestedAt', 'endedAt', 'examAt', 'acceptedMentorAt'].forEach((k) => {
         if (c[k]) c[k] = bump(c[k]);
       });
+    });
+    Object.keys(state.applications || {}).forEach((id) => {
+      const a = state.applications[id];
+      if (a && a.at) a.at = bump(a.at);
+    });
+    (state.payments || []).forEach((p) => {
+      if (p && p.at) p.at = bump(p.at);
     });
     (state.waThreads || []).forEach((t) => {
       if (t && t.updatedAt) t.updatedAt = bump(t.updatedAt);
@@ -518,6 +528,7 @@
       crm: JSON.parse(JSON.stringify(SEED.crm || {})),
       applications: JSON.parse(JSON.stringify(SEED.applications || {})),
       remittances: JSON.parse(JSON.stringify(SEED.remittances || [])),
+      payments: JSON.parse(JSON.stringify(SEED.paymentsSeed || [])),
       tasks: JSON.parse(JSON.stringify(SEED.tasksSeed || [])),
       timeline: JSON.parse(JSON.stringify(SEED.timelineSeed || {})),
       waQueue: JSON.parse(JSON.stringify(SEED.waQueueSeed || [])),
@@ -594,7 +605,7 @@
   const ui = {
     role: PRESENT && PRESENT_PANE === 'mentor' ? 'owner' : 'student',
     tab: 'home',
-    mentorTab: 'siswa',
+    mentorTab: 'dash',
     personaId: 's-kamu',
     lectureId: db.lastLecture['s-kamu'] || (SEED.lectures[0] && SEED.lectures[0].id),
     pane: 'tanya',
@@ -603,6 +614,10 @@
     siswaView: 'pipa',
     hubBack: 'pipa',
     stageFilter: '',
+    dashRange: '30',
+    dashFrom: '',
+    dashTo: '',
+    dashCustomOpen: false,
     queueKind: 'wa',
     taskPerson: '',
     taskAssignee: '',
@@ -622,6 +637,8 @@
     editLecId: null,
     kurEdit: false,
     composeMode: 'note',
+    socialPick: null,
+    shopPick: null,
     waDraft: '',
     waSending: false,
     waLive: null,
@@ -1709,9 +1726,11 @@
     });
   }
 
-  function pushTimeline(id, kind, body) {
+  function pushTimeline(id, kind, body, extra) {
     db.timeline[id] = db.timeline[id] || [];
-    db.timeline[id].unshift({ at: isoNow(), kind: kind, body: body });
+    const row = { at: isoNow(), kind: kind, body: body };
+    if (extra && typeof extra === 'object') Object.assign(row, extra);
+    db.timeline[id].unshift(row);
   }
   function staffMembers() {
     return (SEED.staff || []).slice();
@@ -2140,7 +2159,36 @@
     const c = crmOf(id);
     if (c.stage === stage) return;
     c.stage = stage;
-    pushTimeline(id, 'stage', note || ('Pindah ke ' + stageLabel(stage)));
+    if (stage === 'sudah_keluar' || stage === 'tidak_tertarik') {
+      c.endedAt = c.endedAt || isoNow();
+      if (stage === 'tidak_tertarik' && !c.notInterestedAt) c.notInterestedAt = c.endedAt;
+    }
+    pushTimeline(id, 'stage', note || ('Pindah ke ' + stageLabel(stage)), { to: stage });
+  }
+  function paymentsList() {
+    if (!Array.isArray(db.payments)) db.payments = [];
+    return db.payments;
+  }
+  function recordPayment(row) {
+    const amount = Math.max(0, Number(row.amount) || 0);
+    const entry = {
+      id: row.id || ('pay-' + String(nowMs()) + '-' + Math.floor(Math.random() * 1e4)),
+      personId: row.personId,
+      at: row.at || isoNow(),
+      kind: row.kind || 'mentoring',
+      amount: amount,
+      source: row.source || 'manual',
+      term: row.term || '',
+      products: Array.isArray(row.products) ? row.products.slice() : undefined
+    };
+    paymentsList().unshift(entry);
+    return entry;
+  }
+  function isRenewalPay(id) {
+    const c = crmOf(id);
+    const b = billingOf(id);
+    if (b.paidAt && (b.plan === 'mentoring' || b.status === 'lunas' || b.status === 'cicilan' || b.status === 'gratis')) return true;
+    return c.stage === 'mentee' || c.stage === 'akan_keluar' || c.stage === 'sudah_keluar' || c.stage === 'perpanjangan' || c.stage === 'grace';
   }
   function stageLabel(id) {
     const s = (db.pipelineStages || SEED.pipelineStages).find((x) => x.id === id);
@@ -2178,6 +2226,7 @@
   }
   function grantMentoring(id, term, source, amount) {
     const b = billingOf(id);
+    const renew = isRenewalPay(id);
     const start = nowDate();
     const until = new Date(start.getTime());
     until.setMonth(until.getMonth() + termMonths(term));
@@ -2196,9 +2245,18 @@
     delete b.pendingAmount;
     delete b.pendingAt;
     delete b.offerExpiresAt;
-    setStage(id, 'mentee', 'Lunas mentoring · ' + term);
-    pushTimeline(id, 'pay', 'Bayar ' + fmtRp(amount) + ' · ' + (source || 'transfer'));
-    enrollPerson(id, 'onboarding', true);
+    const c = crmOf(id);
+    delete c.endedAt;
+    setStage(id, 'mentee', (renew ? 'Perpanjang mentoring · ' : 'Lunas mentoring · ') + term);
+    pushTimeline(id, 'pay', (renew ? 'Perpanjang ' : 'Bayar ') + fmtRp(amount) + ' · ' + (source || 'transfer'));
+    recordPayment({
+      personId: id,
+      kind: renew ? 'renewal' : 'mentoring',
+      amount: amount,
+      source: source || 'transfer',
+      term: term
+    });
+    enrollPerson(id, renew ? 'renewal' : 'onboarding', true);
   }
   function markPendingTransfer(id, term, amount) {
     const b = billingOf(id);
@@ -2813,6 +2871,196 @@
     const h = tiktokHandle(handle);
     return h ? ('https://www.tiktok.com/@' + h) : '';
   }
+  const SOCIAL_PLATFORMS = [
+    { id: 'instagram', label: 'Instagram', hosts: ['instagram.com'] },
+    { id: 'tiktok', label: 'TikTok', hosts: ['tiktok.com'] },
+    { id: 'youtube', label: 'YouTube', hosts: ['youtube.com', 'youtu.be'] },
+    { id: 'facebook', label: 'Facebook', hosts: ['facebook.com', 'fb.com', 'fb.me'] },
+    { id: 'x', label: 'X', hosts: ['x.com', 'twitter.com'] }
+  ];
+  const SHOP_PLATFORMS = [
+    { id: 'tiktok_shop', label: 'TikTok Shop', hosts: ['tiktok.com', 'shop.tiktok.com'] },
+    { id: 'shopee', label: 'Shopee', hosts: ['shopee.co.id', 'shopee.com'] },
+    { id: 'tokopedia', label: 'Tokopedia', hosts: ['tokopedia.com'] },
+    { id: 'lazada', label: 'Lazada', hosts: ['lazada.co.id', 'lazada.com'] },
+    { id: 'blibli', label: 'Blibli', hosts: ['blibli.com'] },
+    { id: 'other', label: 'Lainnya', hosts: null }
+  ];
+  function linkId() {
+    return 'lnk-' + Date.now().toString(36) + Math.floor(Math.random() * 1e3).toString(36);
+  }
+  function platLabel(list, id) {
+    const p = list.find((x) => x.id === id);
+    return (p && p.label) || id || '—';
+  }
+  function hostMatches(hosts, url) {
+    if (!hosts) return true;
+    try {
+      const host = new URL(url).hostname.replace(/^www\./, '').toLowerCase();
+      return hosts.some((h) => host === h || host.endsWith('.' + h));
+    } catch (_) {
+      return false;
+    }
+  }
+  function parseSocialLink(platform, raw) {
+    const value = String(raw || '').trim();
+    if (!value || !platform) return null;
+    const spec = SOCIAL_PLATFORMS.find((p) => p.id === platform);
+    if (!spec) return null;
+    let url = value;
+    const bare = value.replace(/^@/, '').replace(/^\/+/, '');
+    if (!/^https?:\/\//i.test(value)) {
+      if (platform === 'instagram') url = 'https://instagram.com/' + bare;
+      else if (platform === 'tiktok') url = 'https://www.tiktok.com/@' + bare.replace(/^@/, '');
+      else if (platform === 'youtube') url = 'https://www.youtube.com/@' + bare.replace(/^@/, '');
+      else if (platform === 'facebook') url = 'https://www.facebook.com/' + bare;
+      else if (platform === 'x') url = 'https://x.com/' + bare.replace(/^@/, '');
+      else return null;
+    }
+    if (!hostMatches(spec.hosts, url)) return null;
+    let handle = bare;
+    try {
+      const u = new URL(url);
+      handle = decodeURIComponent(u.pathname.replace(/^\/+/, '').replace(/^@/, '')).split('/')[0] || bare;
+    } catch (_) {}
+    if (platform === 'tiktok') handle = tiktokHandle(handle || value);
+    return { platform: platform, url: url, handle: String(handle || platform).slice(0, 80) };
+  }
+  function parseShopLink(platform, raw) {
+    const value = String(raw || '').trim();
+    if (!value || !platform) return null;
+    const spec = SHOP_PLATFORMS.find((p) => p.id === platform);
+    if (!spec) return null;
+    let url = value;
+    if (!/^https?:\/\//i.test(value)) {
+      const bare = value.replace(/^@/, '').replace(/^\/+/, '');
+      if (platform === 'tiktok_shop') url = 'https://www.tiktok.com/@' + bare.replace(/^@/, '');
+      else if (platform === 'shopee') url = 'https://shopee.co.id/' + bare;
+      else if (platform === 'tokopedia') url = 'https://www.tokopedia.com/' + bare;
+      else if (platform === 'lazada') url = 'https://www.lazada.co.id/shop/' + bare;
+      else if (platform === 'blibli') url = 'https://www.blibli.com/merchant/' + bare;
+      else url = 'https://' + bare;
+    }
+    if (spec.hosts && !hostMatches(spec.hosts, url)) return null;
+    let handle = value;
+    try {
+      const u = new URL(url);
+      handle = decodeURIComponent(u.pathname.replace(/^\/+/, '').replace(/^@/, '').replace(/^shop\//, '').replace(/^merchant\//, '')).split('/')[0] || platLabel(SHOP_PLATFORMS, platform);
+    } catch (_) {}
+    return { platform: platform, url: url, handle: String(handle || platform).slice(0, 80) };
+  }
+  function personSocialLinks(s) {
+    if (Array.isArray(s.socialLinks)) return s.socialLinks.slice();
+    const out = [];
+    if (s.tiktok) {
+      const h = tiktokHandle(s.tiktok);
+      if (h) out.push({ id: 'mig-tt', platform: 'tiktok', handle: h, url: tiktokUrl(h) });
+    }
+    return out;
+  }
+  function personShopLinks(s, app) {
+    if (Array.isArray(s.shopLinks)) return s.shopLinks.slice();
+    const out = [];
+    const url = s.shopUrl || (app && app.shopUrl) || '';
+    const name = s.shopName || (app && app.shopName) || '';
+    if (url) {
+      let platform = 'other';
+      const low = String(url).toLowerCase();
+      if (/tiktok\.com|shop\.tiktok/.test(low)) platform = 'tiktok_shop';
+      else if (/shopee\./.test(low)) platform = 'shopee';
+      else if (/tokopedia\./.test(low)) platform = 'tokopedia';
+      else if (/lazada\./.test(low)) platform = 'lazada';
+      else if (/blibli\./.test(low)) platform = 'blibli';
+      const parsed = parseShopLink(platform, url) || { platform: platform, url: url, handle: name || platform };
+      if (name && parsed.handle === platform) parsed.handle = name;
+      else if (name) parsed.handle = name;
+      out.push(Object.assign({ id: 'mig-shop' }, parsed));
+    }
+    return out;
+  }
+  function saveSocialLinks(id, links) {
+    const clean = (links || []).filter((x) => x && x.platform && x.url);
+    const tt = clean.find((x) => x.platform === 'tiktok');
+    patchPerson(id, {
+      socialLinks: clean,
+      tiktok: tt ? tiktokHandle(tt.handle || tt.url) : ''
+    });
+  }
+  function saveShopLinks(id, links) {
+    const clean = (links || []).filter((x) => x && x.platform && x.url);
+    const first = clean[0];
+    patchPerson(id, {
+      shopLinks: clean,
+      shopUrl: first ? first.url : '',
+      shopName: first ? (first.handle || '') : (people().find((x) => x.id === id) || {}).shopName || ''
+    });
+  }
+  function personLinksHtml(id, s, app) {
+    const socials = personSocialLinks(s);
+    const shops = personShopLinks(s, app);
+    const socialPick = ui.socialPick;
+    const shopPick = ui.shopPick;
+    const socialList = socials.length
+      ? socials.map((row) =>
+          '<div class="fub-link">' +
+            '<span class="fub-link-plat">' + esc(platLabel(SOCIAL_PLATFORMS, row.platform)) + '</span>' +
+            '<a class="fub-link-a" href="' + esc(row.url) + '" target="_blank" rel="noopener">' + esc(row.handle || row.url) + '</a>' +
+            '<button type="button" class="btn-sm fub-link-del" data-act="del-social" data-id="' + esc(id) + '" data-lid="' + esc(row.id || '') + '" data-plat="' + esc(row.platform) + '" title="Hapus">×</button>' +
+          '</div>'
+        ).join('')
+      : '<p class="muted fub-link-empty">Belum ada. Pilih platform di bawah.</p>';
+    const shopList = shops.length
+      ? shops.map((row) =>
+          '<div class="fub-link">' +
+            '<span class="fub-link-plat">' + esc(platLabel(SHOP_PLATFORMS, row.platform)) + '</span>' +
+            '<a class="fub-link-a" href="' + esc(row.url) + '" target="_blank" rel="noopener">' + esc(row.handle || row.url) + '</a>' +
+            '<button type="button" class="btn-sm fub-link-del" data-act="del-shop" data-id="' + esc(id) + '" data-lid="' + esc(row.id || '') + '" data-plat="' + esc(row.platform) + '" title="Hapus">×</button>' +
+          '</div>'
+        ).join('')
+      : '<p class="muted fub-link-empty">Belum ada. Pilih marketplace di bawah.</p>';
+    const socialEditor =
+      '<div class="fub-plat-pick" role="group" aria-label="Pilih sosial">' +
+        SOCIAL_PLATFORMS.map((p) =>
+          '<button type="button" class="btn-sm fub-plat' + (socialPick === p.id ? ' is-on' : '') + '" data-act="pick-social" data-id="' + p.id + '"' +
+            (socials.some((x) => x.platform === p.id) ? ' disabled title="Sudah ada"' : '') + '>' + esc(p.label) + '</button>'
+        ).join('') +
+      '</div>' +
+      (socialPick
+        ? '<div class="fub-addrow">' +
+            '<input class="inline-edit" data-act="social-input" data-id="' + esc(id) + '" maxlength="200" placeholder="@nama atau tautan ' + esc(platLabel(SOCIAL_PLATFORMS, socialPick)) + '">' +
+            '<button type="button" class="btn-sm" data-act="add-social" data-id="' + esc(id) + '">Tambah</button>' +
+          '</div>'
+        : '');
+    const shopEditor =
+      '<div class="fub-plat-pick" role="group" aria-label="Pilih toko">' +
+        SHOP_PLATFORMS.map((p) =>
+          '<button type="button" class="btn-sm fub-plat' + (shopPick === p.id ? ' is-on' : '') + '" data-act="pick-shop" data-id="' + p.id + '">' + esc(p.label) + '</button>'
+        ).join('') +
+      '</div>' +
+      (shopPick
+        ? '<div class="fub-addrow">' +
+            '<input class="inline-edit" data-act="shop-input" data-id="' + esc(id) + '" maxlength="300" placeholder="' +
+              esc(shopPick === 'tiktok_shop' ? '@toko atau https://tiktok.com/@…'
+                : shopPick === 'shopee' ? 'https://shopee.co.id/namatoko'
+                : shopPick === 'tokopedia' ? 'https://www.tokopedia.com/namatoko'
+                : shopPick === 'other' ? 'https://…'
+                : ('Tautan ' + platLabel(SHOP_PLATFORMS, shopPick))) + '">' +
+            '<button type="button" class="btn-sm" data-act="add-shop" data-id="' + esc(id) + '">Tambah</button>' +
+          '</div>'
+        : '');
+    return '<div class="fub-section">' +
+        '<div class="fub-section-h">Sosial</div>' +
+        '<div class="fub-linklist">' + socialList + '</div>' +
+        socialEditor +
+      '</div>' +
+      '<div class="fub-section">' +
+        '<div class="fub-section-h">Toko</div>' +
+        '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="shopName" value="' +
+          esc(s.shopName || (app && app.shopName) || '') + '" placeholder="Nama toko (opsional)">' +
+        '<div class="fub-linklist">' + shopList + '</div>' +
+        shopEditor +
+      '</div>';
+  }
   function photoKey(id) { return 'photo-' + id; }
   function coverKey(kind, id) { return 'cover-' + kind + '-' + id; }
   function fileKey(lecId, n) { return 'file-' + lecId + '-' + n; }
@@ -3338,6 +3586,7 @@
   }
   function mentorTabs() {
     const t = [
+      { id: 'dash', label: 'Dashboard' },
       { id: 'siswa', label: 'Siswa' },
       { id: 'tugas', label: waUnreadTotal() ? ('Tugas · ' + waUnreadTotal()) : 'Tugas' },
       { id: 'otomasi', label: 'Otomasi' },
@@ -3386,7 +3635,8 @@
     if (isStaff()) {
       const tab = normalizeMentorTab(ui.mentorTab);
       ui.mentorTab = tab;
-      if (tab === 'siswa') main.innerHTML = viewSiswaHub();
+      if (tab === 'dash') main.innerHTML = viewDashboard();
+      else if (tab === 'siswa') main.innerHTML = viewSiswaHub();
       else if (tab === 'orang') main.innerHTML = viewPerson(ui.personId);
       else if (tab === 'tugas') main.innerHTML = viewTugas();
       else if (tab === 'otomasi') main.innerHTML = viewOtomasi();
@@ -5165,6 +5415,156 @@
   }
 
   /* ── mentor views ────────────────────────────────────────────────── */
+  function dashBounds() {
+    const today = splitLocal().date;
+    const endIso = joinLocal(today, '23:59');
+    const endMs = new Date(endIso).getTime() + 999;
+    const range = ui.dashRange || '30';
+    if (range === 'custom') {
+      let from = ui.dashFrom || today;
+      let to = ui.dashTo || today;
+      if (from > to) { const x = from; from = to; to = x; }
+      return {
+        fromMs: new Date(joinLocal(from, '00:00')).getTime(),
+        toMs: new Date(joinLocal(to, '23:59')).getTime() + 999,
+        fromYmd: from,
+        toYmd: to,
+        label: from + ' → ' + to
+      };
+    }
+    if (range === 'ytd') {
+      const y = today.slice(0, 4);
+      const from = y + '-01-01';
+      return {
+        fromMs: new Date(joinLocal(from, '00:00')).getTime(),
+        toMs: endMs,
+        fromYmd: from,
+        toYmd: today,
+        label: 'YTD ' + y
+      };
+    }
+    const days = Number(range) || 30;
+    const endDay = new Date(joinLocal(today, '12:00'));
+    const startDay = new Date(endDay.getTime());
+    startDay.setDate(startDay.getDate() - (days - 1));
+    const fromYmd = splitLocal(startDay.toISOString()).date;
+    return {
+      fromMs: new Date(joinLocal(fromYmd, '00:00')).getTime(),
+      toMs: endMs,
+      fromYmd: fromYmd,
+      toYmd: today,
+      label: days + ' hari'
+    };
+  }
+  function inDashRange(iso, bounds) {
+    if (!iso) return false;
+    const t = new Date(iso).getTime();
+    return Number.isFinite(t) && t >= bounds.fromMs && t <= bounds.toMs;
+  }
+  function dashStats(bounds) {
+    const joinedIds = new Set();
+    Object.keys(db.applications || {}).forEach((id) => {
+      const a = db.applications[id];
+      if (a && inDashRange(a.at, bounds)) joinedIds.add(id);
+    });
+    const paidIds = new Set();
+    const continuedIds = new Set();
+    let mentorMoney = 0;
+    let skuMoney = 0;
+    paymentsList().forEach((p) => {
+      if (!p || !inDashRange(p.at, bounds)) return;
+      const amt = Math.max(0, Number(p.amount) || 0);
+      if (p.kind === 'sku') {
+        skuMoney += amt;
+        return;
+      }
+      mentorMoney += amt;
+      if (p.kind === 'renewal') continuedIds.add(p.personId);
+      else paidIds.add(p.personId);
+    });
+    const endedIds = new Set();
+    people().forEach((s) => {
+      const c = crmOf(s.id);
+      if (c.stage !== 'sudah_keluar' && c.stage !== 'tidak_tertarik') return;
+      const at = c.endedAt || c.notInterestedAt;
+      if (inDashRange(at, bounds)) endedIds.add(s.id);
+    });
+    return {
+      joined: joinedIds.size,
+      paid: paidIds.size,
+      continued: continuedIds.size,
+      ended: endedIds.size,
+      mentorMoney: mentorMoney,
+      skuMoney: skuMoney,
+      totalMoney: mentorMoney + skuMoney
+    };
+  }
+  function fmtDashDay(ymd) {
+    if (!ymd) return '—';
+    try {
+      return new Date(ymd + 'T12:00:00+07:00').toLocaleDateString('id-ID', {
+        day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta'
+      });
+    } catch (e) { return ymd; }
+  }
+  function viewDashboard() {
+    const bounds = dashBounds();
+    const st = dashStats(bounds);
+    const ranges = [
+      { id: '7', label: '7' },
+      { id: '14', label: '14' },
+      { id: '30', label: '30' },
+      { id: '60', label: '60' },
+      { id: '90', label: '90' },
+      { id: 'ytd', label: 'YTD' },
+      { id: 'custom', label: 'Custom' }
+    ];
+    const cur = ui.dashRange || '30';
+    const today = splitLocal().date;
+    const fromVal = ui.dashFrom || bounds.fromYmd || today;
+    const toVal = ui.dashTo || bounds.toYmd || today;
+    const card = (label, value, sub) =>
+      '<div class="dash-card">' +
+        '<div class="dash-card-label">' + esc(label) + '</div>' +
+        '<div class="dash-card-value">' + value + '</div>' +
+        (sub ? '<div class="dash-card-sub muted">' + sub + '</div>' : '') +
+      '</div>';
+    return '<div class="dash-page">' +
+      '<div class="hub-head">' +
+        '<div><h2 style="margin:0">Dashboard</h2>' +
+          '<p class="muted">' + esc(fmtDashDay(bounds.fromYmd)) + ' – ' + esc(fmtDashDay(bounds.toYmd)) +
+          ' · WIB · uang masuk mentoring &amp; produk</p></div>' +
+      '</div>' +
+      '<div class="dash-range" role="group" aria-label="Rentang waktu">' +
+        ranges.map((r) =>
+          '<button type="button" class="dash-range-btn" data-act="dash-range" data-id="' + r.id +
+            '" aria-selected="' + (cur === r.id) + '">' + esc(r.label) + '</button>'
+        ).join('') +
+      '</div>' +
+      (cur === 'custom'
+        ? '<div class="dash-custom">' +
+            '<label>Dari <input type="date" data-act="dash-from" value="' + esc(fromVal) + '"></label>' +
+            '<label>Sampai <input type="date" data-act="dash-to" value="' + esc(toVal) + '"></label>' +
+            '<button type="button" class="btn-sm" data-act="dash-apply">Terapkan</button>' +
+          '</div>'
+        : '') +
+      '<div class="dash-grid">' +
+        card('Gabung form', String(st.joined), 'Isi aplikasi di rentang ini') +
+        card('Bayar', String(st.paid), 'Bayar mentoring pertama') +
+        card('Lanjut', String(st.continued), 'Perpanjang / renewal') +
+        card('Berakhir', String(st.ended), 'Sudah keluar / tidak tertarik') +
+      '</div>' +
+      '<div class="dash-money">' +
+        '<h3>Uang masuk</h3>' +
+        '<div class="dash-grid dash-grid-money">' +
+          card('Mentoring', esc(fmtRp(st.mentorMoney)), 'Termasuk perpanjang') +
+          card('Produk', esc(fmtRp(st.skuMoney)), 'Pembelian SKU / lynk') +
+          card('Total', esc(fmtRp(st.totalMoney)), 'Mentoring + produk') +
+        '</div>' +
+      '</div>' +
+      '<p class="muted dash-footnote">Angka dari ledger pembayaran &amp; form. Beasiswa (Rp0) tidak menambah uang masuk. Anton merchant — LarisID tidak menahan uang.</p>' +
+    '</div>';
+  }
   function hubSeg() {
     const cam = ui.siswaView || 'pipa';
     const items = [
@@ -5661,7 +6061,6 @@
     const c = crmOf(id);
     const app = db.applications[id];
     const stages = db.pipelineStages || SEED.pipelineStages;
-    const handle = tiktokHandle(s.tiktok);
     const plans = (db.actionPlans || []).filter((x) => !x.archived);
     const tsk = db.tasks.filter((x) => x.personId === id).slice().sort((a, b) => Number(a.done) - Number(b.done) || new Date(a.dueAt) - new Date(b.dueAt));
     const openTasks = tsk.filter((t) => !t.done).length;
@@ -5689,12 +6088,8 @@
             '<input class="inline-edit ghost-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="email" type="email" value="' + esc(s.email || '') + '" placeholder="email" title="Klik untuk edit email">' +
             (s.email ? '<a class="fub-cell-link" href="' + esc(mailLink(s.email, 'MasterMind with Anton GC', 'Halo ' + s.name)) + '">✉</a>' : '') +
           '</div>' +
-          '<div class="fub-contact-row">' +
-            '<span class="fub-ico" aria-hidden="true">♪</span>' +
-            '<input class="inline-edit ghost-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="tiktok" value="' + esc(s.tiktok || '') + '" placeholder="@handle TikTok" title="Klik untuk edit TikTok">' +
-            (handle ? '<a class="fub-cell-link" href="' + esc(tiktokUrl(handle)) + '" target="_blank" rel="noopener">@</a>' : '') +
-          '</div>' +
         '</div>' +
+        personLinksHtml(id, s, app) +
         '<dl class="fub-meta">' +
           '<div class="fub-field"><dt>Stage</dt><dd><select data-act="crm-stage" data-id="' + esc(id) + '">' +
             stages.map((st) => '<option value="' + esc(st.id) + '"' + (c.stage === st.id ? ' selected' : '') + '>' + esc(st.label) + '</option>').join('') +
@@ -5707,12 +6102,6 @@
           '<div class="fub-field"><dt>Tags</dt>' + personTagsHtml(id) + '</div>' +
           '<div class="fub-field"><dt>Sumber</dt><dd>' + esc((app && app.heard) || b.source || '—') +
             (app ? '<div class="muted">' + (app.hasShop ? 'Sudah punya toko' : 'Belum punya toko') + '</div>' : '') +
-          '</dd></div>' +
-          '<div class="fub-field"><dt>Toko</dt><dd>' +
-            '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="shopName" value="' +
-              esc(s.shopName || (app && app.shopName) || '') + '" placeholder="Nama toko">' +
-            '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="shopUrl" value="' +
-              esc(s.shopUrl || (app && app.shopUrl) || '') + '" placeholder="https://…">' +
           '</dd></div>' +
           '<div class="fub-field"><dt>Bayar</dt><dd>' +
             (canBill() ? billStatusSelect(id, b) : payChip(b.status, b.source)) +
@@ -6412,7 +6801,7 @@
       if (ui.present || ui.chromeSync) return;
       ui.role = t.value;
       ui.tab = 'home';
-      ui.mentorTab = 'siswa';
+      ui.mentorTab = 'dash';
       closeDrawer();
       if (!isStaff()) {
         ui.tab = needsWizard(ui.personaId) ? 'daftar' : 'home';
@@ -6493,6 +6882,18 @@
       }
       return;
     }
+    if (t.matches('[data-act="dash-from"]')) {
+      ui.dashFrom = t.value;
+      ui.dashRange = 'custom';
+      render();
+      return;
+    }
+    if (t.matches('[data-act="dash-to"]')) {
+      ui.dashTo = t.value;
+      ui.dashRange = 'custom';
+      render();
+      return;
+    }
     if (t.matches('[data-act="ksel"]')) {
       const h = t.getAttribute('data-handle');
       if (t.checked) ui.kolabSel.add(h); else ui.kolabSel.delete(h);
@@ -6565,11 +6966,29 @@
         if (bundled(p)) return;
       }
       const set = new Set(b.products);
+      const adding = t.checked && !set.has(sku);
       if (t.checked) set.add(sku); else set.delete(sku);
       b.products = [...set];
-      b.plan = b.products.length ? 'sku' : '';
-      if (!b.products.length) b.status = 'belum';
-      else if (b.status === 'belum') b.status = 'lunas';
+      if (b.plan !== 'mentoring' && b.status !== 'gratis') {
+        b.plan = b.products.length ? 'sku' : '';
+        if (!b.products.length) b.status = 'belum';
+        else if (b.status === 'belum') b.status = 'lunas';
+      }
+      if (adding && b.plan === 'sku') {
+        const p = productById(sku);
+        const price = p ? (Number(p.price) || 0) : 0;
+        if (price > 0) {
+          b.amount = (Number(b.amount) || 0) + price;
+          b.paidAt = b.paidAt || isoNow();
+          recordPayment({
+            personId: id,
+            kind: 'sku',
+            amount: price,
+            source: b.source || 'manual',
+            products: [sku]
+          });
+        }
+      }
       save();
       render();
       return;
@@ -7277,6 +7696,25 @@
       ui.siswaView = btn.getAttribute('data-id');
       ui.hubBack = ui.siswaView;
       ui.mentorTab = 'siswa';
+      render();
+    } else if (act === 'dash-range') {
+      const id = btn.getAttribute('data-id') || '30';
+      ui.dashRange = id;
+      if (id !== 'custom') {
+        ui.dashCustomOpen = false;
+      } else {
+        const b = dashBounds();
+        if (!ui.dashFrom) ui.dashFrom = b.fromYmd;
+        if (!ui.dashTo) ui.dashTo = b.toYmd;
+        ui.dashCustomOpen = true;
+      }
+      render();
+    } else if (act === 'dash-apply') {
+      ui.dashRange = 'custom';
+      const fromEl = document.querySelector('[data-act="dash-from"]');
+      const toEl = document.querySelector('[data-act="dash-to"]');
+      if (fromEl) ui.dashFrom = fromEl.value || ui.dashFrom;
+      if (toEl) ui.dashTo = toEl.value || ui.dashTo;
       render();
     } else if (act === 'stage-filter') {
       ui.stageFilter = btn.getAttribute('data-id') || '';
