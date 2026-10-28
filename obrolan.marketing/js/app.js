@@ -2147,6 +2147,8 @@
     addSecOpen: false,
     editSecId: null,
     editPlanId: null,
+    otoEdit: false,
+    otoInsertAt: null,
     kolabSel: new Set(),
     filterSiswa: '',
     kurOpen: false,
@@ -3471,8 +3473,15 @@
     if (!Array.isArray(db.waMessages)) db.waMessages = JSON.parse(JSON.stringify(SEED.waMessagesSeed || []));
   }
   function waApiEnabled() {
-    // This host has no Fonnte bridge. Keep chat inside the CRM instead of polling /wa.
-    return false;
+    // Poll Fonnte when the school API is live. Server returns deviceReady only if
+    // FONNTE_API_TOKEN is set and FONNTE_DEVICE_READY=true.
+    return syncEnabled();
+  }
+  function fonnteReady() {
+    return !!(ui.waLive && ui.waLive.deviceReady);
+  }
+  function emailSenderReady() {
+    return !!ownerEmail();
   }
   function waApiUrl(path, extra) {
     const q = new URLSearchParams();
@@ -4516,10 +4525,29 @@
     return en && en.at ? new Date(en.at).getTime() : null;
   }
   function runPlanStep(s, st) {
-    if (st.kind === 'email') queueEmail(s.id, st.title, st.subject || st.title, st.body, isoNow());
-    else if (st.kind === 'wa') queueWa(s.id, st.title, st.body, isoNow());
-    else if (st.kind === 'task') addTask(s.id, fillTpl(st.title || 'Tugas', s.id), fillTpl(st.body || '', s.id), isoNow(), 'task');
-    else if (st.kind === 'stage' && st.to) setStage(s.id, st.to, 'Otomasi: ' + (st.title || stageLabel(st.to)));
+    if (st.kind === 'email') {
+      queueEmail(s.id, st.title, st.subject || st.title, st.body, isoNow());
+    } else if (st.kind === 'wa') {
+      const body = fillTpl(st.body || '', s.id);
+      queueWa(s.id, st.title, st.body, isoNow());
+      if (fonnteReady() && body) {
+        sendWaFromCrm(s.id, body).catch(() => {});
+      }
+    } else if (st.kind === 'task') {
+      const assignee = st.assignAdmin
+        ? defaultAssigneeId()
+        : (st.assignee || defaultAssigneeId());
+      addTask(
+        s.id,
+        fillTpl(st.title || 'Tugas', s.id),
+        fillTpl(st.body || '', s.id),
+        isoNow(),
+        'task',
+        assignee
+      );
+    } else if (st.kind === 'stage' && st.to) {
+      setStage(s.id, st.to, 'Otomasi: ' + (st.title || stageLabel(st.to)));
+    }
   }
   function runEnrolledPlans() {
     people().forEach((s) => {
@@ -9579,89 +9607,218 @@
     return ['bayar', 'form', 'trial', 'perpanjangan', 'manual', 'nurture', 'tidak_tertarik'].map((t) =>
       '<option value="' + t + '"' + (cur === t ? ' selected' : '') + '>' + esc(triggerLabel(t)) + '</option>').join('');
   }
-  function autoStepEditor(p, st) {
-    return '<span class="auto-kicker">' + esc(stepKindLabel(st.kind)) + '</span>' +
-      '<select data-act="plan-kind" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '">' + stepKindOptions(st.kind) + '</select>' +
-      (st.kind === 'stage'
-        ? '<label class="muted">Pindah ke</label><select data-act="plan-to" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '">' +
-          pipelineStages().map((sg) => '<option value="' + esc(sg.id) + '"' + (st.to === sg.id ? ' selected' : '') + '>' + esc(sg.label) + '</option>').join('') + '</select>'
+  function otoConnBanner(kind) {
+    if (kind === 'email') {
+      if (emailSenderReady()) {
+        return '<div class="oto-conn is-ok">Email pengirim tersambung · ' + esc(ownerEmail()) + '</div>';
+      }
+      return '<div class="oto-conn is-warn">Email pengirim belum diset. ' +
+        '<button type="button" class="btn-sm" data-act="tab" data-id="profil">Sambungkan di Profile</button></div>';
+    }
+    if (kind === 'wa') {
+      if (fonnteReady()) {
+        return '<div class="oto-conn is-ok">Fonnte siap · WA terkirim otomatis ke nomor siswa</div>';
+      }
+      const tip = ui.waLive && ui.waLive.configured === false
+        ? 'Fonnte belum dikonfigurasi di server (FONNTE_API_TOKEN).'
+        : 'Fonnte belum siap. WA masuk antrean sampai perangkat online.';
+      return '<div class="oto-conn is-warn">' + esc(tip) + '</div>';
+    }
+    return '';
+  }
+  function otoWaitCard(p, st) {
+    const h = Number(st.waitHours) || 0;
+    return '<div class="oto-card oto-delay">' +
+      '<div class="oto-card-top">' +
+        '<span class="oto-kicker">Jeda waktu</span>' +
+        '<button type="button" class="btn-sm" data-act="oto-clear-delay" data-pid="' + esc(p.id) +
+          '" data-sid="' + esc(st.id) + '">Hapus</button>' +
+      '</div>' +
+      '<div class="oto-delay-row">' +
+        '<input data-act="plan-wait" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) +
+          '" type="number" min="0" value="' + esc(h) + '" aria-label="Jam jeda">' +
+        '<span>jam setelah langkah sebelumnya</span>' +
+      '</div>' +
+      '<p class="muted oto-hint">Contoh: 12 = setengah hari · 24 = sehari · 168 = seminggu</p>' +
+    '</div>';
+  }
+  function otoInsertMenu(p, at) {
+    const open = ui.otoInsertAt === String(at);
+    return '<div class="oto-join">' +
+      '<span class="oto-pipe" aria-hidden="true"></span>' +
+      '<button type="button" class="oto-plus' + (open ? ' is-on' : '') +
+        '" data-act="oto-insert" data-pid="' + esc(p.id) + '" data-at="' + esc(String(at)) +
+        '" aria-expanded="' + open + '" title="Tambah jeda atau aksi">+</button>' +
+      (open
+        ? '<div class="oto-pick" role="menu">' +
+            '<button type="button" data-act="oto-add-delay" data-pid="' + esc(p.id) + '" data-at="' + esc(String(at)) + '">⏱ Jeda waktu</button>' +
+            '<button type="button" data-act="oto-add-kind" data-kind="email" data-pid="' + esc(p.id) + '" data-at="' + esc(String(at)) + '">Email</button>' +
+            '<button type="button" data-act="oto-add-kind" data-kind="wa" data-pid="' + esc(p.id) + '" data-at="' + esc(String(at)) + '">WhatsApp</button>' +
+            '<button type="button" data-act="oto-add-kind" data-kind="task" data-pid="' + esc(p.id) + '" data-at="' + esc(String(at)) + '">Tugas</button>' +
+            '<button type="button" data-act="oto-add-kind" data-kind="stage" data-pid="' + esc(p.id) + '" data-at="' + esc(String(at)) + '">Pindah stage</button>' +
+          '</div>'
         : '') +
-      '<label class="muted">Judul</label>' +
-      '<input data-act="plan-title" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '" value="' + esc(st.title || '') + '">' +
-      (st.kind === 'email' ? '<label class="muted">Subjek</label><input data-act="plan-subject" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '" value="' + esc(st.subject || '') + '">' : '') +
-      '<label class="muted">Isi</label>' +
-      '<textarea data-act="plan-body" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '" rows="2">' + esc(st.body || '') + '</textarea>' +
-      '<button type="button" class="btn-sm" data-act="plan-del-step" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '">Hapus langkah</button>';
+      '<span class="oto-pipe" aria-hidden="true"></span>' +
+    '</div>';
+  }
+  function autoStepEditor(p, st) {
+    const kind = st.kind || 'task';
+    let fields = '';
+    if (kind === 'email') {
+      fields =
+        otoConnBanner('email') +
+        '<label>Subjek</label>' +
+        '<input data-act="plan-subject" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) +
+          '" value="' + esc(st.subject || '') + '" placeholder="Contoh: Selamat datang, {name}">' +
+        '<label>Isi email</label>' +
+        '<textarea data-act="plan-body" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) +
+          '" rows="5" placeholder="Tulis isi email… Pakai {name}, {amount}, {until}.">' +
+          esc(st.body || '') + '</textarea>';
+    } else if (kind === 'wa') {
+      fields =
+        otoConnBanner('wa') +
+        '<label>Pesan WhatsApp</label>' +
+        '<textarea data-act="plan-body" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) +
+          '" rows="4" placeholder="Halo {name}, …">' + esc(st.body || '') + '</textarea>' +
+        '<label class="muted">Judul di antrean (opsional)</label>' +
+        '<input data-act="plan-title" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) +
+          '" value="' + esc(st.title || '') + '" placeholder="WA selamat datang">';
+    } else if (kind === 'task') {
+      const assignAdmin = st.assignAdmin == null ? !st.assignee : !!st.assignAdmin;
+      fields =
+        '<label>Nama tugas</label>' +
+        '<input data-act="plan-title" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) +
+          '" value="' + esc(st.title || '') + '" placeholder="Follow-up {name}: sudah nonton?">' +
+        '<label>Detail / catatan</label>' +
+        '<textarea data-act="plan-body" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) +
+          '" rows="3" placeholder="Apa yang harus dikerjakan…">' + esc(st.body || '') + '</textarea>' +
+        '<label class="oto-check">' +
+          '<input type="checkbox" data-act="plan-assign-admin" data-pid="' + esc(p.id) +
+            '" data-sid="' + esc(st.id) + '"' + (assignAdmin ? ' checked' : '') + '>' +
+          ' Tugaskan ke admin (owner)</label>' +
+        (assignAdmin
+          ? '<p class="muted oto-hint">Tugas masuk ke ' + esc(nameOf(defaultAssigneeId()) || 'owner') + '.</p>'
+          : '<label>Ditugaskan ke</label>' +
+            '<select data-act="plan-assignee" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '">' +
+              assigneeOptionsHtml(st.assignee || defaultAssigneeId()) + '</select>');
+    } else if (kind === 'stage') {
+      fields =
+        '<label>Pindah ke stage</label>' +
+        '<select data-act="plan-to" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '">' +
+          pipelineStages().map((sg) =>
+            '<option value="' + esc(sg.id) + '"' + (st.to === sg.id ? ' selected' : '') + '>' +
+            esc(sg.label) + '</option>').join('') +
+        '</select>';
+    }
+    return '<div class="oto-card oto-action is-' + esc(kind) + '">' +
+      '<div class="oto-card-top">' +
+        '<span class="oto-kicker">' + esc(stepKindLabel(kind)) + '</span>' +
+        '<div class="oto-card-tools">' +
+          '<select data-act="plan-kind" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) +
+            '" aria-label="Jenis aksi">' + stepKindOptions(kind) + '</select>' +
+          '<button type="button" class="btn-sm" data-act="plan-del-step" data-pid="' + esc(p.id) +
+            '" data-sid="' + esc(st.id) + '">Hapus</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="oto-fields">' + fields + '</div>' +
+      '<p class="muted oto-hint">Placeholder: {name}, {amount}, {until}, {bank}</p>' +
+    '</div>';
   }
   function autoMapHtml(p) {
-    let html = '<div class="auto-map">' +
-      '<div class="auto-node trigger">' +
-        '<span class="auto-kicker">Pemicu</span>' +
-        '<input data-act="plan-name" data-pid="' + esc(p.id) + '" value="' + esc(p.name) + '">' +
-        '<select data-act="plan-trigger" data-pid="' + esc(p.id) + '" style="margin-top:8px">' + triggerOptions(p.trigger) + '</select>' +
-        '<p class="muted" style="margin:8px 0 0">Mulai saat event ini terjadi pada orang itu.</p>' +
+    const steps = p.steps || [];
+    let html = '<div class="oto-flow">' +
+      '<div class="oto-card oto-hook">' +
+        '<div class="oto-ico" aria-hidden="true">' +
+          '<svg width="22" height="22" viewBox="0 0 24 24" fill="none">' +
+            '<path d="M13 2L4 14h7l-1 8 10-14h-7l1-6z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>' +
+          '</svg></div>' +
+        '<span class="oto-kicker">Pemicu</span>' +
+        '<label>Nama otomasi</label>' +
+        '<input data-act="plan-name" data-pid="' + esc(p.id) + '" value="' + esc(p.name) +
+          '" placeholder="Contoh: Onboarding setelah bayar">' +
+        '<label>Mulai ketika</label>' +
+        '<select data-act="plan-trigger" data-pid="' + esc(p.id) + '">' + triggerOptions(p.trigger) + '</select>' +
+        '<p class="muted oto-hint">Hook pertama. Langkah di bawah jalan setelah event ini.</p>' +
       '</div>';
-    (p.steps || []).forEach((st) => {
-      html += '<div class="auto-pipe"></div>' +
-        '<div class="auto-node is-wait">' +
-          '<span class="auto-kicker">Tunggu</span>' +
-          '<div class="row" style="justify-content:center">' +
-            '<input data-act="plan-wait" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) + '" type="number" min="0" value="' + esc(st.waitHours || 0) + '" style="width:72px;text-align:center">' +
-            '<span class="muted">jam</span></div>' +
-        '</div>' +
-        '<div class="auto-pipe"></div>' +
-        '<div class="auto-node ' + esc(st.kind || 'task') + '">' + autoStepEditor(p, st) + '</div>';
+    steps.forEach((st, i) => {
+      html += otoInsertMenu(p, i);
+      if (Number(st.waitHours) > 0) html += otoWaitCard(p, st);
+      html += autoStepEditor(p, st);
     });
-    html += '<div class="auto-pipe"></div>' +
-      '<div class="auto-node done"><span class="auto-kicker">Selesai</span>' +
-        '<p class="muted" style="margin:0">Tidak auto-kirim. Anton tandai di Antrian. Boleh berulang per orang.</p></div>' +
-      '<div class="row" style="margin-top:14px;justify-content:center">' +
-        '<button type="button" class="btn" data-act="plan-add-step" data-id="' + esc(p.id) + '">+ Langkah</button>' +
-      '</div></div>';
+    html += otoInsertMenu(p, 'end');
+    html += '<p class="muted oto-foot">WA lewat Fonnte kalau perangkat siap. Email &amp; tugas masuk antrean / board Tugas.</p>' +
+      '</div>';
     return html;
   }
-  function viewOtomasi() {
+  function viewOtomasiList() {
     const d = db.dunning;
     const plans = db.actionPlans || [];
     const showArchived = !!ui.showArchivedPlans;
     const visible = plans.filter((p) => showArchived || !p.archived);
-    if (!ui.editPlanId || !visible.some((p) => p.id === ui.editPlanId)) {
-      const pref = visible.find((p) => p.id === 'onboarding');
-      ui.editPlanId = (pref || visible[0] || {}).id || null;
-    }
-    const open = planById(ui.editPlanId);
-    return '<div class="auto-page">' +
-      '<aside class="auto-rail">' +
-        '<h2>Otomasi</h2>' +
-        '<p class="muted">Peta visual. Tidak auto-kirim.</p>' +
-        '<div class="row" style="margin:8px 0">' +
-          '<button type="button" class="btn" data-act="plan-new">+ Rencana</button>' +
-          '<button type="button" class="btn-sm" data-act="plan-show-arch">' + (showArchived ? 'Sembunyikan arsip' : 'Arsip') + '</button>' +
-        '</div>' +
-        visible.map((p) =>
-          '<button type="button" class="auto-plan' + (p.id === ui.editPlanId ? ' is-on' : '') + '" data-act="plan-edit" data-id="' + esc(p.id) + '">' +
+    const cards = visible.length
+      ? '<div class="oto-list">' + visible.map((p) => {
+          const n = (p.steps || []).length;
+          const kinds = Array.from(new Set((p.steps || []).map((s) => stepKindLabel(s.kind)))).slice(0, 3).join(' · ');
+          return '<button type="button" class="oto-plan-card" data-act="plan-edit" data-id="' + esc(p.id) + '">' +
             '<strong>' + esc(p.name) + (p.archived ? ' · arsip' : '') + '</strong>' +
-            '<span class="muted">' + esc(triggerLabel(p.trigger)) + ' · ' + ((p.steps || []).length) + ' langkah</span>' +
-          '</button>'
-        ).join('') +
-        '<form class="compose" data-act="save-dunning" style="margin-top:18px">' +
-          '<strong>Perpanjangan</strong>' +
+            '<span class="muted">Hook: ' + esc(triggerLabel(p.trigger)) + '</span>' +
+            '<span class="muted">' + n + ' langkah' + (kinds ? ' · ' + esc(kinds) : '') + '</span>' +
+          '</button>';
+        }).join('') + '</div>'
+      : '<div class="oto-empty"><p class="muted">Belum ada otomasi. Buat yang pertama: hook → jeda → aksi.</p></div>';
+    return '<div class="oto-page">' +
+      '<header class="oto-head">' +
+        '<div><h2>Otomasi</h2>' +
+          '<p class="muted">Alur otomatis setelah siswa bayar, isi form, atau event lain.</p></div>' +
+        '<div class="row">' +
+          '<button type="button" class="btn-sm" data-act="plan-show-arch">' +
+            (showArchived ? 'Sembunyikan arsip' : 'Lihat arsip') + '</button>' +
+          '<button type="button" class="btn oto-primary" data-act="plan-new">+ Buat otomasi</button>' +
+        '</div>' +
+      '</header>' +
+      cards +
+      '<details class="oto-dunning">' +
+        '<summary>Pengaturan perpanjangan</summary>' +
+        '<form class="compose" data-act="save-dunning">' +
           '<label class="muted">Hari peringatan</label>' +
           '<input name="warningDays" type="number" min="1" value="' + esc(d.warningDays) + '">' +
           '<label class="muted">Hari grace</label>' +
           '<input name="graceDays" type="number" min="0" value="' + esc(d.graceDays) + '">' +
-          '<button class="btn" type="submit">Simpan jeda</button></form>' +
-      '</aside>' +
-      '<div class="auto-canvas">' +
-        (open
-          ? '<div class="row" style="justify-content:center;margin-bottom:12px">' +
-              '<button type="button" class="btn-sm" data-act="plan-dup" data-id="' + esc(open.id) + '">Salin</button>' +
-              (open.archived
-                ? '<button type="button" class="btn-sm" data-act="plan-unarch" data-id="' + esc(open.id) + '">Kembalikan</button>'
-                : '<button type="button" class="btn-sm" data-act="plan-arch" data-id="' + esc(open.id) + '">Arsip</button>') +
-            '</div>' + autoMapHtml(open)
-          : '<p class="muted" style="text-align:center">Buat rencana dulu.</p>') +
+          '<button class="btn" type="submit">Simpan</button>' +
+        '</form>' +
+      '</details>' +
+    '</div>';
+  }
+  function viewOtomasiEdit() {
+    const open = planById(ui.editPlanId);
+    if (!open) {
+      ui.otoEdit = false;
+      return viewOtomasiList();
+    }
+    return '<div class="oto-page oto-builder">' +
+      '<header class="oto-head">' +
+        '<button type="button" class="btn secondary" data-act="plan-back">← Kembali</button>' +
+        '<div class="row">' +
+          '<button type="button" class="btn-sm" data-act="plan-dup" data-id="' + esc(open.id) + '">Salin</button>' +
+          (open.archived
+            ? '<button type="button" class="btn-sm" data-act="plan-unarch" data-id="' + esc(open.id) + '">Kembalikan</button>'
+            : '<button type="button" class="btn-sm" data-act="plan-arch" data-id="' + esc(open.id) + '">Arsip</button>') +
+        '</div>' +
+      '</header>' +
+      '<div class="oto-builder-card">' +
+        '<h2>' + (open.name && open.name !== 'Rencana baru' ? esc(open.name) : 'Buat Otomasi') + '</h2>' +
+        '<p class="oto-sub">Pemicu dulu, lalu tambah jeda atau aksi dengan tombol +.</p>' +
+        autoMapHtml(open) +
       '</div></div>';
+  }
+  function viewOtomasi() {
+    if (ui.otoEdit && ui.editPlanId && planById(ui.editPlanId)) {
+      if (waApiEnabled() && !ui.waLive) refreshWaStatus().then(() => {
+        if (ui.mentorTab === 'otomasi' && ui.otoEdit) render();
+      });
+      return viewOtomasiEdit();
+    }
+    return viewOtomasiList();
   }
   function viewJaringan() {
     const ownerId = (SEED.school && SEED.school.ownerId) || 'u-anton';
@@ -11467,13 +11624,40 @@
     if (t.matches('[data-act="plan-kind"]')) {
       const plan = planById(t.getAttribute('data-pid'));
       const st = plan && plan.steps.find((x) => x.id === t.getAttribute('data-sid'));
-      if (st) { st.kind = t.value; save(); render(); }
+      if (st) {
+        st.kind = t.value;
+        if (t.value === 'task' && st.assignAdmin == null) st.assignAdmin = true;
+        if (t.value === 'stage' && !st.to) st.to = (pipelineStages()[0] || {}).id || '';
+        save();
+        render();
+      }
       return;
     }
     if (t.matches('[data-act="plan-to"]')) {
       const plan = planById(t.getAttribute('data-pid'));
       const st = plan && plan.steps.find((x) => x.id === t.getAttribute('data-sid'));
       if (st) { st.to = t.value; save(); }
+      return;
+    }
+    if (t.matches('[data-act="plan-assignee"]')) {
+      const plan = planById(t.getAttribute('data-pid'));
+      const st = plan && plan.steps.find((x) => x.id === t.getAttribute('data-sid'));
+      if (st) {
+        st.assignee = t.value;
+        st.assignAdmin = false;
+        save();
+      }
+      return;
+    }
+    if (t.matches('[data-act="plan-assign-admin"]')) {
+      const plan = planById(t.getAttribute('data-pid'));
+      const st = plan && plan.steps.find((x) => x.id === t.getAttribute('data-sid'));
+      if (st) {
+        st.assignAdmin = !!t.checked;
+        if (st.assignAdmin) st.assignee = defaultAssigneeId();
+        save();
+        render();
+      }
       return;
     }
     if (t.matches('[data-act="pipa-stage-color"]')) {
@@ -13092,13 +13276,21 @@
         name: 'Rencana baru',
         trigger: 'manual',
         archived: false,
-        steps: [{ id: 'st-' + Date.now(), waitHours: 0, kind: 'wa', title: '', body: '' }]
+        steps: []
       });
       ui.editPlanId = id;
+      ui.otoEdit = true;
+      ui.otoInsertAt = 'end';
       save();
       render();
     } else if (act === 'plan-edit') {
       ui.editPlanId = btn.getAttribute('data-id');
+      ui.otoEdit = true;
+      ui.otoInsertAt = null;
+      render();
+    } else if (act === 'plan-back') {
+      ui.otoEdit = false;
+      ui.otoInsertAt = null;
       render();
     } else if (act === 'plan-dup') {
       const p = planById(btn.getAttribute('data-id'));
@@ -13110,17 +13302,80 @@
       n.steps = (n.steps || []).map((st, i) => Object.assign({}, st, { id: n.id + '-s' + i }));
       db.actionPlans.push(n);
       ui.editPlanId = n.id;
+      ui.otoEdit = true;
+      ui.otoInsertAt = null;
       save();
       render();
     } else if (act === 'plan-arch') {
       const p = planById(btn.getAttribute('data-id'));
-      if (p) { p.archived = true; save(); render(); }
+      if (p) {
+        p.archived = true;
+        ui.otoEdit = false;
+        save();
+        render();
+      }
     } else if (act === 'plan-unarch') {
       const p = planById(btn.getAttribute('data-id'));
       if (p) { p.archived = false; save(); render(); }
     } else if (act === 'plan-show-arch') {
       ui.showArchivedPlans = !ui.showArchivedPlans;
       render();
+    } else if (act === 'oto-insert') {
+      const at = btn.getAttribute('data-at');
+      ui.otoInsertAt = ui.otoInsertAt === at ? null : at;
+      render();
+    } else if (act === 'oto-add-delay') {
+      const p = planById(btn.getAttribute('data-pid'));
+      if (!p) return;
+      p.steps = p.steps || [];
+      let at = btn.getAttribute('data-at');
+      if (at === 'end') {
+        if (!p.steps.length) {
+          p.steps.push({
+            id: 'st-' + Date.now(), waitHours: 24, kind: 'wa', title: '', body: '', assignAdmin: true
+          });
+        } else {
+          const last = p.steps[p.steps.length - 1];
+          if (!(Number(last.waitHours) > 0)) last.waitHours = 24;
+        }
+      } else {
+        const i = Math.max(0, Math.min(p.steps.length, +at || 0));
+        if (p.steps[i]) {
+          if (!(Number(p.steps[i].waitHours) > 0)) p.steps[i].waitHours = 24;
+        } else {
+          p.steps.splice(i, 0, {
+            id: 'st-' + Date.now(), waitHours: 24, kind: 'wa', title: '', body: '', assignAdmin: true
+          });
+        }
+      }
+      ui.otoInsertAt = null;
+      save();
+      render();
+    } else if (act === 'oto-add-kind') {
+      const p = planById(btn.getAttribute('data-pid'));
+      if (!p) return;
+      const kind = btn.getAttribute('data-kind') || 'wa';
+      p.steps = p.steps || [];
+      const row = {
+        id: 'st-' + Date.now(),
+        waitHours: 0,
+        kind: kind,
+        title: '',
+        body: '',
+        subject: kind === 'email' ? '' : undefined,
+        assignAdmin: kind === 'task' ? true : undefined,
+        to: kind === 'stage' ? ((pipelineStages()[0] || {}).id || '') : undefined
+      };
+      const at = btn.getAttribute('data-at');
+      if (at === 'end') p.steps.push(row);
+      else p.steps.splice(Math.max(0, +at || 0), 0, row);
+      ui.otoInsertAt = null;
+      save();
+      render();
+    } else if (act === 'oto-clear-delay') {
+      const p = planById(btn.getAttribute('data-pid'));
+      const st = p && (p.steps || []).find((x) => x.id === btn.getAttribute('data-sid'));
+      if (st) { st.waitHours = 0; save(); render(); }
     } else if (act === 'plan-add-step') {
       const p = planById(btn.getAttribute('data-id'));
       if (!p) return;

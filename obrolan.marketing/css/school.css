@@ -2578,6 +2578,7 @@ html[data-theme="light"] .fub-plat-ico.is-x { color: #111; }
   flex-wrap: wrap; margin-bottom: 14px;
 }
 
+/* Legacy auto-* kept for any leftover markup */
 .auto-page {
   display: grid; grid-template-columns: 248px minmax(0, 1fr);
   min-height: calc(100vh - 140px);
@@ -2585,7 +2586,6 @@ html[data-theme="light"] .fub-plat-ico.is-x { color: #111; }
   background: var(--ink-2);
 }
 .auto-rail { border-right: 1px solid var(--line); padding: 12px; overflow: auto; }
-.auto-rail h2 { margin: 0 0 10px; font-size: .92rem; }
 .auto-plan {
   display: block; width: 100%; text-align: left;
   border: 1px solid transparent; background: transparent; color: inherit;
@@ -2594,44 +2594,300 @@ html[data-theme="light"] .fub-plat-ico.is-x { color: #111; }
 }
 .auto-plan:hover { background: var(--ink-3); }
 .auto-plan.is-on { background: var(--ink-3); border-color: var(--line); }
-.auto-plan strong { display: block; font-size: .8rem; }
-.auto-canvas {
-  background: var(--ink); padding: 28px 20px 48px; overflow: auto;
-}
-.auto-map {
-  display: flex; flex-direction: column; align-items: center;
-  width: min(440px, 100%); margin: 0 auto;
-}
+.auto-canvas { background: var(--ink); padding: 28px 20px 48px; overflow: auto; }
+.auto-map { display: flex; flex-direction: column; align-items: center; width: min(440px, 100%); margin: 0 auto; }
 .auto-node {
   width: 100%; background: var(--ink-3); border: 1px solid var(--line);
-  border-radius: 12px; padding: 14px 16px; border-top-width: 3px;
-  display: grid; gap: 8px;
+  border-radius: 12px; padding: 14px 16px; border-top-width: 3px; display: grid; gap: 8px;
 }
-.auto-node.is-wait {
-  width: 220px; text-align: center; justify-items: center;
-  border-top-color: var(--muted);
-}
-.auto-node .btn-sm { justify-self: start; }
-.auto-node.trigger { border-top-color: #f87171; }
-.auto-node.email { border-top-color: #60a5fa; }
-.auto-node.wa { border-top-color: #34d399; }
-.auto-node.task { border-top-color: #fbbf24; }
-.auto-node.stage { border-top-color: #a78bfa; }
-.auto-node.done { border-top-color: #71717a; text-align: center; }
 .auto-kicker {
   display: block; font-size: .62rem; font-weight: 800; letter-spacing: .1em;
   text-transform: uppercase; color: var(--muted); margin-bottom: 6px;
 }
 .auto-pipe { width: 2px; height: 16px; background: var(--line-2); }
-.auto-wait {
-  width: 42px; height: 42px; border-radius: 50%;
-  background: var(--ink-3); border: 1px solid var(--line-2);
-  display: grid; place-items: center; text-align: center;
-  font-size: .58rem; font-weight: 800; color: var(--muted); line-height: 1.1;
+
+/* ── Otomasi flow builder (kurikulum-style) ─────────────────────────── */
+.oto-page {
+  --oto-brand: #B5202A;
+  --oto-brand-dark: #8E1820;
+  --oto-brand-soft: #FDECEE;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 4px 0 48px;
 }
-.auto-wait input {
-  width: 36px; padding: 2px 0; text-align: center; font-size: .7rem;
-  border: 0; background: transparent; color: var(--text);
+.oto-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.oto-head h2 { margin: 0 0 4px; font-size: 1.45rem; letter-spacing: -.02em; }
+.oto-head .muted { margin: 0; }
+.btn.oto-primary {
+  background: var(--oto-brand);
+  color: #fff;
+  border-color: transparent;
+}
+.btn.oto-primary:hover { background: var(--oto-brand-dark); }
+.oto-list {
+  display: grid;
+  gap: 10px;
+}
+.oto-plan-card {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  width: 100%;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--ink-2);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.oto-plan-card:hover { border-color: color-mix(in srgb, var(--oto-brand) 45%, var(--line)); }
+.oto-plan-card strong { font-size: 1rem; }
+.oto-empty {
+  border: 1px dashed var(--line-2);
+  border-radius: 14px;
+  padding: 28px;
+  text-align: center;
+}
+.oto-dunning {
+  margin-top: 22px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 14px;
+  background: var(--ink-2);
+}
+.oto-dunning summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: .88rem;
+}
+.oto-dunning .compose { margin-top: 10px; }
+.oto-builder-card {
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 22px 20px 28px;
+  text-align: center;
+}
+.oto-builder-card > h2 {
+  margin: 0 0 6px;
+  font-size: 1.45rem;
+  letter-spacing: -.02em;
+}
+.oto-sub {
+  margin: 0 auto 22px;
+  color: var(--muted);
+  max-width: 28rem;
+}
+.oto-flow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(460px, 100%);
+  margin: 0 auto;
+  text-align: left;
+}
+.oto-card {
+  width: 100%;
+  background: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px 16px 14px;
+  display: grid;
+  gap: 6px;
+  border-top: 3px solid var(--line-2);
+}
+.oto-hook { border-top-color: var(--oto-brand); text-align: center; }
+.oto-hook label,
+.oto-action label,
+.oto-delay label { text-align: left; }
+.oto-ico {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--oto-brand-soft);
+  color: var(--oto-brand);
+  display: grid;
+  place-items: center;
+  margin: 0 auto 8px;
+}
+html:not([data-theme="light"]) .oto-ico {
+  background: color-mix(in srgb, var(--oto-brand) 22%, var(--ink-3));
+}
+.oto-kicker {
+  display: block;
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.oto-card label {
+  font-size: .84rem;
+  font-weight: 700;
+  margin-top: 6px;
+}
+.oto-card input,
+.oto-card textarea,
+.oto-card select {
+  width: 100%;
+  font: inherit;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--ink-2);
+  color: var(--text);
+}
+.oto-card textarea { min-height: 88px; resize: vertical; }
+.oto-hint { margin: 4px 0 0; font-size: .78rem; }
+.oto-foot { margin: 16px 0 0; text-align: center; font-size: .8rem; }
+.oto-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.oto-card-tools {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.oto-card-tools select {
+  width: auto;
+  min-width: 120px;
+  padding: 6px 8px;
+  font-size: .8rem;
+}
+.oto-action.is-email { border-top-color: #3b82f6; }
+.oto-action.is-wa { border-top-color: #10b981; }
+.oto-action.is-task { border-top-color: #f59e0b; }
+.oto-action.is-stage { border-top-color: #8b5cf6; }
+.oto-delay {
+  width: min(280px, 100%);
+  text-align: center;
+  border-top-color: var(--muted);
+  background: var(--ink-3);
+}
+.oto-delay-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.oto-delay-row input {
+  width: 72px;
+  text-align: center;
+  font-weight: 700;
+}
+.oto-fields { display: grid; gap: 6px; }
+.oto-check {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600 !important;
+  margin-top: 10px !important;
+  cursor: pointer;
+}
+.oto-check input { width: auto !important; accent-color: var(--oto-brand); }
+.oto-conn {
+  font-size: .8rem;
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin: 4px 0 6px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.oto-conn.is-ok {
+  background: color-mix(in srgb, #10b981 14%, var(--ink-2));
+  color: color-mix(in srgb, #059669 70%, var(--text));
+}
+.oto-conn.is-warn {
+  background: color-mix(in srgb, #f59e0b 16%, var(--ink-2));
+  color: color-mix(in srgb, #b45309 65%, var(--text));
+}
+.oto-join {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  padding: 2px 0;
+  z-index: 1;
+}
+.oto-pipe {
+  width: 2px;
+  height: 14px;
+  background: var(--line-2);
+  display: block;
+}
+.oto-plus {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1.5px dashed var(--line-2);
+  background: var(--ink-2);
+  color: var(--muted);
+  font: inherit;
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+.oto-plus:hover,
+.oto-plus.is-on {
+  border-style: solid;
+  border-color: var(--oto-brand);
+  color: var(--oto-brand);
+  background: var(--oto-brand-soft);
+}
+.oto-pick {
+  position: absolute;
+  top: 50%;
+  left: calc(50% + 22px);
+  transform: translateY(-50%);
+  display: grid;
+  gap: 2px;
+  min-width: 148px;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--ink-2);
+  box-shadow: 0 8px 24px color-mix(in srgb, #000 12%, transparent);
+  z-index: 5;
+}
+.oto-pick button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: .84rem;
+  font-weight: 600;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.oto-pick button:hover { background: var(--ink-3); }
+@media (max-width: 560px) {
+  .oto-pick {
+    left: 50%;
+    top: calc(100% - 4px);
+    transform: translateX(-50%);
+  }
 }
 .cover-thumb, .cover-mini, .lec-poster {
   object-fit: cover; background: var(--ink-3); border-radius: 8px;

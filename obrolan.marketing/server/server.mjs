@@ -1877,7 +1877,80 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Fonnte and Mayar are not wired on this host. Answer so older pages do not poll 404s.
+  // Fonnte WhatsApp bridge (optional). Set FONNTE_API_TOKEN and FONNTE_DEVICE_READY=true.
+  const FONNTE_TOKEN = String(process.env.FONNTE_API_TOKEN || '').trim();
+  const FONNTE_READY = String(process.env.FONNTE_DEVICE_READY || '').toLowerCase() === 'true';
+  if (pathname === '/wa/status') {
+    json(res, 200, {
+      ok: true,
+      live: !!FONNTE_TOKEN,
+      deviceReady: !!(FONNTE_TOKEN && FONNTE_READY),
+      configured: !!FONNTE_TOKEN,
+      threads: [],
+      messages: []
+    });
+    return;
+  }
+  if (pathname === '/wa/inbox' || pathname === '/wa/thread') {
+    json(res, 200, { ok: true, threads: [], messages: [], live: !!FONNTE_TOKEN, deviceReady: !!(FONNTE_TOKEN && FONNTE_READY) });
+    return;
+  }
+  if (pathname === '/wa/send' && req.method === 'POST') {
+    readBody(req, 64 * 1024).then(async (raw) => {
+      let body;
+      try { body = JSON.parse(String(raw || '{}')); } catch (err) { body = {}; }
+      const target = String(body.phone || '').replace(/\D/g, '');
+      const message = String(body.body || '').trim();
+      if (!FONNTE_TOKEN) {
+        json(res, 200, { ok: false, error: 'not_configured', configured: false });
+        return;
+      }
+      if (!FONNTE_READY) {
+        json(res, 200, { ok: false, error: 'device_not_ready', deviceReady: false });
+        return;
+      }
+      if (!target || !message) {
+        json(res, 400, { error: 'missing_fields' });
+        return;
+      }
+      try {
+        const fr = await fetch('https://api.fonnte.com/send', {
+          method: 'POST',
+          headers: { Authorization: FONNTE_TOKEN, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target, message })
+        });
+        const text = await fr.text();
+        let data = {};
+        try { data = JSON.parse(text); } catch (err) { data = { raw: text }; }
+        if (!fr.ok) {
+          json(res, 502, { ok: false, error: 'fonnte_failed', detail: data });
+          return;
+        }
+        json(res, 200, {
+          ok: true,
+          message: {
+            id: 'wm-f-' + Date.now().toString(36),
+            providerId: (data && (data.id || data.messageId)) || null,
+            body: message,
+            at: new Date().toISOString(),
+            status: 'sent'
+          },
+          thread: {
+            id: 'th-' + target,
+            phone: target,
+            personId: body.personId || null,
+            updatedAt: new Date().toISOString(),
+            unread: 0
+          }
+        });
+      } catch (err) {
+        json(res, 502, { ok: false, error: 'fonnte_unreachable' });
+      }
+    }).catch((err) => {
+      if (!res.headersSent) json(res, err.status || 500, { error: 'wa_send' });
+    });
+    return;
+  }
   if (pathname === '/wa/status' || pathname === '/wa/inbox' || pathname === '/wa/thread' || pathname === '/wa/send') {
     json(res, 200, { ok: true, live: false, deviceReady: false, configured: false, threads: [], messages: [] });
     return;
