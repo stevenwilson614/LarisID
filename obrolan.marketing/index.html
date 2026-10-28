@@ -29,7 +29,7 @@
   <link rel="apple-touch-icon" href="./assets/obrolan/profile.png">
   <title>MasterMind with Anton GC</title>
   <link rel="stylesheet" href="/fonts/laris-fonts.css">
-  <link rel="stylesheet" href="./css/school.css?v=20261027calc3">
+  <link rel="stylesheet" href="./css/school.css?v=20261028theme1">
   <link rel="stylesheet" href="./css/diskusi-chat.css?v=20261027desk3">
 </head>
 <body>
@@ -82,6 +82,10 @@
         <select id="role-switch" aria-label="Peran" hidden></select>
         <label class="sr-only" for="persona-switch">Siswa</label>
         <select id="persona-switch" aria-label="Pilih siswa" hidden></select>
+        <button type="button" class="ghost theme-btn" id="btn-theme" aria-pressed="false" aria-label="Mode terang" title="Mode terang">
+          <svg class="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+          <svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        </button>
         <button type="button" class="ghost me-btn" id="btn-me" data-act="open-me" aria-label="Profil saya" title="Profil saya">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         </button>
@@ -99,7 +103,7 @@
   <div id="onboard-preview" class="prof-preview ob-preview" hidden></div>
   <div id="toast" class="toast" hidden></div>
   <script src="./js/seed.js?v=20261027calc1"></script>
-  <script src="./js/calc-engine.js?v=20261027calc4"></script>
-  <script src="./js/app.js?v=20261027calc1"></script>
+  <script src="./js/calc-engine.js?v=20261027calc6"></script>
+  <script src="./js/app.js?v=20261028theme1"></script>
 </body>
 </html>

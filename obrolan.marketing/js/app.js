@@ -6231,6 +6231,8 @@
         : SEED.school.name);
       brandBtn.title = brandBtn.getAttribute('aria-label');
     }
+    const themeBtn = $('btn-theme');
+    if (themeBtn) themeBtn.hidden = !isStaff();
     const meBtn = $('btn-me');
     if (meBtn) {
       meBtn.hidden = isStaff();
