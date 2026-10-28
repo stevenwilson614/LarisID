@@ -1698,6 +1698,49 @@ html.present-pane[data-mode="student"] .kurikulum-pane.is-open {
   transform: translateY(0);
 }
 
+.siswa-empty {
+  max-width: 640px; margin: 28px auto 40px;
+  padding: 28px 26px 24px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+}
+.siswa-empty-kicker {
+  margin: 0 0 6px; font-size: .68rem; font-weight: 800;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--muted-2);
+}
+.siswa-empty-copy h2 {
+  margin: 0 0 8px; font-size: 1.55rem; letter-spacing: -.03em; font-weight: 800;
+}
+.siswa-empty-copy > .muted { margin: 0 0 22px; line-height: 1.45; }
+.siswa-empty-steps {
+  list-style: none; margin: 0; padding: 0; display: grid; gap: 14px;
+}
+.siswa-empty-step {
+  display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 12px;
+  align-items: start; padding: 14px; border: 1px solid var(--line);
+  border-radius: 12px; background: var(--ink);
+}
+.siswa-empty-step-n {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--inv-bg); color: var(--inv-fg);
+  font-size: .84rem; font-weight: 800;
+}
+.siswa-empty-step-body h3 {
+  margin: 4px 0 6px; font-size: 1rem; letter-spacing: -.02em;
+}
+.siswa-empty-step-body > .muted { margin: 0 0 12px; line-height: 1.4; }
+.siswa-empty-link {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  padding: 10px; border: 1px solid var(--line-2); border-radius: 10px;
+  background: var(--ink-2);
+}
+.siswa-empty-link code {
+  flex: 1; min-width: 0; font-size: .78rem; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.siswa-empty-code { margin: 10px 0 0; font-size: .74rem; }
+.siswa-empty-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
 .hub-head {
   display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
   justify-content: space-between; margin-bottom: 4px;

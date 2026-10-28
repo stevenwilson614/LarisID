@@ -9115,7 +9115,48 @@
       '<button type="button" class="cols-dd-reset" data-act="pipa-settings-reset">Reset ke default</button>' +
     '</div>';
   }
+  function rosterStudents() {
+    return people().filter((s) => s && s.id && s.kind !== 'mentor');
+  }
+  function inviteShareUrl() {
+    return isLocalHost() ? schoolJoinLocalUrl() : schoolJoinUrl();
+  }
+  function viewSiswaEmpty() {
+    const join = inviteShareUrl();
+    const display = schoolJoinUrl();
+    const code = schoolInviteCode();
+    const shareText = 'Gabung kelas ' + ((db && db.businessName) || SEED.school.name || 'saya') +
+      ' di Laris Mentor:\n' + display;
+    const waHref = 'https://wa.me/?text=' + encodeURIComponent(shareText);
+    return '<section class="siswa-empty">' +
+      '<div class="siswa-empty-copy">' +
+        '<p class="siswa-empty-kicker">Students</p>' +
+        '<h2>Add students</h2>' +
+        '<p class="muted">Your class is empty. Invite people so they can join and show up here.</p>' +
+      '</div>' +
+      '<ol class="siswa-empty-steps">' +
+        '<li class="siswa-empty-step">' +
+          '<div class="siswa-empty-step-n" aria-hidden="true">1</div>' +
+          '<div class="siswa-empty-step-body">' +
+            '<h3>Send an invite link</h3>' +
+            '<p class="muted">Share this link. Students open it, fill the join form, and land in your roster.</p>' +
+            '<div class="siswa-empty-link">' +
+              '<code title="' + esc(display) + '">' + esc(display) + '</code>' +
+              '<button type="button" class="btn" data-act="copy-url" data-url="' + esc(join) + '">Copy link</button>' +
+            '</div>' +
+            (code
+              ? '<p class="muted siswa-empty-code">Invite code: <strong>' + esc(code) + '</strong></p>'
+              : '') +
+            '<div class="siswa-empty-acts">' +
+              '<a class="btn secondary" href="' + esc(waHref) + '" target="_blank" rel="noopener">Share on WhatsApp</a>' +
+            '</div>' +
+          '</div>' +
+        '</li>' +
+      '</ol>' +
+    '</section>';
+  }
   function viewSiswaHub() {
+    if (!rosterStudents().length) return viewSiswaEmpty();
     const cam = ui.siswaView || 'pipa';
     const q = (ui.filterSiswa || ui.crmFilter || '').toLowerCase();
     const pipaGear = cam === 'pipa'
