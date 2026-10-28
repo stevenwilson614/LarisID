@@ -890,6 +890,7 @@
       return {
         firstName: '', lastName: '', headline: '', biography: '',
         photoMode: 'upload', socialSource: 'tiktok', photoBlob: false, photoUrl: '',
+        coverBlob: false, coverUrl: '', coverKey: '',
         socials: blankSocials
       };
     }
@@ -904,6 +905,9 @@
       photoMode: seed.photoMode === 'social' ? 'social' : 'upload',
       socialSource: seed.socialSource || 'tiktok',
       photoBlob: false,
+      coverBlob: false,
+      coverUrl: '',
+      coverKey: '',
       socials: Object.assign({
         website: '',
         facebook: '',
@@ -947,6 +951,9 @@
       socialSource: cur.socialSource || base.socialSource,
       photoBlob: !!cur.photoBlob,
       photoUrl: String(cur.photoUrl || base.photoUrl || ''),
+      coverBlob: !!cur.coverBlob,
+      coverUrl: String(cur.coverUrl || base.coverUrl || ''),
+      coverKey: String(cur.coverKey || base.coverKey || ''),
       socials: Object.assign({}, base.socials, cur.socials || {})
     };
   }
@@ -1141,6 +1148,7 @@
   function wizTotalSteps() { return wizPayIdx() + 1; }
   function isOnboardPreview() { return !!(ui.onboardPreview && ui.onboardPreview.open); }
   function schoolPhotoKey() { return 'photo-school'; }
+  function schoolCoverKey() { return 'cover-school'; }
   function ensureSchoolProfile() {
     if (!db.schoolProfile || typeof db.schoolProfile !== 'object') {
       db.schoolProfile = defaultSchoolProfile();
@@ -1238,30 +1246,86 @@
     }).filter(Boolean).join('');
     return links ? '<div class="prof-socials">' + links + '</div>' : '';
   }
+  function schoolCoverInner(p) {
+    const prof = p || schoolProfile();
+    if (prof.coverBlob) return '<img class="ps-cover-img" data-blob="' + esc(schoolCoverKey()) + '" alt="">';
+    if (prof.coverUrl) return '<img class="ps-cover-img" src="' + esc(prof.coverUrl) + '" alt="">';
+    return '';
+  }
+  function socialIconSvg(key) {
+    const icons = {
+      instagram: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>',
+      tiktok: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M14.5 3c.4 2.3 1.8 4 4 4.5v2.3c-1.5-.1-2.8-.6-4-1.4v6.3a5.7 5.7 0 11-5.7-5.7c.3 0 .6 0 .9.1v2.5a3.2 3.2 0 103.2 3.2V3h1.6z"/></svg>',
+      facebook: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 9h3V6h-3c-2.2 0-4 1.8-4 4v2H8v3h2v7h3v-7h2.6l.4-3H13v-2c0-.6.4-1 1-1z"/></svg>',
+      linkedin: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.5 9.5H3.7V20h2.8V9.5zM5.1 4a1.7 1.7 0 100 3.4A1.7 1.7 0 005.1 4zM20.3 20h-2.8v-5.6c0-1.5-.6-2.5-2-2.5-1 0-1.5.7-1.8 1.3-.1.2-.1.5-.1.8V20H10.8s0-8.6 0-9.5h2.8v1.5c.5-.8 1.5-1.9 3.6-1.9 2.6 0 4.5 1.7 4.5 5.3V20z"/></svg>',
+      youtube: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 12.2s0-3.2-.4-4.7c-.2-.8-.8-1.4-1.6-1.6C18.5 5.5 12 5.5 12 5.5s-6.5 0-8 .4c-.8.2-1.4.8-1.6 1.6C2 9 2 12.2 2 12.2s0 3.2.4 4.7c.2.8.8 1.4 1.6 1.6 1.5.4 8 .4 8 .4s6.5 0 8-.4c.8-.2 1.4-.8 1.6-1.6.4-1.5.4-4.7.4-4.7zM10 15.2V9.2l5.2 3-5.2 3z"/></svg>',
+      x: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 3h3l-6.6 7.5L22 21h-6.2l-4.3-5.6L6.3 21H3.3l7-8L2 3h6.4l3.9 5.2L17.5 3zm-1.1 16.2h1.7L7.7 4.7H5.9l10.5 14.5z"/></svg>'
+    };
+    return icons[key] || '';
+  }
+  function schoolSocialIconsHtml(profile) {
+    const s = ((profile || schoolProfile()).socials) || {};
+    const nets = ['instagram', 'tiktok', 'facebook', 'linkedin', 'youtube', 'x'];
+    return nets.map((key) => {
+      const href = socialHref(key, s[key]);
+      if (!href) return '';
+      return '<a class="ps-soc" href="' + esc(href) + '" target="_blank" rel="noopener" aria-label="' + esc(key) + '">' +
+        socialIconSvg(key) + '</a>';
+    }).filter(Boolean).join('');
+  }
+  function viewProfilCard(p, opts) {
+    const o = opts || {};
+    const editable = !!o.editable;
+    const prof = p || schoolProfile();
+    const org = String((typeof db !== 'undefined' && db && db.businessName) || '').trim()
+      || (antonSchoolData() ? String(SEED.school.name || '').trim() : '');
+    const name = (String(prof.firstName || '').trim() + ' ' + String(prof.lastName || '').trim()).trim();
+    const headline = String(prof.headline || '').trim();
+    const bio = String(prof.biography || '').trim();
+    const siteRaw = String((prof.socials && prof.socials.website) || '').trim();
+    const siteHref = siteRaw ? socialHref('website', siteRaw) : '';
+    const siteText = siteRaw.replace(/^https?:\/\//i, '').replace(/\/$/, '');
+    const cover = schoolCoverInner(prof);
+    const headlineHtml = headline
+      ? '<p class="ps-card-headline">' + esc(headline) + '</p>'
+      : (editable
+        ? '<p class="ps-card-headline"><button type="button" class="ps-empty" data-act="profile-edit" data-focus="headline">Tambah headline</button></p>'
+        : '<p class="ps-card-headline ps-empty">Tambah headline</p>');
+    const bioHtml = bio
+      ? '<div class="ps-card-bio">' + mdish(bio) + '</div>'
+      : (editable
+        ? '<button type="button" class="ps-empty ps-empty-bio" data-act="profile-edit" data-focus="biography">Tambah bio</button>'
+        : '<p class="ps-empty ps-empty-bio">Tambah bio</p>');
+    const icons = schoolSocialIconsHtml(prof);
+    return '<section class="ps-card">' +
+      '<div class="ps-cover' + (cover ? '' : ' is-empty') + '">' + cover + '</div>' +
+      '<div class="ps-card-body">' +
+        '<div class="ps-card-id">' +
+          schoolAvatarHtml('school-avatar ps-card-avatar') +
+          '<div class="ps-card-id-main">' +
+            (org ? '<p class="ps-card-org">' + esc(org) + '</p>' : '') +
+            (name ? '<h1 class="ps-card-name">' + esc(name) + '</h1>' : '') +
+            headlineHtml +
+          '</div>' +
+          (editable ? '<button type="button" class="btn ps-edit" data-act="profile-edit">Edit</button>' : '') +
+        '</div>' +
+        (siteHref
+          ? '<a class="ps-card-site" href="' + esc(siteHref) + '" target="_blank" rel="noopener">' +
+              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.07 0l1.41-1.41a5 5 0 0 0-7.07-7.07L10 5"/><path d="M14 11a5 5 0 0 0-7.07 0L5.5 12.41a5 5 0 0 0 7.07 7.07L14 19"/></svg>' +
+              '<span>' + esc(siteText) + '</span></a>'
+          : '') +
+        (icons ? '<div class="ps-card-socials">' + icons + '</div>' : '') +
+        bioHtml +
+      '</div>' +
+    '</section>';
+  }
   function viewSchoolPublic(opts) {
     const o = opts || {};
     const p = o.profile || schoolProfile();
     const back = o.student
-      ? '<button type="button" class="btn secondary" data-act="tab" data-id="home">← Back</button>'
+      ? '<div class="row" style="margin-top:14px"><button type="button" class="btn secondary" data-act="tab" data-id="home">← Back</button></div>'
       : '';
-    return '<section class="card school-public">' +
-      '<div class="school-public-head">' +
-        schoolAvatarHtml('school-avatar lg') +
-        '<div>' +
-          '<p class="muted" style="margin:0 0 4px">Mentor</p>' +
-          '<h1 class="school-public-name">' + esc(schoolDisplayName(p)) + '</h1>' +
-          ((p.headline || '').trim()
-            ? '<p class="school-public-header">' + esc(String(p.headline).trim()) + '</p>'
-            : '') +
-          '<p class="muted">' + esc(SEED.school.name) + ' · larisid.com' + esc(schoolPublicPath()) + '</p>' +
-        '</div>' +
-      '</div>' +
-      (p.biography
-        ? '<div class="school-public-desc">' + mdish(p.biography) + '</div>'
-        : '<p class="muted">No biography yet.</p>') +
-      schoolSocialLinksHtml(p) +
-      (back ? '<div class="row" style="margin-top:14px">' + back + '</div>' : '') +
-    '</section>';
+    return viewProfilCard(p, { editable: false }) + back;
   }
   /** Live Profile form draft so Student view shows unsaved bio/links. */
   function draftSchoolProfileFromForm() {
@@ -1408,11 +1472,11 @@
   function profileActionsBar(opts) {
     const o = opts || {};
     const saveBtn = o.photo
-      ? '<button class="btn ps-save" type="button" data-act="profile-pane" data-id="info">Done</button>'
+      ? '<button class="btn ps-save" type="button" data-act="profile-view">Done</button>'
       : '<button class="btn ps-save" type="submit" form="school-profile-form">Save</button>';
     return '<div class="ps-actions">' +
       saveBtn +
-      '<button type="button" class="btn-sm" data-act="tab" data-id="siswa">Close</button>' +
+      '<button type="button" class="btn-sm" data-act="profile-view">Kembali</button>' +
     '</div>';
   }
   function viewProfilInfoForm(p) {
@@ -1460,7 +1524,12 @@
   function viewProfilPhotoPane(p) {
     const syncNet = p.socialSource === 'instagram' ? 'Instagram'
       : (p.socialSource === 'youtube' ? 'YouTube' : 'TikTok');
+    const cover = schoolCoverInner(p);
     return '<div class="ps-photo-pane">' +
+      '<div class="ps-cover-edit">' +
+        '<div class="ps-cover' + (cover ? '' : ' is-empty') + '">' + cover + '</div>' +
+        '<label class="btn secondary">Unggah banner<input type="file" hidden data-act="school-cover-file" accept="image/*"></label>' +
+      '</div>' +
       '<div class="ps-photo-card">' +
         schoolAvatarHtml('school-avatar xxl') +
         '<div class="ps-photo-actions">' +
@@ -1481,6 +1550,7 @@
   }
   function viewProfilEdit() {
     ensureSchoolProfile();
+    if (ui.profileMode !== 'edit') return viewProfilCard(schoolProfile(), { editable: true });
     const p = schoolProfile();
     const pane = ui.profilePane === 'photo' ? 'photo' : 'info';
     ui.profilePane = pane;
@@ -2165,6 +2235,7 @@
     personMidTab: 'timeline',
     brandMenuOpen: false,
     profilePane: 'info',
+    profileMode: 'view',
     accountPane: 'security',
     profilePreview: null,
     profilePreviewKind: null,
@@ -11488,6 +11559,35 @@
       });
       return;
     }
+    if (t.matches('[data-act="school-cover-file"]')) {
+      if (!canBill()) return;
+      const file = t.files && t.files[0];
+      if (!file) return;
+      if (file.type && file.type.indexOf('image') !== 0) { toast('Banner harus gambar.'); return; }
+      if (file.size > MAX_IMG) { toast('Banner maks 5 MB.'); return; }
+      ensureSchoolProfile();
+      if (syncEnabled()) {
+        toast('Mengunggah banner…');
+        uploadClassVideo(file, schoolCoverKey(), null, 'image').then((info) => {
+          if (db.schoolProfile.coverKey && db.schoolProfile.coverKey !== info.key) deleteRemoteVideo(db.schoolProfile.coverKey);
+          db.schoolProfile.coverUrl = mediaFileUrl(info.key);
+          db.schoolProfile.coverKey = info.key;
+          db.schoolProfile.coverBlob = false;
+          save();
+          toast('Banner tersimpan.');
+          render();
+        }).catch(() => toast('Gagal unggah banner.'));
+        return;
+      }
+      blobPut(schoolCoverKey(), file).then(() => {
+        db.schoolProfile.coverBlob = true;
+        db.schoolProfile.coverUrl = '';
+        save();
+        toast('Banner tersimpan di browser ini.');
+        render();
+      }).catch(() => toast('Gagal simpan banner.'));
+      return;
+    }
     if (t.matches('[data-act="profile-social-source"]')) {
       if (!canBill()) return;
       ensureSchoolProfile();
@@ -12041,7 +12141,7 @@
         act === 'daftar-joined-from' || act === 'daftar-joined-to' ||
         act === 'post-files' || act === 'post-attach' || act === 'person-batch' ||
         act === 'post-new' || act === 'post-comment' || act === 'batch-rename' ||
-        act === 'school-photo-file' || act === 'profile-social-source' || act === 'headline-count' ||
+        act === 'school-photo-file' || act === 'school-cover-file' || act === 'profile-social-source' || act === 'headline-count' ||
         act === 'chat-rename' || act === 'chat-people-q' || act === 'poll-q' || act === 'poll-opt') {
       return;
     }
@@ -12678,6 +12778,7 @@
       ui.profilePreview = null;
       ui.profilePreviewKind = null;
       ui.profilePane = 'info';
+      ui.profileMode = 'view';
       if (canBill()) {
         ui.mentorTab = 'profil';
         ui.personId = null;
@@ -12718,6 +12819,23 @@
       ui.profilePreviewKind = 'app';
       ui.profilePreview = ui.profilePreview === 'desktop' ? 'desktop' : 'phone';
       paintProfilePreview();
+    } else if (act === 'profile-edit') {
+      if (!canBill()) return;
+      setBrandMenu(false);
+      ui.profileMode = 'edit';
+      ui.profilePane = 'info';
+      ui.mentorTab = 'profil';
+      const focus = btn.getAttribute('data-focus') || '';
+      render();
+      if (focus) {
+        const el = document.querySelector('#school-profile-form [name="' + focus + '"]');
+        if (el) el.focus();
+      }
+    } else if (act === 'profile-view') {
+      if (!canBill()) return;
+      ui.profileMode = 'view';
+      ui.mentorTab = 'profil';
+      render();
     } else if (act === 'profile-pane') {
       if (!canBill()) return;
       ui.profilePane = btn.getAttribute('data-id') === 'photo' ? 'photo' : 'info';
@@ -14261,6 +14379,7 @@
       });
       save();
       toast('Profile saved');
+      ui.profileMode = 'view';
       if (next.photoMode === 'social') {
         refreshSchoolPhotoFromSocial(true).then(() => render());
       } else {
