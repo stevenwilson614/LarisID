@@ -664,6 +664,16 @@
     merged.schoolProfile = Object.assign(defaultSchoolProfile(), merged.schoolProfile || {}, {
       socials: Object.assign(defaultSchoolProfile().socials, ((merged.schoolProfile || {}).socials || {}))
     });
+    const kurBase = defaultKurikulumMeta(antonSchoolData());
+    const kurCur = (merged.kurikulum && typeof merged.kurikulum === 'object' && !Array.isArray(merged.kurikulum))
+      ? merged.kurikulum : {};
+    merged.kurikulum = {
+      name: String(kurCur.name != null ? kurCur.name : (merged.businessName || kurBase.name || '')),
+      description: String(kurCur.description != null ? kurCur.description : kurBase.description || ''),
+      published: typeof kurCur.published === 'boolean'
+        ? kurCur.published
+        : (kurBase.published || !!(merged.lectures && merged.lectures.length))
+    };
     merged.accountSettings = Object.assign(defaultAccountSettings(), merged.accountSettings || {}, {
       notifications: Object.assign(defaultAccountSettings().notifications, ((merged.accountSettings || {}).notifications || {}))
     });
@@ -851,6 +861,29 @@
     }
   }
 
+  function defaultKurikulumMeta(anton) {
+    if (anton) {
+      return {
+        name: String((SEED.school && SEED.school.name) || 'Kelas'),
+        description: String((SEED.school && SEED.school.profile && SEED.school.profile.biography) ||
+          (SEED.school && SEED.school.slogan) || ''),
+        published: true
+      };
+    }
+    return { name: '', description: '', published: false };
+  }
+  function ensureKurikulumMeta() {
+    if (!db.kurikulum || typeof db.kurikulum !== 'object' || Array.isArray(db.kurikulum)) {
+      db.kurikulum = defaultKurikulumMeta(antonSchoolData());
+    }
+    if (db.kurikulum.name == null) db.kurikulum.name = '';
+    if (db.kurikulum.description == null) db.kurikulum.description = '';
+    if (typeof db.kurikulum.published !== 'boolean') {
+      db.kurikulum.published = antonSchoolData() || !!(db.lectures && db.lectures.length);
+    }
+    if (!db.kurikulum.name && db.businessName) db.kurikulum.name = String(db.businessName);
+    return db.kurikulum;
+  }
   function defaultSchoolProfile() {
     const blankSocials = { website: '', facebook: '', instagram: '', linkedin: '', tiktok: '', x: '', youtube: '' };
     if (!antonSchoolData()) {
@@ -1933,7 +1966,8 @@
       lynkProducts: { month: { url: '', title: '', price: 0 }, quarter: { url: '', title: '', price: 0 }, half: { url: '', title: '', price: 0 } },
       schoolProfile: defaultSchoolProfile(),
       accountSettings: defaultAccountSettings(),
-      onboarding: defaultOnboarding()
+      onboarding: defaultOnboarding(),
+      kurikulum: defaultKurikulumMeta(anton)
     };
     if (demo) rebaseDemoClocks(state);
     return state;
@@ -2120,6 +2154,7 @@
     skuFrom: 'alat',
     editLecId: null,
     kurEdit: false,
+    kurWizStep: 1,
     composeMode: 'note',
     personMidTab: 'timeline',
     brandMenuOpen: false,
@@ -9946,22 +9981,32 @@
 
   function viewKurikulum() {
     if (!ui.kurEdit) return viewKurikulumStudent();
-    return viewKurikulumEditor();
+    return viewKurikulumWizard();
   }
 
   function viewKurikulumStudent() {
+    const meta = ensureKurikulumMeta();
     const lec = lectureById(ui.lectureId) || lectures()[0];
+    const canEdit = ui.role !== 'asisten';
     if (!lec) {
-      return '<div class="card"><h2>Kurikulum</h2><p class="muted">Belum ada materi.</p>' +
-        (ui.role === 'asisten' ? '' : '<button type="button" class="btn" data-act="kur-edit-on">Edit kurikulum</button>') +
+      return '<div class="card kur-empty">' +
+        '<div class="kur-wiz-ico" aria-hidden="true">' + kurWizIcon() + '</div>' +
+        '<h2>' + (meta.name ? esc(meta.name) : 'Kurikulum') + '</h2>' +
+        '<p class="muted">' + (meta.published
+          ? 'Belum ada materi.'
+          : 'Belum ada kurikulum. Buat nama kelas, susun modul, lalu publikasikan.') + '</p>' +
+        (canEdit
+          ? '<button type="button" class="btn kur-wiz-primary" data-act="kur-edit-on">' +
+            (meta.name || lectures().length ? 'Lanjut atur kurikulum' : 'Buat kurikulum') + ' →</button>'
+          : '') +
         '</div>';
     }
     ui.lectureId = lec.id;
-    const canEdit = ui.role !== 'asisten';
     const bar = '<div class="kur-mode-bar">' +
       '<div><strong>Tampilan siswa</strong>' +
         '<p class="muted" style="margin:2px 0 0">Begini materi terlihat di Belajar. ' +
-        (canEdit ? 'Klik Edit kalau mau ubah konten.' : 'Asisten hanya lihat.') + '</p></div>' +
+        (canEdit ? 'Klik Edit kalau mau ubah konten.' : 'Asisten hanya lihat.') +
+        (meta.published ? '' : ' · Belum dipublikasikan.') + '</p></div>' +
       '<div class="row">' +
         (canEdit
           ? '<button type="button" class="btn secondary" data-act="kur-edit-lec" data-id="' + esc(lec.id) + '">Edit materi ini</button>' +
@@ -9975,17 +10020,71 @@
       '</div></div>';
   }
 
-  function viewKurikulumEditor() {
+  function kurWizIcon() {
+    return '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" aria-hidden="true">' +
+      '<rect x="4" y="5" width="16" height="3.2" rx="1.2" fill="currentColor" opacity=".95"/>' +
+      '<rect x="4" y="10.4" width="16" height="3.2" rx="1.2" fill="currentColor" opacity=".7"/>' +
+      '<rect x="4" y="15.8" width="16" height="3.2" rx="1.2" fill="currentColor" opacity=".45"/>' +
+      '</svg>';
+  }
+
+  function kurWizStepper(step) {
+    const items = [
+      { n: 1, label: 'Detail Kelas' },
+      { n: 2, label: 'Atur Kurikulum' },
+      { n: 3, label: 'Publikasikan' }
+    ];
+    return '<nav class="kur-wiz-steps" aria-label="Langkah kurikulum">' + items.map((it, i) => {
+      const state = it.n === step ? ' is-on' : (it.n < step ? ' is-done' : '');
+      return (i ? '<span class="kur-wiz-line' + (it.n <= step ? ' is-on' : '') + '" aria-hidden="true"></span>' : '') +
+        '<button type="button" class="kur-wiz-step' + state + '" data-act="kur-wiz-step" data-id="' + it.n + '"' +
+          (it.n > step ? ' disabled' : '') +
+          ' aria-current="' + (it.n === step ? 'step' : 'false') + '">' +
+          '<i>' + (it.n < step ? '✓' : it.n) + '</i><span>' + it.label + '</span></button>';
+    }).join('') + '</nav>';
+  }
+
+  function viewKurikulumWizard() {
+    const step = Math.max(1, Math.min(3, Number(ui.kurWizStep) || 1));
+    ui.kurWizStep = step;
+    const body = step === 1 ? viewKurWizDetail()
+      : (step === 2 ? viewKurWizModules() : viewKurWizPublish());
+    return '<div class="kur-wiz">' + kurWizStepper(step) + body + '</div>';
+  }
+
+  function viewKurWizDetail() {
+    const meta = ensureKurikulumMeta();
+    const isNew = !meta.name && !lectures().length;
+    return '<section class="kur-wiz-card">' +
+      '<div class="kur-wiz-ico" aria-hidden="true">' + kurWizIcon() + '</div>' +
+      '<h2>' + (isNew ? 'Buat Kurikulum Baru' : 'Detail Kelas') + '</h2>' +
+      '<p class="kur-wiz-sub">Mulai dengan informasi dasar kelas Anda.</p>' +
+      '<form class="kur-wiz-form" data-act="kur-wiz-detail">' +
+        '<label for="kur-name">Nama Kelas</label>' +
+        '<input id="kur-name" name="name" required maxlength="120" value="' + esc(meta.name || '') +
+          '" placeholder="Contoh: Jualan di TikTok Shop" autocomplete="off">' +
+        '<label for="kur-desc">Deskripsi Singkat</label>' +
+        '<textarea id="kur-desc" name="description" rows="4" maxlength="800" ' +
+          'placeholder="Jelaskan secara singkat apa yang akan dipelajari di kelas ini...">' +
+          esc(meta.description || '') + '</textarea>' +
+        '<div class="kur-wiz-actions">' +
+          '<button type="button" class="btn secondary" data-act="kur-edit-off">Batal</button>' +
+          '<button type="submit" class="btn kur-wiz-primary">Lanjutkan <span aria-hidden="true">→</span></button>' +
+        '</div>' +
+      '</form></section>';
+  }
+
+  function viewKurWizModules() {
     const readonly = ui.role === 'asisten';
+    const meta = ensureKurikulumMeta();
     const nVid = lectures().filter((l) => l.type === 'video').length;
     const nTxt = lectures().filter((l) => l.type === 'text').length;
     const nFile = lectures().filter((l) => l.type === 'document').length;
     ensureSecFold();
-    const toolbar = '<div class="ud-head">' +
-      '<div><h2 style="margin:0">Edit kurikulum</h2>' +
-        '<p class="muted" style="margin:6px 0 0">Susun bagian, lalu tambah lecture. Geser untuk urutan. ' +
+    const head = '<div class="kur-wiz-mod-head">' +
+      '<div><h2 style="margin:0">' + esc(meta.name || 'Atur Kurikulum') + '</h2>' +
+        '<p class="muted" style="margin:6px 0 0">Susun bagian, lalu tambah video, bacaan, atau file. ' +
         nVid + ' video · ' + nTxt + ' bacaan · ' + nFile + ' file.</p></div>' +
-      '<button type="button" class="btn secondary" data-act="kur-edit-off">← Lihat seperti siswa</button>' +
       '</div>';
     const sections = db.weeks.map((w, wi) => {
       const items = lecturesInWeek(w.id);
@@ -10017,6 +10116,9 @@
         '</div>' +
       '</section>';
     }).join('');
+    const empty = !db.weeks.length
+      ? '<div class="kur-wiz-empty"><p class="muted">Belum ada bagian. Tambah modul pertama untuk video, dokumen, atau bacaan.</p></div>'
+      : '';
     const newSec = readonly ? '' : (ui.addSecOpen
       ? '<form class="ud-new-sec" data-act="add-sec-form">' +
           '<strong>Bagian baru</strong>' +
@@ -10027,7 +10129,45 @@
             '<button type="button" class="btn secondary" data-act="cancel-sec">Batal</button>' +
           '</div></form>'
       : '<button type="button" class="ud-add ud-add-sec" data-act="new-sec">+ Bagian</button>');
-    return '<div class="ud-page">' + toolbar + sections + newSec + '</div>';
+    return '<section class="kur-wiz-card kur-wiz-card-wide">' + head + empty + sections + newSec +
+      '<div class="kur-wiz-actions">' +
+        '<button type="button" class="btn secondary" data-act="kur-wiz-step" data-id="1">← Kembali</button>' +
+        '<button type="button" class="btn kur-wiz-primary" data-act="kur-wiz-step" data-id="3">Lanjutkan <span aria-hidden="true">→</span></button>' +
+      '</div></section>';
+  }
+
+  function viewKurWizPublish() {
+    const meta = ensureKurikulumMeta();
+    const nVid = lectures().filter((l) => l.type === 'video').length;
+    const nTxt = lectures().filter((l) => l.type === 'text').length;
+    const nFile = lectures().filter((l) => l.type === 'document').length;
+    const nSec = db.weeks.length;
+    const total = lectures().length;
+    const ready = !!(meta.name && total > 0);
+    return '<section class="kur-wiz-card">' +
+      '<div class="kur-wiz-ico" aria-hidden="true">' + kurWizIcon() + '</div>' +
+      '<h2>Publikasikan</h2>' +
+      '<p class="kur-wiz-sub">Cek ringkasan, lalu terbitkan supaya murid bisa mulai belajar.</p>' +
+      '<div class="kur-wiz-summary">' +
+        '<div><span class="muted">Nama kelas</span><strong>' + esc(meta.name || '—') + '</strong></div>' +
+        '<div><span class="muted">Deskripsi</span><strong>' +
+          esc((meta.description || '—').slice(0, 160)) +
+          ((meta.description || '').length > 160 ? '…' : '') + '</strong></div>' +
+        '<div class="kur-wiz-counts">' +
+          '<span><b>' + nSec + '</b> bagian</span>' +
+          '<span><b>' + nVid + '</b> video</span>' +
+          '<span><b>' + nTxt + '</b> bacaan</span>' +
+          '<span><b>' + nFile + '</b> file</span>' +
+        '</div>' +
+        (ready ? '' : '<p class="kur-wiz-warn">Isi nama kelas dan tambah minimal satu materi sebelum publikasi.</p>') +
+        (meta.published ? '<p class="kur-wiz-live">Kurikulum sudah dipublikasikan. Simpan lagi untuk memperbarui.</p>' : '') +
+      '</div>' +
+      '<div class="kur-wiz-actions">' +
+        '<button type="button" class="btn secondary" data-act="kur-wiz-step" data-id="2">← Kembali</button>' +
+        '<button type="button" class="btn kur-wiz-primary" data-act="kur-wiz-publish"' +
+          (ready ? '' : ' disabled') + '>' +
+          (meta.published ? 'Simpan & selesai' : 'Publikasikan') + '</button>' +
+      '</div></section>';
   }
 
   function addLecForm(weekId) {
@@ -12017,17 +12157,63 @@
       }
       render();
     } else if (act === 'kur-edit-on') {
+      const meta = ensureKurikulumMeta();
       ui.kurEdit = true;
       ui.mentorTab = 'kurikulum';
+      ui.kurWizStep = (meta.name && lectures().length) ? 2 : 1;
       render();
     } else if (act === 'kur-edit-off') {
       ui.kurEdit = false;
       ui.editLecId = null;
+      ui.addItemWeek = '';
+      ui.addSecOpen = false;
+      render();
+    } else if (act === 'kur-wiz-step') {
+      const to = Number(btn.getAttribute('data-id') || 1);
+      if (to === 2 || to === 3) {
+        const meta = ensureKurikulumMeta();
+        if (!String(meta.name || '').trim()) {
+          toast('Isi nama kelas dulu.');
+          ui.kurWizStep = 1;
+          render();
+          return;
+        }
+      }
+      if (to === 3 && !lectures().length) {
+        toast('Tambah minimal satu materi dulu.');
+        ui.kurWizStep = 2;
+        render();
+        return;
+      }
+      ui.kurWizStep = Math.max(1, Math.min(3, to));
+      render();
+    } else if (act === 'kur-wiz-publish') {
+      const meta = ensureKurikulumMeta();
+      if (!String(meta.name || '').trim()) {
+        toast('Isi nama kelas dulu.');
+        ui.kurWizStep = 1;
+        render();
+        return;
+      }
+      if (!lectures().length) {
+        toast('Tambah minimal satu materi dulu.');
+        ui.kurWizStep = 2;
+        render();
+        return;
+      }
+      const wasLive = !!meta.published;
+      meta.published = true;
+      if (!db.businessName) db.businessName = meta.name;
+      ui.kurEdit = false;
+      ui.editLecId = null;
+      save();
+      toast(wasLive ? 'Kurikulum diperbarui.' : 'Kurikulum dipublikasikan.');
       render();
     } else if (act === 'kur-edit-lec') {
       const id = btn.getAttribute('data-id');
       const lec = lectureById(id);
       ui.kurEdit = true;
+      ui.kurWizStep = 2;
       ui.editLecId = id;
       if (lec) setSecOpen(lec.weekId, true);
       ui.mentorTab = 'kurikulum';
@@ -12722,8 +12908,8 @@
         toast('Pindahkan atau hapus video di bagian ini dulu.');
         return;
       }
-      if (db.weeks.length < 2) {
-        toast('Minimal satu bagian.');
+      if (db.weeks.length < 1) {
+        toast('Tidak ada bagian.');
         return;
       }
       db.weeks = db.weeks.filter((w) => w.id !== id);
@@ -13270,6 +13456,20 @@
         toast(ok ? 'Foto TikTok tersimpan.' : 'Foto gagal. Inisial + unggah.');
         render();
       });
+    } else if (act === 'kur-wiz-detail') {
+      const name = String(fd.get('name') || '').trim().slice(0, 120);
+      const description = String(fd.get('description') || '').trim().slice(0, 800);
+      if (!name) {
+        toast('Nama kelas wajib diisi.');
+        return;
+      }
+      const meta = ensureKurikulumMeta();
+      meta.name = name;
+      meta.description = description;
+      if (!db.businessName) db.businessName = name;
+      ui.kurWizStep = 2;
+      save();
+      render();
     } else if (act === 'add-sec-form') {
       const title = String(fd.get('title') || '').trim();
       if (!title) return;

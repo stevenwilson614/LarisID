@@ -2804,6 +2804,202 @@ html[data-theme="light"] .fub-plat-ico.is-x { color: #111; }
 }
 .ud-kinds input { margin-right: 4px; }
 
+/* ── Kurikulum create wizard ───────────────────────────────────────── */
+.kur-wiz {
+  --kur-brand: #B5202A;
+  --kur-brand-dark: #8E1820;
+  --kur-brand-soft: #FDECEE;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 8px 0 40px;
+}
+.kur-wiz-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  flex-wrap: wrap;
+  margin: 0 auto 28px;
+  max-width: 560px;
+}
+.kur-wiz-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 700;
+  font-size: .86rem;
+  cursor: pointer;
+  padding: 4px 2px;
+}
+.kur-wiz-step:disabled { cursor: default; opacity: .7; }
+.kur-wiz-step i {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--line-2);
+  display: grid;
+  place-items: center;
+  font-style: normal;
+  font-size: .78rem;
+  font-weight: 800;
+  flex: none;
+  color: var(--muted);
+  background: transparent;
+}
+.kur-wiz-step.is-on { color: var(--text); }
+.kur-wiz-step.is-on i {
+  background: var(--kur-brand);
+  border-color: var(--kur-brand);
+  color: #fff;
+}
+.kur-wiz-step.is-done i {
+  background: var(--kur-brand);
+  border-color: var(--kur-brand);
+  color: #fff;
+  font-size: .72rem;
+}
+.kur-wiz-line {
+  width: 36px;
+  height: 2px;
+  background: var(--line);
+  margin: 0 8px;
+  flex: none;
+}
+.kur-wiz-line.is-on { background: var(--kur-brand); }
+.kur-wiz-card {
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 28px 28px 24px;
+  text-align: center;
+}
+.kur-wiz-card-wide { text-align: left; max-width: 860px; margin: 0 auto; }
+.kur-wiz-ico {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--kur-brand-soft);
+  color: var(--kur-brand);
+  display: grid;
+  place-items: center;
+  margin: 0 auto 14px;
+}
+html:not([data-theme="light"]) .kur-wiz-ico {
+  background: color-mix(in srgb, var(--kur-brand) 22%, var(--ink-3));
+}
+.kur-wiz-card h2 {
+  margin: 0 0 6px;
+  font-size: 1.55rem;
+  letter-spacing: -.02em;
+}
+.kur-wiz-sub {
+  margin: 0 auto 22px;
+  color: var(--muted);
+  max-width: 28rem;
+}
+.kur-wiz-form {
+  display: grid;
+  gap: 6px;
+  text-align: left;
+  max-width: 440px;
+  margin: 0 auto;
+}
+.kur-wiz-form label {
+  font-size: .84rem;
+  font-weight: 700;
+  margin-top: 8px;
+}
+.kur-wiz-form input,
+.kur-wiz-form textarea {
+  width: 100%;
+  font: inherit;
+  padding: 11px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--ink);
+  color: var(--text);
+}
+.kur-wiz-form textarea { min-height: 110px; resize: vertical; }
+.kur-wiz-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+}
+.kur-wiz-card-wide .kur-wiz-actions { justify-content: flex-end; }
+.btn.kur-wiz-primary {
+  background: var(--kur-brand);
+  color: #fff;
+  border-color: transparent;
+}
+.btn.kur-wiz-primary:hover { background: var(--kur-brand-dark); }
+.btn.kur-wiz-primary:disabled { opacity: .55; cursor: default; }
+.kur-wiz-mod-head { margin-bottom: 14px; }
+.kur-wiz-empty {
+  border: 1px dashed var(--line-2);
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+.kur-wiz-summary {
+  display: grid;
+  gap: 12px;
+  text-align: left;
+  max-width: 440px;
+  margin: 0 auto 8px;
+  background: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+}
+.kur-wiz-summary > div > .muted {
+  display: block;
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: 2px;
+}
+.kur-wiz-summary strong {
+  display: block;
+  font-size: .95rem;
+  font-weight: 650;
+  white-space: pre-wrap;
+}
+.kur-wiz-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.kur-wiz-counts span {
+  background: var(--ink-3);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: .78rem;
+  color: var(--muted);
+}
+.kur-wiz-counts b { color: var(--text); margin-right: 2px; }
+.kur-wiz-warn { color: var(--warn); margin: 0; font-size: .84rem; }
+.kur-wiz-live { color: var(--ok-soft); margin: 0; font-size: .84rem; }
+.kur-empty {
+  text-align: center;
+  padding: 36px 22px;
+  max-width: 480px;
+  margin: 24px auto;
+}
+.kur-empty .btn { margin-top: 12px; }
+@media (max-width: 700px) {
+  .kur-wiz-step span { display: none; }
+  .kur-wiz-card { padding: 22px 16px 18px; }
+  .kur-wiz-line { width: 22px; margin: 0 4px; }
+}
+
 @media (max-width: 1100px) {
   .fub-3 { grid-template-columns: 1fr; }
   .fub-left, .fub-right { border: 0; border-bottom: 1px solid var(--line); }
@@ -3263,9 +3459,11 @@ html[data-mode="mentor"] .lesson-head h1 { font-size: 1.28rem; }
   html[data-mode="student"] .calc-strat { grid-template-columns: 1fr; }
 }
 @media (max-width: 520px) {
-  .calc-prices { grid-template-columns: 1fr; }
+  .calc-prices, .calc-row2 { grid-template-columns: 1fr; }
   .calc-price strong { font-size: 1.05rem; }
-  .calc-hero .v { font-size: 1.28rem; }
+  .calc-hero { padding: 10px 12px 8px; }
+  .calc-hero .v { font-size: 1.55rem; margin: 0 0 2px; }
+  .calc-hero-note { margin-top: 4px; }
 }
 
 /* ── mobile app chrome (student) ───────────────────────────────────── */
