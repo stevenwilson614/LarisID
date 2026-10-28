@@ -24,8 +24,10 @@
   const draft = {
     firstName: '', lastName: '', businessName: '', headline: '', biography: '',
     socials: { website: '', instagram: '', tiktok: '', youtube: '', facebook: '', linkedin: '', x: '' },
-    photo: '', mentorBand: '', slug: ''
+    photo: '', photoFromTiktok: false, mentorBand: '', slug: ''
   };
+  let tiktokPhotoTimer = 0;
+  let tiktokPhotoToken = 0;
 
   function show(id) {
     const land = id === 'view-land';
@@ -409,14 +411,114 @@
     return s.length >= 3 ? s : '';
   }
 
+  function socIcon(key) {
+    const icons = {
+      website: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18"/></svg>',
+      instagram: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>',
+      tiktok: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M14.5 3c.4 2.3 1.8 4 4 4.5v2.3c-1.5-.1-2.8-.6-4-1.4v6.3a5.7 5.7 0 11-5.7-5.7c.3 0 .6 0 .9.1v2.5a3.2 3.2 0 103.2 3.2V3h1.6z"/></svg>',
+      youtube: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 12.2s0-3.2-.4-4.7c-.2-.8-.8-1.4-1.6-1.6C18.5 5.5 12 5.5 12 5.5s-6.5 0-8 .4c-.8.2-1.4.8-1.6 1.6C2 9 2 12.2 2 12.2s0 3.2.4 4.7c.2.8.8 1.4 1.6 1.6 1.5.4 8 .4 8 .4s6.5 0 8-.4c.8-.2 1.4-.8 1.6-1.6.4-1.5.4-4.7.4-4.7zM10 15.2V9.2l5.2 3-5.2 3z"/></svg>',
+      facebook: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 9h3V6h-3c-2.2 0-4 1.8-4 4v2H8v3h2v7h3v-7h2.6l.4-3H13v-2c0-.6.4-1 1-1z"/></svg>',
+      linkedin: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.5 9.5H3.7V20h2.8V9.5zM5.1 4a1.7 1.7 0 100 3.4A1.7 1.7 0 005.1 4zM20.3 20h-2.8v-5.6c0-1.5-.6-2.5-2-2.5-1 0-1.5.7-1.8 1.3-.1.2-.1.5-.1.8V20H10.8s0-8.6 0-9.5h2.8v1.5c.5-.8 1.5-1.9 3.6-1.9 2.6 0 4.5 1.7 4.5 5.3V20z"/></svg>',
+      x: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 3h3l-6.6 7.5L22 21h-6.2l-4.3-5.6L6.3 21H3.3l7-8L2 3h6.4l3.9 5.2L17.5 3zm-1.1 16.2h1.7L7.7 4.7H5.9l10.5 14.5z"/></svg>'
+    };
+    return icons[key] || icons.website;
+  }
+
+  function tiktokHandle(raw) {
+    const s = String(raw || '').trim();
+    if (!s) return '';
+    const m = s.match(/(?:tiktok\.com\/@|@)?([A-Za-z0-9._]{2,24})\/?$/);
+    return m ? m[1].replace(/^@/, '') : s.replace(/^@/, '').replace(/[^A-Za-z0-9._]/g, '').slice(0, 24);
+  }
+
+  function blobToDataUrl(blob) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  function fetchTikTokAvatar(handle) {
+    const h = tiktokHandle(handle);
+    if (!h) return Promise.resolve(null);
+    const oembed = 'https://www.tiktok.com/oembed?url=' + encodeURIComponent('https://www.tiktok.com/@' + h);
+    const unav = 'https://unavatar.io/tiktok/' + encodeURIComponent(h) + '?fallback=false';
+    return fetch(oembed).then((r) => r.ok ? r.json() : null).then((j) => {
+      if (j && j.thumbnail_url) return fetch(j.thumbnail_url).then((r) => r.ok ? r.blob() : null);
+      return null;
+    }).catch(() => null).then((blob) => {
+      if (blob) return blob;
+      return fetch(unav).then((r) => r.ok ? r.blob() : null).catch(() => null);
+    });
+  }
+
+  function paintPhotoPreview() {
+    const wrap = $('photo-preview');
+    if (!wrap) return;
+    if (draft.photo) {
+      wrap.innerHTML =
+        '<img src="' + esc(draft.photo) + '" alt="Foto profil">' +
+        '<div class="photo-preview-meta">' +
+          '<strong>' + (draft.photoFromTiktok ? 'Dari TikTok' : 'Foto diunggah') + '</strong>' +
+          '<span>' + (draft.photoFromTiktok ? 'Tidak suka? Ganti dengan foto lain.' : 'Bisa diganti kapan saja.') + '</span>' +
+        '</div>';
+      wrap.hidden = false;
+    } else {
+      wrap.innerHTML = '';
+      wrap.hidden = true;
+    }
+  }
+
+  function scheduleTikTokPhoto(force) {
+    clearTimeout(tiktokPhotoTimer);
+    const input = $('soc-tiktok');
+    const handle = tiktokHandle(input ? input.value : draft.socials.tiktok);
+    const status = $('photo-status');
+    if (!handle) {
+      if (status) status.textContent = 'Isi handle TikTok untuk tarik foto otomatis.';
+      return;
+    }
+    if (draft.photo && !draft.photoFromTiktok && !force) {
+      if (status) status.textContent = 'Foto manual dipakai. Klik “Tarik dari TikTok” kalau mau ganti.';
+      return;
+    }
+    if (status) status.textContent = 'Mengambil foto dari TikTok…';
+    tiktokPhotoTimer = setTimeout(() => {
+      const token = ++tiktokPhotoToken;
+      fetchTikTokAvatar(handle).then((blob) => {
+        if (token !== tiktokPhotoToken) return;
+        if (!blob) {
+          if (status) status.textContent = 'Foto TikTok tidak ketemu. Unggah manual saja.';
+          return;
+        }
+        if (blob.size > 1400000) {
+          if (status) status.textContent = 'Foto TikTok terlalu besar. Unggah manual saja.';
+          return;
+        }
+        return blobToDataUrl(blob).then((url) => {
+          if (token !== tiktokPhotoToken || !url) return;
+          draft.photo = url;
+          draft.photoFromTiktok = true;
+          paintPhotoPreview();
+          if (status) status.textContent = 'Foto diambil dari @' + handle + '. Boleh diganti.';
+        });
+      }).catch(() => {
+        if (token !== tiktokPhotoToken) return;
+        if (status) status.textContent = 'Gagal tarik foto. Unggah manual saja.';
+      });
+    }, force ? 80 : 550);
+  }
+
   function paintWizard() {
     const steps = [
       { kicker: 'Langkah 1', title: 'Siapa kamu?', sub: 'Nama depan dan belakang.' },
       { kicker: 'Langkah 2', title: 'Nama kelas', sub: 'Nama bisnis atau nama coaching.' },
-      { kicker: 'Langkah 3', title: 'Header dan bio', sub: 'Kalimat pendek di atas, cerita di bawah.' },
-      { kicker: 'Langkah 4', title: 'Sosial dan foto', sub: 'Boleh dikosongkan. Foto tampil di kelas.' },
+      { kicker: 'Langkah 3', title: 'Header dan bio', sub: 'Teks yang siswa lihat di halaman kelasmu.' },
+      { kicker: 'Langkah 4', title: 'Sosial dan foto', sub: 'Isi yang relevan. Foto bisa ditarik dari TikTok.' },
       { kicker: 'Langkah 5', title: 'Berapa murid yang kamu dampingi?', sub: 'Pilih rentang, bukan angka pasti.' },
-      { kicker: 'Langkah 6', title: 'Tautan kelas', sub: 'Ini yang akan kamu bagikan. Bisa diubah sekarang.' }
+      { kicker: 'Langkah 6', title: 'Tautan kelas', sub: 'Buat tautan unik untuk kelas Anda. Bisa diubah nanti.' }
     ];
     const step = steps[wizStep];
     $('wiz-kicker').textContent = step.kicker;
@@ -432,13 +534,78 @@
     } else if (wizStep === 1) {
       form.innerHTML = '<label for="biz">Nama bisnis atau coaching</label><input id="biz" value="' + esc(draft.businessName) + '">';
     } else if (wizStep === 2) {
-      form.innerHTML = '<label for="head">Header</label><input id="head" maxlength="60" value="' + esc(draft.headline) + '">' +
-        '<label for="bio">Bio</label><textarea id="bio" maxlength="800">' + esc(draft.biography) + '</textarea>';
+      form.innerHTML =
+        '<label for="head">Header</label>' +
+        '<p class="field-hint">Satu kalimat singkat di bawah namamu — biasanya janji kelas atau posisi, contoh: “Mentor Shopee Ads untuk seller pemula.”</p>' +
+        '<input id="head" maxlength="60" value="' + esc(draft.headline) + '" placeholder="Contoh: Mentor TikTok Shop untuk toko baru">' +
+        '<label for="bio">Bio</label>' +
+        '<p class="field-hint">Paragraf pendek tentang siapa kamu, apa yang diajarkan, dan untuk siapa kelas ini. Biasanya 2–4 kalimat.</p>' +
+        '<textarea id="bio" maxlength="800" placeholder="Ceritakan pengalamanmu dan hasil yang biasanya didapat siswa…">' + esc(draft.biography) + '</textarea>';
     } else if (wizStep === 3) {
-      const nets = [['website', 'Website'], ['instagram', 'Instagram'], ['tiktok', 'TikTok'], ['youtube', 'YouTube'], ['facebook', 'Facebook'], ['linkedin', 'LinkedIn'], ['x', 'X']];
-      form.innerHTML = nets.map((pair) =>
-        '<label for="soc-' + pair[0] + '">' + pair[1] + '</label><input id="soc-' + pair[0] + '" value="' + esc(draft.socials[pair[0]] || '') + '">'
-      ).join('') + '<label for="photo">Foto profil</label><input id="photo" type="file" accept="image/png,image/jpeg,image/webp">';
+      const nets = [
+        ['website', 'Website', 'https://…'],
+        ['instagram', 'Instagram', '@username'],
+        ['tiktok', 'TikTok', '@username'],
+        ['youtube', 'YouTube', '@channel atau URL'],
+        ['facebook', 'Facebook', 'username atau URL'],
+        ['linkedin', 'LinkedIn', 'username atau URL'],
+        ['x', 'X', '@username']
+      ];
+      form.innerHTML =
+        nets.map((pair) =>
+          '<label for="soc-' + pair[0] + '">' + pair[1] + '</label>' +
+          '<div class="soc-row">' +
+            '<span class="soc-ico" aria-hidden="true">' + socIcon(pair[0]) + '</span>' +
+            '<input id="soc-' + pair[0] + '" value="' + esc(draft.socials[pair[0]] || '') + '" placeholder="' + esc(pair[2]) + '" autocomplete="off" spellcheck="false">' +
+          '</div>'
+        ).join('') +
+        '<div class="photo-block">' +
+          '<label>Foto profil</label>' +
+          '<p class="field-hint">Isi handle TikTok di atas — kami tarik fotonya otomatis. Kalau tidak cocok, ganti manual.</p>' +
+          '<div class="photo-preview" id="photo-preview" hidden></div>' +
+          '<p class="hint" id="photo-status"></p>' +
+          '<div class="photo-actions">' +
+            '<button type="button" class="btn btn-white" id="photo-tiktok">Tarik dari TikTok</button>' +
+            '<label class="btn btn-white photo-file-btn" for="photo">Ganti foto</label>' +
+            '<input id="photo" type="file" accept="image/png,image/jpeg,image/webp" hidden>' +
+          '</div>' +
+        '</div>';
+      paintPhotoPreview();
+      const tt = $('soc-tiktok');
+      if (tt) {
+        tt.addEventListener('input', () => {
+          draft.socials.tiktok = tt.value.trim();
+          scheduleTikTokPhoto(false);
+        });
+        if (draft.socials.tiktok && !draft.photo) scheduleTikTokPhoto(true);
+        else if (draft.socials.tiktok && draft.photoFromTiktok) {
+          const st = $('photo-status');
+          if (st) st.textContent = 'Foto diambil dari TikTok. Boleh diganti.';
+        } else if (!draft.socials.tiktok) {
+          const st = $('photo-status');
+          if (st) st.textContent = 'Isi handle TikTok untuk tarik foto otomatis.';
+        }
+      }
+      const pullBtn = $('photo-tiktok');
+      if (pullBtn) {
+        pullBtn.addEventListener('click', () => {
+          readStep();
+          scheduleTikTokPhoto(true);
+        });
+      }
+      const file = $('photo');
+      if (file) {
+        file.addEventListener('change', async () => {
+          const picked = file.files && file.files[0];
+          if (!picked) return;
+          if (picked.size > 1400000) { err('wiz-err', 'Foto maksimal sekitar 1,4 MB.'); return; }
+          draft.photo = await readFile(picked);
+          draft.photoFromTiktok = false;
+          paintPhotoPreview();
+          const st = $('photo-status');
+          if (st) st.textContent = 'Foto diganti manual.';
+        });
+      }
     } else if (wizStep === 4) {
       form.innerHTML = '<div class="bands">' + BANDS.map((id) =>
         '<button type="button" class="btn btn-white" data-band="' + id + '" aria-pressed="' + (draft.mentorBand === id) + '">' + BAND_LABEL[id] + '</button>'
@@ -451,12 +618,17 @@
       });
     } else {
       if (!draft.slug) draft.slug = slugify(draft.businessName);
-      form.innerHTML = '<p class="link-preview"><span>larisid.com/</span><span id="slug-show">' + esc(draft.slug || '…') + '</span></p>' +
-        '<label for="slug">Ubah tautan</label><input id="slug" value="' + esc(draft.slug) + '" autocapitalize="off" spellcheck="false">' +
-        '<p class="hint" id="slug-hint"></p>';
+      form.innerHTML =
+        '<div class="slug-field">' +
+          '<span class="slug-prefix" aria-hidden="true">larisid.com/</span>' +
+          '<input id="slug" value="' + esc(draft.slug) + '" autocapitalize="off" autocomplete="off" spellcheck="false" aria-label="Tautan kelas">' +
+        '</div>' +
+        '<p class="slug-hint" id="slug-hint"></p>';
       $('slug').addEventListener('input', () => {
-        draft.slug = slugify($('slug').value);
-        $('slug-show').textContent = draft.slug || '…';
+        const raw = $('slug').value;
+        const next = slugify(raw);
+        if (raw !== next) $('slug').value = next;
+        draft.slug = next;
         checkSlug();
       });
       checkSlug();
@@ -496,19 +668,28 @@
   }
 
   let slugTimer = 0;
+  function setSlugHint(state, text) {
+    const hint = $('slug-hint');
+    if (!hint) return;
+    hint.className = 'slug-hint' + (state ? ' is-' + state : '');
+    if (state === 'ok') {
+      hint.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg><span>' + esc(text) + '</span>';
+    } else {
+      hint.textContent = text;
+    }
+  }
   function checkSlug() {
     clearTimeout(slugTimer);
     const slug = slugify(($('slug') && $('slug').value) || draft.slug);
-    const hint = $('slug-hint');
-    if (!hint) return;
-    if (!slug) { hint.textContent = 'Pakai huruf dan angka, minimal 3.'; return; }
+    if (!slug) { setSlugHint('bad', 'Pakai huruf dan angka, minimal 3.'); return; }
+    setSlugHint('', 'Memeriksa…');
     slugTimer = setTimeout(async () => {
       const res = await fetch(API + '/slug/' + encodeURIComponent(slug));
       const data = await res.json().catch(() => ({}));
       if (!$('slug-hint')) return;
-      if (data.status === 'free') $('slug-hint').textContent = 'Tautan ini masih kosong.';
-      else if (data.status === 'taken') $('slug-hint').textContent = 'Tautan ini sudah dipakai.';
-      else $('slug-hint').textContent = 'Tautan ini tidak bisa dipakai.';
+      if (data.status === 'free') setSlugHint('ok', 'Tautan tersedia');
+      else if (data.status === 'taken') setSlugHint('bad', 'Tautan ini sudah dipakai.');
+      else setSlugHint('bad', 'Tautan ini tidak bisa dipakai.');
     }, 250);
   }
 
@@ -522,9 +703,10 @@
     if (problem) { err('wiz-err', problem); return; }
     if (wizStep === 3) {
       const file = $('photo') && $('photo').files && $('photo').files[0];
-      if (file) {
+      if (file && !draft.photoFromTiktok) {
         if (file.size > 1400000) { err('wiz-err', 'Foto maksimal sekitar 1,4 MB.'); return; }
         draft.photo = await readFile(file);
+        draft.photoFromTiktok = false;
       }
     }
     if (wizStep < 5) {
