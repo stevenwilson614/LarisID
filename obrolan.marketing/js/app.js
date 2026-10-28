@@ -2602,6 +2602,8 @@
   function productById(id) { return catalog().find((p) => p.id === id); }
   function isStaff() { return ui.role === 'owner' || ui.role === 'asisten'; }
   function canBill() { return ui.role === 'owner'; }
+  // Flip true when billing settings UI is ready for owners again.
+  const SHOW_PENGATURAN_BAYAR = false;
 
   const BATCH_MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
   function monthKey(iso) {
@@ -6384,7 +6386,7 @@
       { id: 'jadwal', label: 'Jadwal' },
       { id: 'diskusi', label: 'Diskusi' }
     ];
-    if (canBill()) t.push({ id: 'harga', label: 'Pengaturan bayar' });
+    if (SHOW_PENGATURAN_BAYAR && canBill()) t.push({ id: 'harga', label: 'Pengaturan bayar' });
     return t;
   }
 
@@ -6515,7 +6517,7 @@
       else if (tab === 'pustaka') main.innerHTML = viewPustaka();
       else if (tab === 'jadwal') main.innerHTML = viewJadwal(true);
       else if (tab === 'diskusi') main.innerHTML = viewDiskusi(true);
-      else if (tab === 'harga' && canBill()) main.innerHTML = viewHarga();
+      else if (tab === 'harga' && SHOW_PENGATURAN_BAYAR && canBill()) main.innerHTML = viewHarga();
       else if (tab === 'profil' && canBill()) main.innerHTML = viewProfilEdit();
       else if (tab === 'account' && canBill()) main.innerHTML = viewAccountSettings();
       else if (tab === 'admin' && ui.admin) main.innerHTML = viewAdmin();
@@ -6607,6 +6609,7 @@
       ui.siswaView = 'daftar';
       return 'siswa';
     }
+    if (tab === 'harga' && !SHOW_PENGATURAN_BAYAR) return 'dash';
     return tab || 'siswa';
   }
 
