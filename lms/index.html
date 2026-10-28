@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/lms/lms.css?v=20261028mentor">
+  <link rel="stylesheet" href="/lms/lms.css?v=20261028fitur2">
 </head>
 <body>
   <div id="view-land">
@@ -100,22 +100,49 @@
               <div class="coach"><img src="/lms/hero.png" alt=""><div><strong>Raka Wijaya</strong><span>Batch Contoh</span></div></div>
               <ul><li>Ringkasan</li><li>Siswa</li><li class="is-on">Kurikulum</li><li>Diskusi</li><li>Otomasi</li><li>Jadwal</li></ul>
             </aside>
-            <div class="stage-main lesson">
-              <div class="cover">
-                <img src="/lms/hero.png" alt="">
-                <span class="play"></span>
-                <em>Minggu 1 · Mulai jualan</em>
+            <div class="stage-main kur-stage">
+              <div class="kur-progress" role="group" aria-label="Progress kurikulum">
+                <span class="kur-pct">3 / 8 selesai</span>
+                <div class="dots">
+                  <i class="done"></i><i class="done"></i><i class="now"></i><i></i><i></i><i></i><i></i><i></i>
+                </div>
               </div>
-              <ol class="lessons">
-                <li><i class="vid"></i><span><strong>Video · Minggu 1</strong><em>12 menit</em></span></li>
-                <li><i class="doc"></i><span><strong>Catatan modul.pdf</strong><em>Dokumen</em></span></li>
-                <li class="doc-new"><i class="doc"></i><span><strong>Lembar kerja.pdf</strong><em>Baru ditambah</em></span></li>
-              </ol>
+              <div class="kur-body">
+                <div class="kur-player">
+                  <div class="cover">
+                    <img src="/lms/hero.png" alt="">
+                    <span class="play"></span>
+                    <em>Minggu 1 · Mulai jualan</em>
+                  </div>
+                  <div class="fold fold-doc">
+                    <strong>Dokumen</strong>
+                    <ul>
+                      <li><i class="doc"></i><span>Catatan modul.pdf</span></li>
+                      <li class="doc-new"><i class="doc"></i><span>Lembar kerja.pdf · Baru</span></li>
+                    </ul>
+                  </div>
+                  <div class="fold fold-poin">
+                    <strong>Poin penting</strong>
+                    <ol>
+                      <li>Tentukan harga sebelum live</li>
+                      <li>Satu produk fokus dulu</li>
+                      <li>Catat HPP di lembar kerja</li>
+                    </ol>
+                  </div>
+                </div>
+                <ol class="lessons kur-mods">
+                  <li class="done"><i class="ok"></i><span><strong>1. Selamat datang</strong><em>Selesai</em></span></li>
+                  <li class="done"><i class="ok"></i><span><strong>2. Setup toko</strong><em>Selesai</em></span></li>
+                  <li class="now"><i class="vid"></i><span><strong>3. Mulai jualan</strong><em>Sedang dibuka</em></span></li>
+                  <li class="mod-late"><i></i><span><strong>4. Live pertama</strong><em>Modul berikutnya</em></span></li>
+                  <li class="mod-late"><i></i><span><strong>5. Follow-up</strong><em>Modul berikutnya</em></span></li>
+                </ol>
+              </div>
             </div>
           </div>
           <figcaption>
             <strong>Kurikulum</strong>
-            <span>Susun modul, video, dan lembar kerja. Murid melihat urutan yang sama di Belajar.</span>
+            <span>Progress titik, dokumen, poin penting, dan modul berikutnya — urutan yang sama dilihat murid.</span>
           </figcaption>
         </figure>
         <figure data-panel="diskusi" hidden>
@@ -125,17 +152,25 @@
               <ul><li>Ringkasan</li><li>Siswa</li><li>Kurikulum</li><li class="is-on">Diskusi</li><li>Otomasi</li><li>Jadwal</li></ul>
             </aside>
             <div class="stage-main">
-              <header class="stage-bar"><strong>Tanya materi</strong><span>Minggu 1</span></header>
-              <div class="thread">
-                <article class="cmt c1"><img src="/lms/hero.png" alt=""><span><strong>Raka Wijaya</strong><em>Materi minggu ini sudah di kurikulum. Tonton videonya dulu.</em></span></article>
-                <article class="cmt c2"><i>SR</i><span><strong>Sari</strong><em>Sudah, Pak. Lembar kerjanya saya kumpulkan malam ini.</em></span></article>
-                <article class="cmt c3"><i>DM</i><span><strong>Dimas</strong><em>Kalau sesi live bentrok, boleh tanya di sini?</em></span></article>
+              <header class="stage-bar"><strong>Diskusi batch</strong><span>Minggu 1</span></header>
+              <div class="thread feed">
+                <article class="post p0">
+                  <img src="/lms/hero.png" alt="">
+                  <div>
+                    <strong>Raka Wijaya <em>· Mentor</em></strong>
+                    <p>Materi minggu ini sudah di kurikulum. Siapa yang sudah coba setup toko?</p>
+                  </div>
+                </article>
+                <article class="cmt c1 reply"><i>SR</i><span><strong>Sari</strong><em>Sudah, Pak. Lembar kerjanya saya kumpulkan malam ini.</em></span></article>
+                <article class="cmt c2 reply nest"><img src="/lms/hero.png" alt=""><span><strong>Raka Wijaya</strong><em>Bagus, Sari. Kirim juga foto etalase tokonya.</em></span></article>
+                <article class="cmt c3 reply"><i>DM</i><span><strong>Dimas</strong><em>Kalau sesi live bentrok, boleh tanya di sini?</em></span></article>
+                <article class="cmt c4 reply nest"><img src="/lms/hero.png" alt=""><span><strong>Raka Wijaya</strong><em>Boleh, Dimas. Tulis jam yang bentrok — kita cari slot.</em></span></article>
               </div>
             </div>
           </div>
           <figcaption>
             <strong>Diskusi</strong>
-            <span>Pertanyaan di materi dan balasan murid, di satu tempat.</span>
+            <span>Posting mentor, lalu murid komentar dan balasan berantai di bawahnya.</span>
           </figcaption>
         </figure>
         <figure data-panel="otomasi" hidden>
@@ -146,20 +181,29 @@
             </aside>
             <div class="stage-main">
               <header class="stage-bar"><strong>Onboarding form</strong><span>Tidak auto-kirim</span></header>
-              <div class="flow">
-                <div class="node"><em>Pemicu</em><strong>Form masuk</strong></div>
-                <div class="pipe"></div>
-                <div class="node"><em>Tunggu</em><strong>2 jam</strong></div>
-                <div class="pipe"></div>
-                <div class="node"><em>Email</em><strong>Sambutan</strong></div>
-                <div class="pipe grow"></div>
-                <div class="node late"><em>Tugas</em><strong>Cek balasan</strong></div>
+              <div class="auto-board">
+                <div class="auto-mail">
+                  <div class="mail-card">
+                    <span class="mail-stamp"></span>
+                    <strong>Email sambutan</strong>
+                    <em>Ke: Sari · Form masuk</em>
+                    <p>Halo Sari, selamat bergabung di Batch Contoh…</p>
+                  </div>
+                  <div class="mail-check" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="28" height="28"><circle cx="12" cy="12" r="11" fill="#16a34a"/><path d="M7 12.2l3.2 3.2L17 8.8" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span>Terkirim</span>
+                  </div>
+                </div>
+                <label class="auto-task">
+                  <span class="box"></span>
+                  <span><strong>Follow-up WA</strong><em>Cek balasan Sari · belum ditandai</em></span>
+                </label>
               </div>
             </div>
           </div>
           <figcaption>
             <strong>Otomasi</strong>
-            <span>Rencana pesan dan tugas saat murid pindah tahap. Kamu yang menandai kirimnya.</span>
+            <span>Email keluar dengan centang hijau. Follow-up tetap kotak kosong sampai kamu menandai.</span>
           </figcaption>
         </figure>
         <figure data-panel="jadwal" hidden>
@@ -196,18 +240,53 @@
               <div class="coach"><img src="/lms/hero.png" alt=""><div><strong>Raka Wijaya</strong><span>Batch Contoh</span></div></div>
               <ul><li class="is-on">Ringkasan</li><li>Siswa</li><li>Kurikulum</li><li>Diskusi</li><li>Otomasi</li><li>Jadwal</li></ul>
             </aside>
-            <div class="stage-main">
-              <header class="stage-bar"><strong>Ringkasan</strong><span>Batch Contoh</span></header>
+            <div class="stage-main dash-stage">
+              <header class="stage-bar"><strong>Ringkasan</strong><span>30 hari · WIB</span></header>
               <div class="stats">
-                <article><b>6</b><span>Form</span></article>
-                <article><b>4</b><span>Lanjut</span></article>
+                <article class="is-on"><b>6</b><span>Form</span></article>
+                <article><b>4</b><span>Bayar</span></article>
+                <article><b>3</b><span>Lanjut</span></article>
                 <article><b>1</b><span>Berhenti</span></article>
+              </div>
+              <div class="dash-split">
+                <section class="chart-card">
+                  <div class="chart-head"><strong>Pendapatan</strong><span>Rp 18,4 jt</span></div>
+                  <svg class="income" viewBox="0 0 320 120" aria-hidden="true">
+                    <line class="g" x1="28" x2="310" y1="20" y2="20"></line>
+                    <line class="g" x1="28" x2="310" y1="55" y2="55"></line>
+                    <line class="g" x1="28" x2="310" y1="90" y2="90"></line>
+                    <text x="4" y="24">18jt</text><text x="4" y="59">9jt</text><text x="4" y="94">0</text>
+                    <polyline class="line-sku" points="40,82 100,70 160,74 220,58 280,52"></polyline>
+                    <polyline class="line-mentor" points="40,78 100,62 160,48 220,40 280,28"></polyline>
+                    <polyline class="line-total draw" points="40,72 100,54 160,42 220,30 280,18"></polyline>
+                    <circle class="dot d1" cx="40" cy="72" r="3.5"></circle>
+                    <circle class="dot d2" cx="100" cy="54" r="3.5"></circle>
+                    <circle class="dot d3" cx="160" cy="42" r="3.5"></circle>
+                    <circle class="dot d4" cx="220" cy="30" r="3.5"></circle>
+                    <circle class="dot d5" cx="280" cy="18" r="3.5"></circle>
+                    <text x="40" y="112" text-anchor="middle">Jun</text>
+                    <text x="100" y="112" text-anchor="middle">Jul</text>
+                    <text x="160" y="112" text-anchor="middle">Agu</text>
+                    <text x="220" y="112" text-anchor="middle">Sep</text>
+                    <text x="280" y="112" text-anchor="middle">Okt</text>
+                  </svg>
+                  <div class="legend"><i class="t"></i>Total <i class="m"></i>Mentoring <i class="s"></i>Produk</div>
+                </section>
+                <section class="people-card">
+                  <div class="chart-head"><strong>Gabung form</strong><span>Baru</span></div>
+                  <ul class="people-list">
+                    <li class="np1"><i>SR</i><span><strong>Sari</strong><em>Hari ini · Form</em></span></li>
+                    <li class="np2"><i>BM</i><span><strong>Bima</strong><em>Kemarin · Form</em></span></li>
+                    <li class="np3"><i>LN</i><span><strong>Lina</strong><em>2 hari · Trial</em></span></li>
+                    <li class="np4"><i>DM</i><span><strong>Dimas</strong><em>3 hari · Form</em></span></li>
+                  </ul>
+                </section>
               </div>
             </div>
           </div>
           <figcaption>
             <strong>Ringkasan</strong>
-            <span>Form, lanjut, dan berhenti dalam satu layar. Angka ini contoh, bukan kelas sungguhan.</span>
+            <span>Grafik pendapatan dan daftar siswa baru di satu layar. Angka ini contoh, bukan kelas sungguhan.</span>
           </figcaption>
         </figure>
       </div>
@@ -216,40 +295,66 @@
 
   <main class="auth-wrap" id="auth-wrap" hidden>
     <button type="button" class="back" id="auth-back">← Kembali</button>
-    <section id="view-auth" class="panel" hidden>
-      <h2 id="auth-title">Masuk untuk buat kelas</h2>
-      <p class="sub">Pakai akun LarisID yang sudah ada, atau buat baru.</p>
-      <div class="stack">
-        <button type="button" class="btn btn-red" id="google-btn">Daftar dengan Google</button>
-        <div id="sms-phone">
-          <label for="phone">Nomor HP</label>
-          <input id="phone" inputmode="tel" autocomplete="tel" placeholder="08…">
-          <div class="row"><button type="button" class="btn btn-white" id="sms-send">Daftar dengan SMS</button></div>
-        </div>
-        <div id="sms-code" hidden>
-          <p class="hint" id="sms-hint"></p>
-          <label for="otp">Kode SMS</label>
-          <input id="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6 digit">
-          <div class="row">
-            <button type="button" class="btn btn-red" id="sms-verify">Lanjut</button>
-            <button type="button" class="btn btn-white" id="sms-resend">Kirim ulang</button>
+    <section id="view-auth" class="panel auth-panel" hidden>
+      <img class="auth-mascot" id="auth-mascot" data-src="/images/brand/mascot-daftar.webp" width="320" height="217" alt="" decoding="async">
+      <div class="auth-brand" id="auth-brand">Laris<span class="auth-brand-id">ID</span></div>
+      <h2 id="auth-title" class="auth-title-sr">Masuk untuk buat kelas</h2>
+      <p class="sub" id="auth-subtitle">Gratis. Pakai akun LarisID, atau buat baru.</p>
+
+      <div id="sms-phone" class="auth-wa-panel">
+        <div class="auth-wa-hero">
+          <div class="auth-wa-hero-ico" aria-hidden="true">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#B5202A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/><path d="M8 6h8M8 10h8"/></svg>
           </div>
+          <h3 class="auth-wa-hero-title" id="auth-wa-hero-title">Daftar dengan SMS</h3>
+          <p class="auth-wa-hero-sub">Kode OTP dikirim ke nomor HP kamu</p>
         </div>
-        <button type="button" class="btn btn-white" id="email-open">Daftar dengan Email</button>
-        <form id="email-form" hidden>
+        <div class="auth-wa-phone">
+          <span class="auth-wa-cc" aria-hidden="true">
+            <svg class="auth-wa-logo" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6b6b6b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
+            <span>+62</span>
+            <svg class="auth-wa-cc-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg>
+          </span>
+          <span class="auth-wa-phone-sep" aria-hidden="true"></span>
+          <input id="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="812 3456 7890" maxlength="20" aria-label="Nomor HP">
+        </div>
+        <button type="button" class="btn btn-red auth-submit" id="sms-send">Kirim kode SMS</button>
+      </div>
+
+      <div id="sms-code" class="auth-wa-panel" hidden>
+        <p class="auth-wa-hint" id="sms-hint"></p>
+        <label for="otp">Kode OTP</label>
+        <input id="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6 digit">
+        <button type="button" class="btn btn-red auth-submit" id="sms-verify">Verifikasi</button>
+        <p class="auth-wa-resend"><a id="sms-resend" role="button" tabindex="0">Kirim ulang kode</a></p>
+      </div>
+
+      <div class="auth-sep" id="auth-sep-wa">atau</div>
+
+      <div class="auth-alt-stack" id="auth-alt-stack">
+        <button type="button" class="auth-alt-row" id="google-btn">
+          <svg class="auth-alt-ico" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 12 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.66l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          <span id="auth-google-label">Daftar dengan Google</span>
+          <svg class="auth-alt-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <button type="button" class="auth-alt-row" id="email-open" aria-expanded="false" aria-controls="email-form">
+          <svg class="auth-alt-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6b6b6b" stroke-width="1.8" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 7 9-7"/></svg>
+          <span id="auth-email-label">Daftar dengan Email</span>
+          <svg class="auth-alt-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <form id="email-form" class="auth-email-block" hidden>
           <label for="full-name" id="name-label">Nama</label>
           <input id="full-name" autocomplete="name">
           <label for="email">Email</label>
           <input id="email" type="email" autocomplete="email">
           <label for="password">Password</label>
           <input id="password" type="password" autocomplete="new-password" minlength="6">
-          <div class="row">
-            <button type="submit" class="btn btn-red" id="email-submit">Daftar dengan Email</button>
-            <button type="button" class="btn btn-white" id="email-mode">Sudah punya akun? Masuk</button>
-          </div>
+          <button type="submit" class="btn btn-red auth-submit" id="email-submit">Daftar dengan Email</button>
         </form>
       </div>
+
       <p class="err" id="auth-err"></p>
+      <div class="auth-toggle" id="auth-toggle-text">Sudah punya akun? <a id="email-mode" role="button" tabindex="0">Masuk</a></div>
     </section>
 
     <section id="view-2fa" class="panel" hidden>
@@ -290,6 +395,6 @@
       </div>
     </section>
   </main>
-  <script src="/js/lms-join.js?v=20261027stage"></script>
+  <script src="/js/lms-join.js?v=20261028auth"></script>
 </body>
 </html>
