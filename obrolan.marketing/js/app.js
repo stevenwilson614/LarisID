@@ -2142,6 +2142,7 @@
     calYM: '',
     calDay: '',
     calView: 'week',
+    calComposer: '',
     addItemWeek: '',
     addSecOpen: false,
     editSecId: null,
@@ -3304,11 +3305,72 @@
     return db.weeks.length ? db.weeks[db.weeks.length - 1].id : '';
   }
 
+  function sessionAudienceOf(ses) {
+    const aud = ses && ses.audience != null ? String(ses.audience) : 'all';
+    return aud || 'all';
+  }
+  function sessionVisibleTo(ses, personId, staff) {
+    if (!ses) return false;
+    if (staff) return true;
+    const aud = sessionAudienceOf(ses);
+    if (aud === 'all') return true;
+    if (!personId) return true;
+    return batchOf(personId) === aud || memberOfChat(personId, aud);
+  }
+  function sessionAudienceIds(ses) {
+    const aud = sessionAudienceOf(ses);
+    if (aud === 'all') {
+      return people()
+        .filter((s) => s && s.kind !== 'mentor' && (canMentoring(s.id) || canPreview(s.id)))
+        .map((s) => s.id);
+    }
+    return chatMembers(aud).filter((id) => {
+      const s = people().find((x) => x.id === id);
+      return !!(s && s.kind !== 'mentor');
+    });
+  }
+  function sessionAudienceLabel(ses) {
+    const aud = sessionAudienceOf(ses);
+    if (aud === 'all') return 'Semua kelas';
+    return batchLabel(aud);
+  }
+  function visibleSessions(staff) {
+    const sid = staff ? '' : ui.personaId;
+    return (db.sessions || [])
+      .filter((s) => sessionVisibleTo(s, sid, !!staff))
+      .slice()
+      .sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt));
+  }
   function nextSession() {
-    const list = db.sessions || [];
+    const list = visibleSessions(isStaff());
     if (!list.length) return null;
     const now = nowMs();
     return list.find((s) => new Date(s.startsAt).getTime() >= now) || list[list.length - 1];
+  }
+  function sessionReminderAt(ses) {
+    const mins = Math.max(0, Number(ses && ses.remind && ses.remind.whenMins) || 60);
+    return addMs(ses.startsAt, -mins * 60e3);
+  }
+  function sendSessionReminders(ses, opts) {
+    const o = opts || {};
+    if (!ses || !ses.startsAt) return 0;
+    const ids = sessionAudienceIds(ses);
+    if (!ids.length) return 0;
+    const channels = (ses.remind && Array.isArray(ses.remind.channels) && ses.remind.channels.length)
+      ? ses.remind.channels
+      : ['wa', 'email'];
+    const title = 'Pengingat: ' + (ses.title || 'Sesi kelas');
+    const body = 'Halo {name}, pengingat sesi "' + (ses.title || 'kelas') + '" pada ' + fmtWhen(ses.startsAt) +
+      (ses.meetUrl ? ('. Link: ' + ses.meetUrl) : '.') +
+      (ses.location ? (' Lokasi: ' + ses.location) : '');
+    let at = o.now ? isoNow() : sessionReminderAt(ses);
+    if (!o.now && new Date(at).getTime() < nowMs()) at = isoNow();
+    ids.forEach((id) => {
+      if (channels.indexOf('wa') >= 0) queueWa(id, title, body, at);
+      if (channels.indexOf('email') >= 0) queueEmail(id, title, title, body, at);
+    });
+    ses.remindersSentAt = isoNow();
+    return ids.length;
   }
   function belumSiap(session) {
     const need = session.required || [];
@@ -10364,25 +10426,6 @@
       ).join('') + '</div></div>';
   }
 
-  function calEvents(staff) {
-    const ev = [];
-    (db.sessions || []).forEach((s) => ev.push({
-      kind: 'meet', at: s.startsAt, title: s.title, id: s.id, loc: s.location, url: s.meetUrl,
-      notes: s.notes || ''
-    }));
-    (db.weeks || []).forEach((w) => {
-      if (w.due) ev.push({ kind: 'kur', at: joinLocal(w.due, '09:00'), title: w.title, id: w.id });
-    });
-    if (staff) {
-      (db.tasks || []).filter((t) => !t.done).forEach((t) => ev.push({
-        kind: 'task', at: t.dueAt, title: t.title, id: t.id, personId: t.personId
-      }));
-      queuedItems().forEach((t) => ev.push({
-        kind: 'task', at: t.dueAt, title: t.title, id: t.id, personId: t.personId
-      }));
-    }
-    return ev;
-  }
   function shiftYmd(ymd, days) {
     const base = joinLocal(ymd || splitLocal().date, '12:00');
     return ymdOf(addMs(base, (Number(days) || 0) * 86400000));
@@ -10436,7 +10479,19 @@
   function sessionIcsEvent(s) {
     const start = new Date(s.startsAt);
     const end = new Date(start.getTime() + sessionDurationMins(s) * 60e3);
-    const desc = [s.notes, s.meetUrl ? ('Meet: ' + s.meetUrl) : ''].filter(Boolean).join('\n');
+    const remindMins = Math.max(0, Number(s.remind && s.remind.whenMins) || 60);
+    const desc = [
+      s.notes,
+      s.meetUrl ? ('Meet: ' + s.meetUrl) : '',
+      'Kelas: ' + sessionAudienceLabel(s)
+    ].filter(Boolean).join('\n');
+    const alarm = [
+      'BEGIN:VALARM',
+      'TRIGGER:-PT' + remindMins + 'M',
+      'ACTION:DISPLAY',
+      'DESCRIPTION:' + icsEscape('Pengingat: ' + (s.title || 'Sesi kelas')),
+      'END:VALARM'
+    ].join('\r\n');
     return [
       'BEGIN:VEVENT',
       'UID:' + String(s.id || 'ses') + '@' + schoolSlug(),
@@ -10447,14 +10502,16 @@
       'DESCRIPTION:' + icsEscape(desc),
       'LOCATION:' + icsEscape(s.location || 'Online'),
       (s.meetUrl ? ('URL:' + String(s.meetUrl).replace(/\s/g, '')) : ''),
+      alarm,
       'END:VEVENT'
     ].filter(Boolean).join('\r\n');
   }
   function buildSessionsIcs(list) {
-    const body = (list || db.sessions || []).map(sessionIcsEvent).join('\r\n');
-    return 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//MasterMind with Anton GC//' +
-      icsEscape(SEED.cohort.name || 'Batch') + '//ID\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nX-WR-CALNAME:' +
-      icsEscape((SEED.school.name || 'Anton') + ' · ' + (SEED.cohort.name || 'Jadwal')) +
+    const body = (list || visibleSessions(true)).map(sessionIcsEvent).join('\r\n');
+    const calName = ((db && db.businessName) || SEED.school.name || 'Kelas') + ' · Jadwal';
+    return 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Laris Mentor//' +
+      icsEscape(schoolSlug() || 'kelas') + '//ID\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nX-WR-CALNAME:' +
+      icsEscape(calName) +
       '\r\n' + body + '\r\nEND:VCALENDAR\r\n';
   }
   function downloadIcs(filename, icsText) {
@@ -10484,7 +10541,7 @@
   function calSyncButtons(s, compact) {
     if (!s || !s.startsAt) return '';
     const icsBtn = '<button type="button" class="btn-sm" data-act="cal-ics-one" data-id="' + esc(s.id) +
-      '" title="Unduh .ics — buka di Apple Calendar atau impor di Google">Apple / .ics</button>';
+      '" title="Unduh .ics untuk Apple Calendar">Apple Calendar</button>';
     const gBtn = '<a class="btn-sm" href="' + esc(googleCalUrl(s)) +
       '" target="_blank" rel="noopener">Google Calendar</a>';
     if (compact) {
@@ -10492,21 +10549,117 @@
     }
     return '<div class="row cal-sync" style="margin-top:8px">' + gBtn + icsBtn + '</div>';
   }
+  function calAudienceOptionsHtml(selected) {
+    const cur = selected || 'all';
+    const batches = batchList();
+    return '<option value="all"' + (cur === 'all' ? ' selected' : '') + '>Semua kelas</option>' +
+      batches.map((b) =>
+        '<option value="' + esc(b.id) + '"' + (cur === b.id ? ' selected' : '') + '>' +
+          esc(b.label) + (b.count ? (' (' + b.count + ')') : '') +
+        '</option>'
+      ).join('');
+  }
+  function calComposerHtml(editId) {
+    const today = splitLocal();
+    const existing = editId && editId !== 'new'
+      ? (db.sessions || []).find((s) => s.id === editId)
+      : null;
+    const when = existing ? splitLocal(existing.startsAt) : {
+      date: ui.calDay || today.date,
+      time: '19:30'
+    };
+    const remind = (existing && existing.remind) || { on: true, whenMins: 60, channels: ['wa', 'email'] };
+    const channels = remind.channels || ['wa', 'email'];
+    return '<form class="compose cal-composer" data-act="save-session" data-id="' + esc(existing ? existing.id : 'new') + '">' +
+      '<div class="cal-composer-head">' +
+        '<strong>' + (existing ? 'Edit acara' : 'Acara baru') + '</strong>' +
+        '<button type="button" class="btn-sm" data-act="cal-composer-close">Batal</button>' +
+      '</div>' +
+      '<label class="muted">Judul</label>' +
+      '<input name="title" required maxlength="120" placeholder="Live class · Harga &amp; komisi" value="' +
+        esc(existing ? existing.title : '') + '">' +
+      '<div class="row2">' +
+        '<div><label class="muted">Tanggal</label>' +
+          '<input name="date" type="date" required value="' + esc(when.date) + '"></div>' +
+        '<div><label class="muted">Jam (WIB)</label>' +
+          '<input name="time" type="time" required value="' + esc(when.time) + '"></div>' +
+      '</div>' +
+      '<div class="row2">' +
+        '<div><label class="muted">Durasi (menit)</label>' +
+          '<input name="mins" type="number" min="15" max="480" step="15" value="' +
+            esc(existing ? sessionDurationMins(existing) : 90) + '"></div>' +
+        '<div><label class="muted">Kelas siswa</label>' +
+          '<select name="audience">' + calAudienceOptionsHtml(existing ? sessionAudienceOf(existing) : 'all') +
+          '</select></div>' +
+      '</div>' +
+      '<label class="muted">Tautan Meet / Zoom</label>' +
+      '<input name="meetUrl" placeholder="https://meet.google.com/…" value="' + esc(existing ? (existing.meetUrl || '') : '') + '">' +
+      '<label class="muted">Lokasi</label>' +
+      '<input name="location" placeholder="Online" value="' + esc(existing ? (existing.location || 'Online') : 'Online') + '">' +
+      '<label class="muted">Catatan</label>' +
+      '<textarea name="notes" rows="2" placeholder="Bawa screenshot etalase…">' +
+        esc(existing ? (existing.notes || '') : '') + '</textarea>' +
+      '<div class="cal-remind">' +
+        '<label class="cal-remind-on"><input type="checkbox" name="remindOn"' +
+          (remind.on !== false ? ' checked' : '') + '> Kirim pengingat ke siswa</label>' +
+        '<div class="row2">' +
+          '<div><label class="muted">Sebelum acara</label>' +
+            '<select name="remindMins">' +
+              [[30, '30 menit'], [60, '1 jam'], [120, '2 jam'], [1440, '1 hari']].map((pair) =>
+                '<option value="' + pair[0] + '"' +
+                  (Number(remind.whenMins || 60) === pair[0] ? ' selected' : '') + '>' +
+                  esc(pair[1]) + '</option>'
+              ).join('') +
+            '</select></div>' +
+          '<div class="cal-remind-ch">' +
+            '<label class="muted">Via</label>' +
+            '<label class="cal-check"><input type="checkbox" name="remindWa"' +
+              (channels.indexOf('wa') >= 0 ? ' checked' : '') + '> WhatsApp</label>' +
+            '<label class="cal-check"><input type="checkbox" name="remindEmail"' +
+              (channels.indexOf('email') >= 0 ? ' checked' : '') + '> Email</label>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="row">' +
+        '<button class="btn" type="submit">' + (existing ? 'Simpan acara' : 'Tambah acara') + '</button>' +
+        (existing
+          ? '<button type="button" class="btn-sm" data-act="cal-del" data-id="' + esc(existing.id) + '">Hapus</button>'
+          : '') +
+      '</div>' +
+    '</form>';
+  }
 
   function calDayDetailHtml(staff, selected, byDay) {
     const dayEv = (byDay[selected] || []).slice().sort((a, b) => new Date(a.at) - new Date(b.at));
     const kindLabel = { meet: 'Meet / Zoom', kur: 'Kurikulum', task: 'Tugas' };
     const kurTab = staff ? 'kurikulum' : 'belajar';
     return '<div class="cal-day">' +
-      '<h3>' + esc(fmtYmdShort(selected)) + '</h3>' +
+      '<div class="cal-day-head">' +
+        '<h3>' + esc(fmtYmdShort(selected)) + '</h3>' +
+        (staff && canBill()
+          ? '<button type="button" class="btn-sm" data-act="cal-composer" data-id="new">+ Acara</button>'
+          : '') +
+      '</div>' +
+      (staff && canBill() && ui.calComposer
+        ? calComposerHtml(ui.calComposer)
+        : '') +
       (dayEv.length
         ? dayEv.map((ev) => {
             if (ev.kind === 'meet') {
               const ses = (db.sessions || []).find((s) => s.id === ev.id) || ev;
+              const nAud = sessionAudienceIds(ses).length;
               return '<article class="thread"><h4>' + esc(kindLabel.meet) + ' · ' + esc(ev.title) + '</h4>' +
-                '<p class="muted">' + fmtWhen(ev.at) + (ev.loc ? ' · ' + esc(ev.loc) : '') + '</p>' +
+                '<p class="muted">' + fmtWhen(ev.at) + (ev.loc ? ' · ' + esc(ev.loc) : '') +
+                  ' · ' + esc(sessionAudienceLabel(ses)) +
+                  (nAud ? (' · ' + nAud + ' siswa') : '') +
+                '</p>' +
                 (staff && canBill()
-                  ? '<form class="compose" data-act="meet" data-id="' + esc(ev.id) + '"><input name="meetUrl" value="' + esc(ev.url || '') + '" placeholder="https://meet.google.com/..."><button class="btn" type="submit">Simpan tautan Meet</button></form>'
+                  ? '<form class="compose" data-act="meet" data-id="' + esc(ev.id) + '"><input name="meetUrl" value="' + esc(ev.url || '') + '" placeholder="https://meet.google.com/..."><button class="btn" type="submit">Simpan tautan Meet</button></form>' +
+                    '<div class="row cal-event-acts">' +
+                      '<button type="button" class="btn-sm" data-act="cal-composer" data-id="' + esc(ev.id) + '">Edit</button>' +
+                      '<button type="button" class="btn-sm" data-act="cal-remind-now" data-id="' + esc(ev.id) + '">Kirim pengingat</button>' +
+                      '<button type="button" class="btn-sm" data-act="cal-del" data-id="' + esc(ev.id) + '">Hapus</button>' +
+                    '</div>'
                   : (ev.url ? '<a class="btn" href="' + esc(ev.url) + '" target="_blank" rel="noopener">Buka Meet</a>' : '')) +
                 calSyncButtons(ses) +
                 '</article>';
@@ -10521,6 +10674,25 @@
           }).join('')
         : '<p class="muted">Tidak ada sesi atau jatuh tempo di hari ini.</p>') +
       '</div>';
+  }
+  function calEvents(staff) {
+    const ev = [];
+    visibleSessions(!!staff).forEach((s) => ev.push({
+      kind: 'meet', at: s.startsAt, title: s.title, id: s.id, loc: s.location, url: s.meetUrl,
+      notes: s.notes || '', audience: sessionAudienceOf(s)
+    }));
+    (db.weeks || []).forEach((w) => {
+      if (w.due) ev.push({ kind: 'kur', at: joinLocal(w.due, '09:00'), title: w.title, id: w.id });
+    });
+    if (staff) {
+      (db.tasks || []).filter((t) => !t.done).forEach((t) => ev.push({
+        kind: 'task', at: t.dueAt, title: t.title, id: t.id, personId: t.personId
+      }));
+      queuedItems().forEach((t) => ev.push({
+        kind: 'task', at: t.dueAt, title: t.title, id: t.id, personId: t.personId
+      }));
+    }
+    return ev;
   }
   function viewJadwal(staff) {
     const today = splitLocal().date;
@@ -10604,22 +10776,28 @@
         '<div class="cal-grid">' + cells.join('') + '</div>' +
         calDayDetailHtml(staff, selected, byDay);
     }
-    const nSes = (db.sessions || []).length;
+    const nSes = visibleSessions(!!staff).length;
     return '<div class="card"><div class="cal-head">' +
         '<div><h2>Jadwal</h2>' +
           '<p class="muted">' + (staff
-            ? 'Meet live, jatuh tempo kurikulum, dan tugas.'
+            ? 'Acara live, sync kalender, pengingat siswa, dan jatuh tempo.'
             : 'Meet live dan jatuh tempo materi kelas.') + '</p></div>' +
         modeToggle +
       '</div>' +
       (staff
         ? '<div class="cal-sync-bar">' +
-            '<button type="button" class="btn" data-act="cal-ics-all">Unduh semua sesi (.ics)</button>' +
-            '<span class="muted">' + nSes + ' live session · Apple Calendar / Google Import</span>' +
+            '<button type="button" class="btn" data-act="cal-sync-google">Google Calendar</button>' +
+            '<button type="button" class="btn secondary" data-act="cal-sync-apple">Apple Calendar</button>' +
+            (canBill()
+              ? '<button type="button" class="btn secondary" data-act="cal-composer" data-id="new">+ Acara baru</button>'
+              : '') +
+            '<span class="muted">' + nSes + ' acara · sync unduh .ics · Google buka template / impor file</span>' +
           '</div>'
         : '') +
       body +
-      (staff ? '<a class="wa" href="' + esc(SEED.school.waGroup) + '" target="_blank" rel="noopener">WA grup</a>' : '') +
+      (staff && antonSchoolData() && SEED.school.waGroup
+        ? '<a class="wa" href="' + esc(SEED.school.waGroup) + '" target="_blank" rel="noopener">WA grup</a>'
+        : '') +
       '</div>';
   }
 
@@ -12526,14 +12704,21 @@
       if (!ui.calDay) ui.calDay = splitLocal().date;
       ui.calYM = ui.calDay.slice(0, 7);
       render();
-    } else if (act === 'cal-ics-all') {
-      const list = db.sessions || [];
+    } else if (act === 'cal-ics-all' || act === 'cal-sync-apple' || act === 'cal-sync-google') {
+      const list = visibleSessions(true);
       if (!list.length) {
-        toast('Belum ada sesi live di jadwal.');
+        toast('Belum ada acara di jadwal. Tambah acara dulu.');
         return;
       }
       downloadIcs('jadwal-' + schoolSlug() + '.ics', buildSessionsIcs(list));
-      toast('File .ics diunduh — buka di Apple Calendar, atau impor di Google Calendar.');
+      if (act === 'cal-sync-google') {
+        toast('File .ics diunduh. Di Google Calendar: Settings → Import & export → Import.');
+        window.open('https://calendar.google.com/calendar/u/0/r/settings/export', '_blank', 'noopener');
+      } else if (act === 'cal-sync-apple') {
+        toast('File .ics diunduh — buka di Apple Calendar (Calendar.app / iOS).');
+      } else {
+        toast('File .ics diunduh — Apple Calendar atau impor di Google Calendar.');
+      }
     } else if (act === 'cal-ics-one') {
       const id = btn.getAttribute('data-id');
       const ses = (db.sessions || []).find((s) => s.id === id);
@@ -12543,6 +12728,44 @@
       }
       downloadIcs((ses.id || 'sesi') + '.ics', buildSessionsIcs([ses]));
       toast('File .ics diunduh — Apple Calendar / Google Import.');
+    } else if (act === 'cal-composer') {
+      if (!canBill()) return;
+      const id = btn.getAttribute('data-id') || 'new';
+      ui.calComposer = ui.calComposer === id ? '' : id;
+      if (id !== 'new') {
+        const ses = (db.sessions || []).find((s) => s.id === id);
+        if (ses && ses.startsAt) {
+          ui.calDay = ymdOf(ses.startsAt);
+          ui.calYM = ui.calDay.slice(0, 7);
+        }
+      } else if (!ui.calDay) {
+        ui.calDay = splitLocal().date;
+      }
+      render();
+    } else if (act === 'cal-composer-close') {
+      ui.calComposer = '';
+      render();
+    } else if (act === 'cal-del') {
+      if (!canBill()) return;
+      const id = btn.getAttribute('data-id');
+      if (!id || !confirm('Hapus acara ini dari jadwal?')) return;
+      db.sessions = (db.sessions || []).filter((s) => s.id !== id);
+      if (ui.calComposer === id) ui.calComposer = '';
+      save();
+      toast('Acara dihapus');
+      render();
+    } else if (act === 'cal-remind-now') {
+      if (!canBill()) return;
+      const id = btn.getAttribute('data-id');
+      const ses = (db.sessions || []).find((s) => s.id === id);
+      if (!ses) {
+        toast('Acara tidak ditemukan.');
+        return;
+      }
+      const n = sendSessionReminders(ses, { now: true });
+      save();
+      toast(n ? ('Pengingat dikirim ke ' + n + ' siswa (WA/email queue).') : 'Tidak ada siswa di kelas ini.');
+      render();
     } else if (act === 'kur-prev-lec') {
       ui.kurPreviewLec = btn.getAttribute('data-id');
       render();
@@ -13530,6 +13753,62 @@
       if (ses) ses.meetUrl = String(fd.get('meetUrl'));
       save();
       toast('Tautan Meet disimpan');
+      render();
+    } else if (act === 'save-session') {
+      if (!canBill()) return;
+      const editId = form.getAttribute('data-id');
+      const title = String(fd.get('title') || '').trim().slice(0, 120);
+      const date = String(fd.get('date') || '');
+      const time = String(fd.get('time') || '');
+      if (!title || !date || !time) {
+        toast('Isi judul, tanggal, dan jam.');
+        return;
+      }
+      const startsAt = joinLocal(date, time);
+      const mins = Math.max(15, Math.min(480, Number(fd.get('mins')) || 90));
+      let audience = String(fd.get('audience') || 'all');
+      if (audience !== 'all' && !batchList().some((b) => b.id === audience) && !allChatIds().includes(audience)) {
+        audience = 'all';
+      }
+      const channels = [];
+      if (fd.get('remindWa')) channels.push('wa');
+      if (fd.get('remindEmail')) channels.push('email');
+      const remindOn = !!fd.get('remindOn');
+      const remind = {
+        on: remindOn,
+        whenMins: Math.max(0, Number(fd.get('remindMins')) || 60),
+        channels: channels.length ? channels : ['wa', 'email']
+      };
+      db.sessions = db.sessions || [];
+      let ses = editId && editId !== 'new'
+        ? db.sessions.find((s) => s.id === editId)
+        : null;
+      const creating = !ses;
+      if (!ses) {
+        ses = { id: 'ses-' + Date.now().toString(36) };
+        db.sessions.push(ses);
+      }
+      ses.title = title;
+      ses.startsAt = startsAt;
+      ses.mins = mins;
+      ses.meetUrl = String(fd.get('meetUrl') || '').trim();
+      ses.location = String(fd.get('location') || 'Online').trim() || 'Online';
+      ses.notes = String(fd.get('notes') || '').trim();
+      ses.audience = audience;
+      ses.remind = remind;
+      ses.required = Array.isArray(ses.required) ? ses.required : [];
+      if (creating) ses.remindersSentAt = '';
+      ui.calComposer = '';
+      ui.calDay = ymdOf(startsAt);
+      ui.calYM = ui.calDay.slice(0, 7);
+      let reminded = 0;
+      if (remindOn && (creating || !ses.remindersSentAt)) {
+        reminded = sendSessionReminders(ses, { now: false });
+      }
+      save();
+      toast(creating
+        ? ('Acara ditambah' + (reminded ? (' · pengingat untuk ' + reminded + ' siswa') : ''))
+        : 'Acara disimpan');
       render();
     } else if (act === 'apply' || act === 'wiz-next') {
       advanceWiz();
