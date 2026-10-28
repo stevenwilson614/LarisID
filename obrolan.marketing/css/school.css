@@ -216,8 +216,12 @@ a { color: inherit; }
 .brand strong { display: block; font-size: .84rem; letter-spacing: -.02em; font-weight: 700; }
 
 .brand-copy { display: grid; gap: 1px; min-width: 0; }
+.school-person {
+  display: block; font-size: .72rem; font-weight: 650; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 14rem;
+}
 .school-header {
-  display: block; font-size: .68rem; font-weight: 650; color: var(--accent);
+  display: block; font-size: .68rem; font-weight: 550; color: var(--muted);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 14rem;
 }
 .brand-btn:disabled .brand-caret { display: none; }

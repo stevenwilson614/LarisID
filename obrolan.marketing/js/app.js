@@ -1878,11 +1878,14 @@
                 '<div class="brand brand-preview">' +
                   schoolAvatarHtml('school-avatar') +
                   '<div class="brand-copy">' +
-                    '<strong>' + esc(SEED.school.name) + '</strong>' +
+                    '<strong>' + esc((db && db.businessName) || SEED.school.name || 'Kelas') + '</strong>' +
+                    (() => {
+                      const nm = (String(p.firstName || '').trim() + ' ' + String(p.lastName || '').trim()).trim();
+                      return nm ? '<span class="school-person">' + esc(nm) + '</span>' : '';
+                    })() +
                     ((p.headline || '').trim()
                       ? '<span class="school-header">' + esc(String(p.headline).trim()) + '</span>'
                       : '') +
-                    '<span class="school-handle">' + esc(schoolSlug()) + '</span>' +
                   '</div>' +
                 '</div>' +
               '</div>' +
@@ -6346,12 +6349,12 @@
     $('app').classList.toggle('is-onboard', isOnboardScreen());
     $('app').classList.toggle('is-belajar', !isStaff() && ui.tab === 'belajar');
     $('app').classList.toggle('is-diskusi', isStaff() ? ui.mentorTab === 'diskusi' : ui.tab === 'diskusi');
-    const chromeName = (db && db.businessName) || schoolDisplayName();
-    $('school-name').textContent = chromeName;
-    if (chromeName) document.title = chromeName;
+    const chromeOrg = (db && db.businessName) || (antonSchoolData() ? SEED.school.name : 'Kelas');
+    $('school-name').textContent = chromeOrg;
+    if (chromeOrg) document.title = chromeOrg;
     const logo = $('school-logo');
     if (logo) {
-      logo.alt = chromeName;
+      logo.alt = chromeOrg;
       const pLogo = schoolProfile();
       if (pLogo.photoUrl && !pLogo.photoBlob) {
         logo.removeAttribute('data-blob');
@@ -6367,16 +6370,12 @@
         logo.src = antonSchoolData() ? (SEED.school.photo || SEED.school.logo) : '';
       }
     }
-    const badge = document.querySelector('.off-badge');
-    if (badge) {
-      badge.textContent = ui.present ? 'Offline · demo' : schoolPublicPath().replace(/\/$/, '');
-      badge.title = schoolPublicUrl();
-    }
-    const handleEl = $('school-handle');
-    if (handleEl) {
-      handleEl.textContent = schoolSlug();
-      handleEl.href = schoolLocalUrl();
-      handleEl.title = schoolPublicUrl();
+    const personEl = $('school-person');
+    if (personEl) {
+      const prof = schoolProfile();
+      const personName = (String(prof.firstName || '').trim() + ' ' + String(prof.lastName || '').trim()).trim();
+      personEl.hidden = !personName;
+      personEl.textContent = personName;
     }
     $('role-switch').innerHTML =
       '<option value="student">Siswa</option>' +
