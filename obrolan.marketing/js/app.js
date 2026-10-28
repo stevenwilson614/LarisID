@@ -2177,6 +2177,7 @@
     daftarJoinedTo: '',
     daftarBulk: '',
     pipaSettingsOpen: false,
+    pipaTipOpen: false,
     pipaDeleteId: null,
     pustakaAddOpen: false,
     cariSiswa: '',
@@ -6614,6 +6615,7 @@
     focusWiz();
     placeWaFab();
     placePayPrompt();
+    placePipaTip();
     tickRemainers();
     ensureRemainTimer();
     paintDaftarSelAll();
@@ -6809,6 +6811,61 @@
         '<button type="button" class="pay-prompt-scrim" data-act="pay-prompt-close" aria-label="Tutup"></button>' +
         '<div class="pay-prompt-sheet card trial-cta">' +
           payPromptBody(ui.personaId) +
+        '</div>' +
+      '</div>';
+  }
+  function pipaTipStorageKey() {
+    return 'lms-pipa-tip-v1:' + (schoolSlug() || 'school');
+  }
+  function pipaTipSeen() {
+    try { return localStorage.getItem(pipaTipStorageKey()) === '1'; } catch (err) { return true; }
+  }
+  function markPipaTipSeen() {
+    try { localStorage.setItem(pipaTipStorageKey(), '1'); } catch (err) { /* private mode */ }
+  }
+  function ensurePipaTip() {
+    if (!isStaff() || isSiswaReadonly() || ui.present) {
+      ui.pipaTipOpen = false;
+      return;
+    }
+    if (pipaTipSeen()) {
+      ui.pipaTipOpen = false;
+      return;
+    }
+    const onSiswa = normalizeMentorTab(ui.mentorTab) === 'siswa';
+    ui.pipaTipOpen = onSiswa;
+  }
+  function placePipaTip() {
+    let host = document.getElementById('pipa-tip-host');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'pipa-tip-host';
+      ($('app') || document.body).appendChild(host);
+    }
+    ensurePipaTip();
+    const show = !!ui.pipaTipOpen && isStaff();
+    if (!show) {
+      host.innerHTML = '';
+      host.hidden = true;
+      return;
+    }
+    host.hidden = false;
+    host.innerHTML =
+      '<div class="pipa-tip" role="dialog" aria-modal="true" aria-labelledby="pipa-tip-title">' +
+        '<button type="button" class="pipa-tip-scrim" data-act="pipa-tip-close" aria-label="Tutup"></button>' +
+        '<div class="pipa-tip-sheet card">' +
+          '<p class="pipa-tip-kicker">Students</p>' +
+          '<h2 id="pipa-tip-title">Customize your Pipa</h2>' +
+          '<p class="muted">Set the stages, colors, and auto-moves so the student list matches how you run your class — before the roster fills up.</p>' +
+          '<ul class="pipa-tip-points">' +
+            '<li>Rename stages (WA baru, Form, Bayar…)</li>' +
+            '<li>Pick colors and drag to reorder</li>' +
+            '<li>Add transitions when something happens</li>' +
+          '</ul>' +
+          '<div class="row pipa-tip-acts">' +
+            '<button type="button" class="btn" data-act="pipa-tip-customize">Atur pipa</button>' +
+            '<button type="button" class="btn secondary" data-act="pipa-tip-close">Nanti</button>' +
+          '</div>' +
         '</div>' +
       '</div>';
   }
@@ -9256,7 +9313,11 @@
     '</section>';
   }
   function viewSiswaHub() {
-    if (!rosterStudents().length) return viewSiswaEmpty();
+    ensurePipaTip();
+    const empty = !rosterStudents().length;
+    if (empty && !(ui.pipaSettingsOpen && (ui.siswaView || 'pipa') === 'pipa')) {
+      return viewSiswaEmpty();
+    }
     const cam = ui.siswaView || 'pipa';
     const q = (ui.filterSiswa || ui.crmFilter || '').toLowerCase();
     const pipaGear = cam === 'pipa'
@@ -9273,11 +9334,23 @@
       : '';
     const head = '<div class="hub-head">' +
       '<div><h2 style="margin:0">Siswa · ' + esc(antonSchoolData() ? SEED.cohort.name : ((db && db.businessName) || 'Kelas')) + '</h2>' +
-        '<p class="muted">Klik nama = profil. Geser kartu di Pipa.</p></div>' +
+        '<p class="muted">' + (empty
+          ? 'Belum ada siswa — atur tahap Pipa dulu, lalu undang orang.'
+          : 'Klik nama = profil. Geser kartu di Pipa.') + '</p></div>' +
       '<div class="hub-head-acts">' +
         pipaGear +
-        '<input placeholder="Cari orang…" value="' + esc(q) + '" data-act="filter-siswa" style="max-width:260px;padding:8px 12px;border:1px solid var(--line);border-radius:10px">' +
+        (empty
+          ? ''
+          : '<input placeholder="Cari orang…" value="' + esc(q) + '" data-act="filter-siswa" style="max-width:260px;padding:8px 12px;border:1px solid var(--line);border-radius:10px">') +
       '</div></div>' + hubSeg();
+    if (empty) {
+      return head +
+        '<div class="siswa-empty-inline">' +
+          '<p class="muted">Pipa masih kosong. Simpan tahap yang kamu mau, lalu kembali undang siswa lewat invite link.</p>' +
+          '<button type="button" class="btn-sm" data-act="siswa-invite-back">Kembali ke undangan</button>' +
+        '</div>' +
+        viewCrm(q);
+    }
     if (cam === 'daftar') return head + viewSiswaDaftar(q);
     if (cam === 'progres') return head + viewMentorProgres();
     return head + viewCrm(q);
@@ -12877,6 +12950,24 @@
       ui.hubBack = 'daftar';
       ui.mentorTab = 'siswa';
       render();
+    } else if (act === 'pipa-tip-close') {
+      markPipaTipSeen();
+      ui.pipaTipOpen = false;
+      placePipaTip();
+    } else if (act === 'pipa-tip-customize') {
+      markPipaTipSeen();
+      ui.pipaTipOpen = false;
+      ui.mentorTab = 'siswa';
+      ui.siswaView = 'pipa';
+      ui.hubBack = 'pipa';
+      ui.pipaSettingsOpen = true;
+      ui.pipaDeleteId = null;
+      render();
+    } else if (act === 'siswa-invite-back') {
+      ui.pipaSettingsOpen = false;
+      ui.pipaDeleteId = null;
+      ui.mentorTab = 'siswa';
+      render();
     } else if (act === 'pipa-settings-toggle') {
       ui.pipaSettingsOpen = !ui.pipaSettingsOpen;
       if (!ui.pipaSettingsOpen) ui.pipaDeleteId = null;
@@ -14046,6 +14137,11 @@
     if (e.key !== 'Escape') return;
     const menu = $('brand-menu');
     if (menu && !menu.hidden) setBrandMenu(false);
+    if (ui.pipaTipOpen) {
+      markPipaTipSeen();
+      ui.pipaTipOpen = false;
+      placePipaTip();
+    }
     if (ui.profilePreview) {
       ui.profilePreview = null;
       ui.profilePreviewKind = null;

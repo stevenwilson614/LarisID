@@ -3185,6 +3185,42 @@ html[data-mode="student"] #app.is-belajar .player-layout > div,
   from { transform: translateY(18px); opacity: .6; }
   to { transform: translateY(0); opacity: 1; }
 }
+.pipa-tip {
+  position: fixed; inset: 0; z-index: 70;
+  display: grid; place-items: center;
+  pointer-events: none; padding: 18px;
+}
+.pipa-tip-scrim {
+  position: absolute; inset: 0; border: 0; padding: 0;
+  background: var(--scrim); cursor: pointer; pointer-events: auto;
+}
+.pipa-tip-sheet {
+  position: relative; z-index: 1; pointer-events: auto;
+  width: min(440px, 100%);
+  padding: 22px 20px 18px;
+  border-radius: 18px;
+  box-shadow: 0 18px 50px var(--shadow);
+  animation: pay-prompt-up .22s ease;
+}
+.pipa-tip-kicker {
+  margin: 0 0 6px; font-size: .68rem; font-weight: 800;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--muted-2);
+}
+.pipa-tip-sheet h2 {
+  margin: 0 0 8px; font-size: 1.35rem; letter-spacing: -.03em; font-weight: 800;
+}
+.pipa-tip-sheet > .muted { margin: 0 0 14px; line-height: 1.45; }
+.pipa-tip-points {
+  margin: 0 0 16px; padding-left: 1.15rem;
+  color: var(--muted); font-size: .84rem; line-height: 1.45;
+}
+.pipa-tip-points li { margin: 0 0 4px; }
+.pipa-tip-acts { margin-top: 4px; }
+.siswa-empty-inline {
+  margin: 8px 0 14px; padding: 12px 14px;
+  border: 1px dashed var(--line-2); border-radius: 12px; background: var(--ink-2);
+}
+.siswa-empty-inline .muted { margin: 0 0 10px; }
 .lesson-back,
 .lesson-chev {
   width: 32px; height: 32px; padding: 0;
