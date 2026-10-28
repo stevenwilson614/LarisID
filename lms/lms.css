@@ -812,6 +812,7 @@ textarea { min-height: 96px; resize: vertical; }
 .auth-panel {
   --auth-wa: #B5202A;
   --auth-wa-soft: #F9EAE4;
+  position: relative;
   max-width: 380px;
   margin: 0 auto;
   padding: 32px 28px 28px;

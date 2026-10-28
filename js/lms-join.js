@@ -17,6 +17,7 @@
   const $ = (id) => document.getElementById(id);
   let session = null;
   let emailMode = 'signup';
+  let emailOpen = false;
   let factorId = '';
   let challengeId = '';
   let wizStep = 0;
@@ -142,17 +143,69 @@
     return true;
   }
 
+  function setEmailOpen(open) {
+    emailOpen = !!open;
+    const form = $('email-form');
+    const toggle = $('email-open');
+    if (form) form.hidden = !emailOpen;
+    if (toggle) {
+      toggle.classList.toggle('is-open', emailOpen);
+      toggle.setAttribute('aria-expanded', emailOpen ? 'true' : 'false');
+    }
+  }
   function setEmailMode(mode) {
     emailMode = mode === 'login' ? 'login' : 'signup';
-    $('email-form').hidden = emailMode !== 'login';
-    $('email-submit').textContent = emailMode === 'signup' ? 'Daftar dengan Email' : 'Masuk dengan Email';
-    $('email-mode').textContent = emailMode === 'signup' ? 'Sudah punya akun? Masuk' : 'Belum punya akun? Daftar';
-    $('name-label').hidden = emailMode !== 'signup';
-    $('full-name').hidden = emailMode !== 'signup';
+    const signup = emailMode === 'signup';
+    const panel = $('view-auth');
+    if (panel) panel.classList.toggle('is-signup', signup);
+    const mascot = $('auth-mascot');
+    if (mascot) {
+      if (signup && !mascot.src && mascot.dataset.src) mascot.src = mascot.dataset.src;
+    }
+    const title = $('auth-title');
+    if (title) title.textContent = signup ? 'Buat akun untuk buat kelas' : 'Masuk untuk buat kelas';
+    const sub = $('auth-subtitle');
+    if (sub) {
+      sub.textContent = signup
+        ? 'Gratis. Paling gampang daftar pakai nomor HP (SMS OTP).'
+        : 'Masuk dengan akun LarisID yang sudah ada.';
+    }
+    const waHero = $('auth-wa-hero-title');
+    if (waHero) waHero.textContent = signup ? 'Daftar dengan SMS' : 'Masuk dengan SMS';
+    const googleLabel = $('auth-google-label');
+    if (googleLabel) googleLabel.textContent = signup ? 'Daftar dengan Google' : 'Masuk dengan Google';
+    const emailLabel = $('auth-email-label');
+    if (emailLabel) emailLabel.textContent = signup ? 'Daftar dengan Email' : 'Masuk dengan Email';
+    const submit = $('email-submit');
+    if (submit) submit.textContent = signup ? 'Daftar dengan Email' : 'Masuk';
+    const toggleText = $('auth-toggle-text');
+    if (toggleText) {
+      toggleText.innerHTML = signup
+        ? 'Sudah punya akun? <a id="email-mode" role="button" tabindex="0">Masuk</a>'
+        : 'Belum punya akun? <a id="email-mode" role="button" tabindex="0">Daftar</a>';
+      bindEmailModeToggle();
+    }
+    const nameLabel = $('name-label');
+    const fullName = $('full-name');
+    if (nameLabel) nameLabel.hidden = !signup;
+    if (fullName) fullName.hidden = !signup;
+    setEmailOpen(false);
+  }
+  function bindEmailModeToggle() {
+    const link = $('email-mode');
+    if (!link || link.dataset.bound) return;
+    link.dataset.bound = '1';
+    link.addEventListener('click', () => {
+      setEmailMode(emailMode === 'signup' ? 'login' : 'signup');
+    });
   }
   function openAuth(mode) {
     show('view-auth');
     err('auth-err', '');
+    const panel = $('view-auth');
+    if (panel) panel.classList.remove('is-otp');
+    $('sms-phone').hidden = false;
+    $('sms-code').hidden = true;
     if (mode === 'login') setEmailMode('login');
     else setEmailMode('signup');
   }
@@ -179,13 +232,13 @@
   });
 
   $('sms-send').addEventListener('click', sendSms);
-  $('sms-resend').addEventListener('click', sendSms);
+  $('sms-resend').addEventListener('click', (e) => { e.preventDefault(); sendSms(); });
   $('sms-verify').addEventListener('click', verifySms);
-  $('email-open').addEventListener('click', () => { $('email-form').hidden = false; });
-  $('email-mode').addEventListener('click', () => {
-    setEmailMode(emailMode === 'signup' ? 'login' : 'signup');
-    $('email-form').hidden = false;
+  $('email-open').addEventListener('click', () => {
+    setEmailOpen(!emailOpen);
+    if (emailOpen) $('email')?.focus();
   });
+  bindEmailModeToggle();
   $('email-form').addEventListener('submit', (e) => { e.preventDefault(); submitEmail(); });
 
   async function sendSms() {
@@ -206,7 +259,10 @@
       }
       $('sms-phone').hidden = true;
       $('sms-code').hidden = false;
-      $('sms-hint').textContent = 'Kode dikirim lewat SMS ke ' + (data.phone || phone) + '.';
+      const panel = $('view-auth');
+      if (panel) panel.classList.add('is-otp');
+      $('sms-hint').textContent = 'Kode OTP sudah dikirim via SMS ke ' + (data.phone || phone) + '. Masukkan 6 digit di bawah.';
+      setTimeout(() => $('otp')?.focus(), 80);
     } catch (e) {
       err('auth-err', 'Tidak terhubung. Coba lagi.');
     } finally {
