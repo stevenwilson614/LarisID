@@ -1181,8 +1181,8 @@
     if (!antonSchoolData()) return '<span class="' + c + '">' + esc((p.firstName || 'K').slice(0, 1)) + '</span>';
     return '<img class="' + c + '" src="' + esc(SEED.school.photo || SEED.school.logo) + '" alt="">';
   }
-  function schoolSocialLinksHtml() {
-    const s = schoolProfile().socials || {};
+  function schoolSocialLinksHtml(profile) {
+    const s = ((profile || schoolProfile()).socials) || {};
     const items = [
       { k: 'website', label: 'Website' },
       { k: 'facebook', label: 'Facebook' },
@@ -1207,7 +1207,7 @@
   }
   function viewSchoolPublic(opts) {
     const o = opts || {};
-    const p = schoolProfile();
+    const p = o.profile || schoolProfile();
     const back = o.student
       ? '<button type="button" class="btn secondary" data-act="tab" data-id="home">← Back</button>'
       : '';
@@ -1226,9 +1226,43 @@
       (p.biography
         ? '<div class="school-public-desc">' + mdish(p.biography) + '</div>'
         : '<p class="muted">No biography yet.</p>') +
-      schoolSocialLinksHtml() +
+      schoolSocialLinksHtml(p) +
       (back ? '<div class="row" style="margin-top:14px">' + back + '</div>' : '') +
     '</section>';
+  }
+  /** Live Profile form draft so Student view shows unsaved bio/links. */
+  function draftSchoolProfileFromForm() {
+    const base = schoolProfile();
+    const form = $('school-profile-form');
+    if (!form) return base;
+    const fd = new FormData(form);
+    return Object.assign({}, base, {
+      firstName: String(fd.get('firstName') || '').trim().slice(0, 40) || base.firstName,
+      lastName: String(fd.get('lastName') || '').trim().slice(0, 40),
+      headline: String(fd.get('headline') || '').trim().slice(0, 60),
+      biography: String(fd.get('biography') || '').trim().slice(0, 2000),
+      socials: Object.assign({}, base.socials, {
+        website: String(fd.get('website') || '').trim(),
+        facebook: socialHandleClean(fd.get('facebook')),
+        instagram: socialHandleClean(fd.get('instagram')),
+        linkedin: socialHandleClean(String(fd.get('linkedin') || '').replace(/^in\//i, '')),
+        tiktok: tiktokHandle(fd.get('tiktok')),
+        x: socialHandleClean(fd.get('x')),
+        youtube: socialHandleClean(fd.get('youtube'))
+      })
+    });
+  }
+  function studentViewToggleHtml() {
+    const mode = ui.profilePreview === 'desktop' ? 'desktop' : (ui.profilePreview === 'phone' ? 'phone' : '');
+    return '<div class="ps-student-view">' +
+      '<span class="muted">Student view</span>' +
+      '<div class="prof-preview-toggle" role="group" aria-label="Student view">' +
+        '<button type="button" class="btn-sm' + (mode === 'phone' ? ' is-on' : '') +
+          '" data-act="profile-preview" data-mode="phone">Phone</button>' +
+        '<button type="button" class="btn-sm' + (mode === 'desktop' ? ' is-on' : '') +
+          '" data-act="profile-preview" data-mode="desktop">Desktop</button>' +
+      '</div>' +
+    '</div>';
   }
   function canEditPerson(id) {
     if (isSiswaReadonly()) return false;
@@ -1340,21 +1374,11 @@
   }
   function profileActionsBar(opts) {
     const o = opts || {};
-    const mode = ui.profilePreview === 'desktop' ? 'desktop' : (ui.profilePreview === 'phone' ? 'phone' : '');
     const saveBtn = o.photo
       ? '<button class="btn ps-save" type="button" data-act="profile-pane" data-id="info">Done</button>'
       : '<button class="btn ps-save" type="submit" form="school-profile-form">Save</button>';
     return '<div class="ps-actions">' +
       saveBtn +
-      '<div class="ps-student-view">' +
-        '<span class="muted">Student view</span>' +
-        '<div class="prof-preview-toggle" role="group" aria-label="Student view">' +
-          '<button type="button" class="btn-sm' + (mode === 'phone' ? ' is-on' : '') +
-            '" data-act="profile-preview" data-mode="phone">Phone</button>' +
-          '<button type="button" class="btn-sm' + (mode === 'desktop' ? ' is-on' : '') +
-            '" data-act="profile-preview" data-mode="desktop">Desktop</button>' +
-        '</div>' +
-      '</div>' +
       '<button type="button" class="btn-sm" data-act="tab" data-id="siswa">Close</button>' +
     '</div>';
   }
@@ -1430,6 +1454,7 @@
     return '<section class="ps-page">' +
       '<div class="ps-page-head">' +
         '<h1>Profile &amp; settings</h1>' +
+        studentViewToggleHtml() +
       '</div>' +
       '<nav class="ps-tabs" role="tablist">' +
         '<button type="button" role="tab" data-act="profile-pane" data-id="info" aria-selected="' +
@@ -1751,52 +1776,96 @@
     u.searchParams.set('readonly', '1');
     return u.pathname + u.search;
   }
+  function syncStudentViewToggles(mode) {
+    document.querySelectorAll('.ps-student-view .prof-preview-toggle .btn-sm, #profile-preview .prof-preview-toggle .btn-sm').forEach((b) => {
+      b.classList.toggle('is-on', b.getAttribute('data-mode') === mode);
+    });
+  }
   function paintProfilePreview() {
     const host = $('profile-preview');
     if (!host) return;
     if (!ui.profilePreview) {
       host.hidden = true;
       host.innerHTML = '';
+      syncStudentViewToggles('');
       return;
     }
     const mode = ui.profilePreview === 'desktop' ? 'desktop' : 'phone';
+    const kind = ui.profilePreviewKind === 'app' ? 'app' : 'profile';
     const frame = host.querySelector('.prof-preview-frame');
     const iframe = host.querySelector('iframe.siswa-preview-frame');
-    if (frame && iframe && !host.hidden) {
+    const isApp = !!(frame && frame.classList.contains('is-siswa-app') && iframe);
+    if (frame && !host.hidden && ((kind === 'app') === isApp)) {
       frame.classList.toggle('is-phone', mode === 'phone');
       frame.classList.toggle('is-desktop', mode === 'desktop');
-      host.querySelectorAll('.prof-preview-toggle .btn-sm').forEach((b) => {
-        b.classList.toggle('is-on', b.getAttribute('data-mode') === mode);
-      });
-      document.querySelectorAll('.ps-actions .prof-preview-toggle .btn-sm').forEach((b) => {
-        b.classList.toggle('is-on', b.getAttribute('data-mode') === mode);
-      });
+      syncStudentViewToggles(mode);
       return;
     }
     host.hidden = false;
-    host.innerHTML =
-      '<div class="prof-preview-scrim" data-act="profile-preview-close"></div>' +
-      '<div class="prof-preview-panel" role="dialog" aria-label="Siswa view">' +
-        '<div class="prof-preview-bar">' +
-          '<strong>Siswa view</strong>' +
-          '<span class="muted prof-preview-hint">Navigasi penuh · read-only (tanpa komentar / kirim)</span>' +
-          '<div class="prof-preview-toggle" role="group" aria-label="Device">' +
-            '<button type="button" class="btn-sm' + (mode === 'phone' ? ' is-on' : '') +
-              '" data-act="profile-preview" data-mode="phone">Phone</button>' +
-            '<button type="button" class="btn-sm' + (mode === 'desktop' ? ' is-on' : '') +
-              '" data-act="profile-preview" data-mode="desktop">Desktop</button>' +
+    if (kind === 'app') {
+      host.innerHTML =
+        '<div class="prof-preview-scrim" data-act="profile-preview-close"></div>' +
+        '<div class="prof-preview-panel" role="dialog" aria-label="Siswa view">' +
+          '<div class="prof-preview-bar">' +
+            '<strong>Siswa view</strong>' +
+            '<span class="muted prof-preview-hint">Navigasi penuh · read-only (tanpa komentar / kirim)</span>' +
+            '<div class="prof-preview-toggle" role="group" aria-label="Device">' +
+              '<button type="button" class="btn-sm' + (mode === 'phone' ? ' is-on' : '') +
+                '" data-act="profile-preview" data-mode="phone">Phone</button>' +
+              '<button type="button" class="btn-sm' + (mode === 'desktop' ? ' is-on' : '') +
+                '" data-act="profile-preview" data-mode="desktop">Desktop</button>' +
+            '</div>' +
+            '<button type="button" class="btn-sm" data-act="profile-preview-close">Close</button>' +
           '</div>' +
-          '<button type="button" class="btn-sm" data-act="profile-preview-close">Close</button>' +
-        '</div>' +
-        '<div class="prof-preview-stage">' +
-          '<div class="prof-preview-frame is-' + mode + ' is-siswa-app">' +
-            '<iframe class="siswa-preview-frame" title="Tampilan siswa" src="' + esc(siswaPreviewSrc()) + '"></iframe>' +
+          '<div class="prof-preview-stage">' +
+            '<div class="prof-preview-frame is-' + mode + ' is-siswa-app">' +
+              '<iframe class="siswa-preview-frame" title="Tampilan siswa" src="' + esc(siswaPreviewSrc()) + '"></iframe>' +
+            '</div>' +
           '</div>' +
-        '</div>' +
-      '</div>';
-    document.querySelectorAll('.ps-actions .prof-preview-toggle .btn-sm').forEach((b) => {
-      b.classList.toggle('is-on', b.getAttribute('data-mode') === mode);
-    });
+        '</div>';
+    } else {
+      const p = draftSchoolProfileFromForm();
+      host.innerHTML =
+        '<div class="prof-preview-scrim" data-act="profile-preview-close"></div>' +
+        '<div class="prof-preview-panel" role="dialog" aria-label="Student view">' +
+          '<div class="prof-preview-bar">' +
+            '<strong>Student view</strong>' +
+            '<span class="muted prof-preview-hint">How students see this profile</span>' +
+            '<div class="prof-preview-toggle" role="group" aria-label="Device">' +
+              '<button type="button" class="btn-sm' + (mode === 'phone' ? ' is-on' : '') +
+                '" data-act="profile-preview" data-mode="phone">Phone</button>' +
+              '<button type="button" class="btn-sm' + (mode === 'desktop' ? ' is-on' : '') +
+                '" data-act="profile-preview" data-mode="desktop">Desktop</button>' +
+            '</div>' +
+            '<button type="button" class="btn-sm" data-act="profile-preview-close">Close</button>' +
+          '</div>' +
+          '<div class="prof-preview-stage">' +
+            '<div class="prof-preview-frame is-' + mode + '">' +
+              '<div class="prof-preview-chrome">' +
+                '<div class="brand brand-preview">' +
+                  schoolAvatarHtml('school-avatar') +
+                  '<div class="brand-copy">' +
+                    '<strong>' + esc(SEED.school.name) + '</strong>' +
+                    ((p.headline || '').trim()
+                      ? '<span class="school-header">' + esc(String(p.headline).trim()) + '</span>'
+                      : '') +
+                    '<span class="school-handle">' + esc(schoolSlug()) + '</span>' +
+                  '</div>' +
+                '</div>' +
+              '</div>' +
+              '<div class="prof-preview-body">' + viewSchoolPublic({ profile: p }) + '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      host.querySelectorAll('img[data-blob]').forEach((el) => {
+        const id = el.getAttribute('data-blob');
+        blobGet(id).then((file) => {
+          if (!file || !el.isConnected) return;
+          el.src = URL.createObjectURL(file);
+        });
+      });
+    }
+    syncStudentViewToggles(mode);
   }
 
     function defaultState() {
@@ -2057,6 +2126,7 @@
     profilePane: 'info',
     accountPane: 'security',
     profilePreview: null,
+    profilePreviewKind: null,
     onboardPreview: null,
     socialPick: null,
     shopPick: null,
@@ -11883,6 +11953,7 @@
     } else if (act === 'tab') {
       const id = btn.getAttribute('data-id');
       ui.profilePreview = null;
+      ui.profilePreviewKind = null;
       if (ui.onboardPreview) ui.onboardPreview = null;
       if (isStaff()) {
         ui.mentorTab = id;
@@ -11941,6 +12012,7 @@
     } else if (act === 'open-profil') {
       setBrandMenu(false);
       ui.profilePreview = null;
+      ui.profilePreviewKind = null;
       ui.profilePane = 'info';
       if (canBill()) {
         ui.mentorTab = 'profil';
@@ -11964,6 +12036,7 @@
     } else if (act === 'open-account') {
       setBrandMenu(false);
       ui.profilePreview = null;
+      ui.profilePreviewKind = null;
       if (!canBill()) {
         toast('Account settings hanya untuk Anton.');
         return;
@@ -11978,6 +12051,7 @@
         toast('Siswa view hanya untuk Anton.');
         return;
       }
+      ui.profilePreviewKind = 'app';
       ui.profilePreview = ui.profilePreview === 'desktop' ? 'desktop' : 'phone';
       paintProfilePreview();
     } else if (act === 'profile-pane') {
@@ -12008,10 +12082,17 @@
       ta.setSelectionRange(caret, caret);
     } else if (act === 'profile-preview') {
       if (!canBill()) return;
+      /* Profile page toggle always previews the public mentor profile, not onboarding. */
+      if (!btn.closest || !btn.closest('#profile-preview')) {
+        ui.profilePreviewKind = 'profile';
+      } else if (!ui.profilePreviewKind) {
+        ui.profilePreviewKind = 'profile';
+      }
       ui.profilePreview = btn.getAttribute('data-mode') === 'desktop' ? 'desktop' : 'phone';
       paintProfilePreview();
     } else if (act === 'profile-preview-close') {
       ui.profilePreview = null;
+      ui.profilePreviewKind = null;
       paintProfilePreview();
     } else if (act === 'profile-sync-photo') {
       if (!canBill()) return;
@@ -13444,6 +13525,7 @@
     if (menu && !menu.hidden) setBrandMenu(false);
     if (ui.profilePreview) {
       ui.profilePreview = null;
+      ui.profilePreviewKind = null;
       paintProfilePreview();
     }
     if (isOnboardPreview()) {
