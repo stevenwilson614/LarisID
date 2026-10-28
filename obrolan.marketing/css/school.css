@@ -4375,3 +4375,26 @@ html.siswa-readonly .brand-menu { display: none !important; }
   .ob-ed-type { min-width: 0; flex: 1 1 100%; }
 }
 
+.staff-admin { display: grid; gap: 18px; text-align: left; }
+.staff-link {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0;
+}
+.staff-link code {
+  flex: 1 1 220px; font-size: .78rem; word-break: break-all;
+  padding: 8px 10px; border-radius: 8px; background: var(--ink); border: 1px solid var(--line);
+}
+.staff-perms {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 6px 12px; margin: 10px 0;
+}
+.staff-perm {
+  display: flex; align-items: center; gap: 8px;
+  font-size: .84rem; font-weight: 600; cursor: pointer;
+}
+.staff-perm input { accent-color: var(--kur-brand, #B5202A); }
+.staff-card {
+  border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;
+  background: var(--ink);
+}
+.staff-card-top { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+

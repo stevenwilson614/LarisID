@@ -47,6 +47,27 @@ window.ANTON_SEED = {
     { id: 'u-anton', name: 'Anton', role: 'owner', wa: '628111000001', photo: './assets/obrolan/profile.png' },
     { id: 'u-lia', name: 'Lia', role: 'asisten', wa: '628111000002' }
   ],
+  staffAdmins: [
+    {
+      id: 'u-lia',
+      name: 'Lia',
+      email: 'lia@obrolan.marketing',
+      status: 'active',
+      inviteToken: '',
+      permissions: {
+        viewStudents: true,
+        editStudents: false,
+        addStudents: false,
+        viewIncome: true,
+        editIncome: false,
+        viewClasses: true,
+        editClasses: false
+      },
+      createdAt: '2026-09-01T00:00:00.000Z',
+      acceptedAt: '2026-09-01T00:00:00.000Z',
+      revokedAt: ''
+    }
+  ],
   cohort: {
     id: 'coh-sep',
     name: 'Batch September',

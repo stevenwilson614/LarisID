@@ -584,12 +584,14 @@
     if (colId === 'city') return esc(s.city || '—');
     if (colId === 'stage') return esc(stageLabel(c.stage));
     if (colId === 'bayar') {
-      const ctl = canBill() ? billStatusSelect(s.id, b) : payChip(b.status, b.source);
+      if (!staffCan('viewIncome')) return '<span class="muted">—</span>';
+      const ctl = staffCan('editIncome') ? billStatusSelect(s.id, b) : payChip(b.status, b.source);
       const confirm = confirmPaidBtn(s.id);
       return confirm ? ctl + ' ' + confirm : ctl;
     }
     if (colId === 'nilai') {
-      return canBill()
+      if (!staffCan('viewIncome')) return '<span class="muted">—</span>';
+      return staffCan('editIncome')
         ? billAmountInput(s.id, b)
         : (b.amount ? '<span class="money">' + esc(fmtRp(b.amount)) + '</span>' : '<span class="muted">—</span>');
     }
@@ -681,6 +683,7 @@
     merged.inviteCode = antonSchoolData()
       ? (String(merged.inviteCode || (SEED.cohort && SEED.cohort.invite) || '').trim() || SEED.cohort.invite)
       : String(merged.inviteCode || '').trim();
+    merged.staffAdmins = normalizeStaffAdmins(merged.staffAdmins);
     merged.lynkProducts = Object.assign({
       month: { url: '', title: '', price: 0 },
       quarter: { url: '', title: '', price: 0 },
@@ -1550,25 +1553,94 @@
   }
   function viewProfilEdit() {
     ensureSchoolProfile();
-    if (ui.profileMode !== 'edit') return viewProfilCard(schoolProfile(), { editable: true });
     const p = schoolProfile();
-    const pane = ui.profilePane === 'photo' ? 'photo' : 'info';
+    const pane = ui.profilePane === 'photo' ? 'photo' : (ui.profilePane === 'admin' ? 'admin' : 'info');
     ui.profilePane = pane;
+    let body;
+    if (pane === 'admin') body = viewProfilAdmin();
+    else if (pane === 'photo') body = viewProfilPhotoPane(p);
+    else if (ui.profileMode !== 'edit') body = viewProfilCard(p, { editable: true });
+    else body = viewProfilInfoForm(p);
     return '<section class="ps-page">' +
       '<div class="ps-page-head">' +
         '<h1>Profile &amp; settings</h1>' +
-        studentViewToggleHtml() +
+        (pane === 'admin' ? '' : studentViewToggleHtml()) +
       '</div>' +
       '<nav class="ps-tabs" role="tablist">' +
         '<button type="button" role="tab" data-act="profile-pane" data-id="info" aria-selected="' +
           (pane === 'info') + '">Profile</button>' +
         '<button type="button" role="tab" data-act="profile-pane" data-id="photo" aria-selected="' +
           (pane === 'photo') + '">Profile picture</button>' +
+        '<button type="button" role="tab" data-act="profile-pane" data-id="admin" aria-selected="' +
+          (pane === 'admin') + '">Admin</button>' +
       '</nav>' +
-      '<div class="ps-body">' +
-        (pane === 'photo' ? viewProfilPhotoPane(p) : viewProfilInfoForm(p)) +
-      '</div>' +
+      '<div class="ps-body">' + body + '</div>' +
     '</section>';
+  }
+  function staffPermLabel(key) {
+    return {
+      viewStudents: 'View students',
+      editStudents: 'Edit students',
+      addStudents: 'Add students',
+      viewIncome: 'View income',
+      editIncome: 'Edit income',
+      viewClasses: 'View classes',
+      editClasses: 'Edit classes'
+    }[key] || key;
+  }
+  function staffInviteUrl(token) {
+    const path = schoolMentorPath();
+    const base = isLocalHost() ? ('https://larisid.com' + path) : (location.origin + path);
+    return base + '?staff_invite=' + encodeURIComponent(token || '');
+  }
+  function staffPermBoxes(row) {
+    return '<div class="staff-perms">' + STAFF_PERM_KEYS.map((key) =>
+      '<label class="staff-perm"><input type="checkbox" data-act="staff-perm" data-id="' + esc(row.id) +
+        '" data-key="' + esc(key) + '"' + (row.permissions && row.permissions[key] ? ' checked' : '') + '>' +
+        '<span>' + esc(staffPermLabel(key)) + '</span></label>'
+    ).join('') + '</div>';
+  }
+  function viewProfilAdmin() {
+    const rows = db.staffAdmins || [];
+    const pending = rows.find((s) => s.status === 'pending' && s.inviteToken);
+    const link = pending ? staffInviteUrl(pending.inviteToken) : '';
+    const statusChip = (st) =>
+      '<span class="chip' + (st === 'revoked' ? ' warn' : '') + '">' +
+      esc(st === 'active' ? 'Active' : (st === 'revoked' ? 'Revoked' : 'Invite')) + '</span>';
+    const cards = rows.filter((s) => s.status !== 'pending').map((row) =>
+      '<article class="staff-card">' +
+        '<div class="staff-card-top">' +
+          '<div><strong>' + esc(row.name || 'Admin') + '</strong>' +
+            '<div class="muted">' + esc(row.email || 'No login yet') + '</div></div>' +
+          statusChip(row.status) +
+        '</div>' +
+        staffPermBoxes(row) +
+        '<div class="row">' +
+          (row.status === 'revoked'
+            ? '<button type="button" class="btn-sm" data-act="staff-restore" data-id="' + esc(row.id) + '">Restore access</button>'
+            : '<button type="button" class="btn-sm" data-act="staff-revoke" data-id="' + esc(row.id) + '">Revoke access</button>') +
+        '</div>' +
+      '</article>'
+    ).join('');
+    return '<div class="staff-admin">' +
+      '<div class="as-section">' +
+        '<h2>Invite an admin</h2>' +
+        '<p class="muted">Share this link. They enter a name, then create an email and password. They see the mentor app, limited by these switches. Revoke or grant access anytime.</p>' +
+        (link
+          ? '<div class="staff-link">' +
+              '<code>' + esc(link) + '</code>' +
+              '<button type="button" class="btn" data-act="copy-url" data-url="' + esc(link) + '">Copy link</button>' +
+              '<button type="button" class="btn-sm" data-act="staff-invite-rotate">New link</button>' +
+            '</div>' +
+            '<p class="muted">Permissions for the next person who accepts this link.</p>' +
+            staffPermBoxes(pending)
+          : '<button type="button" class="btn" data-act="staff-invite-new">Create invite link</button>') +
+      '</div>' +
+      '<div class="as-section">' +
+        '<h2>Team</h2>' +
+        (cards || '<p class="muted">No admins yet. Access starts after someone accepts the invite.</p>') +
+      '</div>' +
+    '</div>';
   }
   function viewAccountSecurity(a) {
     return '<form class="ps-form as-form" id="account-security-form" data-act="save-account-security">' +
@@ -2011,6 +2083,7 @@
       mentorBand: '',
       ownerId: anton ? ((SEED.school && SEED.school.ownerId) || 'u-anton') : '',
       inviteCode: anton ? SEED.cohort.invite : '',
+      staffAdmins: demo && SEED.staffAdmins ? JSON.parse(JSON.stringify(SEED.staffAdmins)) : [],
       pricing: anton ? JSON.parse(JSON.stringify(SEED.pricing)) : {},
       bank: anton ? JSON.parse(JSON.stringify(SEED.bank)) : {},
       dunning: JSON.parse(JSON.stringify(SEED.dunning)),
@@ -2235,6 +2308,15 @@
     personMidTab: 'timeline',
     brandMenuOpen: false,
     profilePane: 'info',
+    staffId: '',
+    staffName: '',
+    staffPerms: null,
+    staffWizStep: 1,
+    staffWizName: '',
+    staffInviteOk: null,
+    staffInviteChecked: '',
+    staffLoginOpen: PRESENT_QS.get('staff_login') === '1',
+    staffInviteToken: String(PRESENT_QS.get('staff_invite') || ''),
     profileMode: 'view',
     accountPane: 'security',
     profilePreview: null,
@@ -2458,7 +2540,7 @@
     }
     return ok;
   }
-  async function pullState() {
+  async function pullState(force) {
     if (!syncEnabled() || syncInFlight) return;
     try {
       const res = await fetch(syncUrl(), { headers: lmsHeaders(), cache: 'no-store' });
@@ -2470,7 +2552,7 @@
       const data = await res.json();
       if (!data || !data.state) return;
       const rev = Number(data.rev) || 0;
-      if (rev <= syncRev) return;
+      if (!force && rev <= syncRev) return;
       syncRev = rev;
       syncStatus = 'ok · rev ' + syncRev;
       localStorage.setItem(KEY, JSON.stringify(data.state));
@@ -2679,7 +2761,96 @@
   function catalog() { return db.catalog || SEED.catalog; }
   function productById(id) { return catalog().find((p) => p.id === id); }
   function isStaff() { return ui.role === 'owner' || ui.role === 'asisten'; }
+  function isOwner() { return ui.role === 'owner'; }
   function canBill() { return ui.role === 'owner'; }
+  const STAFF_PERM_KEYS = ['viewStudents', 'editStudents', 'addStudents', 'viewIncome', 'editIncome', 'viewClasses', 'editClasses'];
+  function defaultStaffPerms() {
+    return {
+      viewStudents: true,
+      editStudents: false,
+      addStudents: false,
+      viewIncome: false,
+      editIncome: false,
+      viewClasses: true,
+      editClasses: false
+    };
+  }
+  function staffCan(key) {
+    if (isOwner()) return true;
+    if (ui.role !== 'asisten') return false;
+    const p = ui.staffPerms || defaultStaffPerms();
+    return !!p[key];
+  }
+  function staffToken() {
+    const bytes = new Uint8Array(16);
+    if (window.crypto && crypto.getRandomValues) crypto.getRandomValues(bytes);
+    else for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+    return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
+  function normalizeStaffAdmins(list) {
+    const rows = Array.isArray(list) ? list : [];
+    const out = [];
+    const seen = {};
+    rows.forEach((raw) => {
+      if (!raw || !raw.id || seen[raw.id]) return;
+      const id = String(raw.id).slice(0, 40);
+      seen[id] = 1;
+      const status = raw.status === 'active' || raw.status === 'revoked' || raw.status === 'pending' ? raw.status : 'pending';
+      const perms = defaultStaffPerms();
+      STAFF_PERM_KEYS.forEach((k) => {
+        if (raw.permissions && raw.permissions[k] != null) perms[k] = !!raw.permissions[k];
+      });
+      out.push({
+        id: id,
+        name: String(raw.name || '').slice(0, 80),
+        email: String(raw.email || '').slice(0, 160),
+        status: status,
+        inviteToken: status === 'pending' ? String(raw.inviteToken || '') : '',
+        permissions: perms,
+        createdAt: raw.createdAt || '',
+        acceptedAt: raw.acceptedAt || '',
+        revokedAt: raw.revokedAt || ''
+      });
+    });
+    if (antonSchoolData() && demoRosterOn() && !seen['u-lia']) {
+      const lia = defaultStaffPerms();
+      lia.viewIncome = true;
+      out.push({
+        id: 'u-lia',
+        name: 'Lia',
+        email: 'lia@obrolan.marketing',
+        status: 'active',
+        inviteToken: '',
+        permissions: lia,
+        createdAt: '2026-09-01T00:00:00.000Z',
+        acceptedAt: '2026-09-01T00:00:00.000Z',
+        revokedAt: ''
+      });
+    }
+    return out;
+  }
+  function refreshStaffFromDb() {
+    if (!ui || ui.role !== 'asisten' || !ui.staffId) return;
+    const row = (db.staffAdmins || []).find((s) => s.id === ui.staffId);
+    if (!row || row.status !== 'active') {
+      ui.role = 'student';
+      ui.staffId = '';
+      ui.staffName = '';
+      ui.staffPerms = null;
+      return;
+    }
+    ui.staffPerms = Object.assign(defaultStaffPerms(), row.permissions || {});
+    ui.staffName = row.name || '';
+  }
+  function markStaff(row) {
+    ui.admin = false;
+    ui.role = 'asisten';
+    ui.staffId = row.id;
+    ui.staffName = row.name || '';
+    ui.staffPerms = Object.assign(defaultStaffPerms(), row.permissions || {});
+    ui.visitorLive = false;
+    if (!ui.mentorTab || ui.mentorTab === 'profil' || ui.mentorTab === 'account') ui.mentorTab = 'dash';
+  }
   // Flip true when billing settings UI is ready for owners again.
   const SHOW_PENGATURAN_BAYAR = false;
 
@@ -3027,7 +3198,7 @@
   }
   function actorId() {
     if (isStaff()) {
-      if (ui.role === 'asisten') return 'u-lia';
+      if (ui.role === 'asisten') return ui.staffId || 'u-lia';
       if (typeof db !== 'undefined' && db && db.ownerId) return db.ownerId;
       return (SEED.school && SEED.school.ownerId) || 'u-anton';
     }
@@ -4328,7 +4499,7 @@
   }
   function lmsHeaders(extra) {
     const headers = Object.assign({ 'content-type': 'application/json' }, extra || {});
-    if (onStudentVanityPath() || !ui.admin) headers['x-lms-view'] = 'student';
+    if (onStudentVanityPath() || (!ui.admin && !ui.staffId)) headers['x-lms-view'] = 'student';
     else {
       const auth = lmsAuth();
       if (auth && auth.access_token) headers.authorization = 'Bearer ' + auth.access_token;
@@ -4858,7 +5029,7 @@
     closeTransferTasks(id, taskId);
   }
   function confirmPaidBtn(id) {
-    if (!canBill() || !isPending(id)) return '';
+    if (!staffCan('editIncome') || !isPending(id)) return '';
     const src = billingOf(id).source;
     const label = src === 'mayar' ? 'Konfirmasi manual' : 'Konfirmasi lunas';
     return '<button type="button" class="btn-sm" data-act="confirm-paid" data-id="' + esc(id) + '">' + label + '</button>';
@@ -5335,7 +5506,7 @@
     return '<input class="inline-edit money-in" data-act="bill-amount" data-id="' + esc(id) + '" type="number" min="0" step="1000" value="' + (Number(b.amount) || 0) + '">';
   }
   function personEntitlementsHtml(id) {
-    if (!canBill()) return '';
+    if (!staffCan('editIncome')) return '';
     const b = billingOf(id);
     const mentorOn = canMentoring(id);
     return '<div class="fub-field"><dt>Mentoring</dt><dd>' +
@@ -6146,7 +6317,7 @@
         col.classList.remove('is-drop');
         const id = ev.dataTransfer.getData('text/plain');
         const stage = col.getAttribute('data-stage');
-        if (!id || !stage) return;
+        if (!id || !stage || !staffCan('editStudents')) return;
         setStage(id, stage, 'Geser kartu ke ' + stageLabel(stage));
         save();
         render();
@@ -6155,7 +6326,7 @@
   }
   function bindKurDnD() {
     const root = $('main');
-    if (!root || ui.role === 'asisten') return;
+    if (!root || !staffCan('editClasses')) return;
     root.querySelectorAll('[data-drag="sec"], [data-drag="lec"]').forEach((el) => {
       el.addEventListener('dragstart', (ev) => {
         const kind = el.getAttribute('data-drag');
@@ -6474,13 +6645,13 @@
     ui.chromeSync = false;
     const searchWrap = $('topbar-search');
     if (searchWrap) {
-      searchWrap.hidden = !isStaff();
+      searchWrap.hidden = !isStaff() || !staffCan('viewStudents');
       const inp = $('cari-siswa');
       if (inp && document.activeElement !== inp) inp.value = ui.cariSiswa || '';
       paintCariDrop();
     }
     const outBtn = $('btn-admin-out');
-    if (outBtn) outBtn.hidden = !(ui.admin && syncEnabled());
+    if (outBtn) outBtn.hidden = !((ui.admin && syncEnabled()) || (ui.staffId && !isOwner()));
     const menuProfil = $('btn-menu-profil');
     const menuAccount = $('btn-menu-account');
     const menuSiswa = $('btn-menu-siswa-view');
@@ -6538,15 +6709,13 @@
     ];
   }
   function mentorTabs() {
-    const t = [
-      { id: 'dash', label: 'Dashboard' },
-      { id: 'siswa', label: 'Students' },
-      { id: 'kurikulum', label: 'Kurikulum' },
-      { id: 'otomasi', label: 'Otomasi' },
-      { id: 'pustaka', label: 'Perpustakaan' },
-      { id: 'jadwal', label: 'Jadwal' },
-      { id: 'diskusi', label: 'Diskusi' }
-    ];
+    const t = [{ id: 'dash', label: 'Dashboard' }];
+    if (staffCan('viewStudents')) t.push({ id: 'siswa', label: 'Students' });
+    if (staffCan('viewClasses')) t.push({ id: 'kurikulum', label: 'Kurikulum' });
+    t.push({ id: 'otomasi', label: 'Otomasi' });
+    t.push({ id: 'pustaka', label: 'Perpustakaan' });
+    if (staffCan('viewClasses')) t.push({ id: 'jadwal', label: 'Jadwal' });
+    t.push({ id: 'diskusi', label: 'Diskusi' });
     if (SHOW_PENGATURAN_BAYAR && canBill()) t.push({ id: 'harga', label: 'Pengaturan bayar' });
     return t;
   }
@@ -6662,10 +6831,228 @@
     }
   }
 
+  function applyStaffServer(data) {
+    if (data && Array.isArray(data.staffAdmins)) db.staffAdmins = normalizeStaffAdmins(data.staffAdmins);
+    if (data && data.rev) syncRev = Number(data.rev) || syncRev;
+    try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (err) { /* private */ }
+  }
+  async function staffPost(path, body) {
+    const res = await fetch(apiBase() + path, {
+      method: 'POST',
+      headers: lmsHeaders(),
+      body: JSON.stringify(Object.assign({ slug: schoolSlug() }, body || {})),
+      cache: 'no-store'
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(data.error || 'staff');
+      err.code = data.error || 'staff';
+      throw err;
+    }
+    applyStaffServer(data);
+    return data;
+  }
+  function ensureLocalInvite(rotate) {
+    db.staffAdmins = normalizeStaffAdmins(db.staffAdmins);
+    let pending = db.staffAdmins.find((s) => s.status === 'pending');
+    if (!pending) {
+      pending = {
+        id: 'adm-' + Date.now().toString(36),
+        name: '',
+        email: '',
+        status: 'pending',
+        inviteToken: staffToken(),
+        permissions: defaultStaffPerms(),
+        createdAt: isoNow(),
+        acceptedAt: '',
+        revokedAt: ''
+      };
+      db.staffAdmins.push(pending);
+    } else if (rotate || !pending.inviteToken) {
+      pending.inviteToken = staffToken();
+    }
+    return pending;
+  }
+  async function ensureStaffInvite(rotate) {
+    if (!syncEnabled()) {
+      ensureLocalInvite(!!rotate);
+      save();
+      return;
+    }
+    await staffPost('/staff/invite', { rotate: !!rotate });
+  }
+  async function patchStaffRow(id, patch) {
+    const row = (db.staffAdmins || []).find((s) => s.id === id);
+    if (!row) return;
+    if (patch.permissions) row.permissions = Object.assign(defaultStaffPerms(), row.permissions, patch.permissions);
+    if (patch.status) row.status = patch.status;
+    if (patch.status === 'revoked') row.revokedAt = isoNow();
+    if (patch.status === 'active') row.revokedAt = '';
+    if (!syncEnabled()) {
+      save();
+      return;
+    }
+    await staffPost('/staff/update', {
+      id: id,
+      status: row.status,
+      permissions: row.permissions
+    });
+  }
+  async function staffPassHash(password) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('anton-staff:' + password));
+    return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
+  function rememberLocalStaff(id, email, hash) {
+    try {
+      sessionStorage.setItem('anton-staff-session', JSON.stringify({ id: id }));
+      const bag = JSON.parse(sessionStorage.getItem('anton-staff-secrets') || '{}');
+      if (email && hash) bag[String(email).toLowerCase()] = { id: id, hash: hash };
+      sessionStorage.setItem('anton-staff-secrets', JSON.stringify(bag));
+    } catch (err) { /* private */ }
+  }
+  async function acceptStaffInvite(name, email, password) {
+    if (syncEnabled()) {
+      const data = await staffPost('/staff/accept', {
+        token: ui.staffInviteToken,
+        name: name,
+        email: email,
+        password: password
+      });
+      markStaff(data.staff || { id: ui.staffId, name: name, permissions: defaultStaffPerms() });
+    } else {
+      const row = (db.staffAdmins || []).find((s) => s.inviteToken === ui.staffInviteToken && s.status === 'pending');
+      if (!row) {
+        const err = new Error('invite');
+        err.code = 'invite';
+        throw err;
+      }
+      row.name = name;
+      row.email = email;
+      row.status = 'active';
+      row.inviteToken = '';
+      row.acceptedAt = isoNow();
+      save();
+      rememberLocalStaff(row.id, email, await staffPassHash(password));
+      markStaff(row);
+    }
+    ui.staffInviteToken = '';
+    ui.staffLoginOpen = false;
+    ui.staffWizStep = 1;
+    try { history.replaceState(null, '', location.pathname); } catch (err) { /* ignore */ }
+    if (syncEnabled()) await pullState(true);
+    render();
+  }
+  async function loginStaff(email, password) {
+    if (syncEnabled()) {
+      const data = await staffPost('/staff/login', { email: email, password: password });
+      markStaff(data.staff);
+    } else {
+      const bag = JSON.parse(sessionStorage.getItem('anton-staff-secrets') || '{}');
+      const hit = bag[String(email || '').toLowerCase()];
+      const hash = await staffPassHash(password);
+      if (!hit || hit.hash !== hash) throw new Error('auth');
+      const row = (db.staffAdmins || []).find((s) => s.id === hit.id && s.status === 'active');
+      if (!row) throw new Error('auth');
+      rememberLocalStaff(row.id, email, hash);
+      markStaff(row);
+    }
+    ui.staffLoginOpen = false;
+    ui.staffInviteToken = '';
+    try { history.replaceState(null, '', location.pathname); } catch (err) { /* ignore */ }
+    if (syncEnabled()) await pullState(true);
+    render();
+  }
+  function viewStaffGate() {
+    if (ui.staffLoginOpen && !ui.staffInviteToken) return viewStaffLogin();
+    return viewStaffWizard();
+  }
+  function viewStaffWizard() {
+    if (syncEnabled() && ui.staffInviteChecked !== ui.staffInviteToken) {
+      ui.staffInviteChecked = ui.staffInviteToken;
+      ui.staffInviteOk = null;
+      fetch(apiBase() + '/staff/invite/' + encodeURIComponent(ui.staffInviteToken) +
+        '?slug=' + encodeURIComponent(schoolSlug()), { cache: 'no-store' })
+        .then((res) => {
+          ui.staffInviteOk = res.ok;
+          if (!isStaff() && ui.staffInviteToken) render();
+        })
+        .catch(() => {
+          ui.staffInviteOk = false;
+          if (!isStaff() && ui.staffInviteToken) render();
+        });
+    } else if (!syncEnabled() && ui.staffInviteChecked !== ui.staffInviteToken) {
+      ui.staffInviteChecked = ui.staffInviteToken;
+      const row = (db.staffAdmins || []).find((s) => s.inviteToken === ui.staffInviteToken && s.status === 'pending');
+      ui.staffInviteOk = !!row;
+    }
+    const step = ui.staffWizStep === 2 ? 2 : 1;
+    if (ui.staffInviteOk === false) {
+      return '<div class="kur-wiz"><section class="kur-wiz-card">' +
+        '<h2>Tautan tidak berlaku</h2>' +
+        '<p class="kur-wiz-sub">Minta mentor kirim tautan admin yang baru.</p>' +
+        '<button type="button" class="btn secondary" data-act="staff-login-open">Sudah punya akun</button>' +
+      '</section></div>';
+    }
+    if (ui.staffInviteOk == null && syncEnabled()) {
+      return '<div class="kur-wiz"><section class="kur-wiz-card"><p class="muted">Memeriksa tautan…</p></section></div>';
+    }
+    const steps = '<nav class="kur-wiz-steps" aria-label="Langkah">' +
+      '<span class="kur-wiz-step' + (step === 1 ? ' is-on' : ' is-done') + '"><i>' + (step > 1 ? '✓' : '1') + '</i><span>Nama</span></span>' +
+      '<span class="kur-wiz-line' + (step > 1 ? ' is-on' : '') + '"></span>' +
+      '<span class="kur-wiz-step' + (step === 2 ? ' is-on' : '') + '"><i>2</i><span>Login</span></span>' +
+    '</nav>';
+    const form = step === 1
+      ? '<form class="kur-wiz-form" data-act="staff-wiz-name">' +
+          '<label for="staff-name">Nama</label>' +
+          '<input id="staff-name" name="name" required maxlength="80" value="' + esc(ui.staffWizName || '') +
+            '" placeholder="Nama kamu" autocomplete="name">' +
+          '<div class="kur-wiz-actions">' +
+            '<button type="submit" class="btn kur-wiz-primary">Lanjutkan <span aria-hidden="true">→</span></button>' +
+          '</div></form>'
+      : '<form class="kur-wiz-form" data-act="staff-wiz-account">' +
+          '<p class="muted" style="margin:0 0 8px">Halo ' + esc(ui.staffWizName || '') + '</p>' +
+          '<label for="staff-email">Email</label>' +
+          '<input id="staff-email" name="email" type="email" required maxlength="160" autocomplete="username" placeholder="kamu@email.com">' +
+          '<label for="staff-pass">Password</label>' +
+          '<input id="staff-pass" name="password" type="password" required minlength="8" autocomplete="new-password" placeholder="Min. 8 karakter">' +
+          '<div class="kur-wiz-actions">' +
+            '<button type="button" class="btn secondary" data-act="staff-wiz-back">← Kembali</button>' +
+            '<button type="submit" class="btn kur-wiz-primary">Buat akun</button>' +
+          '</div></form>';
+    return '<div class="kur-wiz">' + steps +
+      '<section class="kur-wiz-card">' +
+        '<h2>' + (step === 1 ? 'Nama kamu' : 'Buat login') + '</h2>' +
+        '<p class="kur-wiz-sub">' + (step === 1
+          ? 'Mentor mengundang kamu sebagai admin kelas ini.'
+          : 'Email dan password ini hanya untuk kelas ini.') + '</p>' +
+        form +
+        '<p class="muted" style="margin-top:16px"><button type="button" class="btn-sm" data-act="staff-login-open">Sudah punya akun</button></p>' +
+      '</section></div>';
+  }
+  function viewStaffLogin() {
+    return '<div class="kur-wiz"><section class="kur-wiz-card">' +
+      '<h2>Masuk admin</h2>' +
+      '<p class="kur-wiz-sub">Pakai email dan password yang kamu buat dari tautan mentor.</p>' +
+      '<form class="kur-wiz-form" data-act="staff-login">' +
+        '<label for="staff-login-email">Email</label>' +
+        '<input id="staff-login-email" name="email" type="email" required autocomplete="username">' +
+        '<label for="staff-login-pass">Password</label>' +
+        '<input id="staff-login-pass" name="password" type="password" required minlength="8" autocomplete="current-password">' +
+        '<div class="kur-wiz-actions">' +
+          '<button type="submit" class="btn kur-wiz-primary">Masuk</button>' +
+        '</div></form>' +
+    '</section></div>';
+  }
+
   function render() {
     captureDiskusiScroll();
+    refreshStaffFromDb();
     fillChrome();
     const main = $('main');
+    if (!isStaff() && (ui.staffInviteToken || ui.staffLoginOpen)) {
+      main.innerHTML = viewStaffGate();
+      return;
+    }
     if (isStaff()) {
       const tab = normalizeMentorTab(ui.mentorTab);
       ui.mentorTab = tab;
@@ -6772,6 +7159,9 @@
       return 'siswa';
     }
     if (tab === 'harga' && !SHOW_PENGATURAN_BAYAR) return 'dash';
+    if ((tab === 'siswa' || tab === 'orang' || tab === 'tugas') && !staffCan('viewStudents')) return 'dash';
+    if ((tab === 'kurikulum' || tab === 'jadwal') && !staffCan('viewClasses')) return 'dash';
+    if ((tab === 'profil' || tab === 'account' || tab === 'admin' || tab === 'harga') && !isOwner()) return 'dash';
     return tab || 'siswa';
   }
 
@@ -9207,7 +9597,7 @@
                   '<span class="dash-list-meta">' + esc(r.detail || stageLabel(crmOf(r.id).stage)) +
                     (r.at ? ' · ' + esc(fmtWhen(r.at)) : '') + '</span>' +
                 '</span>' +
-                (showMoney && r.amount
+                (showMoney && staffCan('viewIncome') && r.amount
                   ? '<span class="dash-list-amt">' + esc(fmtRp(r.amount)) + '</span>'
                   : '') +
               '</button>' +
@@ -9266,16 +9656,19 @@
         card('continued', 'Lanjut', String(st.continued), 'Perpanjang / renewal') +
         card('ended', 'Berakhir', String(st.ended), 'Sudah keluar / tidak tertarik') +
       '</div>' +
-      '<div class="dash-money">' +
-        '<h3>Uang masuk</h3>' +
-        '<div class="dash-grid dash-grid-money">' +
-          card('mentor', 'Mentoring', esc(fmtRp(st.mentorMoney)), 'Termasuk perpanjang') +
-          card('sku', 'Produk', esc(fmtRp(st.skuMoney)), 'Pembelian SKU / lynk') +
-          card('total', 'Total', esc(fmtRp(st.totalMoney)), 'Mentoring + produk') +
-        '</div>' +
-      '</div>' +
+      (staffCan('viewIncome')
+        ? '<div class="dash-money">' +
+            '<h3>Uang masuk</h3>' +
+            '<div class="dash-grid dash-grid-money">' +
+              card('mentor', 'Mentoring', esc(fmtRp(st.mentorMoney)), 'Termasuk perpanjang') +
+              card('sku', 'Produk', esc(fmtRp(st.skuMoney)), 'Pembelian SKU / lynk') +
+              card('total', 'Total', esc(fmtRp(st.totalMoney)), 'Mentoring + produk') +
+            '</div>' +
+          '</div>'
+        : '') +
       dashListHtml(focus, st.lists) +
-      '<section class="dash-chart">' +
+      (staffCan('viewIncome')
+        ? '<section class="dash-chart">' +
         '<div class="dash-chart-head">' +
           '<h3>Pendapatan per bulan</h3>' +
           '<div class="dash-legend">' +
@@ -9285,8 +9678,11 @@
           '</div>' +
         '</div>' +
         dashIncomeChartSvg(series) +
-      '</section>' +
-      '<p class="dash-footnote">Angka dari ledger pembayaran &amp; form. Beasiswa (Rp0) tidak menambah uang masuk. Anton merchant — LarisID tidak menahan uang.</p>' +
+      '</section>'
+        : '') +
+      (staffCan('viewIncome')
+        ? '<p class="dash-footnote">Angka dari ledger pembayaran &amp; form. Beasiswa (Rp0) tidak menambah uang masuk. Anton merchant — LarisID tidak menahan uang.</p>'
+        : '') +
     '</div>';
   }
   function hubSeg() {
@@ -9377,6 +9773,13 @@
     return isLocalHost() ? schoolJoinLocalUrl() : schoolJoinUrl();
   }
   function viewSiswaEmpty() {
+    if (!staffCan('addStudents')) {
+      return '<section class="siswa-empty"><div class="siswa-empty-copy">' +
+        '<p class="siswa-empty-kicker">Students</p>' +
+        '<h2>Belum ada siswa</h2>' +
+        '<p class="muted">Kamu bisa lihat daftar ini. Menambah siswa hanya kalau mentor mengizinkan.</p>' +
+      '</div></section>';
+    }
     const join = inviteShareUrl();
     const display = schoolJoinUrl();
     const code = schoolInviteCode();
@@ -9418,7 +9821,7 @@
     }
     const cam = ui.siswaView || 'pipa';
     const q = (ui.filterSiswa || ui.crmFilter || '').toLowerCase();
-    const pipaGear = cam === 'pipa'
+    const pipaGear = cam === 'pipa' && staffCan('editStudents')
       ? '<div class="cols-dd-wrap' + (ui.pipaSettingsOpen ? ' is-open' : '') + '" id="pipa-settings-wrap">' +
           '<button type="button" class="cols-dd-btn' + (ui.pipaSettingsOpen ? ' is-on' : '') +
             '" data-act="pipa-settings-toggle" aria-expanded="' + !!ui.pipaSettingsOpen + '" aria-haspopup="dialog" title="Atur pipa">' +
@@ -9445,7 +9848,9 @@
       return head +
         '<div class="siswa-empty-inline">' +
           '<p class="muted">Pipa masih kosong. Simpan tahap yang kamu mau, lalu kembali undang siswa lewat invite link.</p>' +
-          '<button type="button" class="btn-sm" data-act="siswa-invite-back">Kembali ke undangan</button>' +
+          (staffCan('addStudents')
+            ? '<button type="button" class="btn-sm" data-act="siswa-invite-back">Kembali ke undangan</button>'
+            : '') +
         '</div>' +
         viewCrm(q);
     }
@@ -9536,10 +9941,11 @@
       const color = stageColorOf(st, i);
       return '<div class="kanban-col" data-stage="' + esc(st.id) + '" style="border-top-color:' + color + '">' +
         '<div class="kanban-col-head"><h3><span class="pipa-dot" style="background:' + color + '" aria-hidden="true"></span>' + esc(st.label) + '</h3>' +
-          '<div class="muted">' + rows.length + ' orang · ' + (sum ? fmtRp(sum) : 'Rp0') + '</div></div>' +
+          '<div class="muted">' + rows.length + ' orang' +
+            (staffCan('viewIncome') ? (' · ' + (sum ? fmtRp(sum) : 'Rp0')) : '') + '</div></div>' +
         (rows.length ? rows.map((s) => {
           const b = billingOf(s.id);
-          return '<button type="button" class="kanban-card" draggable="true" data-act="open-student" data-id="' + esc(s.id) + '">' +
+          return '<button type="button" class="kanban-card" draggable="' + (staffCan('editStudents') ? 'true' : 'false') + '" data-act="open-student" data-id="' + esc(s.id) + '">' +
             '<div class="roster-name">' + avatarHtml(s, 'avatar sm') + '<strong>' + esc(s.name) + '</strong>' + waUnreadBadge(s.id) + '</div>' +
             '<div class="muted">' + esc(s.city) + (s.mentorId && s.mentorId !== 'u-anton' ? ' · ' + esc(nameOf(s.mentorId)) : '') + '</div>' +
             (b.amount ? '<div class="money">' + esc(fmtRp(b.amount)) + '</div>' : '') +
@@ -9617,7 +10023,7 @@
       }
       if (kind === 'email') action += '<a class="btn-sm" href="' + esc(mailLink(s.email, t.title, t.body)) + '">Email</a>';
       if (kind === 'call' && s.wa) action += '<a class="btn-sm" href="tel:+' + esc(String(s.wa).replace(/\D/g, '')) + '">Telepon</a>';
-      if (canBill() && isPending(t.personId) && /cek transfer/i.test(t.title || '')) {
+      if (staffCan('editIncome') && isPending(t.personId) && /cek transfer/i.test(t.title || '')) {
         action += '<button class="btn-sm" data-act="confirm-paid" data-id="' + esc(t.personId) + '" data-task="' + esc(t.id) + '">Konfirmasi lunas</button>';
       }
       action += '<button class="btn-sm" data-act="task-done" data-id="' + esc(t.id) + '">Selesai</button>';
@@ -10148,23 +10554,35 @@
         personGroupsHtml(id) +
         personOnboardFieldsHtml(id) +
         '<dl class="fub-meta">' +
-          '<div class="fub-field"><dt>Stage</dt><dd><select data-act="crm-stage" data-id="' + esc(id) + '">' +
-            stages.map((st) => '<option value="' + esc(st.id) + '"' + (c.stage === st.id ? ' selected' : '') + '>' + esc(st.label) + '</option>').join('') +
-          '</select></dd></div>' +
-          '<div class="fub-field"><dt>Assigned</dt><dd><select data-act="assign-mentor" data-id="' + esc(id) + '" aria-label="Assigned">' +
-            assignableMentors(id).map((m) =>
-              '<option value="' + esc(m.id) + '"' + (((s.mentorId || 'u-anton') === m.id) ? ' selected' : '') + '>' + esc(m.name) + '</option>'
-            ).join('') +
-          '</select></dd></div>' +
+          '<div class="fub-field"><dt>Stage</dt><dd>' +
+            (staffCan('editStudents')
+              ? '<select data-act="crm-stage" data-id="' + esc(id) + '">' +
+                stages.map((st) => '<option value="' + esc(st.id) + '"' + (c.stage === st.id ? ' selected' : '') + '>' + esc(st.label) + '</option>').join('') +
+                '</select>'
+              : esc(stageLabel(c.stage))) +
+          '</dd></div>' +
+          '<div class="fub-field"><dt>Assigned</dt><dd>' +
+            (staffCan('editStudents')
+              ? '<select data-act="assign-mentor" data-id="' + esc(id) + '" aria-label="Assigned">' +
+                assignableMentors(id).map((m) =>
+                  '<option value="' + esc(m.id) + '"' + (((s.mentorId || 'u-anton') === m.id) ? ' selected' : '') + '>' + esc(m.name) + '</option>'
+                ).join('') +
+                '</select>'
+              : esc(nameOf(s.mentorId || 'u-anton'))) +
+          '</dd></div>' +
           '<div class="fub-field"><dt>Tags</dt>' + personTagsHtml(id) + '</div>' +
           '<div class="fub-field"><dt>Sumber</dt><dd>' + esc((app && app.heard) || b.source || '—') +
             (app ? '<div class="muted">' + (app.hasShop ? 'Sudah punya toko' : 'Belum punya toko') + '</div>' : '') +
           '</dd></div>' +
           '<div class="fub-field"><dt>Bayar</dt><dd>' +
-            (canBill() ? billStatusSelect(id, b) : payChip(b.status, b.source)) +
-            (confirmPaidBtn(id) ? '<div style="margin-top:6px">' + confirmPaidBtn(id) + '</div>' : '') +
-            '<div class="muted" style="margin-top:6px">' + esc(termLabel(b.pendingTerm || b.term)) + '</div>' +
-            (canBill() ? '<div style="margin-top:6px">' + billAmountInput(id, b) + '</div>' : '<div class="money">' + esc(fmtRp(b.amount || 0)) + '</div>') +
+            (!staffCan('viewIncome')
+              ? '<span class="muted">Disembunyikan</span>'
+              : (staffCan('editIncome') ? billStatusSelect(id, b) : payChip(b.status, b.source)) +
+                (confirmPaidBtn(id) ? '<div style="margin-top:6px">' + confirmPaidBtn(id) + '</div>' : '') +
+                '<div class="muted" style="margin-top:6px">' + esc(termLabel(b.pendingTerm || b.term)) + '</div>' +
+                (staffCan('editIncome')
+                  ? '<div style="margin-top:6px">' + billAmountInput(id, b) + '</div>'
+                  : '<div class="money">' + esc(fmtRp(b.amount || 0)) + '</div>')) +
           '</dd></div>' +
           personEntitlementsHtml(id) +
         '</dl>' +
@@ -10274,7 +10692,7 @@
                     : '<button type="button" class="task-check" data-act="task-done" data-id="' + esc(t.id) + '" aria-label="Selesai"></button>') +
                   '<div><strong>' + esc(t.title) + '</strong>' +
                     '<div class="muted">' + esc(taskKindLabel(t.kind)) + ' · ' + esc(relWhen(t.dueAt)) + '</div>' +
-                    (!t.done && canBill() && isPending(id) && /cek transfer/i.test(t.title || '')
+                    (!t.done && staffCan('editIncome') && isPending(id) && /cek transfer/i.test(t.title || '')
                       ? '<div style="margin-top:6px"><button type="button" class="btn-sm" data-act="confirm-paid" data-id="' + esc(id) + '" data-task="' + esc(t.id) + '">Konfirmasi lunas</button></div>'
                       : '') +
                   '</div></div>'
@@ -10352,7 +10770,7 @@
   function viewKurikulumStudent() {
     const meta = ensureKurikulumMeta();
     const lec = lectureById(ui.lectureId) || lectures()[0];
-    const canEdit = ui.role !== 'asisten';
+    const canEdit = staffCan('editClasses');
     if (!lec) {
       return '<div class="card kur-empty">' +
         '<div class="kur-wiz-ico" aria-hidden="true">' + kurWizIcon() + '</div>' +
@@ -10440,7 +10858,7 @@
   }
 
   function viewKurWizModules() {
-    const readonly = ui.role === 'asisten';
+    const readonly = !staffCan('editClasses');
     const meta = ensureKurikulumMeta();
     const nVid = lectures().filter((l) => l.type === 'video').length;
     const nTxt = lectures().filter((l) => l.type === 'text').length;
@@ -10936,11 +11354,11 @@
     return '<div class="cal-day">' +
       '<div class="cal-day-head">' +
         '<h3>' + esc(fmtYmdShort(selected)) + '</h3>' +
-        (staff && canBill()
+        (staff && staffCan('editClasses')
           ? '<button type="button" class="btn-sm" data-act="cal-composer" data-id="new">+ Acara</button>'
           : '') +
       '</div>' +
-      (staff && canBill() && ui.calComposer
+      (staff && staffCan('editClasses') && ui.calComposer
         ? calComposerHtml(ui.calComposer)
         : '') +
       (dayEv.length
@@ -10953,7 +11371,7 @@
                   ' · ' + esc(sessionAudienceLabel(ses)) +
                   (nAud ? (' · ' + nAud + ' siswa') : '') +
                 '</p>' +
-                (staff && canBill()
+                (staff && staffCan('editClasses')
                   ? '<form class="compose" data-act="meet" data-id="' + esc(ev.id) + '"><input name="meetUrl" value="' + esc(ev.url || '') + '" placeholder="https://meet.google.com/..."><button class="btn" type="submit">Simpan tautan Meet</button></form>' +
                     '<div class="row cal-event-acts">' +
                       '<button type="button" class="btn-sm" data-act="cal-composer" data-id="' + esc(ev.id) + '">Edit</button>' +
@@ -11088,7 +11506,7 @@
         ? '<div class="cal-sync-bar">' +
             '<button type="button" class="btn" data-act="cal-sync-google">Google Calendar</button>' +
             '<button type="button" class="btn secondary" data-act="cal-sync-apple">Apple Calendar</button>' +
-            (canBill()
+            (staffCan('editClasses')
               ? '<button type="button" class="btn secondary" data-act="cal-composer" data-id="new">+ Acara baru</button>'
               : '') +
             '<span class="muted">' + nSes + ' acara · sync unduh .ics · Google buka template / impor file</span>' +
@@ -11209,6 +11627,16 @@
       ui.role = t.value;
       ui.tab = 'home';
       ui.mentorTab = 'dash';
+      if (t.value === 'asisten') {
+        const lia = (db.staffAdmins || []).find((s) => s.id === 'u-lia');
+        ui.staffId = 'u-lia';
+        ui.staffName = (lia && lia.name) || 'Lia';
+        ui.staffPerms = Object.assign(defaultStaffPerms(), (lia && lia.permissions) || { viewIncome: true });
+      } else {
+        ui.staffId = '';
+        ui.staffName = '';
+        ui.staffPerms = null;
+      }
       closeDrawer();
       if (!isStaff()) {
         ui.tab = needsWizard(ui.personaId) ? 'daftar' : 'home';
@@ -11266,12 +11694,14 @@
       return;
     }
     if (t.matches('[data-act="crm-stage"]')) {
+      if (!staffCan('editStudents')) return;
       setStage(t.getAttribute('data-id'), t.value, 'Anton pindah stage.');
       save();
       render();
       return;
     }
     if (t.matches('[data-act="assign-mentor"]')) {
+      if (!staffCan('editStudents')) return;
       const id = t.getAttribute('data-id');
       const mentorId = t.value || 'u-anton';
       patchPerson(id, { mentorId });
@@ -11389,6 +11819,7 @@
       return;
     }
     if (t.matches('[data-act="bill-one"]')) {
+      if (!staffCan('editIncome')) return;
       const id = t.getAttribute('data-id');
       const b = billingOf(id);
       if (t.value === 'lunas') {
@@ -11687,7 +12118,20 @@
       }
       return;
     }
+    if (t.matches('[data-act="staff-perm"]')) {
+      if (!isOwner()) return;
+      const id = t.getAttribute('data-id');
+      const key = t.getAttribute('data-key');
+      if (STAFF_PERM_KEYS.indexOf(key) < 0) return;
+      const row = (db.staffAdmins || []).find((s) => s.id === id);
+      if (!row) return;
+      const perms = Object.assign(defaultStaffPerms(), row.permissions || {});
+      perms[key] = !!t.checked;
+      patchStaffRow(id, { permissions: perms }).then(() => render()).catch(() => toast('Gagal menyimpan izin.'));
+      return;
+    }
     if (t.matches('[data-act="bill-amount"]')) {
+      if (!staffCan('editIncome')) return;
       const b = billingOf(t.getAttribute('data-id'));
       b.amount = Math.max(0, +t.value || 0);
       b.updatedAt = new Date().toISOString();
@@ -12694,6 +13138,7 @@
       }
       render();
     } else if (act === 'kur-edit-on') {
+      if (!staffCan('editClasses')) return;
       const meta = ensureKurikulumMeta();
       ui.kurEdit = true;
       ui.mentorTab = 'kurikulum';
@@ -12838,8 +13283,30 @@
       render();
     } else if (act === 'profile-pane') {
       if (!canBill()) return;
-      ui.profilePane = btn.getAttribute('data-id') === 'photo' ? 'photo' : 'info';
+      const paneId = btn.getAttribute('data-id');
+      ui.profilePane = paneId === 'photo' || paneId === 'admin' ? paneId : 'info';
       ui.mentorTab = 'profil';
+      render();
+    } else if (act === 'staff-invite-new' || act === 'staff-invite-rotate') {
+      if (!isOwner()) return;
+      ensureStaffInvite(act === 'staff-invite-rotate').then(() => {
+        toast(act === 'staff-invite-rotate' ? 'Tautan baru. Yang lama tidak berlaku.' : 'Tautan undangan siap.');
+        render();
+      }).catch(() => toast('Gagal membuat tautan.'));
+    } else if (act === 'staff-revoke' || act === 'staff-restore') {
+      if (!isOwner()) return;
+      const id = btn.getAttribute('data-id');
+      const next = act === 'staff-revoke' ? 'revoked' : 'active';
+      patchStaffRow(id, { status: next }).then(() => {
+        toast(next === 'revoked' ? 'Akses dicabut.' : 'Akses dikembalikan.');
+        render();
+      }).catch(() => toast('Gagal menyimpan akses.'));
+    } else if (act === 'staff-login-open') {
+      ui.staffInviteToken = '';
+      ui.staffLoginOpen = true;
+      render();
+    } else if (act === 'staff-wiz-back') {
+      ui.staffWizStep = 1;
       render();
     } else if (act === 'account-pane') {
       if (!canBill()) return;
@@ -13103,7 +13570,7 @@
       downloadIcs((ses.id || 'sesi') + '.ics', buildSessionsIcs([ses]));
       toast('File .ics diunduh — Apple Calendar / Google Import.');
     } else if (act === 'cal-composer') {
-      if (!canBill()) return;
+      if (!staffCan('editClasses')) return;
       const id = btn.getAttribute('data-id') || 'new';
       ui.calComposer = ui.calComposer === id ? '' : id;
       if (id !== 'new') {
@@ -13792,7 +14259,7 @@
       else withApplication(runMayar);
     } else if (act === 'confirm-paid') {
       const id = btn.getAttribute('data-id');
-      if (!id || !canBill()) return;
+      if (!id || !staffCan('editIncome')) return;
       confirmPaid(id, btn.getAttribute('data-task') || '');
       save();
       toast('Lunas · akses mentoring kebuka');
@@ -13874,6 +14341,30 @@
       return;
     }
     const fd = new FormData(form);
+    if (act === 'staff-wiz-name') {
+      const name = String(fd.get('name') || '').trim();
+      if (name.length < 2) { toast('Isi nama dulu.'); return; }
+      ui.staffWizName = name;
+      ui.staffWizStep = 2;
+      render();
+      return;
+    }
+    if (act === 'staff-wiz-account') {
+      const email = String(fd.get('email') || '').trim();
+      const password = String(fd.get('password') || '');
+      if (!email || password.length < 8) { toast('Email dan password (min. 8) wajib.'); return; }
+      acceptStaffInvite(ui.staffWizName, email, password).catch((err) => {
+        const code = err && err.code;
+        toast(code === 'email' ? 'Email ini sudah dipakai.' : (code === 'invite' ? 'Tautan tidak berlaku.' : 'Gagal membuat akun.'));
+      });
+      return;
+    }
+    if (act === 'staff-login') {
+      loginStaff(String(fd.get('email') || ''), String(fd.get('password') || '')).catch(() => {
+        toast('Email atau password salah.');
+      });
+      return;
+    }
     if (act === 'ask') {
       db.threads.push({
         id: 't-' + Date.now(),
@@ -14530,10 +15021,15 @@
   if (adminOut) adminOut.addEventListener('click', () => {
     setBrandMenu(false);
     if (!confirm('Keluar dari admin di browser ini? Tab ini jadi pengunjung.')) return;
-    try { sessionStorage.removeItem('anton-admin'); } catch (err) { /* private mode */ }
-    fetch(apiBase() + '/admin/logout', { method: 'POST', cache: 'no-store' }).finally(() => {
-      location.href = location.pathname;
-    });
+    try {
+      sessionStorage.removeItem('anton-admin');
+      sessionStorage.removeItem('anton-staff-session');
+    } catch (err) { /* private mode */ }
+    const backToStaffLogin = !!ui.staffId && !ui.admin;
+    const done = () => { location.href = location.pathname + (backToStaffLogin ? '?staff_login=1' : ''); };
+    const jobs = [fetch(apiBase() + '/admin/logout', { method: 'POST', cache: 'no-store' })];
+    if (ui.staffId) jobs.push(fetch(apiBase() + '/staff/logout', { method: 'POST', cache: 'no-store' }));
+    Promise.all(jobs.map((p) => p.catch(() => {}))).finally(done);
   });
   $('drawer-scrim').addEventListener('click', closeDrawer);
 
@@ -14651,7 +15147,7 @@
     return 'live-' + (compact || 'anon').slice(0, 16);
   }
   async function bootSession() {
-    if (!syncEnabled() || ui.present || ui.admin) return;
+    if (!syncEnabled() || ui.present || ui.admin || ui.staffId) return;
     try {
       const res = await fetch(apiBase() + '/session', {
         method: 'POST',
@@ -14671,7 +15167,7 @@
     } catch (err) { /* guest until the join form */ }
   }
   function ensureLiveVisitor() {
-    if (ui.admin || ui.present || !syncEnabled() || ui.sessionStudentId) return;
+    if (ui.admin || ui.staffId || ui.present || !syncEnabled() || ui.sessionStudentId) return;
     const vid = ui.visitorId || visitorId();
     ui.visitorId = vid;
     ui.visitorLive = true;
@@ -14684,6 +15180,32 @@
     ui.admin = true;
     ui.role = 'owner';
     ui.visitorLive = false;
+  }
+  async function claimStaff() {
+    if (onStudentVanityPath() || ui.admin) return false;
+    if (!syncEnabled()) {
+      try {
+        const raw = sessionStorage.getItem('anton-staff-session');
+        if (!raw) return false;
+        const ses = JSON.parse(raw);
+        const row = (db.staffAdmins || []).find((s) => s.id === ses.id && s.status === 'active');
+        if (!row) return false;
+        markStaff(row);
+        return true;
+      } catch (err) {
+        return false;
+      }
+    }
+    try {
+      const res = await fetch(apiBase() + '/staff/me?slug=' + encodeURIComponent(schoolSlug()), { cache: 'no-store' });
+      if (!res.ok) return false;
+      const data = await res.json().catch(() => ({}));
+      if (!data.staff || data.staff.status !== 'active') return false;
+      markStaff(data.staff);
+      return true;
+    } catch (err) {
+      return false;
+    }
   }
   async function claimAdmin() {
     captureAdminKey();
@@ -14753,9 +15275,10 @@
     let admin = false;
     if (!forceStudent && coachRoot) admin = await claimCoach();
     else if (!forceStudent) admin = await claimAdmin();
+    if (!admin && !forceStudent && !onStudentVanityPath()) await claimStaff();
     if (!admin) await bootSession();
     await bootSync();
-    if (!admin && !ui.sessionStudentId) ensureLiveVisitor();
+    if (!admin && !ui.staffId && !ui.sessionStudentId) ensureLiveVisitor();
     if (forceStudent) {
       ui.admin = false;
       ui.role = 'student';

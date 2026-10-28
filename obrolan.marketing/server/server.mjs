@@ -713,8 +713,206 @@ function asStudentView(req) {
   return String(req.headers['x-lms-view'] || '') === 'student';
 }
 
-function staffRequest(req, q) {
-  return adminAuthed(req, q) && !asStudentView(req);
+const staffAuthFile = path.join(DATA, 'staff-auth.json');
+const STAFF_PERM_KEYS = ['viewStudents', 'editStudents', 'addStudents', 'viewIncome', 'editIncome', 'viewClasses', 'editClasses'];
+
+function defaultStaffPerms() {
+  return {
+    viewStudents: true,
+    editStudents: false,
+    addStudents: false,
+    viewIncome: false,
+    editIncome: false,
+    viewClasses: true,
+    editClasses: false
+  };
+}
+
+function cleanStaffPerms(raw) {
+  const src = raw && typeof raw === 'object' ? raw : {};
+  const out = defaultStaffPerms();
+  STAFF_PERM_KEYS.forEach((key) => {
+    if (Object.prototype.hasOwnProperty.call(src, key)) out[key] = !!src[key];
+  });
+  return out;
+}
+
+function hashStaffPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(String(password), salt, 32).toString('hex');
+  return salt + ':' + hash;
+}
+
+function checkStaffPassword(password, stored) {
+  const parts = String(stored || '').split(':');
+  if (parts.length !== 2 || !parts[0] || !parts[1]) return false;
+  const got = crypto.scryptSync(String(password), parts[0], 32).toString('hex');
+  return sameSecret(got, parts[1]);
+}
+
+function readStaffAuth() {
+  try {
+    const data = JSON.parse(fs.readFileSync(staffAuthFile, 'utf8'));
+    return data && typeof data === 'object' ? data : {};
+  } catch (err) {
+    return {};
+  }
+}
+
+function writeStaffAuth(data) {
+  const tmp = staffAuthFile + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify(data));
+  fs.renameSync(tmp, staffAuthFile);
+}
+
+function staffHashOf(slug, id) {
+  const all = readStaffAuth();
+  const bag = all[slug] || {};
+  return bag[id] || '';
+}
+
+function setStaffHash(slug, id, hash) {
+  const all = readStaffAuth();
+  all[slug] = all[slug] && typeof all[slug] === 'object' ? all[slug] : {};
+  all[slug][id] = hash;
+  writeStaffAuth(all);
+}
+
+function signStaff(id) {
+  const exp = String(Date.now() + 30 * 86400000);
+  const body = id + '.' + exp;
+  const sig = crypto.createHmac('sha256', SESSION_SECRET).update('staff:' + body).digest('hex');
+  return body + '.' + sig;
+}
+
+function readStaffCookie(req) {
+  const parts = String(cookieValue(req, 'lms_staff') || '').split('.');
+  if (parts.length !== 3) return '';
+  const id = parts[0];
+  const exp = parts[1];
+  const sig = parts[2];
+  if (!/^adm-[a-zA-Z0-9_-]{4,64}$/.test(id)) return '';
+  if (!/^\d+$/.test(exp) || Number(exp) < Date.now()) return '';
+  const expect = crypto.createHmac('sha256', SESSION_SECRET).update('staff:' + id + '.' + exp).digest('hex');
+  if (!sameSecret(sig, expect)) return '';
+  return id;
+}
+
+function staffCookieHeader(req, token) {
+  const proto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+  const secure = proto === 'https' ? '; Secure' : '';
+  const value = token ? String(token) : '';
+  const age = token ? '' : '; Max-Age=0';
+  return 'lms_staff=' + value + '; HttpOnly; SameSite=Lax; Path=/obrolan.marketing' + age + secure;
+}
+
+function listStaff(state) {
+  const list = state && Array.isArray(state.staffAdmins) ? state.staffAdmins : [];
+  return list.filter((row) => row && row.id);
+}
+
+function publicStaff(row, owner) {
+  const status = row.status === 'active' || row.status === 'revoked' || row.status === 'pending' ? row.status : 'pending';
+  return {
+    id: String(row.id),
+    name: clip(row.name, 80),
+    email: clip(row.email, 160),
+    status: status,
+    inviteToken: owner && status === 'pending' ? String(row.inviteToken || '') : '',
+    permissions: cleanStaffPerms(row.permissions),
+    createdAt: row.createdAt || '',
+    acceptedAt: row.acceptedAt || '',
+    revokedAt: row.revokedAt || ''
+  };
+}
+
+function newStaffId() {
+  return 'adm-' + crypto.randomBytes(6).toString('hex');
+}
+
+function activeStaffRow(state, id) {
+  if (!id) return null;
+  return listStaff(state).find((row) => row.id === id && row.status === 'active') || null;
+}
+
+function viewForStaff(raw, row) {
+  const perms = cleanStaffPerms(row && row.permissions);
+  const state = Object.assign({}, raw || {});
+  state.staffAdmins = listStaff(raw).map((item) => publicStaff(item, false));
+  if (!perms.viewIncome) {
+    const billing = {};
+    Object.keys(state.billing || {}).forEach((id) => {
+      billing[id] = Object.assign({}, state.billing[id], { amount: 0, pendingAmount: 0 });
+    });
+    state.billing = billing;
+    state.payments = (state.payments || []).map((item) => Object.assign({}, item, { amount: 0 }));
+    state.remittances = (state.remittances || []).map((item) => Object.assign({}, item, { expected: 0, received: 0 }));
+  }
+  if (!perms.viewStudents) {
+    state.people = {};
+    state.liveStudents = [];
+    state.crm = {};
+    state.applications = {};
+    state.directory = [];
+    state.notes = {};
+    state.timeline = {};
+  }
+  if (!perms.viewClasses) {
+    state.lectures = [];
+    state.weeks = [];
+    state.sessions = [];
+    state.kurikulum = { name: '', description: '', published: false };
+  }
+  return state;
+}
+
+function guardStaffWrite(prev, next, perms) {
+  const p = cleanStaffPerms(perms);
+  const base = prev && typeof prev === 'object' ? prev : {};
+  const out = next && typeof next === 'object' ? next : {};
+  out.staffAdmins = Array.isArray(base.staffAdmins) ? base.staffAdmins : [];
+  if (!p.editIncome || !p.viewIncome) {
+    out.billing = base.billing || {};
+    out.payments = base.payments || [];
+    out.remittances = base.remittances || [];
+  }
+  if (!p.editClasses || !p.viewClasses) {
+    out.lectures = base.lectures || [];
+    out.weeks = base.weeks || [];
+    out.sessions = base.sessions || [];
+    out.kurikulum = base.kurikulum || {};
+  }
+  if (!p.editStudents || !p.viewStudents) {
+    out.people = base.people || {};
+    out.liveStudents = base.liveStudents || [];
+    out.crm = base.crm || {};
+    out.applications = base.applications || {};
+    out.directory = base.directory || [];
+    out.notes = base.notes || {};
+    out.timeline = base.timeline || {};
+  }
+  return out;
+}
+
+function saveStaffState(slug, rec, state) {
+  const stored = {
+    key: (rec && rec.key) || DEFAULT_INVITE,
+    rev: ((rec && Number(rec.rev)) || 0) + 1,
+    updatedAt: new Date().toISOString(),
+    state: state
+  };
+  writeRecord(stored, slug);
+  return stored;
+}
+
+function jsonCookie(res, status, data, cookie) {
+  res.writeHead(status, {
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'no-store',
+    'x-robots-tag': 'noindex',
+    'set-cookie': cookie
+  });
+  res.end(JSON.stringify(data));
 }
 
 function dropDemoKey(obj, changed) {
@@ -1143,10 +1341,197 @@ function upsertJoined(state, row) {
   });
 }
 
+function handleStaff(req, res, url, q, pathname) {
+  const slugOfReq = (body) => String((body && body.slug) || q.slug || ANTON_SLUG).trim().toLowerCase() || ANTON_SLUG;
+
+  const inviteLook = pathname.match(/^\/staff\/invite\/([a-f0-9]{16,64})$/);
+  if (req.method === 'GET' && inviteLook) {
+    const token = inviteLook[1];
+    const slug = slugOfReq(null);
+    lock(() => {
+      const rec = takeState(slug);
+      const row = listStaff(rec && rec.state).find((item) => item.inviteToken === token && item.status === 'pending');
+      if (!row) {
+        json(res, 404, { error: 'invite' });
+        return;
+      }
+      const state = rec.state || {};
+      const school = state.businessName || (state.schoolProfile && state.schoolProfile.firstName) || 'Kelas';
+      json(res, 200, { ok: true, school: school, status: 'pending' });
+    });
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/staff/me') {
+    const slug = slugOfReq(null);
+    lock(() => {
+      const id = readStaffCookie(req);
+      const rec = takeState(slug);
+      const row = activeStaffRow(rec && rec.state, id);
+      if (!row) {
+        json(res, 401, { error: 'auth' });
+        return;
+      }
+      json(res, 200, { ok: true, staff: publicStaff(row, false), slug: slug });
+    });
+    return true;
+  }
+
+  if (req.method === 'POST' && pathname === '/staff/logout') {
+    jsonCookie(res, 200, { ok: true }, staffCookieHeader(req, ''));
+    return true;
+  }
+
+  if (req.method === 'POST' && (pathname === '/staff/accept' || pathname === '/staff/login' || pathname === '/staff/invite' || pathname === '/staff/update')) {
+    readBody(req, 64 * 1024).then((buf) => lock(async () => {
+      let body = {};
+      try { body = JSON.parse(buf.toString('utf8') || '{}'); } catch (err) {
+        json(res, 400, { error: 'bad_json' });
+        return;
+      }
+      const slug = slugOfReq(body);
+      const rec = persistStrip(takeState(slug), slug) || { state: {}, rev: 0, key: DEFAULT_INVITE };
+      const state = rec.state || {};
+      state.staffAdmins = listStaff(state);
+      const user = await supabaseUser(req);
+      const owner = isStaffFor(req, q, slug, user);
+
+      if (pathname === '/staff/invite' || pathname === '/staff/update') {
+        if (!owner) {
+          json(res, 403, { error: 'forbidden' });
+          return;
+        }
+      }
+
+      if (pathname === '/staff/invite') {
+        let pending = state.staffAdmins.find((item) => item.status === 'pending');
+        if (!pending) {
+          pending = {
+            id: newStaffId(),
+            name: '',
+            email: '',
+            status: 'pending',
+            inviteToken: crypto.randomBytes(16).toString('hex'),
+            permissions: defaultStaffPerms(),
+            createdAt: new Date().toISOString(),
+            acceptedAt: '',
+            revokedAt: ''
+          };
+          state.staffAdmins.push(pending);
+        } else if (body.rotate || !pending.inviteToken) {
+          pending.inviteToken = crypto.randomBytes(16).toString('hex');
+        }
+        const stored = saveStaffState(slug, rec, state);
+        json(res, 200, {
+          ok: true,
+          token: pending.inviteToken,
+          rev: stored.rev,
+          staffAdmins: state.staffAdmins.map((item) => publicStaff(item, true))
+        });
+        return;
+      }
+
+      if (pathname === '/staff/update') {
+        const row = state.staffAdmins.find((item) => item.id === String(body.id || ''));
+        if (!row || row.status === 'pending') {
+          json(res, 404, { error: 'missing' });
+          return;
+        }
+        if (body.permissions) row.permissions = cleanStaffPerms(body.permissions);
+        if (body.status === 'revoked') {
+          row.status = 'revoked';
+          row.revokedAt = new Date().toISOString();
+        } else if (body.status === 'active' && row.status === 'revoked') {
+          row.status = 'active';
+          row.revokedAt = '';
+        }
+        const stored = saveStaffState(slug, rec, state);
+        json(res, 200, {
+          ok: true,
+          rev: stored.rev,
+          staffAdmins: state.staffAdmins.map((item) => publicStaff(item, true))
+        });
+        return;
+      }
+
+      if (pathname === '/staff/accept') {
+        const token = String(body.token || '');
+        const name = clip(body.name, 80);
+        const email = clip(body.email, 160).toLowerCase();
+        const password = String(body.password || '');
+        if (name.length < 2) {
+          json(res, 400, { error: 'name' });
+          return;
+        }
+        if (!email || email.indexOf('@') < 0) {
+          json(res, 400, { error: 'email' });
+          return;
+        }
+        if (password.length < 8) {
+          json(res, 400, { error: 'password' });
+          return;
+        }
+        const row = state.staffAdmins.find((item) => item.inviteToken === token && item.status === 'pending');
+        if (!row) {
+          json(res, 404, { error: 'invite' });
+          return;
+        }
+        const taken = state.staffAdmins.some((item) =>
+          item.id !== row.id && item.status === 'active' && String(item.email || '').toLowerCase() === email);
+        if (taken) {
+          json(res, 409, { error: 'email' });
+          return;
+        }
+        row.name = name;
+        row.email = email;
+        row.status = 'active';
+        row.inviteToken = '';
+        row.acceptedAt = new Date().toISOString();
+        row.permissions = cleanStaffPerms(row.permissions);
+        setStaffHash(slug, row.id, hashStaffPassword(password));
+        const stored = saveStaffState(slug, rec, state);
+        jsonCookie(res, 200, {
+          ok: true,
+          rev: stored.rev,
+          staff: publicStaff(row, false),
+          staffAdmins: state.staffAdmins.map((item) => publicStaff(item, false))
+        }, staffCookieHeader(req, signStaff(row.id)));
+        return;
+      }
+
+      const email = clip(body.email, 160).toLowerCase();
+      const password = String(body.password || '');
+      const row = state.staffAdmins.find((item) =>
+        item.status === 'active' && String(item.email || '').toLowerCase() === email);
+      if (!row || !checkStaffPassword(password, staffHashOf(slug, row.id))) {
+        json(res, 401, { error: 'auth' });
+        return;
+      }
+      jsonCookie(res, 200, {
+        ok: true,
+        rev: rec.rev || 0,
+        staff: publicStaff(row, false),
+        staffAdmins: state.staffAdmins.map((item) => publicStaff(item, false))
+      }, staffCookieHeader(req, signStaff(row.id)));
+    })).catch((err) => {
+      if (!res.headersSent) json(res, err.status || 500, { error: 'staff' });
+    });
+    return true;
+  }
+
+  if (pathname.startsWith('/staff')) {
+    json(res, 404, { error: 'not_found' });
+    return true;
+  }
+  return false;
+}
+
 const server = http.createServer((req, res) => {
   const url = new URL(req.url || '/', 'http://anton-school');
   const q = queryOf(url);
   const pathname = url.pathname.replace(/\/+$/, '') || '/';
+
+  if (handleStaff(req, res, url, q, pathname)) return;
 
   if (req.method === 'GET' && pathname === '/health') {
     json(res, 200, { ok: true });
@@ -1418,11 +1803,15 @@ const server = http.createServer((req, res) => {
         const rec = persistStrip(takeState(slug), slug);
         const studentId = readStudentCookie(req);
         const staff = isStaffFor(req, q, slug, user);
+        const staffRow = !staff && !asStudentView(req) ? activeStaffRow(rec && rec.state, readStaffCookie(req)) : null;
         const updatedAt = rec && rec.updatedAt || null;
         const rev = rec && rec.rev || 0;
         const raw = rec && rec.state;
         let state;
-        if (staff) state = raw || projectGuest(null);
+        if (staff) {
+          state = Object.assign({}, raw || projectGuest(null));
+          state.staffAdmins = listStaff(raw).map((item) => publicStaff(item, true));
+        } else if (staffRow) state = viewForStaff(raw || {}, staffRow);
         else if (studentId && lookupPerson(raw || {}, studentId)) state = projectStudent(raw || {}, studentId);
         else state = projectGuest(raw || {});
         json(res, 200, { rev: rev, updatedAt: updatedAt, state: state });
@@ -1439,8 +1828,9 @@ const server = http.createServer((req, res) => {
           return;
         }
         const staff = isStaffFor(req, q, slug, user);
+        const staffRow = !staff && !asStudentView(req) ? activeStaffRow(rec && rec.state, readStaffCookie(req)) : null;
         const studentId = readStudentCookie(req);
-        if (!staff && !studentId) {
+        if (!staff && !staffRow && !studentId) {
           json(res, 403, { error: 'forbidden' });
           return;
         }
@@ -1454,7 +1844,7 @@ const server = http.createServer((req, res) => {
           return;
         }
         let nextState;
-        if (staff) {
+        if (staff || staffRow) {
           nextState = body && body.state ? body.state : null;
           if (nextState && typeof nextState === 'object') {
             stripDemoPeople(nextState);
@@ -1462,6 +1852,14 @@ const server = http.createServer((req, res) => {
               nextState.ownerUserId = rec.state.ownerUserId;
               nextState.ownerId = rec.state.ownerId;
               nextState.schoolSlug = slug;
+            }
+            if (staffRow) nextState = guardStaffWrite(rec && rec.state, nextState, staffRow.permissions);
+            else if (Array.isArray(nextState.staffAdmins)) {
+              nextState.staffAdmins = nextState.staffAdmins.map((item) => {
+                const clean = Object.assign({}, item);
+                delete clean.passwordHash;
+                return clean;
+              });
             }
           }
         } else {
