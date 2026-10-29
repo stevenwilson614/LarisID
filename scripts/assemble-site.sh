@@ -22,8 +22,6 @@ rsync -a --exclude '*.bak' --exclude 'laris-app.js' \
   --exclude 'laris-side-panel.js' --exclude 'laris-trending.js' \
   --exclude 'lp-scroll-story.js' --exclude 'vendor/gsap*' \
   "$ROOT"/js/ "$OUT/js/"
-# Student LMS SPA (Diskusi / school) — still live at /obrolan.marketing/
-rsync -a --exclude 'server' "$ROOT"/obrolan.marketing/ "$OUT"/obrolan.marketing/
 # Do not ship brand source / debug art (moved or leftover).
 rm -rf "$OUT/images/brand/generated" \
        "$OUT/images/branding-sheet.png" \
