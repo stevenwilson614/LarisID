@@ -1335,12 +1335,13 @@
     }
     return '<img class="' + c + '" src="' + esc(SEED.school.photo || SEED.school.logo) + '" alt="">';
   }
-  /** Homescreen / PWA card must be this school — never Anton's shared manifest. */
+  /** Homescreen label = org (businessName), never a hardcoded Anton short_name. */
   function applyInstallMeta(chromeOrg) {
     const slug = schoolSlug();
     if (!slug) return;
-    const name = String(chromeOrg || schoolDisplayName() || 'Kelas').trim() || 'Kelas';
-    const short = name.split(/\s+/).slice(0, 2).join(' ').slice(0, 12) || 'Kelas';
+    const name = String(
+      (db && db.businessName) || chromeOrg || schoolDisplayName() || 'Kelas'
+    ).trim() || 'Kelas';
     const p = schoolProfile();
     let icon = String(p.photoUrl || '').trim();
     if (!icon && antonSchoolData() && (SEED.school.photo || SEED.school.logo)) {
@@ -1372,7 +1373,15 @@
       titleMeta.setAttribute('name', 'apple-mobile-web-app-title');
       document.head.appendChild(titleMeta);
     }
-    titleMeta.setAttribute('content', short);
+    titleMeta.setAttribute('content', name.slice(0, 40));
+    let appName = document.querySelector('meta[name="application-name"]');
+    if (!appName) {
+      appName = document.createElement('meta');
+      appName.setAttribute('name', 'application-name');
+      document.head.appendChild(appName);
+    }
+    appName.setAttribute('content', name.slice(0, 40));
+    if (name) document.title = name;
   }
   function paintMeBtn(meBtn) {
     if (!meBtn || isStaff()) return;

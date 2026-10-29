@@ -10,7 +10,7 @@
   "lang": "id",
   "icons": [
     {
-      "src": "./assets/obrolan/logo-mark.png",
+      "src": "/obrolan.marketing/assets/obrolan/logo-mark.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"

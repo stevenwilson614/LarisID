@@ -2160,10 +2160,13 @@ const server = http.createServer((req, res) => {
     }
     const state = (rec && rec.state) || {};
     const sp = state.schoolProfile || {};
+    /* Prefer org / business name for Add-to-Home-Screen — not the mentor first name. */
     const name = String(state.businessName || '').trim()
       || [sp.firstName, sp.lastName].filter(Boolean).join(' ').trim()
       || (slug === ANTON_SLUG ? 'MasterMind with Anton GC' : 'Kelas');
-    const short = name.split(/\s+/).slice(0, 2).join(' ').slice(0, 12) || 'Kelas';
+    const short = String(state.businessName || '').trim().slice(0, 12)
+      || name.split(/\s+/).slice(0, 2).join(' ').slice(0, 12)
+      || 'Kelas';
     const start = slug === ANTON_SLUG ? '/s/obrolan.marketing/' : ('/s/' + slug + '/');
     const host = String(req.headers['x-forwarded-host'] || req.headers.host || 'larisid.com').split(',')[0].trim();
     const proto = String(req.headers['x-forwarded-proto'] || 'https').split(',')[0].trim() || 'https';

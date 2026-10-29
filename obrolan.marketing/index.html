@@ -29,11 +29,44 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Kelas">
-  <link rel="apple-touch-icon" href="./assets/obrolan/logo-mark.png">
-  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="application-name" content="Kelas">
+  <link rel="apple-touch-icon" href="/obrolan.marketing/assets/obrolan/logo-mark.png">
+  <link rel="manifest" href="/obrolan.marketing/manifest.webmanifest">
   <title>Kelas</title>
+  <script>
+    /* Homescreen name/icon must be this org before Safari/Chrome snapshot the page. */
+    (function () {
+      var path = location.pathname || '';
+      var m = path.match(/^\/s\/([^/]+)/i);
+      var slug = m ? decodeURIComponent(m[1]).toLowerCase() : '';
+      if (!slug && /^\/obrolan\.marketing\/?/i.test(path)) slug = 'obrolan.marketing';
+      if (!slug) return;
+      var man = document.querySelector('link[rel="manifest"]');
+      if (man) man.setAttribute('href', '/obrolan.marketing/api/manifest?slug=' + encodeURIComponent(slug));
+      try {
+        var x = new XMLHttpRequest();
+        x.open('GET', '/obrolan.marketing/api/manifest?slug=' + encodeURIComponent(slug), false);
+        x.send(null);
+        if (x.status !== 200) return;
+        var data = JSON.parse(x.responseText || '{}');
+        var label = String((data && data.name) || (data && data.short_name) || '').trim();
+        if (!label) return;
+        var apple = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+        if (apple) apple.setAttribute('content', label.slice(0, 40));
+        var appName = document.querySelector('meta[name="application-name"]');
+        if (appName) appName.setAttribute('content', label.slice(0, 40));
+        document.title = label;
+        var icons = data.icons || [];
+        var icon = icons[0] && icons[0].src;
+        if (icon) {
+          var touch = document.querySelector('link[rel="apple-touch-icon"]');
+          if (touch) touch.setAttribute('href', icon);
+        }
+      } catch (e) { /* offline / blocked */ }
+    })();
+  </script>
   <link rel="stylesheet" href="/fonts/laris-fonts.css">
-  <link rel="stylesheet" href="./css/school.css?v=20261029d">
+  <link rel="stylesheet" href="./css/school.css?v=20261029e">
   <link rel="stylesheet" href="./css/diskusi-chat.css?v=20261029cmt">
 </head>
 <body>
@@ -106,6 +139,6 @@
   <script src="./js/seed.js?v=20261028staff"></script>
   <script src="./js/calc-engine.js?v=20261027calc6"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8/dist/umd/supabase.js"></script>
-  <script src="./js/app.js?v=20261029lms5"></script>
+  <script src="./js/app.js?v=20261029lms6"></script>
 </body>
 </html>
