@@ -4494,16 +4494,31 @@ html[data-theme="light"] .dk-bubble {
 .dk-react.is-on { color: #B5202A; border-color: color-mix(in srgb, #B5202A 40%, var(--line)); background: color-mix(in srgb, #B5202A 8%, var(--ink-2)); }
 .dk-react.is-static { cursor: default; }
 .dk-react em { font-style: normal; font-weight: 750; color: var(--text); }
-.dk-comments { margin-top: 12px; display: grid; gap: 2px; max-width: 100%; }
-.dk-comments-n { margin: 0 0 6px; font-size: .75rem; font-weight: 750; color: var(--muted); }
-.dk-cmt-thread { min-width: 0; padding: 8px 0 2px; }
+.dk-comments { margin-top: 8px; display: grid; gap: 0; max-width: 100%; }
+.dk-comments-n { margin: 0 0 4px; font-size: .75rem; font-weight: 750; color: var(--muted); }
+.dk-cmt-thread { min-width: 0; padding: 4px 0 1px; }
 .dk-cmt-thread + .dk-cmt-thread {
-  margin-top: 4px;
-  border-top: 1px solid color-mix(in srgb, var(--line) 45%, transparent);
+  margin-top: 2px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 35%, transparent);
 }
-.dk-threadlet { min-width: 0; padding: 4px 0; }
-.dk-replies { margin: 0 0 2px 38px; display: grid; gap: 0; }
-.dk-comment { display: flex; gap: 10px; align-items: flex-start; }
+.dk-threadlet { min-width: 0; padding: 2px 0; }
+.dk-replies { margin: 0 0 0 38px; display: grid; gap: 0; }
+.dk-replies-toggle {
+  display: inline-flex;
+  align-items: center;
+  margin: 1px 0 2px 38px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: .72rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.dk-replies-toggle:hover,
+.dk-replies-toggle.is-open { color: var(--text); }
+.dk-comment { display: flex; gap: 8px; align-items: flex-start; }
 .dk-comment-main { flex: 1; min-width: 0; display: flex; gap: 4px; align-items: flex-start; }
 .dk-comment-body {
   flex: 1; min-width: 0; max-width: 100%;
@@ -4522,7 +4537,7 @@ html[data-theme="light"] .dk-bubble {
   color: var(--fg-strong, var(--text));
 }
 .dk-comment-body > .muted { font-size: .72rem; }
-.dk-comment-body p { margin: 2px 0 0; white-space: pre-wrap; line-height: 1.45; color: var(--text); }
+.dk-comment-body p { margin: 1px 0 0; white-space: pre-wrap; line-height: 1.4; color: var(--text); }
 .dk-expand {
   flex: none;
   width: 28px;
@@ -4542,8 +4557,8 @@ html[data-theme="light"] .dk-bubble {
   background: color-mix(in srgb, var(--line) 70%, transparent);
   color: var(--text);
 }
-.dk-comment-form.is-inline { margin: 2px 0 6px; }
-.dk-comments > .dk-comment-form { margin-top: 10px; }
+.dk-comment-form.is-inline { margin: 2px 0 4px; }
+.dk-comments > .dk-comment-form { margin-top: 6px; }
 .dk-comment-form { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
 .dk-comment-form input {
   flex: 1; min-width: 0; border-radius: 999px; border: 1px solid var(--line);

@@ -2919,6 +2919,7 @@
     lightbox: '',
     replyTo: null,
     commentExpand: '',
+    commentRepliesOpen: {},
     commentDrafts: {},
     commentFocus: '',
     unreadJump: ''
@@ -10879,18 +10880,62 @@
         '<button class="dk-comment-send" type="submit" aria-label="Kirim">' + sendIco + '</button>' +
       '</div></form>';
   }
+  function commentRepliesOpen(id) {
+    return !!(ui.commentRepliesOpen && ui.commentRepliesOpen[id]);
+  }
+  function commentDescendantCount(id, children) {
+    const kids = (children && children[id]) || [];
+    let n = 0;
+    for (let i = 0; i < kids.length; i++) {
+      n += 1 + commentDescendantCount(kids[i].id, children);
+    }
+    return n;
+  }
+  function commentExpandInThread(id, children) {
+    if (!ui.commentExpand) return false;
+    if (ui.commentExpand === id) return true;
+    const kids = (children && children[id]) || [];
+    for (let i = 0; i < kids.length; i++) {
+      if (commentExpandInThread(kids[i].id, children)) return true;
+    }
+    return false;
+  }
+  function commentThreadRootId(row, postId) {
+    if (!row) return '';
+    const byId = {};
+    (db.comments || []).forEach((c) => {
+      if (c && c.id && c.postId === postId) byId[c.id] = c;
+    });
+    let cur = row;
+    const seen = {};
+    while (cur && cur.replyTo && byId[cur.replyTo] && !seen[cur.id]) {
+      seen[cur.id] = true;
+      cur = byId[cur.replyTo];
+    }
+    return cur && cur.id ? cur.id : row.id;
+  }
   function commentTreeHtml(post, row, staff, depth, firstUnread, canWrite, children) {
     const kids = (children && children[row.id]) || [];
-    const open = canWrite && !isSiswaReadonly() && ui.commentExpand === row.id;
+    const writing = canWrite && !isSiswaReadonly() && ui.commentExpand === row.id;
     const unread = firstUnread === 'dkc-' + row.id ? '<div class="dk-unread-line">Belum dibaca</div>' : '';
     const self = unread + commentHtml(row, staff, post.batchId);
     const kidHtml = kids.map((k) => commentTreeHtml(post, k, staff, depth + 1, firstUnread, canWrite, children)).join('');
-    const form = open ? commentFormHtml(post, { replyToId: row.id, compact: true }) : '';
+    const form = writing ? commentFormHtml(post, { replyToId: row.id, compact: true }) : '';
     if (depth === 0) {
-      const replies = (kids.length || open)
-        ? '<div class="dk-replies">' + kidHtml + form + '</div>'
+      const replyN = commentDescendantCount(row.id, children);
+      const writingIn = writing || commentExpandInThread(row.id, children);
+      const showKids = replyN > 0 && (commentRepliesOpen(row.id) || writingIn);
+      const toggle = replyN
+        ? ('<button type="button" class="dk-replies-toggle' + (showKids ? ' is-open' : '') +
+            '" data-act="comment-replies-toggle" data-id="' + esc(row.id) + '" aria-expanded="' +
+            (showKids ? 'true' : 'false') + '">' +
+            (showKids ? 'Sembunyikan balasan' : (replyN + ' balasan')) +
+          '</button>')
         : '';
-      return '<div class="dk-cmt-thread">' + self + replies + '</div>';
+      const replies = (showKids || writing)
+        ? '<div class="dk-replies">' + (showKids ? kidHtml : '') + form + '</div>'
+        : '';
+      return '<div class="dk-cmt-thread">' + self + toggle + replies + '</div>';
     }
     return self + kidHtml + form;
   }
@@ -10903,6 +10948,13 @@
     const canDel = !!staff || mine;
     const canWrite = canPostIn(actorId(), post.batchId);
     const firstUnread = firstUnreadElId(post.batchId);
+    if (firstUnread && firstUnread.indexOf('dkc-') === 0) {
+      const unreadC = tree.byId[firstUnread.slice(4)];
+      if (unreadC && unreadC.replyTo) {
+        ui.commentRepliesOpen = ui.commentRepliesOpen || {};
+        ui.commentRepliesOpen[commentThreadRootId(unreadC, post.id)] = true;
+      }
+    }
     const postUnread = isUnreadAt(post.batchId, post.createdAt, post.authorId);
     return (firstUnread === 'dkp-' + post.id ? '<div class="dk-unread-line">Belum dibaca</div>' : '') +
       '<article class="dk-post' + (post.pinned ? ' is-pinned' : '') + '" id="dkp-' + esc(post.id) + '"' +
@@ -15139,6 +15191,26 @@
       render();
       return;
     }
+    if (act === 'comment-replies-toggle') {
+      ensureDiskusi();
+      const commentId = btn.getAttribute('data-id') || '';
+      if (!commentId) return;
+      ui.commentRepliesOpen = ui.commentRepliesOpen || {};
+      if (commentRepliesOpen(commentId)) {
+        delete ui.commentRepliesOpen[commentId];
+        if (ui.commentExpand) {
+          const expandRow = (db.comments || []).find((c) => c && c.id === ui.commentExpand);
+          if (expandRow && commentThreadRootId(expandRow, expandRow.postId) === commentId) {
+            ui.commentExpand = '';
+            if (ui.replyTo && ui.replyTo.commentId) ui.replyTo = null;
+          }
+        }
+      } else {
+        ui.commentRepliesOpen[commentId] = true;
+      }
+      render();
+      return;
+    }
     if (act === 'comment-expand' || act === 'comment-reply') {
       ensureDiskusi();
       const commentId = btn.getAttribute('data-id') || '';
@@ -15154,6 +15226,8 @@
       }
       ui.replyTo = { postId: postId, commentId: commentId };
       ui.commentExpand = commentId;
+      ui.commentRepliesOpen = ui.commentRepliesOpen || {};
+      ui.commentRepliesOpen[commentThreadRootId(row, postId)] = true;
       const key = commentDraftKey(postId, commentId);
       if (act === 'comment-reply') {
         const prefix = '@' + nameOf(row.authorId) + ' ';
@@ -15172,7 +15246,14 @@
       return;
     }
     if (act === 'comment-jump') {
-      const el = document.getElementById('dkc-' + (btn.getAttribute('data-id') || ''));
+      const jumpId = btn.getAttribute('data-id') || '';
+      const jumpRow = (db.comments || []).find((c) => c && c.id === jumpId);
+      if (jumpRow && jumpRow.replyTo) {
+        ui.commentRepliesOpen = ui.commentRepliesOpen || {};
+        ui.commentRepliesOpen[commentThreadRootId(jumpRow, jumpRow.postId)] = true;
+        render();
+      }
+      const el = document.getElementById('dkc-' + jumpId);
       if (!el) return;
       scrollFeedTo(el);
       el.classList.add('is-flash');

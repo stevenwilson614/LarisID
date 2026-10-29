@@ -642,8 +642,8 @@ html[data-mode="student"] .dk-comment-form input { font-size: 16px; }
 .dk-comment.is-flash { border-radius: 8px; box-shadow: 0 0 0 2px #2563eb; }
 .dk-comment-acts {
   display: flex;
-  gap: 12px;
-  margin-top: 4px;
+  gap: 10px;
+  margin-top: 1px;
 }
 .dk-comment-form.is-inline .dk-comment-row { align-items: center; }
 .dk-like, .dk-reply-btn {
