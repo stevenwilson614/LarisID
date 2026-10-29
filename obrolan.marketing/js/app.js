@@ -581,13 +581,13 @@
     }
     if (colId === 'phone') {
       return s.wa
-        ? '<a class="fub-cell-link" href="' + esc(waLink(s.wa, 'Halo ' + s.name + ', dari MasterMind with Anton GC.')) +
+        ? '<a class="fub-cell-link" href="' + esc(waLink(s.wa, schoolGreeting(s.name))) +
           '">' + esc(fmtPhone(s.wa)) + '</a>'
         : '<span class="muted">—</span>';
     }
     if (colId === 'email') {
       return s.email
-        ? '<a class="fub-cell-link" href="' + esc(mailLink(s.email, 'MasterMind with Anton GC', 'Halo ' + s.name)) + '">' +
+        ? '<a class="fub-cell-link" href="' + esc(mailLink(s.email, schoolMailSubject(), schoolGreeting(s.name))) + '">' +
           esc(s.email) + '</a>'
         : '<span class="muted">—</span>';
     }
@@ -755,10 +755,18 @@
     merged.tasks = Array.isArray(merged.tasks)
       ? merged.tasks
       : (demoRoster ? JSON.parse(JSON.stringify(SEED.tasksSeed || [])) : []);
-    const ownerId = merged.ownerId || (SEED.school && SEED.school.ownerId) || 'u-anton';
-    const staffIds = (SEED.staff || []).map((s) => s.id);
-    if (ownerId && staffIds.indexOf(ownerId) < 0) staffIds.push(ownerId);
-    const defaultAssignee = ownerId || staffIds[0] || 'u-anton';
+    const ownerId = merged.ownerId || (antonSchoolData() ? ((SEED.school && SEED.school.ownerId) || 'u-anton') : '');
+    const staffIds = [];
+    if (ownerId) staffIds.push(ownerId);
+    (merged.staffAdmins || []).forEach((a) => {
+      if (!a || !a.id || a.status === 'revoked' || staffIds.indexOf(a.id) >= 0) return;
+      if (!antonSchoolData() && (a.id === 'u-anton' || a.id === 'u-lia')) return;
+      staffIds.push(a.id);
+    });
+    if (antonSchoolData()) {
+      (SEED.staff || []).forEach((s) => { if (s && s.id && staffIds.indexOf(s.id) < 0) staffIds.push(s.id); });
+    }
+    const defaultAssignee = ownerId || staffIds[0] || '';
     merged.tasks.forEach((t) => {
       if (!t || typeof t !== 'object') return;
       if (!t.assignee || staffIds.indexOf(t.assignee) < 0) t.assignee = defaultAssignee;
@@ -815,6 +823,18 @@
         }
       });
     }
+    const keepAssignee = staffIds.slice();
+    const fallbackAssignee = ownerId || keepAssignee[0] || '';
+    function claimMentor(id) {
+      return id && keepAssignee.indexOf(id) >= 0 ? id : fallbackAssignee;
+    }
+    (merged.liveStudents || []).forEach((s) => {
+      if (s && s.mentorId) s.mentorId = claimMentor(s.mentorId);
+    });
+    Object.keys(merged.people || {}).forEach((pid) => {
+      const person = merged.people[pid];
+      if (person && person.mentorId) person.mentorId = claimMentor(person.mentorId);
+    });
   }
 
   function demoClockDeltaMs() {
@@ -1254,6 +1274,18 @@
     if (p.photoBlob && p.photoMode === 'social' && !force) return Promise.resolve(true);
     return fetchSocialAvatar(src, handle).then((blob) => {
       if (!blob) return false;
+      if (syncEnabled()) {
+        const file = new File([blob], 'profile.jpg', { type: blob.type || 'image/jpeg' });
+        return uploadClassVideo(file, schoolPhotoKey(), null, 'image').then((info) => {
+          if (db.schoolProfile.photoKey && db.schoolProfile.photoKey !== info.key) deleteRemoteVideo(db.schoolProfile.photoKey);
+          db.schoolProfile.photoUrl = mediaFileUrl(info.key);
+          db.schoolProfile.photoKey = info.key;
+          db.schoolProfile.photoBlob = false;
+          db.schoolProfile.photoMode = 'social';
+          save();
+          return true;
+        });
+      }
       return blobPut(schoolPhotoKey(), blob).then(() => {
         db.schoolProfile.photoBlob = true;
         db.schoolProfile.photoMode = 'social';
@@ -1265,8 +1297,8 @@
   function schoolAvatarHtml(cls) {
     const p = schoolProfile();
     const c = cls || 'school-avatar';
-    if (p.photoBlob) return '<img class="' + c + '" data-blob="' + esc(schoolPhotoKey()) + '" alt="">';
     if (p.photoUrl) return '<img class="' + c + '" src="' + esc(p.photoUrl) + '" alt="">';
+    if (p.photoBlob) return '<img class="' + c + '" data-blob="' + esc(schoolPhotoKey()) + '" alt="">';
     if (!antonSchoolData()) {
       return '<span class="' + c + ' avatar-fallback" aria-hidden="true">' +
         esc(initialsOf(schoolDisplayName(p) || p.firstName || 'K')) + '</span>';
@@ -1275,7 +1307,8 @@
   }
   function schoolOwnerId() {
     if (typeof db !== 'undefined' && db && db.ownerId) return String(db.ownerId);
-    return (SEED.school && SEED.school.ownerId) || 'u-anton';
+    if (antonSchoolData()) return (SEED.school && SEED.school.ownerId) || 'u-anton';
+    return '';
   }
   function schoolOwnerLabel() {
     const full = String(schoolDisplayName() || '').trim();
@@ -1603,7 +1636,7 @@
           '<label class="ps-field"><span class="ps-label">Headline</span>' +
             '<div class="ps-headline">' +
               '<input name="headline" maxlength="60" value="' + esc(p.headline || '') +
-                '" placeholder="Instructor at MasterMind" data-act="headline-count">' +
+                '" placeholder="Mentor" data-act="headline-count">' +
               '<span class="ps-count" id="headline-count">' + hlLeft + '</span>' +
             '</div></label>' +
           '<label class="ps-field"><span class="ps-label">Biography</span>' +
@@ -2233,7 +2266,7 @@
       pricing: anton ? JSON.parse(JSON.stringify(SEED.pricing)) : {},
       bank: anton ? JSON.parse(JSON.stringify(SEED.bank)) : {},
       dunning: JSON.parse(JSON.stringify(SEED.dunning)),
-      actionPlans: JSON.parse(JSON.stringify(SEED.actionPlans)),
+      actionPlans: JSON.parse(JSON.stringify(anton ? SEED.actionPlans : genericActionPlans())),
       pipelineStages: JSON.parse(JSON.stringify(SEED.pipelineStages)),
       pipelineTransitions: JSON.parse(JSON.stringify(SEED.pipelineTransitions || [])),
       clockOffsetMs: 0,
@@ -2738,17 +2771,101 @@
     });
   }
 
+  function genericActionPlans() {
+    const hi = 'Halo {name}, ini {mentor} dari {org}.';
+    return [
+      {
+        id: 'onboarding',
+        name: 'Onboarding bayar',
+        trigger: 'bayar',
+        steps: [
+          { id: 'ob-mail', waitHours: 0, kind: 'email', title: 'Selamat datang + kuitansi', subject: 'Selamat datang di {org}', body: hi + '\n\nTerima kasih. Mentoring sudah aktif.\nJumlah: {amount}\nPaket: {term}\nTransfer ke {bank} {rekening} a.n. {anama}.' },
+          { id: 'ob-wa', waitHours: 24, kind: 'wa', title: 'WA selamat datang', body: hi + ' Selamat datang di kelas. Kalau bingung, balas pesan ini.' },
+          { id: 'ob-task', waitHours: 0, kind: 'task', title: '{mentor} cek {name} sudah masuk kelas', body: 'Follow-up {name}: sudah nonton? Ada yang macet?' }
+        ]
+      },
+      {
+        id: 'trial',
+        name: 'Trial 24 jam',
+        trigger: 'trial',
+        steps: [
+          { id: 't12', waitHours: 12, kind: 'wa', title: '12 jam sisa diskon', body: hi + ' Sisa 12 jam harga perkenalan. Bayar transfer atau kartu, atau lanjut coba video 1.' },
+          { id: 'twatch', waitHours: 0, kind: 'task', title: '{mentor} WA: sudah nonton, belum bayar', body: 'Halo {name}, semoga video 1 kebantu. Kalau mau lanjut kelas bulan ini, transfer / kartu di sekolah ya.' },
+          { id: 'tnurture', waitHours: 24, kind: 'stage', to: 'sudah_keluar' }
+        ]
+      },
+      {
+        id: 'renewal',
+        name: 'Perpanjangan',
+        trigger: 'perpanjangan',
+        steps: [
+          { id: 'r5', waitHours: 120, kind: 'wa', title: '5 hari sebelum habis', body: 'Halo {name}, akses mentoring habis {until}. Transfer bulan berikutnya biar kelas tidak putus.' },
+          { id: 'ranton', waitHours: 120, kind: 'task', title: '{mentor} WA perpanjangan', body: hi + ' Mau lanjut bulan ini?' },
+          { id: 'rgrace', waitHours: 24, kind: 'wa', title: 'Grace 1 hari', body: 'Halo {name}, ini hari terakhir grace. Bayar hari ini supaya akses penuh kembali.' }
+        ]
+      },
+      {
+        id: 'nurture',
+        name: 'Nurture jangka panjang',
+        trigger: 'nurture',
+        steps: [
+          { id: 'n7', waitHours: 168, kind: 'wa', title: 'Follow-up 7 hari', body: hi + ' Kalau waktunya pas, form-nya masih ada di sekolah.' }
+        ]
+      },
+      {
+        id: 'extended',
+        name: 'Tidak tertarik (jarang)',
+        trigger: 'tidak_tertarik',
+        steps: [
+          { id: 'e30', waitHours: 720, kind: 'wa', title: 'Cek 30 hari', body: hi + ' Kalau suatu saat mau kelas lagi, balas pesan ini.' }
+        ]
+      }
+    ];
+  }
+  function planTemplates() {
+    return antonSchoolData() ? (SEED.actionPlans || []) : genericActionPlans();
+  }
+  function antonSeedStep(id) {
+    let found = null;
+    (SEED.actionPlans || []).forEach((p) => {
+      (p.steps || []).forEach((s) => { if (s && s.id === id) found = s; });
+    });
+    return found;
+  }
+  function stepStillAnton(st) {
+    const blob = [st && st.subject, st && st.body, st && st.title].join('\n');
+    if (/MasterMind|Anton di sini|mentoring Anton|WA Anton|Anton masih|Anton cek|Anton WA/i.test(blob)) return true;
+    const seed = antonSeedStep(st && st.id);
+    if (!seed) return false;
+    return String(st.body || '') === String(seed.body || '') &&
+      String(st.subject || '') === String(seed.subject || '') &&
+      String(st.title || '') === String(seed.title || '');
+  }
   function mergeActionPlans(have) {
+    const source = planTemplates();
     const list = Array.isArray(have) && have.length ? have : [];
     const byId = Object.fromEntries(list.map((p) => [p.id, p]));
-    (SEED.actionPlans || []).forEach((seed) => {
-      if (!byId[seed.id]) list.push(JSON.parse(JSON.stringify(seed)));
-      else {
-        if (!byId[seed.id].trigger) byId[seed.id].trigger = seed.trigger;
-        if (byId[seed.id].archived == null) byId[seed.id].archived = false;
+    source.forEach((seed) => {
+      if (!byId[seed.id]) {
+        const copy = JSON.parse(JSON.stringify(seed));
+        list.push(copy);
+        byId[seed.id] = copy;
+        return;
       }
+      const plan = byId[seed.id];
+      if (!plan.trigger) plan.trigger = seed.trigger;
+      if (plan.archived == null) plan.archived = false;
+      if (antonSchoolData()) return;
+      const generic = Object.fromEntries((seed.steps || []).map((s) => [s.id, s]));
+      (plan.steps || []).forEach((st) => {
+        const next = generic[st.id];
+        if (!next || !stepStillAnton(st)) return;
+        if (next.subject != null) st.subject = next.subject;
+        if (next.title != null) st.title = next.title;
+        if (next.body != null) st.body = next.body;
+      });
     });
-    return list.length ? list : JSON.parse(JSON.stringify(SEED.actionPlans || []));
+    return list.length ? list : JSON.parse(JSON.stringify(source));
   }
   function people() {
     db.people = db.people || {};
@@ -2780,7 +2897,8 @@
           name: d.name || '',
           firstName: d.firstName || '',
           lastName: d.lastName || '',
-          kind: d.kind === 'mentor' ? 'mentor' : 'student'
+          kind: d.kind === 'mentor' ? 'mentor' : 'student',
+          photoUrl: d.photoUrl || ''
         }));
       return live.concat(directory);
     }
@@ -3462,23 +3580,60 @@
   }
   function actorId() {
     if (isStaff()) {
-      if (ui.role === 'asisten') return ui.staffId || 'u-lia';
+      if (ui.role === 'asisten') {
+        const sid = String(ui.staffId || '');
+        if (sid && (antonSchoolData() || (sid !== 'u-anton' && sid !== 'u-lia'))) return sid;
+        return schoolOwnerId();
+      }
       if (typeof db !== 'undefined' && db && db.ownerId) return db.ownerId;
-      return (SEED.school && SEED.school.ownerId) || 'u-anton';
+      if (antonSchoolData()) return (SEED.school && SEED.school.ownerId) || 'u-anton';
+      return '';
     }
     return ui.personaId;
+  }
+  function seedStaff() {
+    return antonSchoolData() ? (SEED.staff || []) : [];
   }
   function actorOf(id) {
     const person = people().find((s) => s.id === id);
     if (person) return person;
-    const staff = (SEED.staff || []).find((s) => s.id === id);
+    const admin = (typeof db !== 'undefined' && db && db.staffAdmins || []).find((s) => s && s.id === id);
+    if (admin) return admin;
+    const staff = seedStaff().find((s) => s.id === id);
     if (staff) return staff;
+    if (id && id === schoolOwnerId()) {
+      const p = schoolProfile();
+      return {
+        id: id,
+        name: schoolDisplayName(p) || schoolOwnerLabel(),
+        firstName: p.firstName || '',
+        lastName: p.lastName || '',
+        photoUrl: p.photoUrl || '',
+        photoBlob: !!p.photoBlob
+      };
+    }
     return { id: id, name: nameOf(id) };
   }
-  function actorAvatar(id, cls) {
+  function authorPhotoUrl() {
+    const id = actorId();
+    if (id && id === schoolOwnerId()) return String((schoolProfile().photoUrl) || '').trim();
     const s = actorOf(id);
+    return String((s && s.photoUrl) || '').trim();
+  }
+  function actorAvatar(id, cls, photoUrl) {
     const c = cls || 'avatar';
-    if (s && s.photo && !s.photoUrl && !s.photoBlob) {
+    const stamped = String(photoUrl || '').trim();
+    if (stamped) return '<img class="' + c + '" src="' + esc(stamped) + '" alt="">';
+    if (id && id === schoolOwnerId()) {
+      const p = schoolProfile();
+      if (p.photoUrl) return '<img class="' + c + '" src="' + esc(p.photoUrl) + '" alt="">';
+      if (p.photoBlob) return '<img class="' + c + '" data-blob="' + esc(schoolPhotoKey()) + '" alt="">';
+      if (antonSchoolData() && (SEED.school.photo || SEED.school.logo)) {
+        return '<img class="' + c + '" src="' + esc(SEED.school.photo || SEED.school.logo) + '" alt="">';
+      }
+    }
+    const s = actorOf(id);
+    if (antonSchoolData() && s && s.photo && !s.photoUrl && !s.photoBlob) {
       return '<img class="' + c + '" src="' + esc(s.photo) + '" alt="">';
     }
     return avatarHtml(s, c);
@@ -4231,7 +4386,7 @@
   function waComposerHtml(id, s) {
     if (!s.wa) return '<p class="muted">Belum ada nomor WA. Isi di kolom kiri dulu.</p>';
     const draft = ui.waDraft || '';
-    const href = waLink(s.wa, draft || ('Halo ' + s.name + ', dari MasterMind with Anton GC.'));
+    const href = waLink(s.wa, draft || schoolGreeting(s.name));
     const deviceSend = (ui.waLive && ui.waLive.deviceReady)
       ? '<button class="btn secondary" type="submit"' + (ui.waSending ? ' disabled' : '') + '>' +
           (ui.waSending ? 'Mengirim…' : 'Kirim dari perangkat') + '</button>'
@@ -4419,15 +4574,27 @@
     db.timeline[id].unshift(row);
   }
   function staffMembers() {
-    const list = (SEED.staff || []).slice();
+    const list = [];
+    const seen = new Set();
+    function add(id, name, role) {
+      if (!id || seen.has(id)) return;
+      if (!antonSchoolData() && id !== schoolOwnerId() && (id === 'u-anton' || id === 'u-lia')) return;
+      seen.add(id);
+      list.push({ id: id, name: name || nameOf(id) || id, role: role || '' });
+    }
     const oid = schoolOwnerId();
-    if (oid && !list.some((s) => s.id === oid)) {
-      list.unshift({ id: oid, name: schoolOwnerLabel(), role: 'owner' });
+    add(oid, schoolDisplayName() || schoolOwnerLabel(), 'owner');
+    (db.staffAdmins || []).forEach((a) => {
+      if (!a || a.status === 'revoked') return;
+      add(a.id, a.name, 'asisten');
+    });
+    if (antonSchoolData()) {
+      (SEED.staff || []).forEach((s) => add(s.id, s.name, s.role));
     }
     return list;
   }
   function defaultAssigneeId() {
-    return schoolOwnerId() || (staffMembers()[0] && staffMembers()[0].id) || 'u-anton';
+    return schoolOwnerId() || (staffMembers()[0] && staffMembers()[0].id) || '';
   }
   function assigneeIdOf(t) {
     const id = t && t.assignee;
@@ -4535,6 +4702,25 @@
       '?subject=' + encodeURIComponent(subject || '') +
       '&body=' + encodeURIComponent(body || '');
   }
+  function mentorDisplayName() {
+    const prof = schoolProfile();
+    const full = (String(prof.firstName || '').trim() + ' ' + String(prof.lastName || '').trim()).trim();
+    if (full) return full;
+    const first = ownerFirstName();
+    return first && first !== 'Mentor' ? first : 'Mentor';
+  }
+  function orgDisplayName() {
+    const business = String((typeof db !== 'undefined' && db && db.businessName) || '').trim();
+    if (business) return business;
+    if (antonSchoolData()) return (SEED.school && SEED.school.name) || 'Kelas';
+    return 'Kelas';
+  }
+  function schoolGreeting(name) {
+    return 'Halo ' + (name || '{name}') + ', ini ' + mentorDisplayName() + ' dari ' + orgDisplayName() + '.';
+  }
+  function schoolMailSubject() {
+    return orgDisplayName();
+  }
   function fillTpl(text, id) {
     const s = people().find((x) => x.id === id) || { name: id };
     const b = billingOf(id);
@@ -4542,6 +4728,8 @@
     const term = termLabel(b.term);
     return String(text || '')
       .replace(/\{name\}/g, s.name)
+      .replace(/\{mentor\}/g, mentorDisplayName())
+      .replace(/\{org\}/g, orgDisplayName())
       .replace(/\{until\}/g, b.accessUntil ? fmtWhen(b.accessUntil) : '—')
       .replace(/\{amount\}/g, fmtRp(b.amount))
       .replace(/\{term\}/g, term)
@@ -5338,7 +5526,7 @@
     b.amount = amount;
     b.term = term;
     b.source = 'transfer';
-    b.note = 'Menunggu konfirmasi Anton · ' + termLabel(term);
+    b.note = 'Menunggu konfirmasi ' + mentorDisplayName() + ' · ' + termLabel(term);
     if (!b.plan || b.plan === '') b.plan = 'preview';
     pushTimeline(id, 'pay', 'Klaim transfer ' + fmtRp(amount) + ' · menunggu konfirmasi');
     addTask(id, 'Cek transfer ' + nameOf(id), 'Jumlah ' + fmtRp(amount) + ' ke ' + db.bank.bank + ' ' + db.bank.number, isoNow(), 'reminder');
@@ -5479,7 +5667,7 @@
       if (c.watchedFirstAt && (c.stage === 'trial' || c.stage === 'nonton') && !c.antonWatchTask) {
         const plan = planById('trial');
         const step = plan && plan.steps.find((x) => x.id === 'twatch');
-        addTask(s.id, (step && step.title) || 'Anton WA: sudah nonton, belum bayar', fillTpl((step && step.body) || '', s.id), isoNow());
+        addTask(s.id, (step && step.title) || (mentorDisplayName() + ' WA: sudah nonton, belum bayar'), fillTpl((step && step.body) || '', s.id), isoNow());
         c.antonWatchTask = true;
         applyTransition(s.id, 'nonton', 'nonton', 'Nonton video 1, belum bayar.');
       }
@@ -5498,7 +5686,7 @@
           if (!c.antonRenewTask) {
             const plan = planById('renewal');
             const step = plan && plan.steps.find((x) => x.id === 'ranton');
-            addTask(s.id, (step && step.title) || 'Anton WA perpanjangan', fillTpl((step && step.body) || '', s.id), isoNow());
+            addTask(s.id, (step && step.title) || (mentorDisplayName() + ' WA perpanjangan'), fillTpl((step && step.body) || '', s.id), isoNow());
             c.antonRenewTask = true;
           }
           if (t >= end + graceMs() - 86400000 && !c.grace1Sent) {
@@ -5842,12 +6030,15 @@
     toast('Tunggu video selesai diunggah, atau batalkan dengan ×.');
     return true;
   }
+  function uploadShownInline() {
+    return isStaff() && ui.mentorTab === 'kurikulum' && !!ui.kurEdit && Number(ui.kurWizStep) === 3;
+  }
   function paintVidUploadBar() {
     const bar = $('vid-upload-bar');
     const app = $('app');
     if (!bar) return;
     const active = activeVidUploadJob();
-    if (!active) {
+    if (!active || uploadShownInline()) {
       bar.hidden = true;
       bar.innerHTML = '';
       bar.classList.remove('is-indeterminate');
@@ -5930,6 +6121,20 @@
       '<p class="vid-upload-label">' + esc(label) + '</p>' +
       '<progress class="vid-upload-meter" max="100"' +
         (job.indeterminate && !job.error ? '' : (' value="' + pct + '"')) + '>' + pct + '%</progress></div>';
+  }
+  function activeUploadMeterHtml() {
+    const active = activeVidUploadJob();
+    if (!active) return '';
+    return vidUploadHtml({ id: active.id });
+  }
+  function lecCoverMeterRow(l) {
+    const meter = vidUploadHtml(l);
+    if (!meter) return '';
+    const cover = coverHtml('lec', l.id, 'ud-preview-cover');
+    if (!cover) return meter;
+    return '<div class="ud-upload-row">' +
+      '<div class="ud-preview-block">' + cover + '</div>' +
+      '<div class="ud-upload-meter">' + meter + '</div></div>';
   }
   function captureOpenLecDraft() {
     document.querySelectorAll('[data-act="lec-field"][data-k="title"], [data-act="lec-body"], [data-act="lec-points"], [data-act="lec-req"]').forEach((el) => {
@@ -6548,7 +6753,7 @@
           ? parsePersonFieldValue(raw, 'multi').join(', ')
           : raw;
         return '<label class="fub-ob-field">' +
-          '<span class="muted">' + esc(def.label) + '</span>' +
+          '<span class="muted">' + esc(ownerText(def.label)) + '</span>' +
           '<input class="inline-edit" data-act="daftar-custom-val" data-id="' + esc(id) +
             '" data-col="' + esc(def.id) + '" value="' + esc(shown) + '" placeholder="—">' +
         '</label>';
@@ -6590,11 +6795,11 @@
     return { email: 'Email', wa: 'WhatsApp', task: 'Tugas', stage: 'Pindah stage' }[k] || k;
   }
   function staffPerson() {
-    return people().find((x) => x.id === 'u-anton') || { id: 'u-anton', name: 'Anton' };
+    return { id: schoolOwnerId() || 'owner', name: mentorDisplayName() };
   }
   function personFeed(id) {
     const items = [];
-    (db.notes[id] || []).forEach((n) => items.push({ at: n.at, kind: 'note', who: 'Anton', body: n.body }));
+    (db.notes[id] || []).forEach((n) => items.push({ at: n.at, kind: 'note', who: mentorDisplayName(), body: n.body }));
     (db.timeline[id] || []).forEach((n) => items.push({ at: n.at, kind: n.kind || 'event', who: 'Sistem', body: n.body }));
     (db.emailQueue || []).filter((x) => x.toId === id).forEach((x) =>
       items.push({ at: x.scheduledAt, kind: 'email', who: 'Otomasi', body: (x.status || '') + ' · ' + (x.subject || x.title) }));
@@ -6773,7 +6978,7 @@
         (missing ? '<p class="muted" style="margin:0 0 8px">' + missing + ' tanpa email — dilewati.</p>' : '') +
         (withMail.length
           ? '<form class="compose daftar-bulk-form" data-act="daftar-bulk-email">' +
-              '<input name="subject" required placeholder="Subjek" value="MasterMind with Anton GC">' +
+              '<input name="subject" required placeholder="Subjek" value="' + esc(schoolMailSubject()) + '">' +
               '<textarea name="body" required rows="4" placeholder="Halo {name}, …"></textarea>' +
               '<p class="muted" style="margin:0">Pakai {name}. Antrian email + buka mailto BCC.</p>' +
               '<div class="row" style="gap:8px;flex-wrap:wrap">' +
@@ -8081,9 +8286,9 @@
         '</section>';
     }
     return '<section class="card trial-cta pending-cta">' +
-      '<p class="trial-kicker">Menunggu konfirmasi Anton</p>' +
+      '<p class="trial-kicker">Menunggu konfirmasi ' + esc(mentorDisplayName()) + '</p>' +
       '<h3>Transfer ' + fmtRp(b.pendingAmount || b.amount || 0) + ' sudah dicatat</h3>' +
-      '<p class="muted">Akses mentoring kebuka setelah Anton konfirmasi di CRM. Video 1 tetap kebuka.</p>' +
+      '<p class="muted">Akses mentoring kebuka setelah ' + esc(mentorDisplayName()) + ' konfirmasi di CRM. Video 1 tetap kebuka.</p>' +
       '</section>';
   }
   function offerBanner(sid) {
@@ -8120,9 +8325,9 @@
             '<button type="button" class="btn secondary" data-act="pay-prompt-close">Nanti</button>' +
           '</div>';
       }
-      return '<p class="trial-kicker">Menunggu konfirmasi Anton</p>' +
+      return '<p class="trial-kicker">Menunggu konfirmasi ' + esc(mentorDisplayName()) + '</p>' +
         '<h3>Transfer sudah dicatat</h3>' +
-        '<p class="muted">Materi kebuka setelah Anton konfirmasi. Video 1 tetap kebuka.</p>' +
+        '<p class="muted">Materi kebuka setelah ' + esc(mentorDisplayName()) + ' konfirmasi. Video 1 tetap kebuka.</p>' +
         '<div class="row" style="margin-top:12px">' +
           '<button type="button" class="btn secondary" data-act="pay-prompt-close">Tutup</button>' +
         '</div>';
@@ -8473,7 +8678,7 @@
           '<h1 class="ob-q">Menunggu konfirmasi Lynk</h1>' +
           '<p class="ob-sub">Checkout ' + fmtRp(b.pendingAmount || b.amount || 0) +
           ' (' + esc(termLabel(b.pendingTerm || b.term)) +
-          '). Anton yang menerima uangnya. Kurikulum kebuka setelah Lynk mengonfirmasi. Video 1 tetap kebuka.</p>',
+          '). ' + esc(mentorDisplayName()) + ' yang menerima uangnya. Kurikulum kebuka setelah Lynk mengonfirmasi. Video 1 tetap kebuka.</p>',
           (again ? '<a class="btn ob-cta" href="' + esc(again) + '" target="_blank" rel="noopener">Buka halaman Lynk</a>' : '') +
           '<button class="btn secondary ob-cta" data-act="tab" data-id="home">Kembali ke Home</button>',
           true);
@@ -8493,10 +8698,10 @@
       }
       return obWrap(wizPayIdx(),
         '<p class="ob-kicker">Transfer</p>' +
-        '<h1 class="ob-q">Menunggu konfirmasi Anton</h1>' +
+        '<h1 class="ob-q">Menunggu konfirmasi ' + esc(mentorDisplayName()) + '</h1>' +
         '<p class="ob-sub">Kamu sudah klaim transfer ' + fmtRp(b.pendingAmount || b.amount || 0) +
         ' (' + esc(termLabel(b.pendingTerm || b.term)) +
-        '). Anton cek rekening, lalu akses mentoring kebuka. Video 1 tetap kebuka.</p>',
+        '). ' + esc(mentorDisplayName()) + ' cek rekening, lalu akses mentoring kebuka. Video 1 tetap kebuka.</p>',
         '<button class="btn ob-cta" data-act="tab" data-id="home">Kembali ke Home</button>',
         true);
     }
@@ -8511,7 +8716,7 @@
     const include = '<ul class="ob-checks">' +
       '<li>Kurikulum 12 video + lembar kerja</li>' +
       '<li>Live class, diskusi, Kolab</li>' +
-      '<li>Undangan grup WA dari Anton</li>' +
+      '<li>Undangan grup WA dari ' + esc(mentorDisplayName()) + '</li>' +
       '<li><strong>−' + toolPct + '% semua alat</strong> di Perpustakaan</li>' +
       '<li class="is-mute">Laris Affiliate tetap harga satuan</li></ul>' +
       '<button type="button" class="ob-link" data-act="wiz-tools">' +
@@ -8524,7 +8729,7 @@
         : '');
     const inner = '<p class="ob-kicker">Paket</p>' +
       '<h1 class="ob-q">Yang kamu dapat</h1>' +
-      '<p class="ob-sub">Anton yang menerima pembayaran. LarisID tidak menahan uang. Kurikulum kebuka setelah Lynk mengonfirmasi, atau setelah Anton menandai transfer manual.</p>' +
+      '<p class="ob-sub">' + esc(mentorDisplayName()) + ' yang menerima pembayaran. LarisID tidak menahan uang. Kurikulum kebuka setelah Lynk mengonfirmasi, atau setelah ' + esc(mentorDisplayName()) + ' menandai transfer manual.</p>' +
       include +
       '<p class="ob-note">' + (inWin
         ? 'Harga perkenalan 24 jam untuk 1 bulan &amp; autopay · sisa <strong>' + esc(fmtRemain(exp)) + '</strong>. 3 &amp; 6 bulan sudah diskon program, tidak ditumpuk.'
@@ -8539,7 +8744,7 @@
         (lynkCheckoutUrl(term)
           ? '<div class="ob-tf">' +
               '<p class="ob-tf-kicker">Bayar di Lynk</p>' +
-              '<p class="muted">Halaman checkout Anton. Kurikulum kebuka setelah Lynk mengirim konfirmasi.</p>' +
+              '<p class="muted">Halaman checkout ' + esc(mentorDisplayName()) + '. Kurikulum kebuka setelah Lynk mengirim konfirmasi.</p>' +
               '<p class="muted">Jumlah di kelas: <strong>' + fmtRp(price) + '</strong>' +
               (price < list ? ' <span class="price-coret">' + fmtRp(list) + '</span>' : '') +
               ' · ' + esc(termLabel(term)) +
@@ -8551,9 +8756,9 @@
               '<p class="muted">Tautan Lynk untuk paket ini belum diisi. Jumlah sekarang: <strong>' + fmtRp(price) + '</strong> · ' + esc(termLabel(term)) + '</p>' +
             '</div>') +
         (lynkCheckoutUrl(term)
-          ? '<details class="ob-manual"><summary>Sudah transfer ke rekening Anton</summary>' +
+          ? '<details class="ob-manual"><summary>Sudah transfer ke rekening ' + esc(mentorDisplayName()) + '</summary>' +
               '<p><strong>' + esc(db.bank.bank) + '</strong> ' + esc(db.bank.number) + '<br>a.n. ' + esc(db.bank.name) + '</p>' +
-              '<p class="muted">Anton menandai lunas di CRM kalau webhook Lynk tidak cocok.</p></details>'
+              '<p class="muted">' + esc(mentorDisplayName()) + ' menandai lunas di CRM kalau webhook Lynk tidak cocok.</p></details>'
           : '') +
       '</div>';
     const foot =
@@ -8717,13 +8922,20 @@
   }
 
   function viewLocked() {
+    const who = mentorDisplayName();
+    const lynk = antonSchoolData()
+      ? (SEED.school.lynk || '')
+      : String((schoolProfile().socials && schoolProfile().socials.website) || '');
+    const wa = ownerWa();
     return '<div class="locked">' +
       '<h2>Live class terkunci</h2>' +
-      '<p class="muted">Belajar, Diskusi, dan Kolab hanya untuk yang ikut mentoring. Produk lynk tetap bisa dibeli satuan di Pustaka. Anton merchant — LarisID tidak menahan uang.</p>' +
+      '<p class="muted">Belajar, Diskusi, dan Kolab hanya untuk yang ikut mentoring. ' + esc(who) + ' yang menerima pembayaran. LarisID tidak menahan uang.</p>' +
       '<div class="row" style="justify-content:center">' +
         '<button class="btn" data-act="tab" data-id="daftar">Ikut mentoring</button>' +
-        '<a class="wa" href="' + esc(waLink(ownerWa(), 'Halo Anton, mau konfirmasi mentoring / produk lynk.')) + '">Chat Anton</a>' +
-        '<a class="btn secondary" href="' + esc(SEED.school.lynk) + '" target="_blank" rel="noopener">lynk.id</a>' +
+        (wa
+          ? '<a class="wa" href="' + esc(waLink(wa, 'Halo ' + who + ', mau konfirmasi mentoring.')) + '">Chat ' + esc(who) + '</a>'
+          : '') +
+        (lynk ? '<a class="btn secondary" href="' + esc(lynk) + '" target="_blank" rel="noopener">Situs</a>' : '') +
       '</div></div>';
   }
   function viewLockedDiskusi() {
@@ -9251,7 +9463,7 @@
         '<p>' + esc(t.body) + '</p>' +
         reps.map((r) => '<p class="muted"><strong>' + esc(nameOf(r.authorId)) + ':</strong> ' + esc(r.body) + '</p>').join('') +
         (isStaff() && !t.answered
-          ? '<form class="compose" data-act="reply" data-tid="' + esc(t.id) + '"><textarea name="body" required rows="2" placeholder="Jawaban Anton / Lia"></textarea><button class="btn" type="submit">Jawab</button></form>'
+          ? '<form class="compose" data-act="reply" data-tid="' + esc(t.id) + '"><textarea name="body" required rows="2" placeholder="Jawaban"></textarea><button class="btn" type="submit">Jawab</button></form>'
           : '') +
         '</article>';
     }).join('');
@@ -9259,40 +9471,34 @@
 
   function nameOf(id) {
     if (!id) return '';
+    if (!antonSchoolData() && (id === 'u-anton' || id === 'u-lia')) {
+      return mentorDisplayName();
+    }
     if (id === schoolOwnerId()) {
       const label = schoolDisplayName() || ownerFirstName();
       if (label) return label;
     }
-    const found = people().find((s) => s.id === id) || (SEED.staff || []).find((s) => s.id === id);
-    return displayNameOf(found) || (found && found.name) || id;
+    const found = people().find((s) => s.id === id);
+    if (found) return displayNameOf(found) || found.name || id;
+    const admin = (db.staffAdmins || []).find((s) => s && s.id === id);
+    if (admin && admin.name) return admin.name;
+    if (antonSchoolData()) {
+      const staff = (SEED.staff || []).find((s) => s.id === id);
+      if (staff) return staff.name;
+    }
+    return id;
   }
-  /** School owner + anyone in the Mentor pipeline column (for Assigned). */
+  /** This mentor, plus an admin they added. */
   function assignableMentors(forId) {
-    const seen = new Set();
-    const list = [];
-    function add(id, name) {
-      if (!id || seen.has(id) || id === forId) return;
-      seen.add(id);
-      list.push({ id, name: name || nameOf(id) || id });
-    }
-    const ownerId = schoolOwnerId();
-    add(ownerId, schoolDisplayName() || schoolOwnerLabel());
-    people().forEach((s) => {
-      if (s.kind === 'mentor' || crmOf(s.id).stage === 'mentor') {
-        add(s.id, displayNameOf(s) || s.name);
-      }
-    });
-    (SEED.staff || []).forEach((s) => add(s.id, s.name));
-    const cur = people().find((x) => x.id === forId);
-    const mid = (cur && cur.mentorId) || ownerId;
-    if (!seen.has(mid)) {
-      const nm = nameOf(mid);
-      add(mid, nm === mid ? (schoolDisplayName() || schoolOwnerLabel()) : nm);
-    }
-    list.forEach((m) => {
-      if (m.id === ownerId) m.name = schoolDisplayName() || schoolOwnerLabel();
-    });
-    return list;
+    return staffMembers().filter((s) => s.id !== forId).map((s) => ({
+      id: s.id,
+      name: s.id === schoolOwnerId() ? (schoolDisplayName() || schoolOwnerLabel()) : (s.name || nameOf(s.id))
+    }));
+  }
+  function assignedMentorId(person) {
+    const owner = schoolOwnerId();
+    const mid = (person && person.mentorId) || owner;
+    return staffMembers().some((s) => s.id === mid) ? mid : owner;
   }
 
   function skuPriceHtml(p) {
@@ -9797,6 +10003,7 @@
         poll: poll,
         likes: [],
         pinned: false,
+        authorPhoto: authorPhotoUrl(),
         createdAt: isoNow()
       };
       db.posts.push(post);
@@ -10060,17 +10267,17 @@
     const likes = postLikes(post);
     const liked = likes.indexOf(actorId()) !== -1;
     const n = likes.length;
+    if (!canWrite && !n) return '';
     return '<div class="dk-reacts">' +
       (canWrite
-        ? '<button type="button" class="dk-react' + (liked ? ' is-on' : '') + '" data-act="post-like" data-id="' + esc(post.id) + '" aria-pressed="' + (liked ? 'true' : 'false') + '" title="Suka">' +
-            '<span aria-hidden="true">♥</span>' + (n ? '<em>' + n + '</em>' : '') + '</button>'
-        : (n ? '<span class="dk-react is-static"><span aria-hidden="true">♥</span><em>' + n + '</em></span>' : '')) +
-      '<span class="dk-react is-static" title="Reaksi"><span aria-hidden="true">😊</span></span>' +
+        ? '<button type="button" class="dk-react' + (liked ? ' is-on' : '') + '" data-act="post-like" data-id="' + esc(post.id) + '" aria-pressed="' + (liked ? 'true' : 'false') + '">Suka' +
+            (n ? '<em>' + n + '</em>' : '') + '</button>'
+        : '<span class="dk-react is-static">Suka<em>' + n + '</em></span>') +
     '</div>';
   }
   function mentionHtml(body) {
     let html = esc(body || '');
-    const names = people().concat(SEED.staff || []).map((p) => p && (displayNameOf(p) || p.name)).filter(Boolean);
+    const names = people().concat(seedStaff()).map((p) => p && (displayNameOf(p) || p.name)).filter(Boolean);
     names.sort((a, b) => b.length - a.length);
     names.forEach((name) => {
       const safe = esc('@' + name);
@@ -10102,15 +10309,15 @@
       '<div class="dk-comment' + (row.replyTo ? ' is-reply' : '') + '" id="dkc-' + esc(row.id) + '"' +
         (unread ? ' data-unread="1" data-unread-at="' + esc(row.createdAt) + '"' : '') + '>' +
         (row.replyTo ? '<span class="dk-reply-arrow" aria-hidden="true"></span>' : '') +
-        actorAvatar(row.authorId, 'avatar sm') +
+        actorAvatar(row.authorId, 'avatar sm', row.authorPhoto) +
         '<div class="dk-comment-body">' +
           '<strong>' + esc(nameOf(row.authorId)) + '</strong>' +
           '<span class="muted"> · ' + esc(relWhen(row.createdAt)) + '</span>' +
           '<p>' + mentionHtml(row.body) + '</p>' +
           '<div class="dk-comment-acts">' +
             (canWrite
-              ? '<button type="button" class="dk-like' + (liked ? ' is-on' : '') + '" data-act="comment-like" data-id="' + esc(row.id) + '" aria-pressed="' + (liked ? 'true' : 'false') + '">' +
-                  (liked ? '♥' : '♡') + (likes.length ? '<span>' + likes.length + '</span>' : '') + '</button>' +
+              ? '<button type="button" class="dk-like' + (liked ? ' is-on' : '') + '" data-act="comment-like" data-id="' + esc(row.id) + '" aria-pressed="' + (liked ? 'true' : 'false') + '">Suka' +
+                  (likes.length ? '<span>' + likes.length + '</span>' : '') + '</button>' +
                 '<button type="button" class="dk-reply-btn" data-act="comment-reply" data-id="' + esc(row.id) + '" data-post="' + esc(row.postId) + '">Balas</button>'
               : '') +
           '</div>' +
@@ -10160,7 +10367,7 @@
       '<article class="dk-post' + (post.pinned ? ' is-pinned' : '') + '" id="dkp-' + esc(post.id) + '"' +
         (postUnread ? ' data-unread="1" data-unread-at="' + esc(post.createdAt) + '"' : '') + '>' +
       '<header class="dk-post-h">' +
-        actorAvatar(post.authorId, 'avatar') +
+        actorAvatar(post.authorId, 'avatar', post.authorPhoto) +
         '<div><strong>' + esc(nameOf(post.authorId)) + '</strong>' +
           '<div class="muted">' + esc(relWhen(post.createdAt)) + (post.pinned ? ' · Disematkan' : '') + '</div></div>' +
         '<div class="dk-post-acts">' +
@@ -10504,7 +10711,7 @@
     if (!c.certSerial) return '<p class="muted">Belum ada sertifikat.</p>';
     return '<section class="card cert-sheet">' +
       '<p class="muted">Sertifikat kelas · serial ' + esc(c.certSerial) + '</p>' +
-      '<h2>MasterMind with Anton GC</h2>' +
+      '<h2>' + esc(orgDisplayName()) + '</h2>' +
       '<p>Menerangkan bahwa</p>' +
       '<h3>' + esc(s.name) + '</h3>' +
       '<p>menyelesaikan kurikulum mentoring dan lulus tes akhir (' + esc(c.examScore) + '/' + SEED.exam.questions.length + ').</p>' +
@@ -10861,7 +11068,7 @@
       '</section>'
         : '') +
       (staffCan('viewIncome')
-        ? '<p class="dash-footnote">Angka dari ledger pembayaran &amp; form. Beasiswa (Rp0) tidak menambah uang masuk. Anton merchant — LarisID tidak menahan uang.</p>'
+        ? '<p class="dash-footnote">Angka dari ledger pembayaran &amp; form. Beasiswa (Rp0) tidak menambah uang masuk. ' + esc(mentorDisplayName()) + ' yang menerima pembayaran. LarisID tidak menahan uang.</p>'
         : '') +
     '</div>';
   }
@@ -11115,7 +11322,7 @@
           const b = billingOf(s.id);
           return '<button type="button" class="kanban-card" draggable="' + (staffCan('editStudents') ? 'true' : 'false') + '" data-act="open-student" data-id="' + esc(s.id) + '">' +
             '<div class="roster-name">' + avatarHtml(s, 'avatar sm') + '<strong>' + esc(s.name) + '</strong>' + waUnreadBadge(s.id) + '</div>' +
-            '<div class="muted">' + esc(s.city) + (s.mentorId && s.mentorId !== 'u-anton' ? ' · ' + esc(nameOf(s.mentorId)) : '') + '</div>' +
+            '<div class="muted">' + esc(s.city) + (s.mentorId && s.mentorId !== schoolOwnerId() ? ' · ' + esc(nameOf(s.mentorId)) : '') + '</div>' +
             (b.amount ? '<div class="money">' + esc(fmtRp(b.amount)) + '</div>' : '') +
             '<div>' + payChip(b.status, b.source) + ' <span class="muted">' + esc(fmtRemain(
               (b.status === 'lunas' || b.status === 'cicilan' || b.status === 'gratis')
@@ -11221,7 +11428,7 @@
     const open = ui.taskComposer === 'new';
     return '<div class="task-board">' +
       '<div class="task-toolbar">' +
-        '<div><h2 style="margin:0">Tugas</h2><p class="muted" style="margin:4px 0 0">Hari ini, besok, minggu ini. Klik nama untuk profil. WA dan email membuka aplikasi. Default ditugaskan ke Anton.</p></div>' +
+        '<div><h2 style="margin:0">Tugas</h2><p class="muted" style="margin:4px 0 0">Hari ini, besok, minggu ini. Klik nama untuk profil. WA dan email membuka aplikasi. Default ditugaskan ke ' + esc(mentorDisplayName()) + '.</p></div>' +
         '<button type="button" class="btn" data-act="task-compose" data-id="new">' + (open ? 'Tutup' : '+ Tugas') + '</button>' +
       '</div>' +
       (open ? '<div class="card" style="margin-bottom:14px"><h3>Buat tugas</h3>' + taskComposerHtml('') + '</div>' : '') +
@@ -11332,14 +11539,14 @@
           '" value="' + esc(st.subject || '') + '" placeholder="Contoh: Selamat datang, {name}">' +
         '<label>Isi email</label>' +
         '<textarea data-act="plan-body" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) +
-          '" rows="5" placeholder="Tulis isi email… Pakai {name}, {amount}, {until}.">' +
+          '" rows="5" placeholder="Tulis isi email… Pakai {name}, {mentor}, {org}, {amount}, {until}.">' +
           esc(st.body || '') + '</textarea>';
     } else if (kind === 'wa') {
       fields =
         otoConnBanner('wa') +
         '<label>Pesan WhatsApp</label>' +
         '<textarea data-act="plan-body" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) +
-          '" rows="4" placeholder="Halo {name}, …">' + esc(st.body || '') + '</textarea>' +
+          '" rows="4" placeholder="Halo {name}, ini {mentor} dari {org}.">' + esc(st.body || '') + '</textarea>' +
         '<label class="muted">Judul di antrean (opsional)</label>' +
         '<input data-act="plan-title" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) +
           '" value="' + esc(st.title || '') + '" placeholder="WA selamat datang">';
@@ -11381,7 +11588,7 @@
         '</div>' +
       '</div>' +
       '<div class="oto-fields">' + fields + '</div>' +
-      '<p class="muted oto-hint">Placeholder: {name}, {amount}, {until}, {bank}</p>' +
+      '<p class="muted oto-hint">Placeholder: {name}, {mentor}, {org}, {amount}, {until}, {bank}</p>' +
     '</div>';
   }
   function autoMapHtml(p) {
@@ -11597,10 +11804,10 @@
       '<form class="compose" data-act="save-school-url">' +
         '<label class="muted">Kode undangan batch</label>' +
         '<input name="invite" value="' + esc(schoolInviteCode()) + '" maxlength="40" autocomplete="off" spellcheck="false">' +
-        '<label class="muted">Nomor WA Anton</label>' +
+        '<label class="muted">Nomor WA ' + esc(mentorDisplayName()) + '</label>' +
         '<input name="ownerWa" value="' + esc(ownerContact().wa || ownerWa()) + '" placeholder="628…" inputmode="tel">' +
-        '<label class="muted">Email Anton</label>' +
-        '<input name="ownerEmail" type="email" value="' + esc(ownerContact().email || '') + '" placeholder="anton@…">' +
+        '<label class="muted">Email ' + esc(mentorDisplayName()) + '</label>' +
+        '<input name="ownerEmail" type="email" value="' + esc(ownerContact().email || '') + '" placeholder="nama@email.com">' +
         '<button class="btn" type="submit">Simpan kontak</button>' +
       '</form>' +
       '<dl class="url-share">' +
@@ -11636,7 +11843,7 @@
         '<label class="muted">Nomor</label><input name="number" value="' + esc(b.number) + '">' +
         '<label class="muted">Atas nama</label><input name="name" value="' + esc(b.name) + '">' +
         '<button class="btn" type="submit">Simpan rekening</button></form>' +
-      '<p class="muted">Siswa menyalin ini kalau transfer manual. Anton menandai lunas di baris siswa / profil.</p>' +
+      '<p class="muted">Siswa menyalin ini kalau transfer manual. ' + esc(mentorDisplayName()) + ' menandai lunas di baris siswa / profil.</p>' +
       '</section></div>' + lynkSettingsHtml();
   }
   function lynkField(term, label) {
@@ -11721,7 +11928,7 @@
             '<span class="fub-ico is-wa" aria-hidden="true">' + waIconSvg(16) + '</span>' +
             '<input class="inline-edit ghost-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="wa" value="' + esc(s.wa || '') + '" placeholder="62812…" title="Klik untuk edit WA">' +
             (s.wa
-              ? '<a class="fub-cell-link fub-ico-link" href="' + esc(waLink(s.wa, 'Halo ' + fullName + ', dari MasterMind with Anton GC.')) +
+              ? '<a class="fub-cell-link fub-ico-link" href="' + esc(waLink(s.wa, schoolGreeting(fullName))) +
                 '" title="Buka WhatsApp" aria-label="Buka WhatsApp">' + waIconSvg(16) + '</a>'
               : '') +
           '</div>' +
@@ -11729,7 +11936,7 @@
             '<span class="fub-ico is-email" aria-hidden="true">' + emailIconSvg(16) + '</span>' +
             '<input class="inline-edit ghost-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="email" type="email" value="' + esc(s.email || '') + '" placeholder="email" title="Klik untuk edit email">' +
             (s.email
-              ? '<a class="fub-cell-link fub-ico-link" href="' + esc(mailLink(s.email, 'MasterMind with Anton GC', 'Halo ' + fullName)) +
+              ? '<a class="fub-cell-link fub-ico-link" href="' + esc(mailLink(s.email, schoolMailSubject(), schoolGreeting(fullName))) +
                 '" title="Buka Email" aria-label="Buka Email">' + emailIconSvg(16) + '</a>'
               : '') +
           '</div>' +
@@ -11749,10 +11956,10 @@
             (staffCan('editStudents')
               ? '<select data-act="assign-mentor" data-id="' + esc(id) + '" aria-label="Assigned">' +
                 assignableMentors(id).map((m) =>
-                  '<option value="' + esc(m.id) + '"' + (((s.mentorId || schoolOwnerId()) === m.id) ? ' selected' : '') + '>' + esc(m.name) + '</option>'
+                  '<option value="' + esc(m.id) + '"' + ((assignedMentorId(s) === m.id) ? ' selected' : '') + '>' + esc(m.name) + '</option>'
                 ).join('') +
                 '</select>'
-              : esc(nameOf(s.mentorId || schoolOwnerId()))) +
+              : esc(nameOf(assignedMentorId(s)))) +
           '</dd></div>' +
           '<div class="fub-field"><dt>Tags</dt>' + personTagsHtml(id) + '</div>' +
           '<div class="fub-field"><dt>Sumber</dt><dd>' + esc((app && app.heard) || b.source || '—') +
@@ -11778,7 +11985,7 @@
     } else if (mode === 'email') {
       composerBody = s.email
         ? '<p class="muted">Buka email di aplikasi kamu, lalu catat ringkasannya di bawah jika perlu.</p>' +
-          '<a class="btn" href="' + esc(mailLink(s.email, 'MasterMind with Anton GC', 'Halo ' + fullName)) + '">Buka Email</a>' +
+          '<a class="btn" href="' + esc(mailLink(s.email, schoolMailSubject(), schoolGreeting(fullName))) + '">Buka Email</a>' +
           '<form class="compose" data-act="note" data-id="' + esc(id) + '" style="margin-top:10px">' +
             '<textarea name="body" required rows="3" placeholder="Catatan setelah email…"></textarea>' +
             '<button class="btn" type="submit">Simpan catatan</button></form>'
@@ -12251,19 +12458,21 @@
     const uploading = videoUploadPending();
     const cover = coverHtml('kur', 'course', 'kur-pub-cover');
     const desc = meta.description || '—';
+    const meter = activeUploadMeterHtml();
     return '<section class="kur-pub">' +
       '<div class="kur-wiz-ico kur-pub-ico" aria-hidden="true">' + kurPlaneIcon() +
         '<i class="kur-pub-spark" aria-hidden="true"></i></div>' +
       '<h2>Publikasikan Kursus Anda</h2>' +
       '<p class="kur-wiz-sub">Cek kembali detail kursus Anda sebelum dipublikasikan agar siap diakses oleh siswa.</p>' +
       '<div class="kur-pub-card">' +
-        '<div class="kur-pub-top">' +
+        '<div class="kur-pub-top' + (meter ? ' is-uploading' : '') + '">' +
           '<div class="kur-pub-thumb">' +
             (cover || '<div class="kur-pub-cover is-empty" aria-hidden="true"></div>') +
             '<button type="button" class="kur-pub-preview" data-act="kur-pub-preview">' +
               svgIcon('play') + ' Preview</button>' +
           '</div>' +
           '<div class="kur-pub-meta">' +
+            (meter ? '<div class="kur-pub-upload">' + meter + '</div>' : '') +
             '<span class="muted">Nama Kelas</span>' +
             '<strong>' + esc(meta.name || '—') + '</strong>' +
             '<span class="muted">Deskripsi</span>' +
@@ -12335,11 +12544,12 @@
   }
 
   function lecEditorPreviewHtml(l) {
+    const coverRow = lecCoverMeterRow(l);
     const cover = coverHtml('lec', l.id, 'ud-preview-cover');
-    const coverBlock = '<div class="ud-preview-block">' +
+    const coverBlock = coverRow || ('<div class="ud-preview-block">' +
       '<span class="muted">Preview cover</span>' +
       (cover || '<div class="ud-preview-cover is-empty">Belum ada cover</div>') +
-      '</div>';
+      '</div>');
     if (l.type !== 'video') return '<div class="ud-media-preview">' + coverBlock + '</div>';
     let vid = '';
     const fileReady = !!(l.videoKey || l.videoBlob);
@@ -12389,7 +12599,7 @@
       '</div></div>';
     if (!open) {
       return '<article class="ud-item" data-lec-drop="' + esc(l.id) + '">' + head +
-        vidUploadHtml(l) + '</article>';
+        lecCoverMeterRow(l) + '</article>';
     }
     const qs = (l.questions || []).concat([{ q: '', hint: '' }]);
     const qHtml = qs.map((q, i) =>
@@ -12414,7 +12624,7 @@
       ? 'Teks bacaan. **tebal** boleh.'
       : 'Tulis deskripsi singkat tentang materi ini. **tebal** boleh.';
     const body = readonly
-      ? '<p class="muted">Asisten hanya lihat. Anton yang unggah.</p>'
+      ? '<p class="muted">Asisten hanya lihat. ' + esc(mentorDisplayName()) + ' yang unggah.</p>'
       : '<div class="lec-edit-body">' +
           '<label>Judul</label>' +
           '<input data-act="lec-field" data-id="' + esc(l.id) + '" data-k="title" value="' + esc(l.title) + '">' +
@@ -12441,7 +12651,6 @@
                   ? 'Mengunggah…'
                   : (l.videoKey || l.videoBlob ? ('Ganti file · sekarang: ' + esc(l.videoName || 'video')) : 'Drop / pilih file MP4')) + '</span>' +
               '</label>' +
-              vidUploadHtml(l) +
               (!uploading && (l.videoKey || l.videoBlob) ? '<button type="button" class="btn-sm" data-act="clear-vid" data-id="' + esc(l.id) + '">Hapus file, pakai tautan</button>' : '')) +
           lecEditorPreviewHtml(l) +
           '<h4>' + descLabel + '</h4>' +
@@ -13122,7 +13331,7 @@
     }
     if (t.matches('[data-act="crm-stage"]')) {
       if (!staffCan('editStudents')) return;
-      setStage(t.getAttribute('data-id'), t.value, 'Anton pindah stage.');
+      setStage(t.getAttribute('data-id'), t.value, mentorDisplayName() + ' pindah tahap.');
       save();
       render();
       return;
@@ -13279,7 +13488,7 @@
           b.pendingAmount = b.pendingAmount || b.amount || 0;
           b.pendingAt = b.pendingAt || isoNow();
           if (b.plan === 'mentoring') b.plan = 'preview';
-          if (b.source !== 'mayar') b.note = 'Menunggu konfirmasi Anton';
+          if (b.source !== 'mayar') b.note = 'Menunggu konfirmasi ' + mentorDisplayName();
         }
       }
       save();
@@ -13423,6 +13632,20 @@
       if (!file) return;
       if (file.size > MAX_IMG) { toast('Foto maks 5 MB.'); return; }
       ensureSchoolProfile();
+      if (syncEnabled()) {
+        toast('Mengunggah foto…');
+        uploadClassVideo(file, schoolPhotoKey(), null, 'image').then((info) => {
+          if (db.schoolProfile.photoKey && db.schoolProfile.photoKey !== info.key) deleteRemoteVideo(db.schoolProfile.photoKey);
+          db.schoolProfile.photoUrl = mediaFileUrl(info.key);
+          db.schoolProfile.photoKey = info.key;
+          db.schoolProfile.photoBlob = false;
+          db.schoolProfile.photoMode = 'upload';
+          save();
+          toast('Foto profil tersimpan.');
+          render();
+        }).catch(() => toast('Gagal unggah foto.'));
+        return;
+      }
       blobPut(schoolPhotoKey(), file).then(() => {
         db.schoolProfile.photoBlob = true;
         db.schoolProfile.photoMode = 'upload';
@@ -13885,7 +14108,7 @@
       ui.waDraft = t.value;
       const open = t.closest('form') && t.closest('form').querySelector('[data-wa-open]');
       const person = people().find((s) => s.id === (t.closest('form') && t.closest('form').getAttribute('data-id')));
-      if (open && person) open.href = waLink(person.wa, t.value || ('Halo ' + person.name + ', dari MasterMind with Anton GC.'));
+      if (open && person) open.href = waLink(person.wa, t.value || schoolGreeting(person.name));
       return;
     }
     if (t.matches('[data-act="cari-siswa"]')) {
@@ -14860,7 +15083,7 @@
         ui.mentorTab = 'profil';
         ui.personId = null;
       } else if (isStaff()) {
-        toast('Hanya Anton yang mengubah Profile. Buka sebagai Siswa untuk lihat halaman publik.');
+        toast('Hanya ' + mentorDisplayName() + ' yang mengubah Profile. Buka sebagai Siswa untuk lihat halaman publik.');
         return;
       } else {
         if (needsWizard(ui.personaId)) {
@@ -14881,7 +15104,7 @@
       ui.profilePreview = null;
       ui.profilePreviewKind = null;
       if (!canBill()) {
-        toast('Account settings hanya untuk Anton.');
+        toast('Account settings hanya untuk ' + mentorDisplayName() + '.');
         return;
       }
       ui.mentorTab = 'account';
@@ -14891,7 +15114,7 @@
     } else if (act === 'open-siswa-view') {
       setBrandMenu(false);
       if (!canBill()) {
-        toast('Siswa view hanya untuk Anton.');
+        toast('Siswa view hanya untuk ' + mentorDisplayName() + '.');
         return;
       }
       ui.profilePreviewKind = 'app';
@@ -15004,12 +15227,12 @@
       const person = people().find((s) => s.id === ui.personId);
       const greet = displayNameOf(person) || (person && person.name) || '';
       if (ui.composeMode === 'wa' && person && person.wa) {
-        openApp(waLink(person.wa, ui.waDraft || ('Halo ' + greet + ', dari MasterMind with Anton GC.')));
+        openApp(waLink(person.wa, ui.waDraft || schoolGreeting(greet)));
         markWaRead(ui.personId);
         pullWaThread(ui.personId, { silentTimeline: true, noPaint: true });
       }
       if (ui.composeMode === 'email' && person && person.email) {
-        openApp(mailLink(person.email, 'MasterMind with Anton GC', 'Halo ' + greet));
+        openApp(mailLink(person.email, schoolMailSubject(), schoolGreeting(greet)));
       }
       render();
       if (ui.composeMode === 'wa') requestAnimationFrame(scrollWaThread);
@@ -15669,7 +15892,7 @@
       const w = (db.emailQueue || []).find((x) => x.id === btn.getAttribute('data-id'));
       if (w) {
         w.status = 'sent';
-        pushTimeline(w.toId, 'email', 'Anton menandai email terkirim: ' + (w.subject || w.title));
+        pushTimeline(w.toId, 'email', mentorDisplayName() + ' menandai email terkirim: ' + (w.subject || w.title));
       }
       save();
       render();
@@ -15972,7 +16195,7 @@
       const w = db.waQueue.find((x) => x.id === btn.getAttribute('data-id'));
       if (w) {
         w.status = 'sent';
-        pushTimeline(w.toId, 'wa', 'Anton menandai WA terkirim: ' + w.title);
+        pushTimeline(w.toId, 'wa', mentorDisplayName() + ' menandai WA terkirim: ' + w.title);
       }
       save();
       render();
@@ -16084,7 +16307,7 @@
       db.replies.push({
         id: 'r-' + Date.now(),
         threadId: tid,
-        authorId: ui.role === 'asisten' ? 'u-lia' : 'u-anton',
+        authorId: ui.role === 'asisten' ? (ui.staffId || schoolOwnerId()) : schoolOwnerId(),
         body: String(fd.get('body')),
         isStaff: true,
         createdAt: new Date().toISOString()
@@ -16110,6 +16333,7 @@
         body: text,
         likes: [],
         replyTo: replyOk ? replyId : '',
+        authorPhoto: authorPhotoUrl(),
         createdAt: isoNow()
       };
       db.comments.push(row);
@@ -16310,7 +16534,7 @@
       const id = form.getAttribute('data-id');
       db.notes[id] = db.notes[id] || [];
       db.notes[id].push({ at: isoNow(), body: 'Panggilan: ' + String(fd.get('body')) });
-      pushTimeline(id, 'call', 'Anton mencatat panggilan dengan ' + nameOf(id));
+      pushTimeline(id, 'call', mentorDisplayName() + ' mencatat panggilan dengan ' + nameOf(id));
       save();
       toast('Panggilan dicatat.');
       render();

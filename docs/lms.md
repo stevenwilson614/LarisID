@@ -12,13 +12,13 @@ After Contabo login/daftar succeeds, mentors are claimed into a disk school (`PO
 
 Class app source: `obrolan.marketing/`. Contabo `anton-school` serves `/obrolan.marketing/api/*` and `/api/*` from disk (`docker/volumes/anton-school`).
 
-Editing kurikulum in that app: **Preview** on the publikasi step opens the student view with **Publikasikan** on that screen. Choosing or dropping a video starts the upload immediately, before **Simpan materi**. If that already created the materi, Simpan materi only saves the title and text. Progress shows in two places: the materi card meter and a sticky strip under the header (`Mengunggah N%`, with × to cancel). The strip stays on the publikasi step and on Preview siswa. Left-rail tabs stay locked on Kurikulum until the upload finishes or they cancel with ×. Publish waits until that upload finishes. **Hapus bagian** asks once, then deletes that bagian and every materi in it (video, cover, files, and any in-flight upload), including an empty bagian and the last remaining bagian. A cover sits on the video with no `src` and no controls until the cover is clicked.
+Editing kurikulum in that app: **Preview** on the publikasi step opens the student view with **Publikasikan** on that screen. Choosing or dropping a video starts the upload immediately, before **Simpan materi**. If that already created the materi, Simpan materi only saves the title and text. Progress shows on the materi card, on the same row as that materi’s cover when a cover is attached. On the publikasi step the same meter sits beside the class cover, not in the full-width strip under the header. The header strip (`Mengunggah N%`, with × to cancel) stays on the other kurikulum steps and on Preview siswa. Left-rail tabs stay locked on Kurikulum until the upload finishes or they cancel with ×. Publish waits until that upload finishes. **Hapus bagian** asks once, then deletes that bagian and every materi in it (video, cover, files, and any in-flight upload), including an empty bagian and the last remaining bagian. A cover sits on the video with no `src` and no controls until the cover is clicked.
 
 ```bash
 bash scripts/deploy-static.sh
 ```
 
-`obrolan.marketing/server/server.mjs` is excluded from that rsync. A change to `POST /session` has to be installed on the Contabo `anton-school` process separately.
+`obrolan.marketing/server/server.mjs` is excluded from that rsync. Directory cards include `photoUrl`, and a new student is not assigned Anton’s id on another school. Install that file on the Contabo `anton-school` process separately.
 
 Do not revive `js/lms-join.js` or public invite-code file downloads as the share model.
 
@@ -38,8 +38,9 @@ Do not revive `js/lms-join.js` or public invite-code file downloads as the share
 - Top-left chrome is one circle: the school profile photo when it loads, otherwise initials. `[hidden]` on `.brand img` and `.brand-fallback` is `display: none`. No second initials badge and no seed mark beside that circle.
 - **Perpustakaan** is per-school catalog — never falls back to Anton’s lynk/photo for other coaches.
 - **Kurikulum** (mentor): landing shows the whole curriculum overview; click a materi to edit that module, or “Atur kurikulum” for the wizard.
-- **Otomasi**: compact builder (~half previous card size).
-- **Diskusi**: chat list with search + red “+ Chat baru”; thread title + anggota; soft post bubble with reactions; nested comments; bottom composer with file / foto / poll + red send.
+- **Otomasi**: compact builder (~half previous card size). Automation copy is per mentor. Other schools use `{mentor}` and `{org}` (`Halo {name}, ini {mentor} dari {org}.`). Anton’s school keeps his own seed text. Do not copy “MasterMind with Anton GC” or “Anton di sini” onto another coach.
+- **Assigned** on a student profile is this mentor plus admins they added (`staffAdmins`, not revoked). It does not list pipeline “Mentor” students or Anton’s seed staff on another school.
+- **Diskusi**: chat list with search + red “+ Chat baru”; thread title + anggota; soft post bubble; like is the word Suka (no emoji); nested comments; bottom composer with file / foto / poll + red send. Posted photos stay small and use `object-fit: contain` so they are not cropped. A comment or post stores `authorPhoto` when the author has a shared photo URL. The school profile photo uploads to class media the same way as the banner. Other viewers get that URL on the public directory card (`photoUrl`). Anton’s photo and name are not the fallback on another school.
 
 ---
 

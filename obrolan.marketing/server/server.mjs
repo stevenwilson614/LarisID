@@ -1192,7 +1192,8 @@ function publicCard(id, state) {
     name: name,
     firstName: firstName,
     lastName: lastName,
-    kind: patch.kind === 'mentor' || live.kind === 'mentor' ? 'mentor' : 'student'
+    kind: patch.kind === 'mentor' || live.kind === 'mentor' ? 'mentor' : 'student',
+    photoUrl: String(patch.photoUrl || live.photoUrl || '').trim()
   };
 }
 
@@ -1338,7 +1339,7 @@ function mergeStudentWrite(stored, incoming, studentId) {
     const prev = base.people[studentId] || {};
     const next = Object.assign({}, prev, src.people[studentId]);
     next.kind = prev.kind === 'mentor' ? 'mentor' : 'student';
-    next.mentorId = prev.mentorId || next.mentorId || base.ownerId || 'u-anton';
+    next.mentorId = prev.mentorId || next.mentorId || base.ownerId || '';
     if (prev.authUserId) next.authUserId = prev.authUserId;
     if (next.wa && waTakenByOther(base, next.wa, studentId)) next.wa = prev.wa || '';
     base.people[studentId] = next;
@@ -1365,7 +1366,7 @@ function mergeStudentWrite(stored, incoming, studentId) {
     next.id = studentId;
     next.kind = prev.kind === 'mentor' ? 'mentor' : 'student';
     next.visitorIds = Array.isArray(prev.visitorIds) ? prev.visitorIds.slice() : [];
-    next.mentorId = prev.mentorId || next.mentorId || base.ownerId || 'u-anton';
+    next.mentorId = prev.mentorId || next.mentorId || base.ownerId || '';
     if (prev.authUserId) next.authUserId = prev.authUserId;
     if (next.wa && waTakenByOther(base, next.wa, studentId)) next.wa = prev.wa || '';
     if (i >= 0) base.liveStudents[i] = next;
@@ -1432,7 +1433,7 @@ function upsertStudentIdentity(state, row) {
     id: row.id,
     kind: 'student',
     authUserId: row.authUserId,
-    mentorId: row.mentorId || prevLive.mentorId || state.ownerId || 'u-anton',
+    mentorId: row.mentorId || prevLive.mentorId || state.ownerId || '',
     email: row.email || prevLive.email || '',
     wa: row.wa || prevLive.wa || '',
     name: row.name || prevLive.name || '',
@@ -1491,7 +1492,7 @@ function claimStudentAccount(state, user, cookieId) {
     row = {
       id: 'stu_' + crypto.randomBytes(9).toString('hex'),
       kind: 'student',
-      mentorId: state.ownerId || 'u-anton',
+      mentorId: state.ownerId || '',
       visitorIds: [],
       name: full.slice(0, 120),
       firstName: (parts[0] || '').slice(0, 40),
@@ -1503,7 +1504,7 @@ function claimStudentAccount(state, user, cookieId) {
   row.authUserId = row.authUserId || uid;
   if (!row.email && user.email) row.email = String(user.email).trim().slice(0, 160);
   if (!row.wa && user.phone) row.wa = phoneKey(user.phone);
-  if (!row.mentorId) row.mentorId = state.ownerId || 'u-anton';
+  if (!row.mentorId) row.mentorId = state.ownerId || '';
   const saved = upsertStudentIdentity(state, row);
   return { id: saved.id, created: created };
 }
@@ -2116,7 +2117,7 @@ const server = http.createServer((req, res) => {
         row = {
           id: 'stu_' + crypto.randomBytes(9).toString('hex'),
           kind: 'student',
-          mentorId: state.ownerId || 'u-anton',
+          mentorId: state.ownerId || '',
           visitorIds: [],
           tags: []
         };
@@ -2125,7 +2126,7 @@ const server = http.createServer((req, res) => {
         row = Object.assign({}, live || {}, row);
       }
       applyJoinProfile(row, body);
-      if (!row.mentorId) row.mentorId = state.ownerId || 'u-anton';
+      if (!row.mentorId) row.mentorId = state.ownerId || '';
       if (row.kind !== 'mentor') row.kind = 'student';
       upsertJoined(state, row);
       const stored = {
