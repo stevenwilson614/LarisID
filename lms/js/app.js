@@ -814,9 +814,17 @@
       authError('Sedang masuk…');
       window.Lms.sb.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: window.Lms.redirectTo() }
+        options: {
+          redirectTo: window.Lms.redirectTo(),
+          skipBrowserRedirect: true
+        }
       }).then(function (res) {
-        if (res.error) authError(window.Lms.errorText(res.error));
+        if (res.error) {
+          authError(window.Lms.errorText(res.error));
+          return;
+        }
+        if (res.data && res.data.url) location.assign(res.data.url);
+        else authError('Login Google tidak bisa dimulai. Coba lagi.');
       });
     });
     $('email-form').addEventListener('submit', function (event) {
@@ -1083,7 +1091,6 @@
         return;
       }
       if (errMsg) {
-        /* A late exchange error must not wipe a session that already landed. */
         return window.Lms.sb.auth.getSession().then(function (live) {
           var ok = live.data && live.data.session;
           if (ok) {
@@ -1097,33 +1104,37 @@
       }
       route(null);
     }
-    window.Lms.sb.auth.getSession().then(function (res) {
-      var session = res.data && res.data.session;
-      if (session) return finishOAuth(session);
-      if (oauth.error) return finishOAuth(null, window.Lms.errorText({ message: oauth.error }));
-      if (!oauth.code) {
-        oauthSettled = true;
-        var authOpen = $('view-auth') && !$('view-auth').hidden;
-        var registerOpen = $('view-register') && !$('view-register').hidden;
-        if (!authOpen && !registerOpen) route(null);
-        return;
-      }
-      return window.Lms.sb.auth.exchangeCodeForSession(oauth.code).then(function (ex) {
-        var next = ex.data && ex.data.session;
-        if (next) return finishOAuth(next);
-        return window.Lms.sb.auth.getSession().then(function (again) {
-          var recovered = again.data && again.data.session;
-          if (recovered) return finishOAuth(recovered);
-          finishOAuth(null, window.Lms.errorText(ex.error || { message: 'pkce' }));
+    /* SDK (detectSessionInUrl) exchanges ?code=. Do not call exchangeCodeForSession
+       again — a second exchange with floating supabase-js@2 multi-flow PKCE left
+       mentors on the login screen after a good Google callback. */
+    function waitForOAuthSession(tries) {
+      return window.Lms.sb.auth.getSession().then(function (res) {
+        var session = res.data && res.data.session;
+        if (session) return finishOAuth(session);
+        if (oauth.error) return finishOAuth(null, window.Lms.errorText({ message: oauth.error }));
+        if (!oauth.code) {
+          oauthSettled = true;
+          var authOpen = $('view-auth') && !$('view-auth').hidden;
+          var registerOpen = $('view-register') && !$('view-register').hidden;
+          if (!authOpen && !registerOpen) route(null);
+          return;
+        }
+        if (tries <= 0) {
+          return finishOAuth(null, window.Lms.errorText({ message: 'pkce' }));
+        }
+        return new Promise(function (resolve) {
+          setTimeout(function () { resolve(waitForOAuthSession(tries - 1)); }, 200);
         });
       });
-    }).catch(function (err) {
+    }
+    waitForOAuthSession(oauth.code ? 25 : 0).catch(function (err) {
       finishOAuth(null, window.Lms.errorText(err));
     });
     window.Lms.sb.auth.onAuthStateChange(function (event, session) {
       if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION') return;
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
         if (event === 'SIGNED_IN') oauthSettled = true;
+        if (oauth.code || oauth.error) stripOAuthQuery();
         route(session);
       }
     });
