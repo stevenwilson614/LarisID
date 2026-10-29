@@ -8,7 +8,14 @@
   --card: #fff;
 }
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+  /* Whole LMS at ~90% so the UI fits the window instead of feeling enlarged. */
+  zoom: 0.9;
+}
+@supports not (zoom: 1) {
+  html { font-size: 90%; }
+}
 body {
   margin: 0;
   font-family: "Plus Jakarta Sans", sans-serif;
