@@ -27,7 +27,10 @@
   } catch (err) { /* ignore */ }
 
   var SUPA_URL = 'https://api.larisid.com';
-  var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzg0MzM2Njc5LCJleHAiOjI0MTUwNTY2Nzl9.IuuxcLjM-ljEyrn2lInAqzESImYfMXlBBZI2i671Ec';
+  /* Must match the seller app / Contabo Kong anon key. A typo here makes
+     /auth/v1/user return Kong 401 after Google succeeds, so LMS never stores
+     the session (looks like “Login Google terputus”). */
+  var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzg0MzM2Njc5LCJleHAiOjI0MTUwNTY2Nzl9.IuuxcLjM-ljEyrn2lInAqzESImYfMXlBBTZI2i671Ec';
   var INVITE_KEY = 'lms_invite_v1';
   var NAME_KEY = 'lms_name_v1';
   var INTENT_KEY = 'lms_intent_v1';

@@ -1111,8 +1111,8 @@
       }
       route(null);
     }
-    /* Implicit tokens land in the hash; detectSessionInUrl stores the session.
-       Wait for that — do not PKCE-exchange (verifier was missing after Google). */
+    /* Implicit tokens land in the hash. Prefer setSession from the hash, then
+       fall back to detectSessionInUrl / getSession polling. */
     function waitForOAuthSession(tries) {
       return window.Lms.sb.auth.getSession().then(function (res) {
         var session = res.data && res.data.session;
@@ -1133,7 +1133,21 @@
         });
       });
     }
-    waitForOAuthSession(oauthPending ? 40 : 0).catch(function (err) {
+    function startOAuthWait() {
+      if (oauth.accessToken) {
+        var hash = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));
+        var at = hash.get('access_token') || oauth.accessToken;
+        var rt = hash.get('refresh_token') || '';
+        if (at && rt) {
+          return window.Lms.sb.auth.setSession({ access_token: at, refresh_token: rt }).then(function (res) {
+            if (res.data && res.data.session) return finishOAuth(res.data.session);
+            return waitForOAuthSession(40);
+          }).catch(function () { return waitForOAuthSession(40); });
+        }
+      }
+      return waitForOAuthSession(oauthPending ? 40 : 0);
+    }
+    startOAuthWait().catch(function (err) {
       finishOAuth(null, window.Lms.errorText(err));
     });
     window.Lms.sb.auth.onAuthStateChange(function (event, session) {
