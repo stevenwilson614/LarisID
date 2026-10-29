@@ -2262,8 +2262,14 @@
     }
   }
 
+  function revealShell() {
+    document.documentElement.classList.remove('lms-booting');
+  }
   let db = load();
-  if (!resolveVanitySlug()) return;
+  if (!resolveVanitySlug()) {
+    revealShell();
+    return;
+  }
   const ui = {
     role: PRESENT && PRESENT_PANE === 'mentor' ? 'owner' : 'student',
     tab: 'home',
@@ -6609,7 +6615,10 @@
         });
       } else {
         logo.removeAttribute('data-blob');
-        logo.src = antonSchoolData() ? (SEED.school.photo || SEED.school.logo) : '';
+        // Never fall back to Anton's photo on another coach's school.
+        const antonPhoto = antonSchoolData() ? (SEED.school.photo || SEED.school.logo) : '';
+        if (antonPhoto) logo.src = antonPhoto;
+        else logo.removeAttribute('src');
       }
     }
     const personEl = $('school-person');
@@ -15268,36 +15277,41 @@
     }
   }
   async function bootHosted() {
-    ui.visitorId = visitorId();
-    /* /s/{slug} is always the student app — never claim mentor from the admin cookie. */
-    const forceStudent = onStudentVanityPath() || (PRESENT && PRESENT_PANE === 'student');
-    const coachRoot = onCoachRootPath();
-    let admin = false;
-    if (!forceStudent && coachRoot) admin = await claimCoach();
-    else if (!forceStudent) admin = await claimAdmin();
-    if (!admin && !forceStudent && !onStudentVanityPath()) await claimStaff();
-    if (!admin) await bootSession();
-    await bootSync();
-    if (!admin && !ui.staffId && !ui.sessionStudentId) ensureLiveVisitor();
-    if (forceStudent) {
-      ui.admin = false;
-      ui.role = 'student';
-      ui.visitorLive = true;
-    }
-    render();
-    if (admin) refreshAdmin();
-    else markPageView();
-    refreshMayarStatus().then(() => {
-      if (!mayarReady()) return;
-      if (isStaff() && ui.mentorTab === 'harga') render();
-      else if (!isStaff() && (ui.tab === 'daftar' || ui.tab === 'home')) render();
-    });
-    if (isStaff()) {
-      refreshWaStatus().then(() => {
-        pullWaInbox();
-        paintWaChrome();
+    try {
+      ui.visitorId = visitorId();
+      /* /s/{slug} is always the student app — never claim mentor from the admin cookie. */
+      const forceStudent = onStudentVanityPath() || (PRESENT && PRESENT_PANE === 'student');
+      const coachRoot = onCoachRootPath();
+      let admin = false;
+      if (!forceStudent && coachRoot) admin = await claimCoach();
+      else if (!forceStudent) admin = await claimAdmin();
+      if (!admin && !forceStudent && !onStudentVanityPath()) await claimStaff();
+      if (!admin) await bootSession();
+      await bootSync();
+      if (!admin && !ui.staffId && !ui.sessionStudentId) ensureLiveVisitor();
+      if (forceStudent) {
+        ui.admin = false;
+        ui.role = 'student';
+        ui.visitorLive = true;
+      }
+      render();
+      if (admin) refreshAdmin();
+      else markPageView();
+      refreshMayarStatus().then(() => {
+        if (!mayarReady()) return;
+        if (isStaff() && ui.mentorTab === 'harga') render();
+        else if (!isStaff() && (ui.tab === 'daftar' || ui.tab === 'home')) render();
       });
-      ensureWaPoll();
+      if (isStaff()) {
+        refreshWaStatus().then(() => {
+          pullWaInbox();
+          paintWaChrome();
+        });
+        ensureWaPoll();
+      }
+    } finally {
+      // Only show chrome after the correct school identity is painted.
+      revealShell();
     }
   }
   window.addEventListener('error', (e) => {

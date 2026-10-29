@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="id" data-mode="student">
+<html lang="id" data-mode="student" class="lms-booting">
 <head>
   <meta charset="UTF-8">
   <script>
@@ -20,16 +20,19 @@
       }
     } catch (e) { /* storage blocked */ }
   </script>
+  <style>
+    /* Hide shell until JS fills the correct school identity — coach URLs reuse this HTML. */
+    html.lms-booting #app { visibility: hidden; }
+  </style>
   <meta name="format-detection" content="telephone=no, email=no, address=no">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Anton">
+  <meta name="apple-mobile-web-app-title" content="Kelas">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="apple-touch-icon" href="./assets/obrolan/profile.png">
-  <title>MasterMind with Anton GC</title>
+  <title>Kelas</title>
   <link rel="stylesheet" href="/fonts/laris-fonts.css">
-  <link rel="stylesheet" href="./css/school.css?v=20261028staff">
+  <link rel="stylesheet" href="./css/school.css?v=20261029boot">
   <link rel="stylesheet" href="./css/diskusi-chat.css?v=20261027desk3">
 </head>
 <body>
@@ -44,11 +47,11 @@
     <header class="topbar">
       <div class="brand">
         <button type="button" class="brand-btn" id="brand-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="brand-menu" aria-label="Profile menu">
-          <img id="school-logo" src="./assets/obrolan/profile.png" alt="" width="32" height="32">
+          <img id="school-logo" alt="" width="32" height="32">
           <span class="brand-caret" aria-hidden="true"><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4l2.5 2.5L7.5 4"/></svg></span>
         </button>
         <div class="brand-copy">
-          <strong id="school-name">MasterMind with Anton GC</strong>
+          <strong id="school-name"></strong>
           <span id="school-person" class="school-person" hidden></span>
           <span id="school-header" class="school-header" hidden></span>
         </div>
@@ -103,6 +106,6 @@
   <div id="toast" class="toast" hidden></div>
   <script src="./js/seed.js?v=20261028staff"></script>
   <script src="./js/calc-engine.js?v=20261027calc6"></script>
-  <script src="./js/app.js?v=20261028staff"></script>
+  <script src="./js/app.js?v=20261029boot"></script>
 </body>
 </html>
