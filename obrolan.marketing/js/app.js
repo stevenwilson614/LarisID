@@ -1,4 +1,4 @@
-/* Laris LMS (Anton class UI). Students: /s/{slug}. Mentor: /lms/ (assets under /obrolan.marketing/). */
+/* Laris LMS class app. Students: /s/{slug}. Mentor hub: /obrolan.marketing/. Landing/signup: /lms/. */
 (function () {
   const SEED = window.ANTON_SEED;
   const FIRST_LEC = 'v1';
@@ -10,7 +10,7 @@
   const SISWA_READONLY = PRESENT && PRESENT_QS.get('readonly') === '1';
   function earlySlug() {
     const path = location.pathname.replace(/\/index\.html$/, '').replace(/\/+$/, '') || '/';
-    if (path === '/lms' || path === '/obrolan.marketing' || path === '/school') return 'obrolan.marketing';
+    if (path === '/obrolan.marketing' || path === '/school') return 'obrolan.marketing';
     const vanity = path.match(/^\/s\/([^/]+)$/i);
     if (vanity) return decodeURIComponent(vanity[1]).trim().toLowerCase();
     const root = path.match(/^\/([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)$/i);
@@ -63,7 +63,7 @@
   const ALL_SKUS = () => (SEED.catalog || []).map((p) => p.id);
   const MENTOR_SKUS = () => (SEED.catalog || []).filter((p) => p.includedInMentoring !== false).map((p) => p.id);
 
-  /* Students use /s/{slug}; mentor hub is /lms/ (legacy /obrolan.marketing/ redirects there). */
+  /* Students use /s/{slug}; mentor tools at /obrolan.marketing/; /lms is Contabo landing only. */
   const SLUG_RESERVED = {
     s: 1, school: 1, sekolah: 1, api: 1, admin: 1, www: 1, app: 1, lms: 1,
     harga: 1, tentang: 1, 'cara-kerja': 1, perbandingan: 1, fonts: 1,
@@ -84,7 +84,7 @@
   }
   function onMentorPath() {
     const path = cleanPath();
-    return path === '/lms' || path === '/obrolan.marketing' || path === '/school';
+    return path === '/obrolan.marketing' || path === '/school';
   }
   function onStudentVanityPath() {
     return /^\/s\/[^/]+$/i.test(cleanPath());
@@ -138,7 +138,7 @@
   function schoolMentorPath() {
     const slug = pathSlug();
     if (slug && slug !== 'obrolan.marketing') return '/s/' + slug + '/';
-    return '/lms/';
+    return '/obrolan.marketing/';
   }
   function apiBase() {
     return '/obrolan.marketing/api';
@@ -10918,7 +10918,7 @@
     const local = schoolLocalUrl();
     return '<section class="card school-url-card">' +
       '<h2>Alamat sekolah</h2>' +
-      '<p class="muted">Kelas siswa ada di <strong>larisid.com' + esc(schoolPublicPath()) + '</strong>. Mentor di /lms/. Checkout tetap di lynk.</p>' +
+      '<p class="muted">Kelas siswa ada di <strong>larisid.com' + esc(schoolPublicPath()) + '</strong>. Mentor di /obrolan.marketing/. Checkout tetap di lynk.</p>' +
       '<form class="compose" data-act="save-school-url">' +
         '<label class="muted">Kode undangan batch</label>' +
         '<input name="invite" value="' + esc(schoolInviteCode()) + '" maxlength="40" autocomplete="off" spellcheck="false">' +

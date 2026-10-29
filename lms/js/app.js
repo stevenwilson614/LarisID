@@ -704,24 +704,16 @@
     };
   }
 
-  async function loadApp(me) {
-    appError('');
-    var pack = await window.LmsApi.curriculum();
-    var people = me.role === 'mentor' ? await window.LmsApi.students() : [];
-    var sessions = [];
-    var link = null;
-    try {
-      var both = await Promise.all([
-        window.LmsApi.listSessions(),
-        window.LmsApi.calendarLink()
-      ]);
-      sessions = both[0] || [];
-      link = both[1];
-    } catch (err) {
-      appError(window.Lms.errorText(err));
+  function classAppUrl(me) {
+    if (me && me.role === 'student' && me.org_slug) {
+      return '/s/' + encodeURIComponent(me.org_slug) + '/';
     }
-    render(me, pack, people, sessions, link);
-    show('app');
+    return '/obrolan.marketing/';
+  }
+
+  async function loadApp(me) {
+    /* Landing/signup stay on Contabo /lms; the live class UI is the left-rail app. */
+    location.replace(classAppUrl(me));
   }
 
   async function routeNow(session) {

@@ -9,7 +9,7 @@
       location.replace('https://larisid.com' + location.pathname + location.search + location.hash);
     } else {
       fetch('/obrolan.marketing/api/admin/enter', { cache: 'no-store' }).finally(function () {
-        location.replace('/lms/' + location.hash);
+        location.replace('/obrolan.marketing/' + location.hash);
       });
     }
   </script>

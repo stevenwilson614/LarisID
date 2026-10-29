@@ -28,13 +28,11 @@ Cari Produk defaults to **Tabel** (listing-row spreadsheet: photo, harga, omset,
 
 ## LMS
 
-**Canonical product UI** is the left-rail Anton class app:
+- **Landing / signup:** `/lms/` — Contabo marketing + auth in `lms/`
+- **Live class UI:** left-rail app at `/obrolan.marketing/` (mentor) and `/s/{slug}/` (student) — source `obrolan.marketing/`, disk state via Contabo `anton-school`
+- After Contabo login, send users into that left-rail app. Do not use the Contabo “Kelas / Edit kurikulum” shell as the class UI.
 
-- Mentor hub: `/lms/` (legacy `/obrolan.marketing/` redirects here)
-- Student school: `/s/{slug}/`
-- Source: `obrolan.marketing/`; Contabo `anton-school` holds disk state
-
-Do not ship the Contabo Postgres `/lms` marketing shell as the live class app. Invite-card HTML at `/lms/card` may remain. Before changing the class UI, read **[docs/lms.md](./docs/lms.md)**. Do not reintroduce invite-code raw file URLs (`?k=` on media) as a public share pattern.
+Before changing either surface, read **[docs/lms.md](./docs/lms.md)**. Do not reintroduce invite-code raw file URLs (`?k=` on media) as a public share pattern.
 
 ## LarisExpor (`pasar=expor`)
 
