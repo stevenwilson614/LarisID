@@ -273,12 +273,20 @@ button, a { font: inherit; }
 .kur-player { display: grid; gap: 8px; }
 .cover {
   position: relative;
+  width: 100%;
+  max-width: 360px;
+  aspect-ratio: 16 / 9;
   border-radius: 14px;
   overflow: hidden;
-  min-height: 150px;
   background: #111;
 }
-.cover img { width: 100%; height: 150px; object-fit: cover; object-position: center center; display: block; }
+.cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  display: block;
+}
 .play {
   position: absolute;
   left: 50%;
