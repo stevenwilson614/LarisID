@@ -67,12 +67,67 @@ html[data-mode="mentor"] .dk-shell .dk-thread { display: flex; }
   height: 18px;
   padding: 0 5px;
   border-radius: 999px;
-  background: #2563eb;
+  background: #B5202A;
   color: #fff;
   font-size: .65rem;
   font-weight: 750;
   display: inline-grid;
   place-items: center;
+}
+.dk-newchat {
+  border: 0;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #B5202A;
+  color: #fff;
+  font: inherit;
+  font-size: .75rem;
+  font-weight: 750;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.dk-newchat:hover { background: #8E1820; }
+.dk-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 12px 10px;
+  padding: 0 12px;
+  height: 36px;
+  border-radius: 999px;
+  background: var(--ink-3, #f3f4f6);
+  border: 1px solid var(--line);
+}
+.dk-search-ico {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border: 1.6px solid var(--muted);
+  border-radius: 50%;
+  position: relative;
+}
+.dk-search-ico::after {
+  content: "";
+  position: absolute;
+  width: 6px;
+  height: 1.6px;
+  background: var(--muted);
+  right: -4px;
+  bottom: -1px;
+  transform: rotate(40deg);
+  border-radius: 1px;
+}
+.dk-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: .82rem;
+  outline: none;
+  padding: 0;
 }
 .dk-jump {
   display: inline-flex;
@@ -129,24 +184,28 @@ html[data-mode="mentor"] .dk-thread .dk-jump { display: none; }
   border: 0;
   background: transparent;
   color: var(--text);
-  border-radius: 10px;
-  padding: 8px;
+  border-radius: 12px;
+  padding: 10px;
   cursor: pointer;
   font: inherit;
 }
-.dk-row[aria-selected="true"] { background: var(--ink-3); }
+.dk-row[aria-selected="true"],
+.dk-row.is-on {
+  background: color-mix(in srgb, #B5202A 10%, var(--ink-2));
+}
 .dk-row-tanya { margin-top: 8px; }
 .dk-mark {
   flex: none;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   display: grid;
   place-items: center;
   background: var(--ink);
   color: var(--text);
   font-size: .72rem;
   font-weight: 800;
+  overflow: hidden;
 }
 .dk-row-copy { flex: 1; min-width: 0; display: grid; }
 .dk-row-copy strong {
@@ -183,18 +242,37 @@ html[data-mode="mentor"] .dk-thread .dk-jump { display: none; }
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 14px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--line);
+  background: var(--ink);
 }
-.dk-thread-h h2 {
+.dk-thread-titles {
   flex: 1;
   min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.dk-thread-h h2 {
   margin: 0;
   font-size: 1.05rem;
   letter-spacing: -.02em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.dk-add-people {
+  flex: none;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  border-radius: 999px;
+  height: 32px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: .75rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
 }
 .dk-back {
   display: none;
@@ -210,62 +288,64 @@ html[data-mode="mentor"] .dk-thread .dk-jump { display: none; }
   cursor: pointer;
 }
 .dk-title {
-  flex: 1;
   min-width: 0;
-  width: auto;
+  width: 100%;
   font-size: 1.05rem;
   font-weight: 750;
   letter-spacing: -.02em;
   background: transparent;
   border: 1px solid transparent;
   border-radius: 8px;
-  padding: 6px 8px;
+  padding: 2px 4px;
 }
 .dk-title:hover, .dk-title:focus {
   border-color: var(--line);
   background: var(--ink-2);
 }
 .dk-count {
-  flex: none;
+  justify-self: start;
   border: 0;
   background: transparent;
   color: var(--muted);
   font: inherit;
   font-size: .75rem;
   cursor: pointer;
-  padding: 6px 4px;
+  padding: 0 4px;
   white-space: nowrap;
+  text-align: left;
 }
 
 .dk-feed {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 0;
+  padding: 12px 16px 18px;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 0;
+  gap: 14px;
   align-content: start;
+  background: var(--ink);
 }
 .dk-feed > .muted,
 .dk-feed > .dk-empty-note {
-  padding: 18px 16px;
+  padding: 18px 4px;
 }
 .dk-compose {
   flex: none;
   display: grid;
   gap: 8px;
   margin: 0;
-  padding: 8px 12px 12px;
+  padding: 10px 14px 14px;
   border-top: 1px solid var(--line);
-  background: var(--ink-2);
+  background: var(--ink);
 }
 .dk-tools {
   display: flex;
   gap: 6px;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  flex: none;
 }
 .dk-tool-label { font-size: .72rem; font-weight: 700; }
 .dk-tool-ico { display: block; }
@@ -275,7 +355,15 @@ html[data-mode="mentor"] .dk-thread .dk-jump { display: none; }
   padding: 12px 16px;
   border-top: 1px solid var(--line);
 }
-.dk-bar { display: flex; align-items: flex-end; gap: 8px; }
+.dk-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 6px 8px 6px 6px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--ink-2);
+}
 .dk-compose .dk-bar textarea {
   flex: 1;
   width: auto;
@@ -284,8 +372,12 @@ html[data-mode="mentor"] .dk-thread .dk-jump { display: none; }
   max-height: 132px;
   resize: none;
   margin: 0;
-  padding: 9px 12px;
+  padding: 10px 4px;
   overflow-y: auto;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none;
 }
 .dk-tool {
   flex: none;
@@ -293,8 +385,8 @@ html[data-mode="mentor"] .dk-thread .dk-jump { display: none; }
   border: 1px solid var(--line);
   background: transparent;
   color: var(--text);
-  border-radius: 8px;
-  padding: 8px 10px;
+  border-radius: 999px;
+  padding: 7px 10px;
   font: inherit;
   font-size: .75rem;
   font-weight: 700;
@@ -304,18 +396,34 @@ html[data-mode="mentor"] .dk-thread .dk-jump { display: none; }
   justify-content: center;
   gap: 4px;
 }
-.dk-tool.is-on { background: #fff; color: #111; border-color: #fff; }
+.dk-tool.dk-tool-ico-only {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+}
+.dk-tool.is-on {
+  background: color-mix(in srgb, #B5202A 12%, transparent);
+  color: #B5202A;
+  border-color: color-mix(in srgb, #B5202A 35%, var(--line));
+}
 .dk-send {
   flex: none;
+  width: 40px;
+  height: 40px;
   border: 0;
-  background: #fff;
-  color: #111;
-  border-radius: 8px;
-  padding: 8px 12px;
+  background: #B5202A;
+  color: #fff;
+  border-radius: 50%;
+  padding: 0;
   font: inherit;
   font-weight: 750;
   cursor: pointer;
+  display: grid;
+  place-items: center;
 }
+.dk-send:hover { background: #8E1820; }
 .dk-send:disabled, .dk-tool:disabled { opacity: .5; cursor: default; }
 
 /* Student phone: native chat bar — tools above, textarea + send always visible. */
@@ -364,39 +472,34 @@ html.dk-composing[data-mode="student"] .dk-feed {
 }
 html[data-mode="student"] .dk-compose.is-phone .dk-tools {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   align-items: center;
 }
 html[data-mode="student"] .dk-compose.is-phone .dk-tool {
-  min-width: 40px;
-  min-height: 36px;
-  padding: 6px 10px;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 6px;
   border-radius: 999px;
   font-size: .7rem;
 }
 html[data-mode="student"] .dk-compose.is-phone .dk-tool-label { display: none; }
 html[data-mode="student"] .dk-compose.is-phone .dk-bar {
   align-items: flex-end;
-  gap: 8px;
+  gap: 6px;
 }
 html[data-mode="student"] .dk-compose.is-phone .dk-bar textarea {
   min-height: 40px !important;
   max-height: 132px;
-  border-radius: 20px;
-  border: 1px solid var(--line);
-  background: var(--ink);
   color: var(--text);
-  padding: 10px 14px;
+  padding: 10px 4px;
   line-height: 1.35;
 }
 html[data-mode="student"] .dk-compose.is-phone .dk-send {
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
   padding: 0;
   border-radius: 50%;
-  font-size: 1.15rem;
-  line-height: 1;
   display: grid;
   place-items: center;
 }
@@ -513,12 +616,11 @@ html[data-mode="student"] .dk-comment-form input { font-size: 16px; }
   }
   html[data-mode="student"] .dk-compose.is-phone .dk-tool-label { display: inline; }
   html[data-mode="student"] .dk-compose.is-phone .dk-send {
-    width: auto;
-    min-width: 0;
-    height: auto;
-    border-radius: 8px;
-    padding: 8px 12px;
-    font-size: inherit;
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    padding: 0;
   }
   html[data-mode="student"] .dk-shell {
     display: grid;

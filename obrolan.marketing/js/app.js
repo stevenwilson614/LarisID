@@ -2340,7 +2340,8 @@
       if (Array.isArray(state[key])) state[key] = state[key].filter((row) => row && !isDemoPersonId(row.authorId));
     });
     const view = currentUi();
-    const keepForeign = !!(view && view.admin && !onStudentVanityPath());
+    /* Mentors open /s/{slug}/ (vanity) with admin chrome — never strip their roster. */
+    const keepForeign = !!(view && (view.admin || view.staffId || view.coach));
     if (keepForeign) return state;
     const keep = ownPersonIds();
     ['people', 'applications', 'billing', 'crm', 'notes', 'progress', 'lastLecture', 'enrollments', 'timeline', 'kolab'].forEach((key) => {
@@ -2522,6 +2523,7 @@
     diskusiShowList: false,
     diskusiOpened: false,
     diskusiScroll: '',
+    diskusiSearch: '',
     chatPeopleOpen: false,
     chatPeopleQ: '',
     chatPeopleFocus: false,
@@ -2747,6 +2749,21 @@
         .filter((s) => s && s.id && !isDemoPersonId(s.id))
         .map((s) => Object.assign({}, s, db.people[s.id] || {}));
       const seen = new Set(live.map((s) => s.id));
+      Object.keys(db.applications || {}).forEach((id) => {
+        if (!id || seen.has(id) || isDemoPersonId(id)) return;
+        const app = db.applications[id] || {};
+        const person = db.people[id] || {};
+        live.push(Object.assign({
+          id: id,
+          name: person.name || app.name || '',
+          firstName: person.firstName || app.firstName || '',
+          lastName: person.lastName || app.lastName || '',
+          wa: person.wa || app.wa || '',
+          kind: 'student',
+          mentorId: person.mentorId || schoolOwnerId()
+        }, person, { id: id, kind: person.kind === 'mentor' ? 'mentor' : 'student' }));
+        seen.add(id);
+      });
       const directory = (Array.isArray(db.directory) ? db.directory : [])
         .filter((d) => d && d.id && !seen.has(d.id) && !isDemoPersonId(d.id))
         .map((d) => ({
@@ -9631,6 +9648,7 @@
         images: stored,
         files: storedFiles,
         poll: poll,
+        likes: [],
         pinned: false,
         createdAt: isoNow()
       };
@@ -9722,34 +9740,34 @@
     const ico = (paths) =>
       '<svg class="dk-tool-ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
       paths + '</svg>';
+    const clip =
+      '<label class="dk-tool dk-tool-ico-only" title="File" aria-label="File">' +
+        ico('<path d="M21.44 11.05l-8.49 8.49a5.5 5.5 0 0 1-7.78-7.78l8.49-8.49a3.5 3.5 0 0 1 4.95 4.95l-8.49 8.49a1.5 1.5 0 0 1-2.12-2.12l7.78-7.78"/>') +
+        '<input type="file" multiple hidden data-act="post-attach"' + (uploading ? ' disabled' : '') + '>' +
+      '</label>';
     const tools =
       '<label class="dk-tool" title="Foto" aria-label="Foto">' +
         ico('<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 16l-5-5-4 4-2-2-5 5"/>') +
         '<span class="dk-tool-label">Foto</span>' +
         '<input type="file" accept="image/*" multiple hidden data-act="post-files"' + (uploading ? ' disabled' : '') + '>' +
       '</label>' +
-      '<label class="dk-tool" title="File" aria-label="File">' +
-        ico('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/>') +
-        '<span class="dk-tool-label">File</span>' +
-        '<input type="file" multiple hidden data-act="post-attach"' + (uploading ? ' disabled' : '') + '>' +
-      '</label>' +
       '<button type="button" class="dk-tool' + (ui.pollOn ? ' is-on' : '') + '" data-act="poll-toggle"' +
         (uploading ? ' disabled' : '') + ' title="Poll" aria-label="Poll">' +
         ico('<path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19V8"/>') +
         '<span class="dk-tool-label">Poll</span>' +
       '</button>';
-    const sendIco = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>';
-    const body =
-      '<textarea name="body" rows="1" maxlength="4000" placeholder="Tulis pesan…"' +
-        (uploading ? ' disabled' : '') + '>' + esc(ui.postBody || '') + '</textarea>' +
-      '<button class="dk-send" type="submit" aria-label="Kirim"' + (uploading ? ' disabled' : '') + '>' +
-        (uploading ? '…' : (phone ? sendIco : 'Kirim')) + '</button>';
+    const sendIco = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>';
     return '<form class="dk-compose' + (phone ? ' is-phone' : '') + '" data-act="post-new" data-batch="' + esc(batchId) + '">' +
       postDraftHtml() +
       pollEditHtml() +
-      '<div class="dk-tools">' + tools + '</div>' +
-      '<div class="dk-bar">' + body + '</div>' +
-      '</form>';
+      '<div class="dk-bar">' +
+        clip +
+        '<textarea name="body" rows="1" maxlength="4000" placeholder="Tulis pesan…"' +
+          (uploading ? ' disabled' : '') + '>' + esc(ui.postBody || '') + '</textarea>' +
+        '<div class="dk-tools">' + tools + '</div>' +
+        '<button class="dk-send" type="submit" aria-label="Kirim"' + (uploading ? ' disabled' : '') + '>' +
+          (uploading ? '…' : sendIco) + '</button>' +
+      '</div></form>';
   }
   function autosizeDkBody(ta) {
     if (!ta) return;
@@ -9888,6 +9906,21 @@
   function commentLikes(row) {
     return Array.isArray(row && row.likes) ? row.likes.filter(Boolean) : [];
   }
+  function postLikes(post) {
+    return Array.isArray(post && post.likes) ? post.likes.filter(Boolean) : [];
+  }
+  function postReactionsHtml(post, canWrite) {
+    const likes = postLikes(post);
+    const liked = likes.indexOf(actorId()) !== -1;
+    const n = likes.length;
+    return '<div class="dk-reacts">' +
+      (canWrite
+        ? '<button type="button" class="dk-react' + (liked ? ' is-on' : '') + '" data-act="post-like" data-id="' + esc(post.id) + '" aria-pressed="' + (liked ? 'true' : 'false') + '" title="Suka">' +
+            '<span aria-hidden="true">♥</span>' + (n ? '<em>' + n + '</em>' : '') + '</button>'
+        : (n ? '<span class="dk-react is-static"><span aria-hidden="true">♥</span><em>' + n + '</em></span>' : '')) +
+      '<span class="dk-react is-static" title="Reaksi"><span aria-hidden="true">😊</span></span>' +
+    '</div>';
+  }
   function mentionHtml(body) {
     let html = esc(body || '');
     const names = people().concat(SEED.staff || []).map((p) => p && (displayNameOf(p) || p.name)).filter(Boolean);
@@ -9960,11 +9993,12 @@
           '<button type="button" data-act="comment-reply-clear" aria-label="Batal balas">×</button></div>'
       : '';
     if (isSiswaReadonly()) return '';
+    const sendIco = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>';
     return '<form class="dk-comment-form" data-act="post-comment" data-id="' + esc(post.id) + '" data-reply="' + esc(target ? target.id : '') + '">' +
       bar +
       '<div class="dk-comment-row">' +
-        '<input name="body" required maxlength="2000" placeholder="' + (target ? 'Balas @' + esc(nameOf(target.authorId)) : 'Komentar') + '" value="' + esc(draft) + '">' +
-        '<button class="btn" type="submit">Kirim</button>' +
+        '<input name="body" required maxlength="2000" placeholder="' + (target ? 'Balas @' + esc(nameOf(target.authorId)) : 'Tulis komentar…') + '" value="' + esc(draft) + '">' +
+        '<button class="dk-comment-send" type="submit" aria-label="Kirim">' + sendIco + '</button>' +
       '</div></form>';
   }
   function postCardHtml(post, staff) {
@@ -9992,11 +10026,15 @@
             : '') +
         '</div>' +
       '</header>' +
-      (post.body ? '<div class="dk-body">' + mdish(post.body) + '</div>' : '') +
-      postImagesHtml(post.images) +
-      postFilesHtml(post.files) +
-      pollHtml(post) +
+      '<div class="dk-bubble">' +
+        (post.body ? '<div class="dk-body">' + mdish(post.body) + '</div>' : '') +
+        postImagesHtml(post.images) +
+        postFilesHtml(post.files) +
+        pollHtml(post) +
+      '</div>' +
+      postReactionsHtml(post, canWrite) +
       '<div class="dk-comments">' +
+        (comments.length ? '<p class="dk-comments-n">' + comments.length + ' komentar</p>' : '') +
         comments.map((c) =>
           (firstUnread === 'dkc-' + c.id ? '<div class="dk-unread-line">Belum dibaca</div>' : '') +
           commentHtml(c, staff, post.batchId)
@@ -10041,45 +10079,59 @@
   function viewDiskusiApp(staff) {
     ensureDiskusi();
     const tanya = !!staff && ui.diskusiSub === 'tanya';
-    const list = visibleChats();
+    const q = String(ui.diskusiSearch || '').trim().toLowerCase();
+    const list = visibleChats().filter((c) => {
+      if (!q) return true;
+      return String(c.label || '').toLowerCase().indexOf(q) >= 0 ||
+        String(c.preview || '').toLowerCase().indexOf(q) >= 0;
+    });
     const batchId = tanya ? '' : activeDiskusiBatch();
     const showList = staff ? !!ui.diskusiShowList : (!ui.diskusiOpened || !!ui.diskusiShowList);
     const rows = list.map((c) => {
       const unread = c.unread || 0;
-      return '<button type="button" class="dk-row' + (unread ? ' is-unread' : '') + '" data-act="diskusi-batch" data-id="' + esc(c.id) + '" aria-selected="' + (!tanya && c.id === batchId) + '">' +
+      const on = !tanya && c.id === batchId;
+      return '<button type="button" class="dk-row' + (unread ? ' is-unread' : '') + (on ? ' is-on' : '') +
+        '" data-act="diskusi-batch" data-id="' + esc(c.id) + '" aria-selected="' + on + '">' +
         '<span class="dk-mark" aria-hidden="true">' + esc(initialsOf(c.label)) + '</span>' +
         '<span class="dk-row-copy"><strong>' + esc(c.label) + '</strong>' +
           '<em>' + esc(c.preview) + '</em></span>' +
         '<span class="dk-row-meta">' + (c.when ? '<time>' + esc(c.when) + '</time>' : '') +
-          '<span class="dk-members">' + c.count + '</span>' +
-          (unread ? '<span class="dk-badge">' + (unread > 99 ? '99+' : unread) + '</span>' : '') +
+          (unread ? '<span class="dk-badge">' + (unread > 99 ? '99+' : unread) + '</span>' :
+            '<span class="dk-members">' + c.count + '</span>') +
         '</span>' +
       '</button>';
     }).join('');
     const tanyaRow = staff
-      ? '<button type="button" class="dk-row dk-row-tanya" data-act="diskusi-sub" data-id="tanya" aria-selected="' + tanya + '">' +
+      ? '<button type="button" class="dk-row dk-row-tanya' + (tanya ? ' is-on' : '') +
+          '" data-act="diskusi-sub" data-id="tanya" aria-selected="' + tanya + '">' +
           '<span class="dk-mark" aria-hidden="true">?</span>' +
           '<span class="dk-row-copy"><strong>Tanya materi</strong><em>Pertanyaan dan pengumuman</em></span>' +
         '</button>'
       : '';
-    const listHtml = '<aside class="dk-list"><div class="dk-list-h"><strong>Chat</strong><span class="dk-list-tools">' +
-      unreadJumpHtml() +
-      (staff ? '<button type="button" class="btn-sm" data-act="chat-new">Chat baru</button>' : '') +
-      '</span></div><div class="dk-list-scroll">' +
-      (rows || '<p class="muted dk-list-empty">Belum ada chat.</p>') +
-      tanyaRow +
+    const listHtml = '<aside class="dk-list">' +
+      '<div class="dk-list-h"><strong>Chat</strong><span class="dk-list-tools">' +
+        unreadJumpHtml() +
+        (staff ? '<button type="button" class="dk-newchat" data-act="chat-new">+ Chat baru</button>' : '') +
+      '</span></div>' +
+      '<label class="dk-search"><span class="dk-search-ico" aria-hidden="true"></span>' +
+        '<input type="search" data-act="diskusi-search" placeholder="Cari percakapan…" value="' +
+          esc(ui.diskusiSearch || '') + '" autocomplete="off">' +
+      '</label>' +
+      '<div class="dk-list-scroll">' +
+        (rows || '<p class="muted dk-list-empty">Belum ada chat.</p>') +
+        tanyaRow +
       '</div></aside>';
     let thread = '';
     if (tanya) {
       thread = '<section class="dk-thread"><header class="dk-thread-h">' +
         '<button type="button" class="dk-back" data-act="diskusi-back" aria-label="Daftar chat">‹</button>' +
-        '<h2>Tanya materi</h2></header>' +
+        '<div class="dk-thread-titles"><h2>Tanya materi</h2></div></header>' +
         '<div class="dk-feed">' + viewDiskusiTanya(true) + '</div></section>';
     } else if (!batchId) {
-      thread = '<section class="dk-thread"><header class="dk-thread-h"><h2>Diskusi</h2></header>' +
-        '<div class="dk-feed"><p class="muted">Pilih chat di samping. Kalau belum ada, Anton yang menambahkan kamu.</p></div></section>';
+      thread = '<section class="dk-thread"><header class="dk-thread-h"><div class="dk-thread-titles"><h2>Diskusi</h2></div></header>' +
+        '<div class="dk-feed"><p class="muted">Pilih chat di samping.</p></div></section>';
     } else {
-      const info = list.find((c) => c.id === batchId);
+      const info = list.find((c) => c.id === batchId) || visibleChats().find((c) => c.id === batchId);
       const count = info ? info.count : chatMembers(batchId).length;
       const can = canPostIn(actorId(), batchId);
       const posts = postsInBatch(batchId);
@@ -10088,10 +10140,10 @@
         : '<h2>' + esc(batchLabel(batchId)) + '</h2>';
       thread = '<section class="dk-thread"><header class="dk-thread-h">' +
         '<button type="button" class="dk-back" data-act="diskusi-back" aria-label="Daftar chat">‹</button>' +
-        title +
+        '<div class="dk-thread-titles">' + title +
+          '<button type="button" class="dk-count" data-act="chat-people">' + count + ' anggota</button></div>' +
         unreadJumpHtml() +
-        '<button type="button" class="dk-count" data-act="chat-people">' + count + ' orang</button>' +
-        (staff ? '<button type="button" class="btn-sm" data-act="chat-people">Tambah orang</button>' : '') +
+        (staff ? '<button type="button" class="dk-add-people" data-act="chat-people">+ Tambah orang</button>' : '') +
         '</header>' +
         '<div class="dk-feed">' +
           (posts.length
@@ -11782,8 +11834,76 @@
   }
 
   function viewKurikulum() {
-    if (!ui.kurEdit) return viewKurikulumStudent();
-    return viewKurikulumWizard();
+    if (ui.kurEdit) return viewKurikulumWizard();
+    if (isStaff() && !ui.kurFromPublish) return viewKurikulumOverview();
+    return viewKurikulumStudent();
+  }
+
+  function viewKurikulumOverview() {
+    const meta = ensureKurikulumMeta();
+    const canEdit = staffCan('editClasses');
+    const list = lectures();
+    if (!list.length && !meta.name) {
+      return '<div class="card kur-empty">' +
+        '<div class="kur-wiz-ico" aria-hidden="true">' + kurWizIcon() + '</div>' +
+        '<h2>Kurikulum</h2>' +
+        '<p class="muted">Belum ada kurikulum. Buat nama kelas, susun modul, lalu publikasikan.</p>' +
+        (canEdit
+          ? '<button type="button" class="btn kur-wiz-primary" data-act="kur-edit-on">Buat kurikulum →</button>'
+          : '') +
+        '</div>';
+    }
+    const cover = meta.coverUrl
+      ? '<img class="kur-ov-cover" src="' + esc(meta.coverUrl) + '" alt="">'
+      : '<div class="kur-ov-cover is-empty" aria-hidden="true">' + kurWizIcon() + '</div>';
+    const nVid = list.filter((l) => l.type === 'video').length;
+    const nTxt = list.filter((l) => l.type === 'text').length;
+    const nFile = list.filter((l) => l.type === 'document').length;
+    const sections = (db.weeks || []).map((w, wi) => {
+      const items = lecturesInWeek(w.id);
+      const rows = items.length
+        ? items.map((l, li) => {
+            const kind = l.type === 'video' ? 'Video' : (l.type === 'text' ? 'Bacaan' : 'File');
+            return '<button type="button" class="kur-ov-lec" data-act="kur-edit-lec" data-id="' + esc(l.id) + '"' +
+              (canEdit ? '' : ' disabled') + '>' +
+              '<span class="kur-ov-lec-n">' + (li + 1) + '</span>' +
+              '<span class="kur-ov-lec-copy"><strong>' + esc(l.title || 'Materi') + '</strong>' +
+                '<em class="muted">' + esc(kind) + (l.requiredBefore ? ' · wajib' : '') + '</em></span>' +
+              (canEdit ? '<span class="kur-ov-lec-go" aria-hidden="true">›</span>' : '') +
+            '</button>';
+          }).join('')
+        : '<p class="muted kur-ov-empty">Belum ada materi di bagian ini.</p>';
+      return '<section class="kur-ov-sec">' +
+        '<header class="kur-ov-sec-h">' +
+          '<span class="muted">Bagian ' + (wi + 1) + '</span>' +
+          '<strong>' + esc(w.title || 'Bagian') + '</strong>' +
+          '<span class="muted">' + items.length + ' materi</span>' +
+        '</header>' +
+        '<div class="kur-ov-lecs">' + rows + '</div>' +
+      '</section>';
+    }).join('');
+    return '<div class="kur-ov">' +
+      '<header class="kur-ov-head">' +
+        cover +
+        '<div class="kur-ov-meta">' +
+          '<p class="kur-ov-kicker">' + (meta.published ? 'Dipublikasikan' : 'Draft') + '</p>' +
+          '<h2>' + esc(meta.name || 'Kurikulum') + '</h2>' +
+          (meta.description ? '<p class="muted">' + esc(meta.description) + '</p>' : '') +
+          '<p class="muted">' + list.length + ' materi · ' + nVid + ' video · ' + nTxt + ' bacaan · ' + nFile + ' file</p>' +
+          '<div class="row">' +
+            (canEdit
+              ? '<button type="button" class="btn kur-wiz-primary" data-act="kur-edit-on">Atur kurikulum</button>' +
+                '<button type="button" class="btn secondary" data-act="kur-wiz-step" data-id="1">Detail kelas</button>'
+              : '') +
+            (list.length
+              ? '<button type="button" class="btn secondary" data-act="kur-pub-preview">Preview siswa</button>'
+              : '') +
+          '</div>' +
+        '</div>' +
+      '</header>' +
+      (sections || '<p class="muted">Belum ada bagian. Klik Atur kurikulum untuk menambah modul.</p>') +
+      '<p class="muted kur-ov-hint">Klik materi untuk mengedit isinya. Atur kurikulum untuk menambah / menyusun modul.</p>' +
+    '</div>';
   }
 
   function viewKurikulumStudent() {
@@ -11824,7 +11944,8 @@
               kurRocketIcon() + ' ' + pubLabel + '</button>'
           : '') +
         (canEdit
-          ? '<button type="button" class="btn secondary" data-act="kur-edit-lec" data-id="' + esc(lec.id) + '">Edit materi ini</button>' +
+          ? '<button type="button" class="btn secondary" data-act="kur-edit-off">Ringkasan kurikulum</button>' +
+            '<button type="button" class="btn secondary" data-act="kur-edit-lec" data-id="' + esc(lec.id) + '">Edit materi ini</button>' +
             '<button type="button" class="btn" data-act="kur-edit-on">Edit kurikulum</button>'
           : '') +
       '</div></div>';
@@ -13592,6 +13713,19 @@
       render();
       return;
     }
+    if (t.matches('[data-act="diskusi-search"]')) {
+      ui.diskusiSearch = t.value;
+      render();
+      const el = document.querySelector('[data-act="diskusi-search"]');
+      if (el) {
+        el.focus();
+        try {
+          const n = el.value.length;
+          el.setSelectionRange(n, n);
+        } catch (err) { /* search */ }
+      }
+      return;
+    }
     if (t.matches('.wa-compose textarea[name="body"]')) {
       ui.waDraft = t.value;
       const open = t.closest('form') && t.closest('form').querySelector('[data-wa-open]');
@@ -13841,7 +13975,8 @@
         act === 'post-files' || act === 'post-attach' || act === 'person-batch' ||
         act === 'post-new' || act === 'post-comment' || act === 'batch-rename' ||
         act === 'school-photo-file' || act === 'school-cover-file' || act === 'profile-social-source' || act === 'headline-count' ||
-        act === 'chat-rename' || act === 'chat-people-q' || act === 'poll-q' || act === 'poll-opt') {
+        act === 'chat-rename' || act === 'chat-people-q' || act === 'diskusi-search' ||
+        act === 'poll-q' || act === 'poll-opt') {
       return;
     }
     if (act === 'diskusi-sub') {
@@ -14039,6 +14174,19 @@
       if (commentLikes(row).indexOf(mine) === -1) likes.push(mine);
       row.likes = likes;
       rememberDiskusiComment(row);
+      save();
+      render();
+      return;
+    }
+    if (act === 'post-like') {
+      ensureDiskusi();
+      const post = db.posts.find((p) => p && p.id === btn.getAttribute('data-id'));
+      if (!post || !canPostIn(actorId(), post.batchId)) return;
+      const mine = actorId();
+      const likes = postLikes(post).filter((id) => id !== mine);
+      if (postLikes(post).indexOf(mine) === -1) likes.push(mine);
+      post.likes = likes;
+      rememberDiskusiPost(post);
       save();
       render();
       return;
@@ -14410,23 +14558,31 @@
       ui.addSecOpen = false;
       render();
     } else if (act === 'kur-wiz-step') {
+      if (!staffCan('editClasses')) return;
       const to = Number(btn.getAttribute('data-id') || 1);
       if (to === 2 || to === 3) {
         const meta = ensureKurikulumMeta();
         if (!String(meta.name || '').trim()) {
           toast('Isi nama kelas dulu.');
+          ui.kurEdit = true;
           ui.kurWizStep = 1;
+          ui.kurFromPublish = false;
           render();
           return;
         }
       }
       if (to === 3 && !lectures().length) {
         toast('Tambah minimal satu materi dulu.');
+        ui.kurEdit = true;
         ui.kurWizStep = 2;
+        ui.kurFromPublish = false;
         render();
         return;
       }
+      ui.kurEdit = true;
+      ui.kurFromPublish = false;
       ui.kurWizStep = Math.max(1, Math.min(3, to));
+      ui.mentorTab = 'kurikulum';
       render();
     } else if (act === 'kur-wiz-publish') {
       publishKurikulum();

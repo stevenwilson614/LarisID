@@ -1401,6 +1401,32 @@ function applyJoinProfile(row, body) {
   return row;
 }
 
+/** Merge roster keys so a stale mentor PUT cannot erase students who joined
+ *  after the mentor's last pull. Incoming rows win when the same id exists. */
+function preserveJoinedRoster(prev, next) {
+  const base = prev && typeof prev === 'object' ? prev : {};
+  const out = next && typeof next === 'object' ? next : {};
+  const prevLive = Array.isArray(base.liveStudents) ? base.liveStudents : [];
+  const nextLive = Array.isArray(out.liveStudents) ? out.liveStudents.slice() : [];
+  const seen = new Set(nextLive.map((s) => s && s.id).filter(Boolean));
+  prevLive.forEach((row) => {
+    if (!row || !row.id || seen.has(row.id) || isDemoId(row.id)) return;
+    nextLive.push(row);
+    seen.add(row.id);
+  });
+  out.liveStudents = nextLive;
+  ['applications', 'crm', 'billing', 'people', 'notes', 'progress', 'lastLecture', 'enrollments', 'timeline', 'kolab'].forEach((key) => {
+    const from = base[key] && typeof base[key] === 'object' && !Array.isArray(base[key]) ? base[key] : {};
+    const to = out[key] && typeof out[key] === 'object' && !Array.isArray(out[key]) ? Object.assign({}, out[key]) : {};
+    Object.keys(from).forEach((id) => {
+      if (!id || isDemoId(id) || Object.prototype.hasOwnProperty.call(to, id)) return;
+      to[id] = from[id];
+    });
+    out[key] = to;
+  });
+  return out;
+}
+
 function upsertJoined(state, row) {
   state.liveStudents = Array.isArray(state.liveStudents) ? state.liveStudents : [];
   const i = state.liveStudents.findIndex((s) => s && s.id === row.id);
@@ -2049,6 +2075,11 @@ const server = http.createServer((req, res) => {
                 delete clean.passwordHash;
                 return clean;
               });
+            }
+            /* Mentor browsers can push a stale empty roster after /join.
+               Keep disk students the client omitted unless this is an explicit reset. */
+            if (!(body && body.reset === true) && rec && rec.state) {
+              nextState = preserveJoinedRoster(rec.state, nextState);
             }
           }
         } else {

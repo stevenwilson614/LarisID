@@ -26,14 +26,17 @@ Do not revive `js/lms-join.js` or public invite-code file downloads as the share
 - **WA pill**: mentors toggle number + on/off under Account settings → WhatsApp. Students see `WA (Nama)` bottom-right when enabled.
 - Student Home always shows **Jadwal** (Minggu / Bulan). Diskusi dock/tab shows an unread count badge.
 - **Join persistence**: `POST /join` writes `liveStudents` + `applications` + `crm` + `billing` on disk so mentors see the student in Pipa/daftar immediately, and the student does not re-enter the onboarding wizard after leaving the URL. Student cookie `lms_student` is Path=/ with Max-Age ~180 days; visitor id is per-school (`anton-visitor:{slug}`).
+- **Roster wipe guard**: mentor chrome on `/s/{slug}/` must not strip `liveStudents` in `stripHeldRoster`. Staff `PUT /state` also `preserveJoinedRoster` so a stale mentor save cannot erase students who joined after the mentor’s last pull.
 
-### Mentor profile / Perpustakaan / Diskusi
+### Mentor profile / Perpustakaan / Diskusi / Kurikulum / Otomasi
 
 - Profile picture tab: cover banner can be panned (object-position) after upload.
 - Social icons use official brand glyphs (Simple Icons paths).
 - Top-left chrome is a single avatar circle (no caret badge).
 - **Perpustakaan** is per-school catalog — never falls back to Anton’s lynk/photo for other coaches.
-- Diskusi thread: title at top, divider lines between posts, messages capped width, composer at bottom with Foto / File / Poll.
+- **Kurikulum** (mentor): landing shows the whole curriculum overview; click a materi to edit that module, or “Atur kurikulum” for the wizard.
+- **Otomasi**: compact builder (~half previous card size).
+- **Diskusi**: chat list with search + red “+ Chat baru”; thread title + anggota; soft post bubble with reactions; nested comments; bottom composer with file / foto / poll + red send.
 
 ---
 
