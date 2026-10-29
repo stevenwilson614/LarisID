@@ -15,11 +15,11 @@
   --card: #27272a;
   --hitam: #18181b;
   --danger: #c4c4c4;
-  --ok: #4ade80;
-  --ok-soft: #86efac;
-  --ok-deep: #102418;
-  --ok-mid: #14532d;
-  --on-ok: #052e16;
+  --ok: #38bdf8;
+  --ok-soft: #7dd3fc;
+  --ok-deep: #082f49;
+  --ok-mid: #0c4a6e;
+  --on-ok: #082f49;
   --accent: #93c5fd;
   --warn: #fbbf24;
   --warn-line: #ca8a04;
@@ -57,7 +57,7 @@
   --shadow: rgba(0,0,0,.35);
   --shadow-2: rgba(0,0,0,.45);
   --scrim: rgba(0,0,0,.55);
-  --cta-grad: linear-gradient(165deg, #1c1917 0%, #18181b 55%, #14532d22 100%);
+  --cta-grad: linear-gradient(165deg, #1c1917 0%, #18181b 55%, #0c4a6e22 100%);
   --cta-grad-warn: linear-gradient(165deg, #1c1917 0%, #18181b 55%, #42200644 100%);
   --panel-grad: linear-gradient(180deg, #18181b, #121214);
   --cover-grad: linear-gradient(145deg, #27272a, #111);
@@ -93,10 +93,10 @@ html[data-theme="light"] {
   --card: #ffffff;
   --hitam: #18181b;
   --danger: #52525b;
-  --ok: #16a34a;
-  --ok-soft: #15803d;
-  --ok-deep: #dcfce7;
-  --ok-mid: #bbf7d0;
+  --ok: #0284c7;
+  --ok-soft: #0369a1;
+  --ok-deep: #e0f2fe;
+  --ok-mid: #bae6fd;
   --on-ok: #fff;
   --accent: #2563eb;
   --warn: #b45309;
@@ -133,7 +133,7 @@ html[data-theme="light"] {
   --shadow: rgba(0,0,0,.12);
   --shadow-2: rgba(0,0,0,.16);
   --scrim: rgba(0,0,0,.35);
-  --cta-grad: linear-gradient(165deg, #fafaf9 0%, #ffffff 55%, #14532d14 100%);
+  --cta-grad: linear-gradient(165deg, #fafaf9 0%, #ffffff 55%, #0284c714 100%);
   --cta-grad-warn: linear-gradient(165deg, #fafaf9 0%, #ffffff 55%, #f59e0b1f 100%);
   --panel-grad: linear-gradient(180deg, #ffffff, #f4f4f5);
   --cover-grad: linear-gradient(145deg, #f4f4f5, #d4d4d8);
@@ -406,7 +406,7 @@ html[data-mode="student"] .theme-btn { display: none; }
   padding: 5px 10px; font-size: .7rem; border-radius: var(--r);
   border: 1px solid var(--line-2); background: transparent; color: var(--text); cursor: pointer;
 }
-.btn.done-ok { background: var(--ok); color: #fff; }
+.btn.done-ok { background: var(--ok); color: var(--on-ok); }
 .kur-progress { margin: 0 0 12px; }
 .kur-progress-top {
   display: flex; justify-content: space-between; gap: 8px; align-items: baseline;
@@ -2009,8 +2009,8 @@ html.present-pane[data-mode="student"] .kurikulum-pane.is-open {
   --dash-muted: #9d9d9d;
   --dash-accent: #0078d4;
   --dash-accent-2: #40a6ff;
-  --dash-ok: #3fb950;
-  --dash-sku: #89d185;
+  --dash-ok: #38bdf8;
+  --dash-sku: #7dd3fc;
   --dash-input: #313131;
   --dash-strong: #ffffff;
   --dash-hover: #222222;
@@ -2033,8 +2033,8 @@ html[data-theme="light"] .dash-page {
   --dash-muted: #616161;
   --dash-accent: #0078d4;
   --dash-accent-2: #005fb8;
-  --dash-ok: #1a7f37;
-  --dash-sku: #2da44e;
+  --dash-ok: #0284c7;
+  --dash-sku: #0ea5e9;
   --dash-input: #ffffff;
   --dash-strong: #000000;
   --dash-hover: #ececec;
@@ -3294,7 +3294,7 @@ html:not([data-theme="light"]) .oto-ico {
   display: inline-block; font-size: .62rem; font-weight: 800; letter-spacing: .04em;
   text-transform: uppercase; color: var(--muted); margin-right: 4px;
 }
-.task-kind.kind-wa { color: var(--ok-soft); }
+.task-kind.kind-wa { color: #4ade80; }
 .task-kind.kind-email { color: var(--accent); }
 .task-kind.kind-call { color: var(--warn); }
 .task-assignee {
