@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="id" data-mode="student" class="lms-booting">
+<head>
+  <meta charset="UTF-8">
+  <script>
+    if (location.hostname === 'larisid.pages.dev') {
+      location.replace('https://larisid.com' + location.pathname + location.search + location.hash);
+    }
+  </script>
+  <base href="/obrolan.marketing/">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#18181b">
+  <script>
+    /* Apply the saved theme before the stylesheet paints to avoid a dark flash. */
+    try {
+      if (localStorage.getItem('anton-theme') === 'light') {
+        document.documentElement.dataset.theme = 'light';
+      }
+    } catch (e) { /* storage blocked */ }
+  </script>
+  <style>
+    /* Hide shell until JS fills the correct school identity — coach URLs reuse this HTML. */
+    html.lms-booting #app { visibility: hidden; }
+  </style>
+  <meta name="format-detection" content="telephone=no, email=no, address=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Kelas">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <title>Kelas</title>
+  <link rel="stylesheet" href="/fonts/laris-fonts.css">
+  <link rel="stylesheet" href="./css/school.css?v=20261029dkchat">
+  <link rel="stylesheet" href="./css/diskusi-chat.css?v=20261029dkchat">
+</head>
+<body>
+  <div id="prod-block" hidden>
+    <p>Kelas siswa dibuka di larisid.com/s/obrolan.marketing.</p>
+  </div>
+  <div id="slug-miss" class="slug-miss" hidden>
+    <p>Sekolah <strong data-asked></strong> tidak ada di prototype ini.</p>
+    <p class="muted">Kelas Anton: <a href="/s/obrolan.marketing/"><span data-known>obrolan.marketing</span></a></p>
+  </div>
+  <div id="app" class="is-student">
+    <header class="topbar">
+      <div class="brand">
+        <button type="button" class="brand-btn" id="brand-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="brand-menu" aria-label="Profile menu">
+          <img id="school-logo" alt="" width="32" height="32">
+          <span class="brand-caret" aria-hidden="true"><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4l2.5 2.5L7.5 4"/></svg></span>
+        </button>
+        <div class="brand-copy">
+          <strong id="school-name"></strong>
+          <span id="school-person" class="school-person" hidden></span>
+          <span id="school-header" class="school-header" hidden></span>
+        </div>
+        <div id="brand-menu" class="brand-menu" role="menu" aria-labelledby="brand-btn" hidden>
+          <button type="button" role="menuitem" data-act="open-profil" id="btn-menu-profil">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span class="brand-menu-label">Profile</span>
+          </button>
+          <button type="button" role="menuitem" data-act="open-account" id="btn-menu-account">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.3.6.9 1 1.6 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+            Account settings
+          </button>
+          <button type="button" role="menuitem" data-act="open-siswa-view" id="btn-menu-siswa-view">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
+            Siswa view
+          </button>
+          <button type="button" role="menuitem" id="btn-admin-out" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+            Keluar
+          </button>
+        </div>
+      </div>
+      <div class="topbar-search" id="topbar-search" hidden>
+        <label class="sr-only" for="cari-siswa">Cari siswa</label>
+        <input type="search" id="cari-siswa" placeholder="Cari siswa…" data-act="cari-siswa" autocomplete="off" enterkeyhint="search">
+        <div id="cari-siswa-drop" class="cari-drop" hidden></div>
+      </div>
+      <div class="topbar-actions">
+        <label class="sr-only" for="role-switch">Peran</label>
+        <select id="role-switch" aria-label="Peran" hidden></select>
+        <label class="sr-only" for="persona-switch">Siswa</label>
+        <select id="persona-switch" aria-label="Pilih siswa" hidden></select>
+        <button type="button" class="ghost theme-btn" id="btn-theme" aria-pressed="false" aria-label="Mode terang" title="Mode terang">
+          <svg class="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+          <svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        </button>
+        <button type="button" class="ghost me-btn" id="btn-me" data-act="open-me" aria-label="Profil saya" title="Profil saya">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </button>
+      </div>
+    </header>
+    <div class="workspace">
+      <nav class="tabs" id="tabs" role="tablist"></nav>
+      <main id="main" class="main"></main>
+    </div>
+    <nav class="dock" id="dock" hidden></nav>
+  </div>
+  <aside id="drawer" class="drawer" hidden></aside>
+  <div id="drawer-scrim" class="scrim" hidden></div>
+  <div id="profile-preview" class="prof-preview" hidden></div>
+  <div id="onboard-preview" class="prof-preview ob-preview" hidden></div>
+  <div id="toast" class="toast" hidden></div>
+  <script src="./js/seed.js?v=20261028staff"></script>
+  <script src="./js/calc-engine.js?v=20261027calc6"></script>
+  <script src="./js/app.js?v=20261029dkchat"></script>
+</body>
+</html>
