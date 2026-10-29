@@ -1078,13 +1078,24 @@
     function finishOAuth(session, errMsg) {
       oauthSettled = true;
       if (oauth.code || oauth.error) stripOAuthQuery();
-      if (errMsg) {
-        show('auth');
-        setAuthMode('login');
-        authError(errMsg);
+      if (session) {
+        route(session);
         return;
       }
-      route(session);
+      if (errMsg) {
+        /* A late exchange error must not wipe a session that already landed. */
+        return window.Lms.sb.auth.getSession().then(function (live) {
+          var ok = live.data && live.data.session;
+          if (ok) {
+            route(ok);
+            return;
+          }
+          show('auth');
+          setAuthMode('login');
+          authError(errMsg);
+        });
+      }
+      route(null);
     }
     window.Lms.sb.auth.getSession().then(function (res) {
       var session = res.data && res.data.session;

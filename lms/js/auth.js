@@ -83,7 +83,9 @@
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: true,
+        /* app.js exchanges ?code= once. Auto-detect here races that call and
+           can clear a good login with "code verifier" / already-used errors. */
+        detectSessionInUrl: false,
         storage: window.localStorage,
         storageKey: 'lms_auth_v1',
         flowType: 'pkce'

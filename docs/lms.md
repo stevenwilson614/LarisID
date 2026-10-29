@@ -43,7 +43,7 @@ The invite a mentor copies is `https://larisid.com/lms/card/?invite=…`. Caddy 
 
 LMS auth uses `localStorage` key `lms_auth_v1` with `persistSession` + `autoRefreshToken`, so a refresh on `/lms/` or `/lms/{slug}/` keeps the same session. Invite / school slug helpers use the same storage, not `sessionStorage`.
 
-Google sign-in returns to `https://larisid.com` (not `www`). A mentor login started on `/lms/` comes back to `/lms/` even if another school's slug is still stored. While `?code=` is in the URL the page stays on the sign-in panel until that code becomes a session; it does not fall through to the marketing landing. `www.larisid.com/lms` is sent to the apex host first so the login verifier and the return URL share one site.
+Google sign-in returns to `https://larisid.com` (not `www`). A mentor login started on `/lms/` comes back to `/lms/` even if another school's slug is still stored. While `?code=` is in the URL the page stays on the sign-in panel until that code becomes a session; it does not fall through to the marketing landing. `www.larisid.com/lms` is sent to the apex host first so the login verifier and the return URL share one site. The client exchanges `?code=` once (`detectSessionInUrl: false`); a second exchange races the first and can show “Login Google terputus” after a successful Google callback. A signed-in Google user with no `lms_accounts` row sees **Buat kelas**, not the curriculum — this schema starts empty (the old disk school is not restored).
 
 ## Jadwal
 
