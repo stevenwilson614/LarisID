@@ -7,11 +7,13 @@
     var hash = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));
     return {
       code: search.get('code') || hash.get('code') || '',
+      accessToken: hash.get('access_token') || '',
       error: search.get('error_description') || hash.get('error_description') || search.get('error') || hash.get('error') || ''
     };
   }
   var oauth = oauthSnap();
-  var oauthSettled = !(oauth.code || oauth.error);
+  var oauthPending = !!(oauth.code || oauth.accessToken || oauth.error);
+  var oauthSettled = !oauthPending;
   var routing = Promise.resolve();
   var busy = false;
   var mentorView = 'edit';
@@ -55,6 +57,11 @@
       var next = location.pathname + (q.toString() ? '?' + q.toString() : '');
       history.replaceState({}, '', next);
     } catch (err) { /* ignore */ }
+    try {
+      if (location.hash && /access_token=|error=|error_description=/.test(location.hash)) {
+        history.replaceState({}, '', location.pathname + location.search);
+      }
+    } catch (err2) { /* ignore */ }
     document.documentElement.removeAttribute('data-lms-oauth');
   }
   function setAuthMode(mode) {
@@ -1075,7 +1082,7 @@
     }
 
     paintSchoolBrand();
-    if (oauth.code || oauth.error) {
+    if (oauthPending) {
       show('auth');
       setAuthMode('login');
       authError(oauth.error ? window.Lms.errorText({ message: oauth.error }) : 'Sedang masuk…');
@@ -1085,7 +1092,7 @@
     }
     function finishOAuth(session, errMsg) {
       oauthSettled = true;
-      if (oauth.code || oauth.error) stripOAuthQuery();
+      if (oauthPending) stripOAuthQuery();
       if (session) {
         route(session);
         return;
@@ -1104,15 +1111,14 @@
       }
       route(null);
     }
-    /* SDK (detectSessionInUrl) exchanges ?code=. Do not call exchangeCodeForSession
-       again — a second exchange with floating supabase-js@2 multi-flow PKCE left
-       mentors on the login screen after a good Google callback. */
+    /* Implicit tokens land in the hash; detectSessionInUrl stores the session.
+       Wait for that — do not PKCE-exchange (verifier was missing after Google). */
     function waitForOAuthSession(tries) {
       return window.Lms.sb.auth.getSession().then(function (res) {
         var session = res.data && res.data.session;
         if (session) return finishOAuth(session);
         if (oauth.error) return finishOAuth(null, window.Lms.errorText({ message: oauth.error }));
-        if (!oauth.code) {
+        if (!oauthPending) {
           oauthSettled = true;
           var authOpen = $('view-auth') && !$('view-auth').hidden;
           var registerOpen = $('view-register') && !$('view-register').hidden;
@@ -1123,18 +1129,18 @@
           return finishOAuth(null, window.Lms.errorText({ message: 'pkce' }));
         }
         return new Promise(function (resolve) {
-          setTimeout(function () { resolve(waitForOAuthSession(tries - 1)); }, 200);
+          setTimeout(function () { resolve(waitForOAuthSession(tries - 1)); }, 250);
         });
       });
     }
-    waitForOAuthSession(oauth.code ? 25 : 0).catch(function (err) {
+    waitForOAuthSession(oauthPending ? 40 : 0).catch(function (err) {
       finishOAuth(null, window.Lms.errorText(err));
     });
     window.Lms.sb.auth.onAuthStateChange(function (event, session) {
       if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION') return;
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
         if (event === 'SIGNED_IN') oauthSettled = true;
-        if (oauth.code || oauth.error) stripOAuthQuery();
+        if (oauthPending) stripOAuthQuery();
         route(session);
       }
     });

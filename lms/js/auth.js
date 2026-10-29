@@ -9,7 +9,11 @@
   }
   try {
     var early = new URLSearchParams(location.search);
-    if (early.get('code') || early.get('error') || early.get('error_description')) {
+    var earlyHash = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));
+    if (
+      early.get('code') || early.get('error') || early.get('error_description') ||
+      earlyHash.get('access_token') || earlyHash.get('error') || earlyHash.get('error_description')
+    ) {
       document.documentElement.setAttribute('data-lms-oauth', '1');
       var landEarly = document.getElementById('view-land');
       var wrapEarly = document.getElementById('auth-wrap');
@@ -83,11 +87,13 @@
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        /* Let the SDK exchange ?code= (pinned classic PKCE). app.js only waits. */
         detectSessionInUrl: true,
         storage: window.localStorage,
         storageKey: 'lms_auth_v1',
-        flowType: 'pkce'
+        /* Implicit: Google returns tokens in the URL hash. PKCE needed a
+           code-verifier in localStorage that was missing after redirect, so
+           mentors saw “Login Google terputus” after a good Google callback. */
+        flowType: 'implicit'
       }
     });
   }
