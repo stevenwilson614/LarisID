@@ -1499,7 +1499,7 @@ html[data-mode="mentor"] .kanban-col {
   flex-wrap: wrap; margin-bottom: 14px;
 }
 html[data-mode="mentor"] .kur-toolbar {
-  position: sticky; top: var(--top-h); z-index: 6;
+  position: sticky; top: calc(var(--top-h) + var(--vid-bar-h, 0px)); z-index: 6;
   background: var(--ink); margin: -8px 0 14px; padding: 12px 0 14px;
   border-bottom: 1px solid var(--line);
 }
@@ -1727,6 +1727,53 @@ button.alat-card { width: 100%; cursor: pointer; }
 .vid-upload-meter::-webkit-progress-bar { background: var(--ink); border-radius: 999px; }
 .vid-upload-meter::-webkit-progress-value { background: var(--kur-brand, #B5202A); border-radius: 999px; }
 .vid-upload-meter::-moz-progress-bar { background: var(--kur-brand, #B5202A); border-radius: 999px; }
+
+/* Sticky class-wide video upload strip under the topbar (survives Publikasikan / Preview). */
+#app { --vid-bar-h: 0px; }
+#app.has-vid-upload { --vid-bar-h: 40px; }
+.vid-upload-bar {
+  position: sticky; top: var(--top-h); z-index: 19;
+  display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center;
+  min-height: var(--vid-bar-h); padding: 8px 14px;
+  background: var(--ink-2); color: var(--text);
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 6px 16px var(--shadow);
+}
+.vid-upload-bar[hidden] { display: none !important; }
+.vid-upload-bar-copy { display: grid; gap: 5px; min-width: 0; }
+.vid-upload-bar-label {
+  margin: 0; font-size: .78rem; font-weight: 650; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.vid-upload-bar-track {
+  height: 4px; border-radius: 999px; background: var(--ink); overflow: hidden;
+}
+.vid-upload-bar-fill {
+  height: 100%; width: 0; border-radius: inherit;
+  background: var(--kur-brand, #B5202A);
+  transition: width .15s ease-out;
+}
+.vid-upload-bar.is-indeterminate .vid-upload-bar-fill {
+  width: 36% !important;
+  animation: vid-bar-slide 1.1s ease-in-out infinite;
+}
+@keyframes vid-bar-slide {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(280%); }
+}
+.vid-upload-bar-cancel {
+  flex: none; width: 28px; height: 28px; padding: 0; margin: 0;
+  border: 0; border-radius: 8px; cursor: pointer;
+  background: transparent; color: var(--muted);
+  display: grid; place-items: center; font: inherit; font-size: 1.05rem; line-height: 1;
+}
+.vid-upload-bar-cancel:hover,
+.vid-upload-bar-cancel:focus-visible {
+  background: var(--ink-3); color: var(--text); outline: 0;
+}
+html[data-mode="mentor"] .tabs button[disabled] {
+  opacity: .45; cursor: not-allowed;
+}
 .lec-video { width: 100%; aspect-ratio: 16/9; display: block; background: #000; }
 
 @media (max-width: 900px) {

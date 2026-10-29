@@ -5633,16 +5633,28 @@
       body: JSON.stringify({ key: key })
     }).catch(() => {});
   }
-  function putMediaPart(url, chunk, onChunk) {
+  function putMediaPart(url, chunk, onChunk, job) {
     return new Promise((resolve, reject) => {
+      if (job && job.aborted) {
+        reject(new Error('aborted'));
+        return;
+      }
       const xhr = new XMLHttpRequest();
+      if (job) job.xhr = xhr;
       xhr.open('PUT', url);
       xhr.onload = () => {
+        if (job) job.xhr = null;
         if (xhr.status >= 200 && xhr.status < 300) resolve();
         else reject(new Error('part'));
       };
-      xhr.onerror = () => reject(new Error('part'));
-      xhr.onabort = () => reject(new Error('part'));
+      xhr.onerror = () => {
+        if (job) job.xhr = null;
+        reject(new Error('part'));
+      };
+      xhr.onabort = () => {
+        if (job) job.xhr = null;
+        reject(new Error('aborted'));
+      };
       if (xhr.upload && onChunk) {
         xhr.upload.onprogress = (ev) => {
           if (ev.lengthComputable) onChunk(ev.loaded, ev.total || chunk.size);
@@ -5654,6 +5666,15 @@
   function uploadClassVideo(file, lecId, onProgress, kind) {
     const partSize = 8 * 1024 * 1024;
     const mediaKind = kind === 'image' || kind === 'file' ? kind : 'video';
+    const job = (mediaKind === 'video' && ui.vidUploads && ui.vidUploads[lecId])
+      ? ui.vidUploads[lecId]
+      : null;
+    const ac = new AbortController();
+    if (job) {
+      job.ac = ac;
+      job.aborted = false;
+    }
+    const signal = ac.signal;
     return fetch(apiBase() + '/media/init?' + mediaAuthQuery(), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -5664,13 +5685,16 @@
         lecId: lecId,
         slug: schoolSlug(),
         kind: mediaKind
-      })
+      }),
+      signal: signal
     }).then((res) => {
       if (!res.ok) throw new Error('init');
       return res.json();
     }).then(async (init) => {
+      if (job) job.uploadId = init.uploadId;
       const parts = Math.max(1, Math.ceil(file.size / partSize));
       for (let i = 0; i < parts; i += 1) {
+        if (job && job.aborted) throw new Error('aborted');
         const start = i * partSize;
         const chunk = file.slice(start, Math.min(file.size, start + partSize));
         const url = apiBase() + '/media/part?' + mediaAuthQuery() +
@@ -5678,13 +5702,15 @@
         await putMediaPart(url, chunk, (loaded) => {
           if (!onProgress || !file.size) return;
           onProgress(Math.min(99, Math.round(((start + loaded) / file.size) * 100)));
-        });
+        }, job);
       }
+      if (job && job.aborted) throw new Error('aborted');
       const done = await fetch(apiBase() + '/media/complete?' + mediaAuthQuery() +
         '&uploadId=' + encodeURIComponent(init.uploadId), {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: '{}'
+        body: '{}',
+        signal: signal
       });
       if (!done.ok) throw new Error('complete');
       if (onProgress) onProgress(100);
@@ -5693,11 +5719,66 @@
   }
   function videoUploadPending() {
     const map = ui.vidUploads || {};
-    return Object.keys(map).some((id) => map[id] && !map[id].error);
+    return Object.keys(map).some((id) => map[id] && !map[id].error && !map[id].aborted);
+  }
+  function activeVidUploadJob() {
+    const map = ui.vidUploads || {};
+    const ids = Object.keys(map);
+    for (let i = 0; i < ids.length; i += 1) {
+      const job = map[ids[i]];
+      if (job && !job.error && !job.aborted) return { id: ids[i], job: job };
+    }
+    return null;
+  }
+  function blockLeaveWhileVidUpload(nextTab) {
+    if (!isStaff() || !videoUploadPending()) return false;
+    if (ui.mentorTab !== 'kurikulum') return false;
+    if (nextTab === 'kurikulum') return false;
+    toast('Tunggu video selesai diunggah, atau batalkan dengan ×.');
+    return true;
+  }
+  function paintVidUploadBar() {
+    const bar = $('vid-upload-bar');
+    const app = $('app');
+    if (!bar) return;
+    const active = activeVidUploadJob();
+    if (!active) {
+      bar.hidden = true;
+      bar.innerHTML = '';
+      bar.classList.remove('is-indeterminate');
+      if (app) app.classList.remove('has-vid-upload');
+      return;
+    }
+    const job = active.job;
+    const pct = Math.max(0, Math.min(100, Number(job.pct) || 0));
+    const label = job.indeterminate
+      ? ('Menyimpan ' + (job.name || 'video') + '…')
+      : ('Mengunggah ' + pct + '%' + (job.name ? (' · ' + job.name) : ''));
+    bar.hidden = false;
+    bar.classList.toggle('is-indeterminate', !!job.indeterminate);
+    if (app) app.classList.add('has-vid-upload');
+    const fill = bar.querySelector('.vid-upload-bar-fill');
+    const labelEl = bar.querySelector('.vid-upload-bar-label');
+    if (fill && labelEl && bar.getAttribute('data-vid-id') === active.id) {
+      labelEl.textContent = label;
+      if (!job.indeterminate) fill.style.width = pct + '%';
+      return;
+    }
+    bar.setAttribute('data-vid-id', active.id);
+    bar.innerHTML =
+      '<div class="vid-upload-bar-copy">' +
+        '<p class="vid-upload-bar-label">' + esc(label) + '</p>' +
+        '<div class="vid-upload-bar-track" aria-hidden="true">' +
+          '<div class="vid-upload-bar-fill" style="width:' + (job.indeterminate ? '36' : pct) + '%"></div>' +
+        '</div>' +
+      '</div>' +
+      '<button type="button" class="vid-upload-bar-cancel" data-act="vid-upload-cancel" data-id="' +
+        esc(active.id) + '" title="Batalkan unggahan" aria-label="Batalkan unggahan">×</button>';
   }
   function paintVidUpload(id) {
     const job = ui.vidUploads && ui.vidUploads[id];
     const root = document.querySelector('[data-vid-upload="' + id + '"]');
+    paintVidUploadBar();
     if (!root || !job) return;
     const label = root.querySelector('.vid-upload-label');
     const meter = root.querySelector('progress');
@@ -5718,6 +5799,18 @@
       if (job.indeterminate) meter.removeAttribute('value');
       else meter.value = pct;
     }
+  }
+  function cancelVidUpload(id) {
+    if (!id || !ui.vidUploads || !ui.vidUploads[id]) return;
+    const job = ui.vidUploads[id];
+    if (job.aborted) return;
+    job.aborted = true;
+    try { if (job.xhr) job.xhr.abort(); } catch (err) { /* ignore */ }
+    try { if (job.ac) job.ac.abort(); } catch (err) { /* ignore */ }
+    delete ui.vidUploads[id];
+    paintVidUploadBar();
+    toast('Unggahan dibatalkan.');
+    render();
   }
   function vidUploadHtml(l) {
     const job = ui.vidUploads && ui.vidUploads[l.id];
@@ -5804,7 +5897,8 @@
     ui.vidUploads[id] = {
       pct: 0,
       name: file.name,
-      indeterminate: !syncEnabled()
+      indeterminate: !syncEnabled(),
+      aborted: false
     };
     if (lec) {
       lec.type = 'video';
@@ -5814,20 +5908,27 @@
     if (lec && lec.weekId) setSecOpen(lec.weekId, true);
     save();
     render();
+    paintVidUploadBar();
     if (syncEnabled()) {
       toast('Mengunggah video… Isi cover dan poin penting dulu. Publikasikan setelah selesai.');
       const oldKey = lec && lec.videoKey;
       uploadClassVideo(file, id, (pct) => {
         const job = ui.vidUploads && ui.vidUploads[id];
-        if (!job || job.error) return;
+        if (!job || job.error || job.aborted) return;
         const next = Math.max(0, Math.min(99, Math.round(pct)));
         if (job.pct === next && !job.indeterminate) return;
         job.pct = next;
         job.indeterminate = false;
         paintVidUpload(id);
       }).then((info) => {
+        const job = ui.vidUploads && ui.vidUploads[id];
+        if (!job || job.aborted) {
+          if (info && info.key) deleteRemoteVideo(info.key);
+          return;
+        }
         captureOpenLecDraft();
-        if (ui.vidUploads) delete ui.vidUploads[id];
+        delete ui.vidUploads[id];
+        paintVidUploadBar();
         if (oldKey && oldKey !== info.key) deleteRemoteVideo(oldKey);
         const row = lectureById(id) || lec;
         if (row) {
@@ -5841,9 +5942,19 @@
         save();
         toast('Video tersimpan di kelas. Siswa bisa putar.');
         render();
-      }).catch(() => {
+      }).catch((err) => {
+        const job = ui.vidUploads && ui.vidUploads[id];
+        const aborted = !job || job.aborted || (err && (
+          err.name === 'AbortError' || String(err.message || err) === 'aborted'
+        ));
+        if (aborted) {
+          if (ui.vidUploads) delete ui.vidUploads[id];
+          paintVidUploadBar();
+          return;
+        }
         captureOpenLecDraft();
         markVidUploadFailed(id);
+        paintVidUploadBar();
         trackEvent('upload_fail', { lessonId: id, message: file.name });
         postIssue({
           kind: 'upload',
@@ -5857,8 +5968,11 @@
       return;
     }
     blobPut(id, file).then(() => {
+      const job = ui.vidUploads && ui.vidUploads[id];
+      if (!job || job.aborted) return;
       captureOpenLecDraft();
-      if (ui.vidUploads) delete ui.vidUploads[id];
+      delete ui.vidUploads[id];
+      paintVidUploadBar();
       const row = lectureById(id) || lec;
       if (row) {
         row.videoBlob = true;
@@ -5870,8 +5984,15 @@
       toast('Video tersimpan di browser ini.');
       render();
     }).catch(() => {
+      const job = ui.vidUploads && ui.vidUploads[id];
+      if (!job || job.aborted) {
+        if (ui.vidUploads) delete ui.vidUploads[id];
+        paintVidUploadBar();
+        return;
+      }
       captureOpenLecDraft();
       markVidUploadFailed(id);
+      paintVidUploadBar();
       toast('Gagal simpan video di browser.');
       render();
     });
@@ -7211,6 +7332,7 @@
       else if (allowed.indexOf(ui.tab) === -1) ui.tab = 'home';
     }
     renderTabs();
+    paintVidUploadBar();
   }
 
   function studentTabs() {
@@ -7249,10 +7371,14 @@
   function renderTabs() {
     const items = isStaff() ? mentorTabs() : studentTabs();
     const cur = isStaff() ? (ui.mentorTab === 'orang' ? 'siswa' : ui.mentorTab) : ui.tab;
-    $('tabs').innerHTML = items.map((t) =>
-      '<button type="button" role="tab" data-act="tab" data-id="' + t.id + '" aria-selected="' +
-      (t.id === cur) + '">' + esc(t.label) + tabUnreadBadge(t.id) + '</button>'
-    ).join('');
+    const lockTabs = isStaff() && videoUploadPending() && ui.mentorTab === 'kurikulum';
+    $('tabs').innerHTML = items.map((t) => {
+      const locked = lockTabs && t.id !== 'kurikulum';
+      return '<button type="button" role="tab" data-act="tab" data-id="' + t.id + '" aria-selected="' +
+        (t.id === cur) + '"' +
+        (locked ? ' disabled aria-disabled="true" title="Tunggu video selesai, atau batalkan unggahan"' : '') +
+        '>' + esc(t.label) + tabUnreadBadge(t.id) + '</button>';
+    }).join('');
     const dock = $('dock');
     if (!isStaff()) {
       const tabs = studentTabs();
@@ -14241,8 +14367,11 @@
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ id: id })
       }).then(() => refreshAdmin()).catch(() => toast('Gagal menutup laporan'));
+    } else if (act === 'vid-upload-cancel') {
+      cancelVidUpload(btn.getAttribute('data-id'));
     } else if (act === 'tab') {
       const id = btn.getAttribute('data-id');
+      if (blockLeaveWhileVidUpload(id)) return;
       ui.profilePreview = null;
       ui.profilePreviewKind = null;
       if (ui.onboardPreview) ui.onboardPreview = null;
@@ -14409,6 +14538,7 @@
       render();
     } else if (act === 'open-profil') {
       setBrandMenu(false);
+      if (blockLeaveWhileVidUpload('profil')) return;
       ui.profilePreview = null;
       ui.profilePreviewKind = null;
       ui.profilePane = 'info';
@@ -14434,6 +14564,7 @@
       render();
     } else if (act === 'open-account') {
       setBrandMenu(false);
+      if (blockLeaveWhileVidUpload('account')) return;
       ui.profilePreview = null;
       ui.profilePreviewKind = null;
       if (!canBill()) {

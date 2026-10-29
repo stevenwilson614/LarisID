@@ -12,7 +12,7 @@ After Contabo login/daftar succeeds, mentors are claimed into a disk school (`PO
 
 Class app source: `obrolan.marketing/`. Contabo `anton-school` serves `/obrolan.marketing/api/*` and `/api/*` from disk (`docker/volumes/anton-school`).
 
-Editing kurikulum in that app: **Preview** on the publikasi step opens the student view with **Publikasikan** on that screen. A video file uploads in the background with a progress bar, so cover, deskripsi, and poin penting can be filled while it uploads. Publish waits until that upload finishes.
+Editing kurikulum in that app: **Preview** on the publikasi step opens the student view with **Publikasikan** on that screen. A video file uploads in the background with a sticky progress strip under the header (`Mengunggah N%`, with × to cancel) that stays while the mentor fills cover, deskripsi, poin penting, or opens Publikasikan / Preview. Left-rail tabs stay locked on Kurikulum until the upload finishes or they cancel with ×. Publish waits until that upload finishes.
 
 ```bash
 bash scripts/deploy-static.sh
