@@ -1422,30 +1422,91 @@ textarea { min-height: 96px; resize: vertical; }
   padding: 10px 12px;
 }
 .school-link-row .btn { padding: 10px 12px; font-size: 0.82rem; }
-.mentor-view-toggle {
-  display: inline-flex;
+.app-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.app-brand img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: none;
+  background: #fff;
+  border: 1px solid var(--line);
+}
+.app-brand-copy {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+.app-brand-copy strong {
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-brand-copy span {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--merah);
+}
+.school > .sub {
+  margin: 8px 0 0;
+}
+.app-tabs {
+  display: flex;
   flex-wrap: wrap;
   gap: 4px;
+  margin: 18px 0 8px;
   padding: 4px;
-  margin-bottom: 12px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: #fff;
+  width: fit-content;
+  max-width: 100%;
 }
-.mentor-view-toggle button {
+.app-tabs button {
   border: 0;
   background: transparent;
   color: var(--muted);
   font: inherit;
-  font-size: 0.86rem;
+  font-size: 0.9rem;
   font-weight: 700;
-  padding: 8px 14px;
+  padding: 9px 16px;
   border-radius: 999px;
   cursor: pointer;
 }
-.mentor-view-toggle button.is-on {
+.app-tabs button.is-on,
+.app-tabs button[aria-selected="true"] {
   background: var(--ink);
   color: #fff;
+}
+.app-panel { margin-top: 14px; }
+.kur-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+.kelas-grid {
+  display: grid;
+  gap: 16px;
+}
+@media (min-width: 860px) {
+  .kelas-grid { grid-template-columns: 1fr 300px; align-items: start; }
 }
 .siswa-full-hint {
   margin: 0 0 12px;
@@ -1487,17 +1548,14 @@ select {
   .cmt.is-reply { margin-left: 4px; }
   .dk-compose { left: 10px; right: 10px; }
   .school { padding-left: 16px; padding-right: 16px; }
-  .school-bar { align-items: flex-start; }
+  .app-tabs { width: 100%; }
+  .app-tabs button { flex: 1; text-align: center; padding: 9px 10px; font-size: 0.84rem; }
   .row2 { grid-template-columns: 1fr; }
 }
 
 .school { max-width: 980px; margin: 0 auto; padding: 28px 18px 72px; }
-.school-bar { display: flex; justify-content: space-between; gap: 16px; align-items: center; flex-wrap: wrap; }
 #auth-title, .auth-panel > h2 { text-align: center; }
-.school h1 { margin: 0; font-size: 1.7rem; letter-spacing: -0.03em; }
 .school .kicker { margin: 0 0 4px; }
-.school .sub { margin: 6px 0 0; }
-.school-grid { display: grid; gap: 16px; margin-top: 18px; }
 .school .card {
   border: 1px solid var(--line);
   border-radius: 16px;
@@ -1529,6 +1587,3 @@ select {
 .people li { padding: 8px 0; border-top: 1px solid var(--line); }
 #invite-box { margin-top: 12px; }
 #auth-title { position: static; width: auto; height: auto; margin: 0 0 6px; clip: auto; overflow: visible; }
-@media (min-width: 860px) {
-  .school:not(.is-student) .school-grid { grid-template-columns: 300px 1fr; align-items: start; }
-}

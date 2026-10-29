@@ -16,13 +16,24 @@
   var oauthSettled = !oauthPending;
   var routing = Promise.resolve();
   var busy = false;
-  var mentorView = 'edit';
+  var appTab = '';
+  var kurMode = 'edit';
   var siswaTab = 'kurikulum';
   var lastPack = null;
   var lastMe = null;
   var lastSessions = [];
   var lastLink = null;
   var jadwalEdit = '';
+  var MENTOR_TABS = [
+    { id: 'siswa', label: 'Siswa' },
+    { id: 'kurikulum', label: 'Kurikulum' },
+    { id: 'jadwal', label: 'Jadwal' },
+    { id: 'kelas', label: 'Kelas' }
+  ];
+  var STUDENT_TABS = [
+    { id: 'kurikulum', label: 'Kurikulum' },
+    { id: 'jadwal', label: 'Jadwal' }
+  ];
 
   function esc(value) {
     return String(value == null ? '' : value)
@@ -173,6 +184,10 @@
     setMeta('twitter:image', avatar, true);
     setMeta('apple-mobile-web-app-title', title, true);
     setIcon(avatar);
+    if ($('app-avatar')) $('app-avatar').src = avatar;
+    if ($('app-name') && org && !$('view-app').hidden) {
+      $('app-name').textContent = org;
+    }
     var authBrand = $('auth-brand');
     if (authBrand && org) authBrand.textContent = title;
   }
@@ -452,40 +467,75 @@
       '</section>' +
       (editable ? jadwalFormHtml() : '');
   }
-  function hideJadwal() {
-    if ($('jadwal')) $('jadwal').hidden = true;
+  function tabList(mentor) {
+    return mentor ? MENTOR_TABS : STUDENT_TABS;
   }
-  function setMentorView(mode) {
-    mentorView = mode === 'siswa' ? 'siswa' : mode === 'jadwal' ? 'jadwal' : 'edit';
-    var toggle = $('mentor-view-toggle');
-    if (toggle) {
-      Array.prototype.forEach.call(toggle.querySelectorAll('[data-mentor-view]'), function (btn) {
-        btn.classList.toggle('is-on', btn.getAttribute('data-mentor-view') === mentorView);
-      });
+  function paintTabs(mentor) {
+    var tabs = $('app-tabs');
+    if (!tabs) return;
+    var items = tabList(mentor);
+    if (!items.some(function (t) { return t.id === appTab; })) {
+      appTab = mentor ? 'siswa' : 'kurikulum';
     }
-    if (!lastMe || lastMe.role !== 'mentor') return;
-    if (mentorView === 'siswa') {
-      $('kurikulum').hidden = true;
-      hideJadwal();
-      $('reader').hidden = false;
-      $('reader').innerHTML =
-        '<p class="siswa-full-hint">Ini layar siswa — hanya pelajaran yang sudah ditayangkan.</p>' +
-        scheduleHtml(false) +
-        siswaTabHtml('kurikulum', publishedPack(lastPack || { modules: [], lessons: [], files: [] }));
-      bindReader($('reader'), publishedPack(lastPack || { modules: [], lessons: [], files: [] }));
-    } else if (mentorView === 'jadwal') {
-      $('kurikulum').hidden = true;
-      $('reader').hidden = true;
-      if ($('jadwal')) {
-        $('jadwal').hidden = false;
-        $('jadwal').innerHTML = scheduleHtml(true);
+    tabs.innerHTML = items.map(function (t) {
+      return '<button type="button" role="tab" data-app-tab="' + t.id + '" aria-selected="' +
+        (t.id === appTab ? 'true' : 'false') + '"' +
+        (t.id === appTab ? ' class="is-on"' : '') + '>' + esc(t.label) + '</button>';
+    }).join('');
+  }
+  function setAppTab(tab, opts) {
+    opts = opts || {};
+    var mentor = !!(lastMe && lastMe.role === 'mentor');
+    var allowed = tabList(mentor).map(function (t) { return t.id; });
+    appTab = allowed.indexOf(tab) >= 0 ? tab : (mentor ? 'siswa' : 'kurikulum');
+    if (opts.kurMode) kurMode = opts.kurMode;
+    if (appTab !== 'kurikulum') kurMode = 'edit';
+    paintTabs(mentor);
+    ['siswa', 'kurikulum', 'jadwal', 'kelas'].forEach(function (id) {
+      var panel = $('panel-' + id);
+      if (panel) panel.hidden = id !== appTab;
+    });
+    if (!lastMe) return;
+    if (appTab === 'jadwal') {
+      if ($('jadwal')) $('jadwal').innerHTML = scheduleHtml(mentor);
+    } else if (appTab === 'kurikulum') {
+      paintKurikulum(mentor);
+    } else if (appTab === 'kelas' && mentor) {
+      paintSiswaPreview(lastMe, lastPack || { modules: [], lessons: [], files: [] });
+    }
+  }
+  function paintKurikulum(mentor) {
+    var pack = lastPack || { modules: [], lessons: [], files: [] };
+    var toolbar = $('kur-toolbar');
+    var previewBtn = $('kur-preview-btn');
+    if (toolbar) toolbar.hidden = !mentor;
+    if (!mentor) {
+      if ($('kurikulum')) $('kurikulum').hidden = true;
+      if ($('reader')) {
+        $('reader').hidden = false;
+        $('reader').innerHTML = studentHtml(pack);
+        bindReader($('reader'), pack);
       }
+      return;
+    }
+    if (kurMode === 'siswa') {
+      if ($('kurikulum')) $('kurikulum').hidden = true;
+      if ($('reader')) {
+        $('reader').hidden = false;
+        $('reader').innerHTML =
+          '<p class="siswa-full-hint">Ini layar siswa — hanya pelajaran yang sudah ditayangkan.</p>' +
+          siswaTabHtml('kurikulum', publishedPack(pack));
+        bindReader($('reader'), publishedPack(pack));
+      }
+      if (previewBtn) previewBtn.textContent = 'Kembali ke editor';
     } else {
-      $('kurikulum').hidden = false;
-      $('reader').hidden = true;
-      hideJadwal();
-      $('kurikulum').innerHTML = mentorHtml(lastPack || { modules: [], lessons: [], files: [] });
-      bindMentor($('kurikulum'), lastPack || { modules: [], lessons: [], files: [] });
+      if ($('reader')) $('reader').hidden = true;
+      if ($('kurikulum')) {
+        $('kurikulum').hidden = false;
+        $('kurikulum').innerHTML = mentorHtml(pack);
+        bindMentor($('kurikulum'), pack);
+      }
+      if (previewBtn) previewBtn.textContent = 'Lihat sebagai siswa';
     }
   }
 
@@ -539,6 +589,8 @@
     lastLink = link || null;
     applyBrand(me);
     if (me.org_slug) ensureSchoolPath(me.org_slug);
+    var avatar = me.avatar_url || DEFAULT_ICON;
+    if ($('app-avatar')) $('app-avatar').src = avatar;
     $('app-kicker').textContent = mentor ? 'Mentor' : 'Siswa';
     $('app-name').textContent = mentor
       ? (me.org_name || me.display_name)
@@ -546,10 +598,7 @@
     $('app-sub').textContent = mentor
       ? 'Siswa yang kamu undang hanya melihat pelajaran yang ditayangkan.'
       : 'Kurikulum ' + (me.mentor_name || 'mentor') + '. Kelas mentor lain tidak terbuka.';
-    $('mentor-col').hidden = !mentor;
     $('view-app').classList.toggle('is-student', !mentor);
-    var toggle = $('mentor-view-toggle');
-    if (toggle) toggle.hidden = !mentor;
     if (mentor) {
       var names = (people || []).map(function (row) { return '<li>' + esc(row.display_name) + '</li>'; }).join('');
       $('student-list').innerHTML = names || '<li class="muted">Belum ada siswa.</li>';
@@ -570,16 +619,12 @@
         }
         preview.hidden = false;
       }
-      paintSiswaPreview(me, pack);
-      setMentorView(mentorView);
+      if (!appTab || !tabList(true).some(function (t) { return t.id === appTab; })) appTab = 'siswa';
     } else {
-      if (toggle) toggle.hidden = true;
-      $('kurikulum').hidden = true;
-      hideJadwal();
-      $('reader').hidden = false;
-      $('reader').innerHTML = scheduleHtml(false) + studentHtml(pack);
-      bindReader($('reader'), pack);
+      kurMode = 'edit';
+      if (!appTab || !tabList(false).some(function (t) { return t.id === appTab; })) appTab = 'kurikulum';
     }
+    setAppTab(appTab);
   }
 
   function bindReader(root, pack) {
@@ -929,18 +974,23 @@
         paintSiswaPreview(lastMe, lastPack || { modules: [], lessons: [], files: [] });
       });
     }
+    if ($('app-tabs')) {
+      $('app-tabs').addEventListener('click', function (event) {
+        var btn = event.target.closest('[data-app-tab]');
+        if (!btn) return;
+        setAppTab(btn.getAttribute('data-app-tab'));
+      });
+    }
+    if ($('kur-preview-btn')) {
+      $('kur-preview-btn').addEventListener('click', function () {
+        setAppTab('kurikulum', { kurMode: kurMode === 'siswa' ? 'edit' : 'siswa' });
+      });
+    }
     if ($('siswa-preview-open')) {
       $('siswa-preview-open').addEventListener('click', function () {
         siswaTab = 'kurikulum';
-        setMentorView('siswa');
+        setAppTab('kurikulum', { kurMode: 'siswa' });
         window.scrollTo(0, 0);
-      });
-    }
-    if ($('mentor-view-toggle')) {
-      $('mentor-view-toggle').addEventListener('click', function (event) {
-        var btn = event.target.closest('[data-mentor-view]');
-        if (!btn) return;
-        setMentorView(btn.getAttribute('data-mentor-view'));
       });
     }
     if ($('brand-avatar-file')) {
@@ -1037,12 +1087,12 @@
         }
         if (act === 'cal-edit') {
           jadwalEdit = btn.getAttribute('data-id') || '';
-          setMentorView('jadwal');
+          setAppTab('jadwal');
           return;
         }
         if (act === 'cal-edit-cancel') {
           jadwalEdit = '';
-          setMentorView('jadwal');
+          setAppTab('jadwal');
           return;
         }
         if (act === 'cal-del') {

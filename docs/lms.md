@@ -60,7 +60,7 @@ bash scripts/deploy-function-selfhost.sh lms-calendar-ics
 
 `lms-calendar-ics` is listed in `NO_VERIFY_JWT_FUNCTIONS` (same reason as `cohort-calendar-ics`: calendar apps send no login header). Recreate the functions container after that env change so it is actually loaded.
 
-Mentors get a phone-sized **tampilan siswa** under the class photo (Kurikulum / Alat / Progres) plus an Edit kurikulum / Jadwal / Tampilan siswa toggle on the main column. Preview shows only published lessons — the same set a student would see — not the seller homepage.
+After login the shell shows the mentor photo top-left, then tabs: **Siswa**, **Kurikulum**, **Jadwal**, **Kelas** (students see Kurikulum / Jadwal). Kelas holds org name, slug, photo, and a phone-sized **tampilan siswa** (Kurikulum / Alat / Progres). Kurikulum has “Lihat sebagai siswa” for a full-width published-lesson preview — not the seller homepage.
 
 Caddy must rewrite `/lms/{slug}/` to `/lms/index.html` (except `/lms/card`). Without that rewrite, unknown paths fall through to the seller SPA at `/`.
 
