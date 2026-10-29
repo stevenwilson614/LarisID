@@ -72,6 +72,10 @@
   --app-height: 100dvh;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
+  /* kurikulum primary CTA — used outside .kur-wiz too (empty state) */
+  --kur-brand: #B5202A;
+  --kur-brand-dark: #8E1820;
+  --kur-brand-soft: #FDECEE;
 }
 
 /* ── light theme (toggle in topbar; persisted as localStorage anton-theme) ── */
@@ -3066,9 +3070,6 @@ html:not([data-theme="light"]) .oto-ico {
 
 /* ── Kurikulum create wizard ───────────────────────────────────────── */
 .kur-wiz {
-  --kur-brand: #B5202A;
-  --kur-brand-dark: #8E1820;
-  --kur-brand-soft: #FDECEE;
   max-width: 720px;
   margin: 0 auto;
   padding: 8px 0 40px;
@@ -3193,11 +3194,11 @@ html:not([data-theme="light"]) .kur-wiz-ico {
 }
 .kur-wiz-card-wide .kur-wiz-actions { justify-content: flex-end; }
 .btn.kur-wiz-primary {
-  background: var(--kur-brand);
+  background: var(--kur-brand, #B5202A);
   color: #fff;
   border-color: transparent;
 }
-.btn.kur-wiz-primary:hover { background: var(--kur-brand-dark); }
+.btn.kur-wiz-primary:hover { background: var(--kur-brand-dark, #8E1820); }
 .btn.kur-wiz-primary:disabled { opacity: .55; cursor: default; }
 .kur-wiz-mod-head { margin-bottom: 14px; }
 .kur-wiz-empty {
