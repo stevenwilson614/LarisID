@@ -12,11 +12,13 @@ After Contabo login/daftar succeeds, mentors are claimed into a disk school (`PO
 
 Class app source: `obrolan.marketing/`. Contabo `anton-school` serves `/obrolan.marketing/api/*` and `/api/*` from disk (`docker/volumes/anton-school`).
 
-Editing kurikulum in that app: **Preview** on the publikasi step opens the student view with **Publikasikan** on that screen. A video file uploads in the background with a sticky progress strip under the header (`Mengunggah N%`, with × to cancel) that stays while the mentor fills cover, deskripsi, poin penting, or opens Publikasikan / Preview. Left-rail tabs stay locked on Kurikulum until the upload finishes or they cancel with ×. Publish waits until that upload finishes.
+Editing kurikulum in that app: **Preview** on the publikasi step opens the student view with **Publikasikan** on that screen. Choosing or dropping a video starts the upload immediately, before **Simpan materi**. If that already created the materi, Simpan materi only saves the title and text. Progress shows in two places: the materi card meter and a sticky strip under the header (`Mengunggah N%`, with × to cancel). The strip stays on the publikasi step and on Preview siswa. Left-rail tabs stay locked on Kurikulum until the upload finishes or they cancel with ×. Publish waits until that upload finishes. **Hapus bagian** asks once, then deletes that bagian and every materi in it (video, cover, files, and any in-flight upload), including an empty bagian and the last remaining bagian. A cover sits on the video with no `src` and no controls until the cover is clicked.
 
 ```bash
 bash scripts/deploy-static.sh
 ```
+
+`obrolan.marketing/server/server.mjs` is excluded from that rsync. A change to `POST /session` has to be installed on the Contabo `anton-school` process separately.
 
 Do not revive `js/lms-join.js` or public invite-code file downloads as the share model.
 
@@ -25,14 +27,15 @@ Do not revive `js/lms-join.js` or public invite-code file downloads as the share
 - **Paywall off** (`PAYWALL_DISABLED` in `obrolan.marketing/js/app.js`): kurikulum is open; mentor “Pengaturan bayar” stays hidden (`SHOW_PENGATURAN_BAYAR`) until a fuller mentor billing UI exists.
 - **WA pill**: mentors toggle number + on/off under Account settings → WhatsApp. Students see `WA (Nama)` bottom-right when enabled.
 - Student Home always shows **Jadwal** (Minggu / Bulan). Diskusi dock/tab shows an unread count badge.
-- **Join persistence**: `POST /join` writes `liveStudents` + `applications` + `crm` + `billing` on disk so mentors see the student in Pipa/daftar immediately, and the student does not re-enter the onboarding wizard after leaving the URL. Student cookie `lms_student` is Path=/ with Max-Age ~180 days; visitor id is per-school (`anton-visitor:{slug}`).
+- **Student login before the wizard**: on a live school URL, a visitor who is not the school owner signs up or signs in first (Google, email + password, or SMS OTP via `send-whatsapp-otp` / `verify-whatsapp-otp` on `https://api.larisid.com`). Session storage key is `lms_student_auth_v1`. This does not insert `lms_accounts`. `POST /session` with that bearer looks up the disk row by `authUserId`, then verified email or phone, then a cookie row that has no login yet, and only then creates `stu_…`. It sets `lms_student` and does not write a finished application. The wizard runs only when that login has no `applications[id].at`. Each wizard step saves `people[id].wizDraft`, so a refresh is not a blank form. A finished form lands on Home after leave and return. A cookie student with no login sees the gate once; that login attaches to the existing row.
+- **Join persistence**: finishing the wizard writes `applications` (with `at`) on that same student row. `POST /join` is only for a student who is not already signed in. Student cookie `lms_student` is Path=/ with Max-Age ~180 days; visitor id is per-school (`anton-visitor:{slug}`). Do not mint a `live-*` person at the class door.
 - **Roster wipe guard**: mentor chrome on `/s/{slug}/` must not strip `liveStudents` in `stripHeldRoster`. Staff `PUT /state` also `preserveJoinedRoster` so a stale mentor save cannot erase students who joined after the mentor’s last pull.
 
 ### Mentor profile / Perpustakaan / Diskusi / Kurikulum / Otomasi
 
 - Profile picture tab: cover banner can be panned (object-position) after upload.
 - Social icons use official brand glyphs (Simple Icons paths).
-- Top-left chrome is a single avatar circle (no caret badge).
+- Top-left chrome is one circle: the school profile photo when it loads, otherwise initials. `[hidden]` on `.brand img` and `.brand-fallback` is `display: none`. No second initials badge and no seed mark beside that circle.
 - **Perpustakaan** is per-school catalog — never falls back to Anton’s lynk/photo for other coaches.
 - **Kurikulum** (mentor): landing shows the whole curriculum overview; click a materi to edit that module, or “Atur kurikulum” for the wizard.
 - **Otomasi**: compact builder (~half previous card size).

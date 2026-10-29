@@ -143,6 +143,9 @@
   function apiBase() {
     return '/obrolan.marketing/api';
   }
+  const STU_SUPA_URL = 'https://api.larisid.com';
+  const STU_SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzg0MzM2Njc5LCJleHAiOjI0MTUwNTY2Nzl9.IuuxcLjM-ljEyrn2lInAqzESImYfMXlBBTZI2i671Ec';
+  const STU_AUTH_KEY = 'lms_student_auth_v1';
   function isLocalHost() {
     const h = location.hostname.toLowerCase();
     return h === 'localhost' || h === '127.0.0.1' || h === '0.0.0.0';
@@ -2516,6 +2519,12 @@
     admin: false,
     visitorId: '',
     visitorLive: false,
+    studentAuthed: false,
+    stuAuthMode: 'signup',
+    stuSmsPhone: '',
+    stuSmsSent: false,
+    stuAuthErr: '',
+    stuAuthBusy: false,
     adminSummary: null,
     lastTrackedLec: '',
     diskusiSub: 'batch',
@@ -2971,13 +2980,24 @@
     return billingOf(id).products.indexOf(skuId) !== -1;
   }
   function canLearn(id) { return canMentoring(id) || canPreview(id); }
+  function applicationDone(id) {
+    const app = db.applications && db.applications[id];
+    return !!(app && app.at);
+  }
   function needsWizard(id) {
     if (!id) return true;
-    if (db.applications && db.applications[id]) return false;
+    if (applicationDone(id)) return false;
+    /* A real login is not the form. The wizard stays until that form is saved. */
+    if (syncEnabled() && ui.studentAuthed) return true;
     /* Joined student row without a form payload should not loop the wizard. */
     if (rosterPerson(id) && String(id).indexOf('live-') !== 0) return false;
     const c = crmOf(id);
     return c.stage === 'wa_baru' || c.stage === 'form';
+  }
+  function needsAuthGate() {
+    if (isStaff() || ui.present || ui.admin || ui.coach) return false;
+    if (!syncEnabled()) return false;
+    return !ui.studentAuthed;
   }
   function wizardStep(id) {
     if (!db.applications[id]) return 'form';
@@ -4564,7 +4584,7 @@
   function isOnboardScreen() {
     // Hanya langkah isi form yang full-screen. Setelah form, dock Belajar/Diskusi harus kelihatan
     // (halaman bayar tetap bisa dibuka lewat tab daftar / CTA).
-    return !isStaff() && needsWizard(ui.personaId);
+    return !isStaff() && ui.studentAuthed && needsWizard(ui.personaId);
   }
   function resetWizForPersona() {
     ui.wizDraft = null;
@@ -4589,7 +4609,9 @@
     const sid = ui.personaId;
     const s = student();
     const app = db.applications[sid] || {};
-    const prev = (ui.wizDraft && ui.wizDraft.sid === sid) ? ui.wizDraft : {};
+    const person = (db.people && db.people[sid]) || {};
+    const saved = (person.wizDraft && typeof person.wizDraft === 'object') ? person.wizDraft : {};
+    const prev = (ui.wizDraft && ui.wizDraft.sid === sid) ? ui.wizDraft : saved;
     const nameSeed = (s.name || '').indexOf('Tamu') >= 0 ? '' : (s.name || '');
     const parts = personNameParts({
       firstName: app.firstName || s.firstName,
@@ -4670,6 +4692,41 @@
     if (patch.picks) next.picks = Object.assign({}, cur.picks || {}, patch.picks);
     if (patch.others) next.others = Object.assign({}, cur.others || {}, patch.others);
     ui.wizDraft = next;
+    if (!wizPersisting) scheduleWizPersist();
+  }
+  let wizPersisting = false;
+  function scheduleWizPersist() {
+    clearTimeout(scheduleWizPersist._t);
+    scheduleWizPersist._t = setTimeout(() => { persistWizDraft(); }, 350);
+  }
+  function persistWizDraft() {
+    if (wizPersisting || isOnboardPreview() || isStaff() || !ui.studentAuthed) return;
+    const sid = ui.personaId;
+    if (!sid || /^s-/.test(String(sid)) || !needsWizard(sid)) return;
+    wizPersisting = true;
+    try {
+      captureWizFields();
+      const d = wizDraft();
+      patchPerson(sid, {
+        wizDraft: {
+          step: wizIdx(),
+          firstName: d.firstName || '',
+          lastName: d.lastName || '',
+          name: d.name || '',
+          wa: d.wa || '',
+          shopPick: d.shopPick || '',
+          shopName: d.shopName || '',
+          shopUrl: d.shopUrl || '',
+          city: d.city || '',
+          answers: d.answers || {},
+          picks: d.picks || {},
+          others: d.others || {}
+        }
+      });
+      save();
+    } finally {
+      wizPersisting = false;
+    }
   }
   function captureWizFields() {
     const root = document.querySelector('.ob-flow') || document.querySelector('.ob-preview-flow .ob-flow');
@@ -4839,6 +4896,10 @@
     return headers;
   }
   async function claimStudentRecord(profile) {
+    const held = ui.sessionStudentId || ui.personaId;
+    if (ui.studentAuthed && /^(stu_|live-)/.test(String(held || ''))) {
+      return { studentId: held };
+    }
     const res = await fetch(apiBase() + '/join', {
       method: 'POST',
       headers: lmsHeaders(),
@@ -4977,6 +5038,7 @@
     applyTransition(sid, 'form', 'form', 'Form masuk. Jam diskon 24 jam dimulai.');
     if (schoolIsFree()) grantFreeAccess(sid);
     else startTrial(sid);
+    patchPerson(sid, { wizDraft: null });
     save();
     trackEvent('join', { name: fullName, wa: String(d.wa || ''), stage: 'form', progress: kurProgress(sid).pct });
     return true;
@@ -5649,6 +5711,32 @@
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ key: key })
     }).catch(() => {});
+  }
+  function abortVidUpload(id) {
+    if (!id || !ui.vidUploads || !ui.vidUploads[id]) return;
+    const job = ui.vidUploads[id];
+    job.aborted = true;
+    try { if (job.xhr) job.xhr.abort(); } catch (err) { /* ignore */ }
+    try { if (job.ac) job.ac.abort(); } catch (err) { /* ignore */ }
+    delete ui.vidUploads[id];
+  }
+  function purgeLecture(l) {
+    if (!l || !l.id) return;
+    abortVidUpload(l.id);
+    blobDel(l.id);
+    if (l.videoKey) deleteRemoteVideo(l.videoKey);
+    blobDel(coverKey('lec', l.id));
+    if (l.coverKey) deleteRemoteVideo(l.coverKey);
+    (l.resources || []).forEach((r) => {
+      if (!r) return;
+      if (r.blobId) blobDel(r.blobId);
+      if (r.fileKey) deleteRemoteVideo(r.fileKey);
+    });
+  }
+  function purgeWeekMedia(w) {
+    if (!w || !w.id) return;
+    blobDel(coverKey('week', w.id));
+    if (w.coverKey) deleteRemoteVideo(w.coverKey);
   }
   function putMediaPart(url, chunk, onChunk, job) {
     return new Promise((resolve, reject) => {
@@ -7210,7 +7298,7 @@
       : (canMentoring(ui.personaId) ? 'mentoring' : (canPreview(ui.personaId) ? 'trial' : (billingOf(ui.personaId).products.length ? 'sku' : 'none')));
     $('app').classList.toggle('is-mentor', isStaff());
     $('app').classList.toggle('is-student', !isStaff());
-    $('app').classList.toggle('is-onboard', isOnboardScreen());
+    $('app').classList.toggle('is-onboard', isOnboardScreen() || needsAuthGate());
     $('app').classList.toggle('is-belajar', !isStaff() && ui.tab === 'belajar');
     $('app').classList.toggle('is-diskusi', isStaff() ? ui.mentorTab === 'diskusi' : ui.tab === 'diskusi');
     const chromeOrg = (db && db.businessName) || (antonSchoolData() ? SEED.school.name : 'Kelas');
@@ -7341,12 +7429,20 @@
       headerEl.textContent = show ? String(prof.headline).trim() : '';
     }
     if (!isStaff()) {
+      if (needsAuthGate()) {
+        ui.tab = 'masuk';
+      } else {
       ensureFreeSchoolAccess();
       const allowed = studentTabs().map((t) => t.id).concat(['sku', 'alat', 'daftar', 'tes', 'sertifikat', 'diskusi', 'profil', 'kurikulum']);
+      if (ui.studentAuthed && needsWizard(ui.personaId) && ui.wizStep == null) {
+        const saved = (db.people && db.people[ui.personaId] && db.people[ui.personaId].wizDraft) || null;
+        if (saved && typeof saved.step === 'number') ui.wizStep = saved.step;
+      }
       if (needsWizard(ui.personaId) && ui.tab !== 'daftar') ui.tab = 'daftar';
       else if (schoolIsFree() && ui.tab === 'daftar') ui.tab = 'home';
       if (ui.tab === 'progres') ui.tab = 'diskusi';
       else if (allowed.indexOf(ui.tab) === -1) ui.tab = 'home';
+      }
     }
     renderTabs();
     paintVidUploadBar();
@@ -7399,7 +7495,7 @@
     const dock = $('dock');
     if (!isStaff()) {
       const tabs = studentTabs();
-      if (isOnboardScreen()) {
+      if (isOnboardScreen() || needsAuthGate()) {
         dock.hidden = true;
         dock.className = 'dock';
         dock.innerHTML = '';
@@ -7744,7 +7840,9 @@
       else if (tab === 'admin' && ui.admin) main.innerHTML = viewAdmin();
       else main.innerHTML = viewSiswaHub();
     } else {
-      if (needsWizard(ui.personaId) || ui.tab === 'daftar') {
+      if (needsAuthGate()) {
+        main.innerHTML = viewStudentAuth();
+      } else if (needsWizard(ui.personaId) || ui.tab === 'daftar') {
         main.innerHTML = viewWizard();
       } else {
         const tab = ui.tab;
@@ -7877,6 +7975,7 @@
 
   function bindBlobMedia() {
     $('main').querySelectorAll('video[data-blob], img[data-blob]').forEach((el) => {
+      if (el.tagName === 'VIDEO' && (el.getAttribute('data-gated') || (el.closest && el.closest('.lec-player.has-poster')))) return;
       const id = el.getAttribute('data-blob');
       blobGet(id).then((file) => {
         if (!file || !el.isConnected) return;
@@ -8199,6 +8298,47 @@
     return '<section class="ob-flow' + (pay ? ' is-pay' : '') + '">' + obChrome(step, opts) +
       '<div class="ob-body">' + inner + '</div>' +
       '<div class="ob-foot' + (pay ? ' is-end' : '') + '">' + foot + '</div></section>';
+  }
+  function viewStudentAuth() {
+    const signup = ui.stuAuthMode !== 'login';
+    const busy = ui.stuAuthBusy ? ' disabled' : '';
+    const err = '<p class="stu-auth-err" id="stu-auth-err"' + (ui.stuAuthErr ? '' : ' hidden') + '>' +
+      esc(ui.stuAuthErr || '') + '</p>';
+    const sms = ui.stuSmsSent
+      ? '<label for="stu-otp">Kode OTP</label>' +
+        '<input id="stu-otp" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="6 digit">' +
+        '<p class="muted">Kode dikirim ke ' + esc(ui.stuSmsPhone) + '.</p>' +
+        '<button type="button" class="btn" data-act="stu-sms-verify"' + busy + '>Verifikasi</button>' +
+        '<button type="button" class="btn secondary" data-act="stu-sms-send">Kirim ulang</button>'
+      : '<label for="stu-phone">Nomor HP</label>' +
+        '<input id="stu-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="08…" value="' +
+          esc(ui.stuSmsPhone) + '">' +
+        '<button type="button" class="btn" data-act="stu-sms-send"' + busy + '>Kirim kode SMS</button>';
+    return '<section class="stu-auth">' +
+      '<h2>' + (signup ? 'Daftar untuk ikut kelas' : 'Masuk ke kelas') + '</h2>' +
+      '<p class="muted">Pakai Gmail, email, atau SMS. Setiap siswa punya login sendiri. Setelah masuk, baru isi data kelas.</p>' +
+      '<button type="button" class="btn secondary stu-google" data-act="stu-google"' + busy + '>Lanjut dengan Google</button>' +
+      '<p class="stu-auth-or">atau SMS</p>' +
+      '<div class="stu-auth-sms">' + sms + '</div>' +
+      '<p class="stu-auth-or">atau email</p>' +
+      '<form data-act="stu-email">' +
+        (signup
+          ? '<label for="stu-name">Nama</label><input id="stu-name" name="name" autocomplete="name" maxlength="80">'
+          : '') +
+        '<label for="stu-email">Email</label>' +
+        '<input id="stu-email" name="email" type="email" autocomplete="email" required>' +
+        '<label for="stu-password">Password</label>' +
+        '<input id="stu-password" name="password" type="password" minlength="6" required autocomplete="' +
+          (signup ? 'new-password' : 'current-password') + '">' +
+        '<button class="btn" type="submit"' + busy + '>' +
+          (signup ? 'Daftar dengan email' : 'Masuk dengan email') + '</button>' +
+      '</form>' +
+      err +
+      '<p class="stu-auth-toggle">' +
+        (signup
+          ? 'Sudah punya akun? <button type="button" data-act="stu-auth-mode" data-id="login">Masuk</button>'
+          : 'Belum punya akun? <button type="button" data-act="stu-auth-mode" data-id="signup">Daftar</button>') +
+      '</p></section>';
   }
   function viewWizard() {
     const step = wizIdx();
@@ -8628,14 +8768,31 @@
   function hostedVideoHtml(lec, watchFirst, cls, opts) {
     const o = opts || {};
     const preload = o.preload || 'metadata';
-    const poster = o.poster ? (' poster="' + esc(o.poster) + '"') : '';
+    const gated = !!o.gated;
+    const poster = (!gated && o.poster) ? (' poster="' + esc(o.poster) + '"') : '';
     const watch = watchFirst ? ' data-watch-lec="' + esc(lec.id) + '"' : '';
+    const controls = gated ? '' : ' controls';
     if (lec.videoBlob && !lec.videoKey) {
-      return '<video class="' + cls + '" controls playsinline preload="' + preload + '" data-blob="' +
-        esc(lec.id) + '"' + poster + watch + '></video>';
+      return '<video class="' + cls + '"' + controls + ' playsinline preload="' + (gated ? 'none' : preload) + '"' +
+        ' data-blob="' + esc(lec.id) + '"' + (gated ? ' data-gated="1"' : '') + poster + watch + '></video>';
     }
-    return '<video class="' + cls + '" controls playsinline preload="' + preload + '" src="' +
-      esc(mediaFileUrl(lec.videoKey)) + '"' + poster + watch + '></video>';
+    const srcAttr = gated
+      ? (' data-src="' + esc(mediaFileUrl(lec.videoKey)) + '"')
+      : (' src="' + esc(mediaFileUrl(lec.videoKey)) + '"');
+    return '<video class="' + cls + '"' + controls + ' playsinline preload="' + (gated ? 'none' : preload) + '"' +
+      srcAttr + poster + watch + '></video>';
+  }
+  function hostedPosterHtml(lec, watchFirst, cls) {
+    const coverSrc = lectureCoverUrl(lec);
+    const cover = coverHtml('lec', lec.id, 'lec-poster', { eager: true });
+    const video = hostedVideoHtml(lec, watchFirst, cls || 'lec-video', { gated: true });
+    return '<div class="lec-player has-poster">' + video +
+      '<button type="button" class="lec-poster-hit" data-act="play-hosted" aria-label="Putar video">' +
+        (cover || (coverSrc
+          ? '<img class="lec-poster" src="' + esc(coverSrc) + '" alt="" fetchpriority="high" decoding="async">'
+          : '')) +
+        '<span class="play-orb" aria-hidden="true">' + svgIcon('play') + '</span>' +
+      '</button></div>';
   }
   function hostedPlayerHtml(lec, watchFirst) {
     const coverSrc = lectureCoverUrl(lec);
@@ -8648,17 +8805,7 @@
     if (!coverSrc && !cover) {
       return '<div class="lec-player">' + hostedVideoHtml(lec, watchFirst, 'lec-video') + '</div>';
     }
-    const video = hostedVideoHtml(lec, watchFirst, 'lec-video', {
-      preload: 'none',
-      poster: coverSrc || undefined
-    });
-    return '<div class="lec-player has-poster">' + video +
-      '<button type="button" class="lec-poster-hit" data-act="play-hosted" aria-label="Putar video">' +
-        (cover || (coverSrc
-          ? '<img class="lec-poster" src="' + esc(coverSrc) + '" alt="" fetchpriority="high" decoding="async">'
-          : '')) +
-        '<span class="play-orb" aria-hidden="true">' + svgIcon('play') + '</span>' +
-      '</button></div>';
+    return hostedPosterHtml(lec, watchFirst, 'lec-video');
   }
   function lessonVideoHtml(lec) {
     const cover = coverHtml('lec', lec.id, 'lec-poster', { eager: true });
@@ -12195,7 +12342,10 @@
       '</div>';
     if (l.type !== 'video') return '<div class="ud-media-preview">' + coverBlock + '</div>';
     let vid = '';
-    if (l.videoKey) {
+    const fileReady = !!(l.videoKey || l.videoBlob);
+    if (fileReady && (cover || lectureCoverUrl(l))) {
+      vid = '<div class="ud-preview-player">' + hostedPosterHtml(l, false, 'lec-video ud-preview-vid') + '</div>';
+    } else if (l.videoKey) {
       vid = '<video class="ud-preview-vid" controls playsinline preload="metadata" src="' + esc(mediaFileUrl(l.videoKey)) + '"></video>';
     } else if (l.videoBlob) {
       vid = '<video class="ud-preview-vid" controls playsinline preload="metadata" data-blob="' + esc(l.id) + '"></video>';
@@ -13568,8 +13718,13 @@
       return;
     }
     if (t.matches('[name="videoFile"]')) {
-      const span = t.closest('.vid-drop') && t.closest('.vid-drop').querySelector('span');
-      if (span && t.files && t.files[0]) span.textContent = 'Siap diunggah · ' + t.files[0].name;
+      const file = t.files && t.files[0];
+      if (!file) return;
+      const form = t.closest('form');
+      const weekId = form && form.getAttribute('data-week');
+      const titleInp = form && form.querySelector('[name="title"]');
+      const title = titleInp ? String(titleInp.value || '').trim() : '';
+      ingestVideoFile(file, { weekId: weekId, title: title });
       return;
     }
     if (t.matches('[data-act="csv"]')) {
@@ -14614,6 +14769,8 @@
         toast('Video tidak ditemukan.');
         return;
       }
+      video.controls = true;
+      video.removeAttribute('data-gated');
       const tryPlay = () => {
         video.setAttribute('preload', 'auto');
         const play = video.play();
@@ -14630,7 +14787,7 @@
           });
         }
       };
-      if (video.getAttribute('data-blob') && !video.getAttribute('src') && !video.src) {
+      if (video.getAttribute('data-blob') && !video.getAttribute('src')) {
         const id = video.getAttribute('data-blob');
         blobGet(id).then((file) => {
           if (!file || !video.isConnected) {
@@ -14643,7 +14800,7 @@
         }).catch(() => toast('Gagal memuat video.'));
         return;
       }
-      if (!video.getAttribute('src') && !video.src && video.getAttribute('data-src')) {
+      if (!video.getAttribute('src') && video.getAttribute('data-src')) {
         video.src = video.getAttribute('data-src');
       }
       if (video.readyState >= 2) tryPlay();
@@ -15519,12 +15676,10 @@
     } else if (act === 'del-lec') {
       const id = btn.getAttribute('data-id');
       const l = lectureById(id);
-      blobDel(id);
-      if (l && l.videoKey) deleteRemoteVideo(l.videoKey);
-      blobDel(coverKey('lec', id));
-      (l && l.resources || []).forEach((r) => { if (r.blobId) blobDel(r.blobId); });
+      purgeLecture(l);
       db.lectures = db.lectures.filter((x) => x.id !== id);
       if (ui.editLecId === id) ui.editLecId = null;
+      paintVidUploadBar();
       save();
       render();
     } else if (act === 'edit-lec') {
@@ -15561,16 +15716,25 @@
       render();
     } else if (act === 'del-sec') {
       const id = btn.getAttribute('data-id');
-      if (lecturesInWeek(id).length) {
-        toast('Pindahkan atau hapus video di bagian ini dulu.');
-        return;
-      }
-      if (db.weeks.length < 1) {
+      const week = (db.weeks || []).find((w) => w && w.id === id);
+      if (!week) {
         toast('Tidak ada bagian.');
         return;
       }
+      const items = lecturesInWeek(id);
+      const msg = items.length
+        ? ('Hapus bagian ini? Semua video, bacaan, dan file di dalamnya ikut terhapus (' + items.length + ').')
+        : 'Hapus bagian ini?';
+      if (!window.confirm(msg)) return;
+      items.forEach((l) => purgeLecture(l));
+      purgeWeekMedia(week);
+      db.lectures = (db.lectures || []).filter((l) => !l || l.weekId !== id);
       db.weeks = db.weeks.filter((w) => w.id !== id);
       if (ui.secFold) ui.secFold.delete(id);
+      if (ui.editSecId === id) ui.editSecId = null;
+      if (ui.addItemWeek === id) ui.addItemWeek = '';
+      if (ui.editLecId && !lectureById(ui.editLecId)) ui.editLecId = null;
+      paintVidUploadBar();
       save();
       render();
     } else if (act === 'sec-up' || act === 'sec-down') {
@@ -15832,6 +15996,21 @@
       render();
     } else if (act === 'print-cert') {
       window.print();
+    } else if (act === 'stu-google') {
+      e.preventDefault();
+      stuGoogle();
+    } else if (act === 'stu-auth-mode') {
+      ui.stuAuthMode = btn.getAttribute('data-id') === 'login' ? 'login' : 'signup';
+      ui.stuAuthErr = '';
+      render();
+    } else if (act === 'stu-sms-send') {
+      e.preventDefault();
+      const phoneEl = document.getElementById('stu-phone');
+      stuSendSms(phoneEl ? phoneEl.value : ui.stuSmsPhone);
+    } else if (act === 'stu-sms-verify') {
+      e.preventDefault();
+      const otpEl = document.getElementById('stu-otp');
+      stuVerifySms(otpEl ? otpEl.value : '');
     }
   });
 
@@ -15867,6 +16046,13 @@
       loginStaff(String(fd.get('email') || ''), String(fd.get('password') || '')).catch(() => {
         toast('Email atau password salah.');
       });
+      return;
+    }
+    if (act === 'stu-email') {
+      const email = String(fd.get('email') || '').trim();
+      const password = String(fd.get('password') || '');
+      if (!email || password.length < 6) { stuAuthError('Isi email dan password (min. 6).'); return; }
+      stuEmail(email, password, ui.stuAuthMode === 'login' ? 'login' : 'signup');
       return;
     }
     if (act === 'ask') {
@@ -16183,6 +16369,20 @@
       const file = form.querySelector('[name="videoFile"]') && form.querySelector('[name="videoFile"]').files[0];
       const docFile = form.querySelector('[name="docFile"]') && form.querySelector('[name="docFile"]').files[0];
       if (!title) return;
+      if (kind === 'video' && file) {
+        const live = lecturesInWeek(weekId).slice().reverse().find((l) =>
+          l && l.videoName === file.name && (l.videoKey || l.videoBlob || (ui.vidUploads && ui.vidUploads[l.id])));
+        if (live) {
+          live.title = title;
+          if (url) live.url = url;
+          ui.addItemWeek = '';
+          ui.editLecId = live.id;
+          save();
+          toast('Materi disimpan.');
+          render();
+          return;
+        }
+      }
       const id = 'v-' + Date.now();
       const type = kind === 'text' ? 'text' : (kind === 'file' ? 'document' : 'video');
       db.lectures.push({
@@ -16687,6 +16887,12 @@
       syncDiskusiComposerChrome();
     }
   });
+  document.addEventListener('input', (e) => {
+    const t = e.target;
+    if (!t || !t.closest || !t.closest('.ob-flow')) return;
+    if (isOnboardPreview() || isStaff() || !ui.studentAuthed) return;
+    scheduleWizPersist();
+  });
   document.addEventListener('focusout', (e) => {
     const t = e.target;
     if (!t || !t.matches) return;
@@ -16711,25 +16917,212 @@
     const compact = String(vid || '').replace(/[^a-zA-Z0-9]/g, '');
     return 'live-' + (compact || 'anon').slice(0, 16);
   }
+  function studentSb() {
+    if (window.__stuSb) return window.__stuSb;
+    if (!window.supabase || !window.supabase.createClient) return null;
+    window.__stuSb = window.supabase.createClient(STU_SUPA_URL, STU_SUPA_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storage: window.localStorage,
+        storageKey: STU_AUTH_KEY,
+        flowType: 'implicit'
+      }
+    });
+    return window.__stuSb;
+  }
+  function readStoredAccess(key) {
+    try {
+      const raw = localStorage.getItem(key) || '';
+      if (!raw) return '';
+      return tokenFrom(JSON.parse(raw), 0);
+    } catch (err) { return ''; }
+  }
+  function studentAccessToken() {
+    const own = readStoredAccess(STU_AUTH_KEY);
+    if (own) return own;
+    if (ui.admin || ui.coach) return '';
+    return readStoredAccess('lms_auth_v1');
+  }
+  function stuAuthError(msg) {
+    ui.stuAuthErr = msg || '';
+    ui.stuAuthBusy = false;
+    const el = document.getElementById('stu-auth-err');
+    if (el) {
+      el.textContent = ui.stuAuthErr;
+      el.hidden = !ui.stuAuthErr;
+      return;
+    }
+    render();
+  }
+  async function finishStudentAuth(session) {
+    const sb = studentSb();
+    if (sb && session && session.access_token) {
+      try {
+        await sb.auth.setSession({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token || ''
+        });
+      } catch (err) { /* sign-in already stored the session */ }
+    }
+    await bootSession();
+    for (let i = 0; i < 8 && syncInFlight; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 150));
+    }
+    try { await pullState(true); } catch (err) { /* claim cookie still opens the class */ }
+    ui.stuAuthBusy = false;
+    if (!ui.studentAuthed) {
+      stuAuthError('Akun masuk, tapi kelas belum mengikat login ini. Coba lagi.');
+      return;
+    }
+    ui.stuAuthErr = '';
+    ui.stuSmsSent = false;
+    if (needsWizard(ui.personaId)) {
+      const saved = (db.people && db.people[ui.personaId] && db.people[ui.personaId].wizDraft) || null;
+      ui.wizStep = saved && typeof saved.step === 'number' ? saved.step : 0;
+      ui.tab = 'daftar';
+    } else {
+      ui.wizStep = null;
+      ui.tab = 'home';
+    }
+    render();
+  }
+  async function stuGoogle() {
+    const sb = studentSb();
+    if (!sb) { stuAuthError('Login tidak bisa dimuat. Muat ulang halaman.'); return; }
+    ui.stuAuthBusy = true;
+    const back = location.origin + location.pathname + location.search;
+    const { error } = await sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: back }
+    });
+    if (error) stuAuthError('Login Google gagal. Coba lagi.');
+  }
+  async function stuEmail(email, password, mode) {
+    const sb = studentSb();
+    if (!sb) { stuAuthError('Login tidak bisa dimuat. Muat ulang halaman.'); return; }
+    ui.stuAuthBusy = true;
+    if (mode === 'login') {
+      const { data, error } = await sb.auth.signInWithPassword({ email: email, password: password });
+      if (error || !data || !data.session) {
+        stuAuthError('Email atau password salah.');
+        return;
+      }
+      await finishStudentAuth(data.session);
+      return;
+    }
+    const { data, error } = await sb.auth.signUp({
+      email: email,
+      password: password,
+      options: { emailRedirectTo: location.origin + location.pathname + location.search }
+    });
+    if (error) {
+      const msg = String(error.message || '');
+      stuAuthError(/already registered|already been registered/i.test(msg)
+        ? 'Email ini sudah terdaftar. Masuk saja.'
+        : 'Tidak berhasil daftar. Coba lagi, atau pakai Google.');
+      return;
+    }
+    if (data && data.session) {
+      await finishStudentAuth(data.session);
+      return;
+    }
+    ui.stuAuthBusy = false;
+    stuAuthError('Cek email untuk mengaktifkan akun, lalu masuk di halaman ini.');
+  }
+  async function stuSendSms(phone) {
+    const raw = String(phone || ui.stuSmsPhone || '').trim();
+    if (!raw) { stuAuthError('Masukkan nomor HP kamu.'); return; }
+    ui.stuAuthBusy = true;
+    try {
+      const res = await fetch(STU_SUPA_URL + '/functions/v1/send-whatsapp-otp', {
+        method: 'POST',
+        headers: {
+          apikey: STU_SUPA_KEY,
+          authorization: 'Bearer ' + STU_SUPA_KEY,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({ phone: raw })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        stuAuthError((data && (data.error || data.message)) || 'Gagal mengirim OTP. Coba lagi.');
+        return;
+      }
+      ui.stuSmsPhone = data.phone || raw;
+      ui.stuSmsSent = true;
+      ui.stuAuthErr = '';
+      ui.stuAuthBusy = false;
+      render();
+    } catch (err) {
+      stuAuthError('Gagal terhubung ke server. Coba lagi.');
+    }
+  }
+  async function stuVerifySms(otp) {
+    const code = String(otp || '').replace(/\s/g, '');
+    if (!/^\d{6}$/.test(code)) { stuAuthError('Masukkan 6 digit kode OTP.'); return; }
+    if (!ui.stuSmsPhone) { stuAuthError('Nomor HP hilang. Kirim ulang kode dulu.'); return; }
+    ui.stuAuthBusy = true;
+    try {
+      const res = await fetch(STU_SUPA_URL + '/functions/v1/verify-whatsapp-otp', {
+        method: 'POST',
+        headers: {
+          apikey: STU_SUPA_KEY,
+          authorization: 'Bearer ' + STU_SUPA_KEY,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({ phone: ui.stuSmsPhone, otp: code })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok || !data.session || !data.session.access_token) {
+        ui.stuAuthBusy = false;
+        stuAuthError((data && (data.error || data.message)) || 'Verifikasi gagal. Periksa kode OTP kamu.');
+        return;
+      }
+      await finishStudentAuth(data.session);
+    } catch (err) {
+      stuAuthError('Gagal terhubung ke server. Coba lagi.');
+    }
+  }
   async function bootSession() {
     if (!syncEnabled() || ui.present || ui.admin || ui.staffId) return;
     try {
+      const headers = lmsHeaders();
+      const token = studentAccessToken();
+      if (token) headers.authorization = 'Bearer ' + token;
       const res = await fetch(apiBase() + '/session', {
         method: 'POST',
-        headers: lmsHeaders(),
+        headers: headers,
         body: JSON.stringify({ visitorId: ui.visitorId || visitorId(), slug: schoolSlug() })
       });
       if (!res.ok) return;
       const data = await res.json().catch(() => ({}));
-      if (data && data.role === 'student' && data.studentId) {
+      if (data && data.role === 'staff') {
+        ui.admin = true;
+        ui.role = 'owner';
+        ui.coach = true;
+        ui.visitorLive = false;
+        ui.studentAuthed = false;
+        ui.sessionStudentId = '';
+        return;
+      }
+      const authed = !!(data && data.role === 'student' && data.studentId &&
+        (data.authed === true || (data.authed == null && !data.needsAuth)));
+      if (authed) {
         ui.sessionStudentId = data.studentId;
         ui.personaId = data.studentId;
         ui.visitorLive = true;
         ui.role = 'student';
+        ui.studentAuthed = true;
+        if (data.rev) syncRev = Number(data.rev) || syncRev;
         const lec = db.lastLecture && db.lastLecture[ui.personaId];
         if (lec) ui.lectureId = lec;
+        return;
       }
-    } catch (err) { /* guest until the join form */ }
+      ui.studentAuthed = false;
+      ui.sessionStudentId = '';
+    } catch (err) { /* gate until login */ }
   }
   function ensureLiveVisitor() {
     if (ui.admin || ui.staffId || ui.present || !syncEnabled() || ui.sessionStudentId) return;
@@ -16863,6 +17256,11 @@
   async function bootHosted() {
     try {
       ui.visitorId = visitorId();
+      if (ui.present) ui.studentAuthed = true;
+      const sb = studentSb();
+      if (sb) {
+        try { await sb.auth.getSession(); } catch (err) { /* oauth hash */ }
+      }
       const vanity = onStudentVanityPath();
       const presentStudent = PRESENT && PRESENT_PANE === 'student';
       const coachRoot = onCoachRootPath();
@@ -16874,14 +17272,22 @@
       const forceStudent = presentStudent || (vanity && !admin);
       if (!admin) await bootSession();
       await bootSync();
-      if (!admin && !ui.staffId && !ui.sessionStudentId) ensureLiveVisitor();
-      if (forceStudent) {
+      if (!ui.admin && !ui.staffId && !ui.sessionStudentId) {
+        if (syncEnabled() && !ui.present) {
+          ui.role = 'student';
+          ui.visitorLive = true;
+          ui.studentAuthed = false;
+        } else {
+          ensureLiveVisitor();
+        }
+      }
+      if (forceStudent && !ui.admin) {
         ui.admin = false;
         ui.role = 'student';
         ui.visitorLive = true;
       }
       render();
-      if (admin) refreshAdmin();
+      if (admin || ui.admin) refreshAdmin();
       else markPageView();
       refreshMayarStatus().then(() => {
         if (!mayarReady()) return;

@@ -1339,6 +1339,7 @@ function mergeStudentWrite(stored, incoming, studentId) {
     const next = Object.assign({}, prev, src.people[studentId]);
     next.kind = prev.kind === 'mentor' ? 'mentor' : 'student';
     next.mentorId = prev.mentorId || next.mentorId || base.ownerId || 'u-anton';
+    if (prev.authUserId) next.authUserId = prev.authUserId;
     if (next.wa && waTakenByOther(base, next.wa, studentId)) next.wa = prev.wa || '';
     base.people[studentId] = next;
   }
@@ -1365,6 +1366,7 @@ function mergeStudentWrite(stored, incoming, studentId) {
     next.kind = prev.kind === 'mentor' ? 'mentor' : 'student';
     next.visitorIds = Array.isArray(prev.visitorIds) ? prev.visitorIds.slice() : [];
     next.mentorId = prev.mentorId || next.mentorId || base.ownerId || 'u-anton';
+    if (prev.authUserId) next.authUserId = prev.authUserId;
     if (next.wa && waTakenByOther(base, next.wa, studentId)) next.wa = prev.wa || '';
     if (i >= 0) base.liveStudents[i] = next;
     else base.liveStudents.push(next);
@@ -1375,6 +1377,145 @@ function mergeStudentWrite(stored, incoming, studentId) {
   mergeOwnedList(base, src, 'replies', 'authorId', studentId);
   stripDemoPeople(base);
   return base;
+}
+
+function authIdOf(state, id) {
+  const live = (state.liveStudents || []).find((s) => s && s.id === id) || {};
+  const person = (state.people && state.people[id]) || {};
+  return String(live.authUserId || person.authUserId || '');
+}
+
+function isMentorRow(state, id, row) {
+  const person = (state.people && state.people[id]) || {};
+  const kind = (row && row.kind) || person.kind;
+  return kind === 'mentor';
+}
+
+function findByAuthUser(state, userId) {
+  const uid = String(userId || '');
+  if (!uid) return null;
+  let found = null;
+  eachPerson(state, (id, row) => {
+    if (found || isMentorRow(state, id, row)) return;
+    const person = (state.people && state.people[id]) || {};
+    if (String(row.authUserId || person.authUserId || '') === uid) {
+      found = Object.assign({ id: id }, row);
+    }
+  });
+  return found;
+}
+
+function findByEmail(state, email) {
+  const want = String(email || '').trim().toLowerCase();
+  if (!want || want.indexOf('@') < 1) return null;
+  let found = null;
+  eachPerson(state, (id, row) => {
+    if (found || isMentorRow(state, id, row)) return;
+    const person = (state.people && state.people[id]) || {};
+    const app = (state.applications && state.applications[id]) || {};
+    const have = String(row.email || person.email || app.email || '').trim().toLowerCase();
+    if (have && have === want) found = Object.assign({ id: id }, row);
+  });
+  return found;
+}
+
+function applicationFinished(state, id) {
+  const app = state.applications && state.applications[id];
+  return !!(app && app.at);
+}
+
+function upsertStudentIdentity(state, row) {
+  state.liveStudents = Array.isArray(state.liveStudents) ? state.liveStudents : [];
+  const i = state.liveStudents.findIndex((s) => s && s.id === row.id);
+  const prevLive = i >= 0 ? state.liveStudents[i] : {};
+  const next = Object.assign({}, prevLive, {
+    id: row.id,
+    kind: 'student',
+    authUserId: row.authUserId,
+    mentorId: row.mentorId || prevLive.mentorId || state.ownerId || 'u-anton',
+    email: row.email || prevLive.email || '',
+    wa: row.wa || prevLive.wa || '',
+    name: row.name || prevLive.name || '',
+    firstName: row.firstName || prevLive.firstName || '',
+    lastName: row.lastName || prevLive.lastName || '',
+    visitorIds: Array.isArray(prevLive.visitorIds)
+      ? prevLive.visitorIds.slice()
+      : (Array.isArray(row.visitorIds) ? row.visitorIds.slice() : [])
+  });
+  if (prevLive.authUserId) next.authUserId = prevLive.authUserId;
+  if (i >= 0) state.liveStudents[i] = next;
+  else state.liveStudents.push(next);
+  state.people = state.people || {};
+  const prev = state.people[row.id] || {};
+  state.people[row.id] = Object.assign({}, prev, {
+    authUserId: next.authUserId,
+    email: next.email,
+    wa: next.wa || prev.wa || '',
+    name: next.name || prev.name || '',
+    firstName: next.firstName || prev.firstName || '',
+    lastName: next.lastName || prev.lastName || '',
+    kind: 'student',
+    mentorId: next.mentorId
+  });
+  return next;
+}
+
+function claimStudentAccount(state, user, cookieId) {
+  const uid = String(user && user.id || '');
+  if (!uid) return null;
+  let row = findByAuthUser(state, uid);
+  let created = false;
+  if (!row && user.email) {
+    const byEmail = findByEmail(state, user.email);
+    if (byEmail && (!authIdOf(state, byEmail.id) || authIdOf(state, byEmail.id) === uid)) row = byEmail;
+  }
+  if (!row && user.phone) {
+    const byPhone = findByWa(state, user.phone);
+    if (byPhone && !isMentorRow(state, byPhone.id, byPhone) &&
+        (!authIdOf(state, byPhone.id) || authIdOf(state, byPhone.id) === uid)) {
+      row = byPhone;
+    }
+  }
+  if (!row && cookieId && lookupPerson(state, cookieId) && !authIdOf(state, cookieId) && !isMentorRow(state, cookieId, {})) {
+    const live = (state.liveStudents || []).find((s) => s && s.id === cookieId) || {};
+    const person = (state.people && state.people[cookieId]) || {};
+    row = Object.assign({ id: cookieId }, person, live);
+  }
+  if (row && isMentorRow(state, row.id, row)) row = null;
+  if (!row) {
+    created = true;
+    const email = String(user.email || '').trim().slice(0, 160);
+    const meta = (user.user_metadata && typeof user.user_metadata === 'object') ? user.user_metadata : {};
+    const full = String(meta.full_name || meta.name || '').trim();
+    const parts = full.split(/\s+/).filter(Boolean);
+    row = {
+      id: 'stu_' + crypto.randomBytes(9).toString('hex'),
+      kind: 'student',
+      mentorId: state.ownerId || 'u-anton',
+      visitorIds: [],
+      name: full.slice(0, 120),
+      firstName: (parts[0] || '').slice(0, 40),
+      lastName: parts.slice(1).join(' ').slice(0, 80),
+      wa: phoneKey(user.phone || ''),
+      email: email
+    };
+  }
+  row.authUserId = row.authUserId || uid;
+  if (!row.email && user.email) row.email = String(user.email).trim().slice(0, 160);
+  if (!row.wa && user.phone) row.wa = phoneKey(user.phone);
+  if (!row.mentorId) row.mentorId = state.ownerId || 'u-anton';
+  const saved = upsertStudentIdentity(state, row);
+  return { id: saved.id, created: created };
+}
+
+function replyStudent(req, res, studentId, extra) {
+  res.writeHead(200, {
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'no-store',
+    'x-robots-tag': 'noindex',
+    'set-cookie': studentCookie(req, signStudent(studentId))
+  });
+  res.end(JSON.stringify(Object.assign({ role: 'student', studentId: studentId }, extra || {})));
 }
 
 function personName(body) {
@@ -1903,23 +2044,43 @@ const server = http.createServer((req, res) => {
         json(res, 200, { role: 'staff' });
         return;
       }
-      const rec = persistStrip(takeState(slug), slug);
-      const state = (rec && rec.state) || {};
+      const rec = takeState(slug) || { rev: 0, state: {} };
+      if (!rec.state || typeof rec.state !== 'object') rec.state = {};
+      const state = rec.state;
       const cookieId = readStudentCookie(req);
-      const known = cookieId && lookupPerson(state, cookieId);
+      const known = cookieId && lookupPerson(state, cookieId) ? cookieId : '';
+      if (user && user.id) {
+        const claimed = claimStudentAccount(state, user, known);
+        if (!claimed) {
+          json(res, 200, { role: 'guest' });
+          return;
+        }
+        const stored = {
+          key: rec.key || DEFAULT_INVITE,
+          rev: (Number(rec.rev) || 0) + 1,
+          updatedAt: new Date().toISOString(),
+          state: state
+        };
+        writeRecord(stored, slug);
+        replyStudent(req, res, claimed.id, {
+          authed: true,
+          created: claimed.created,
+          hasApplication: applicationFinished(state, claimed.id),
+          rev: stored.rev
+        });
+        return;
+      }
       const visitorHit = findByVisitor(state, body.visitorId);
-      const studentId = known ? cookieId : (visitorHit && visitorHit.id);
-      if (!studentId) {
+      const studentId = known || (visitorHit && !isMentorRow(state, visitorHit.id, visitorHit) && visitorHit.id) || '';
+      if (!studentId || isMentorRow(state, studentId, {})) {
         json(res, 200, { role: 'guest' });
         return;
       }
-      res.writeHead(200, {
-        'content-type': 'application/json; charset=utf-8',
-        'cache-control': 'no-store',
-        'x-robots-tag': 'noindex',
-        'set-cookie': studentCookie(req, signStudent(studentId))
+      replyStudent(req, res, studentId, {
+        authed: false,
+        needsAuth: true,
+        hasApplication: applicationFinished(state, studentId)
       });
-      res.end(JSON.stringify({ role: 'student', studentId: studentId }));
     })).catch((err) => {
       if (!res.headersSent) json(res, err.status || 500, { error: 'session' });
     });
