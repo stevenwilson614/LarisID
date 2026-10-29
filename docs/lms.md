@@ -43,6 +43,8 @@ The invite a mentor copies is `https://larisid.com/lms/card/?invite=…`. Caddy 
 
 LMS auth uses `localStorage` key `lms_auth_v1` with `persistSession` + `autoRefreshToken`, so a refresh on `/lms/` or `/lms/{slug}/` keeps the same session. Invite / school slug helpers use the same storage, not `sessionStorage`.
 
+Mentors get a phone-sized **tampilan siswa** under the class photo (Kurikulum / Alat / Progres) plus an Edit ↔ Tampilan siswa toggle on the main column. Preview shows only published lessons — the same set a student would see — not the seller homepage.
+
 Caddy must rewrite `/lms/{slug}/` to `/lms/index.html` (except `/lms/card`). Without that rewrite, unknown paths fall through to the seller SPA at `/`.
 
 ```bash

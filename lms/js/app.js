@@ -3,6 +3,10 @@
   var $ = function (id) { return document.getElementById(id); };
   var routing = Promise.resolve();
   var busy = false;
+  var mentorView = 'edit';
+  var siswaTab = 'kurikulum';
+  var lastPack = null;
+  var lastMe = null;
 
   function esc(value) {
     return String(value == null ? '' : value)
@@ -173,13 +177,31 @@
     return (pack.files || []).filter(function (row) { return row.lesson_id === lessonId; })[0] || null;
   }
 
-  function studentHtml(pack) {
+  function publishedPack(pack) {
+    var lessons = (pack.lessons || []).filter(function (row) { return !!row.published; });
+    var ids = {};
+    lessons.forEach(function (row) { ids[row.module_id] = 1; });
+    return {
+      modules: (pack.modules || []).filter(function (mod) { return ids[mod.id]; }),
+      lessons: lessons,
+      files: (pack.files || []).filter(function (file) {
+        return lessons.some(function (lesson) { return lesson.id === file.lesson_id; });
+      })
+    };
+  }
+  function studentHtml(pack, opts) {
+    opts = opts || {};
     var mods = (pack.modules || []).slice().sort(function (a, b) {
       return (a.sort_order - b.sort_order) || String(a.created_at).localeCompare(String(b.created_at));
     });
-    if (!mods.length) return '<p class="muted">Mentor belum menayangkan pelajaran.</p>';
+    if (!mods.length) {
+      return '<p class="muted">' +
+        (opts.empty || 'Mentor belum menayangkan pelajaran.') +
+        '</p>';
+    }
     return mods.map(function (mod) {
       var lessons = lessonsOf(pack, mod.id);
+      if (!lessons.length) return '';
       var body = lessons.map(function (lesson) {
         var file = fileOf(pack, lesson.id);
         var fileBtn = file
@@ -193,6 +215,67 @@
       }).join('');
       return '<section class="card"><h2>' + esc(mod.title) + '</h2>' + body + '</section>';
     }).join('');
+  }
+  function siswaTabHtml(tab, pack) {
+    if (tab === 'alat') {
+      return '<div class="siswa-empty">' +
+        '<strong>Alat</strong>' +
+        '<p>Nanti di sini siswa membuka alat kelas (kalkulator, template, tautan kerja).</p>' +
+        '</div>';
+    }
+    if (tab === 'progres') {
+      var n = (pack.lessons || []).length;
+      return '<div class="siswa-empty">' +
+        '<strong>Progres</strong>' +
+        '<p>' + (n ? (n + ' pelajaran tayang. Progress per siswa menyusul.') : 'Belum ada pelajaran tayang.') + '</p>' +
+        '</div>';
+    }
+    return studentHtml(pack, {
+      empty: 'Belum ada pelajaran yang ditayangkan. Centang “Tayang ke siswa” di editor.'
+    }) || '<p class="muted">Belum ada pelajaran yang ditayangkan.</p>';
+  }
+  function paintSiswaPreview(me, pack) {
+    var pub = publishedPack(pack || { modules: [], lessons: [], files: [] });
+    var org = (me && (me.org_name || me.display_name)) || 'Kelas';
+    var avatar = (me && me.avatar_url) || DEFAULT_ICON;
+    var orgEl = $('siswa-preview-org');
+    var avEl = $('siswa-preview-avatar');
+    var body = $('siswa-preview-body');
+    var tabs = $('siswa-preview-tabs');
+    if (orgEl) orgEl.textContent = org;
+    if (avEl) avEl.src = avatar;
+    if (tabs) {
+      Array.prototype.forEach.call(tabs.querySelectorAll('[data-siswa-tab]'), function (btn) {
+        btn.classList.toggle('is-on', btn.getAttribute('data-siswa-tab') === siswaTab);
+      });
+    }
+    if (body) {
+      body.innerHTML = siswaTabHtml(siswaTab, pub);
+      bindReader(body, pub);
+    }
+  }
+  function setMentorView(mode) {
+    mentorView = mode === 'siswa' ? 'siswa' : 'edit';
+    var toggle = $('mentor-view-toggle');
+    if (toggle) {
+      Array.prototype.forEach.call(toggle.querySelectorAll('[data-mentor-view]'), function (btn) {
+        btn.classList.toggle('is-on', btn.getAttribute('data-mentor-view') === mentorView);
+      });
+    }
+    if (!lastMe || lastMe.role !== 'mentor') return;
+    if (mentorView === 'siswa') {
+      $('kurikulum').hidden = true;
+      $('reader').hidden = false;
+      $('reader').innerHTML =
+        '<p class="siswa-full-hint">Ini layar siswa — hanya pelajaran yang sudah ditayangkan.</p>' +
+        siswaTabHtml('kurikulum', publishedPack(lastPack || { modules: [], lessons: [], files: [] }));
+      bindReader($('reader'), publishedPack(lastPack || { modules: [], lessons: [], files: [] }));
+    } else {
+      $('kurikulum').hidden = false;
+      $('reader').hidden = true;
+      $('kurikulum').innerHTML = mentorHtml(lastPack || { modules: [], lessons: [], files: [] });
+      bindMentor($('kurikulum'), lastPack || { modules: [], lessons: [], files: [] });
+    }
   }
 
   function mentorHtml(pack) {
@@ -239,6 +322,8 @@
 
   function render(me, pack, people) {
     var mentor = me.role === 'mentor';
+    lastMe = me;
+    lastPack = pack;
     applyBrand(me);
     if (me.org_slug) ensureSchoolPath(me.org_slug);
     $('app-kicker').textContent = mentor ? 'Mentor' : 'Siswa';
@@ -249,9 +334,9 @@
       ? 'Siswa yang kamu undang hanya melihat pelajaran yang ditayangkan.'
       : 'Kurikulum ' + (me.mentor_name || 'mentor') + '. Kelas mentor lain tidak terbuka.';
     $('mentor-col').hidden = !mentor;
-    $('kurikulum').hidden = !mentor;
-    $('reader').hidden = mentor;
     $('view-app').classList.toggle('is-student', !mentor);
+    var toggle = $('mentor-view-toggle');
+    if (toggle) toggle.hidden = !mentor;
     if (mentor) {
       var names = (people || []).map(function (row) { return '<li>' + esc(row.display_name) + '</li>'; }).join('');
       $('student-list').innerHTML = names || '<li class="muted">Belum ada siswa.</li>';
@@ -272,9 +357,12 @@
         }
         preview.hidden = false;
       }
-      $('kurikulum').innerHTML = mentorHtml(pack);
-      bindMentor($('kurikulum'), pack);
+      paintSiswaPreview(me, pack);
+      setMentorView(mentorView);
     } else {
+      if (toggle) toggle.hidden = true;
+      $('kurikulum').hidden = true;
+      $('reader').hidden = false;
       $('reader').innerHTML = studentHtml(pack);
       bindReader($('reader'), pack);
     }
@@ -555,6 +643,7 @@
         if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(url).then(function () {
             $('school-url-copy').textContent = 'Tersalin';
+            setTimeout(function () { $('school-url-copy').textContent = 'Salin'; }, 1600);
           }).catch(function () {
             $('school-url').focus();
             $('school-url').select();
@@ -563,6 +652,28 @@
           $('school-url').focus();
           $('school-url').select();
         }
+      });
+    }
+    if ($('siswa-preview-tabs')) {
+      $('siswa-preview-tabs').addEventListener('click', function (event) {
+        var btn = event.target.closest('[data-siswa-tab]');
+        if (!btn) return;
+        siswaTab = btn.getAttribute('data-siswa-tab') || 'kurikulum';
+        paintSiswaPreview(lastMe, lastPack || { modules: [], lessons: [], files: [] });
+      });
+    }
+    if ($('siswa-preview-open')) {
+      $('siswa-preview-open').addEventListener('click', function () {
+        siswaTab = 'kurikulum';
+        setMentorView('siswa');
+        window.scrollTo(0, 0);
+      });
+    }
+    if ($('mentor-view-toggle')) {
+      $('mentor-view-toggle').addEventListener('click', function (event) {
+        var btn = event.target.closest('[data-mentor-view]');
+        if (!btn) return;
+        setMentorView(btn.getAttribute('data-mentor-view'));
       });
     }
     if ($('brand-avatar-file')) {

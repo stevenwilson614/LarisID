@@ -1092,11 +1092,148 @@ textarea { min-height: 96px; resize: vertical; }
   font-size: 0.86rem;
   color: var(--muted);
 }
-#school-url { margin-top: 8px; }
-#school-url-copy { margin-top: 8px; width: 100%; }
 .slug-hint.is-ok { color: #15803d; font-weight: 650; }
 .slug-hint.is-bad { color: #9F1239; font-weight: 650; }
 .slug-hint svg { flex: none; }
+.siswa-preview-card {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.siswa-preview-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.siswa-preview-head .kicker { margin: 0 0 2px; }
+.siswa-preview-head h3 { margin: 0; font-size: 1rem; letter-spacing: -0.02em; }
+.siswa-preview-head .btn { flex: none; padding: 8px 10px; font-size: 0.82rem; }
+.siswa-phone {
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: #111;
+  color: #fafafa;
+  overflow: hidden;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+}
+.siswa-phone-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px 10px;
+  background: #1a1a1a;
+}
+.siswa-phone-top img {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #333;
+  flex: none;
+}
+.siswa-phone-top strong,
+.siswa-phone-top span { display: block; }
+.siswa-phone-top strong { font-size: 0.86rem; }
+.siswa-phone-top span { font-size: 0.72rem; color: #a1a1aa; margin-top: 1px; }
+.siswa-phone-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 0 8px 8px;
+  background: #1a1a1a;
+}
+.siswa-phone-tabs button {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #a1a1aa;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 8px 4px;
+  cursor: pointer;
+}
+.siswa-phone-tabs button.is-on {
+  background: #fff;
+  color: #111;
+}
+.siswa-phone-body {
+  min-height: 220px;
+  max-height: 280px;
+  overflow: auto;
+  padding: 10px;
+  background: #f4f4f5;
+  color: var(--ink);
+}
+.siswa-phone-body .card {
+  border-radius: 12px;
+  padding: 12px;
+  margin: 0 0 8px;
+  box-shadow: none;
+}
+.siswa-phone-body .card h2 { font-size: 0.92rem; }
+.siswa-phone-body .lesson { margin-top: 10px; padding-top: 10px; }
+.siswa-phone-body .lesson h3 { font-size: 0.86rem; }
+.siswa-phone-body .lesson-body { font-size: 0.8rem; }
+.siswa-phone-body .btn { font-size: 0.78rem; padding: 7px 10px; }
+.siswa-empty {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+}
+.siswa-empty strong { display: block; margin-bottom: 4px; }
+.siswa-empty p { margin: 0; color: var(--muted); font-size: 0.84rem; line-height: 1.45; }
+.school-link-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
+.school-link-row span {
+  grid-column: 1 / -1;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.school-link-row input {
+  margin: 0;
+  font-size: 0.78rem;
+  padding: 10px 12px;
+}
+.school-link-row .btn { padding: 10px 12px; font-size: 0.82rem; }
+.mentor-view-toggle {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+}
+.mentor-view-toggle button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.mentor-view-toggle button.is-on {
+  background: var(--ink);
+  color: #fff;
+}
+.siswa-full-hint {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
 [hidden] { display: none !important; }
 @media (max-width: 800px) {
   .nav { padding: 14px 16px; }
@@ -1160,5 +1297,5 @@ textarea { min-height: 96px; resize: vertical; }
 #invite-box { margin-top: 12px; }
 #auth-title { position: static; width: auto; height: auto; margin: 0 0 6px; clip: auto; overflow: visible; }
 @media (min-width: 860px) {
-  .school:not(.is-student) .school-grid { grid-template-columns: 280px 1fr; align-items: start; }
+  .school:not(.is-student) .school-grid { grid-template-columns: 300px 1fr; align-items: start; }
 }
