@@ -931,6 +931,7 @@
         firstName: '', lastName: '', headline: '', biography: '',
         photoMode: 'upload', socialSource: 'tiktok', photoBlob: false, photoUrl: '',
         coverBlob: false, coverUrl: '', coverKey: '',
+        coverPosX: 50, coverPosY: 50,
         socials: blankSocials
       };
     }
@@ -948,6 +949,8 @@
       coverBlob: false,
       coverUrl: '',
       coverKey: '',
+      coverPosX: 50,
+      coverPosY: 50,
       socials: Object.assign({
         website: '',
         facebook: '',
@@ -994,6 +997,8 @@
       coverBlob: !!cur.coverBlob,
       coverUrl: String(cur.coverUrl || base.coverUrl || ''),
       coverKey: String(cur.coverKey || base.coverKey || ''),
+      coverPosX: clampPct(cur.coverPosX != null ? cur.coverPosX : base.coverPosX, 50),
+      coverPosY: clampPct(cur.coverPosY != null ? cur.coverPosY : base.coverPosY, 50),
       socials: Object.assign({}, base.socials, cur.socials || {})
     };
   }
@@ -1329,20 +1334,34 @@
     }).filter(Boolean).join('');
     return links ? '<div class="prof-socials">' + links + '</div>' : '';
   }
-  function schoolCoverInner(p) {
+  function coverPosStyle(p) {
     const prof = p || schoolProfile();
-    if (prof.coverBlob) return '<img class="ps-cover-img" data-blob="' + esc(schoolCoverKey()) + '" alt="">';
-    if (prof.coverUrl) return '<img class="ps-cover-img" src="' + esc(prof.coverUrl) + '" alt="">';
+    const x = clampPct(prof.coverPosX, 50);
+    const y = clampPct(prof.coverPosY, 50);
+    return 'object-position:' + x + '% ' + y + '%';
+  }
+  function schoolCoverInner(p, opts) {
+    const o = opts || {};
+    const prof = p || schoolProfile();
+    const pos = coverPosStyle(prof);
+    const drag = o.editable ? ' data-act="cover-pan" class="ps-cover-img is-pan"' : ' class="ps-cover-img"';
+    if (prof.coverBlob) {
+      return '<img' + drag + ' data-blob="' + esc(schoolCoverKey()) + '" alt="" style="' + pos + '">';
+    }
+    if (prof.coverUrl) {
+      return '<img' + drag + ' src="' + esc(prof.coverUrl) + '" alt="" style="' + pos + '">';
+    }
     return '';
   }
+  /** Official brand glyphs (Simple Icons paths). */
   function socialIconSvg(key) {
     const icons = {
-      instagram: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>',
-      tiktok: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M14.5 3c.4 2.3 1.8 4 4 4.5v2.3c-1.5-.1-2.8-.6-4-1.4v6.3a5.7 5.7 0 11-5.7-5.7c.3 0 .6 0 .9.1v2.5a3.2 3.2 0 103.2 3.2V3h1.6z"/></svg>',
-      facebook: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 9h3V6h-3c-2.2 0-4 1.8-4 4v2H8v3h2v7h3v-7h2.6l.4-3H13v-2c0-.6.4-1 1-1z"/></svg>',
-      linkedin: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.5 9.5H3.7V20h2.8V9.5zM5.1 4a1.7 1.7 0 100 3.4A1.7 1.7 0 005.1 4zM20.3 20h-2.8v-5.6c0-1.5-.6-2.5-2-2.5-1 0-1.5.7-1.8 1.3-.1.2-.1.5-.1.8V20H10.8s0-8.6 0-9.5h2.8v1.5c.5-.8 1.5-1.9 3.6-1.9 2.6 0 4.5 1.7 4.5 5.3V20z"/></svg>',
-      youtube: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 12.2s0-3.2-.4-4.7c-.2-.8-.8-1.4-1.6-1.6C18.5 5.5 12 5.5 12 5.5s-6.5 0-8 .4c-.8.2-1.4.8-1.6 1.6C2 9 2 12.2 2 12.2s0 3.2.4 4.7c.2.8.8 1.4 1.6 1.6 1.5.4 8 .4 8 .4s6.5 0 8-.4c.8-.2 1.4-.8 1.6-1.6.4-1.5.4-4.7.4-4.7zM10 15.2V9.2l5.2 3-5.2 3z"/></svg>',
-      x: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 3h3l-6.6 7.5L22 21h-6.2l-4.3-5.6L6.3 21H3.3l7-8L2 3h6.4l3.9 5.2L17.5 3zm-1.1 16.2h1.7L7.7 4.7H5.9l10.5 14.5z"/></svg>'
+      instagram: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>',
+      tiktok: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>',
+      facebook: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>',
+      linkedin: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>',
+      youtube: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>',
+      x: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg>'
     };
     return icons[key] || '';
   }
@@ -1613,11 +1632,19 @@
   function viewProfilPhotoPane(p) {
     const syncNet = p.socialSource === 'instagram' ? 'Instagram'
       : (p.socialSource === 'youtube' ? 'YouTube' : 'TikTok');
-    const cover = schoolCoverInner(p);
+    const cover = schoolCoverInner(p, { editable: true });
+    const hasCover = !!(p.coverBlob || p.coverUrl);
     return '<div class="ps-photo-pane">' +
       '<div class="ps-cover-edit">' +
-        '<div class="ps-cover' + (cover ? '' : ' is-empty') + '">' + cover + '</div>' +
-        '<label class="btn secondary">Unggah banner<input type="file" hidden data-act="school-cover-file" accept="image/*"></label>' +
+        '<div class="ps-cover' + (cover ? '' : ' is-empty') + (hasCover ? ' is-pan-host' : '') + '">' + cover +
+          (hasCover ? '<span class="ps-cover-hint">Geser gambar untuk atur crop</span>' : '') +
+        '</div>' +
+        '<div class="ps-cover-acts">' +
+          '<label class="btn secondary">Unggah banner<input type="file" hidden data-act="school-cover-file" accept="image/*"></label>' +
+          (hasCover
+            ? '<button type="button" class="btn-sm" data-act="cover-pos-reset">Reset posisi</button>'
+            : '') +
+        '</div>' +
       '</div>' +
       '<div class="ps-photo-card">' +
         schoolAvatarHtml('school-avatar xxl') +
@@ -2255,7 +2282,7 @@
   function ownPersonIds() {
     const ids = new Set();
     try {
-      const vid = localStorage.getItem('anton-visitor') || '';
+      const vid = (typeof visitorId === 'function') ? visitorId() : (localStorage.getItem(visitorStorageKey()) || '');
       if (vid && typeof livePersonaId === 'function') ids.add(livePersonaId(vid));
     } catch (err) { /* private */ }
     const view = currentUi();
@@ -2928,14 +2955,21 @@
   }
   function canLearn(id) { return canMentoring(id) || canPreview(id); }
   function needsWizard(id) {
+    if (!id) return true;
+    if (db.applications && db.applications[id]) return false;
+    /* Joined student row without a form payload should not loop the wizard. */
+    if (rosterPerson(id) && String(id).indexOf('live-') !== 0) return false;
     const c = crmOf(id);
-    return !db.applications[id] && (c.stage === 'wa_baru' || c.stage === 'form');
+    return c.stage === 'wa_baru' || c.stage === 'form';
   }
   function wizardStep(id) {
     if (!db.applications[id]) return 'form';
     return 'pay';
   }
-  function catalog() { return db.catalog || SEED.catalog; }
+  function catalog() {
+    if (Array.isArray(db.catalog)) return db.catalog;
+    return antonSchoolData() ? (SEED.catalog || []) : [];
+  }
   function productById(id) { return catalog().find((p) => p.id === id); }
   function isStaff() { return ui.role === 'owner' || ui.role === 'asisten'; }
   function isOwner() { return ui.role === 'owner'; }
@@ -3889,13 +3923,22 @@
     a.click();
     a.remove();
   }
+  function visitorStorageKey() {
+    return 'anton-visitor:' + (schoolSlug() || 'school');
+  }
   function visitorId() {
     try {
-      let id = localStorage.getItem('anton-visitor') || '';
+      const key = visitorStorageKey();
+      let id = localStorage.getItem(key) || '';
+      /* Migrate the old global key once per school. */
+      if (!id) {
+        const legacy = localStorage.getItem('anton-visitor') || '';
+        if (legacy) id = legacy;
+      }
       if (!id) {
         id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('v' + Date.now().toString(36));
-        localStorage.setItem('anton-visitor', id);
       }
+      localStorage.setItem(key, id);
       return id;
     } catch (err) {
       return 'v-anon';
@@ -4958,10 +5001,14 @@
     if (last) {
       if (ui.joining) return;
       ui.joining = true;
-      Promise.resolve(commitWizApplication()).then((ok) => {
+      Promise.resolve(commitWizApplication()).then(async (ok) => {
         ui.joining = false;
         if (!ok) return;
         ui.wizFocusedStep = null;
+        /* Flush join fields immediately so a refresh does not reopen the wizard. */
+        if (syncEnabled()) {
+          try { await pushState(true); } catch (err) { /* pull on next boot */ }
+        }
         if (schoolIsFree()) {
           ui.wizStep = null;
           ui.tab = 'home';
@@ -7576,6 +7623,7 @@
     paintOnboardPreview();
     bindLazy();
     bindBlobMedia();
+    bindCoverPan();
     mountLightbox();
     bindKanbanDnD();
     bindPipaStageDnD();
@@ -7702,6 +7750,59 @@
     });
     bindWatchProgress();
     bindHostedVideoErrors();
+  }
+  function bindCoverPan() {
+    const img = document.querySelector('.ps-cover-img.is-pan');
+    if (!img || img.getAttribute('data-pan-bound')) return;
+    img.setAttribute('data-pan-bound', '1');
+    let drag = null;
+    const readPos = () => {
+      const p = schoolProfile();
+      return { x: clampPct(p.coverPosX, 50), y: clampPct(p.coverPosY, 50) };
+    };
+    const apply = (x, y) => {
+      img.style.objectPosition = x + '% ' + y + '%';
+    };
+    const finish = (x, y) => {
+      ensureSchoolProfile();
+      db.schoolProfile.coverPosX = clampPct(x, 50);
+      db.schoolProfile.coverPosY = clampPct(y, 50);
+      save();
+    };
+    const onMove = (ev) => {
+      if (!drag) return;
+      const host = img.closest('.ps-cover') || img;
+      const rect = host.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const dx = ((ev.clientX - drag.x) / rect.width) * 100;
+      const dy = ((ev.clientY - drag.y) / rect.height) * 100;
+      /* Dragging the image moves the focal point opposite the pointer. */
+      const nx = clampPct(drag.posX - dx, 50);
+      const ny = clampPct(drag.posY - dy, 50);
+      drag.curX = nx;
+      drag.curY = ny;
+      apply(nx, ny);
+    };
+    const onUp = () => {
+      if (!drag) return;
+      finish(drag.curX, drag.curY);
+      drag = null;
+      img.classList.remove('is-dragging');
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+    };
+    img.addEventListener('pointerdown', (ev) => {
+      if (!canBill()) return;
+      ev.preventDefault();
+      const pos = readPos();
+      drag = { x: ev.clientX, y: ev.clientY, posX: pos.x, posY: pos.y, curX: pos.x, curY: pos.y };
+      img.classList.add('is-dragging');
+      try { img.setPointerCapture(ev.pointerId); } catch (err) { /* ignore */ }
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+      window.addEventListener('pointercancel', onUp);
+    });
   }
   function bindHostedVideoErrors() {
     const root = $('main');
@@ -8920,16 +9021,35 @@
   }
 
   function catalogHero() {
-    const sch = SEED.school;
+    const p = schoolProfile();
+    const name = schoolDisplayName(p);
+    const org = String((db && db.businessName) || '').trim() || name;
+    const site = (p.socials && p.socials.website) ? socialHref('website', p.socials.website) : '';
+    const photo = p.photoBlob
+      ? '<img class="catalog-photo" data-blob="' + esc(schoolPhotoKey()) + '" alt="">'
+      : (p.photoUrl
+        ? '<img class="catalog-photo" src="' + esc(p.photoUrl) + '" alt="">'
+        : (antonSchoolData()
+          ? '<img class="catalog-photo" src="' + esc(SEED.school.photo || SEED.school.logo) + '" alt="">'
+          : '<span class="catalog-photo catalog-photo-fallback" aria-hidden="true">' +
+              esc(initialsOf(name || org || 'K')) + '</span>'));
+    const mark = antonSchoolData()
+      ? '<img class="catalog-mark" src="' + esc(SEED.school.logo) + '" alt="">'
+      : schoolAvatarHtml('school-avatar catalog-mark');
     return '<section class="catalog-hero">' +
-      '<img class="catalog-photo" src="' + esc(sch.photo) + '" alt="Coach Anton">' +
+      photo +
       '<div>' +
         '<div class="catalog-brand">' +
-          '<img class="catalog-mark" src="' + esc(sch.logo) + '" alt="">' +
-          '<div><strong>MasterMind with Anton GC</strong><span>by Coach Anton GC</span></div>' +
+          mark +
+          '<div><strong>' + esc(org) + '</strong>' +
+            (name && name !== org ? '<span>by ' + esc(name) + '</span>' : '') +
+          '</div>' +
         '</div>' +
-        '<p class="muted" style="margin:6px 0 0">Kelas: <a href="' + esc(schoolLocalUrl()) + '">' + esc(schoolPublicUrl().replace(/^https?:\/\//, '')) + '</a> · etalase: lynk.id/' + esc(schoolSlug()) + '</p>' +
-        '<a class="btn secondary" href="' + esc(sch.lynk) + '" target="_blank" rel="noopener" style="margin-top:8px">Etalase lynk.id</a>' +
+        '<p class="muted" style="margin:6px 0 0">Kelas: <a href="' + esc(schoolLocalUrl()) + '">' +
+          esc(schoolPublicUrl().replace(/^https?:\/\//, '')) + '</a></p>' +
+        (site
+          ? '<a class="btn secondary" href="' + esc(site) + '" target="_blank" rel="noopener" style="margin-top:8px">Website</a>'
+          : '') +
       '</div></section>';
   }
 
@@ -8951,9 +9071,10 @@
       { id: 'alat', label: 'Alat' },
       { id: 'rekaman', label: 'Rekaman' }
     ];
+    const org = String((db && db.businessName) || schoolDisplayName() || 'Kelas').trim();
     let html = catalogHero() +
-      '<h2 style="margin:12px 0 4px">Pustaka Anton</h2>' +
-      '<p class="muted" style="margin:0 0 12px">Beli satuan, atau mentoring = alat lynk + live class. <strong>Laris Affiliate tidak termasuk</strong> harga mentoring. Checkout satuan tetap lynk — bukan LarisID.</p>';
+      '<h2 style="margin:12px 0 4px">Perpustakaan · ' + esc(org) + '</h2>' +
+      '<p class="muted" style="margin:0 0 12px">Alat dan rekaman dari mentor kelas ini.</p>';
     groups.forEach((g) => {
       const items = catalog().filter((p) => p.group === g.id);
       html += '<h3 class="week-label">' + g.label + '</h3><div class="tool-grid">';
@@ -9477,25 +9598,19 @@
       paths + '</svg>';
     const tools =
       '<label class="dk-tool" title="Foto" aria-label="Foto">' +
-        (phone
-          ? ico('<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 16l-5-5-4 4-2-2-5 5"/>') +
-            '<span class="dk-tool-label">Foto</span>'
-          : 'Foto') +
+        ico('<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 16l-5-5-4 4-2-2-5 5"/>') +
+        '<span class="dk-tool-label">Foto</span>' +
         '<input type="file" accept="image/*" multiple hidden data-act="post-files"' + (uploading ? ' disabled' : '') + '>' +
       '</label>' +
       '<label class="dk-tool" title="File" aria-label="File">' +
-        (phone
-          ? ico('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/>') +
-            '<span class="dk-tool-label">File</span>'
-          : 'File') +
+        ico('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/>') +
+        '<span class="dk-tool-label">File</span>' +
         '<input type="file" multiple hidden data-act="post-attach"' + (uploading ? ' disabled' : '') + '>' +
       '</label>' +
       '<button type="button" class="dk-tool' + (ui.pollOn ? ' is-on' : '') + '" data-act="poll-toggle"' +
         (uploading ? ' disabled' : '') + ' title="Poll" aria-label="Poll">' +
-        (phone
-          ? ico('<path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19V8"/>') +
-            '<span class="dk-tool-label">Poll</span>'
-          : 'Poll') +
+        ico('<path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19V8"/>') +
+        '<span class="dk-tool-label">Poll</span>' +
       '</button>';
     const sendIco = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>';
     const body =
@@ -9506,9 +9621,8 @@
     return '<form class="dk-compose' + (phone ? ' is-phone' : '') + '" data-act="post-new" data-batch="' + esc(batchId) + '">' +
       postDraftHtml() +
       pollEditHtml() +
-      (phone
-        ? '<div class="dk-tools">' + tools + '</div><div class="dk-bar">' + body + '</div>'
-        : '<div class="dk-bar">' + tools + body + '</div>') +
+      '<div class="dk-tools">' + tools + '</div>' +
+      '<div class="dk-bar">' + body + '</div>' +
       '</form>';
   }
   function autosizeDkBody(ta) {
@@ -11975,11 +12089,17 @@
   function viewPustaka() {
     const canAdd = canBill();
     const addOpen = canAdd && ui.pustakaAddOpen;
+    const items = catalog();
+    const anton = antonSchoolData();
     return catalogHero() +
       '<div class="card" style="margin-top:12px">' +
       '<div class="pustaka-head">' +
         '<div><h2 style="margin:0">Perpustakaan</h2>' +
-          '<p class="muted" style="margin:6px 0 0">Produk lynk Anton. Toggle Contoh → File Anton setelah dia isi.</p></div>' +
+          '<p class="muted" style="margin:6px 0 0">' +
+            (anton
+              ? 'Produk lynk kelas ini. Toggle Contoh → File Anton setelah dia isi.'
+              : 'Produk milik kelas ini saja. Tambah tautan / cover sendiri — bukan katalog Anton.') +
+          '</p></div>' +
         (canAdd
           ? '<button type="button" class="btn' + (addOpen ? ' secondary' : '') + '" data-act="pustaka-add-toggle">' +
               (addOpen ? 'Tutup' : '+ Tambah') + '</button>'
@@ -11998,10 +12118,10 @@
               '<div><label class="muted">Harga</label><input name="price" type="number" min="0" value="99000"></div>' +
               '<div><label class="muted">Coret</label><input name="coret" type="number" min="0" value="129000"></div>' +
             '</div>' +
-            '<label class="muted">Tautan lynk</label>' +
-            '<input name="lynk" placeholder="https://lynk.id/…">' +
+            '<label class="muted">Tautan jual (lynk / lainnya)</label>' +
+            '<input name="lynk" placeholder="https://…">' +
             '<label class="muted">Cover URL (opsional)</label>' +
-            '<input name="cover" placeholder="./assets/… atau https://">' +
+            '<input name="cover" placeholder="https://…">' +
             '<div class="row">' +
               '<label class="muted"><input type="checkbox" name="example" checked> Contoh dulu</label>' +
               '<label class="muted"><input type="checkbox" name="mentor" checked> Termasuk mentoring</label>' +
@@ -12009,26 +12129,31 @@
               '<button type="button" class="btn secondary" data-act="pustaka-add-toggle">Batal</button>' +
             '</div></form>'
         : '') +
-      '<div class="tool-grid">' + catalog().map((p) =>
-        '<div class="card tool-tile sku">' +
-          skuCoverHtml(p) +
-          '<div class="sku-body">' +
-          '<span class="chip">' + esc(p.group) + '</span>' +
-          (p.example ? ' <span class="chip warn">Contoh</span>' : ' <span class="chip lunas">File Anton</span>') +
-          '<h3>' + esc(p.title) + '</h3>' +
-          '<p class="muted">' + esc(p.job) + '</p>' +
-          '<p class="sku-price">' + skuPriceHtml(p) + '</p>' +
-          '<div class="row" style="margin-top:10px">' +
-            (canBill()
-              ? '<button class="btn-sm" data-act="toggle-example" data-id="' + esc(p.id) + '">' +
-                (p.example ? 'Tandai file Anton sudah masuk' : 'Kembalikan ke contoh') + '</button>'
-              : '') +
-            (p.lynk ? '<a class="btn-sm" href="' + esc(p.lynk) + '" target="_blank" rel="noopener">lynk</a>' : '') +
-            (canBill() && String(p.id).indexOf('sku-') === 0
-              ? '<button class="btn-sm" data-act="del-sku" data-id="' + esc(p.id) + '">Hapus</button>'
-              : '') +
-          '</div></div></div>'
-      ).join('') + '</div></div>';
+      (items.length
+        ? '<div class="tool-grid">' + items.map((p) =>
+            '<div class="card tool-tile sku">' +
+              skuCoverHtml(p) +
+              '<div class="sku-body">' +
+              '<span class="chip">' + esc(p.group) + '</span>' +
+              (p.example
+                ? ' <span class="chip warn">Contoh</span>'
+                : ' <span class="chip lunas">' + (anton ? 'File Anton' : 'Siap') + '</span>') +
+              '<h3>' + esc(p.title) + '</h3>' +
+              '<p class="muted">' + esc(p.job) + '</p>' +
+              '<p class="sku-price">' + skuPriceHtml(p) + '</p>' +
+              '<div class="row" style="margin-top:10px">' +
+                (canBill()
+                  ? '<button class="btn-sm" data-act="toggle-example" data-id="' + esc(p.id) + '">' +
+                    (p.example ? 'Tandai sudah siap' : 'Kembalikan ke contoh') + '</button>'
+                  : '') +
+                (p.lynk ? '<a class="btn-sm" href="' + esc(p.lynk) + '" target="_blank" rel="noopener">Buka</a>' : '') +
+                (canBill() && String(p.id).indexOf('sku-') === 0
+                  ? '<button class="btn-sm" data-act="del-sku" data-id="' + esc(p.id) + '">Hapus</button>'
+                  : '') +
+              '</div></div></div>'
+          ).join('') + '</div>'
+        : '<p class="muted" style="margin:16px 0 0">Belum ada produk. Tekan + Tambah untuk isi perpustakaan kelas ini.</p>') +
+      '</div>';
   }
 
   function shiftYmd(ymd, days) {
@@ -12924,8 +13049,10 @@
           db.schoolProfile.coverUrl = mediaFileUrl(info.key);
           db.schoolProfile.coverKey = info.key;
           db.schoolProfile.coverBlob = false;
+          db.schoolProfile.coverPosX = 50;
+          db.schoolProfile.coverPosY = 50;
           save();
-          toast('Banner tersimpan.');
+          toast('Banner tersimpan. Geser untuk atur crop.');
           render();
         }).catch(() => toast('Gagal unggah banner.'));
         return;
@@ -12933,6 +13060,8 @@
       blobPut(schoolCoverKey(), file).then(() => {
         db.schoolProfile.coverBlob = true;
         db.schoolProfile.coverUrl = '';
+        db.schoolProfile.coverPosX = 50;
+        db.schoolProfile.coverPosY = 50;
         save();
         toast('Banner tersimpan di browser ini.');
         render();
@@ -14405,6 +14534,13 @@
       ui.profilePreview = null;
       ui.profilePreviewKind = null;
       paintProfilePreview();
+    } else if (act === 'cover-pos-reset') {
+      if (!canBill()) return;
+      ensureSchoolProfile();
+      db.schoolProfile.coverPosX = 50;
+      db.schoolProfile.coverPosY = 50;
+      save();
+      render();
     } else if (act === 'profile-sync-photo') {
       if (!canBill()) return;
       ensureSchoolProfile();

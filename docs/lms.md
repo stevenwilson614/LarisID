@@ -25,6 +25,15 @@ Do not revive `js/lms-join.js` or public invite-code file downloads as the share
 - **Paywall off** (`PAYWALL_DISABLED` in `obrolan.marketing/js/app.js`): kurikulum is open; mentor “Pengaturan bayar” stays hidden (`SHOW_PENGATURAN_BAYAR`) until a fuller mentor billing UI exists.
 - **WA pill**: mentors toggle number + on/off under Account settings → WhatsApp. Students see `WA (Nama)` bottom-right when enabled.
 - Student Home always shows **Jadwal** (Minggu / Bulan). Diskusi dock/tab shows an unread count badge.
+- **Join persistence**: `POST /join` writes `liveStudents` + `applications` + `crm` + `billing` on disk so mentors see the student in Pipa/daftar immediately, and the student does not re-enter the onboarding wizard after leaving the URL. Student cookie `lms_student` is Path=/ with Max-Age ~180 days; visitor id is per-school (`anton-visitor:{slug}`).
+
+### Mentor profile / Perpustakaan / Diskusi
+
+- Profile picture tab: cover banner can be panned (object-position) after upload.
+- Social icons use official brand glyphs (Simple Icons paths).
+- Top-left chrome is a single avatar circle (no caret badge).
+- **Perpustakaan** is per-school catalog — never falls back to Anton’s lynk/photo for other coaches.
+- Diskusi thread: title at top, divider lines between posts, messages capped width, composer at bottom with Foto / File / Poll.
 
 ---
 

@@ -241,10 +241,16 @@ html[data-mode="mentor"] .dk-thread .dk-jump { display: none; }
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 14px 16px 8px;
-  display: grid;
-  gap: 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
   align-content: start;
+}
+.dk-feed > .muted,
+.dk-feed > .dk-empty-note {
+  padding: 18px 16px;
 }
 .dk-compose {
   flex: none;
@@ -255,13 +261,20 @@ html[data-mode="mentor"] .dk-thread .dk-jump { display: none; }
   border-top: 1px solid var(--line);
   background: var(--ink-2);
 }
+.dk-tools {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.dk-tool-label { font-size: .72rem; font-weight: 700; }
+.dk-tool-ico { display: block; }
 .dk-compose-locked {
   flex: none;
   margin: 0;
   padding: 12px 16px;
   border-top: 1px solid var(--line);
 }
-.dk-tools { display: none; }
 .dk-bar { display: flex; align-items: flex-end; gap: 8px; }
 .dk-compose .dk-bar textarea {
   flex: 1;

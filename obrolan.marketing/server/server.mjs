@@ -786,8 +786,9 @@ function studentCookie(req, token) {
   const proto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
   const secure = proto === 'https' ? '; Secure' : '';
   const value = token ? String(token) : '';
-  const age = token ? '' : '; Max-Age=0';
-  return 'lms_student=' + value + '; HttpOnly; SameSite=Lax; Path=/obrolan.marketing' + age + secure;
+  /* Persist across tab closes; Path=/ so /s/{slug} pages still send it to the API. */
+  const age = token ? '; Max-Age=15552000' : '; Max-Age=0';
+  return 'lms_student=' + value + '; HttpOnly; SameSite=Lax; Path=/' + age + secure;
 }
 
 function asStudentView(req) {
@@ -1420,6 +1421,41 @@ function upsertJoined(state, row) {
     kind: prev.kind === 'mentor' ? 'mentor' : 'student',
     visitorIds: row.visitorIds
   });
+  /* Write application + crm on join so mentor Pipa/daftar and student
+     return visits do not depend on a later student PUT succeeding. */
+  const at = new Date().toISOString();
+  state.applications = state.applications || {};
+  const prevApp = state.applications[row.id] || {};
+  state.applications[row.id] = Object.assign({}, prevApp, {
+    name: row.name || prevApp.name || '',
+    firstName: row.firstName || prevApp.firstName || '',
+    lastName: row.lastName || prevApp.lastName || '',
+    wa: row.wa || prevApp.wa || '',
+    city: row.city || prevApp.city || '',
+    hasShop: !!(row.shopName || row.shopUrl || prevApp.hasShop),
+    shopName: row.shopName || prevApp.shopName || '',
+    shopUrl: row.shopUrl || prevApp.shopUrl || '',
+    heard: prevApp.heard || '',
+    answers: prevApp.answers && typeof prevApp.answers === 'object' ? prevApp.answers : {},
+    at: prevApp.at || at
+  });
+  state.crm = state.crm || {};
+  const prevCrm = state.crm[row.id] || {};
+  const stage = prevCrm.stage && prevCrm.stage !== 'wa_baru' ? prevCrm.stage : 'form';
+  state.crm[row.id] = Object.assign({}, prevCrm, { stage: stage });
+  state.billing = state.billing || {};
+  if (!state.billing[row.id]) {
+    state.billing[row.id] = {
+      status: 'trial',
+      plan: 'preview',
+      products: [],
+      amount: 0,
+      source: 'manual',
+      offerStartedAt: at,
+      offerExpiresAt: new Date(Date.now() + 24 * 36e5).toISOString(),
+      note: 'Bayar nanti · 24 jam'
+    };
+  }
 }
 
 function handleStaff(req, res, url, q, pathname) {

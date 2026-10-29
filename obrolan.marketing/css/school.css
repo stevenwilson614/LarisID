@@ -214,9 +214,9 @@ a { color: inherit; }
 }
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .brand img {
-  width: 32px; height: 32px; object-fit: contain; object-position: center;
+  width: 32px; height: 32px; object-fit: cover; object-position: center;
   opacity: 1; border-radius: 50%; background: var(--media-bg); flex: none;
-  padding: 2px; box-sizing: border-box;
+  padding: 0; box-sizing: border-box;
 }
 .brand-fallback {
   width: 32px; height: 32px; border-radius: 50%; flex: none;
@@ -236,9 +236,8 @@ a { color: inherit; }
   display: block; font-size: .68rem; font-weight: 550; color: var(--muted);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 14rem;
 }
-.brand-btn:disabled .brand-caret { display: none; }
 
-/* avatar button + account menu (Keluar / Reset live here, not in the header row) */
+/* avatar button + account menu — single profile circle, no caret badge */
 .brand { position: relative; }
 .brand-btn {
   position: relative; flex: none; padding: 0; border: 0; background: transparent;
@@ -247,15 +246,7 @@ a { color: inherit; }
 .brand-btn:disabled { cursor: default; }
 .brand-btn img { display: block; }
 .brand-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.brand-caret {
-  position: absolute; right: -3px; bottom: -3px; width: 14px; height: 14px; border-radius: 50%;
-  background: var(--ink-2); border: 1px solid var(--line-2); color: var(--muted);
-  display: grid; place-items: center;
-}
-.brand-caret svg { width: 8px; height: 8px; display: block; }
-.brand-btn:disabled .brand-caret { display: none; }
-.brand-btn:hover .brand-caret,
-.brand-btn[aria-expanded="true"] .brand-caret { color: var(--text); border-color: var(--text); }
+.brand-caret { display: none !important; }
 .brand-menu {
   position: absolute; left: 0; top: calc(100% + 8px); z-index: 40; min-width: 200px;
   background: var(--ink-2); border: 1px solid var(--line); border-radius: 12px;
@@ -684,8 +675,16 @@ html[data-mode="student"] .canvas iframe.tool-frame { min-height: 520px; height:
 .catalog-photo {
   width: 56px; height: 56px; border-radius: 50%; object-fit: cover; flex: none; background: var(--media-bg);
 }
+.catalog-photo-fallback {
+  display: grid; place-items: center;
+  font-weight: 750; font-size: .9rem; color: var(--text);
+  border: 1px solid var(--line);
+}
 .catalog-brand { display: flex; gap: 8px; align-items: center; }
-.catalog-mark { width: 28px; height: 28px; border-radius: 50%; flex: none; }
+.catalog-mark { width: 28px; height: 28px; border-radius: 50%; flex: none; object-fit: cover; }
+span.catalog-mark, .school-avatar.catalog-mark {
+  display: grid; place-items: center; font-size: .58rem; font-weight: 750;
+}
 .catalog-brand strong { display: block; font-size: .82rem; }
 .catalog-brand span { display: block; font-size: .62rem; color: var(--muted); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
 .home-sku {
@@ -4100,9 +4099,18 @@ html[data-mode="student"] .dk-compose.is-phone textarea { min-height: 40px; }
   border-radius: 50%; border: 0; background: var(--inv-bg); color: var(--inv-fg); cursor: pointer; font-weight: 800;
 }
 .dk-post {
-  background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding: 14px 16px;
+  max-width: min(560px, 100%);
+  width: 100%;
+  box-sizing: border-box;
 }
-.dk-post.is-pinned { box-shadow: inset 3px 0 0 var(--accent); }
+.dk-feed > .dk-unread-line,
+.dk-feed > .dk-post { align-self: flex-start; }
+.dk-post.is-pinned { box-shadow: inset 3px 0 0 var(--accent); background: var(--ink-2); }
 .dk-post-h { display: flex; gap: 10px; align-items: flex-start; }
 .dk-post-h > div:nth-child(2) { flex: 1; min-width: 0; }
 .dk-post-h strong { display: block; font-size: .9rem; }
@@ -4120,10 +4128,11 @@ html[data-mode="student"] .dk-compose.is-phone textarea { min-height: 40px; }
 }
 .dk-imgbtn img { display: block; width: 100%; height: 160px; object-fit: cover; }
 .dk-imgs.is-1 .dk-imgbtn img { height: auto; max-height: 420px; object-fit: contain; background: var(--media-bg); }
-.dk-comments { margin-top: 12px; display: grid; gap: 8px; }
+.dk-comments { margin-top: 12px; display: grid; gap: 8px; max-width: 100%; }
 .dk-comment { display: flex; gap: 8px; align-items: flex-start; }
 .dk-comment-body {
-  flex: 1; min-width: 0; background: var(--ink); border-radius: 10px; padding: 8px 10px; font-size: .84rem;
+  flex: 1; min-width: 0; max-width: 100%;
+  background: var(--ink-2); border-radius: 10px; padding: 8px 10px; font-size: .84rem;
 }
 .dk-comment-body p { margin: 4px 0 0; white-space: pre-wrap; }
 .dk-comment-form { display: flex; gap: 8px; align-items: center; }
@@ -4160,6 +4169,16 @@ html[data-theme="light"] .ps-cover.is-empty {
   background: linear-gradient(120deg, #c4b7a6 0%, #e7d3b0 48%, #f3e6cf 100%);
 }
 .ps-cover-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ps-cover.is-pan-host { cursor: grab; touch-action: none; user-select: none; }
+.ps-cover-img.is-pan { cursor: grab; touch-action: none; }
+.ps-cover-img.is-pan.is-dragging { cursor: grabbing; }
+.ps-cover-hint {
+  position: absolute; left: 10px; bottom: 10px; z-index: 2;
+  padding: 4px 8px; border-radius: 999px;
+  background: rgba(0,0,0,.55); color: #fff;
+  font-size: .68rem; font-weight: 650; pointer-events: none;
+}
+.ps-cover-acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .ps-card-body { padding: 0 22px 22px; }
 .ps-card-id {
   display: flex; align-items: flex-end; gap: 16px;
