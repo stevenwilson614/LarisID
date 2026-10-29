@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Admin</title>
+  <script>
+    if (location.hostname === 'larisid.pages.dev') {
+      location.replace('https://larisid.com' + location.pathname + location.search + location.hash);
+    } else {
+      fetch('/obrolan.marketing/api/admin/enter', { cache: 'no-store' }).finally(function () {
+        location.replace('/obrolan.marketing/' + location.hash);
+      });
+    }
+  </script>
+</head>
+<body></body>
+</html>
