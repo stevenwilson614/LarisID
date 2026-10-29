@@ -639,58 +639,13 @@ html[data-mode="student"] .dk-comment-form input { font-size: 16px; }
   html[data-mode="student"] .dk-back { display: none !important; }
 }
 
-.dk-reply { margin: 0 8px 6px 46px; }
-.dk-quote, .dk-replying {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  width: 100%;
-  border: 1px solid var(--line);
-  border-left: 3px solid color-mix(in srgb, #2563eb 70%, var(--line));
-  border-radius: 10px;
-  background: color-mix(in srgb, #2563eb 8%, var(--ink-2));
-  color: var(--muted);
-  text-align: left;
-  font: inherit;
-  font-size: .72rem;
-  padding: 7px 10px;
-  cursor: pointer;
-}
-.dk-quote strong, .dk-replying strong { color: var(--text); font-weight: 750; }
-.dk-quote span, .dk-replying-copy {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.dk-replying { cursor: default; margin-bottom: 6px; }
-.dk-replying button {
-  margin-left: auto;
-  border: 0;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  cursor: pointer;
-}
-.dk-comment.is-reply { align-items: flex-start; padding-left: 6px; }
-.dk-reply-arrow {
-  flex: none;
-  width: 14px;
-  height: 16px;
-  margin: 12px 0 0 -2px;
-  border-left: 2px solid color-mix(in srgb, #B5202A 45%, var(--muted));
-  border-bottom: 2px solid color-mix(in srgb, #B5202A 45%, var(--muted));
-  border-bottom-left-radius: 10px;
-}
-.dk-comment.is-flash .dk-comment-body { box-shadow: 0 0 0 2px #2563eb; }
+.dk-comment.is-flash { border-radius: 8px; box-shadow: 0 0 0 2px #2563eb; }
 .dk-comment-acts {
   display: flex;
-  gap: 10px;
-  margin-top: 8px;
-  padding-top: 6px;
-  border-top: 1px solid color-mix(in srgb, var(--line) 65%, transparent);
+  gap: 12px;
+  margin-top: 4px;
 }
+.dk-comment-form.is-inline .dk-comment-row { align-items: center; }
 .dk-like, .dk-reply-btn {
   border: 0;
   background: transparent;

@@ -10535,24 +10535,28 @@
     (comments || []).forEach((c) => { if (c && c.id) byId[c.id] = c; });
     return byId;
   }
-  function commentRootId(row, byId) {
-    let cur = row;
+  function commentParentId(row, byId) {
+    if (!row || !row.replyTo || row.replyTo === row.id || !byId[row.replyTo]) return '';
     const seen = {};
-    while (cur && cur.replyTo && byId[cur.replyTo] && !seen[cur.id]) {
+    seen[row.id] = true;
+    let cur = byId[row.replyTo];
+    while (cur) {
+      if (seen[cur.id]) return '';
       seen[cur.id] = true;
+      if (!cur.replyTo || cur.replyTo === cur.id || !byId[cur.replyTo]) break;
       cur = byId[cur.replyTo];
     }
-    return cur && cur.id ? cur.id : (row && row.id) || '';
+    return row.replyTo;
   }
   function commentChildrenMap(comments) {
     const byId = commentByIdMap(comments);
     const children = {};
     (comments || []).forEach((c) => {
       if (!c || !c.id) return;
-      const root = commentRootId(c, byId);
-      if (!root || root === c.id) return;
-      if (!children[root]) children[root] = [];
-      children[root].push(c);
+      const parent = commentParentId(c, byId);
+      if (!parent) return;
+      if (!children[parent]) children[parent] = [];
+      children[parent].push(c);
     });
     return { byId: byId, children: children };
   }
@@ -10624,12 +10628,27 @@
         '<button class="dk-comment-send" type="submit" aria-label="Kirim">' + sendIco + '</button>' +
       '</div></form>';
   }
+  function commentTreeHtml(post, row, staff, depth, firstUnread, canWrite, children) {
+    const kids = (children && children[row.id]) || [];
+    const open = canWrite && !isSiswaReadonly() && ui.commentExpand === row.id;
+    const unread = firstUnread === 'dkc-' + row.id ? '<div class="dk-unread-line">Belum dibaca</div>' : '';
+    const self = unread + commentHtml(row, staff, post.batchId);
+    const kidHtml = kids.map((k) => commentTreeHtml(post, k, staff, depth + 1, firstUnread, canWrite, children)).join('');
+    const form = open ? commentFormHtml(post, { replyToId: row.id, compact: true }) : '';
+    if (depth === 0) {
+      const replies = (kids.length || open)
+        ? '<div class="dk-replies">' + kidHtml + form + '</div>'
+        : '';
+      return '<div class="dk-cmt-thread">' + self + replies + '</div>';
+    }
+    return self + kidHtml + form;
+  }
   function postCardHtml(post, staff) {
     const mine = post.authorId === actorId();
     const comments = (db.comments || []).filter((c) => c && c.postId === post.id).slice()
       .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     const tree = commentChildrenMap(comments);
-    const roots = comments.filter((c) => commentRootId(c, tree.byId) === c.id);
+    const roots = comments.filter((c) => !commentParentId(c, tree.byId));
     const canDel = !!staff || mine;
     const canWrite = canPostIn(actorId(), post.batchId);
     const firstUnread = firstUnreadElId(post.batchId);
@@ -10660,22 +10679,7 @@
       postReactionsHtml(post, canWrite) +
       '<div class="dk-comments">' +
         (comments.length ? '<p class="dk-comments-n">' + comments.length + ' komentar</p>' : '') +
-        roots.map((c) => {
-          const kids = tree.children[c.id] || [];
-          const rootOpen = canWrite && ui.commentExpand === c.id;
-          const replies = kids.map((k) =>
-            (firstUnread === 'dkc-' + k.id ? '<div class="dk-unread-line">Belum dibaca</div>' : '') +
-            commentHtml(k, staff, post.batchId) +
-            (canWrite && ui.commentExpand === k.id ? commentFormHtml(post, { replyToId: k.id, compact: true }) : '')
-          ).join('');
-          const replyBlock = (kids.length || rootOpen)
-            ? '<div class="dk-replies">' + replies +
-                (rootOpen ? commentFormHtml(post, { replyToId: c.id, compact: true }) : '') +
-              '</div>'
-            : '';
-          return (firstUnread === 'dkc-' + c.id ? '<div class="dk-unread-line">Belum dibaca</div>' : '') +
-            '<div class="dk-thread">' + commentHtml(c, staff, post.batchId) + replyBlock + '</div>';
-        }).join('') +
+        roots.map((c) => commentTreeHtml(post, c, staff, 0, firstUnread, canWrite, tree.children)).join('') +
         (canWrite ? commentFormHtml(post) : '') +
       '</div></article>';
   }
