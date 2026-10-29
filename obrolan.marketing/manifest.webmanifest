@@ -1,8 +1,8 @@
 {
   "name": "Kelas",
   "short_name": "Kelas",
-  "start_url": "/lms/",
-  "scope": "/lms/",
+  "start_url": ".",
+  "scope": ".",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#18181b",

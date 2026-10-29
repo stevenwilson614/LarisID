@@ -34,35 +34,53 @@
   <link rel="manifest" href="/obrolan.marketing/manifest.webmanifest">
   <title>Kelas</title>
   <script>
-    /* Homescreen name/icon must be this org before Safari/Chrome snapshot the page. */
+    /* Homescreen must open this class (/s/{slug}/), never mentor /lms/. */
     (function () {
       var path = location.pathname || '';
       var m = path.match(/^\/s\/([^/]+)/i);
       var slug = m ? decodeURIComponent(m[1]).toLowerCase() : '';
       if (!slug && /^\/obrolan\.marketing\/?/i.test(path)) slug = 'obrolan.marketing';
       if (!slug) return;
+      var start = '/s/' + encodeURIComponent(slug) + '/';
       var man = document.querySelector('link[rel="manifest"]');
-      if (man) man.setAttribute('href', '/obrolan.marketing/api/manifest?slug=' + encodeURIComponent(slug));
+      function applyManifest(info) {
+        if (!man) return;
+        var name = String((info && info.name) || (info && info.short_name) || slug).trim() || slug;
+        var short = String((info && info.short_name) || name).trim().slice(0, 12) || name.slice(0, 12);
+        var icons = (info && info.icons && info.icons.length)
+          ? info.icons
+          : [{ src: '/obrolan.marketing/assets/obrolan/logo-mark.png', sizes: '192x192', type: 'image/png', purpose: 'any' }];
+        var body = {
+          name: name,
+          short_name: short,
+          start_url: start,
+          scope: start,
+          display: 'standalone',
+          orientation: 'portrait',
+          background_color: '#18181b',
+          theme_color: '#18181b',
+          lang: 'id',
+          icons: icons
+        };
+        man.setAttribute('href', 'data:application/manifest+json,' + encodeURIComponent(JSON.stringify(body)));
+        var apple = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+        if (apple) apple.setAttribute('content', name.slice(0, 40));
+        var appName = document.querySelector('meta[name="application-name"]');
+        if (appName) appName.setAttribute('content', name.slice(0, 40));
+        document.title = name;
+        if (icons[0] && icons[0].src) {
+          var touch = document.querySelector('link[rel="apple-touch-icon"]');
+          if (touch) touch.setAttribute('href', icons[0].src);
+        }
+      }
+      /* Set start_url immediately so Add to Home Screen cannot fall back to /lms/. */
+      applyManifest({ name: slug });
       try {
         var x = new XMLHttpRequest();
         x.open('GET', '/obrolan.marketing/api/manifest?slug=' + encodeURIComponent(slug), false);
         x.send(null);
-        if (x.status !== 200) return;
-        var data = JSON.parse(x.responseText || '{}');
-        var label = String((data && data.name) || (data && data.short_name) || '').trim();
-        if (!label) return;
-        var apple = document.querySelector('meta[name="apple-mobile-web-app-title"]');
-        if (apple) apple.setAttribute('content', label.slice(0, 40));
-        var appName = document.querySelector('meta[name="application-name"]');
-        if (appName) appName.setAttribute('content', label.slice(0, 40));
-        document.title = label;
-        var icons = data.icons || [];
-        var icon = icons[0] && icons[0].src;
-        if (icon) {
-          var touch = document.querySelector('link[rel="apple-touch-icon"]');
-          if (touch) touch.setAttribute('href', icon);
-        }
-      } catch (e) { /* offline / blocked */ }
+        if (x.status === 200) applyManifest(JSON.parse(x.responseText || '{}'));
+      } catch (e) { /* offline — keep start_url from above */ }
     })();
   </script>
   <link rel="stylesheet" href="/fonts/laris-fonts.css">
@@ -139,6 +157,6 @@
   <script src="./js/seed.js?v=20261028staff"></script>
   <script src="./js/calc-engine.js?v=20261027calc6"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8/dist/umd/supabase.js"></script>
-  <script src="./js/app.js?v=20261029lms6"></script>
+  <script src="./js/app.js?v=20261029lms7"></script>
 </body>
 </html>

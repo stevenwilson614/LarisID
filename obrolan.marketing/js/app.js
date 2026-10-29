@@ -18058,8 +18058,10 @@
   async function claimCoach() {
     const auth = lmsAuth();
     const here = schoolSlug();
+    /* /s/{slug}/ is the student class URL. Never bounce visitors to mentor /lms/. */
+    const mentorDoor = onMentorPath() || onCoachRootPath();
     if (!auth || !auth.access_token) {
-      if (mirroredCoachSlug() === here && (onStudentVanityPath() || onMentorPath() || onCoachRootPath())) {
+      if (mentorDoor && mirroredCoachSlug() === here) {
         location.replace(coachLoginUrl());
       }
       return false;
@@ -18070,7 +18072,7 @@
         cache: 'no-store'
       });
       if (res.status === 401) {
-        if (mirroredCoachSlug() === here) location.replace(coachLoginUrl());
+        if (mentorDoor && mirroredCoachSlug() === here) location.replace(coachLoginUrl());
         return false;
       }
       if (!res.ok) return false;
