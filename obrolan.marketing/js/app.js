@@ -8066,7 +8066,10 @@
       brandBtn.title = brandBtn.getAttribute('aria-label');
     }
     const themeBtn = $('btn-theme');
-    if (themeBtn) themeBtn.hidden = !isStaff();
+    if (themeBtn) {
+      /* Mentors and students — sun/moon sits left of the student face button. */
+      themeBtn.hidden = false;
+    }
     const meBtn = $('btn-me');
     if (meBtn) {
       meBtn.hidden = isStaff();

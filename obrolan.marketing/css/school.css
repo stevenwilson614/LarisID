@@ -373,7 +373,8 @@ html[data-theme="light"] .theme-btn .ico-moon { display: block; }
   background: var(--inv-bg); color: var(--inv-fg); border-color: var(--inv-bg);
 }
 html[data-mode="mentor"] .me-btn { display: none; }
-html[data-mode="student"] .theme-btn { display: none; }
+/* Students keep theme-btn to the left of #btn-me (profile face). */
+
 
 .tabs button {
   border: 0; background: transparent; color: var(--muted);
