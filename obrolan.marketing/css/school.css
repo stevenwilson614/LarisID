@@ -467,7 +467,7 @@ html[data-mode="mentor"] .me-btn { display: none; }
   position: relative;
   overflow: hidden;
   background: var(--ink-2);
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 16px;
   padding: 16px 16px 14px;
   color: var(--text);
@@ -489,10 +489,10 @@ html[data-mode="mentor"] .me-btn { display: none; }
 .rj-meta { margin: 0; color: var(--muted-2); font-size: .74rem; font-weight: 600; }
 .rj-board {
   position: relative;
-  background: var(--rj-board-bg);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 12px 12px 10px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 4px 0 2px;
   margin: 0 0 12px;
 }
 .resume-journey .rj-board { margin: 0; }
@@ -1243,6 +1243,8 @@ html[data-mode="student"] .topbar {
   flex-wrap: nowrap;
   position: relative;
   z-index: 20;
+  background: var(--ink);
+  border-bottom: 0;
 }
 html[data-mode="student"] .topbar-actions { flex-wrap: nowrap; flex: none; }
 html[data-mode="student"] .brand strong {
@@ -3866,6 +3868,19 @@ html:not([data-theme="light"]) .kur-wiz-ico {
 .cal-day { margin-top: 16px; }
 .home-jadwal .cal-sync-bar { display: none; }
 
+/* Student home / session blocks — solid fills, no outlines */
+html[data-mode="student"] .main .card,
+html[data-mode="student"] .main .resume-journey,
+html[data-mode="student"] .home-session {
+  border: 0;
+  background: var(--ink-2);
+  box-shadow: none;
+}
+html[data-mode="student"] .rj-mile {
+  border-color: var(--ink-3);
+  background: color-mix(in srgb, var(--ink-3) 55%, transparent);
+}
+
 /* Next session card — title hierarchy + brand icons */
 .home-session .ses-kicker {
   margin: 0 0 4px;
@@ -3932,7 +3947,7 @@ html:not([data-theme="light"]) .kur-wiz-ico {
 html[data-mode="student"] #app.is-belajar {
   overflow-x: clip;
 }
-html[data-mode="student"] #app.is-belajar .topbar { display: none; }
+html[data-mode="student"] #app.is-belajar .topbar { display: flex; }
 html[data-mode="student"] #app.is-belajar .main {
   padding: 10px 16px calc(var(--dock-h) + 52px + var(--safe-bottom));
   overflow-x: clip;
