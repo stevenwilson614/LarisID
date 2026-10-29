@@ -756,6 +756,24 @@
     });
   }
 
+  function selectShot(id) {
+    if (!id) return;
+    document.querySelectorAll('[data-shot]').forEach(function (btn) {
+      btn.setAttribute('aria-selected', btn.getAttribute('data-shot') === id ? 'true' : 'false');
+    });
+    document.querySelectorAll('[data-panel]').forEach(function (panel) {
+      var on = panel.getAttribute('data-panel') === id;
+      panel.hidden = !on;
+      var stage = panel.querySelector('.stage');
+      if (!stage) return;
+      stage.classList.remove('is-play');
+      if (on) {
+        void stage.offsetWidth;
+        stage.classList.add('is-play');
+      }
+    });
+  }
+
   function boot() {
     if (!window.Lms || !window.Lms.sb) {
       show('auth');
@@ -763,6 +781,11 @@
       return;
     }
     setAuthMode(window.Lms.invite() ? 'signup' : (window.Lms.pathSlug() ? 'login' : 'signup'));
+    document.querySelectorAll('[data-shot]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        selectShot(btn.getAttribute('data-shot'));
+      });
+    });
     document.querySelectorAll('[data-start]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         clearMentorSlug();
