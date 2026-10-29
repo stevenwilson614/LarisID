@@ -113,9 +113,22 @@
     const stored = (typeof db !== 'undefined' && db && db.schoolSlug) || '';
     return normalizeSlug(stored || (antonSchoolData() ? SEED.school.slug : PATH_SLUG));
   }
+  function inviteFromLabel(label) {
+    const raw = String(label || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return raw.toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+  }
+  function seedInviteCode() {
+    return String((SEED.cohort && SEED.cohort.invite) || '').trim();
+  }
+  function derivedInviteFrom(businessName, slug) {
+    return inviteFromLabel(businessName) || inviteFromLabel(slug);
+  }
   function schoolInviteCode() {
-    const fromDb = (typeof db !== 'undefined' && db && db.inviteCode) ? db.inviteCode : '';
-    return String(fromDb || (SEED.cohort && SEED.cohort.invite) || '').trim();
+    const stored = (typeof db !== 'undefined' && db && db.inviteCode) ? String(db.inviteCode).trim() : '';
+    const seed = seedInviteCode();
+    if (typeof db !== 'undefined' && db && db.inviteCodeCustom === true && stored && stored !== seed) return stored;
+    const business = (typeof db !== 'undefined' && db && db.businessName) ? db.businessName : '';
+    return derivedInviteFrom(business, schoolSlug());
   }
   /** Public student URL: /s/{slug}/ */
   function schoolPublicPath() {
@@ -680,9 +693,18 @@
       notifications: Object.assign(defaultAccountSettings().notifications, ((merged.accountSettings || {}).notifications || {}))
     });
     merged.onboarding = normalizeOnboarding(merged.onboarding);
-    merged.inviteCode = antonSchoolData()
-      ? (String(merged.inviteCode || (SEED.cohort && SEED.cohort.invite) || '').trim() || SEED.cohort.invite)
-      : String(merged.inviteCode || '').trim();
+    const seedInvite = seedInviteCode();
+    const storedInvite = String(merged.inviteCode || '').trim();
+    const derivedInvite = derivedInviteFrom(merged.businessName, merged.schoolSlug);
+    if (merged.inviteCodeCustom === true && storedInvite && storedInvite !== seedInvite) {
+      merged.inviteCode = storedInvite;
+    } else if (merged.inviteCodeCustom !== false && storedInvite && storedInvite !== seedInvite && storedInvite !== derivedInvite) {
+      merged.inviteCode = storedInvite;
+      merged.inviteCodeCustom = true;
+    } else {
+      merged.inviteCode = derivedInvite;
+      merged.inviteCodeCustom = false;
+    }
     merged.staffAdmins = normalizeStaffAdmins(merged.staffAdmins);
     merged.lynkProducts = Object.assign({
       month: { url: '', title: '', price: 0 },
@@ -2082,7 +2104,8 @@
       businessName: '',
       mentorBand: '',
       ownerId: anton ? ((SEED.school && SEED.school.ownerId) || 'u-anton') : '',
-      inviteCode: anton ? SEED.cohort.invite : '',
+      inviteCode: derivedInviteFrom('', anton ? SEED.school.slug : (pathSlug() || PATH_SLUG)),
+      inviteCodeCustom: false,
       staffAdmins: demo && SEED.staffAdmins ? JSON.parse(JSON.stringify(SEED.staffAdmins)) : [],
       pricing: anton ? JSON.parse(JSON.stringify(SEED.pricing)) : {},
       bank: anton ? JSON.parse(JSON.stringify(SEED.bank)) : {},
@@ -2265,6 +2288,7 @@
   function revealShell() {
     document.documentElement.classList.remove('lms-booting');
   }
+  const STAFF_PERM_KEYS = ['viewStudents', 'editStudents', 'addStudents', 'viewIncome', 'editIncome', 'viewClasses', 'editClasses'];
   let db = load();
   if (!resolveVanitySlug()) {
     revealShell();
@@ -2280,6 +2304,8 @@
     drawerId: null,
     personId: null,
     siswaView: 'pipa',
+    siswaShowList: false,
+    siswaInviteOpen: false,
     hubBack: 'pipa',
     stageFilter: '',
     dashRange: '30',
@@ -2769,7 +2795,6 @@
   function isStaff() { return ui.role === 'owner' || ui.role === 'asisten'; }
   function isOwner() { return ui.role === 'owner'; }
   function canBill() { return ui.role === 'owner'; }
-  const STAFF_PERM_KEYS = ['viewStudents', 'editStudents', 'addStudents', 'viewIncome', 'editIncome', 'viewClasses', 'editClasses'];
   function defaultStaffPerms() {
     return {
       viewStudents: true,
@@ -9781,53 +9806,46 @@
   function inviteShareUrl() {
     return isLocalHost() ? schoolJoinLocalUrl() : schoolJoinUrl();
   }
+  function siswaInvitePanelHtml() {
+    if (!ui.siswaInviteOpen || !staffCan('addStudents')) return '';
+    const join = inviteShareUrl();
+    const display = schoolJoinUrl();
+    return '<div class="siswa-invite-panel">' +
+      '<code title="' + esc(display) + '">' + esc(display) + '</code>' +
+      '<button type="button" class="btn-sm" data-act="copy-url" data-url="' + esc(join) + '">Salin</button>' +
+    '</div>';
+  }
   function viewSiswaEmpty() {
+    const listBtn = '<div class="siswa-empty-acts">' +
+      '<button type="button" class="btn secondary" data-act="siswa-show-list">Lihat list</button>' +
+    '</div>';
     if (!staffCan('addStudents')) {
       return '<section class="siswa-empty"><div class="siswa-empty-copy">' +
         '<p class="siswa-empty-kicker">Students</p>' +
         '<h2>Belum ada siswa</h2>' +
         '<p class="muted">Kamu bisa lihat daftar ini. Menambah siswa hanya kalau mentor mengizinkan.</p>' +
-      '</div></section>';
+      '</div>' + listBtn + '</section>';
     }
     const join = inviteShareUrl();
     const display = schoolJoinUrl();
-    const code = schoolInviteCode();
-    const shareText = 'Gabung kelas ' + ((db && db.businessName) || SEED.school.name || 'saya') +
-      ' di Laris Mentor:\n' + display;
-    const waHref = 'https://wa.me/?text=' + encodeURIComponent(shareText);
     return '<section class="siswa-empty">' +
       '<div class="siswa-empty-copy">' +
         '<p class="siswa-empty-kicker">Students</p>' +
-        '<h2>Add students</h2>' +
-        '<p class="muted">Your class is empty. Invite people so they can join and show up here.</p>' +
+        '<h2>Undang siswa</h2>' +
+        '<p class="muted">Bagikan tautan ini. Siswa yang membuka akan masuk ke daftar.</p>' +
       '</div>' +
-      '<ol class="siswa-empty-steps">' +
-        '<li class="siswa-empty-step">' +
-          '<div class="siswa-empty-step-n" aria-hidden="true">1</div>' +
-          '<div class="siswa-empty-step-body">' +
-            '<h3>Send an invite link</h3>' +
-            '<p class="muted">Share this link. Students open it, fill the join form, and land in your roster.</p>' +
-            '<div class="siswa-empty-link">' +
-              '<code title="' + esc(display) + '">' + esc(display) + '</code>' +
-              '<button type="button" class="btn" data-act="copy-url" data-url="' + esc(join) + '">Copy link</button>' +
-            '</div>' +
-            (code
-              ? '<p class="muted siswa-empty-code">Invite code: <strong>' + esc(code) + '</strong></p>'
-              : '') +
-            '<div class="siswa-empty-acts">' +
-              '<a class="btn secondary" href="' + esc(waHref) + '" target="_blank" rel="noopener">Share on WhatsApp</a>' +
-            '</div>' +
-          '</div>' +
-        '</li>' +
-      '</ol>' +
+      '<div class="siswa-empty-link">' +
+        '<code title="' + esc(display) + '">' + esc(display) + '</code>' +
+        '<button type="button" class="btn" data-act="copy-url" data-url="' + esc(join) + '">Salin</button>' +
+      '</div>' +
+      listBtn +
     '</section>';
   }
   function viewSiswaHub() {
     ensurePipaTip();
     const empty = !rosterStudents().length;
-    if (empty && !(ui.pipaSettingsOpen && (ui.siswaView || 'pipa') === 'pipa')) {
-      return viewSiswaEmpty();
-    }
+    const settingsBypass = ui.pipaSettingsOpen && (ui.siswaView || 'pipa') === 'pipa';
+    if (empty && !ui.siswaShowList && !settingsBypass) return viewSiswaEmpty();
     const cam = ui.siswaView || 'pipa';
     const q = (ui.filterSiswa || ui.crmFilter || '').toLowerCase();
     const pipaGear = cam === 'pipa' && staffCan('editStudents')
@@ -9842,27 +9860,22 @@
           (ui.pipaSettingsOpen ? pipaSettingsPanelHtml() : '') +
         '</div>'
       : '';
+    const inviteBtn = staffCan('addStudents')
+      ? '<button type="button" class="btn-sm' + (ui.siswaInviteOpen ? ' is-on' : '') +
+          '" data-act="siswa-invite-toggle" aria-expanded="' + (ui.siswaInviteOpen ? 'true' : 'false') + '">Tautan undangan</button>'
+      : '';
     const head = '<div class="hub-head">' +
       '<div><h2 style="margin:0">Siswa · ' + esc(antonSchoolData() ? SEED.cohort.name : ((db && db.businessName) || 'Kelas')) + '</h2>' +
         '<p class="muted">' + (empty
-          ? 'Belum ada siswa — atur tahap Pipa dulu, lalu undang orang.'
+          ? 'Belum ada siswa.'
           : 'Klik nama = profil. Geser kartu di Pipa.') + '</p></div>' +
       '<div class="hub-head-acts">' +
+        inviteBtn +
         pipaGear +
         (empty
           ? ''
           : '<input placeholder="Cari orang…" value="' + esc(q) + '" data-act="filter-siswa" style="max-width:260px;padding:8px 12px;border:1px solid var(--line);border-radius:10px">') +
-      '</div></div>' + hubSeg();
-    if (empty) {
-      return head +
-        '<div class="siswa-empty-inline">' +
-          '<p class="muted">Pipa masih kosong. Simpan tahap yang kamu mau, lalu kembali undang siswa lewat invite link.</p>' +
-          (staffCan('addStudents')
-            ? '<button type="button" class="btn-sm" data-act="siswa-invite-back">Kembali ke undangan</button>'
-            : '') +
-        '</div>' +
-        viewCrm(q);
-    }
+      '</div></div>' + siswaInvitePanelHtml() + hubSeg();
     if (cam === 'daftar') return head + viewSiswaDaftar(q);
     if (cam === 'progres') return head + viewMentorProgres();
     return head + viewCrm(q);
@@ -13736,13 +13749,19 @@
       ui.pipaTipOpen = false;
       ui.mentorTab = 'siswa';
       ui.siswaView = 'pipa';
+      ui.siswaShowList = true;
       ui.hubBack = 'pipa';
       ui.pipaSettingsOpen = true;
       ui.pipaDeleteId = null;
       render();
-    } else if (act === 'siswa-invite-back') {
-      ui.pipaSettingsOpen = false;
-      ui.pipaDeleteId = null;
+    } else if (act === 'siswa-show-list') {
+      ui.siswaShowList = true;
+      ui.mentorTab = 'siswa';
+      ui.siswaView = ui.siswaView || 'pipa';
+      ui.hubBack = ui.siswaView;
+      render();
+    } else if (act === 'siswa-invite-toggle') {
+      ui.siswaInviteOpen = !ui.siswaInviteOpen;
       ui.mentorTab = 'siswa';
       render();
     } else if (act === 'pipa-settings-toggle') {
@@ -14837,9 +14856,17 @@
       render();
     } else if (act === 'save-school-url') {
       if (!canBill()) return;
-      const nextInvite = String(fd.get('invite') || '').trim().toUpperCase().replace(/\s+/g, '-');
+      const nextInvite = inviteFromLabel(fd.get('invite'));
+      const derived = derivedInviteFrom(db.businessName, schoolSlug());
+      const seed = seedInviteCode();
       db.schoolSlug = 'obrolan.marketing';
-      db.inviteCode = nextInvite || SEED.cohort.invite;
+      if (nextInvite && nextInvite !== derived && nextInvite !== seed) {
+        db.inviteCode = nextInvite;
+        db.inviteCodeCustom = true;
+      } else {
+        db.inviteCode = derived;
+        db.inviteCodeCustom = false;
+      }
       db.ownerContact = {
         wa: normalizeWa(fd.get('ownerWa') || ''),
         email: String(fd.get('ownerEmail') || '').trim()

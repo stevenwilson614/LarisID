@@ -193,20 +193,33 @@ function saveProfilePhoto(slug, dataUrl) {
   return '/obrolan.marketing/api/media/file?key=' + encodeURIComponent(key);
 }
 
+function inviteFromLabel(label) {
+  const raw = String(label || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return raw.toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+}
+
+function derivedInvite(state, slug) {
+  const business = inviteFromLabel(state && state.businessName);
+  if (business) return business;
+  return inviteFromLabel((state && state.schoolSlug) || slug || '');
+}
+
 function emptySchool(slug, user, body, photoUrl) {
   const ownerId = 'u-' + String(user.id).replace(/[^a-zA-Z0-9]/g, '').slice(0, 16);
   const socials = cleanSocials(body.socials);
+  const businessName = clip(body.businessName, 80);
   return {
     key: '',
     rev: 1,
     updatedAt: new Date().toISOString(),
     state: {
       schoolSlug: slug,
-      businessName: clip(body.businessName, 80),
+      businessName: businessName,
       mentorBand: body.mentorBand,
       ownerId: ownerId,
       ownerUserId: user.id,
-      inviteCode: '',
+      inviteCode: inviteFromLabel(businessName) || inviteFromLabel(slug),
+      inviteCodeCustom: false,
       schoolProfile: {
         firstName: clip(body.firstName, 40),
         lastName: clip(body.lastName, 80),
@@ -271,8 +284,26 @@ function writeState(rec, slug) {
 }
 
 function inviteOf(rec) {
-  const fromState = rec && rec.state && rec.state.inviteCode;
-  return String(fromState || DEFAULT_INVITE);
+  const state = (rec && rec.state) || {};
+  const stored = String(state.inviteCode || '').trim();
+  if (state.inviteCodeCustom === true && stored && stored !== DEFAULT_INVITE) return stored;
+  const derived = derivedInvite(state);
+  if (state.inviteCodeCustom === false) return derived || stored || DEFAULT_INVITE;
+  if (stored && stored !== DEFAULT_INVITE) return stored;
+  return derived || DEFAULT_INVITE;
+}
+
+function inviteAccepted(rec, got) {
+  const state = (rec && rec.state) || {};
+  const stored = String(state.inviteCode || '').trim();
+  const codes = [inviteOf(rec), stored, derivedInvite(state), DEFAULT_INVITE];
+  const seen = new Set();
+  for (const code of codes) {
+    if (!code || seen.has(code)) continue;
+    seen.add(code);
+    if (sameSecret(got, code)) return true;
+  }
+  return false;
 }
 
 function sameSecret(a, b) {
@@ -1883,7 +1914,7 @@ const server = http.createServer((req, res) => {
 
   if (pathname === '/media/init' && req.method === 'POST') {
     const rec = readState();
-    if (!sameSecret(q.k, inviteOf(rec))) {
+    if (!inviteAccepted(rec, q.k)) {
       json(res, 403, { error: 'forbidden' });
       return;
     }
@@ -1927,7 +1958,7 @@ const server = http.createServer((req, res) => {
 
   if (pathname === '/media/part' && req.method === 'PUT') {
     const rec = readState();
-    if (!sameSecret(q.k, inviteOf(rec))) {
+    if (!inviteAccepted(rec, q.k)) {
       json(res, 403, { error: 'forbidden' });
       return;
     }
@@ -1949,7 +1980,7 @@ const server = http.createServer((req, res) => {
 
   if (pathname === '/media/complete' && req.method === 'POST') {
     const rec = readState();
-    if (!sameSecret(q.k, inviteOf(rec))) {
+    if (!inviteAccepted(rec, q.k)) {
       json(res, 403, { error: 'forbidden' });
       return;
     }
@@ -1998,7 +2029,7 @@ const server = http.createServer((req, res) => {
 
   if (pathname === '/media' && req.method === 'DELETE') {
     const rec = readState();
-    if (!sameSecret(q.k, inviteOf(rec))) {
+    if (!inviteAccepted(rec, q.k)) {
       json(res, 403, { error: 'forbidden' });
       return;
     }
@@ -2024,7 +2055,7 @@ const server = http.createServer((req, res) => {
     const publicPhoto = profileKeyOk(q.key);
     if (!publicPhoto) {
       const rec = readState();
-      if (!sameSecret(q.k, inviteOf(rec))) {
+      if (!inviteAccepted(rec, q.k)) {
         json(res, 403, { error: 'forbidden' });
         return;
       }

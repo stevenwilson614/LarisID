@@ -1748,6 +1748,15 @@ html.present-pane[data-mode="student"] .kurikulum-pane.is-open {
 }
 .siswa-empty-code { margin: 10px 0 0; font-size: .74rem; }
 .siswa-empty-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.siswa-invite-panel {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  margin: 8px 0 12px; padding: 10px;
+  border: 1px solid var(--line-2); border-radius: 10px; background: var(--ink-2);
+}
+.siswa-invite-panel code {
+  flex: 1; min-width: 0; font-size: .78rem; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 
 .hub-head {
   display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
