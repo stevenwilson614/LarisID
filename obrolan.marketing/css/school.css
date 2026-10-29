@@ -422,7 +422,7 @@ html[data-mode="student"] .theme-btn { display: none; }
 .tick-ok {
   display: inline-flex; align-items: center; justify-content: center;
   width: 16px; height: 16px; border-radius: 50%;
-  background: var(--ok); color: #fff; font-size: .7rem; font-weight: 800; flex: none;
+  background: var(--ok); color: var(--on-ok); font-size: .7rem; font-weight: 800; flex: none;
 }
 .tick-off {
   display: inline-block; width: 16px; height: 16px; border-radius: 50%;
