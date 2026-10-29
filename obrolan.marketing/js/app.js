@@ -752,8 +752,10 @@
     merged.tasks = Array.isArray(merged.tasks)
       ? merged.tasks
       : (demoRoster ? JSON.parse(JSON.stringify(SEED.tasksSeed || [])) : []);
+    const ownerId = merged.ownerId || (SEED.school && SEED.school.ownerId) || 'u-anton';
     const staffIds = (SEED.staff || []).map((s) => s.id);
-    const defaultAssignee = (SEED.school && SEED.school.ownerId) || staffIds[0] || 'u-anton';
+    if (ownerId && staffIds.indexOf(ownerId) < 0) staffIds.push(ownerId);
+    const defaultAssignee = ownerId || staffIds[0] || 'u-anton';
     merged.tasks.forEach((t) => {
       if (!t || typeof t !== 'object') return;
       if (!t.assignee || staffIds.indexOf(t.assignee) < 0) t.assignee = defaultAssignee;
@@ -1257,8 +1259,50 @@
     const c = cls || 'school-avatar';
     if (p.photoBlob) return '<img class="' + c + '" data-blob="' + esc(schoolPhotoKey()) + '" alt="">';
     if (p.photoUrl) return '<img class="' + c + '" src="' + esc(p.photoUrl) + '" alt="">';
-    if (!antonSchoolData()) return '<span class="' + c + '">' + esc((p.firstName || 'K').slice(0, 1)) + '</span>';
+    if (!antonSchoolData()) {
+      return '<span class="' + c + ' avatar-fallback" aria-hidden="true">' +
+        esc(initialsOf(schoolDisplayName(p) || p.firstName || 'K')) + '</span>';
+    }
     return '<img class="' + c + '" src="' + esc(SEED.school.photo || SEED.school.logo) + '" alt="">';
+  }
+  function schoolOwnerId() {
+    if (typeof db !== 'undefined' && db && db.ownerId) return String(db.ownerId);
+    return (SEED.school && SEED.school.ownerId) || 'u-anton';
+  }
+  function schoolOwnerLabel() {
+    const full = String(schoolDisplayName() || '').trim();
+    if (full) return full.split(/\s+/)[0] || full;
+    return ownerFirstName();
+  }
+  /** Steven Wilson's test school — no Bayar, full mentoring gratis. */
+  function schoolIsFree() {
+    if (typeof db !== 'undefined' && db && db.freeAccess === true) return true;
+    if (typeof db !== 'undefined' && db && db.freeAccess === false) return false;
+    const p = schoolProfile();
+    const full = (String(p.firstName || '').trim() + ' ' + String(p.lastName || '').trim()).trim().toLowerCase();
+    return full === 'steven wilson';
+  }
+  function grantFreeAccess(id) {
+    const b = billingOf(id);
+    b.status = 'gratis';
+    b.plan = 'mentoring';
+    b.products = MENTOR_SKUS().slice();
+    b.amount = 0;
+    b.source = 'manual';
+    b.paidAt = b.paidAt || isoNow();
+    b.note = 'Gratis · mentor';
+    b.term = b.term || 'year';
+    b.accessUntil = null;
+    delete b.offerExpiresAt;
+    delete b.pendingTerm;
+    delete b.pendingAmount;
+    delete b.pendingAt;
+    delete b.pendingChannel;
+    const c = crmOf(id);
+    delete c.endedAt;
+    applyTransition(id, 'bayar', 'mentee', 'Akses gratis dari mentor');
+    pushTimeline(id, 'pay', 'Akses gratis dari mentor');
+    enrollPerson(id, 'onboarding', true);
   }
   function schoolSocialLinksHtml(profile) {
     const s = ((profile || schoolProfile()).socials) || {};
@@ -1458,28 +1502,34 @@
         '<p class="muted">Tambah akun sosial dan tautan marketplace.</p>' +
         personLinksHtml(id, s, app) +
       '</section>' +
-      '<section class="card me-card">' +
-        '<h2>Pembayaran &amp; billing</h2>' +
-        '<div class="me-bill">' +
-          '<div class="me-bill-row"><span>Status</span><strong>' + payChip(b.status, b.source) + '</strong></div>' +
-          '<div class="me-bill-row"><span>Paket</span><strong>' + esc(termLabel(b.pendingTerm || b.term) || '—') + '</strong></div>' +
-          '<div class="me-bill-row"><span>Nilai</span><strong>' + esc(fmtRp(b.amount || b.pendingAmount || 0)) + '</strong></div>' +
-          (b.accessUntil
-            ? '<div class="me-bill-row"><span>Akses sampai</span><strong>' + esc(fmtWhen(b.accessUntil)) + '</strong></div>'
-            : '') +
-          (b.note ? '<p class="muted" style="margin:8px 0 0">' + esc(b.note) + '</p>' : '') +
-        '</div>' +
-        (pending
-          ? pendingBanner(id)
-          : (unpaid
-            ? '<div class="row" style="margin-top:12px">' +
-                '<button type="button" class="btn" data-act="tab" data-id="daftar">Bayar mentoring</button>' +
-              '</div>'
-            : '<p class="muted" style="margin:10px 0 0">Mentoring aktif. Perpanjang lewat Bayar mentoring saat masa akses hampir habis.</p>' +
-              '<div class="row" style="margin-top:10px">' +
-                '<button type="button" class="btn secondary" data-act="tab" data-id="daftar">Perpanjang / bayar</button>' +
-              '</div>')) +
-      '</section>' +
+      (schoolIsFree()
+        ? '<section class="card me-card">' +
+            '<h2>Akses kelas</h2>' +
+            '<p class="muted" style="margin:0">Kelas ' + esc(ownerFirstName() || 'mentor') +
+            ' gratis untuk murid uji coba. Tidak ada tagihan.</p>' +
+          '</section>'
+        : '<section class="card me-card">' +
+            '<h2>Pembayaran &amp; billing</h2>' +
+            '<div class="me-bill">' +
+              '<div class="me-bill-row"><span>Status</span><strong>' + payChip(b.status, b.source) + '</strong></div>' +
+              '<div class="me-bill-row"><span>Paket</span><strong>' + esc(termLabel(b.pendingTerm || b.term) || '—') + '</strong></div>' +
+              '<div class="me-bill-row"><span>Nilai</span><strong>' + esc(fmtRp(b.amount || b.pendingAmount || 0)) + '</strong></div>' +
+              (b.accessUntil
+                ? '<div class="me-bill-row"><span>Akses sampai</span><strong>' + esc(fmtWhen(b.accessUntil)) + '</strong></div>'
+                : '') +
+              (b.note ? '<p class="muted" style="margin:8px 0 0">' + esc(b.note) + '</p>' : '') +
+            '</div>' +
+            (pending
+              ? pendingBanner(id)
+              : (unpaid
+                ? '<div class="row" style="margin-top:12px">' +
+                    '<button type="button" class="btn" data-act="tab" data-id="daftar">Bayar mentoring</button>' +
+                  '</div>'
+                : '<p class="muted" style="margin:10px 0 0">Mentoring aktif. Perpanjang lewat Bayar mentoring saat masa akses hampir habis.</p>' +
+                  '<div class="row" style="margin-top:10px">' +
+                    '<button type="button" class="btn secondary" data-act="tab" data-id="daftar">Perpanjang / bayar</button>' +
+                  '</div>')) +
+          '</section>') +
       '<section class="card me-card">' +
         '<h2>Akun</h2>' +
         '<p class="muted">Email, WhatsApp, dan password login (prototype lokal).</p>' +
@@ -2745,6 +2795,7 @@
     return billingOf(id).status === 'pending';
   }
   function canMentoring(id) {
+    if (schoolIsFree() && db.applications[id]) return true;
     const b = billingOf(id);
     if (b.status === 'gratis') return true;
     if (b.status === 'pending' || b.status === 'belum' || b.status === 'trial') return false;
@@ -2752,6 +2803,15 @@
     if (inGrace(id)) return true;
     if (b.accessUntil && nowMs() >= new Date(b.accessUntil).getTime() + graceMs()) return false;
     return b.status === 'lunas' || b.status === 'cicilan';
+  }
+  function ensureFreeSchoolAccess() {
+    if (!schoolIsFree() || isStaff()) return;
+    const id = ui.personaId;
+    if (!id || !db.applications[id]) return;
+    const b = billingOf(id);
+    if (b.status === 'gratis' && b.plan === 'mentoring') return;
+    grantFreeAccess(id);
+    save();
   }
   function canPreview(id) {
     if (canMentoring(id)) return false;
@@ -4210,10 +4270,15 @@
     db.timeline[id].unshift(row);
   }
   function staffMembers() {
-    return (SEED.staff || []).slice();
+    const list = (SEED.staff || []).slice();
+    const oid = schoolOwnerId();
+    if (oid && !list.some((s) => s.id === oid)) {
+      list.unshift({ id: oid, name: schoolOwnerLabel(), role: 'owner' });
+    }
+    return list;
   }
   function defaultAssigneeId() {
-    return (SEED.school && SEED.school.ownerId) || (staffMembers()[0] && staffMembers()[0].id) || 'u-anton';
+    return schoolOwnerId() || (staffMembers()[0] && staffMembers()[0].id) || 'u-anton';
   }
   function assigneeIdOf(t) {
     const id = t && t.assignee;
@@ -4694,7 +4759,7 @@
       ui.visitorLive = true;
       ui.role = 'student';
     }
-    const ownerId = (SEED.school && SEED.school.ownerId) || 'u-anton';
+    const ownerId = schoolOwnerId();
     db.applications[sid] = {
       name: fullName || (s.name || ''),
       firstName: firstName,
@@ -4748,7 +4813,8 @@
       b.offerExpiresAt = addMs(isoNow(), 24 * 36e5);
     }
     applyTransition(sid, 'form', 'form', 'Form masuk. Jam diskon 24 jam dimulai.');
-    startTrial(sid);
+    if (schoolIsFree()) grantFreeAccess(sid);
+    else startTrial(sid);
     save();
     trackEvent('join', { name: fullName, wa: String(d.wa || ''), stage: 'form', progress: kurProgress(sid).pct });
     return true;
@@ -4793,10 +4859,16 @@
       Promise.resolve(commitWizApplication()).then((ok) => {
         ui.joining = false;
         if (!ok) return;
-        ui.wizStep = wizPayIdx();
         ui.wizFocusedStep = null;
-        ui.tab = 'daftar';
-        toast('Form masuk. Diskon 24 jam jalan — boleh langsung ke Belajar.');
+        if (schoolIsFree()) {
+          ui.wizStep = null;
+          ui.tab = 'home';
+          toast('Selamat datang. Kelas ini gratis — mulai dari Home.');
+        } else {
+          ui.wizStep = wizPayIdx();
+          ui.tab = 'daftar';
+          toast('Form masuk. Diskon 24 jam jalan — lanjut ke Home atau lihat paket.');
+        }
         render();
       }).catch(() => {
         ui.joining = false;
@@ -6742,23 +6814,54 @@
     if (chromeOrg) document.title = chromeOrg;
     const logo = $('school-logo');
     if (logo) {
-      logo.alt = chromeOrg;
+      const brandBtn = logo.parentElement;
+      let fallback = brandBtn && brandBtn.querySelector('.brand-fallback');
+      const paintLogoFallback = () => {
+        logo.removeAttribute('src');
+        logo.removeAttribute('data-blob');
+        logo.hidden = true;
+        logo.alt = '';
+        if (brandBtn && !fallback) {
+          fallback = document.createElement('span');
+          fallback.className = 'brand-fallback';
+          fallback.setAttribute('aria-hidden', 'true');
+          brandBtn.insertBefore(fallback, logo);
+        }
+        if (fallback) {
+          fallback.hidden = false;
+          fallback.textContent = initialsOf(schoolDisplayName() || chromeOrg || 'K');
+        }
+      };
+      const showLogoImg = (src) => {
+        if (fallback) fallback.hidden = true;
+        logo.hidden = false;
+        logo.alt = '';
+        logo.onerror = () => paintLogoFallback();
+        logo.src = src;
+      };
       const pLogo = schoolProfile();
       if (pLogo.photoUrl && !pLogo.photoBlob) {
         logo.removeAttribute('data-blob');
-        logo.src = pLogo.photoUrl;
+        showLogoImg(pLogo.photoUrl);
       } else if (pLogo.photoBlob) {
         logo.setAttribute('data-blob', schoolPhotoKey());
+        if (fallback) fallback.hidden = true;
+        logo.hidden = false;
+        logo.alt = '';
         blobGet(schoolPhotoKey()).then((file) => {
-          if (!file || !logo.isConnected) return;
+          if (!file || !logo.isConnected) {
+            paintLogoFallback();
+            return;
+          }
+          logo.onerror = () => paintLogoFallback();
           logo.src = URL.createObjectURL(file);
-        });
+        }).catch(() => paintLogoFallback());
       } else {
         logo.removeAttribute('data-blob');
         // Never fall back to Anton's photo on another coach's school.
         const antonPhoto = antonSchoolData() ? (SEED.school.photo || SEED.school.logo) : '';
-        if (antonPhoto) logo.src = antonPhoto;
-        else logo.removeAttribute('src');
+        if (antonPhoto) showLogoImg(antonPhoto);
+        else paintLogoFallback();
       }
     }
     const personEl = $('school-person');
@@ -6834,8 +6937,10 @@
       headerEl.textContent = show ? String(prof.headline).trim() : '';
     }
     if (!isStaff()) {
-      const allowed = studentTabs().map((t) => t.id).concat(['sku', 'alat', 'daftar', 'tes', 'sertifikat', 'diskusi', 'profil']);
+      ensureFreeSchoolAccess();
+      const allowed = studentTabs().map((t) => t.id).concat(['sku', 'alat', 'daftar', 'tes', 'sertifikat', 'diskusi', 'profil', 'kurikulum']);
       if (needsWizard(ui.personaId) && ui.tab !== 'daftar') ui.tab = 'daftar';
+      else if (schoolIsFree() && ui.tab === 'daftar') ui.tab = 'home';
       if (ui.tab === 'progres') ui.tab = 'diskusi';
       else if (allowed.indexOf(ui.tab) === -1) ui.tab = 'home';
     }
@@ -6888,7 +6993,8 @@
         dock.className = 'dock cols-' + tabs.length;
         dock.innerHTML = tabs.map((t) =>
           '<button type="button" data-act="tab" data-id="' + t.id + '" aria-selected="' +
-          (t.id === ui.tab || (ui.tab === 'sku' && t.id === 'alat')) + '">' +
+          (t.id === ui.tab || (ui.tab === 'sku' && t.id === 'alat') ||
+            (ui.tab === 'kurikulum' && t.id === 'belajar')) + '">' +
           dockIcon(t.id) + '<span>' + esc(t.label) + '</span></button>'
         ).join('');
       }
@@ -7226,6 +7332,7 @@
         const tab = ui.tab;
         if (tab === 'home') main.innerHTML = viewHome();
         else if (tab === 'belajar') main.innerHTML = viewBelajar();
+        else if (tab === 'kurikulum') main.innerHTML = viewStudentKurikulumPage();
         else if (tab === 'alat') main.innerHTML = viewAlat();
         else if (tab === 'sku') main.innerHTML = viewSkuPage();
         else if (tab === 'progres') main.innerHTML = viewProgres();
@@ -7403,6 +7510,7 @@
       '</section>';
   }
   function offerBanner(sid) {
+    if (schoolIsFree() || canMentoring(sid)) return '';
     if (isPending(sid)) return pendingBanner(sid);
     const b = billingOf(sid);
     const exp = b.offerExpiresAt;
@@ -7468,7 +7576,7 @@
       host.id = 'pay-prompt-host';
       ($('app') || document.body).appendChild(host);
     }
-    const show = !!ui.payPrompt && !isStaff() && !canMentoring(ui.personaId);
+    const show = !!ui.payPrompt && !isStaff() && !canMentoring(ui.personaId) && !schoolIsFree();
     if (!show) {
       host.innerHTML = '';
       host.hidden = true;
@@ -7614,6 +7722,10 @@
   function viewWizard() {
     const step = wizIdx();
     const payAt = wizPayIdx();
+    if (schoolIsFree() && db.applications[ui.personaId]) {
+      ui.tab = 'home';
+      return viewHome();
+    }
     const wantPay = step >= payAt || (wizardStep(ui.personaId) === 'pay' && ui.wizStep == null);
     if (wantPay) {
       if (!db.applications[ui.personaId]) {
@@ -7883,15 +7995,17 @@
       : (db.lastLecture[s.id] || firstLectureId());
     const last = lectureById(lastId) || lectures()[0];
     const ses = nextSession();
-    const preview = canPreview(s.id) && !canMentoring(s.id);
+    const preview = canPreview(s.id) && !canMentoring(s.id) && !schoolIsFree();
+    const banner = preview ? offerBanner(s.id) : '';
+    const resume = last ? resumeJourneyHtml(s.id, last, preview) : '';
     if (!ses) {
-      return (preview ? offerBanner(s.id) : '') +
+      return banner + resume +
         '<section class="card"><h2>' + esc((db && db.businessName) || 'Kelas') + '</h2><p class="muted">Jadwal belum dipasang.</p></section>';
     }
     return (
-      (preview ? offerBanner(s.id) : '') +
+      banner +
       '<div class="grid-2">' +
-        resumeJourneyHtml(s.id, last, preview) +
+        resume +
         '<section class="card">' +
           '<h2>Sesi berikutnya</h2>' +
           (preview
@@ -8239,6 +8353,30 @@
     return '<div class="lesson">' + top + head + seqBanner + stage + folds + nav + report + (opts.after || '') + '</div>';
   }
 
+  function viewStudentKurikulumPage() {
+    const sid = ui.personaId;
+    if (legacyKurGates() && !canMentoring(sid) && !canPreview(sid)) return viewLocked();
+    const meta = ensureKurikulumMeta();
+    const curId = ui.lectureId || db.lastLecture[sid] || firstLectureId();
+    const title = (meta && meta.name) || (db && db.businessName) || 'Kurikulum';
+    if (!lectures().length) {
+      return '<section class="stu-kur-page">' +
+        '<div class="stu-kur-head">' +
+          '<button type="button" class="lesson-back" data-act="tab" data-id="home" aria-label="Kembali">←</button>' +
+          '<div><p class="muted me-kicker">Kurikulum</p><h1>' + esc(title) + '</h1></div>' +
+        '</div>' +
+        '<div class="card kur-empty"><p class="muted">Belum ada materi.</p></div></section>';
+    }
+    return '<section class="stu-kur-page">' +
+      '<div class="stu-kur-head">' +
+        '<button type="button" class="lesson-back" data-act="tab" data-id="home" aria-label="Kembali">←</button>' +
+        '<div><p class="muted me-kicker">Kurikulum</p><h1>' + esc(title) + '</h1></div>' +
+      '</div>' +
+      lessonDotsHtml(sid, curId) +
+      progressBarHtml(sid) +
+      '<div class="stu-kur-list card">' + renderKurikulumSidebar(sid, { skipProgress: true }) + '</div>' +
+    '</section>';
+  }
   function viewBelajar() {
     if (legacyKurGates() && !canMentoring(ui.personaId) && !canPreview(ui.personaId)) return viewLocked();
     let lec = lectureById(ui.lectureId) || lectures()[0];
@@ -8263,7 +8401,7 @@
         stage: crmOf(ui.personaId).stage
       });
     }
-    const paywalled = isPaywalled(ui.personaId, lec.id) && !isStaff();
+    const paywalled = isPaywalled(ui.personaId, lec.id) && !isStaff() && !schoolIsFree();
     const seqLocked = isSeqLocked(ui.personaId, lec.id) && !isStaff();
     const seqBlocked = seqLocked && !canViewLecture(ui.personaId, lec.id);
     const player = renderLessonPlayer(lec, {
@@ -8272,6 +8410,10 @@
       seqLocked: seqLocked && !seqBlocked,
       seqBlocked: seqBlocked
     });
+    // Students use the Kurikulum page (not the bottom sheet popup).
+    if (!isStaff()) {
+      return '<div class="player-layout"><div>' + player + '</div></div>';
+    }
     return '<div class="player-layout">' +
       '<div>' + player + '</div>' +
       '<aside class="kurikulum-pane' + (ui.kurOpen ? ' is-open' : '') + '">' +
@@ -8300,7 +8442,7 @@
   }
   function payAfterFirst(lec) {
     if (lec.id !== firstLectureId()) return '';
-    if (canMentoring(ui.personaId)) return '';
+    if (schoolIsFree() || canMentoring(ui.personaId)) return '';
     if (isPending(ui.personaId)) return pendingBanner(ui.personaId);
     const b = billingOf(ui.personaId);
     const open = welcomeOpen(ui.personaId);
@@ -8489,10 +8631,15 @@
   }
 
   function nameOf(id) {
-    const found = people().find((s) => s.id === id) || SEED.staff.find((s) => s.id === id);
+    if (!id) return '';
+    if (id === schoolOwnerId()) {
+      const label = schoolDisplayName() || ownerFirstName();
+      if (label) return label;
+    }
+    const found = people().find((s) => s.id === id) || (SEED.staff || []).find((s) => s.id === id);
     return displayNameOf(found) || (found && found.name) || id;
   }
-  /** Anton + anyone in the Mentor pipeline column (for Assigned). */
+  /** School owner + anyone in the Mentor pipeline column (for Assigned). */
   function assignableMentors(forId) {
     const seen = new Set();
     const list = [];
@@ -8501,13 +8648,23 @@
       seen.add(id);
       list.push({ id, name: name || nameOf(id) || id });
     }
-    add((SEED.school && SEED.school.ownerId) || 'u-anton', ownerFirstName());
+    const ownerId = schoolOwnerId();
+    add(ownerId, schoolDisplayName() || schoolOwnerLabel());
     people().forEach((s) => {
-      if (s.kind === 'mentor' || crmOf(s.id).stage === 'mentor') add(s.id, s.name);
+      if (s.kind === 'mentor' || crmOf(s.id).stage === 'mentor') {
+        add(s.id, displayNameOf(s) || s.name);
+      }
     });
+    (SEED.staff || []).forEach((s) => add(s.id, s.name));
     const cur = people().find((x) => x.id === forId);
-    const mid = (cur && cur.mentorId) || ((SEED.school && SEED.school.ownerId) || 'u-anton');
-    if (!seen.has(mid)) add(mid, nameOf(mid));
+    const mid = (cur && cur.mentorId) || ownerId;
+    if (!seen.has(mid)) {
+      const nm = nameOf(mid);
+      add(mid, nm === mid ? (schoolDisplayName() || schoolOwnerLabel()) : nm);
+    }
+    list.forEach((m) => {
+      if (m.id === ownerId) m.name = schoolDisplayName() || schoolOwnerLabel();
+    });
     return list;
   }
 
@@ -9403,15 +9560,18 @@
               ? 'Video 1 selesai. Modul lain masih blur sampai lunas.'
               : 'Belum selesai video 1 — nonton ≥85% di tab Belajar.') +
           '</p>' +
-          '<p>Bayar: ' + payChip(bill.status, bill.source) +
-            ' <span class="muted">' + esc(bill.note || bill.plan || crmOf(sid).stage) + '</span></p>' +
+          (schoolIsFree()
+            ? '<p class="muted">Kelas gratis — tidak ada tagihan.</p>'
+            : ('<p>Bayar: ' + payChip(bill.status, bill.source) +
+              ' <span class="muted">' + esc(bill.note || bill.plan || crmOf(sid).stage) + '</span></p>')) +
           (owned.length
             ? '<p class="muted" style="margin-top:8px">Alat punya: ' +
               owned.map((x) => esc(alatName(x))).join(', ') + '</p>'
             : '') +
           '<div class="row" style="margin-top:14px">' +
-            '<button class="btn" data-act="tab" data-id="daftar">Bayar mentoring</button>' +
-            '<button class="btn secondary" data-act="tab" data-id="belajar">' +
+            (schoolIsFree() ? '' :
+              '<button class="btn" data-act="tab" data-id="daftar">Bayar mentoring</button>') +
+            '<button class="btn' + (schoolIsFree() ? '' : ' secondary') + '" data-act="tab" data-id="belajar">' +
               (isDone(sid, firstLectureId()) ? 'Buka Belajar' : 'Lanjut video 1') +
             '</button>' +
           '</div>' +
@@ -10537,7 +10697,7 @@
     return viewOtomasiList();
   }
   function viewJaringan() {
-    const ownerId = (SEED.school && SEED.school.ownerId) || 'u-anton';
+    const ownerId = schoolOwnerId();
     const ownerName = ownerFirstName();
     const mentors = people().filter((s) => s.kind === 'mentor' || crmOf(s.id).stage === 'mentor');
     const antonKids = people().filter((s) => (s.mentorId || ownerId) === ownerId && s.kind !== 'mentor' && s.id !== ownerId);
@@ -10805,10 +10965,10 @@
             (staffCan('editStudents')
               ? '<select data-act="assign-mentor" data-id="' + esc(id) + '" aria-label="Assigned">' +
                 assignableMentors(id).map((m) =>
-                  '<option value="' + esc(m.id) + '"' + (((s.mentorId || 'u-anton') === m.id) ? ' selected' : '') + '>' + esc(m.name) + '</option>'
+                  '<option value="' + esc(m.id) + '"' + (((s.mentorId || schoolOwnerId()) === m.id) ? ' selected' : '') + '>' + esc(m.name) + '</option>'
                 ).join('') +
                 '</select>'
-              : esc(nameOf(s.mentorId || 'u-anton'))) +
+              : esc(nameOf(s.mentorId || schoolOwnerId()))) +
           '</dd></div>' +
           '<div class="fub-field"><dt>Tags</dt>' + personTagsHtml(id) + '</div>' +
           '<div class="fub-field"><dt>Sumber</dt><dd>' + esc((app && app.heard) || b.source || '—') +
@@ -11691,7 +11851,7 @@
   function calDayDetailHtml(staff, selected, byDay) {
     const dayEv = (byDay[selected] || []).slice().sort((a, b) => new Date(a.at) - new Date(b.at));
     const kindLabel = { meet: 'Meet / Zoom', kur: 'Kurikulum', task: 'Tugas' };
-    const kurTab = staff ? 'kurikulum' : 'belajar';
+    const kurTab = 'kurikulum';
     return '<div class="cal-day">' +
       '<div class="cal-day-head">' +
         '<h3>' + esc(fmtYmdShort(selected)) + '</h3>' +
@@ -12044,7 +12204,7 @@
     if (t.matches('[data-act="assign-mentor"]')) {
       if (!staffCan('editStudents')) return;
       const id = t.getAttribute('data-id');
-      const mentorId = t.value || 'u-anton';
+      const mentorId = t.value || schoolOwnerId();
       patchPerson(id, { mentorId });
       save();
       render();
@@ -13906,7 +14066,12 @@
         render();
       }
     } else if (act === 'toggle-kur') {
-      ui.kurOpen = !ui.kurOpen;
+      if (!isStaff()) {
+        ui.tab = 'kurikulum';
+        ui.kurOpen = false;
+      } else {
+        ui.kurOpen = !ui.kurOpen;
+      }
       render();
     } else if (act === 'lec-more') {
       const box = btn.closest('.lec-read');
@@ -13916,13 +14081,13 @@
         ? 'Tutup <span aria-hidden="true">▴</span>'
         : 'Baca selengkapnya <span aria-hidden="true">▾</span>';
     } else if (act === 'lihat-kur') {
-      ui.tab = 'belajar';
-      ui.kurOpen = true;
+      ui.tab = 'kurikulum';
+      ui.kurOpen = false;
       ui.lectureId = db.lastLecture[ui.personaId] || firstLectureId();
       render();
     } else if (act === 'scroll-kur') {
-      ui.tab = 'belajar';
-      ui.kurOpen = true;
+      ui.tab = 'kurikulum';
+      ui.kurOpen = false;
       if (canPreview(ui.personaId) && !canMentoring(ui.personaId)) {
         ui.lectureId = firstLectureId();
       }
@@ -13977,8 +14142,8 @@
           return;
         }
         ui.lectureId = id;
-        ui.tab = 'belajar';
-        ui.kurOpen = true;
+        ui.tab = isStaff() ? 'belajar' : 'kurikulum';
+        ui.kurOpen = !!isStaff();
         render();
         return;
       }
@@ -14672,11 +14837,14 @@
       render();
     } else if (act === 'pay-later') {
       withApplication(() => {
-        startTrial(ui.personaId);
+        if (schoolIsFree()) grantFreeAccess(ui.personaId);
+        else startTrial(ui.personaId);
         save();
         ui.lectureId = firstLectureId();
-        ui.tab = 'belajar';
-        toast('Trial: video 1 kebuka. Diskon 24 jam dari jam form.');
+        ui.tab = 'home';
+        toast(schoolIsFree()
+          ? 'Kelas gratis aktif. Mulai dari Home.'
+          : 'Trial: video 1 kebuka. Diskon 24 jam dari jam form.');
         render();
       });
     } else if (act === 'pay-lynk') {
@@ -15605,8 +15773,9 @@
     const envBottom = readEnvInset('bottom');
     const envTop = readEnvInset('top');
     /* Safari's bottom toolbar is not always in safe-area; seat the dock above it. */
-    const browserPad = standalone ? 0 : Math.max(0, Math.min(56, window.innerHeight - h));
-    const bottom = Math.max(envBottom, browserPad, standalone ? 0 : 12);
+    /* Safari toolbar is often outside visualViewport; pad enough so dock / CTAs stay clear. */
+    const browserPad = standalone ? 0 : Math.max(0, Math.min(72, window.innerHeight - h));
+    const bottom = Math.max(envBottom, browserPad, standalone ? 0 : 20);
     root.style.setProperty('--safe-bottom', bottom + 'px');
     root.style.setProperty('--safe-top', envTop + 'px');
   }

@@ -214,8 +214,16 @@ a { color: inherit; }
 }
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .brand img {
-  width: 32px; height: 32px; object-fit: cover; opacity: 1;
-  border-radius: 50%; background: var(--media-bg); flex: none;
+  width: 32px; height: 32px; object-fit: contain; object-position: center;
+  opacity: 1; border-radius: 50%; background: var(--media-bg); flex: none;
+  padding: 2px; box-sizing: border-box;
+}
+.brand-fallback {
+  width: 32px; height: 32px; border-radius: 50%; flex: none;
+  display: grid; place-items: center;
+  background: var(--ink-3); color: var(--fg-strong);
+  font-size: .68rem; font-weight: 750; letter-spacing: -.02em;
+  border: 1px solid var(--line);
 }
 .brand strong { display: block; font-size: .84rem; letter-spacing: -.02em; font-weight: 700; }
 
@@ -1040,13 +1048,19 @@ html[data-mode="student"] .ob-foot.is-end {
 .ob-foot {
   position: sticky; bottom: 0; z-index: 4;
   display: grid; gap: 8px; justify-items: stretch;
-  padding: 18px 0 calc(16px + var(--safe-bottom));
+  padding: 18px 0 calc(24px + var(--safe-bottom));
   background: linear-gradient(180deg, transparent, var(--ink) 28%);
 }
 .ob-foot.is-end {
   position: static;
   background: transparent;
   padding-top: 8px;
+}
+html[data-mode="student"] .ob-foot {
+  padding-bottom: calc(28px + var(--safe-bottom));
+}
+html[data-mode="student"] .ob-foot.is-end {
+  padding-bottom: calc(20px + var(--dock-h) + var(--safe-bottom));
 }
 .ob-cta { width: 100%; min-height: 52px; border-radius: 16px; font-size: 1rem; }
 .ob-checks {
@@ -1225,10 +1239,27 @@ html[data-mode="student"] .dock {
   left: 0; right: 0; bottom: 0;
   width: 100%;
   transform: none;
-  padding-bottom: calc(10px + var(--safe-bottom));
+  padding-bottom: calc(14px + var(--safe-bottom));
   /* Keep labels clear of Safari chrome + home indicator */
   min-height: calc(var(--dock-h) + var(--safe-bottom));
+  z-index: 30;
+  background: var(--ink-2);
+  border-top: 1px solid var(--line);
 }
+.stu-kur-page { display: grid; gap: 14px; padding-bottom: 8px; }
+.stu-kur-head {
+  display: flex; align-items: flex-start; gap: 10px;
+}
+.stu-kur-head h1 {
+  margin: 0; font-size: 1.25rem; letter-spacing: -.02em; font-weight: 750;
+}
+.stu-kur-head .me-kicker { margin: 0 0 2px; }
+.stu-kur-list {
+  padding: 10px 8px 12px;
+  display: grid; gap: 2px;
+}
+.stu-kur-list .week-label { margin-top: 8px; }
+.stu-kur-page .lesson-dots { margin: 2px 0 4px; }
 html[data-mode="student"] .toast {
   left: 50%; right: auto; width: min(var(--phone) - 32px, calc(100% - 32px));
   transform: translateX(-50%);
