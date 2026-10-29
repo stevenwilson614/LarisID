@@ -3865,6 +3865,58 @@ html:not([data-theme="light"]) .kur-wiz-ico {
 .cal-week-empty { font-size: .72rem; }
 .cal-day { margin-top: 16px; }
 .home-jadwal .cal-sync-bar { display: none; }
+
+/* Next session card — title hierarchy + brand icons */
+.home-session .ses-kicker {
+  margin: 0 0 4px;
+  font-size: .72rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.home-session .ses-title {
+  margin: 0 0 8px;
+  font-size: 1.28rem;
+  font-weight: 800;
+  letter-spacing: -.03em;
+  line-height: 1.2;
+  color: var(--fg-strong);
+}
+.home-session .ses-when {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.home-session .ses-when .brand-ico-cal {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--muted);
+}
+.home-session .ses-acts { margin-top: 4px; }
+.brand-ico {
+  width: 16px;
+  height: 16px;
+  display: block;
+  flex: none;
+}
+.meet-open-btn,
+.cal-brand-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.meet-open-btn .brand-ico-meet {
+  width: 15px;
+  height: 15px;
+}
+.cal-brand-btn .brand-ico {
+  width: 14px;
+  height: 14px;
+}
 @media (max-width: 520px) {
   .cal-week-day { grid-template-columns: 1fr; gap: 6px; }
   .cal-cell { min-height: 64px; }
