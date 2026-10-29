@@ -704,16 +704,48 @@
     };
   }
 
-  function classAppUrl(me) {
-    if (me && me.role === 'student' && me.org_slug) {
-      return '/s/' + encodeURIComponent(me.org_slug) + '/';
-    }
+  function classAppUrl(me, slug) {
+    var school = String(slug || (me && me.org_slug) || '').trim();
+    if (school) return '/s/' + encodeURIComponent(school) + '/';
     return '/obrolan.marketing/';
   }
 
+  async function claimClassSchool(me) {
+    if (!me || me.role !== 'mentor') return me && me.org_slug;
+    var slug = String(me.org_slug || '').trim();
+    if (!slug) return '';
+    var session = null;
+    try {
+      var res = await window.Lms.sb.auth.getSession();
+      session = res && res.data && res.data.session;
+    } catch (err) { session = null; }
+    var token = session && session.access_token;
+    if (!token) return slug;
+    try {
+      var claim = await fetch('/obrolan.marketing/api/owners/claim', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: 'Bearer ' + token
+        },
+        body: JSON.stringify({
+          slug: slug,
+          orgName: me.org_name || me.display_name || slug,
+          displayName: me.display_name || me.org_name || slug
+        })
+      });
+      if (claim.ok) {
+        var data = await claim.json().catch(function () { return {}; });
+        if (data && data.slug) return data.slug;
+      }
+    } catch (err) { /* fall through to Contabo slug */ }
+    return slug;
+  }
+
   async function loadApp(me) {
-    /* Landing/signup stay on Contabo /lms; the live class UI is the left-rail app. */
-    location.replace(classAppUrl(me));
+    /* Landing/signup stay on Contabo /lms; open the mentor's own left-rail school. */
+    var slug = await claimClassSchool(me);
+    location.replace(classAppUrl(me, slug));
   }
 
   async function routeNow(session) {

@@ -4665,11 +4665,20 @@
     return out;
   }
   function lmsAuth() {
-    try { return JSON.parse(localStorage.getItem('lms-auth-v1') || 'null'); } catch (err) { return null; }
+    /* Contabo /lms uses supabase-js storageKey lms_auth_v1. Legacy Anton key kept as fallback. */
+    try {
+      const raw = localStorage.getItem('lms_auth_v1') || localStorage.getItem('lms-auth-v1') || '';
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.access_token) return parsed;
+      if (parsed && parsed.currentSession && parsed.currentSession.access_token) return parsed.currentSession;
+      if (parsed && parsed.session && parsed.session.access_token) return parsed.session;
+      return parsed;
+    } catch (err) { return null; }
   }
   function lmsHeaders(extra) {
     const headers = Object.assign({ 'content-type': 'application/json' }, extra || {});
-    if (onStudentVanityPath() || (!ui.admin && !ui.staffId)) headers['x-lms-view'] = 'student';
+    if (!ui.admin && !ui.staffId) headers['x-lms-view'] = 'student';
     else {
       const auth = lmsAuth();
       if (auth && auth.access_token) headers.authorization = 'Bearer ' + auth.access_token;
@@ -6795,7 +6804,7 @@
   function fillChrome() {
     runAutomations();
     if (ui.present) ui.role = ui.presentPane === 'mentor' ? 'owner' : 'student';
-    if (onStudentVanityPath()) {
+    if (onStudentVanityPath() && !ui.coach && !ui.admin) {
       ui.role = 'student';
       ui.admin = false;
     }
@@ -16082,7 +16091,13 @@
       });
       if (!res.ok) return false;
       const data = await res.json().catch(() => ({}));
-      if (!data.slug || data.slug !== schoolSlug()) return false;
+      if (!data.slug) return false;
+      /* Mentor hub /obrolan.marketing/ → send coach to their own school. */
+      if (onMentorPath() && data.slug !== schoolSlug()) {
+        location.replace('/s/' + encodeURIComponent(data.slug) + '/');
+        return false;
+      }
+      if (data.slug !== schoolSlug()) return false;
       ui.admin = true;
       ui.role = 'owner';
       ui.coach = true;
@@ -16095,13 +16110,15 @@
   async function bootHosted() {
     try {
       ui.visitorId = visitorId();
-      /* /s/{slug} is always the student app — never claim mentor from the admin cookie. */
-      const forceStudent = onStudentVanityPath() || (PRESENT && PRESENT_PANE === 'student');
+      const vanity = onStudentVanityPath();
+      const presentStudent = PRESENT && PRESENT_PANE === 'student';
       const coachRoot = onCoachRootPath();
       let admin = false;
-      if (!forceStudent && coachRoot) admin = await claimCoach();
-      else if (!forceStudent) admin = await claimAdmin();
-      if (!admin && !forceStudent && !onStudentVanityPath()) await claimStaff();
+      /* Owners may open mentor chrome on /s/{their-slug}/ (Contabo door lands here). */
+      if (vanity || coachRoot || onMentorPath()) admin = await claimCoach();
+      if (!admin && !vanity) admin = await claimAdmin();
+      if (!admin && !vanity) await claimStaff();
+      const forceStudent = presentStudent || (vanity && !admin);
       if (!admin) await bootSession();
       await bootSync();
       if (!admin && !ui.staffId && !ui.sessionStudentId) ensureLiveVisitor();

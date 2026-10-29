@@ -1677,6 +1677,62 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  /* Contabo /lms mentor door: create or reuse disk school for this auth user. */
+  if (req.method === 'POST' && pathname === '/owners/claim') {
+    readBody(req, 64 * 1024).then((buf) => lock(async () => {
+      const user = await supabaseUser(req);
+      if (!user) {
+        json(res, 401, { error: 'auth' });
+        return;
+      }
+      const owners = readOwners();
+      if (owners[user.id]) {
+        json(res, 200, { slug: owners[user.id], created: false });
+        return;
+      }
+      let body = {};
+      try { body = JSON.parse(buf.toString('utf8') || '{}'); } catch (err) {
+        json(res, 400, { error: 'bad_json' });
+        return;
+      }
+      const slug = String(body.slug || '').trim().toLowerCase();
+      const status = slugStatus(slug);
+      if (status === 'reserved') {
+        json(res, 409, { error: 'reserved' });
+        return;
+      }
+      if (status === 'taken' && ownerOf(slug) && ownerOf(slug) !== user.id) {
+        json(res, 409, { error: 'taken' });
+        return;
+      }
+      if (status === 'taken' && ownerOf(slug) === user.id) {
+        owners[user.id] = slug;
+        writeOwners(owners);
+        json(res, 200, { slug: slug, created: false });
+        return;
+      }
+      const org = clip(body.orgName || body.businessName || slug, 80) || slug;
+      const display = clip(body.displayName || body.name || org, 80) || org;
+      const parts = display.split(/\s+/).filter(Boolean);
+      const firstName = clip(parts[0] || display, 40);
+      const lastName = clip(parts.slice(1).join(' ') || firstName, 80);
+      writeState(emptySchool(slug, user, {
+        firstName: firstName,
+        lastName: lastName,
+        businessName: org,
+        headline: 'Mentor',
+        mentorBand: '1-10',
+        biography: ''
+      }, ''), slug);
+      owners[user.id] = slug;
+      writeOwners(owners);
+      json(res, 201, { slug: slug, created: true });
+    })).catch((err) => {
+      if (!res.headersSent) json(res, err.status || 500, { error: 'school' });
+    });
+    return;
+  }
+
   const slugLook = pathname.match(/^\/slug\/([^/]+)$/);
   if (req.method === 'GET' && slugLook) {
     const asked = decodeURIComponent(slugLook[1]).toLowerCase();
