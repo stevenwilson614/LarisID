@@ -37,15 +37,21 @@ Never `supabase db push --linked`.
 
 ## Browser tab + invite share brand
 
-Each mentor has `org_name` and optional `avatar_url` (public bucket `lms-avatars`). The in-app tab title is `LMS (org_name)` and the favicon is the mentor photo when set.
+Each mentor has `org_name`, unique `org_slug`, and optional `avatar_url` (public bucket `lms-avatars`). The in-app tab title is `LMS (org_name)` and the favicon is the mentor photo when set. The stable student gate is `/lms/{org_slug}/` — sign-in only, so a returning student can pick up after logout without a new invite. Brand for that path is `lms_org_brand` (title + avatar only).
 
-The link a mentor copies is `https://larisid.com/lms/card/?invite=…`. Caddy serves that from the `lms-invite-card` function, which returns HTML with `og:title`, `og:image`, and a favicon for WhatsApp and browser previews, then sends the person to `/lms/?invite=…`. Brand lookup is `lms_invite_brand` — title and avatar only, never curriculum. The function is public (`NO_VERIFY_JWT_FUNCTIONS`) because link previews have no login.
+The invite a mentor copies is `https://larisid.com/lms/card/?invite=…`. Caddy serves that from the `lms-invite-card` function, which returns HTML with `og:title`, `og:image`, and a favicon for WhatsApp and browser previews, then sends the person to `/lms/{org_slug}/?invite=…`. Brand lookup is `lms_invite_brand` — title, slug, and avatar only, never curriculum. The function is public (`NO_VERIFY_JWT_FUNCTIONS`) because link previews have no login.
+
+LMS auth uses `localStorage` key `lms_auth_v1` with `persistSession` + `autoRefreshToken`, so a refresh on `/lms/` or `/lms/{slug}/` keeps the same session. Invite / school slug helpers use the same storage, not `sessionStorage`.
+
+Caddy must rewrite `/lms/{slug}/` to `/lms/index.html` (except `/lms/card`). Without that rewrite, unknown paths fall through to the seller SPA at `/`.
 
 ```bash
 bash scripts/apply-selfhost.sh supabase/migrations/20261029140000_lms_mentor_brand.sql
+bash scripts/apply-selfhost.sh supabase/migrations/20261029150000_lms_org_slug.sql
 bash scripts/deploy-function-selfhost.sh lms-invite-card
+bash scripts/deploy-static.sh
 ```
 
 ## Do not bring back
 
-The old class was a JSON file per slug, a browser copy (`lms-school-v1`, `anton-school-v3`), and an invite code that could read uploads (`?k=` on `/obrolan.marketing/api/media/file`). That app, `js/lms-join.js`, and the `anton-school` process are gone. Disk data may still sit on the VPS volume; it is not served. Do not route `/{slug}` or `/s/{slug}` at a school again.
+The old class was a JSON file per slug, a browser copy (`lms-school-v1`, `anton-school-v3`), and an invite code that could read uploads (`?k=` on `/obrolan.marketing/api/media/file`). That app, `js/lms-join.js`, and the `anton-school` process are gone. Disk data may still sit on the VPS volume; it is not served. Do not route `/{slug}` or `/s/{slug}` at a school again — school URLs live only under `/lms/{org_slug}/`.

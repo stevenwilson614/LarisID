@@ -1,5 +1,5 @@
 /* Invite share card: HTML with per-mentor title + avatar for crawlers,
-   then send humans to /lms/?invite=… */
+   then send humans to /lms/{org_slug}/?invite=… (student sign-in). */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -14,13 +14,21 @@ function esc(value: string): string {
     .replace(/"/g, '&quot;')
 }
 
+function joinUrl(invite: string, slug: string): string {
+  const q = invite ? `?invite=${encodeURIComponent(invite)}` : ''
+  const clean = String(slug || '').trim().replace(/^\/+|\/+$/g, '')
+  if (clean) return `${SITE}/lms/${encodeURIComponent(clean)}/${q}`
+  return `${SITE}/lms/${q}`
+}
+
 function htmlPage(opts: {
   title: string
   image: string
   invite: string
+  slug: string
   description: string
 }): Response {
-  const join = `${SITE}/lms/?invite=${encodeURIComponent(opts.invite)}`
+  const join = joinUrl(opts.invite, opts.slug)
   const title = esc(opts.title)
   const image = esc(opts.image)
   const desc = esc(opts.description)
@@ -71,6 +79,7 @@ serve(async (req) => {
     title: 'LMS',
     image: FALLBACK_ICON,
     invite: invite || '',
+    slug: '',
     description: 'Undangan kelas mentor.',
   })
   if (!invite || invite.length > 128) {
@@ -78,6 +87,7 @@ serve(async (req) => {
       title: 'LMS',
       image: FALLBACK_ICON,
       invite: '',
+      slug: '',
       description: 'Undangan kelas mentor.',
     })
   }
@@ -93,12 +103,14 @@ serve(async (req) => {
       return fallback
     }
     const org = String(data.org_name).trim() || 'Kelas'
+    const slug = String((data && data.org_slug) || '').trim()
     const title = String((data && data.brand_title) || `LMS (${org})`)
     const image = String((data && data.avatar_url) || '').trim() || FALLBACK_ICON
     return htmlPage({
       title,
       image,
       invite,
+      slug,
       description: `Gabung kelas ${org} di LMS.`,
     })
   } catch (err) {

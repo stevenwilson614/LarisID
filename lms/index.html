@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/lms/lms.css?v=20261029brand">
+  <link rel="stylesheet" href="/lms/lms.css?v=20261029slug">
 </head>
 <body>
   <div id="view-land">
@@ -299,7 +299,7 @@
   <main class="auth-wrap" id="auth-wrap" hidden>
     <button type="button" class="back" id="auth-back">← Kembali</button>
     <section id="view-auth" class="panel auth-panel" hidden>
-      <div class="auth-brand">LMS</div>
+      <div class="auth-brand" id="auth-brand">LMS</div>
       <h2 id="auth-title">Buat akun mentor</h2>
       <p class="sub" id="auth-subtitle">Akun khusus untuk mengajar di halaman ini.</p>
       <button type="button" class="auth-alt-row" id="google-btn">
@@ -351,6 +351,15 @@
         <form id="brand-form" class="brand-form">
           <label for="brand-org">Nama organisasi</label>
           <input id="brand-org" maxlength="80" required>
+          <label for="brand-slug">Alamat kelas</label>
+          <div class="slug-field">
+            <span class="slug-prefix">larisid.com/lms/</span>
+            <input id="brand-slug" maxlength="48" pattern="[a-z0-9]([a-z0-9-]{0,46}[a-z0-9])?" placeholder="namakelas" required>
+          </div>
+          <p class="slug-hint">Siswa yang sudah gabung memakai alamat ini untuk masuk lagi.</p>
+          <label for="school-url">Tautan masuk siswa</label>
+          <input id="school-url" readonly>
+          <button type="button" class="btn btn-white" id="school-url-copy">Salin tautan masuk</button>
           <div class="photo-block">
             <p class="muted" style="margin:0">Foto profil mentor — dipakai di tab browser dan saat bagikan tautan.</p>
             <div class="photo-preview">
@@ -362,18 +371,18 @@
             </div>
             <div class="photo-actions">
               <label class="btn btn-white photo-file-btn">Ganti foto<input id="brand-avatar-file" type="file" accept="image/jpeg,image/png,image/webp"></label>
-              <button type="submit" class="btn btn-red">Simpan nama</button>
+              <button type="submit" class="btn btn-red">Simpan kelas</button>
             </div>
           </div>
         </form>
         <h2 style="margin-top:22px">Siswa</h2>
-        <p class="muted">Setiap tautan dipakai satu siswa. Siswa itu hanya melihat pelajaran yang kamu tayangkan.</p>
+        <p class="muted">Setiap undangan dipakai satu siswa baru. Siswa lama masuk lewat tautan kelas di atas.</p>
         <button type="button" class="btn btn-red" id="invite-btn">Undang siswa</button>
         <div id="invite-box" hidden>
           <label for="invite-url">Tautan undangan</label>
           <input id="invite-url" readonly>
           <button type="button" class="btn btn-white" id="invite-copy">Salin</button>
-          <p class="muted">Berlaku 14 hari, untuk satu orang. Penerima melihat nama organisasi dan foto kamu.</p>
+          <p class="muted">Berlaku 14 hari, untuk satu orang. Penerima masuk di halaman kelas kamu.</p>
         </div>
         <ul id="student-list" class="people"></ul>
       </aside>
@@ -384,8 +393,8 @@
     </div>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
-  <script src="/lms/js/auth.js?v=20261029brand" defer></script>
-  <script src="/lms/js/api.js?v=20261029brand" defer></script>
-  <script src="/lms/js/app.js?v=20261029brand" defer></script>
+  <script src="/lms/js/auth.js?v=20261029slug" defer></script>
+  <script src="/lms/js/api.js?v=20261029slug" defer></script>
+  <script src="/lms/js/app.js?v=20261029slug" defer></script>
 </body>
 </html>

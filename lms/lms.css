@@ -1092,6 +1092,8 @@ textarea { min-height: 96px; resize: vertical; }
   font-size: 0.86rem;
   color: var(--muted);
 }
+#school-url { margin-top: 8px; }
+#school-url-copy { margin-top: 8px; width: 100%; }
 .slug-hint.is-ok { color: #15803d; font-weight: 650; }
 .slug-hint.is-bad { color: #9F1239; font-weight: 650; }
 .slug-hint svg { flex: none; }

@@ -2,29 +2,58 @@
    deletes those keys on boot. This login is not the LarisID seller session. */
 (function () {
   var SUPA_URL = 'https://api.larisid.com';
-  var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzg0MzM2Njc5LCJleHAiOjI0MTUwNTY2Nzl9.IuuxcLjM-ljEyrn2lInAqzESImYfMXlBBTZI2i671Ec';
+  var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzg0MzM2Njc5LCJleHAiOjI0MTUwNTY2Nzl9.IuuxcLjM-ljEyrn2lInAqzESImYfMXlBBZI2i671Ec';
   var INVITE_KEY = 'lms_invite_v1';
   var NAME_KEY = 'lms_name_v1';
   var INTENT_KEY = 'lms_intent_v1';
+  var SLUG_KEY = 'lms_slug_v1';
+  var RESERVED = { card: 1, js: 1, css: 1, api: 1, static: 1, assets: 1, index: 1, login: 1, auth: 1 };
 
+  function store() {
+    try { return window.localStorage; } catch (err) { return null; }
+  }
   function read(key) {
-    try { return sessionStorage.getItem(key) || ''; } catch (err) { return ''; }
+    try {
+      var s = store();
+      return (s && s.getItem(key)) || '';
+    } catch (err) { return ''; }
   }
   function write(key, value) {
     try {
-      if (value) sessionStorage.setItem(key, value);
-      else sessionStorage.removeItem(key);
+      var s = store();
+      if (!s) return;
+      if (value) s.setItem(key, value);
+      else s.removeItem(key);
     } catch (err) { /* private mode */ }
+  }
+
+  function pathSlug() {
+    try {
+      var parts = String(location.pathname || '').split('/').filter(Boolean);
+      if (parts[0] !== 'lms' || !parts[1]) return '';
+      var slug = String(parts[1]).toLowerCase().trim();
+      if (!/^[a-z0-9]([a-z0-9-]{0,46}[a-z0-9])?$/.test(slug)) return '';
+      if (RESERVED[slug]) return '';
+      return slug;
+    } catch (err) { return ''; }
   }
 
   (function captureInvite() {
     var invite = '';
     try { invite = new URLSearchParams(location.search).get('invite') || ''; } catch (err) { invite = ''; }
     invite = invite.trim();
+    var slug = pathSlug();
+    if (slug) {
+      write(SLUG_KEY, slug);
+      write(INTENT_KEY, 'student');
+    }
     if (!invite) return;
     write(INVITE_KEY, invite);
     write(INTENT_KEY, 'student');
-    try { history.replaceState({}, '', location.pathname); } catch (err) { /* ignore */ }
+    try {
+      var clean = location.pathname || '/lms/';
+      history.replaceState({}, '', clean);
+    } catch (err) { /* ignore */ }
   })();
 
   var sb = null;
@@ -32,7 +61,9 @@
     sb = window.supabase.createClient(SUPA_URL, SUPA_KEY, {
       auth: {
         persistSession: true,
+        autoRefreshToken: true,
         detectSessionInUrl: true,
+        storage: window.localStorage,
         storageKey: 'lms_auth_v1',
         flowType: 'pkce'
       }
@@ -59,6 +90,12 @@
     return 'Tidak berhasil. Coba lagi.';
   }
 
+  function schoolPath(slug) {
+    var s = String(slug || read(SLUG_KEY) || pathSlug() || '').trim();
+    if (!s) return '/lms/';
+    return '/lms/' + encodeURIComponent(s) + '/';
+  }
+
   window.Lms = {
     sb: sb,
     storageKey: 'lms_auth_v1',
@@ -68,10 +105,19 @@
     setIntent: function (intent) { write(INTENT_KEY, intent === 'student' ? 'student' : 'mentor'); },
     pendingName: function () { return read(NAME_KEY); },
     setPendingName: function (name) { write(NAME_KEY, String(name || '').trim()); },
-    redirectTo: function () { return location.origin + '/lms/'; },
+    schoolSlug: function () { return pathSlug() || read(SLUG_KEY) || ''; },
+    setSchoolSlug: function (slug) {
+      var s = String(slug || '').toLowerCase().trim();
+      write(SLUG_KEY, s);
+    },
+    schoolPath: schoolPath,
+    redirectTo: function () { return location.origin + schoolPath(); },
     /* Share URL hits the OG card so WhatsApp/iMessage see mentor title + photo. */
     inviteShareUrl: function (token) {
-      return 'https://api.larisid.com/functions/v1/lms-invite-card?invite=' + encodeURIComponent(token || '');
+      return 'https://larisid.com/lms/card/?invite=' + encodeURIComponent(token || '');
+    },
+    schoolUrl: function (slug) {
+      return 'https://larisid.com' + schoolPath(slug);
     },
     errorText: errorText
   };

@@ -24,9 +24,12 @@
     if (app) app.hidden = which !== 'app';
     window.scrollTo(0, 0);
   }
+  function isStudentGate() {
+    return !!(window.Lms.invite() || window.Lms.schoolSlug());
+  }
   function setAuthMode(mode) {
     var signup = mode !== 'login';
-    var student = window.Lms.invite();
+    var student = isStudentGate();
     var title = $('auth-title');
     var sub = $('auth-subtitle');
     var submit = $('email-submit');
@@ -43,7 +46,9 @@
     }
     if (sub) {
       sub.textContent = student
-        ? 'Undangan ini membuka kurikulum mentor yang mengundang kamu.'
+        ? (window.Lms.invite()
+          ? 'Undangan ini membuka kurikulum mentor yang mengundang kamu.'
+          : 'Masuk untuk lanjut ke kelas mentor kamu.')
         : 'Akun khusus untuk mengajar di halaman ini.';
     }
     if (submit) submit.textContent = signup ? 'Daftar dengan email' : 'Masuk';
@@ -122,6 +127,7 @@
     var org = brand && (brand.org_name || brand.display_name);
     var title = (brand && brand.brand_title) || brandTitle(org);
     var avatar = (brand && brand.avatar_url) || DEFAULT_ICON;
+    if (brand && brand.org_slug) window.Lms.setSchoolSlug(brand.org_slug);
     document.title = title;
     setMeta('og:title', title);
     setMeta('og:site_name', 'LMS');
@@ -130,12 +136,32 @@
     setMeta('twitter:image', avatar, true);
     setMeta('apple-mobile-web-app-title', title, true);
     setIcon(avatar);
+    var authBrand = $('auth-brand');
+    if (authBrand && org) authBrand.textContent = title;
   }
-  function paintInviteBrand() {
+  function ensureSchoolPath(slug) {
+    var s = String(slug || '').trim();
+    if (!s) return;
+    var want = window.Lms.schoolPath(s);
+    if (location.pathname === want || location.pathname === want.replace(/\/$/, '')) return;
+    try { history.replaceState({}, '', want); } catch (err) { /* ignore */ }
+  }
+  function paintSchoolBrand() {
+    if (!window.LmsApi) return;
     var token = window.Lms.invite();
-    if (!token || !window.LmsApi || !window.LmsApi.inviteBrand) return;
-    window.LmsApi.inviteBrand(token).then(function (brand) {
+    if (token && window.LmsApi.inviteBrand) {
+      window.LmsApi.inviteBrand(token).then(function (brand) {
+        if (!brand) return;
+        applyBrand(brand);
+        if (brand.org_slug) ensureSchoolPath(brand.org_slug);
+      }).catch(function () { /* keep default */ });
+      return;
+    }
+    var slug = window.Lms.schoolSlug();
+    if (!slug || !window.LmsApi.orgBrand) return;
+    window.LmsApi.orgBrand(slug).then(function (brand) {
       if (brand) applyBrand(brand);
+      else authError('Kelas ini tidak ditemukan. Cek tautan dari mentor.');
     }).catch(function () { /* keep default */ });
   }
 
@@ -214,6 +240,7 @@
   function render(me, pack, people) {
     var mentor = me.role === 'mentor';
     applyBrand(me);
+    if (me.org_slug) ensureSchoolPath(me.org_slug);
     $('app-kicker').textContent = mentor ? 'Mentor' : 'Siswa';
     $('app-name').textContent = mentor
       ? (me.org_name || me.display_name)
@@ -229,8 +256,12 @@
       var names = (people || []).map(function (row) { return '<li>' + esc(row.display_name) + '</li>'; }).join('');
       $('student-list').innerHTML = names || '<li class="muted">Belum ada siswa.</li>';
       var orgInput = $('brand-org');
+      var slugInput = $('brand-slug');
+      var schoolUrl = $('school-url');
       var preview = $('brand-avatar-preview');
       if (orgInput) orgInput.value = me.org_name || me.display_name || '';
+      if (slugInput) slugInput.value = me.org_slug || '';
+      if (schoolUrl) schoolUrl.value = window.Lms.schoolUrl(me.org_slug || '');
       if (preview) {
         if (me.avatar_url) {
           preview.src = me.avatar_url;
@@ -336,8 +367,12 @@
 
   async function routeNow(session) {
     if (!session) {
-      show(window.Lms.invite() ? 'auth' : 'land');
-      if (window.Lms.invite()) setAuthMode('signup');
+      if (isStudentGate()) {
+        show('auth');
+        setAuthMode(window.Lms.invite() ? 'signup' : 'login');
+      } else {
+        show('land');
+      }
       return;
     }
     var me = await window.LmsApi.me();
@@ -375,6 +410,12 @@
       }
       return;
     }
+    if (window.Lms.schoolSlug()) {
+      show('auth');
+      setAuthMode('login');
+      authError('Akun ini belum gabung kelas. Minta tautan undangan baru dari mentor.');
+      return;
+    }
     show('register');
     var pending = window.Lms.pendingName();
     if (pending && $('mentor-name') && !$('mentor-name').value) $('mentor-name').value = pending;
@@ -408,7 +449,7 @@
       authError('Gagal memuat koneksi. Muat ulang halaman ini.');
       return;
     }
-    setAuthMode(window.Lms.invite() ? 'signup' : 'signup');
+    setAuthMode(window.Lms.invite() ? 'signup' : (window.Lms.schoolSlug() ? 'login' : 'signup'));
     document.querySelectorAll('[data-start]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         window.Lms.setIntent('mentor');
@@ -418,19 +459,19 @@
     });
     document.querySelectorAll('[data-login]').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        window.Lms.setIntent(window.Lms.invite() ? 'student' : 'mentor');
+        window.Lms.setIntent(isStudentGate() ? 'student' : 'mentor');
         setAuthMode('login');
         show('auth');
       });
     });
     $('auth-back').addEventListener('click', function () {
       authError('');
-      show(window.Lms.invite() ? 'auth' : 'land');
+      show(isStudentGate() ? 'auth' : 'land');
     });
     $('google-btn').addEventListener('click', function () {
       var name = $('full-name') && !$('full-name').hidden ? $('full-name').value : '';
       window.Lms.setPendingName(name);
-      window.Lms.setIntent(window.Lms.invite() ? 'student' : 'mentor');
+      window.Lms.setIntent(isStudentGate() ? 'student' : 'mentor');
       window.Lms.sb.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: window.Lms.redirectTo() }
@@ -456,7 +497,11 @@
           password: password,
           options: {
             emailRedirectTo: window.Lms.redirectTo(),
-            data: { full_name: name, lms_invite: window.Lms.invite() || null }
+            data: {
+              full_name: name,
+              lms_invite: window.Lms.invite() || null,
+              lms_slug: window.Lms.schoolSlug() || null
+            }
           }
         })
         : window.Lms.sb.auth.signInWithPassword({ email: email, password: password });
@@ -490,11 +535,34 @@
       $('brand-form').addEventListener('submit', function (event) {
         event.preventDefault();
         var org = ($('brand-org') && $('brand-org').value.trim()) || '';
+        var slug = ($('brand-slug') && $('brand-slug').value.trim()) || '';
         run(function () {
-          return window.LmsApi.updateBrand(org, null).then(function (me) {
+          return window.LmsApi.updateBrand(org, null, slug || null).then(function (me) {
             applyBrand(me);
+            if (me && me.org_slug) {
+              ensureSchoolPath(me.org_slug);
+              if ($('brand-slug')) $('brand-slug').value = me.org_slug;
+              if ($('school-url')) $('school-url').value = window.Lms.schoolUrl(me.org_slug);
+            }
           });
         });
+      });
+    }
+    if ($('school-url-copy')) {
+      $('school-url-copy').addEventListener('click', function () {
+        var url = $('school-url') && $('school-url').value;
+        if (!url) return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(url).then(function () {
+            $('school-url-copy').textContent = 'Tersalin';
+          }).catch(function () {
+            $('school-url').focus();
+            $('school-url').select();
+          });
+        } else {
+          $('school-url').focus();
+          $('school-url').select();
+        }
       });
     }
     if ($('brand-avatar-file')) {
@@ -502,15 +570,18 @@
         var file = $('brand-avatar-file').files && $('brand-avatar-file').files[0];
         if (!file) return;
         appError('');
-        window.LmsApi.uploadAvatar(file).then(function (url) {
+        window.LmsApi.uploadAvatar(file).then(function (shot) {
+          var url = shot && (shot.url || shot);
+          var display = shot && (shot.display || url);
           var preview = $('brand-avatar-preview');
           if (preview) {
-            preview.src = url;
+            preview.src = display;
             preview.dataset.url = url;
             preview.hidden = false;
           }
           var org = ($('brand-org') && $('brand-org').value.trim()) || '';
-          return window.LmsApi.updateBrand(org, url).then(function (me) {
+          var slug = ($('brand-slug') && $('brand-slug').value.trim()) || '';
+          return window.LmsApi.updateBrand(org, url, slug || null).then(function (me) {
             applyBrand(me);
           });
         }).catch(function (err) {
@@ -544,7 +615,11 @@
       }
     });
 
-    paintInviteBrand();
+    paintSchoolBrand();
+    if (isStudentGate()) {
+      show('auth');
+      setAuthMode(window.Lms.invite() ? 'signup' : 'login');
+    }
     window.Lms.sb.auth.onAuthStateChange(function (event, session) {
       if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') return;
       if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') route(session);
@@ -555,7 +630,8 @@
     appError('');
     authError('');
     window.Lms.sb.auth.signOut().then(function () {
-      show(window.Lms.invite() ? 'auth' : 'land');
+      show(isStudentGate() ? 'auth' : 'land');
+      if (isStudentGate()) setAuthMode('login');
     });
   }
 

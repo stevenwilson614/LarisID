@@ -49,16 +49,23 @@
     fail(res.error);
     return res.data;
   }
-  async function updateBrand(org, avatarUrl) {
-    var res = await sb().rpc('lms_update_brand', {
+  async function updateBrand(org, avatarUrl, slug) {
+    var payload = {
       p_org: org,
       p_avatar_url: avatarUrl == null ? null : avatarUrl
-    });
+    };
+    if (slug != null) payload.p_slug = slug;
+    var res = await sb().rpc('lms_update_brand', payload);
     fail(res.error);
     return res.data;
   }
   async function inviteBrand(token) {
     var res = await sb().rpc('lms_invite_brand', { p_token: token });
+    fail(res.error);
+    return res.data || null;
+  }
+  async function orgBrand(slug) {
+    var res = await sb().rpc('lms_org_brand', { p_slug: slug });
     fail(res.error);
     return res.data || null;
   }
@@ -205,6 +212,7 @@
     registerMentor: registerMentor,
     updateBrand: updateBrand,
     inviteBrand: inviteBrand,
+    orgBrand: orgBrand,
     uploadAvatar: uploadAvatar,
     createInvite: createInvite,
     acceptInvite: acceptInvite,
