@@ -20,8 +20,15 @@ html[data-mode="mentor"] #app.is-diskusi .main {
 html[data-mode="student"] #app.is-diskusi .main {
   display: flex;
   flex-direction: column;
-  padding: 0 0 calc(var(--dock-h) + var(--safe-bottom));
+  padding: 0 0 calc(var(--dock-h) + 18px + var(--safe-bottom));
   overflow: hidden;
+}
+/* While typing: hide dock so the chat box stays above the keyboard. */
+html.dk-composing[data-mode="student"] .dock {
+  display: none !important;
+}
+html.dk-composing[data-mode="student"] #app.is-diskusi .main {
+  padding-bottom: 0;
 }
 
 .dk-shell {
@@ -254,16 +261,18 @@ html[data-mode="mentor"] .dk-thread .dk-jump { display: none; }
   padding: 12px 16px;
   border-top: 1px solid var(--line);
 }
+.dk-tools { display: none; }
 .dk-bar { display: flex; align-items: flex-end; gap: 8px; }
 .dk-compose .dk-bar textarea {
   flex: 1;
   width: auto;
   min-width: 0;
   min-height: 40px;
-  max-height: 120px;
+  max-height: 132px;
   resize: none;
   margin: 0;
   padding: 9px 12px;
+  overflow-y: auto;
 }
 .dk-tool {
   flex: none;
@@ -277,6 +286,10 @@ html[data-mode="mentor"] .dk-thread .dk-jump { display: none; }
   font-size: .75rem;
   font-weight: 700;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
 }
 .dk-tool.is-on { background: #fff; color: #111; border-color: #fff; }
 .dk-send {
@@ -291,6 +304,55 @@ html[data-mode="mentor"] .dk-thread .dk-jump { display: none; }
   cursor: pointer;
 }
 .dk-send:disabled, .dk-tool:disabled { opacity: .5; cursor: default; }
+
+/* Student phone: native chat bar — tools above, textarea + send always visible. */
+html[data-mode="student"] .dk-compose.is-phone {
+  gap: 6px;
+  padding: 8px 10px calc(10px + var(--safe-bottom));
+  background: var(--ink-2);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, .28);
+}
+html.dk-composing[data-mode="student"] .dk-compose.is-phone {
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+}
+html[data-mode="student"] .dk-compose.is-phone .dk-tools {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+html[data-mode="student"] .dk-compose.is-phone .dk-tool {
+  min-width: 40px;
+  min-height: 36px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: .7rem;
+}
+html[data-mode="student"] .dk-compose.is-phone .dk-tool-label { display: none; }
+html[data-mode="student"] .dk-compose.is-phone .dk-bar {
+  align-items: flex-end;
+  gap: 8px;
+}
+html[data-mode="student"] .dk-compose.is-phone .dk-bar textarea {
+  min-height: 40px !important;
+  max-height: 132px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: var(--ink);
+  color: var(--text);
+  padding: 10px 14px;
+  line-height: 1.35;
+}
+html[data-mode="student"] .dk-compose.is-phone .dk-send {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 1.15rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
 
 .dk-poll-edit {
   display: grid;
@@ -397,6 +459,19 @@ html[data-mode="student"] .dk-comment-form input { font-size: 16px; }
   html[data-mode="student"] #app.is-diskusi .main {
     max-width: none;
     padding: 0 0 calc(var(--dock-h) + 56px);
+  }
+  html[data-mode="student"] .dk-compose.is-phone {
+    box-shadow: none;
+    padding: 8px 12px 12px;
+  }
+  html[data-mode="student"] .dk-compose.is-phone .dk-tool-label { display: inline; }
+  html[data-mode="student"] .dk-compose.is-phone .dk-send {
+    width: auto;
+    min-width: 0;
+    height: auto;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: inherit;
   }
   html[data-mode="student"] .dk-shell {
     display: grid;

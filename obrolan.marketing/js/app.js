@@ -9233,22 +9233,67 @@
       return '<p class="muted dk-compose-locked">Siswa view · hanya lihat (tidak bisa kirim).</p>';
     }
     const uploading = !!ui.postUploading;
-    return '<form class="dk-compose" data-act="post-new" data-batch="' + esc(batchId) + '">' +
+    const phone = !isStaff();
+    const ico = (paths) =>
+      '<svg class="dk-tool-ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      paths + '</svg>';
+    const tools =
+      '<label class="dk-tool" title="Foto" aria-label="Foto">' +
+        (phone
+          ? ico('<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 16l-5-5-4 4-2-2-5 5"/>') +
+            '<span class="dk-tool-label">Foto</span>'
+          : 'Foto') +
+        '<input type="file" accept="image/*" multiple hidden data-act="post-files"' + (uploading ? ' disabled' : '') + '>' +
+      '</label>' +
+      '<label class="dk-tool" title="File" aria-label="File">' +
+        (phone
+          ? ico('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/>') +
+            '<span class="dk-tool-label">File</span>'
+          : 'File') +
+        '<input type="file" multiple hidden data-act="post-attach"' + (uploading ? ' disabled' : '') + '>' +
+      '</label>' +
+      '<button type="button" class="dk-tool' + (ui.pollOn ? ' is-on' : '') + '" data-act="poll-toggle"' +
+        (uploading ? ' disabled' : '') + ' title="Poll" aria-label="Poll">' +
+        (phone
+          ? ico('<path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19V8"/>') +
+            '<span class="dk-tool-label">Poll</span>'
+          : 'Poll') +
+      '</button>';
+    const sendIco = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>';
+    const body =
+      '<textarea name="body" rows="1" maxlength="4000" placeholder="Tulis pesan…"' +
+        (uploading ? ' disabled' : '') + '>' + esc(ui.postBody || '') + '</textarea>' +
+      '<button class="dk-send" type="submit" aria-label="Kirim"' + (uploading ? ' disabled' : '') + '>' +
+        (uploading ? '…' : (phone ? sendIco : 'Kirim')) + '</button>';
+    return '<form class="dk-compose' + (phone ? ' is-phone' : '') + '" data-act="post-new" data-batch="' + esc(batchId) + '">' +
       postDraftHtml() +
       pollEditHtml() +
-      '<div class="dk-bar">' +
-        '<label class="dk-tool" title="Foto">Foto' +
-          '<input type="file" accept="image/*" multiple hidden data-act="post-files"' + (uploading ? ' disabled' : '') + '>' +
-        '</label>' +
-        '<label class="dk-tool" title="File">File' +
-          '<input type="file" multiple hidden data-act="post-attach"' + (uploading ? ' disabled' : '') + '>' +
-        '</label>' +
-        '<button type="button" class="dk-tool' + (ui.pollOn ? ' is-on' : '') + '" data-act="poll-toggle"' + (uploading ? ' disabled' : '') + '>Poll</button>' +
-        '<textarea name="body" rows="1" maxlength="4000" placeholder="Tulis catatan"' +
-          (uploading ? ' disabled' : '') + '>' + esc(ui.postBody || '') + '</textarea>' +
-        '<button class="dk-send" type="submit"' + (uploading ? ' disabled' : '') + '>' +
-          (uploading ? '…' : 'Kirim') + '</button>' +
-      '</div></form>';
+      (phone
+        ? '<div class="dk-tools">' + tools + '</div><div class="dk-bar">' + body + '</div>'
+        : '<div class="dk-bar">' + tools + body + '</div>') +
+      '</form>';
+  }
+  function autosizeDkBody(ta) {
+    if (!ta) return;
+    ta.style.height = '0px';
+    const next = Math.min(132, Math.max(40, ta.scrollHeight));
+    ta.style.height = next + 'px';
+  }
+  function syncDiskusiComposerChrome() {
+    if (isStaff() || ui.tab !== 'diskusi') {
+      document.documentElement.classList.remove('dk-composing');
+      return;
+    }
+    const ta = document.querySelector('.dk-compose textarea[name="body"]');
+    const composing = !!(ta && document.activeElement === ta);
+    document.documentElement.classList.toggle('dk-composing', composing);
+    if (composing) {
+      autosizeDkBody(ta);
+      const compose = ta.closest('.dk-compose');
+      if (compose && compose.scrollIntoView) {
+        try { compose.scrollIntoView({ block: 'end', behavior: 'smooth' }); } catch (err) { compose.scrollIntoView(false); }
+      }
+    }
   }
   function pollHtml(post) {
     const poll = post && post.poll;
@@ -12898,6 +12943,7 @@
     const t = e.target;
     if (t.matches('.dk-compose textarea[name="body"]')) {
       ui.postBody = t.value;
+      autosizeDkBody(t);
       return;
     }
     if (t.matches('.dk-comment-form input[name="body"]')) {
@@ -15813,9 +15859,26 @@
   window.addEventListener('resize', syncViewportShell);
   window.addEventListener('orientationchange', () => setTimeout(syncViewportShell, 120));
   if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', syncViewportShell);
-    window.visualViewport.addEventListener('scroll', syncViewportShell);
+    window.visualViewport.addEventListener('resize', () => {
+      syncViewportShell();
+      syncDiskusiComposerChrome();
+    });
+    window.visualViewport.addEventListener('scroll', () => {
+      syncViewportShell();
+      syncDiskusiComposerChrome();
+    });
   }
+  document.addEventListener('focusin', (e) => {
+    if (e.target && e.target.matches && e.target.matches('.dk-compose textarea[name="body"]')) {
+      syncDiskusiComposerChrome();
+      requestAnimationFrame(() => autosizeDkBody(e.target));
+    }
+  });
+  document.addEventListener('focusout', (e) => {
+    if (e.target && e.target.matches && e.target.matches('.dk-compose textarea[name="body"]')) {
+      setTimeout(syncDiskusiComposerChrome, 80);
+    }
+  });
 
   function adminKey() {
     try { return sessionStorage.getItem('anton-admin') || ''; } catch (err) { return ''; }

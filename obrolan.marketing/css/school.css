@@ -4050,6 +4050,7 @@ html[data-mode="student"] .dock {
 .dk-rename { display: flex; gap: 8px; align-items: center; }
 .dk-rename input { flex: 1; min-width: 0; }
 .dk-compose textarea { min-height: 76px; }
+html[data-mode="student"] .dk-compose.is-phone textarea { min-height: 40px; }
 .dk-compose-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .dk-attach { cursor: pointer; margin: 0; }
 .dk-draft { display: flex; gap: 8px; flex-wrap: wrap; }
