@@ -4664,16 +4664,40 @@
     });
     return out;
   }
+  function tokenFrom(obj, depth) {
+    if (!obj || depth > 5) return '';
+    if (typeof obj === 'string') {
+      if (obj.length > 40 && obj.indexOf('eyJ') === 0) return obj;
+      try { return tokenFrom(JSON.parse(obj), depth + 1); } catch (err) { return ''; }
+    }
+    if (typeof obj !== 'object') return '';
+    if (typeof obj.access_token === 'string' && obj.access_token.length > 20) return obj.access_token;
+    const keys = Object.keys(obj);
+    for (let i = 0; i < keys.length; i += 1) {
+      const hit = tokenFrom(obj[keys[i]], depth + 1);
+      if (hit) return hit;
+    }
+    return '';
+  }
   function lmsAuth() {
-    /* Contabo /lms uses supabase-js storageKey lms_auth_v1. Legacy Anton key kept as fallback. */
+    /* Contabo door mirrors a coach session; supabase storageKey is lms_auth_v1. */
+    try {
+      const coachRaw = localStorage.getItem('laris_lms_coach') || '';
+      if (coachRaw) {
+        const coach = JSON.parse(coachRaw);
+        if (coach && coach.access_token) return coach;
+      }
+    } catch (err) { /* ignore */ }
     try {
       const raw = localStorage.getItem('lms_auth_v1') || localStorage.getItem('lms-auth-v1') || '';
       if (!raw) return null;
       const parsed = JSON.parse(raw);
+      const access = tokenFrom(parsed, 0);
+      if (!access) return null;
       if (parsed && parsed.access_token) return parsed;
       if (parsed && parsed.currentSession && parsed.currentSession.access_token) return parsed.currentSession;
       if (parsed && parsed.session && parsed.session.access_token) return parsed.session;
-      return parsed;
+      return { access_token: access };
     } catch (err) { return null; }
   }
   function lmsHeaders(extra) {
@@ -12242,7 +12266,7 @@
   document.addEventListener('change', (e) => {
     const t = e.target;
     if (t.id === 'role-switch') {
-      if (ui.present || ui.chromeSync || onStudentVanityPath() || (onCoachRootPath() && !ui.admin)) return;
+      if (ui.present || ui.chromeSync || (onStudentVanityPath() && !ui.coach) || (onCoachRootPath() && !ui.admin)) return;
       ui.role = t.value;
       ui.tab = 'home';
       ui.mentorTab = 'dash';
@@ -16081,23 +16105,45 @@
     } catch (err) { /* still send */ }
     trackEvent('page_view');
   }
+  function coachLoginUrl() {
+    return '/lms/?next=' + encodeURIComponent(location.pathname + location.search);
+  }
+  function mirroredCoachSlug() {
+    try {
+      const coach = JSON.parse(localStorage.getItem('laris_lms_coach') || 'null');
+      return coach && coach.slug ? String(coach.slug) : '';
+    } catch (err) { return ''; }
+  }
   async function claimCoach() {
     const auth = lmsAuth();
-    if (!auth || !auth.access_token) return false;
+    const here = schoolSlug();
+    if (!auth || !auth.access_token) {
+      if (mirroredCoachSlug() === here && (onStudentVanityPath() || onMentorPath() || onCoachRootPath())) {
+        location.replace(coachLoginUrl());
+      }
+      return false;
+    }
     try {
       const res = await fetch(apiBase() + '/owners/me', {
         headers: { authorization: 'Bearer ' + auth.access_token },
         cache: 'no-store'
       });
+      if (res.status === 401) {
+        if (mirroredCoachSlug() === here) location.replace(coachLoginUrl());
+        return false;
+      }
       if (!res.ok) return false;
       const data = await res.json().catch(() => ({}));
       if (!data.slug) return false;
       /* Mentor hub /obrolan.marketing/ → send coach to their own school. */
-      if (onMentorPath() && data.slug !== schoolSlug()) {
+      if (onMentorPath() && data.slug !== here) {
         location.replace('/s/' + encodeURIComponent(data.slug) + '/');
         return false;
       }
-      if (data.slug !== schoolSlug()) return false;
+      if (data.slug !== here) return false;
+      try {
+        localStorage.setItem('laris_lms_coach', JSON.stringify(Object.assign({}, auth, { slug: data.slug })));
+      } catch (err) { /* ignore */ }
       ui.admin = true;
       ui.role = 'owner';
       ui.coach = true;

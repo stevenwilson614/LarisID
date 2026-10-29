@@ -710,6 +710,27 @@
     return '/obrolan.marketing/';
   }
 
+  function mirrorCoachSession(session, slug) {
+    if (!session || !session.access_token) return;
+    try {
+      localStorage.setItem('laris_lms_coach', JSON.stringify({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token || '',
+        expires_at: session.expires_at || 0,
+        user_id: (session.user && session.user.id) || '',
+        slug: String(slug || '').trim()
+      }));
+    } catch (err) { /* private mode */ }
+  }
+
+  function nextClassPath() {
+    try {
+      var next = String(new URLSearchParams(location.search).get('next') || '').trim();
+      if (next.indexOf('/s/') === 0 || next.indexOf('/obrolan.marketing') === 0) return next;
+    } catch (err) { /* ignore */ }
+    return '';
+  }
+
   async function claimClassSchool(me) {
     if (!me || me.role !== 'mentor') return me && me.org_slug;
     var slug = String(me.org_slug || '').trim();
@@ -721,13 +742,26 @@
     } catch (err) { session = null; }
     var token = session && session.access_token;
     if (!token) return slug;
+    var headers = {
+      'content-type': 'application/json',
+      authorization: 'Bearer ' + token
+    };
     try {
+      /* Prefer an already-owned disk school (e.g. test-1) over a new Contabo org_slug. */
+      var owned = await fetch('/obrolan.marketing/api/owners/me', {
+        headers: { authorization: 'Bearer ' + token },
+        cache: 'no-store'
+      });
+      if (owned.ok) {
+        var mine = await owned.json().catch(function () { return {}; });
+        if (mine && mine.slug) {
+          mirrorCoachSession(session, mine.slug);
+          return mine.slug;
+        }
+      }
       var claim = await fetch('/obrolan.marketing/api/owners/claim', {
         method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          authorization: 'Bearer ' + token
-        },
+        headers: headers,
         body: JSON.stringify({
           slug: slug,
           orgName: me.org_name || me.display_name || slug,
@@ -736,16 +770,21 @@
       });
       if (claim.ok) {
         var data = await claim.json().catch(function () { return {}; });
-        if (data && data.slug) return data.slug;
+        if (data && data.slug) {
+          mirrorCoachSession(session, data.slug);
+          return data.slug;
+        }
       }
     } catch (err) { /* fall through to Contabo slug */ }
+    mirrorCoachSession(session, slug);
     return slug;
   }
 
   async function loadApp(me) {
     /* Landing/signup stay on Contabo /lms; open the mentor's own left-rail school. */
     var slug = await claimClassSchool(me);
-    location.replace(classAppUrl(me, slug));
+    var next = nextClassPath();
+    location.replace(next || classAppUrl(me, slug));
   }
 
   async function routeNow(session) {

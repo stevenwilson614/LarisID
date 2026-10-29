@@ -163,7 +163,20 @@ function isStaffFor(req, q, slug, user) {
   if (asStudentView(req)) return false;
   if (slug === ANTON_SLUG && adminAuthed(req, q)) return true;
   if (!user || !user.id) return false;
-  return ownerOf(slug) === user.id;
+  if (ownerOf(slug) === user.id) return true;
+  try {
+    const rec = readState(slug);
+    const stateOwner = rec && rec.state && rec.state.ownerUserId;
+    if (stateOwner && stateOwner === user.id) {
+      const owners = readOwners();
+      if (owners[user.id] !== slug) {
+        owners[user.id] = slug;
+        writeOwners(owners);
+      }
+      return true;
+    }
+  } catch (err) { /* ignore */ }
+  return false;
 }
 
 function clip(value, max) {
@@ -871,7 +884,7 @@ function staffCookieHeader(req, token) {
   const secure = proto === 'https' ? '; Secure' : '';
   const value = token ? String(token) : '';
   const age = token ? '' : '; Max-Age=0';
-  return 'lms_staff=' + value + '; HttpOnly; SameSite=Lax; Path=/obrolan.marketing' + age + secure;
+  return 'lms_staff=' + value + '; HttpOnly; SameSite=Lax; Path=/' + age + secure;
 }
 
 function listStaff(state) {
@@ -1672,7 +1685,23 @@ const server = http.createServer((req, res) => {
         return;
       }
       const map = readOwners();
-      json(res, 200, { slug: map[user.id] || '' });
+      let slug = map[user.id] || '';
+      if (!slug) {
+        try {
+          const files = fs.readdirSync(stateDir);
+          for (let i = 0; i < files.length; i += 1) {
+            if (!files[i].endsWith('.json')) continue;
+            const rec = readState(files[i].replace(/\.json$/, ''));
+            if (rec && rec.state && rec.state.ownerUserId === user.id) {
+              slug = String(rec.state.schoolSlug || files[i].replace(/\.json$/, ''));
+              map[user.id] = slug;
+              writeOwners(map);
+              break;
+            }
+          }
+        } catch (err) { /* ignore */ }
+      }
+      json(res, 200, { slug: slug || '' });
     });
     return;
   }
