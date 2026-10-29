@@ -2198,8 +2198,8 @@ const server = http.createServer((req, res) => {
       scope: start,
       display: 'standalone',
       orientation: 'portrait',
-      background_color: '#18181b',
-      theme_color: '#18181b',
+      background_color: '#101012',
+      theme_color: '#101012',
       lang: 'id',
       icons: [{ src: icon, sizes: '192x192', type: 'image/png', purpose: 'any' }]
     });

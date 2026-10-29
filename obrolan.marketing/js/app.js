@@ -36,7 +36,7 @@
      button, <meta theme-color>, and storage in sync. Tool iframes share
      the origin and follow the same key through the `storage` event. */
   const THEME_KEY = 'anton-theme';
-  const THEME_COLOR = { dark: '#18181b', light: '#ffffff' };
+  const THEME_COLOR = { dark: '#101012', light: '#ffffff' };
   function currentTheme() {
     return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
   }

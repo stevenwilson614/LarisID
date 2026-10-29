@@ -2,18 +2,18 @@
    Student chrome is a phone column. Mentor chrome is a desktop rail. */
 
 :root {
-  --ink-0: #111113;
-  --ink: #18181b;
-  --ink-2: #1c1c1f;
-  --ink-3: #27272a;
+  --ink-0: #0a0a0c;
+  --ink: #101012;
+  --ink-2: #232328;
+  --ink-3: #2f2f35;
   --line: #3f3f46;
   --line-2: #52525b;
   --text: #e4e4e7;
   --fg-strong: #fff;
   --muted: #a1a1aa;
   --muted-2: #9aa3ad;
-  --card: #27272a;
-  --hitam: #18181b;
+  --card: #232328;
+  --hitam: #101012;
   --danger: #c4c4c4;
   --ok: #38bdf8;
   --ok-soft: #7dd3fc;
@@ -44,23 +44,23 @@
   --wa-out-bg: #14532d;
   --wa-out-line: #166534;
   --cal-meet-bg: #1e3a5f;
-  --heat-0-bg: #1c1c1f;
+  --heat-0-bg: #101012;
   --heat-0-fg: #71717a;
   --heat-1: #3f3f46;
   --heat-2: #52525b;
   --heat-3-bg: #d4d4d8;
-  --heat-3-fg: #18181b;
+  --heat-3-fg: #101012;
   --lock-fg: #fef3c7;
   --lock-bg: rgba(0,0,0,.72);
-  --lock-seq-bg: rgba(39,39,42,.9);
-  --rj-board-bg: rgba(12, 12, 14, .55);
+  --lock-seq-bg: rgba(47,47,53,.9);
+  --rj-board-bg: rgba(10, 10, 12, .55);
   --shadow: rgba(0,0,0,.35);
   --shadow-2: rgba(0,0,0,.45);
   --scrim: rgba(0,0,0,.55);
-  --cta-grad: linear-gradient(165deg, #1c1917 0%, #18181b 55%, #0c4a6e22 100%);
-  --cta-grad-warn: linear-gradient(165deg, #1c1917 0%, #18181b 55%, #42200644 100%);
-  --panel-grad: linear-gradient(180deg, #18181b, #121214);
-  --cover-grad: linear-gradient(145deg, #27272a, #111);
+  --cta-grad: linear-gradient(165deg, #141416 0%, #101012 55%, #0c4a6e22 100%);
+  --cta-grad-warn: linear-gradient(165deg, #141416 0%, #101012 55%, #42200644 100%);
+  --panel-grad: linear-gradient(180deg, #101012, #0a0a0c);
+  --cover-grad: linear-gradient(145deg, #2f2f35, #0a0a0c);
   --blur-fg-grad: linear-gradient(180deg, rgba(9,9,11,.55), rgba(9,9,11,.82));
   --font: "Plus Jakarta Sans", system-ui, sans-serif;
   --dock-h: 64px;
@@ -948,7 +948,7 @@ html[data-mode="mentor"] #wa-fab-host { display: none; }
 .dock {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
   display: grid; grid-template-columns: repeat(5, 1fr);
-  background: var(--ink-2); border-top: 1px solid var(--line);
+  background: var(--ink); border-top: 0;
   padding: 6px 4px calc(10px + var(--safe-bottom));
 }
 .dock-ico-wrap {
@@ -966,7 +966,7 @@ html[data-mode="mentor"] #wa-fab-host { display: none; }
 .dock-ico-wrap .tab-badge {
   position: absolute; top: -4px; right: -8px; margin: 0;
   min-width: 15px; height: 15px; font-size: .58rem;
-  box-shadow: 0 0 0 2px var(--ink-2);
+  box-shadow: 0 0 0 2px var(--ink);
 }
 .tabs button { position: relative; }
 .dock button {
@@ -1306,8 +1306,8 @@ html[data-mode="student"] .dock {
   /* Keep labels clear of Safari chrome + home indicator */
   min-height: calc(var(--dock-h) + var(--safe-bottom));
   z-index: 30;
-  background: var(--ink-2);
-  border-top: 1px solid var(--line);
+  background: var(--ink);
+  border-top: 0;
 }
 .stu-kur-page { display: grid; gap: 14px; padding-bottom: 8px; }
 .stu-kur-head {
