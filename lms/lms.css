@@ -384,12 +384,20 @@ button, a { font: inherit; }
 .lessons strong { font-size: 0.84rem; }
 .mod-late { opacity: 0; transform: translateY(6px); }
 .thread { display: grid; gap: 8px; }
-.thread.feed { align-content: start; min-height: 200px; flex: 1; }
+.thread.feed {
+  align-content: start;
+  flex: 1;
+  min-height: 0;
+  padding-bottom: 118px;
+  overflow: hidden;
+}
 .dk-stage {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 420px;
   padding-bottom: 0;
+  overflow: hidden;
 }
 .dk-stage .stage-bar { flex: none; }
 .post, .cmt {
@@ -400,6 +408,10 @@ button, a { font: inherit; }
   border-radius: 14px;
   padding: 12px;
   opacity: 0;
+  max-height: 0;
+  margin: 0;
+  overflow: hidden;
+  pointer-events: none;
 }
 .post img, .cmt img {
   width: 32px;
@@ -445,12 +457,16 @@ button, a { font: inherit; }
   border-bottom-left-radius: 10px;
 }
 .dk-compose {
-  flex: none;
-  margin: 10px 0 0;
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 12px;
+  z-index: 2;
   padding: 10px;
   background: #fff;
   border: 1px solid #eee;
   border-radius: 14px;
+  box-shadow: 0 -8px 24px rgba(255, 255, 255, 0.9);
   opacity: 0;
 }
 .dk-compose .replying {
@@ -808,29 +824,29 @@ button, a { font: inherit; }
   94%, 100% { opacity: 0; }
 }
 @keyframes post-in {
-  0%, 3% { opacity: 0; transform: translateY(10px); }
-  8%, 90% { opacity: 1; transform: none; }
-  96%, 100% { opacity: 0; }
+  0%, 3% { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; transform: translateY(10px); }
+  8%, 90% { opacity: 1; max-height: 120px; padding-top: 12px; padding-bottom: 12px; transform: none; }
+  96%, 100% { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; }
 }
 @keyframes cmt-1 {
-  0%, 10% { opacity: 0; transform: translateY(8px); }
-  16%, 90% { opacity: 1; transform: none; }
-  96%, 100% { opacity: 0; }
+  0%, 10% { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; transform: translateY(8px); }
+  16%, 90% { opacity: 1; max-height: 120px; padding-top: 12px; padding-bottom: 12px; transform: none; }
+  96%, 100% { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; }
 }
 @keyframes cmt-2 {
-  0%, 38% { opacity: 0; transform: translateY(8px); }
-  44%, 90% { opacity: 1; transform: none; }
-  96%, 100% { opacity: 0; }
+  0%, 38% { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; transform: translateY(8px); }
+  44%, 90% { opacity: 1; max-height: 120px; padding-top: 12px; padding-bottom: 12px; transform: none; }
+  96%, 100% { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; }
 }
 @keyframes cmt-3 {
-  0%, 52% { opacity: 0; transform: translateY(8px); }
-  58%, 90% { opacity: 1; transform: none; }
-  96%, 100% { opacity: 0; }
+  0%, 52% { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; transform: translateY(8px); }
+  58%, 90% { opacity: 1; max-height: 120px; padding-top: 12px; padding-bottom: 12px; transform: none; }
+  96%, 100% { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; }
 }
 @keyframes cmt-4 {
-  0%, 78% { opacity: 0; transform: translateY(8px); }
-  84%, 90% { opacity: 1; transform: none; }
-  96%, 100% { opacity: 0; }
+  0%, 78% { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; transform: translateY(8px); }
+  84%, 90% { opacity: 1; max-height: 120px; padding-top: 12px; padding-bottom: 12px; transform: none; }
+  96%, 100% { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; }
 }
 @keyframes compose-in {
   0%, 16% { opacity: 0; transform: translateY(8px); }
@@ -927,7 +943,9 @@ button, a { font: inherit; }
   .count span:first-child, .pipa-empty { opacity: 0; }
   .count span:last-child { opacity: 1; }
   .fold, .fold .doc-new, .mod-late, .post, .cmt, .mail-card, .mail-check, .auto-task,
-  .day small.pop, .people-list li, .income .dot, .dk-compose { opacity: 1; transform: none; max-height: none; }
+  .day small.pop, .people-list li, .income .dot, .dk-compose {
+    opacity: 1; transform: none; max-height: none; padding-top: 12px; padding-bottom: 12px;
+  }
   .dk-compose .replying { opacity: 1; max-height: 36px; margin-bottom: 6px; padding-top: 6px; padding-bottom: 6px; }
   .dk-compose .r-dimas { display: none; }
   .compose-field .type-sari { width: 36ch; opacity: 1; }
@@ -1452,7 +1470,7 @@ select {
   .stage-main { overflow-x: auto; }
   .stats { grid-template-columns: repeat(2, 1fr); }
   .cmt.is-reply { margin-left: 4px; }
-  .dk-compose { margin-left: 8px; margin-right: 8px; }
+  .dk-compose { left: 10px; right: 10px; }
   .school { padding-left: 16px; padding-right: 16px; }
   .school-bar { align-items: flex-start; }
   .row2 { grid-template-columns: 1fr; }
