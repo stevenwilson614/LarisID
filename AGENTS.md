@@ -26,9 +26,14 @@ Cari Produk search goes through `resolve_market` (spell-correct, brand, an hones
 
 Cari Produk defaults to **Tabel** (listing-row spreadsheet: photo, harga, omset, unit, review, usia). **Kartu** is the Shopee-style photo grid (harga, omset/bulan, weekly % vs the previous scrape window). **Trending Sekarang** (top 3 by weekly omset %) sits above Urutkan. Keyword chips filter both. Do not remount the Peta Peluang scatter on `#dir-trending-now` or chat `.trend-host` — `peta_batch` still feeds `_petaTrend` via `PetaPeluang.hydrateTrends`. Card/row chrome: bandingkan checkbox, one % with arrow, Favorit bookmark (`trackProductFavorite` → `user_tracked_products`); cards open Deep Dive on click, table chevron does the same. Deep Dive is **PRODUK-only**; keyword-grain entries (`#home-first-dd`, Langkah, terlaris minggu) open that keyword's top listing. Favorit Aku is product-grain — see **[docs/favorit-aku.md](./docs/favorit-aku.md)**. **Bandingkan Pasar** is retired from Cari Produk and lives only in the chat `handleBandingkanIntent` path — see **[docs/pasar-compare.md](./docs/pasar-compare.md)**. Before changing Skor Mudah Masuk weights (still used by that chat board), read that doc. Never add a hard filter on that score. Also **[docs/peta-peluang.md](./docs/peta-peluang.md)** and **[docs/pasar-compare.md](./docs/pasar-compare.md)**.
 
-## LMS (`/lms`)
+## LMS
 
-Mentor and student logins live only at `/lms`, separate from the seller app. Before changing login, invites, kurikulum, or lesson files, read **[docs/lms.md](./docs/lms.md)**. One mentor owns one school. A student joins only through that mentor’s invite and can open only that mentor’s published kurikulum. Lesson files are private to that school. Do not bring back the disk JSON school, the browser copy, invite-code file access, or `obrolan.marketing`.
+Two surfaces:
+
+1. **Class app (Anton UI)** — left-rail mentor shell at `/obrolan.marketing/` (mentor) and `/s/{slug}/` (student). Source: `obrolan.marketing/`. Contabo runs `anton-school` for disk state. This is the product UI mentors expect (Dashboard, Students, Kurikulum, Otomasi, …).
+2. **Auth LMS at `/lms`** — Contabo Postgres invites / materials (`lms_*` tables). Separate login; do not fold it into the seller app.
+
+Before changing either, read **[docs/lms.md](./docs/lms.md)**. Do not reintroduce invite-code raw file URLs (`?k=` on media) as a public share pattern.
 
 ## LarisExpor (`pasar=expor`)
 

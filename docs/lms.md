@@ -1,4 +1,10 @@
-# LMS — mentor schools at /lms
+# LMS
+
+**Class UI mentors expect** (profile top-left, left rail: Dashboard / Students / Kurikulum / Otomasi / …) is the Anton school at [`/obrolan.marketing/`](https://larisid.com/obrolan.marketing/) and [`/s/{slug}/`](https://larisid.com/s/test-1/) — see [Class app](#class-app-anton-ui--restored) below.
+
+---
+
+## Auth LMS at /lms (Contabo Postgres)
 
 A separate app from the seller product. Login lives only at `/lms` (`lms/index.html`, `lms/js/auth.js`, `lms/js/api.js`, `lms/js/app.js`). The session key is `lms_auth_v1`. It must not use a `sb-*-auth-token` key, because the seller app deletes those on boot.
 
@@ -71,6 +77,23 @@ bash scripts/deploy-function-selfhost.sh lms-invite-card
 bash scripts/deploy-static.sh
 ```
 
-## Do not bring back
+## Class app (Anton UI) — restored
 
-The old class was a JSON file per slug, a browser copy (`lms-school-v1`, `anton-school-v3`), and an invite code that could read uploads (`?k=` on `/obrolan.marketing/api/media/file`). That app, `js/lms-join.js`, and the `anton-school` process are gone. Disk data may still sit on the VPS volume; it is not served. Do not route `/{slug}` or `/s/{slug}` at a school again — school URLs live only under `/lms/{org_slug}/`.
+The left-rail mentor shell mentors use day-to-day lives here:
+
+| URL | Who |
+| --- | --- |
+| `https://larisid.com/obrolan.marketing/` | Mentor tools |
+| `https://larisid.com/s/{slug}/` | Student (and mentor preview of that school) |
+
+Source tree: `obrolan.marketing/` (assembled into `_site`, server code excluded). Contabo `anton-school` serves `/obrolan.marketing/api/*` and `/api/*` from disk under `docker/volumes/anton-school` (e.g. `state/test-1.json`). Caddy rewrites `/s/*` → `/obrolan.marketing/index.html`.
+
+```bash
+bash scripts/deploy-static.sh
+# After server.mjs changes, rsync to Contabo docker/anton-school/ and:
+#   docker compose -f docker-compose.yml -f docker-compose.caddy.yml -f docker-compose.larisid.yml up -d anton-school
+```
+
+The Contabo `/lms` auth app above stays for invite/Postgres experiments. Do not point student share links at `/lms/{slug}` when the class they mean is the Anton school.
+
+Do not revive `js/lms-join.js` or public invite-code file downloads as the share model.
