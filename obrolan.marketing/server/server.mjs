@@ -3,7 +3,7 @@
  * Each new coach gets their own file. Not the LarisID Postgres database.
  * Staff with the admin cookie get Anton's file only. A coach JWT is staff
  * only for the school they created. A student session gets only that student's row.
- * The invite code is not a credential.
+ * The invite code admits a new student. It does not unlock media.
  */
 import http from 'node:http';
 import fs from 'node:fs';
@@ -61,13 +61,15 @@ function lock(fn) {
   return run;
 }
 
-function json(res, status, data) {
+function json(res, status, data, extra) {
   const body = JSON.stringify(data);
-  res.writeHead(status, {
+  const headers = {
     'content-type': 'application/json; charset=utf-8',
     'cache-control': 'no-store',
     'x-robots-tag': 'noindex'
-  });
+  };
+  if (extra) Object.assign(headers, extra);
+  res.writeHead(status, headers);
   res.end(body);
 }
 
@@ -232,8 +234,8 @@ function emptySchool(slug, user, body, photoUrl) {
       mentorBand: body.mentorBand,
       ownerId: ownerId,
       ownerUserId: user.id,
-      inviteCode: inviteFromLabel(businessName) || inviteFromLabel(slug),
-      inviteCodeCustom: false,
+      inviteCode: crypto.randomBytes(9).toString('hex'),
+      inviteCodeCustom: true,
       schoolProfile: {
         firstName: clip(body.firstName, 40),
         lastName: clip(body.lastName, 80),
@@ -341,27 +343,47 @@ function writeState(rec, slug) {
   fs.renameSync(tmp, file);
 }
 
-function inviteOf(rec) {
+/** One code per school. Anton's default is only valid on his school. */
+function currentInvite(rec, slug) {
   const state = (rec && rec.state) || {};
   const stored = String(state.inviteCode || '').trim();
+  if (slug === ANTON_SLUG) {
+    if (state.inviteCodeCustom === true && stored && stored !== DEFAULT_INVITE) return stored;
+    if (stored && state.inviteCodeCustom !== false && stored !== DEFAULT_INVITE) return stored;
+    return DEFAULT_INVITE;
+  }
   if (state.inviteCodeCustom === true && stored && stored !== DEFAULT_INVITE) return stored;
-  const derived = derivedInvite(state);
-  if (state.inviteCodeCustom === false) return derived || stored || DEFAULT_INVITE;
-  if (stored && stored !== DEFAULT_INVITE) return stored;
-  return derived || DEFAULT_INVITE;
+  return '';
 }
 
-function inviteAccepted(rec, got) {
-  const state = (rec && rec.state) || {};
+function inviteNeedsRotate(state, slug) {
+  if (!state || slug === ANTON_SLUG) return false;
   const stored = String(state.inviteCode || '').trim();
-  const codes = [inviteOf(rec), stored, derivedInvite(state), DEFAULT_INVITE];
-  const seen = new Set();
-  for (const code of codes) {
-    if (!code || seen.has(code)) continue;
-    seen.add(code);
-    if (sameSecret(got, code)) return true;
-  }
-  return false;
+  if (state.inviteCodeCustom === true && stored && stored !== DEFAULT_INVITE) return false;
+  return true;
+}
+
+function inviteAccepted(rec, got, slug) {
+  return sameSecret(got, currentInvite(rec, slug));
+}
+
+function bodyInvite(body, q) {
+  const src = body && typeof body === 'object' ? body : {};
+  const query = q || {};
+  return String(src.invite || src.k || query.invite || query.k || '').trim();
+}
+
+/** Keep a random school code if a browser hydrated the old name-derived one. */
+function keepServerInvite(prev, next, slug) {
+  if (!prev || !next || slug === ANTON_SLUG) return;
+  const stored = String(prev.inviteCode || '').trim();
+  if (!(prev.inviteCodeCustom === true && stored && stored !== DEFAULT_INVITE)) return;
+  const incoming = String(next.inviteCode || '').trim();
+  const derived = derivedInvite(prev, slug);
+  const clientKept = next.inviteCodeCustom === true && incoming && incoming !== DEFAULT_INVITE && incoming !== derived;
+  if (clientKept) return;
+  next.inviteCode = stored;
+  next.inviteCodeCustom = true;
 }
 
 function sameSecret(a, b) {
@@ -420,14 +442,67 @@ function keyOk(key) {
   return true;
 }
 
-async function mediaWriteOk(req, q, slug) {
+function mediaGrantRole(staff, staffRow) {
+  if (staff) return 'owner';
+  if (!staffRow) return '';
+  const perms = cleanStaffPerms(staffRow.permissions);
+  if (perms.editClasses) return 'edit';
+  if (perms.viewClasses) return 'view';
+  return '';
+}
+
+function signMedia(slug, role) {
+  const exp = Date.now() + 12 * 60 * 60 * 1000;
+  const payload = Buffer.from(JSON.stringify({ s: slug, e: exp, r: role }), 'utf8').toString('base64url');
+  const sig = crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('hex');
+  return payload + '.' + sig;
+}
+
+function readMediaGrant(req) {
+  const raw = cookieValue(req, 'lms_media');
+  const dot = String(raw || '').lastIndexOf('.');
+  if (dot < 1) return null;
+  const payload = raw.slice(0, dot);
+  const sig = raw.slice(dot + 1);
+  const expect = crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('hex');
+  if (!sameSecret(sig, expect)) return null;
+  let data;
+  try { data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')); } catch (err) { return null; }
+  if (!data || !data.s || Number(data.e) < Date.now()) return null;
+  if (data.r !== 'owner' && data.r !== 'edit' && data.r !== 'view') return null;
+  return { slug: String(data.s), role: data.r };
+}
+
+function mediaCookie(req, slug, role) {
+  const proto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+  const secure = proto === 'https' ? '; Secure' : '';
+  return 'lms_media=' + signMedia(slug, role) + '; HttpOnly; SameSite=Lax; Path=/; Max-Age=43200' + secure;
+}
+
+function mediaCookieHeader(req, slug, role) {
+  if (!role) return null;
+  return { 'set-cookie': mediaCookie(req, slug, role) };
+}
+
+async function requestIsStaff(req, q, slug) {
   const live = mediaSlug(slug);
-  if (!live) return false;
-  const rec = readState(live);
-  if (inviteAccepted(rec, q.k)) return true;
+  if (!live || asStudentView(req)) return false;
+  const grant = readMediaGrant(req);
+  if (grant && grant.slug === live) return true;
   const user = await supabaseUser(req);
   if (isStaffFor(req, q, live, user)) return true;
-  if (asStudentView(req)) return false;
+  const rec = readState(live);
+  return !!activeStaffRow((rec && rec.state) || {}, readStaffCookie(req));
+}
+
+async function mediaWriteOk(req, q, slug) {
+  const live = mediaSlug(slug);
+  if (!live || asStudentView(req)) return false;
+  const grant = readMediaGrant(req);
+  if (grant && grant.slug === live && (grant.role === 'owner' || grant.role === 'edit')) return true;
+  const user = await supabaseUser(req);
+  if (isStaffFor(req, q, live, user)) return true;
+  const rec = readState(live);
   const row = activeStaffRow((rec && rec.state) || {}, readStaffCookie(req));
   return !!(row && cleanStaffPerms(row.permissions).editClasses);
 }
@@ -436,13 +511,15 @@ async function mediaReadOk(req, q, slug) {
   const live = mediaSlug(slug);
   if (!live) return false;
   const rec = readState(live);
-  if (inviteAccepted(rec, q.k)) return true;
+  const state = (rec && rec.state) || {};
+  const grant = readMediaGrant(req);
+  if (grant && grant.slug === live) return true;
   const user = await supabaseUser(req);
   if (isStaffFor(req, q, live, user)) return true;
-  const state = (rec && rec.state) || {};
   if (!asStudentView(req) && activeStaffRow(state, readStaffCookie(req))) return true;
   const studentId = readStudentCookie(req);
-  return !!(studentId && lookupPerson(state, studentId));
+  if (!(studentId && lookupPerson(state, studentId))) return false;
+  return curriculumVisible(state, live);
 }
 
 function mediaFile(key) {
@@ -1299,7 +1376,98 @@ function sliceMap(obj, id) {
   return { [id]: obj[id] };
 }
 
-function projectGuest(state) {
+function curriculumVisible(state, slug) {
+  if (slug === ANTON_SLUG) return true;
+  const kur = state && state.kurikulum;
+  if (kur && kur.published === false) return false;
+  if (kur && kur.published === true) return true;
+  return Array.isArray(state && state.lectures) && state.lectures.length > 0;
+}
+
+function projectPublic(state) {
+  const src = state || {};
+  const profile = src.schoolProfile && typeof src.schoolProfile === 'object' ? src.schoolProfile : {};
+  const contact = src.ownerContact && typeof src.ownerContact === 'object' ? src.ownerContact : {};
+  const kur = src.kurikulum && typeof src.kurikulum === 'object' ? src.kurikulum : {};
+  const directory = [];
+  authorIds(src).forEach((id) => {
+    const card = publicCard(id, src);
+    if (card) directory.push(card);
+  });
+  return {
+    lectures: [],
+    catalog: [],
+    weeks: [],
+    sessions: [],
+    announcements: [],
+    posts: [],
+    comments: [],
+    threads: [],
+    replies: [],
+    schoolSlug: src.schoolSlug || '',
+    businessName: src.businessName || '',
+    mentorBand: src.mentorBand || '',
+    ownerId: src.ownerId || '',
+    schoolProfile: {
+      firstName: clip(profile.firstName, 40),
+      lastName: clip(profile.lastName, 80),
+      headline: clip(profile.headline, 60),
+      biography: clip(profile.biography, 800),
+      photoMode: clip(profile.photoMode, 20),
+      photoUrl: String(profile.photoUrl || '').trim(),
+      coverUrl: String(profile.coverUrl || '').trim(),
+      coverPosX: profile.coverPosX,
+      coverPosY: profile.coverPosY,
+      socials: cleanSocials(profile.socials)
+    },
+    kurikulum: {
+      name: clip(kur.name, 120),
+      description: clip(kur.description, 800),
+      published: false,
+      coverUrl: '',
+      coverKey: ''
+    },
+    ownerContact: {
+      wa: clip(contact.wa, 32),
+      email: '',
+      waFab: contact.waFab === true
+    },
+    pricing: {},
+    bank: {},
+    onboarding: src.onboarding || null,
+    sectionStyle: src.sectionStyle || 'minggu',
+    daftarCols: Array.isArray(src.daftarCols) ? src.daftarCols : [],
+    daftarCustom: [],
+    lynkProducts: {},
+    batchNames: {},
+    chats: {},
+    clockOffsetMs: typeof src.clockOffsetMs === 'number' ? src.clockOffsetMs : 0,
+    people: {},
+    liveStudents: [],
+    applications: {},
+    billing: {},
+    crm: {},
+    progress: {},
+    lastLecture: {},
+    enrollments: {},
+    timeline: {},
+    kolab: {},
+    directory: directory,
+    notes: {},
+    tasks: [],
+    payments: [],
+    remittances: [],
+    waQueue: [],
+    emailQueue: [],
+    waThreads: [],
+    waMessages: [],
+    attendance: {},
+    inviteCode: '',
+    inviteCodeCustom: false
+  };
+}
+
+function memberShell(state) {
   const shell = schoolShell(state);
   const directory = [];
   authorIds(state || {}).forEach((id) => {
@@ -1310,10 +1478,15 @@ function projectGuest(state) {
   return shell;
 }
 
-function projectStudent(state, studentId) {
-  const shell = projectGuest(state);
+function projectGuest(state) {
+  return projectPublic(state);
+}
+
+function projectStudent(state, studentId, slug) {
+  const open = curriculumVisible(state, slug);
+  const shell = open ? memberShell(state) : projectPublic(state);
   const src = state || {};
-  shell.directory = shell.directory.filter((card) => card.id !== studentId);
+  shell.directory = (shell.directory || []).filter((card) => card.id !== studentId);
   shell.people = sliceMap(src.people, studentId);
   shell.liveStudents = (src.liveStudents || []).filter((s) => s && s.id === studentId);
   shell.applications = sliceMap(src.applications, studentId);
@@ -1506,7 +1679,7 @@ function upsertStudentIdentity(state, row) {
   return next;
 }
 
-function claimStudentAccount(state, user, cookieId) {
+function claimStudentAccount(state, user, cookieId, allowCreate) {
   const uid = String(user && user.id || '');
   if (!uid) return null;
   let row = findByAuthUser(state, uid);
@@ -1528,6 +1701,7 @@ function claimStudentAccount(state, user, cookieId) {
     row = Object.assign({ id: cookieId }, person, live);
   }
   if (row && isMentorRow(state, row.id, row)) row = null;
+  if (!row && allowCreate === false) return null;
   if (!row) {
     created = true;
     const email = String(user.email || '').trim().slice(0, 160);
@@ -1882,6 +2056,10 @@ const server = http.createServer((req, res) => {
       json(res, 503, { error: 'unconfigured' });
       return;
     }
+    if (!sameSecret(q.key, ADMIN_KEY)) {
+      json(res, 403, { error: 'forbidden' });
+      return;
+    }
     const proto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
     const secure = proto === 'https' ? '; Secure' : '';
     res.writeHead(200, {
@@ -1989,15 +2167,29 @@ const server = http.createServer((req, res) => {
         json(res, 409, { error: 'reserved' });
         return;
       }
-      if (status === 'taken' && ownerOf(slug) && ownerOf(slug) !== user.id) {
+      const existingOwner = ownerOf(slug);
+      if (status === 'taken' && existingOwner && existingOwner !== user.id) {
         json(res, 409, { error: 'taken' });
         return;
       }
-      if (status === 'taken' && ownerOf(slug) === user.id) {
+      if (status === 'taken' && existingOwner === user.id) {
         owners[user.id] = slug;
         writeOwners(owners);
         fillOwnerEmail(slug, user);
         json(res, 200, { slug: slug, created: false });
+        return;
+      }
+      if (status === 'taken') {
+        const held = readState(slug);
+        const stateOwner = held && held.state && held.state.ownerUserId;
+        if (stateOwner && stateOwner === user.id) {
+          owners[user.id] = slug;
+          writeOwners(owners);
+          fillOwnerEmail(slug, user);
+          json(res, 200, { slug: slug, created: false });
+          return;
+        }
+        json(res, 409, { error: 'taken' });
         return;
       }
       const org = clip(body.orgName || body.businessName || slug, 80) || slug;
@@ -2108,9 +2300,9 @@ const server = http.createServer((req, res) => {
       const cookieId = readStudentCookie(req);
       const known = cookieId && lookupPerson(state, cookieId) ? cookieId : '';
       if (user && user.id) {
-        const claimed = claimStudentAccount(state, user, known);
+        const claimed = claimStudentAccount(state, user, known, inviteAccepted(rec, bodyInvite(body, q), slug));
         if (!claimed) {
-          json(res, 200, { role: 'guest' });
+          json(res, 200, { role: 'guest', needsAuth: true });
           return;
         }
         const stored = {
@@ -2146,7 +2338,7 @@ const server = http.createServer((req, res) => {
   }
 
   if (req.method === 'POST' && pathname === '/join') {
-    readBody(req, 64 * 1024).then((buf) => lock(() => {
+    readBody(req, 64 * 1024).then((buf) => lock(async () => {
       let body = {};
       try { body = JSON.parse(buf.toString('utf8') || '{}'); } catch (err) {
         json(res, 400, { error: 'bad_json' });
@@ -2170,6 +2362,12 @@ const server = http.createServer((req, res) => {
       let row = findByWa(state, wa);
       let created = false;
       if (!row) {
+        const user = await supabaseUser(req);
+        const staff = isStaffFor(req, q, slug, user);
+        if (!staff && !inviteAccepted(rec, bodyInvite(body, q), slug)) {
+          json(res, 403, { error: 'invite' });
+          return;
+        }
         created = true;
         row = {
           id: 'stu_' + crypto.randomBytes(9).toString('hex'),
@@ -2232,28 +2430,48 @@ const server = http.createServer((req, res) => {
       return;
     }
     if (req.method === 'GET') {
-      lock(async () => {
+      const askedRev = Number(q.rev);
+      Promise.resolve().then(async () => {
         const user = await supabaseUser(req);
-        const rec = persistStrip(takeState(slug), slug);
-        const studentId = readStudentCookie(req);
+        const peek = readState(slug);
         const staff = isStaffFor(req, q, slug, user);
-        const staffRow = !staff && !asStudentView(req) ? activeStaffRow(rec && rec.state, readStaffCookie(req)) : null;
-        const updatedAt = rec && rec.updatedAt || null;
-        const rev = rec && rec.rev || 0;
-        const raw = rec && rec.state;
-        let state;
-        if (staff) {
-          if (user && raw && applyOwnerEmail(raw, user)) {
+        const staffRow = !staff && !asStudentView(req) ? activeStaffRow(peek && peek.state, readStaffCookie(req)) : null;
+        const rotate = !!(staff && peek && peek.state && inviteNeedsRotate(peek.state, slug));
+        const peekRev = Number(peek && peek.rev) || 0;
+        const extra = mediaCookieHeader(req, slug, mediaGrantRole(staff, staffRow));
+        if (!rotate && peek && Number.isFinite(askedRev) && askedRev > 0 && askedRev >= peekRev) {
+          json(res, 200, { rev: peekRev, unchanged: true }, extra);
+          return;
+        }
+        await lock(async () => {
+          let rec = persistStrip(takeState(slug), slug);
+          if (staff && rec && rec.state && inviteNeedsRotate(rec.state, slug)) {
+            rec.state.inviteCode = crypto.randomBytes(9).toString('hex');
+            rec.state.inviteCodeCustom = true;
             rec.rev = (Number(rec.rev) || 0) + 1;
             rec.updatedAt = new Date().toISOString();
             writeState(rec, slug);
           }
-          state = Object.assign({}, raw || projectGuest(null));
-          state.staffAdmins = listStaff(raw).map((item) => publicStaff(item, true));
-        } else if (staffRow) state = viewForStaff(raw || {}, staffRow);
-        else if (studentId && lookupPerson(raw || {}, studentId)) state = projectStudent(raw || {}, studentId);
-        else state = projectGuest(raw || {});
-        json(res, 200, { rev: rev, updatedAt: updatedAt, state: state });
+          const studentId = readStudentCookie(req);
+          const updatedAt = rec && rec.updatedAt || null;
+          const rev = rec && rec.rev || 0;
+          const raw = rec && rec.state;
+          let state;
+          if (staff) {
+            if (user && raw && applyOwnerEmail(raw, user)) {
+              rec.rev = (Number(rec.rev) || 0) + 1;
+              rec.updatedAt = new Date().toISOString();
+              writeState(rec, slug);
+            }
+            state = Object.assign({}, raw || projectGuest(null));
+            state.staffAdmins = listStaff(raw).map((item) => publicStaff(item, true));
+          } else if (staffRow) state = viewForStaff(raw || {}, staffRow);
+          else if (studentId && lookupPerson(raw || {}, studentId)) state = projectStudent(raw || {}, studentId, slug);
+          else state = projectGuest(raw || {});
+          json(res, 200, { rev: rec && rec.rev || rev, updatedAt: rec && rec.updatedAt || updatedAt, state: state }, extra);
+        });
+      }).catch((err) => {
+        if (!res.headersSent) json(res, err.status || 500, { error: 'state' });
       });
       return;
     }
@@ -2304,6 +2522,7 @@ const server = http.createServer((req, res) => {
                Keep disk students the client omitted unless this is an explicit reset. */
             if (!(body && body.reset === true) && rec && rec.state) {
               nextState = preserveJoinedRoster(rec.state, nextState);
+              keepServerInvite(rec.state, nextState, slug);
             }
             if (staff && user) applyOwnerEmail(nextState, user);
           }
@@ -2602,7 +2821,18 @@ const server = http.createServer((req, res) => {
   }
 
   if (pathname === '/issues' && req.method === 'POST') {
-    readBody(req, MAX_EVENT_BYTES).then((buf) => lock(() => {
+    readBody(req, MAX_EVENT_BYTES).then(async (buf) => {
+      const studentId = readStudentCookie(req);
+      const grant = readMediaGrant(req);
+      const staffId = readStaffCookie(req);
+      if (!studentId && !grant && !staffId && !adminAuthed(req, q)) {
+        const user = await supabaseUser(req);
+        if (!user) {
+          json(res, 401, { error: 'auth' });
+          return;
+        }
+      }
+      await lock(() => {
       let body;
       try { body = JSON.parse(buf.toString('utf8')); } catch (err) {
         json(res, 400, { error: 'bad_json' });
@@ -2641,7 +2871,8 @@ const server = http.createServer((req, res) => {
         demo: false
       });
       json(res, 200, { ok: true, id: issue.id });
-    })).catch((err) => {
+      });
+    }).catch((err) => {
       if (!res.headersSent) json(res, err.status || 500, { error: 'issue' });
     });
     return;
@@ -2782,6 +3013,11 @@ const server = http.createServer((req, res) => {
     readBody(req, 64 * 1024).then(async (raw) => {
       let body;
       try { body = JSON.parse(String(raw || '{}')); } catch (err) { body = {}; }
+      const slug = mediaSlug(q.slug || body.slug);
+      if (!(await requestIsStaff(req, q, slug))) {
+        json(res, 403, { error: 'forbidden' });
+        return;
+      }
       const target = String(body.phone || '').replace(/\D/g, '');
       const message = String(body.body || '').trim();
       if (!FONNTE_TOKEN) {

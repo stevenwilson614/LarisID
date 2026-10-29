@@ -2877,6 +2877,15 @@
       return schoolInviteCode() || '';
     }
   }
+  function linkInvite() {
+    try {
+      const fromUrl = new URLSearchParams(location.search).get('invite');
+      if (fromUrl) return String(fromUrl).trim();
+      return String(sessionStorage.getItem('anton-school-invite') || '').trim();
+    } catch (err) {
+      return '';
+    }
+  }
   function syncUrl() {
     const slug = encodeURIComponent(schoolSlug());
     const k = encodeURIComponent(syncInvite());
@@ -2947,13 +2956,18 @@
   async function pullState(force) {
     if (!syncEnabled() || syncInFlight) return;
     try {
-      const res = await fetch(syncUrl(), { headers: lmsHeaders(), cache: 'no-store' });
+      const res = await fetch(syncUrl() + (!force && syncRev ? ('&rev=' + encodeURIComponent(syncRev)) : ''), { headers: lmsHeaders(), cache: 'no-store' });
       if (res.status === 404) return;
       if (!res.ok) {
         syncStatus = 'gagal ' + res.status;
         return;
       }
       const data = await res.json();
+      if (data && data.unchanged) {
+        syncRev = Number(data.rev) || syncRev;
+        syncStatus = 'ok · rev ' + syncRev;
+        return;
+      }
       if (!data || !data.state) return;
       const rev = Number(data.rev) || 0;
       if (!force && rev <= syncRev) return;
@@ -2967,10 +2981,13 @@
   }
   async function bootSync() {
     if (!syncEnabled()) return;
-    await pullState();
+    await pullState(true);
     syncReady = true;
     if (syncPoll) clearInterval(syncPoll);
-    syncPoll = setInterval(pullState, 4000);
+    syncPoll = setInterval(() => {
+      if (document.visibilityState === 'hidden') return;
+      pullState();
+    }, 4000);
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') pullState();
     });
@@ -5303,7 +5320,11 @@
     const res = await fetch(apiBase() + '/join', {
       method: 'POST',
       headers: lmsHeaders(),
-      body: JSON.stringify(Object.assign({ visitorId: ui.visitorId || visitorId(), slug: schoolSlug() }, profile || {}))
+      body: JSON.stringify(Object.assign({
+        visitorId: ui.visitorId || visitorId(),
+        slug: schoolSlug(),
+        invite: linkInvite()
+      }, profile || {}))
     });
     if (!res.ok) return null;
     const data = await res.json().catch(() => ({}));
@@ -6096,12 +6117,19 @@
   }
 
   function mediaAuthQuery() {
-    return 'k=' + encodeURIComponent(syncInvite()) + '&slug=' + encodeURIComponent(schoolSlug());
+    return 'slug=' + encodeURIComponent(schoolSlug());
+  }
+  function mediaAuthHeaders(extra) {
+    const headers = Object.assign({}, extra || {});
+    const auth = lmsAuth();
+    if (auth && auth.access_token && (ui.admin || ui.staffId)) {
+      headers.authorization = 'Bearer ' + auth.access_token;
+    }
+    return headers;
   }
   function mediaFileUrl(key) {
     const q = new URLSearchParams();
     q.set('key', key);
-    q.set('k', syncInvite());
     q.set('slug', schoolSlug());
     return apiBase() + '/media/file?' + q.toString();
   }
@@ -6109,7 +6137,7 @@
     if (!key || !syncEnabled()) return;
     fetch(apiBase() + '/media?' + mediaAuthQuery(), {
       method: 'DELETE',
-      headers: { 'content-type': 'application/json' },
+      headers: mediaAuthHeaders({ 'content-type': 'application/json' }),
       body: JSON.stringify({ key: key })
     }).catch(() => {});
   }
@@ -6148,6 +6176,10 @@
       const xhr = new XMLHttpRequest();
       if (job) job.xhr = xhr;
       xhr.open('PUT', url);
+      const partAuth = lmsAuth();
+      if (partAuth && partAuth.access_token && (ui.admin || ui.staffId)) {
+        xhr.setRequestHeader('authorization', 'Bearer ' + partAuth.access_token);
+      }
       xhr.onload = () => {
         if (job) job.xhr = null;
         if (xhr.status >= 200 && xhr.status < 300) resolve();
@@ -6184,7 +6216,7 @@
     const signal = ac.signal;
     return fetch(apiBase() + '/media/init?' + mediaAuthQuery(), {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: mediaAuthHeaders({ 'content-type': 'application/json' }),
       body: JSON.stringify({
         name: file.name,
         type: file.type || (mediaKind === 'image' ? 'image/jpeg' : 'video/mp4'),
@@ -6216,7 +6248,7 @@
       const done = await fetch(apiBase() + '/media/complete?' + mediaAuthQuery() +
         '&uploadId=' + encodeURIComponent(init.uploadId), {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: mediaAuthHeaders({ 'content-type': 'application/json' }),
         body: '{}',
         signal: signal
       });
@@ -17669,7 +17701,11 @@
       const res = await fetch(apiBase() + '/session', {
         method: 'POST',
         headers: headers,
-        body: JSON.stringify({ visitorId: ui.visitorId || visitorId(), slug: schoolSlug() })
+        body: JSON.stringify({
+          visitorId: ui.visitorId || visitorId(),
+          slug: schoolSlug(),
+          invite: linkInvite()
+        })
       });
       if (!res.ok) return;
       const data = await res.json().catch(() => ({}));

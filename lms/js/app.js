@@ -789,9 +789,10 @@
       throw blocked;
     } catch (err) {
       if (err && err.claim) throw err;
+      var blocked = err instanceof Error ? err : new Error('school');
+      blocked.claim = true;
+      throw blocked;
     }
-    mirrorCoachSession(session, slug);
-    return slug;
   }
 
   async function loadApp(me) {

@@ -10,7 +10,18 @@ Two URLs, one product:
 
 After Contabo login/daftar succeeds, mentors are claimed into a disk school (`POST /obrolan.marketing/api/owners/claim`) and opened at `/s/{org_slug}/` in **mentor** chrome (left rail). Students open `/s/{org_slug}/` as students. Do not show the Contabo sidebar “Kelas / Edit kurikulum” shell as the live class UI. Do not dump new mentors into `/s/obrolan.marketing`.
 
-Class app source: `obrolan.marketing/`. Contabo `anton-school` serves `/obrolan.marketing/api/*` and `/api/*` from disk (`docker/volumes/anton-school`).
+Class app source: `obrolan.marketing/`. Contabo `anton-school` serves `/obrolan.marketing/api/*` and `/api/*` from disk (`docker/volumes/anton-school`). Disk is the class source of truth (kurikulum, roster, video bytes). Postgres `lms_*` is auth, org name, and slug.
+
+A logged-out `GET /state/{slug}` is the public card (name, profile photo, headline). Lectures and file keys are not in that payload. A draft (`kurikulum.published === false`) stays off the student payload. Anton’s school stays open for students already on his roster.
+
+The invite code on `/s/{slug}/?invite=` admits a new student. It is not a media password. New schools get a random code. A school still on a name-derived code gets a random one the next time the owner loads it. Video and files stay on the Contabo volume (`media/{slug}/…`, up to 5 GB) and play with `GET /media/file` Range requests. Staff playback uses a short-lived HttpOnly `lms_media` cookie because `<video>` cannot send a bearer token. Students use `lms_student`. `?k=` does not authorize a download. Profile photos (`{slug}/profile.*`) stay public.
+
+```bash
+bash scripts/deploy-static.sh          # class UI and /lms
+bash scripts/deploy-school-api.sh      # obrolan.marketing/server/server.mjs
+```
+
+`server.mjs` is not in the static rsync. The API script restarts `anton-school`. `LMS_SESSION_SECRET` or `ANTON_ADMIN_KEY` must be set on that service so student cookies survive a restart.
 
 Editing kurikulum in that app: **Preview** on the publikasi step opens the student view with **Publikasikan** on that screen. Choosing or dropping a video starts the upload immediately, before **Simpan materi**. If that already created the materi, Simpan materi only saves the title and text. Progress shows on the materi card, on the same row as that materi’s cover when a cover is attached. On the publikasi step the same meter sits beside the class cover, not in the full-width strip under the header. The header strip (`Mengunggah N%`, with × to cancel) stays on the other kurikulum steps and on Preview siswa. Left-rail tabs stay locked on Kurikulum until the upload finishes or they cancel with ×. Publish waits until that upload finishes. **Hapus bagian** asks once, then deletes that bagian and every materi in it (video, cover, files, and any in-flight upload), including an empty bagian and the last remaining bagian. A cover sits on the video with no `src` and no controls until the cover is clicked.
 
@@ -18,7 +29,7 @@ Editing kurikulum in that app: **Preview** on the publikasi step opens the stude
 bash scripts/deploy-static.sh
 ```
 
-`obrolan.marketing/server/server.mjs` is excluded from that rsync. Directory cards include `photoUrl`, and a new student is not assigned Anton’s id on another school. Kurikulum file cap (200 MB), the Google email backfill, and pending-admin permission updates live in that process. Install the file on Contabo `anton-school` separately from the static deploy.
+`obrolan.marketing/server/server.mjs` is excluded from that rsync. Directory cards include `photoUrl`, and a new student is not assigned Anton’s id on another school. Kurikulum file cap (200 MB), the Google email backfill, and pending-admin permission updates live in that process. Install it with `bash scripts/deploy-school-api.sh`.
 
 Do not revive `js/lms-join.js` or public invite-code file downloads as the share model.
 
@@ -27,7 +38,7 @@ Do not revive `js/lms-join.js` or public invite-code file downloads as the share
 - **Paywall off** (`PAYWALL_DISABLED` in `obrolan.marketing/js/app.js`): kurikulum is open; mentor “Pengaturan bayar” stays hidden (`SHOW_PENGATURAN_BAYAR`) until a fuller mentor billing UI exists.
 - **WA pill**: mentors toggle number + on/off under Account settings → WhatsApp. Students see `WA (Nama)` bottom-right when enabled.
 - Student Home always shows **Jadwal** (Minggu / Bulan). Diskusi dock/tab shows an unread count badge.
-- **Student login before the wizard**: on a live school URL, a visitor who is not the school owner signs up or signs in first (Google, email + password, or SMS OTP via `send-whatsapp-otp` / `verify-whatsapp-otp` on `https://api.larisid.com`). Session storage key is `lms_student_auth_v1`. This does not insert `lms_accounts`. `POST /session` with that bearer looks up the disk row by `authUserId`, then verified email or phone, then a cookie row that has no login yet, and only then creates `stu_…`. It sets `lms_student` and does not write a finished application. The wizard runs only when that login has no `applications[id].at`. Each wizard step saves `people[id].wizDraft`, so a refresh is not a blank form. A finished form lands on Home after leave and return. A cookie student with no login sees the gate once; that login attaches to the existing row.
+- **Student login before the wizard**: on a live school URL, a visitor who is not the school owner signs up or signs in first (Google, email + password, or SMS OTP via `send-whatsapp-otp` / `verify-whatsapp-otp` on `https://api.larisid.com`). Session storage key is `lms_student_auth_v1`. This does not insert `lms_accounts`. `POST /session` with that bearer looks up the disk row by `authUserId`, then verified email or phone, then a cookie row that has no login yet. A new `stu_…` row is created only when the body `invite` matches that school’s code (the `?invite=` already on the share link). A returning student does not need the code again. It sets `lms_student` and does not write a finished application. The wizard runs only when that login has no `applications[id].at`. Each wizard step saves `people[id].wizDraft`, so a refresh is not a blank form. A finished form lands on Home after leave and return. A cookie student with no login sees the gate once; that login attaches to the existing row.
 - **Join persistence**: finishing the wizard writes `applications` (with `at`) on that same student row. `POST /join` is only for a student who is not already signed in. Student cookie `lms_student` is Path=/ with Max-Age ~180 days; visitor id is per-school (`anton-visitor:{slug}`). Do not mint a `live-*` person at the class door.
 - **Roster wipe guard**: mentor chrome on `/s/{slug}/` must not strip `liveStudents` in `stripHeldRoster`. Staff `PUT /state` also `preserveJoinedRoster` so a stale mentor save cannot erase students who joined after the mentor’s last pull.
 
