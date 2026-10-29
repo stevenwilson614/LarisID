@@ -887,15 +887,16 @@
   }
 
   function defaultKurikulumMeta(anton) {
+    const base = { coverUrl: '', coverKey: '', coverBlob: false, minPct: 100 };
     if (anton) {
-      return {
+      return Object.assign(base, {
         name: String((SEED.school && SEED.school.name) || 'Kelas'),
         description: String((SEED.school && SEED.school.profile && SEED.school.profile.biography) ||
           (SEED.school && SEED.school.slogan) || ''),
         published: true
-      };
+      });
     }
-    return { name: '', description: '', published: false };
+    return Object.assign(base, { name: '', description: '', published: false });
   }
   function ensureKurikulumMeta() {
     if (!db.kurikulum || typeof db.kurikulum !== 'object' || Array.isArray(db.kurikulum)) {
@@ -906,8 +907,20 @@
     if (typeof db.kurikulum.published !== 'boolean') {
       db.kurikulum.published = antonSchoolData() || !!(db.lectures && db.lectures.length);
     }
+    if (db.kurikulum.coverUrl == null) db.kurikulum.coverUrl = '';
+    if (db.kurikulum.coverKey == null) db.kurikulum.coverKey = '';
+    if (typeof db.kurikulum.coverBlob !== 'boolean') db.kurikulum.coverBlob = false;
+    if (db.kurikulum.minPct == null || db.kurikulum.minPct === '') db.kurikulum.minPct = 100;
     if (!db.kurikulum.name && db.businessName) db.kurikulum.name = String(db.businessName);
     return db.kurikulum;
+  }
+  function clampPct(value, fallback) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.max(0, Math.min(100, Math.round(n)));
+  }
+  function courseMinPct() {
+    return clampPct(ensureKurikulumMeta().minPct, 100);
   }
   function defaultSchoolProfile() {
     const blankSocials = { website: '', facebook: '', instagram: '', linkedin: '', tiktok: '', x: '', youtube: '' };
@@ -2334,6 +2347,7 @@
     skuPreview: false,
     skuFrom: 'alat',
     editLecId: null,
+    lecExtras: {},
     kurEdit: false,
     kurWizStep: 1,
     composeMode: 'note',
@@ -2749,8 +2763,38 @@
     if (db.applications[id] && (c.stage === 'form' || b.offerStartedAt)) return true;
     return false;
   }
+  function weekById(id) {
+    return (db.weeks || []).find((w) => w && w.id === id) || null;
+  }
+  function weekOfLecture(lid) {
+    const lec = lectureById(lid);
+    return lec ? weekById(lec.weekId) : null;
+  }
+  function bagianMinPct(week) {
+    if (!week || week.minPct == null || week.minPct === '') return courseMinPct();
+    return clampPct(week.minPct, courseMinPct());
+  }
+  function prevBagianDone(sid, week) {
+    if (!week) return true;
+    const i = (db.weeks || []).findIndex((w) => w && w.id === week.id);
+    if (i <= 0) return true;
+    return progressPct(sid, db.weeks[i - 1].id) >= bagianMinPct(db.weeks[i - 1]);
+  }
+  /** Anton keeps the global trial until a bagian opts into the new gates. */
+  function legacyKurGates() {
+    if (!antonSchoolData()) return false;
+    return !(db.weeks || []).some((w) => w && (w.requirePrev || w.requirePay));
+  }
   function canOpenLecture(id, lid) {
     if (lid === 'kolab') return canMentoring(id);
+    const lec = lectureById(lid);
+    if (!lec) return false;
+    if (!legacyKurGates()) {
+      const week = weekOfLecture(lid);
+      if (week && week.requirePay && !canMentoring(id)) return false;
+      if (week && week.requirePrev && !prevBagianDone(id, week)) return false;
+      return true;
+    }
     if (canMentoring(id)) {
       const list = lectures();
       const idx = list.findIndex((l) => l.id === lid);
@@ -2767,13 +2811,22 @@
   function canViewLecture(id, lid) {
     if (isStaff()) return true;
     if (lid === 'kolab') return canMentoring(id);
+    if (!legacyKurGates()) return canOpenLecture(id, lid);
     if (canMentoring(id)) return !!lectureById(lid);
     return canOpenLecture(id, lid);
   }
   function isSeqLocked(id, lid) {
+    if (!legacyKurGates()) {
+      const week = weekOfLecture(lid);
+      return !!(week && week.requirePrev && !prevBagianDone(id, week));
+    }
     return canMentoring(id) && !canOpenLecture(id, lid) && lid !== 'kolab';
   }
   function isPaywalled(id, lid) {
+    if (!legacyKurGates()) {
+      const week = weekOfLecture(lid);
+      return !!(week && week.requirePay && !canMentoring(id) && lid !== 'kolab');
+    }
     return !canMentoring(id) && !canOpenLecture(id, lid) && lid !== 'kolab';
   }
   function canSku(id, skuId) {
@@ -3502,7 +3555,8 @@
       else if (locked) cls += ' is-locked';
       else cls += ' is-todo';
       const label = (i + 1) + '. ' + l.title + (done ? ' · selesai' : now ? ' · sedang di sini' :
-        (locked && canMentoring(sid) ? ' · lihat dulu' : locked ? ' · terkunci' : ''));
+        (locked && isSeqLocked(sid, l.id) ? ' · bagian sebelumnya' :
+          locked && canMentoring(sid) ? ' · lihat dulu' : locked ? ' · terkunci' : ''));
       return '<button type="button" class="' + cls + '" data-act="open-lec" data-id="' + esc(l.id) + '"' +
         (now ? ' aria-current="step"' : '') +
         ' title="' + esc(label) + '" aria-label="' + esc(label) + '">' +
@@ -5320,6 +5374,9 @@
     db.lectures.splice(insertAt, 0, row);
   }
 
+  function mediaAuthQuery() {
+    return 'k=' + encodeURIComponent(syncInvite()) + '&slug=' + encodeURIComponent(schoolSlug());
+  }
   function mediaFileUrl(key) {
     const q = new URLSearchParams();
     q.set('key', key);
@@ -5329,7 +5386,7 @@
   }
   function deleteRemoteVideo(key) {
     if (!key || !syncEnabled()) return;
-    fetch(apiBase() + '/media?k=' + encodeURIComponent(syncInvite()), {
+    fetch(apiBase() + '/media?' + mediaAuthQuery(), {
       method: 'DELETE',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ key: key })
@@ -5338,7 +5395,7 @@
   function uploadClassVideo(file, lecId, onProgress, kind) {
     const partSize = 8 * 1024 * 1024;
     const mediaKind = kind === 'image' || kind === 'file' ? kind : 'video';
-    return fetch(apiBase() + '/media/init?k=' + encodeURIComponent(syncInvite()), {
+    return fetch(apiBase() + '/media/init?' + mediaAuthQuery(), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -5356,7 +5413,7 @@
       const parts = Math.max(1, Math.ceil(file.size / partSize));
       for (let i = 0; i < parts; i += 1) {
         const chunk = file.slice(i * partSize, Math.min(file.size, (i + 1) * partSize));
-        const res = await fetch(apiBase() + '/media/part?k=' + encodeURIComponent(syncInvite()) +
+        const res = await fetch(apiBase() + '/media/part?' + mediaAuthQuery() +
           '&uploadId=' + encodeURIComponent(init.uploadId) + '&partNumber=' + (i + 1), {
           method: 'PUT',
           body: chunk
@@ -5364,7 +5421,7 @@
         if (!res.ok) throw new Error('part');
         if (onProgress) onProgress(Math.round(((i + 1) / parts) * 100));
       }
-      const done = await fetch(apiBase() + '/media/complete?k=' + encodeURIComponent(syncInvite()) +
+      const done = await fetch(apiBase() + '/media/complete?' + mediaAuthQuery() +
         '&uploadId=' + encodeURIComponent(init.uploadId), {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -5377,8 +5434,14 @@
   function ingestVideoFile(file, opts) {
     opts = opts || {};
     if (!file) return;
-    if (file.type && file.type.indexOf('video') !== 0 && !/\.(mp4|webm|mov|m4v)$/i.test(file.name || '')) {
+    if (/\.(mov|qt)$/i.test(file.name || '') || /quicktime|hevc/i.test(file.type || '')) {
+      toast('Video harus MP4 (H.264) atau WebM. File MOV / HEVC tidak bisa diputar di browser.');
+      render();
+      return;
+    }
+    if (file.type && file.type.indexOf('video') !== 0 && !/\.(mp4|webm|m4v)$/i.test(file.name || '')) {
       toast('Pilih file video (MP4 / WebM).');
+      render();
       return;
     }
     const cap = syncEnabled() ? MAX_VID_CLASS : MAX_VID_LOCAL;
@@ -5386,6 +5449,7 @@
       toast(syncEnabled()
         ? 'Maks 5 GB. Untuk video lebih besar, tempel tautan YouTube atau Drive.'
         : 'Maks 80 MB di browser ini. Unggah ke YouTube/Drive lalu tempel tautan.');
+      render();
       return;
     }
     let id = opts.lecId;
@@ -5465,7 +5529,9 @@
       return;
     }
     const applyCover = (patch) => {
-      if (kind === 'week') {
+      if (kind === 'kur') {
+        Object.assign(ensureKurikulumMeta(), patch);
+      } else if (kind === 'week') {
         const w = db.weeks.find((x) => x.id === id);
         if (w) Object.assign(w, patch);
       } else {
@@ -6202,7 +6268,9 @@
     return '<p>' + inner + '</p>';
   }
   function coverHtml(kind, id, cls) {
-    const rec = kind === 'week' ? (db.weeks.find((w) => w.id === id) || {}) : (lectureById(id) || {});
+    const rec = kind === 'kur'
+      ? ensureKurikulumMeta()
+      : (kind === 'week' ? (db.weeks.find((w) => w.id === id) || {}) : (lectureById(id) || {}));
     if (rec.coverUrl) return '<img class="' + (cls || 'cover-thumb') + '" src="' + esc(rec.coverUrl) + '" alt="">';
     if (rec.coverBlob) return '<img class="' + (cls || 'cover-thumb') + '" data-blob="' + esc(coverKey(kind, id)) + '" alt="">';
     return '';
@@ -7234,6 +7302,27 @@
       });
     });
     bindWatchProgress();
+    bindHostedVideoErrors();
+  }
+  function bindHostedVideoErrors() {
+    const root = $('main');
+    if (!root) return;
+    root.querySelectorAll('video.lec-video, video.ud-preview-vid').forEach((el) => {
+      if (el.getAttribute('data-err-bound')) return;
+      el.setAttribute('data-err-bound', '1');
+      el.addEventListener('error', () => {
+        const code = el.error && el.error.code;
+        const msg = (code === 2)
+          ? 'Video gagal dimuat. Coba muat ulang.'
+          : 'Video tidak bisa diputar. Unggah MP4 (H.264) atau WebM.';
+        const host = el.parentElement;
+        if (!host || host.querySelector('.lec-vid-error')) return;
+        const note = document.createElement('p');
+        note.className = 'lec-vid-error';
+        note.textContent = msg;
+        el.insertAdjacentElement('afterend', note);
+      });
+    });
   }
 
   /* ── student views ───────────────────────────────────────────────── */
@@ -7879,20 +7968,38 @@
       '</summary>' +
       '<div class="lec-acc-body">' + inner + '</div></details>';
   }
+  function videoFileUnsupported(lec) {
+    const mime = String((lec && lec.videoMime) || '');
+    const name = String((lec && lec.videoName) || '');
+    return /quicktime|hevc/i.test(mime) || /\.(mov|qt)$/i.test(name);
+  }
   function hostedVideoHtml(lec, watchFirst, cls) {
+    if (lec.videoBlob && !lec.videoKey) {
+      return '<video class="' + cls + '" controls playsinline preload="metadata" data-blob="' + esc(lec.id) + '"' +
+        (watchFirst ? ' data-watch-lec="' + esc(lec.id) + '"' : '') + '></video>';
+    }
     return '<video class="' + cls + '" controls playsinline preload="metadata" src="' + esc(mediaFileUrl(lec.videoKey)) + '"' +
       (watchFirst ? ' data-watch-lec="' + esc(lec.id) + '"' : '') + '></video>';
+  }
+  function hostedPlayerHtml(lec, watchFirst) {
+    const cover = coverHtml('lec', lec.id, 'lec-poster');
+    if (videoFileUnsupported(lec)) {
+      return '<div class="lec-player is-bad">' +
+        (cover || '') +
+        '<p class="lec-vid-error">Video tidak bisa diputar. Unggah MP4 (H.264) atau WebM.</p></div>';
+    }
+    const video = hostedVideoHtml(lec, watchFirst, 'lec-video');
+    if (!cover) return '<div class="lec-player">' + video + '</div>';
+    return '<div class="lec-player has-poster">' + video +
+      '<button type="button" class="lec-poster-hit" data-act="play-hosted" aria-label="Putar video">' +
+        cover +
+        '<span class="play-orb" aria-hidden="true">' + svgIcon('play') + '</span>' +
+      '</button></div>';
   }
   function lessonVideoHtml(lec) {
     const cover = coverHtml('lec', lec.id, 'lec-poster');
     const watchFirst = lec.type === 'video' && lec.id === firstLectureId();
-    if (lec.videoKey) {
-      return (cover || '') + hostedVideoHtml(lec, watchFirst, 'lec-video');
-    }
-    if (lec.videoBlob) {
-      return (cover || '') + '<video class="lec-video" controls playsinline preload="metadata" data-blob="' +
-        esc(lec.id) + '"' + (watchFirst ? ' data-watch-lec="' + esc(lec.id) + '"' : '') + '></video>';
-    }
+    if (lec.videoKey || lec.videoBlob) return hostedPlayerHtml(lec, watchFirst);
     const e = parseEmbed(lec.url);
     if (e && e.embed) {
       return '<div class="lazy-embed' + (cover ? ' has-cover' : '') + '" data-embed="' + esc(e.embed) + '"' +
@@ -7965,6 +8072,7 @@
       : 'Belum ada pertanyaan. WhatsApp tetap untuk chat cepat.';
     const paywalled = !!opts.paywalled;
     const seqLocked = !!opts.seqLocked;
+    const seqBlocked = !!opts.seqBlocked;
     const top = opts.phone
       ? '<div class="lesson-chrome">' +
           '<div class="lesson-top">' +
@@ -8010,6 +8118,15 @@
           '<button class="btn" data-act="pay-prompt" data-id="' + esc(lec.id) + '">Lanjut mentoring</button>' +
           '<button class="btn secondary" data-act="open-lec" data-id="' + esc(firstLectureId()) + '">Ke video selamat datang</button>' +
         '</div></div>';
+    } else if (seqBlocked) {
+      stage = '<div class="locked-blur-card">' +
+        '<div class="locked-blur-fg">' +
+          '<p class="trial-kicker">Sesi terkunci</p>' +
+          '<h2>' + esc(lec.title) + '</h2>' +
+          '<p class="muted">Bagian sebelumnya wajib selesai sebelum masuk sesi ini.</p>' +
+          '<button class="btn secondary" data-act="open-lec" data-id="' +
+            esc((nb.prev && nb.prev.id) || firstLectureId()) + '">Ke materi sebelumnya</button>' +
+        '</div></div>';
     } else if (lec.tool === 'kolab') {
       stage = viewKolab();
     } else if (lec.type === 'video') {
@@ -8019,7 +8136,7 @@
     } else {
       stage = renderCanvas(lec);
     }
-    const folds = paywalled || lec.tool === 'kolab' ? '' :
+    const folds = paywalled || seqBlocked || lec.tool === 'kolab' ? '' :
       lecAccHtml('doc', 'Dokumen', docSub, docs.length ? resourceListHtml(lec) : '') +
       lecAccHtml('list', 'Poin penting', points.length ? (points.length + ' poin') : '',
         points.length ? '<ul class="key-points">' + points.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '') +
@@ -8029,7 +8146,7 @@
     const nextAttrs = nextLecActAttrs(sid, nb.next);
     const nextLockedPay = !!(nb.next && isPaywalled(sid, nb.next.id) && !isStaff());
     const nextSeqLocked = !!(nb.next && isSeqLocked(sid, nb.next.id) && !isStaff());
-    const nav = (paywalled || lec.tool === 'kolab') ? '' :
+    const nav = (paywalled || seqBlocked || lec.tool === 'kolab') ? '' :
       '<div class="lec-nav">' +
         '<button type="button" class="btn lec-prev"' +
           (nb.prev ? ' data-act="open-lec" data-id="' + esc(nb.prev.id) + '"' : ' disabled') +
@@ -8047,13 +8164,18 @@
   }
 
   function viewBelajar() {
-    if (!canMentoring(ui.personaId) && !canPreview(ui.personaId)) return viewLocked();
+    if (legacyKurGates() && !canMentoring(ui.personaId) && !canPreview(ui.personaId)) return viewLocked();
     let lec = lectureById(ui.lectureId) || lectures()[0];
-    if (!isStaff() && lec && lec.id !== 'kolab' && !canViewLecture(ui.personaId, lec.id)) {
+    if (!lec) {
+      return '<div class="card kur-empty"><h2>Belum ada materi</h2>' +
+        '<p class="muted">Kurikulum belum punya materi yang bisa dibuka.</p></div>';
+    }
+    if (!isStaff() && lec.id !== 'kolab' && !canViewLecture(ui.personaId, lec.id)) {
       const open = lectures().filter((l) => canViewLecture(ui.personaId, l.id));
-      lec = open.find((l) => !isDone(ui.personaId, l.id) && canOpenLecture(ui.personaId, l.id))
+      const next = open.find((l) => !isDone(ui.personaId, l.id) && canOpenLecture(ui.personaId, l.id))
         || open.find((l) => canOpenLecture(ui.personaId, l.id))
-        || open[open.length - 1] || lectures()[0];
+        || open[open.length - 1];
+      if (next) lec = next;
     }
     ui.lectureId = lec.id;
     if (lec && ui.lastTrackedLec !== lec.id && !isStaff()) {
@@ -8067,10 +8189,12 @@
     }
     const paywalled = isPaywalled(ui.personaId, lec.id) && !isStaff();
     const seqLocked = isSeqLocked(ui.personaId, lec.id) && !isStaff();
+    const seqBlocked = seqLocked && !canViewLecture(ui.personaId, lec.id);
     const player = renderLessonPlayer(lec, {
       phone: !isStaff(),
       paywalled: paywalled,
-      seqLocked: seqLocked
+      seqLocked: seqLocked && !seqBlocked,
+      seqBlocked: seqBlocked
     });
     return '<div class="player-layout">' +
       '<div>' + player + '</div>' +
@@ -8122,11 +8246,8 @@
     const cover = coverHtml('lec', lec.id, 'lec-poster');
     const watchFirst = lec.type === 'video' && lec.id === firstLectureId();
     if (lec.type === 'video') {
-      if (lec.videoKey) {
-        body = (cover || '') + hostedVideoHtml(lec, watchFirst, 'lec-video');
-      } else if (lec.videoBlob) {
-        body = (cover || '') + '<video class="lec-video" controls playsinline preload="metadata" data-blob="' +
-          esc(lec.id) + '"' + (watchFirst ? ' data-watch-lec="' + esc(lec.id) + '"' : '') + '></video>';
+      if (lec.videoKey || lec.videoBlob) {
+        body = hostedPlayerHtml(lec, watchFirst);
       } else {
         const e = parseEmbed(lec.url);
         if (e && e.embed) {
@@ -10854,12 +10975,13 @@
     ui.kurWizStep = step;
     const body = step === 1 ? viewKurWizDetail()
       : (step === 2 ? viewKurWizModules() : viewKurWizPublish());
-    return '<div class="kur-wiz">' + kurWizStepper(step) + body + '</div>';
+    return '<div class="kur-wiz' + (step === 3 ? ' is-publish' : '') + '">' + kurWizStepper(step) + body + '</div>';
   }
 
   function viewKurWizDetail() {
     const meta = ensureKurikulumMeta();
     const isNew = !meta.name && !lectures().length;
+    const cover = coverHtml('kur', 'course', 'kur-cover-preview');
     return '<section class="kur-wiz-card">' +
       '<div class="kur-wiz-ico" aria-hidden="true">' + kurWizIcon() + '</div>' +
       '<h2>' + (isNew ? 'Buat Kurikulum Baru' : 'Detail Kelas') + '</h2>' +
@@ -10872,6 +10994,18 @@
         '<textarea id="kur-desc" name="description" rows="4" maxlength="800" ' +
           'placeholder="Jelaskan secara singkat apa yang akan dipelajari di kelas ini...">' +
           esc(meta.description || '') + '</textarea>' +
+        '<label>Cover kursus</label>' +
+        '<div class="kur-cover-row">' +
+          (cover || '<div class="kur-cover-preview is-empty">Belum ada cover</div>') +
+          '<label class="btn secondary kur-cover-btn">Unggah cover' +
+            '<input type="file" hidden data-act="cover-file" data-kind="kur" data-id="course" accept="image/*">' +
+          '</label>' +
+        '</div>' +
+        '<p class="muted">Gambar ini tampil di halaman publikasi. Maks 5 MB.</p>' +
+        '<label for="kur-min">Minimal % untuk selesai bagian</label>' +
+        '<input id="kur-min" name="minPct" type="number" min="0" max="100" step="1" inputmode="numeric" value="' +
+          esc(String(courseMinPct())) + '">' +
+        '<p class="muted">Bagian tanpa angka sendiri memakai nilai ini. 100 = semua materi di bagian itu.</p>' +
         '<div class="kur-wiz-actions">' +
           '<button type="button" class="btn secondary" data-act="kur-edit-off">Batal</button>' +
           '<button type="submit" class="btn kur-wiz-primary">Lanjutkan <span aria-hidden="true">→</span></button>' +
@@ -10908,13 +11042,13 @@
             : '<strong class="ud-sec-title">' + esc(w.title) + '</strong>') +
           '<span class="muted ud-count">' + items.length + ' lecture</span>' +
           (readonly ? '' : '<div class="ud-actions">' +
-            (editing ? '<input type="date" data-act="sec-due" data-id="' + esc(w.id) + '" value="' + esc(w.due || '') + '" title="Jatuh tempo">' : '') +
             '<button type="button" class="btn-sm" data-act="edit-sec" data-id="' + esc(w.id) + '">' + (editing ? 'Selesai' : 'Edit') + '</button>' +
             '<button type="button" class="btn-sm" data-act="del-sec" data-id="' + esc(w.id) + '">Hapus</button>' +
           '</div>') +
         '</div>' +
         '<div class="ud-sec-body">' +
-          (list || '<p class="muted ud-empty">Belum ada lecture. Tambah item kurikulum di bawah.</p>') +
+          bagianGatesHtml(w, readonly) +
+          (list || '<p class="muted ud-empty">Belum ada materi. Isi detail di bawah.</p>') +
           (readonly ? '' : (addOpen
             ? addLecForm(w.id)
             : '<button type="button" class="ud-add" data-act="add-item" data-id="' + esc(w.id) + '">+ Item kurikulum</button>')) +
@@ -10924,16 +11058,7 @@
     const empty = !db.weeks.length
       ? '<div class="kur-wiz-empty"><p class="muted">Belum ada bagian. Tambah modul pertama untuk video, dokumen, atau bacaan.</p></div>'
       : '';
-    const newSec = readonly ? '' : (ui.addSecOpen
-      ? '<form class="ud-new-sec" data-act="add-sec-form">' +
-          '<strong>Bagian baru</strong>' +
-          '<input name="title" required maxlength="140" placeholder="Masukkan judul">' +
-          '<label class="muted">Jatuh tempo (opsional) <input name="due" type="date"></label>' +
-          '<div class="row">' +
-            '<button class="btn" type="submit">Tambah bagian</button>' +
-            '<button type="button" class="btn secondary" data-act="cancel-sec">Batal</button>' +
-          '</div></form>'
-      : '<button type="button" class="ud-add ud-add-sec" data-act="new-sec">+ Bagian</button>');
+    const newSec = readonly ? '' : '<button type="button" class="ud-add ud-add-sec" data-act="new-sec">+ Bagian</button>';
     return '<section class="kur-wiz-card kur-wiz-card-wide">' + head + empty + sections + newSec +
       '<div class="kur-wiz-actions">' +
         '<button type="button" class="btn secondary" data-act="kur-wiz-step" data-id="1">← Kembali</button>' +
@@ -10941,6 +11066,23 @@
       '</div></section>';
   }
 
+  function kurPlaneIcon() {
+    return '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" aria-hidden="true">' +
+      '<path d="M21.2 3.6 10.6 14.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+      '<path d="M21.2 3.6 14.4 20.6l-3.6-6.8-6.8-3.6L21.2 3.6z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>' +
+      '</svg>';
+  }
+  function kurRocketIcon() {
+    return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">' +
+      '<path d="M14 4.2c2.6 1.4 4.4 4.2 5 7.2-2.4.2-4.6-.5-6.4-1.8C11.2 6.8 12 4.8 14 4.2z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>' +
+      '<path d="M12.4 10.2 6 16.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>' +
+      '<path d="M8.2 14.8 6 17.2l2.4-.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<path d="M9.4 18.6c.3-1.4.9-2.4 2-3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>' +
+      '</svg>';
+  }
+  function kurPubCount(svg, n, label) {
+    return '<div class="kur-pub-count"><span class="kur-pub-count-ico">' + svg + '</span><b>' + n + '</b><span>' + esc(label) + '</span></div>';
+  }
   function viewKurWizPublish() {
     const meta = ensureKurikulumMeta();
     const nVid = lectures().filter((l) => l.type === 'video').length;
@@ -10949,45 +11091,88 @@
     const nSec = db.weeks.length;
     const total = lectures().length;
     const ready = !!(meta.name && total > 0);
-    return '<section class="kur-wiz-card">' +
-      '<div class="kur-wiz-ico" aria-hidden="true">' + kurWizIcon() + '</div>' +
-      '<h2>Publikasikan</h2>' +
-      '<p class="kur-wiz-sub">Cek ringkasan, lalu terbitkan supaya murid bisa mulai belajar.</p>' +
-      '<div class="kur-wiz-summary">' +
-        '<div><span class="muted">Nama kelas</span><strong>' + esc(meta.name || '—') + '</strong></div>' +
-        '<div><span class="muted">Deskripsi</span><strong>' +
-          esc((meta.description || '—').slice(0, 160)) +
-          ((meta.description || '').length > 160 ? '…' : '') + '</strong></div>' +
-        '<div class="kur-wiz-counts">' +
-          '<span><b>' + nSec + '</b> bagian</span>' +
-          '<span><b>' + nVid + '</b> video</span>' +
-          '<span><b>' + nTxt + '</b> bacaan</span>' +
-          '<span><b>' + nFile + '</b> file</span>' +
+    const cover = coverHtml('kur', 'course', 'kur-pub-cover');
+    const desc = meta.description || '—';
+    return '<section class="kur-pub">' +
+      '<div class="kur-wiz-ico kur-pub-ico" aria-hidden="true">' + kurPlaneIcon() +
+        '<i class="kur-pub-spark" aria-hidden="true"></i></div>' +
+      '<h2>Publikasikan Kursus Anda</h2>' +
+      '<p class="kur-wiz-sub">Cek kembali detail kursus Anda sebelum dipublikasikan agar siap diakses oleh siswa.</p>' +
+      '<div class="kur-pub-card">' +
+        '<div class="kur-pub-top">' +
+          '<div class="kur-pub-thumb">' +
+            (cover || '<div class="kur-pub-cover is-empty" aria-hidden="true"></div>') +
+            '<button type="button" class="kur-pub-preview" data-act="kur-pub-preview">' +
+              svgIcon('play') + ' Preview</button>' +
+          '</div>' +
+          '<div class="kur-pub-meta">' +
+            '<span class="muted">Nama Kelas</span>' +
+            '<strong>' + esc(meta.name || '—') + '</strong>' +
+            '<span class="muted">Deskripsi</span>' +
+            '<p>' + esc(desc) + '</p>' +
+          '</div>' +
         '</div>' +
-        (ready ? '' : '<p class="kur-wiz-warn">Isi nama kelas dan tambah minimal satu materi sebelum publikasi.</p>') +
-        (meta.published ? '<p class="kur-wiz-live">Kurikulum sudah dipublikasikan. Simpan lagi untuk memperbarui.</p>' : '') +
+        '<div class="kur-pub-counts">' +
+          kurPubCount(svgIcon('play'), nSec, 'Bagian') +
+          kurPubCount('<svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M16 10.5 21 8v8l-5-2.5v-3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>', nVid, 'Video') +
+          kurPubCount(svgIcon('book'), nTxt, 'Bacaan') +
+          kurPubCount(svgIcon('doc'), nFile, 'File') +
+        '</div>' +
       '</div>' +
-      '<div class="kur-wiz-actions">' +
-        '<button type="button" class="btn secondary" data-act="kur-wiz-step" data-id="2">← Kembali</button>' +
-        '<button type="button" class="btn kur-wiz-primary" data-act="kur-wiz-publish"' +
+      (ready ? '' : '<p class="kur-wiz-warn">Isi nama kelas dan tambah minimal satu materi sebelum publikasi.</p>') +
+      (meta.published ? '<p class="kur-wiz-live">Kurikulum sudah dipublikasikan. Simpan lagi untuk memperbarui.</p>' : '') +
+      '<div class="kur-pub-actions">' +
+        '<button type="button" class="btn kur-pub-back" data-act="kur-wiz-step" data-id="2">‹ Kembali</button>' +
+        '<button type="button" class="btn kur-wiz-primary kur-pub-go" data-act="kur-wiz-publish"' +
           (ready ? '' : ' disabled') + '>' +
-          (meta.published ? 'Simpan & selesai' : 'Publikasikan') + '</button>' +
+          kurRocketIcon() + ' ' + (meta.published ? 'Simpan & selesai' : 'Publikasikan') + '</button>' +
       '</div></section>';
   }
 
   function addLecForm(weekId) {
     return '<form class="ud-new-item" data-act="add-lec" data-week="' + esc(weekId) + '">' +
       '<div class="ud-kinds" role="group" aria-label="Jenis item">' +
-        '<label><input type="radio" name="kind" value="video" checked> Lecture</label>' +
+        '<label><input type="radio" name="kind" value="video" checked> Video</label>' +
         '<label><input type="radio" name="kind" value="text"> Bacaan</label>' +
         '<label><input type="radio" name="kind" value="file"> File</label>' +
       '</div>' +
-      '<label class="muted">Lecture baru</label>' +
+      '<label class="muted">Judul</label>' +
+      '<input name="title" required maxlength="140" placeholder="Masukkan judul">' +
+      '<div data-kind-panel="video">' +
+        '<label class="muted">Tautan video</label>' +
+        '<input name="url" placeholder="https://youtube.com/…">' +
+        '<label class="vid-drop"><input type="file" name="videoFile" accept="video/mp4,video/webm,.mp4,.webm,.m4v" hidden>' +
+          '<span>atau pilih MP4 / WebM</span></label>' +
+      '</div>' +
+      '<div data-kind-panel="text" hidden>' +
+        '<label class="muted">Bacaan</label>' +
+        '<textarea name="body" rows="5" placeholder="Teks bacaan. **tebal** boleh."></textarea>' +
+      '</div>' +
+      '<div data-kind-panel="file" hidden>' +
+        '<label class="muted">Tautan file</label>' +
+        '<input name="fileUrl" placeholder="https://…">' +
+        '<label class="vid-drop"><input type="file" name="docFile" hidden><span>atau unggah file</span></label>' +
+      '</div>' +
       '<div class="row">' +
-        '<input name="title" required maxlength="140" placeholder="Masukkan judul" style="flex:1">' +
-        '<button class="btn" type="submit">Tambah lecture</button>' +
+        '<button class="btn" type="submit">Simpan materi</button>' +
         '<button type="button" class="btn secondary" data-act="cancel-item">Batal</button>' +
       '</div></form>';
+  }
+
+  function bagianGatesHtml(w, readonly) {
+    if (readonly) return '';
+    const course = courseMinPct();
+    const own = (w.minPct == null || w.minPct === '') ? '' : String(bagianMinPct(w));
+    return '<div class="kur-bagian-gates">' +
+      '<label class="kur-gate"><input type="checkbox" data-act="sec-require-prev" data-id="' + esc(w.id) + '"' +
+        (w.requirePrev ? ' checked' : '') + '> Bagian sebelumnya wajib selesai sebelum masuk sesi ini</label>' +
+      '<label class="kur-gate"><span>Minimal % untuk selesai bagian ini</span>' +
+        '<input type="number" min="0" max="100" step="1" inputmode="numeric" data-act="sec-min-pct" data-id="' + esc(w.id) +
+        '" value="' + esc(own) + '" placeholder="' + course + '" aria-label="Minimal persen selesai bagian">' +
+        '<span class="muted">kosong = ' + course + '% kursus</span></label>' +
+      '<label class="kur-gate"><input type="checkbox" data-act="sec-require-pay" data-id="' + esc(w.id) + '"' +
+        (w.requirePay ? ' checked' : '') + '> Bayar mentoring dulu sebelum lihat sesi ini</label>' +
+    '</div>';
   }
 
   function lecEditorPreviewHtml(l) {
@@ -11082,7 +11267,7 @@
               '<p class="muted">YouTube paling lancar. Drive juga bisa. Atau unggah MP4 (maks 5 GB, tersimpan di kelas).</p>' +
               '<input data-act="lec-field" data-id="' + esc(l.id) + '" data-k="url" value="' + esc(l.url || '') + '" placeholder="https://youtube.com/…">' +
               '<label class="vid-drop" data-act="vid-drop" data-id="' + esc(l.id) + '">' +
-                '<input type="file" data-act="vid-file" data-id="' + esc(l.id) + '" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v" hidden>' +
+                '<input type="file" data-act="vid-file" data-id="' + esc(l.id) + '" accept="video/mp4,video/webm,.mp4,.webm,.m4v" hidden>' +
                 '<span>' + (l.videoKey || l.videoBlob ? ('Ganti file · sekarang: ' + esc(l.videoName || 'video')) : 'Drop / pilih file MP4') + '</span>' +
               '</label>' +
               (l.videoKey || l.videoBlob ? '<button type="button" class="btn-sm" data-act="clear-vid" data-id="' + esc(l.id) + '">Hapus file, pakai tautan</button>' : '')) +
@@ -11090,21 +11275,40 @@
           '<h4>' + descLabel + '</h4>' +
           '<textarea data-act="lec-body" data-id="' + esc(l.id) + '" rows="6" placeholder="' + esc(descPh) + '">' +
             esc(l.body || '') + '</textarea>' +
-          '<h4>File / lembar kerja</h4>' +
-          resHtml +
-          '<div class="row" style="margin-top:8px">' +
-            '<input data-act="res-new-url" data-id="' + esc(l.id) + '" placeholder="Tautan file baru">' +
-            '<button type="button" class="btn-sm" data-act="res-add-url" data-id="' + esc(l.id) + '">+ Tautan</button>' +
-            '<label class="btn-sm">+ Unggah file<input type="file" hidden data-act="res-file" data-id="' + esc(l.id) + '"></label>' +
-          '</div>' +
-          '<h4>Poin penting</h4>' +
-          '<textarea data-act="lec-points" data-id="' + esc(l.id) + '" rows="4" placeholder="Satu poin per baris">' +
-            esc((l.points || []).join('\n')) + '</textarea>' +
-          '<h4>Cek pemahaman</h4>' +
-          '<p class="muted">Prompt atau pertanyaan retoris. Murid tidak mengirim jawaban — hanya dipikirkan.</p>' +
-          qHtml +
+          lecExtrasHtml(l, resHtml, qHtml) +
         '</div>';
     return '<article class="ud-item is-open" data-lec-drop="' + esc(l.id) + '">' + head + body + '</article>';
+  }
+
+  function lecExtraOpen(l, key) {
+    ui.lecExtras = ui.lecExtras || {};
+    if (ui.lecExtras[l.id] && ui.lecExtras[l.id][key]) return true;
+    if (key === 'file') return (l.resources || []).some((r) => r && (r.url || r.blob || r.fileKey || r.blobId));
+    if (key === 'points') return (l.points || []).some((p) => String(p || '').trim());
+    if (key === 'quiz') return (l.questions || []).some((q) => q && String(q.q || '').trim());
+    return false;
+  }
+  function lecExtrasHtml(l, resHtml, qHtml) {
+    const id = esc(l.id);
+    const file = lecExtraOpen(l, 'file')
+      ? '<div class="kur-extra-block"><h4>File / lembar kerja</h4>' + resHtml +
+          '<div class="row" style="margin-top:8px">' +
+            '<input data-act="res-new-url" data-id="' + id + '" placeholder="Tautan file baru">' +
+            '<button type="button" class="btn-sm" data-act="res-add-url" data-id="' + id + '">+ Tautan</button>' +
+            '<label class="btn-sm">+ Unggah file<input type="file" hidden data-act="res-file" data-id="' + id + '"></label>' +
+          '</div></div>'
+      : '<button type="button" class="ud-add ud-add-extra" data-act="lec-extra" data-id="' + id + '" data-k="file">+ Tambah file / lembar kerja</button>';
+    const points = lecExtraOpen(l, 'points')
+      ? '<div class="kur-extra-block"><h4>Poin penting</h4>' +
+          '<textarea data-act="lec-points" data-id="' + id + '" rows="4" placeholder="Satu poin per baris">' +
+            esc((l.points || []).join('\n')) + '</textarea></div>'
+      : '<button type="button" class="ud-add ud-add-extra" data-act="lec-extra" data-id="' + id + '" data-k="points">+ Tambah poin penting</button>';
+    const quiz = lecExtraOpen(l, 'quiz')
+      ? '<div class="kur-extra-block"><h4>Cek pemahaman</h4>' +
+          '<p class="muted">Prompt atau pertanyaan retoris. Murid tidak mengirim jawaban — hanya dipikirkan.</p>' +
+          qHtml + '</div>'
+      : '<button type="button" class="ud-add ud-add-extra" data-act="lec-extra" data-id="' + id + '" data-k="quiz">+ Tambah cek pemahaman</button>';
+    return '<div class="kur-extra-adds">' + file + points + quiz + '</div>';
   }
 
   function viewPustaka() {
@@ -11988,6 +12192,16 @@
       return;
     }
     if (t.matches('[data-act="cover-file"]')) {
+      const form = t.closest('form[data-act="kur-wiz-detail"]');
+      if (form) {
+        const meta = ensureKurikulumMeta();
+        const name = form.querySelector('[name="name"]');
+        const desc = form.querySelector('[name="description"]');
+        const min = form.querySelector('[name="minPct"]');
+        if (name) meta.name = String(name.value || '').trim().slice(0, 120);
+        if (desc) meta.description = String(desc.value || '').trim().slice(0, 800);
+        if (min) meta.minPct = clampPct(min.value, 100);
+      }
       const file = t.files && t.files[0];
       if (file) ingestCoverFile(file, t.getAttribute('data-kind'), t.getAttribute('data-id'));
       return;
@@ -12163,6 +12377,30 @@
     if (t.matches('[data-act="sec-due"]')) {
       const w = db.weeks.find((x) => x.id === t.getAttribute('data-id'));
       if (w) { w.due = t.value; save(); }
+      return;
+    }
+    if (t.matches('[data-act="sec-require-prev"], [data-act="sec-require-pay"]')) {
+      const w = db.weeks.find((x) => x.id === t.getAttribute('data-id'));
+      if (!w) return;
+      if (t.getAttribute('data-act') === 'sec-require-prev') w.requirePrev = !!t.checked;
+      else w.requirePay = !!t.checked;
+      save();
+      return;
+    }
+    if (t.matches('[data-act="sec-min-pct"]')) {
+      const w = db.weeks.find((x) => x.id === t.getAttribute('data-id'));
+      if (!w) return;
+      const raw = String(t.value || '').trim();
+      w.minPct = raw === '' ? '' : clampPct(raw, courseMinPct());
+      save();
+      return;
+    }
+    if (t.matches('.ud-new-item input[name="kind"]')) {
+      const form = t.closest('form');
+      if (!form) return;
+      form.querySelectorAll('[data-kind-panel]').forEach((el) => {
+        el.hidden = el.getAttribute('data-kind-panel') !== t.value;
+      });
       return;
     }
     if (t.matches('[data-act="kur-preview-person"]')) {
@@ -12575,6 +12813,39 @@
     }
   }, true);
 
+  function openNewBagian() {
+    if (!staffCan('editClasses')) return;
+    ensureSecFold();
+    const id = 's-' + Date.now();
+    const n = db.weeks.length + 1;
+    db.weeks.push({
+      id: id,
+      title: 'Bagian ' + n,
+      due: '',
+      requirePrev: false,
+      requirePay: false,
+      minPct: ''
+    });
+    db.weeks.forEach((w) => { if (w.id !== id) ui.secFold.add(w.id); });
+    ui.secFold.delete(id);
+    ui.secKnown = ui.secKnown || new Set();
+    ui.secKnown.add(id);
+    ui.addSecOpen = false;
+    ui.editSecId = id;
+    ui.addItemWeek = id;
+    save();
+    render();
+    requestAnimationFrame(() => {
+      const sec = document.querySelector('[data-sec="' + id + '"]');
+      if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      const title = document.querySelector('[data-act="sec-title"][data-id="' + id + '"]');
+      if (title) {
+        title.focus();
+        if (typeof title.select === 'function') title.select();
+      }
+    });
+  }
+
   const SISWA_RO_BLOCK = new Set([
     'post-new', 'post-comment', 'post-files', 'post-attach', 'post-img-remove',
     'poll-toggle', 'poll-cancel', 'poll-add-opt', 'poll-opt-remove', 'poll-vote',
@@ -12599,6 +12870,7 @@
     if (act === 'vid-drop' || act === 'vid-file' || act === 'add-lec' || act === 'sec-title' ||
         act === 'lec-field' || act === 'lec-points' || act === 'q-field' || act === 'doc-name' || act === 'doc-url' ||
         act === 'cover-file' || act === 'res-file' || act === 'photo-file' || act === 'lec-body' || act === 'res-name' || act === 'res-url' ||
+        act === 'sec-require-prev' || act === 'sec-require-pay' || act === 'sec-min-pct' ||
         act === 'person-field' || act === 'bill-amount' || act === 'sec-due' || act === 'kur-preview-person' ||
         act === 'has-shop' || act === 'heard-from' || act === 'apply' || act === 'cari-siswa' ||
         act === 'daftar-custom-val' || act === 'tag-query' || act === 'crm-stage' || act === 'assign-mentor' ||
@@ -13213,6 +13485,32 @@
       save();
       toast(wasLive ? 'Kurikulum diperbarui.' : 'Kurikulum dipublikasikan.');
       render();
+    } else if (act === 'kur-pub-preview') {
+      if (!lectures().length) {
+        toast('Tambah minimal satu materi dulu.');
+        return;
+      }
+      ui.kurEdit = false;
+      ui.lectureId = firstLectureId();
+      render();
+    } else if (act === 'play-hosted') {
+      const player = btn.closest('.lec-player');
+      const video = player && player.querySelector('video');
+      if (player) player.classList.remove('has-poster');
+      btn.hidden = true;
+      if (video) {
+        const play = video.play();
+        if (play && typeof play.catch === 'function') play.catch(() => {});
+      }
+    } else if (act === 'lec-extra') {
+      const id = btn.getAttribute('data-id');
+      const key = btn.getAttribute('data-k');
+      if (!id || (key !== 'file' && key !== 'points' && key !== 'quiz')) return;
+      ui.lecExtras = ui.lecExtras || {};
+      ui.lecExtras[id] = ui.lecExtras[id] || {};
+      ui.lecExtras[id][key] = true;
+      ui.editLecId = id;
+      render();
     } else if (act === 'kur-edit-lec') {
       const id = btn.getAttribute('data-id');
       const lec = lectureById(id);
@@ -13495,6 +13793,9 @@
         return;
       }
       if (!canViewLecture(ui.personaId, id) && !isStaff()) {
+        if (isSeqLocked(ui.personaId, id)) {
+          toast('Bagian sebelumnya wajib selesai sebelum masuk sesi ini.');
+        }
         if (lec && lec.skuId && canSku(ui.personaId, lec.skuId)) {
           ui.skuId = lec.skuId;
           ui.skuPreview = false;
@@ -14061,27 +14362,12 @@
     } else if (act === 'cancel-item') {
       ui.addItemWeek = '';
       render();
-    } else if (act === 'new-sec') {
-      ui.addSecOpen = true;
-      render();
+    } else if (act === 'new-sec' || act === 'add-sec') {
+      e.preventDefault();
+      openNewBagian();
     } else if (act === 'cancel-sec') {
       ui.addSecOpen = false;
       render();
-    } else if (act === 'add-sec') {
-      e.preventDefault();
-      ensureSecFold();
-      const id = 's-' + Date.now();
-      const n = db.weeks.length + 1;
-      db.weeks.push({ id: id, title: sectionWord() + ' ' + n, due: '' });
-      db.weeks.forEach((w) => { if (w.id !== id) ui.secFold.add(w.id); });
-      ui.secFold.delete(id);
-      save();
-      render();
-      toast(sectionWord() + ' ' + n + ' ditambah. Gulir ke bagian yang terbuka.');
-      requestAnimationFrame(() => {
-        const el = document.querySelector('[data-sec="' + id + '"]');
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
     } else if (act === 'sec-fold') {
       const id = btn.getAttribute('data-id');
       setSecOpen(id, !isSecOpen(id));
@@ -14674,6 +14960,7 @@
       const meta = ensureKurikulumMeta();
       meta.name = name;
       meta.description = description;
+      meta.minPct = clampPct(fd.get('minPct'), 100);
       if (!db.businessName) db.businessName = name;
       ui.kurWizStep = 2;
       save();
@@ -14701,7 +14988,10 @@
       const title = String(fd.get('title') || '').trim();
       const url = String(fd.get('url') || '').trim();
       const kind = String(fd.get('kind') || 'video');
+      const bodyText = String(fd.get('body') || '');
+      const fileUrl = String(fd.get('fileUrl') || '').trim();
       const file = form.querySelector('[name="videoFile"]') && form.querySelector('[name="videoFile"]').files[0];
+      const docFile = form.querySelector('[name="docFile"]') && form.querySelector('[name="docFile"]').files[0];
       if (!title) return;
       const id = 'v-' + Date.now();
       const type = kind === 'text' ? 'text' : (kind === 'file' ? 'document' : 'video');
@@ -14711,23 +15001,25 @@
         type: type,
         title: title,
         mins: type === 'text' ? 5 : 8,
-        url: url,
-        body: '',
+        url: type === 'document' ? fileUrl : url,
+        body: type === 'text' ? bodyText : '',
         videoBlob: false,
         videoName: '',
-        requiredBefore: !!(form.querySelector('[name=req]') && form.querySelector('[name=req]').checked),
+        requiredBefore: false,
         points: [],
         questions: [],
-        resources: type === 'document' && url ? [{ name: title, url: url }] : []
+        resources: type === 'document' && fileUrl ? [{ name: title, url: fileUrl }] : []
       });
-      ui.editLecId = null;
+      ui.editLecId = id;
       ui.addItemWeek = '';
       setSecOpen(weekId, true);
       save();
       if (kind === 'video' && file) {
         ingestVideoFile(file, { lecId: id });
+      } else if (kind === 'file' && docFile) {
+        ingestResourceFile(docFile, id);
       } else {
-        toast('Lecture ditambah. Klik + Konten untuk unggah.');
+        toast('Materi disimpan.');
         render();
       }
     } else if (act === 'meet') {

@@ -346,8 +346,45 @@ function queryOf(url) {
   return Object.fromEntries(url.searchParams.entries());
 }
 
+function mediaSlug(raw) {
+  const slug = String(raw || '').trim().toLowerCase();
+  if (!slug || slug === ANTON_SLUG) return ANTON_SLUG;
+  return resolveLiveSlug(slug);
+}
+
 function keyOk(key) {
-  return /^obrolan\.marketing\/[A-Za-z0-9_-]+\/[A-Za-z0-9]+$/.test(String(key || ''));
+  const parts = String(key || '').split('/');
+  if (parts.length !== 3) return false;
+  const slug = mediaSlug(parts[0]);
+  if (!slug || slug !== parts[0]) return false;
+  if (!/^[A-Za-z0-9_-]{1,80}$/.test(parts[1])) return false;
+  if (!/^[A-Za-z0-9]{8,64}$/.test(parts[2])) return false;
+  return true;
+}
+
+async function mediaWriteOk(req, q, slug) {
+  const live = mediaSlug(slug);
+  if (!live) return false;
+  const rec = readState(live);
+  if (inviteAccepted(rec, q.k)) return true;
+  const user = await supabaseUser(req);
+  if (isStaffFor(req, q, live, user)) return true;
+  if (asStudentView(req)) return false;
+  const row = activeStaffRow((rec && rec.state) || {}, readStaffCookie(req));
+  return !!(row && cleanStaffPerms(row.permissions).editClasses);
+}
+
+async function mediaReadOk(req, q, slug) {
+  const live = mediaSlug(slug);
+  if (!live) return false;
+  const rec = readState(live);
+  if (inviteAccepted(rec, q.k)) return true;
+  const user = await supabaseUser(req);
+  if (isStaffFor(req, q, live, user)) return true;
+  const state = (rec && rec.state) || {};
+  if (!asStudentView(req) && activeStaffRow(state, readStaffCookie(req))) return true;
+  const studentId = readStudentCookie(req);
+  return !!(studentId && lookupPerson(state, studentId));
 }
 
 function mediaFile(key) {
@@ -1913,43 +1950,51 @@ const server = http.createServer((req, res) => {
   }
 
   if (pathname === '/media/init' && req.method === 'POST') {
-    const rec = readState();
-    if (!inviteAccepted(rec, q.k)) {
-      json(res, 403, { error: 'forbidden' });
+    const slug = mediaSlug(q.slug);
+    if (!slug) {
+      json(res, 404, { error: 'slug' });
       return;
     }
-    readBody(req, 64 * 1024).then((buf) => {
-      let body;
-      try { body = JSON.parse(buf.toString('utf8')); } catch (err) {
-        json(res, 400, { error: 'bad_json' });
+    mediaWriteOk(req, q, slug).then((ok) => {
+      if (!ok) {
+        json(res, 403, { error: 'forbidden' });
         return;
       }
-      const kind = body.kind === 'image' || body.kind === 'file' ? body.kind : 'video';
-      const cap = uploadCap(kind);
-      const size = Number(body.size) || 0;
-      if (!size || size > cap) {
-        json(res, 413, { error: 'too_large', max: cap });
-        return;
-      }
-      const lecId = String(body.lecId || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64);
-      if (!lecId) {
-        json(res, 400, { error: 'lec' });
-        return;
-      }
-      const uploadId = crypto.randomBytes(12).toString('hex');
-      const key = SLUG + '/' + lecId + '/' + crypto.randomBytes(8).toString('hex');
-      const dir = path.join(uploadDir, uploadId);
-      fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(path.join(dir, 'meta.json'), JSON.stringify({
-        key,
-        name: String(body.name || 'video.mp4').slice(0, 180),
-        type: String(body.type || 'video/mp4').slice(0, 80),
-        size,
-        kind,
-        maxSize: cap,
-        createdAt: new Date().toISOString()
-      }));
-      json(res, 200, { uploadId, key });
+      readBody(req, 64 * 1024).then((buf) => {
+        let body;
+        try { body = JSON.parse(buf.toString('utf8')); } catch (err) {
+          json(res, 400, { error: 'bad_json' });
+          return;
+        }
+        const kind = body.kind === 'image' || body.kind === 'file' ? body.kind : 'video';
+        const cap = uploadCap(kind);
+        const size = Number(body.size) || 0;
+        if (!size || size > cap) {
+          json(res, 413, { error: 'too_large', max: cap });
+          return;
+        }
+        const lecId = String(body.lecId || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64);
+        if (!lecId) {
+          json(res, 400, { error: 'lec' });
+          return;
+        }
+        const uploadId = crypto.randomBytes(12).toString('hex');
+        const key = slug + '/' + lecId + '/' + crypto.randomBytes(8).toString('hex');
+        const dir = path.join(uploadDir, uploadId);
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, 'meta.json'), JSON.stringify({
+          key,
+          name: String(body.name || 'video.mp4').slice(0, 180),
+          type: String(body.type || 'video/mp4').slice(0, 80),
+          size,
+          kind,
+          maxSize: cap,
+          createdAt: new Date().toISOString()
+        }));
+        json(res, 200, { uploadId, key });
+      }).catch((err) => {
+        if (!res.headersSent) json(res, err.status || 500, { error: 'init' });
+      });
     }).catch((err) => {
       if (!res.headersSent) json(res, err.status || 500, { error: 'init' });
     });
@@ -1957,21 +2002,29 @@ const server = http.createServer((req, res) => {
   }
 
   if (pathname === '/media/part' && req.method === 'PUT') {
-    const rec = readState();
-    if (!inviteAccepted(rec, q.k)) {
-      json(res, 403, { error: 'forbidden' });
+    const slug = mediaSlug(q.slug);
+    if (!slug) {
+      json(res, 404, { error: 'slug' });
       return;
     }
-    const uploadId = String(q.uploadId || '').replace(/[^a-f0-9]/g, '');
-    const partNumber = Number(q.partNumber) || 0;
-    const dir = path.join(uploadDir, uploadId);
-    if (!uploadId || partNumber < 1 || partNumber > 200 || !fs.existsSync(path.join(dir, 'meta.json'))) {
-      json(res, 400, { error: 'upload' });
-      return;
-    }
-    readBody(req, MAX_PART).then((buf) => {
-      fs.writeFileSync(path.join(dir, String(partNumber).padStart(4, '0')), buf);
-      json(res, 200, { ok: true, partNumber, bytes: buf.length });
+    mediaWriteOk(req, q, slug).then((ok) => {
+      if (!ok) {
+        json(res, 403, { error: 'forbidden' });
+        return;
+      }
+      const uploadId = String(q.uploadId || '').replace(/[^a-f0-9]/g, '');
+      const partNumber = Number(q.partNumber) || 0;
+      const dir = path.join(uploadDir, uploadId);
+      if (!uploadId || partNumber < 1 || partNumber > 200 || !fs.existsSync(path.join(dir, 'meta.json'))) {
+        json(res, 400, { error: 'upload' });
+        return;
+      }
+      readBody(req, MAX_PART).then((buf) => {
+        fs.writeFileSync(path.join(dir, String(partNumber).padStart(4, '0')), buf);
+        json(res, 200, { ok: true, partNumber, bytes: buf.length });
+      }).catch((err) => {
+        if (!res.headersSent) json(res, err.status || 500, { error: 'part' });
+      });
     }).catch((err) => {
       if (!res.headersSent) json(res, err.status || 500, { error: 'part' });
     });
@@ -1979,60 +2032,67 @@ const server = http.createServer((req, res) => {
   }
 
   if (pathname === '/media/complete' && req.method === 'POST') {
-    const rec = readState();
-    if (!inviteAccepted(rec, q.k)) {
-      json(res, 403, { error: 'forbidden' });
+    const slug = mediaSlug(q.slug);
+    if (!slug) {
+      json(res, 404, { error: 'slug' });
       return;
     }
-    readBody(req, 64 * 1024).then((buf) => lock(() => {
-      let body = {};
-      try { body = JSON.parse(buf.toString('utf8') || '{}'); } catch (err) { body = {}; }
-      const uploadId = String(q.uploadId || body.uploadId || '').replace(/[^a-f0-9]/g, '');
-      const dir = path.join(uploadDir, uploadId);
-      const metaPath = path.join(dir, 'meta.json');
-      if (!fs.existsSync(metaPath)) {
-        json(res, 404, { error: 'upload' });
+    mediaWriteOk(req, q, slug).then((ok) => {
+      if (!ok) {
+        json(res, 403, { error: 'forbidden' });
         return;
       }
-      const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
-      const parts = fs.readdirSync(dir).filter((name) => /^\d+$/.test(name)).sort();
-      if (!parts.length) {
-        json(res, 400, { error: 'empty' });
-        return;
-      }
-      const dest = mediaFile(meta.key);
-      fs.mkdirSync(path.dirname(dest), { recursive: true });
-      if (fs.existsSync(dest)) fs.unlinkSync(dest);
-      parts.forEach((name) => {
-        fs.appendFileSync(dest, fs.readFileSync(path.join(dir, name)));
+      readBody(req, 64 * 1024).then((buf) => lock(() => {
+        let body = {};
+        try { body = JSON.parse(buf.toString('utf8') || '{}'); } catch (err) { body = {}; }
+        const uploadId = String(q.uploadId || body.uploadId || '').replace(/[^a-f0-9]/g, '');
+        const dir = path.join(uploadDir, uploadId);
+        const metaPath = path.join(dir, 'meta.json');
+        if (!fs.existsSync(metaPath)) {
+          json(res, 404, { error: 'upload' });
+          return;
+        }
+        const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+        if (String(meta.key || '').split('/')[0] !== slug) {
+          json(res, 403, { error: 'forbidden' });
+          return;
+        }
+        const parts = fs.readdirSync(dir).filter((name) => /^\d+$/.test(name)).sort();
+        if (!parts.length) {
+          json(res, 400, { error: 'empty' });
+          return;
+        }
+        const dest = mediaFile(meta.key);
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        if (fs.existsSync(dest)) fs.unlinkSync(dest);
+        parts.forEach((name) => {
+          fs.appendFileSync(dest, fs.readFileSync(path.join(dir, name)));
+        });
+        const size = fs.statSync(dest).size;
+        const cap = Number(meta.maxSize) || MAX_VIDEO;
+        if (size > cap) {
+          fs.unlinkSync(dest);
+          json(res, 413, { error: 'too_large' });
+          return;
+        }
+        fs.writeFileSync(metaFile(meta.key), JSON.stringify({
+          key: meta.key,
+          name: meta.name,
+          type: meta.type,
+          size
+        }));
+        fs.rmSync(dir, { recursive: true, force: true });
+        json(res, 200, { key: meta.key, name: meta.name, mime: meta.type, size });
+      })).catch((err) => {
+        if (!res.headersSent) json(res, err.status || 500, { error: 'complete' });
       });
-      const size = fs.statSync(dest).size;
-      const cap = Number(meta.maxSize) || MAX_VIDEO;
-      if (size > cap) {
-        fs.unlinkSync(dest);
-        json(res, 413, { error: 'too_large' });
-        return;
-      }
-      fs.writeFileSync(metaFile(meta.key), JSON.stringify({
-        key: meta.key,
-        name: meta.name,
-        type: meta.type,
-        size
-      }));
-      fs.rmSync(dir, { recursive: true, force: true });
-      json(res, 200, { key: meta.key, name: meta.name, mime: meta.type, size });
-    })).catch((err) => {
+    }).catch((err) => {
       if (!res.headersSent) json(res, err.status || 500, { error: 'complete' });
     });
     return;
   }
 
   if (pathname === '/media' && req.method === 'DELETE') {
-    const rec = readState();
-    if (!inviteAccepted(rec, q.k)) {
-      json(res, 403, { error: 'forbidden' });
-      return;
-    }
     readBody(req, 16 * 1024).then((buf) => {
       let body = {};
       try { body = JSON.parse(buf.toString('utf8') || '{}'); } catch (err) { body = {}; }
@@ -2041,10 +2101,18 @@ const server = http.createServer((req, res) => {
         json(res, 400, { error: 'key' });
         return;
       }
-      const file = mediaFile(key);
-      if (fs.existsSync(file)) fs.unlinkSync(file);
-      if (fs.existsSync(metaFile(key))) fs.unlinkSync(metaFile(key));
-      json(res, 200, { ok: true });
+      mediaWriteOk(req, q, key.split('/')[0]).then((ok) => {
+        if (!ok) {
+          json(res, 403, { error: 'forbidden' });
+          return;
+        }
+        const file = mediaFile(key);
+        if (fs.existsSync(file)) fs.unlinkSync(file);
+        if (fs.existsSync(metaFile(key))) fs.unlinkSync(metaFile(key));
+        json(res, 200, { ok: true });
+      }).catch(() => {
+        if (!res.headersSent) json(res, 400, { error: 'delete' });
+      });
     }).catch(() => {
       if (!res.headersSent) json(res, 400, { error: 'delete' });
     });
@@ -2053,44 +2121,52 @@ const server = http.createServer((req, res) => {
 
   if (pathname === '/media/file' && req.method === 'GET') {
     const publicPhoto = profileKeyOk(q.key);
-    if (!publicPhoto) {
-      const rec = readState();
-      if (!inviteAccepted(rec, q.k)) {
-        json(res, 403, { error: 'forbidden' });
-        return;
-      }
-    }
-    const key = (publicPhoto || keyOk(q.key)) ? q.key : '';
+    const key = publicPhoto ? q.key : (keyOk(q.key) ? q.key : '');
     if (!key) {
       json(res, 400, { error: 'key' });
       return;
     }
-    const file = mediaFile(key);
-    if (!fs.existsSync(file)) {
-      json(res, 404, { error: 'missing' });
-      return;
-    }
-    let meta = {};
-    try { meta = JSON.parse(fs.readFileSync(metaFile(key), 'utf8')); } catch (err) { meta = {}; }
-    const size = fs.statSync(file).size;
-    const range = parseRange(req.headers.range, size);
-    const mime = meta.type || 'video/mp4';
-    const headers = {
-      'content-type': mime,
-      'accept-ranges': 'bytes',
-      'cache-control': 'private, max-age=3600',
-      'x-robots-tag': 'noindex'
+    const sendFile = () => {
+      const file = mediaFile(key);
+      if (!fs.existsSync(file)) {
+        json(res, 404, { error: 'missing' });
+        return;
+      }
+      let meta = {};
+      try { meta = JSON.parse(fs.readFileSync(metaFile(key), 'utf8')); } catch (err) { meta = {}; }
+      const size = fs.statSync(file).size;
+      const range = parseRange(req.headers.range, size);
+      const mime = meta.type || 'video/mp4';
+      const headers = {
+        'content-type': mime,
+        'accept-ranges': 'bytes',
+        'cache-control': 'private, max-age=3600',
+        'x-robots-tag': 'noindex'
+      };
+      if (range) {
+        headers['content-range'] = 'bytes ' + range.start + '-' + range.end + '/' + size;
+        headers['content-length'] = String(range.end - range.start + 1);
+        res.writeHead(206, headers);
+        fs.createReadStream(file, { start: range.start, end: range.end }).pipe(res);
+        return;
+      }
+      headers['content-length'] = String(size);
+      res.writeHead(200, headers);
+      fs.createReadStream(file).pipe(res);
     };
-    if (range) {
-      headers['content-range'] = 'bytes ' + range.start + '-' + range.end + '/' + size;
-      headers['content-length'] = String(range.end - range.start + 1);
-      res.writeHead(206, headers);
-      fs.createReadStream(file, { start: range.start, end: range.end }).pipe(res);
+    if (publicPhoto) {
+      sendFile();
       return;
     }
-    headers['content-length'] = String(size);
-    res.writeHead(200, headers);
-    fs.createReadStream(file).pipe(res);
+    mediaReadOk(req, q, key.split('/')[0]).then((ok) => {
+      if (!ok) {
+        json(res, 403, { error: 'forbidden' });
+        return;
+      }
+      sendFile();
+    }).catch(() => {
+      if (!res.headersSent) json(res, 500, { error: 'media' });
+    });
     return;
   }
 
