@@ -1,12 +1,26 @@
 /* Mentor class and student reader for /lms/. */
 (function () {
+  if (location.hostname === 'www.larisid.com') return;
   var $ = function (id) { return document.getElementById(id); };
+  function oauthSnap() {
+    var search = new URLSearchParams(location.search || '');
+    var hash = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));
+    return {
+      code: search.get('code') || hash.get('code') || '',
+      error: search.get('error_description') || hash.get('error_description') || search.get('error') || hash.get('error') || ''
+    };
+  }
+  var oauth = oauthSnap();
+  var oauthSettled = !(oauth.code || oauth.error);
   var routing = Promise.resolve();
   var busy = false;
   var mentorView = 'edit';
   var siswaTab = 'kurikulum';
   var lastPack = null;
   var lastMe = null;
+  var lastSessions = [];
+  var lastLink = null;
+  var jadwalEdit = '';
 
   function esc(value) {
     return String(value == null ? '' : value)
@@ -29,7 +43,19 @@
     window.scrollTo(0, 0);
   }
   function isStudentGate() {
-    return !!(window.Lms.invite() || window.Lms.schoolSlug());
+    return !!(window.Lms.invite() || window.Lms.pathSlug());
+  }
+  function clearMentorSlug() {
+    if (!window.Lms.pathSlug() && !window.Lms.invite()) window.Lms.setSchoolSlug('');
+  }
+  function stripOAuthQuery() {
+    try {
+      var q = new URLSearchParams(location.search || '');
+      ['code', 'state', 'error', 'error_description', 'error_code'].forEach(function (key) { q.delete(key); });
+      var next = location.pathname + (q.toString() ? '?' + q.toString() : '');
+      history.replaceState({}, '', next);
+    } catch (err) { /* ignore */ }
+    document.documentElement.removeAttribute('data-lms-oauth');
   }
   function setAuthMode(mode) {
     var signup = mode !== 'login';
@@ -161,7 +187,7 @@
       }).catch(function () { /* keep default */ });
       return;
     }
-    var slug = window.Lms.schoolSlug();
+    var slug = window.Lms.pathSlug();
     if (!slug || !window.LmsApi.orgBrand) return;
     window.LmsApi.orgBrand(slug).then(function (brand) {
       if (brand) applyBrand(brand);
@@ -254,8 +280,176 @@
       bindReader(body, pub);
     }
   }
+  function jakartaParts(iso) {
+    var d = iso ? new Date(iso) : new Date();
+    var parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Jakarta',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23'
+    }).formatToParts(d);
+    function get(type) {
+      var hit = parts.filter(function (part) { return part.type === type; })[0];
+      return hit ? hit.value : '';
+    }
+    return {
+      date: get('year') + '-' + get('month') + '-' + get('day'),
+      time: get('hour') + ':' + get('minute')
+    };
+  }
+  function jakartaISO(date, time) {
+    return new Date(String(date) + 'T' + String(time || '00:00') + ':00+07:00').toISOString();
+  }
+  function fmtWhen(iso) {
+    try {
+      return new Intl.DateTimeFormat('id-ID', {
+        timeZone: 'Asia/Jakarta',
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(new Date(iso)) + ' WIB';
+    } catch (err) { return ''; }
+  }
+  function icsEscape(value) {
+    return String(value || '')
+      .replace(/\\/g, '\\\\')
+      .replace(/;/g, '\\;')
+      .replace(/,/g, '\\,')
+      .replace(/\r\n|\n|\r/g, '\\n');
+  }
+  function icsStamp(ms) {
+    return new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  }
+  function googleCalUrl(session) {
+    var start = new Date(session.starts_at).getTime();
+    var end = start + (Number(session.mins) || 60) * 60000;
+    var q = new URLSearchParams();
+    q.set('action', 'TEMPLATE');
+    q.set('text', session.title || 'Sesi kelas');
+    q.set('dates', icsStamp(start) + '/' + icsStamp(end));
+    var details = [session.notes || '', session.meet_url || ''].filter(Boolean).join('\n');
+    if (details) q.set('details', details);
+    if (session.location) q.set('location', session.location);
+    return 'https://calendar.google.com/calendar/render?' + q.toString();
+  }
+  function oneIcs(session) {
+    var start = new Date(session.starts_at).getTime();
+    var end = start + (Number(session.mins) || 60) * 60000;
+    var lines = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//LarisID//LMS Calendar//ID',
+      'BEGIN:VEVENT',
+      'UID:' + session.id + '@larisid-lms',
+      'DTSTAMP:' + icsStamp(Date.now()),
+      'DTSTART:' + icsStamp(start),
+      'DTEND:' + icsStamp(end),
+      'SUMMARY:' + icsEscape(session.title || 'Sesi kelas')
+    ];
+    var desc = [session.notes || '', session.meet_url ? 'Meet: ' + session.meet_url : ''].filter(Boolean).join('\n\n');
+    if (desc) lines.push('DESCRIPTION:' + icsEscape(desc));
+    if (session.location) lines.push('LOCATION:' + icsEscape(session.location));
+    if (session.meet_url) lines.push('URL:' + icsEscape(session.meet_url));
+    lines.push('END:VEVENT', 'END:VCALENDAR');
+    return lines.join('\r\n') + '\r\n';
+  }
+  function downloadText(name, text) {
+    var blob = new Blob([text], { type: 'text/calendar;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = url;
+    link.download = name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+  }
+  function sessionById(id) {
+    return (lastSessions || []).filter(function (row) { return row.id === id; })[0] || null;
+  }
+  function syncBarHtml() {
+    if (!lastLink || !lastLink.https) {
+      return '<p class="muted">Tautan kalender belum siap. Muat ulang halaman ini.</p>';
+    }
+    return '<div class="cal-sync">' +
+      '<p class="muted">Tempel tautan ini sekali. Google Calendar: Kalender lain → Dari URL. Apple Calendar: File → Langganan Kalender Baru. Di iPhone, buka tautan Apple.</p>' +
+      '<label>Tautan langganan</label>' +
+      '<div class="row">' +
+        '<input class="cal-url" readonly value="' + esc(lastLink.https) + '">' +
+        '<button type="button" class="btn btn-white" data-act="cal-copy">Salin</button>' +
+        '<a class="btn btn-white" href="' + esc(lastLink.webcal || lastLink.https) + '">Apple Calendar</a>' +
+        '<button type="button" class="btn btn-white" data-act="cal-ics-all">Unduh semua .ics</button>' +
+      '</div>' +
+      '<p class="muted">Hanya untuk kamu dan siswa kelas ini. Kalender ikut berubah saat jadwal diubah.</p>' +
+    '</div>';
+  }
+  function sessionRowHtml(session, editable) {
+    var meet = session.meet_url
+      ? '<a class="btn btn-white" href="' + esc(session.meet_url) + '" target="_blank" rel="noopener">Meet</a>'
+      : '';
+    var edits = editable
+      ? '<button type="button" class="btn btn-white" data-act="cal-edit" data-id="' + esc(session.id) + '">Edit</button>' +
+        '<button type="button" class="btn btn-white" data-act="cal-del" data-id="' + esc(session.id) + '">Hapus</button>'
+      : '';
+    return '<article class="lesson cal-row">' +
+      '<h3>' + esc(session.title) + '</h3>' +
+      '<p class="muted">' + esc(fmtWhen(session.starts_at)) + ' · ' + esc(String(session.mins || 60)) + ' menit' +
+        (session.location ? ' · ' + esc(session.location) : '') + '</p>' +
+      (session.notes ? '<p class="lesson-body">' + esc(session.notes) + '</p>' : '') +
+      '<div class="row">' +
+        '<a class="btn btn-white" href="' + esc(googleCalUrl(session)) + '" target="_blank" rel="noopener">Google Calendar</a>' +
+        '<button type="button" class="btn btn-white" data-act="cal-ics" data-id="' + esc(session.id) + '">Apple / .ics</button>' +
+        meet + edits +
+      '</div></article>';
+  }
+  function jadwalFormHtml() {
+    var current = jadwalEdit ? sessionById(jadwalEdit) : null;
+    var when = current ? jakartaParts(current.starts_at) : jakartaParts(new Date().toISOString());
+    if (!current) when.time = '19:30';
+    var mins = current ? Number(current.mins) || 60 : 60;
+    var choices = [30, 45, 60, 90, 120];
+    if (choices.indexOf(mins) < 0) choices.push(mins);
+    return '<form id="jadwal-form" class="card">' +
+      '<h2>' + (current ? 'Edit acara' : 'Acara baru') + '</h2>' +
+      '<input type="hidden" name="id" value="' + esc(current ? current.id : '') + '">' +
+      '<label>Judul<input name="title" required maxlength="120" value="' + esc(current ? current.title : '') + '"></label>' +
+      '<div class="row2">' +
+        '<label>Tanggal<input name="date" type="date" required value="' + esc(when.date) + '"></label>' +
+        '<label>Jam (WIB)<input name="time" type="time" required value="' + esc(when.time) + '"></label>' +
+      '</div>' +
+      '<label>Durasi<select name="mins">' +
+        choices.map(function (n) {
+          return '<option value="' + n + '"' + (n === mins ? ' selected' : '') + '>' + n + ' menit</option>';
+        }).join('') +
+      '</select></label>' +
+      '<label>Tautan Meet / Zoom<input name="meet" placeholder="https://meet.google.com/…" value="' + esc(current ? current.meet_url : '') + '"></label>' +
+      '<label>Lokasi<input name="location" maxlength="160" value="' + esc(current ? current.location : '') + '" placeholder="Online"></label>' +
+      '<label>Catatan<textarea name="notes" maxlength="2000">' + esc(current ? current.notes : '') + '</textarea></label>' +
+      '<div class="row">' +
+        '<button type="submit" class="btn btn-red">' + (current ? 'Simpan acara' : 'Tambah acara') + '</button>' +
+        (current ? '<button type="button" class="btn btn-white" data-act="cal-edit-cancel">Batal</button>' : '') +
+      '</div></form>';
+  }
+  function scheduleHtml(editable) {
+    var list = (lastSessions || []).slice().sort(function (a, b) {
+      return String(a.starts_at).localeCompare(String(b.starts_at));
+    });
+    var rows = list.map(function (session) { return sessionRowHtml(session, editable); }).join('');
+    return '<section class="card cal-card"><h2>Jadwal</h2>' + syncBarHtml() +
+      (rows || '<p class="muted">Belum ada sesi.</p>') +
+      '</section>' +
+      (editable ? jadwalFormHtml() : '');
+  }
+  function hideJadwal() {
+    if ($('jadwal')) $('jadwal').hidden = true;
+  }
   function setMentorView(mode) {
-    mentorView = mode === 'siswa' ? 'siswa' : 'edit';
+    mentorView = mode === 'siswa' ? 'siswa' : mode === 'jadwal' ? 'jadwal' : 'edit';
     var toggle = $('mentor-view-toggle');
     if (toggle) {
       Array.prototype.forEach.call(toggle.querySelectorAll('[data-mentor-view]'), function (btn) {
@@ -265,14 +459,24 @@
     if (!lastMe || lastMe.role !== 'mentor') return;
     if (mentorView === 'siswa') {
       $('kurikulum').hidden = true;
+      hideJadwal();
       $('reader').hidden = false;
       $('reader').innerHTML =
         '<p class="siswa-full-hint">Ini layar siswa — hanya pelajaran yang sudah ditayangkan.</p>' +
+        scheduleHtml(false) +
         siswaTabHtml('kurikulum', publishedPack(lastPack || { modules: [], lessons: [], files: [] }));
       bindReader($('reader'), publishedPack(lastPack || { modules: [], lessons: [], files: [] }));
+    } else if (mentorView === 'jadwal') {
+      $('kurikulum').hidden = true;
+      $('reader').hidden = true;
+      if ($('jadwal')) {
+        $('jadwal').hidden = false;
+        $('jadwal').innerHTML = scheduleHtml(true);
+      }
     } else {
       $('kurikulum').hidden = false;
       $('reader').hidden = true;
+      hideJadwal();
       $('kurikulum').innerHTML = mentorHtml(lastPack || { modules: [], lessons: [], files: [] });
       bindMentor($('kurikulum'), lastPack || { modules: [], lessons: [], files: [] });
     }
@@ -320,10 +524,12 @@
       '</form>';
   }
 
-  function render(me, pack, people) {
+  function render(me, pack, people, sessions, link) {
     var mentor = me.role === 'mentor';
     lastMe = me;
     lastPack = pack;
+    lastSessions = sessions || [];
+    lastLink = link || null;
     applyBrand(me);
     if (me.org_slug) ensureSchoolPath(me.org_slug);
     $('app-kicker').textContent = mentor ? 'Mentor' : 'Siswa';
@@ -362,8 +568,9 @@
     } else {
       if (toggle) toggle.hidden = true;
       $('kurikulum').hidden = true;
+      hideJadwal();
       $('reader').hidden = false;
-      $('reader').innerHTML = studentHtml(pack);
+      $('reader').innerHTML = scheduleHtml(false) + studentHtml(pack);
       bindReader($('reader'), pack);
     }
   }
@@ -449,12 +656,30 @@
     appError('');
     var pack = await window.LmsApi.curriculum();
     var people = me.role === 'mentor' ? await window.LmsApi.students() : [];
-    render(me, pack, people);
+    var sessions = [];
+    var link = null;
+    try {
+      var both = await Promise.all([
+        window.LmsApi.listSessions(),
+        window.LmsApi.calendarLink()
+      ]);
+      sessions = both[0] || [];
+      link = both[1];
+    } catch (err) {
+      appError(window.Lms.errorText(err));
+    }
+    render(me, pack, people, sessions, link);
     show('app');
   }
 
   async function routeNow(session) {
     if (!session) {
+      if (!oauthSettled) {
+        show('auth');
+        setAuthMode('login');
+        authError(oauth.error ? window.Lms.errorText({ message: oauth.error }) : 'Sedang masuk…');
+        return;
+      }
       if (isStudentGate()) {
         show('auth');
         setAuthMode(window.Lms.invite() ? 'signup' : 'login');
@@ -498,7 +723,7 @@
       }
       return;
     }
-    if (window.Lms.schoolSlug()) {
+    if (window.Lms.pathSlug()) {
       show('auth');
       setAuthMode('login');
       authError('Akun ini belum gabung kelas. Minta tautan undangan baru dari mentor.');
@@ -537,9 +762,10 @@
       authError('Gagal memuat koneksi. Muat ulang halaman ini.');
       return;
     }
-    setAuthMode(window.Lms.invite() ? 'signup' : (window.Lms.schoolSlug() ? 'login' : 'signup'));
+    setAuthMode(window.Lms.invite() ? 'signup' : (window.Lms.pathSlug() ? 'login' : 'signup'));
     document.querySelectorAll('[data-start]').forEach(function (btn) {
       btn.addEventListener('click', function () {
+        clearMentorSlug();
         window.Lms.setIntent('mentor');
         setAuthMode('signup');
         show('auth');
@@ -547,6 +773,7 @@
     });
     document.querySelectorAll('[data-login]').forEach(function (btn) {
       btn.addEventListener('click', function () {
+        clearMentorSlug();
         window.Lms.setIntent(isStudentGate() ? 'student' : 'mentor');
         setAuthMode('login');
         show('auth');
@@ -559,7 +786,9 @@
     $('google-btn').addEventListener('click', function () {
       var name = $('full-name') && !$('full-name').hidden ? $('full-name').value : '';
       window.Lms.setPendingName(name);
+      clearMentorSlug();
       window.Lms.setIntent(isStudentGate() ? 'student' : 'mentor');
+      authError('Sedang masuk…');
       window.Lms.sb.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: window.Lms.redirectTo() }
@@ -588,7 +817,7 @@
             data: {
               full_name: name,
               lms_invite: window.Lms.invite() || null,
-              lms_slug: window.Lms.schoolSlug() || null
+              lms_slug: window.Lms.pathSlug() || null
             }
           }
         })
@@ -726,14 +955,143 @@
       }
     });
 
+    if ($('view-app')) {
+      $('view-app').addEventListener('click', function (event) {
+        var btn = event.target.closest('[data-act]');
+        if (!btn) return;
+        var act = btn.getAttribute('data-act');
+        if (act === 'cal-copy') {
+          var box = btn.closest('.cal-sync');
+          var input = box && box.querySelector('.cal-url');
+          var url = input ? input.value : '';
+          if (!url) return;
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(function () {
+              btn.textContent = 'Tersalin';
+              setTimeout(function () { btn.textContent = 'Salin'; }, 1600);
+            }).catch(function () {
+              input.focus();
+              input.select();
+            });
+          } else {
+            input.focus();
+            input.select();
+          }
+          return;
+        }
+        if (act === 'cal-ics') {
+          var one = sessionById(btn.getAttribute('data-id'));
+          if (!one) return;
+          downloadText(String(one.title || 'sesi').replace(/[^\w.-]+/g, '-').slice(0, 40) + '.ics', oneIcs(one));
+          return;
+        }
+        if (act === 'cal-ics-all') {
+          if (!lastLink || !lastLink.https) return;
+          fetch(lastLink.https).then(function (res) {
+            if (!res.ok) throw new Error('lms_session');
+            return res.text();
+          }).then(function (text) {
+            downloadText('jadwal-lms.ics', text);
+          }).catch(function (err) {
+            appError(window.Lms.errorText(err));
+          });
+          return;
+        }
+        if (act === 'cal-edit') {
+          jadwalEdit = btn.getAttribute('data-id') || '';
+          setMentorView('jadwal');
+          return;
+        }
+        if (act === 'cal-edit-cancel') {
+          jadwalEdit = '';
+          setMentorView('jadwal');
+          return;
+        }
+        if (act === 'cal-del') {
+          var id = btn.getAttribute('data-id');
+          if (!id || !confirm('Hapus acara ini dari jadwal?')) return;
+          if (jadwalEdit === id) jadwalEdit = '';
+          run(function () { return window.LmsApi.deleteSession(id); });
+        }
+      });
+      $('view-app').addEventListener('submit', function (event) {
+        var form = event.target;
+        if (!form || form.id !== 'jadwal-form') return;
+        event.preventDefault();
+        appError('');
+        var data = new FormData(form);
+        var title = String(data.get('title') || '').trim();
+        var date = String(data.get('date') || '');
+        var time = String(data.get('time') || '');
+        if (!title || !date || !time) {
+          appError('Isi judul, tanggal, dan jam.');
+          return;
+        }
+        var id = String(data.get('id') || '') || null;
+        jadwalEdit = '';
+        run(function () {
+          return window.LmsApi.upsertSession({
+            id: id,
+            title: title,
+            starts_at: jakartaISO(date, time),
+            mins: Number(data.get('mins')) || 60,
+            meet_url: String(data.get('meet') || '').trim(),
+            location: String(data.get('location') || '').trim(),
+            notes: String(data.get('notes') || '').trim()
+          });
+        });
+      });
+    }
+
     paintSchoolBrand();
-    if (isStudentGate()) {
+    if (oauth.code || oauth.error) {
+      show('auth');
+      setAuthMode('login');
+      authError(oauth.error ? window.Lms.errorText({ message: oauth.error }) : 'Sedang masuk…');
+    } else if (isStudentGate()) {
       show('auth');
       setAuthMode(window.Lms.invite() ? 'signup' : 'login');
     }
+    function finishOAuth(session, errMsg) {
+      oauthSettled = true;
+      if (oauth.code || oauth.error) stripOAuthQuery();
+      if (errMsg) {
+        show('auth');
+        setAuthMode('login');
+        authError(errMsg);
+        return;
+      }
+      route(session);
+    }
+    window.Lms.sb.auth.getSession().then(function (res) {
+      var session = res.data && res.data.session;
+      if (session) return finishOAuth(session);
+      if (oauth.error) return finishOAuth(null, window.Lms.errorText({ message: oauth.error }));
+      if (!oauth.code) {
+        oauthSettled = true;
+        var authOpen = $('view-auth') && !$('view-auth').hidden;
+        var registerOpen = $('view-register') && !$('view-register').hidden;
+        if (!authOpen && !registerOpen) route(null);
+        return;
+      }
+      return window.Lms.sb.auth.exchangeCodeForSession(oauth.code).then(function (ex) {
+        var next = ex.data && ex.data.session;
+        if (next) return finishOAuth(next);
+        return window.Lms.sb.auth.getSession().then(function (again) {
+          var recovered = again.data && again.data.session;
+          if (recovered) return finishOAuth(recovered);
+          finishOAuth(null, window.Lms.errorText(ex.error || { message: 'pkce' }));
+        });
+      });
+    }).catch(function (err) {
+      finishOAuth(null, window.Lms.errorText(err));
+    });
     window.Lms.sb.auth.onAuthStateChange(function (event, session) {
-      if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') return;
-      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') route(session);
+      if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION') return;
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        if (event === 'SIGNED_IN') oauthSettled = true;
+        route(session);
+      }
     });
   }
 

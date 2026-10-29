@@ -225,6 +225,38 @@
     deleteLesson: deleteLesson,
     deleteMaterial: deleteMaterial,
     uploadMaterial: uploadMaterial,
-    openMaterial: openMaterial
+    openMaterial: openMaterial,
+    listSessions: listSessions,
+    upsertSession: upsertSession,
+    deleteSession: deleteSession,
+    calendarLink: calendarLink
   };
+
+  async function listSessions() {
+    var res = await sb().rpc('lms_list_sessions');
+    fail(res.error);
+    return res.data || [];
+  }
+  async function upsertSession(row) {
+    var res = await sb().rpc('lms_upsert_session', {
+      p_id: row.id || null,
+      p_title: row.title,
+      p_starts_at: row.starts_at,
+      p_mins: row.mins,
+      p_meet_url: row.meet_url || '',
+      p_location: row.location || '',
+      p_notes: row.notes || ''
+    });
+    fail(res.error);
+    return res.data;
+  }
+  async function deleteSession(id) {
+    var res = await sb().rpc('lms_delete_session', { p_id: id });
+    fail(res.error);
+  }
+  async function calendarLink() {
+    var res = await sb().rpc('lms_calendar_link');
+    fail(res.error);
+    return res.data || null;
+  }
 })();

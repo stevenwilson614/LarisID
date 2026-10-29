@@ -1207,6 +1207,7 @@ textarea { min-height: 96px; resize: vertical; }
 .school-link-row .btn { padding: 10px 12px; font-size: 0.82rem; }
 .mentor-view-toggle {
   display: inline-flex;
+  flex-wrap: wrap;
   gap: 4px;
   padding: 4px;
   margin-bottom: 12px;
@@ -1235,6 +1236,20 @@ textarea { min-height: 96px; resize: vertical; }
   font-size: 0.92rem;
 }
 [hidden] { display: none !important; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.row2 label { margin-top: 0; }
+.cal-card h2 { margin-top: 0; }
+.cal-sync { margin: 8px 0 16px; }
+.cal-sync .cal-url { flex: 1; min-width: 180px; margin: 0; }
+.cal-row h3 { margin: 0 0 4px; }
+select {
+  width: 100%;
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
 @media (max-width: 800px) {
   .nav { padding: 14px 16px; }
   .brand img { height: 28px; }
@@ -1256,6 +1271,7 @@ textarea { min-height: 96px; resize: vertical; }
   .reply.nest { margin-left: 18px; }
   .school { padding-left: 16px; padding-right: 16px; }
   .school-bar { align-items: flex-start; }
+  .row2 { grid-template-columns: 1fr; }
 }
 
 .school { max-width: 980px; margin: 0 auto; padding: 28px 18px 72px; }

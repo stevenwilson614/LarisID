@@ -1,6 +1,27 @@
 /* LMS session. Storage key must not match sb-*-auth-token: the seller app
    deletes those keys on boot. This login is not the LarisID seller session. */
 (function () {
+  /* www and apex do not share localStorage, so a PKCE verifier saved on www
+     cannot be exchanged on larisid.com. Stay on the apex host. */
+  if (location.hostname === 'www.larisid.com') {
+    location.replace('https://larisid.com' + location.pathname + location.search + location.hash);
+    return;
+  }
+  try {
+    var early = new URLSearchParams(location.search);
+    if (early.get('code') || early.get('error') || early.get('error_description')) {
+      document.documentElement.setAttribute('data-lms-oauth', '1');
+      var landEarly = document.getElementById('view-land');
+      var wrapEarly = document.getElementById('auth-wrap');
+      var authEarly = document.getElementById('view-auth');
+      var errEarly = document.getElementById('auth-err');
+      if (landEarly) landEarly.hidden = true;
+      if (wrapEarly) wrapEarly.hidden = false;
+      if (authEarly) authEarly.hidden = false;
+      if (errEarly && !errEarly.textContent) errEarly.textContent = 'Sedang masuk…';
+    }
+  } catch (err) { /* ignore */ }
+
   var SUPA_URL = 'https://api.larisid.com';
   var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzg0MzM2Njc5LCJleHAiOjI0MTUwNTY2Nzl9.IuuxcLjM-ljEyrn2lInAqzESImYfMXlBBZI2i671Ec';
   var INVITE_KEY = 'lms_invite_v1';
@@ -82,6 +103,9 @@
     if (msg.indexOf('lms_size') >= 0) return 'Berkas terlalu besar. Batasnya 50 MB.';
     if (msg.indexOf('lms_path') >= 0 || msg.indexOf('lms_lesson') >= 0 || msg.indexOf('lms_module') >= 0) return 'Berkas tidak bisa disimpan.';
     if (msg.indexOf('lms_auth') >= 0) return 'Masuk dulu.';
+    if (msg.indexOf('lms_session') >= 0 || msg.indexOf('lms_when') >= 0) return 'Jadwal tidak bisa disimpan. Cek judul, tanggal, dan jam.';
+    if (/code verifier|flow state|pkce/i.test(msg)) return 'Login Google terputus. Coba masuk lagi dari halaman ini.';
+    if (/redirect/i.test(msg)) return 'Login Google tidak kembali ke halaman ini. Coba lagi.';
     if (/sending confirmation email/i.test(msg)) return 'Email konfirmasi tidak terkirim. Coba lagi, atau daftar dengan Google.';
     if (/already registered|already been registered/i.test(msg)) return 'Email ini sudah terdaftar. Masuk saja.';
     if (/invalid login|invalid credentials/i.test(msg)) return 'Email atau password salah.';
@@ -91,9 +115,24 @@
   }
 
   function schoolPath(slug) {
-    var s = String(slug || read(SLUG_KEY) || pathSlug() || '').trim();
+    var s = String(slug || pathSlug() || '').trim();
     if (!s) return '/lms/';
     return '/lms/' + encodeURIComponent(s) + '/';
+  }
+
+  /* Mentor login on /lms/ must not follow a leftover school slug.
+     Student return keeps /lms/{slug}/ when the path or an invite has one. */
+  function redirectPath() {
+    if (pathSlug() || read(INVITE_KEY)) {
+      var slug = pathSlug() || read(SLUG_KEY) || '';
+      if (slug) return '/lms/' + encodeURIComponent(slug) + '/';
+    }
+    return '/lms/';
+  }
+  function siteOrigin() {
+    var host = String(location.hostname || '');
+    if (host === 'localhost' || host === '127.0.0.1') return location.origin;
+    return 'https://larisid.com';
   }
 
   window.Lms = {
@@ -105,13 +144,14 @@
     setIntent: function (intent) { write(INTENT_KEY, intent === 'student' ? 'student' : 'mentor'); },
     pendingName: function () { return read(NAME_KEY); },
     setPendingName: function (name) { write(NAME_KEY, String(name || '').trim()); },
+    pathSlug: pathSlug,
     schoolSlug: function () { return pathSlug() || read(SLUG_KEY) || ''; },
     setSchoolSlug: function (slug) {
       var s = String(slug || '').toLowerCase().trim();
       write(SLUG_KEY, s);
     },
     schoolPath: schoolPath,
-    redirectTo: function () { return location.origin + schoolPath(); },
+    redirectTo: function () { return siteOrigin() + redirectPath(); },
     /* Share URL hits the OG card so WhatsApp/iMessage see mentor title + photo. */
     inviteShareUrl: function (token) {
       return 'https://larisid.com/lms/card/?invite=' + encodeURIComponent(token || '');

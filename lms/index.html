@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/lms/lms.css?v=20261029preview">
+  <link rel="stylesheet" href="/lms/lms.css?v=20261029cal">
 </head>
 <body>
   <div id="view-land">
@@ -415,16 +415,18 @@
       <div id="student-col">
         <div class="mentor-view-toggle" id="mentor-view-toggle" hidden>
           <button type="button" class="is-on" data-mentor-view="edit">Edit kurikulum</button>
+          <button type="button" data-mentor-view="jadwal">Jadwal</button>
           <button type="button" data-mentor-view="siswa">Tampilan siswa</button>
         </div>
         <div id="kurikulum"></div>
+        <div id="jadwal" hidden></div>
         <div id="reader"></div>
       </div>
     </div>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
-  <script src="/lms/js/auth.js?v=20261029preview" defer></script>
-  <script src="/lms/js/api.js?v=20261029preview" defer></script>
-  <script src="/lms/js/app.js?v=20261029preview" defer></script>
+  <script src="/lms/js/auth.js?v=20261029cal" defer></script>
+  <script src="/lms/js/api.js?v=20261029cal" defer></script>
+  <script src="/lms/js/app.js?v=20261029cal" defer></script>
 </body>
 </html>

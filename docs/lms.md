@@ -25,7 +25,7 @@ Allowed types: PDF, JPEG, PNG, WebP, plain text, DOCX, PPTX, MP4, or `applicatio
 
 ## Schema
 
-Tables: `lms_accounts`, `lms_invites`, `lms_modules`, `lms_lessons`, `lms_materials`.
+Tables: `lms_accounts`, `lms_invites`, `lms_modules`, `lms_lessons`, `lms_materials`, `lms_sessions`.
 
 Writes that create a role go through `lms_register_mentor`, `lms_create_invite`, and `lms_accept_invite`. Triggers stamp `mentor_id` from `auth.uid()` so a mentor cannot insert a row as someone else, and they reject a storage path that is not `{mentor_id}/{material_id}`.
 
@@ -43,7 +43,24 @@ The invite a mentor copies is `https://larisid.com/lms/card/?invite=…`. Caddy 
 
 LMS auth uses `localStorage` key `lms_auth_v1` with `persistSession` + `autoRefreshToken`, so a refresh on `/lms/` or `/lms/{slug}/` keeps the same session. Invite / school slug helpers use the same storage, not `sessionStorage`.
 
-Mentors get a phone-sized **tampilan siswa** under the class photo (Kurikulum / Alat / Progres) plus an Edit ↔ Tampilan siswa toggle on the main column. Preview shows only published lessons — the same set a student would see — not the seller homepage.
+Google sign-in returns to `https://larisid.com` (not `www`). A mentor login started on `/lms/` comes back to `/lms/` even if another school's slug is still stored. While `?code=` is in the URL the page stays on the sign-in panel until that code becomes a session; it does not fall through to the marketing landing. `www.larisid.com/lms` is sent to the apex host first so the login verifier and the return URL share one site.
+
+## Jadwal
+
+Mentors add sessions (title, WIB date and time, duration, Meet link, notes) on the Jadwal tab. Students see that list above the curriculum. Calendars are not connected with Google or Apple OAuth. One subscribe URL keeps both apps updated:
+
+`https://api.larisid.com/functions/v1/lms-calendar-ics?mentor=<mentor uuid>&token=<calendar_token>`
+
+`webcal://` is the same path for Apple Calendar. The token is `lms_accounts.calendar_token` on the mentor row. `lms_calendar_link` returns the URL to that mentor and their students only. The feed is session title, time, place, and meet link — not curriculum and not student names. One event can also open in Google Calendar via a template link, or download as a single `.ics` file.
+
+```bash
+bash scripts/apply-selfhost.sh supabase/migrations/20261029180000_lms_sessions.sql
+bash scripts/deploy-function-selfhost.sh lms-calendar-ics
+```
+
+`lms-calendar-ics` is listed in `NO_VERIFY_JWT_FUNCTIONS` (same reason as `cohort-calendar-ics`: calendar apps send no login header). Recreate the functions container after that env change so it is actually loaded.
+
+Mentors get a phone-sized **tampilan siswa** under the class photo (Kurikulum / Alat / Progres) plus an Edit kurikulum / Jadwal / Tampilan siswa toggle on the main column. Preview shows only published lessons — the same set a student would see — not the seller homepage.
 
 Caddy must rewrite `/lms/{slug}/` to `/lms/index.html` (except `/lms/card`). Without that rewrite, unknown paths fall through to the seller SPA at `/`.
 
