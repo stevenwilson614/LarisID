@@ -17608,10 +17608,10 @@ async function ddtpUserHasTracked() {
 }
 
 /* ── First Deep Dive: Steven founder video ────────────────────────────────
- *  Once per browser (anon and signed-in share the same localStorage flag).
- *  Opens 2s after the first Deep Dive that has not already seen it. Non-
- *  skippable until `ended`; remaining time is the YouTube-ad countdown.
- *  Marked seen on open so a refresh mid-play never replays. */
+ *  PARKED. The why-it's-free clip is off; openDeepDive does not call
+ *  scheduleStevenDdVideo(). Markup and these functions stay so the clip
+ *  can come back. When it does: once per browser, 2s after the first Deep
+ *  Dive, non-skippable until `ended`, marked seen on open. */
 const SDDV_KEY = 'lid_steven_dd_video_v1';
 const SDDV_DELAY = 2000;
 const SDDV_SRC = '/images/onboarding/steven-deepdive.mp4';
@@ -17749,29 +17749,41 @@ function sddvCancel() {
   }
 }
 
-/* ── After 5 Deep Dives: extension install video ──────────────────────────
- *  Desktop only (cwsExtOfferable). Once per browser, including admins.
- *  The five dives are counted in this page session only — a reload starts
- *  over, so the ad appears when someone hits five in one sitting. Pasang
- *  ekstensi and Lanjut stay locked until the clip fires `ended`. After
- *  unlock the clip loops so the demo keeps playing. Marked seen on open
- *  so a refresh mid-play never replays. */
-const EDDV_KEY = 'lid_ext_dd5_video_v1';
+/* ── Extension install video ───────────────────────────────────────────────
+ *  Desktop only (cwsExtOfferable), including admins. The laptop popup plays
+ *  once, about 2s after the first view, then again after the 5th Deep Dive
+ *  in this page session if Pasang ekstensi was not clicked. A reload
+ *  restarts the dive count. Pasang ekstensi and Lanjut stay locked until
+ *  the clip fires `ended`. After unlock the clip loops.
+ *
+ *  Opening the popup is not a click. Lanjut is not a click. Only Pasang
+ *  ekstensi sets the click flag, and that blocks both future showings.
+ *  The why-it's-free founder clip (sddv*) is parked and is not scheduled. */
+const EDDV_INTRO_KEY = 'lid_ext_intro_v1';
+const EDDV_CLICK_KEY = 'lid_ext_install_click_v1';
+const EDDV_DD5_KEY = 'lid_ext_dd5_v1';
 const EDDV_SRC = '/images/onboarding/ext-deepdive.mp4';
 const EDDV_DELAY = 2000;
 const EDDV_AFTER = 5;
 let _eddvSessionDives = 0;
 let _eddvTimer = null;
+let _eddvIntroTimer = null;
 let _eddvTick = null;
 let _eddvBound = false;
 let _eddvEnded = false;
+let _eddvVia = null;
+let _eddvPendingDd5 = false;
 
-function eddvIsSeen() {
-  try { return localStorage.getItem(EDDV_KEY) === '1'; } catch { return false; }
+function eddvFlag(key) {
+  try { return localStorage.getItem(key) === '1'; } catch { return false; }
 }
 
-function eddvMarkSeen() {
-  try { localStorage.setItem(EDDV_KEY, '1'); } catch (_) {}
+function eddvSetFlag(key) {
+  try { localStorage.setItem(key, '1'); } catch (_) {}
+}
+
+function eddvInstallClicked() {
+  return eddvFlag(EDDV_CLICK_KEY);
 }
 
 function eddvPrefetch() {
@@ -17782,31 +17794,80 @@ function eddvPrefetch() {
   try { v.load(); } catch (_) {}
 }
 
-function scheduleExtDdVideo() {
-  if (_eddvTimer) { clearTimeout(_eddvTimer); _eddvTimer = null; }
-  _eddvSessionDives += 1;
-  const n = _eddvSessionDives;
-  if ($('ext-dd-video')?.classList.contains('open')) return;
+/** Desktop intro. A modal that is already open does not consume the flag. */
+function scheduleExtIntroVideo() {
+  if (_eddvIntroTimer) { clearTimeout(_eddvIntroTimer); _eddvIntroTimer = null; }
   if (!cwsExtOfferable()) return;
-  if (eddvIsSeen()) return;
-  if (n < EDDV_AFTER) return;
+  if (eddvInstallClicked() || eddvFlag(EDDV_INTRO_KEY)) return;
+  if ($('ext-dd-video')?.classList.contains('open')) return;
   eddvPrefetch();
-  _eddvTimer = setTimeout(() => {
-    _eddvTimer = null;
-    eddvFire();
+  _eddvIntroTimer = setTimeout(() => {
+    _eddvIntroTimer = null;
+    void eddvTryIntro();
   }, EDDV_DELAY);
 }
 
-function eddvFire() {
-  if (eddvIsSeen()) return;
+async function eddvTryIntro() {
   if (!cwsExtOfferable()) return;
-  if (state.view !== 'deepdive') return;
+  if (eddvInstallClicked() || eddvFlag(EDDV_INTRO_KEY)) return;
+  if ($('ext-dd-video')?.classList.contains('open')) return;
   if (document.querySelector('.modal-overlay.open')) return;
+  try {
+    if (await probeCwsExtInstalled()) return;
+  } catch (_) {}
+  if (document.querySelector('.modal-overlay.open')) return;
+  if ($('ext-dd-video')?.classList.contains('open')) return;
+  eddvFire('intro');
+}
+
+function scheduleExtDdVideo() {
+  if (_eddvTimer) { clearTimeout(_eddvTimer); _eddvTimer = null; }
+  _eddvSessionDives += 1;
+  if (!cwsExtOfferable()) return;
+  if (eddvInstallClicked() || eddvFlag(EDDV_DD5_KEY)) return;
+  if (_eddvSessionDives < EDDV_AFTER) return;
+  if ($('ext-dd-video')?.classList.contains('open')) {
+    _eddvPendingDd5 = true;
+    return;
+  }
+  eddvQueueDd5();
+}
+
+function eddvQueueDd5() {
+  if (_eddvTimer) { clearTimeout(_eddvTimer); _eddvTimer = null; }
+  _eddvPendingDd5 = false;
+  eddvPrefetch();
+  _eddvTimer = setTimeout(() => {
+    _eddvTimer = null;
+    eddvFire('dd5');
+  }, EDDV_DELAY);
+}
+
+function eddvFire(via) {
+  if (!cwsExtOfferable()) return;
+  if (eddvInstallClicked()) return;
+  if (via === 'intro' && eddvFlag(EDDV_INTRO_KEY)) return;
+  if (via === 'dd5') {
+    if (eddvFlag(EDDV_DD5_KEY)) return;
+    if (state.view !== 'deepdive') {
+      _eddvPendingDd5 = true;
+      return;
+    }
+  }
+  if (document.querySelector('.modal-overlay.open')) {
+    if (via === 'dd5') _eddvPendingDd5 = true;
+    return;
+  }
   const overlay = $('ext-dd-video');
   const video = $('eddv-video');
   if (!overlay || !video) return;
   eddvPrefetch();
-  eddvMarkSeen();
+  if (via === 'intro') eddvSetFlag(EDDV_INTRO_KEY);
+  if (via === 'dd5') {
+    eddvSetFlag(EDDV_DD5_KEY);
+    _eddvPendingDd5 = false;
+  }
+  _eddvVia = via;
   eddvBind(video);
   _eddvEnded = false;
   overlay.classList.add('open');
@@ -17815,8 +17876,8 @@ function eddvFire() {
   document.body.classList.add('eddv-open');
   eddvUpdateTimer(video);
   eddvTryPlay(video);
-  void logUserEvent('ext_dd5_video', { ui: 'gpt', action: 'show' });
-  clarityEvt('ext_dd5_video', { action: 'show' });
+  void logUserEvent('ext_dd5_video', { ui: 'gpt', action: 'show', via });
+  clarityEvt('ext_dd5_video', { action: 'show', via });
 }
 
 function eddvPlay(video) {
@@ -17900,8 +17961,9 @@ function eddvBind(video) {
     eddvStopCountdown();
     video.loop = true;
     eddvPlay(video);
-    void logUserEvent('ext_dd5_video', { ui: 'gpt', action: 'complete' });
-    clarityEvt('ext_dd5_video', { action: 'complete' });
+    const via = _eddvVia || 'dd5';
+    void logUserEvent('ext_dd5_video', { ui: 'gpt', action: 'complete', via });
+    clarityEvt('ext_dd5_video', { action: 'complete', via });
   });
 }
 
@@ -17911,6 +17973,8 @@ function eddvClose(reason) {
   if (_eddvTimer) { clearTimeout(_eddvTimer); _eddvTimer = null; }
   const overlay = $('ext-dd-video');
   if (!overlay || !overlay.classList.contains('open')) return;
+  const via = _eddvVia || 'dd5';
+  if (reason === 'install') eddvSetFlag(EDDV_CLICK_KEY);
   overlay.classList.remove('open', 'eddv-done');
   document.body.classList.remove('eddv-open');
   const video = $('eddv-video');
@@ -17918,8 +17982,13 @@ function eddvClose(reason) {
     try { video.pause(); } catch (_) {}
     video.loop = false;
   }
-  void logUserEvent('ext_dd5_video', { ui: 'gpt', action: reason || 'close' });
-  clarityEvt('ext_dd5_video', { action: reason || 'close' });
+  void logUserEvent('ext_dd5_video', { ui: 'gpt', action: reason || 'close', via });
+  clarityEvt('ext_dd5_video', { action: reason || 'close', via });
+  if (reason !== 'install' && _eddvPendingDd5 && !eddvInstallClicked() && !eddvFlag(EDDV_DD5_KEY)) {
+    eddvQueueDd5();
+  } else {
+    _eddvPendingDd5 = false;
+  }
 }
 
 /** One-click product favorite. Toggle off removes. May set notify prefs
@@ -20450,7 +20519,8 @@ async function openDeepDive(product, ddOpts = {}) {
   saveLocalState();
   if (!isExporListing(product)) {
     if (isFirstDeepDive) schedulePantauNavPulse(product);
-    scheduleStevenDdVideo();
+    // Why-it's-free founder clip stays parked. Desktop intro is
+    // scheduleExtIntroVideo(); this call is only the post-5 replay.
     scheduleExtDdVideo();
   }
   rememberProducts([product]);
@@ -29362,6 +29432,7 @@ async function boot() {
       { preview }
     );
   }
+  scheduleExtIntroVideo();
 }
 
 

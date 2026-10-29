@@ -4911,8 +4911,9 @@ body.ddtp-open #btn-tracker svg .ic-f { fill: var(--accent); stroke: none; }
 .sddv-done .sddv-cta { display: block; }
 .sddv-done .sddv-timer { display: none; }
 
-/* ── After 5 Deep Dives: extension video (#ext-dd-video) ──────────────────
-   Desktop only, once per browser. Clip plays inside a laptop screen.
+/* ── Extension video (#ext-dd-video) ──────────────────────────────────────
+   Desktop only. Once shortly after load, then again after 5 Deep Dives
+   if Pasang ekstensi was not clicked. Clip plays inside a laptop screen.
    Pasang ekstensi + Lanjut stay locked until the 14s clip ends. */
 .modal-overlay.eddv-overlay {
   background: rgba(10, 10, 10, .78);
@@ -6751,12 +6752,13 @@ body.home-finder-done .home-hero {
 .hl-stats-src a { color: var(--muted); text-decoration: underline; text-underline-offset: 2px; }
 .hl-stats-src a:hover { color: var(--ink); }
 
-/* ── Founder band: video + socials, sits under .hl-stats ──────────────────
-   The square is a poster <img>, never a <video>: the 6 MB clip is only
-   fetched when the lightbox (#hl-founder-video) opens. */
+/* ── Founder band: quote + socials, sits under .hl-stats ──────────────────
+   The why-it's-free play square (.hlfv-stage) is parked with that clip.
+   It stays in the markup; display:none keeps it out of the grid. The
+   extension video is the laptop popup, not this frame. */
 .hl-founder {
   display: grid;
-  grid-template-columns: minmax(0, 258px) minmax(0, 1fr) minmax(0, 396px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 396px);
   gap: clamp(18px, 2.4vw, 30px);
   align-items: center;
   background: #FBF6EA;
@@ -6766,7 +6768,7 @@ body.home-finder-done .home-hero {
 }
 
 .hlfv-stage {
-  position: relative; display: block; width: 100%;
+  position: relative; display: none; width: 100%;
   aspect-ratio: 1 / 1;
   margin: 0; padding: 0; border: 0;
   border-radius: 16px; overflow: hidden;
@@ -7089,11 +7091,10 @@ body.home-finder-done .home-hero {
 .hl-cta-band-text p { font-size: .8rem; color: rgba(255,255,255,.6); margin: 8px 0 0; }
 .hl-cta-band .hl-btn-primary { flex-shrink: 0; }
 
-/* Three columns only pay off once the panel can give the copy ~45 characters,
-   which needs roughly a 1400px viewport next to the 288px sidebar. Below that,
-   drop the socials onto their own full-width row instead of crushing the copy. */
+/* Quote and socials sit side by side once the panel is wide enough. Below
+   that, drop the socials onto their own full-width row. */
 @media (max-width: 1399px) {
-  .hl-founder { grid-template-columns: minmax(0, 240px) minmax(0, 1fr); }
+  .hl-founder { grid-template-columns: minmax(0, 1fr); }
   .hl-founder-socials { grid-column: 1 / -1; }
 }
 @media (max-width: 860px) {
@@ -10671,9 +10672,9 @@ body.view-chat .sfb-card {
                 <p class="hl-stats-src">Angka nyata dari database kami, diperbarui mingguan —
                   <a href="/data/">lihat cakupan datanya</a>.</p>
 
-                <!-- Founder band. The square is the video poster centre-cropped to 1:1;
-                     clicking it opens #hl-founder-video with the full 9:16 clip. Social
-                     grids are self-hosted thumbnails (images/social/) — Instagram and
+                <!-- Founder band. The play square (.hlfv-stage) is parked with the
+                     why-it's-free clip and hidden in CSS. Social grids are
+                     self-hosted thumbnails (images/social/) — Instagram and
                      TikTok CDN URLs are signed and expire, so they cannot be hotlinked.
                      Counts were read from the live profiles on 26 Aug 2026; they are
                      static and need a hand edit to refresh. -->
@@ -12594,8 +12595,9 @@ body.view-chat .sfb-card {
 <!-- Deep Dive → Pantauan promo retired 2026-09-05: end-of-dive #ddr-alert
      card replaced the mid-dive modal. -->
 
-<!-- First Deep Dive: founder video. Once per browser, 2s after openDeepDive.
-     Countdown + Lanjut live in the markup; js/gpt-app.js (sddv*) drives play. -->
+<!-- First Deep Dive founder video. PARKED with the why-it's-free clip —
+     openDeepDive does not schedule it. Markup stays so the clip can return.
+     Countdown + Lanjut live here; js/gpt-app.js (sddv*) would drive play. -->
 <div class="modal-overlay sddv-overlay" id="steven-dd-video">
   <div class="modal sddv-modal" role="dialog" aria-modal="true" aria-labelledby="sddv-title">
     <div class="sddv-head">
@@ -12623,8 +12625,9 @@ body.view-chat .sfb-card {
   </div>
 </div>
 
-<!-- After 5 Deep Dives: extension video. Desktop only, once per browser.
-     Buttons unlock when the 14s clip ends; js/gpt-app.js (eddv*) drives play. -->
+<!-- Extension video. Desktop: once shortly after load, then again after the
+     5th Deep Dive if Pasang ekstensi was not clicked. Buttons unlock when the
+     14s clip ends; js/gpt-app.js (eddv*) drives play. -->
 <div class="modal-overlay eddv-overlay" id="ext-dd-video">
   <div class="modal eddv-modal" role="dialog" aria-modal="true" aria-labelledby="eddv-title">
     <div class="eddv-head">
