@@ -4213,7 +4213,7 @@
       return '<svg class="rj-ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
     }
     if (name === 'check') {
-      return '<svg class="rj-check" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.4 6.2 4.8 8.6 9.6 3.4" fill="none" stroke="#052e16" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      return '<svg class="rj-check" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.4 6.2 4.8 8.6 9.6 3.4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     }
     if (name === 'target') {
       return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>';
@@ -4305,15 +4305,12 @@
     const p = state.p;
     if (!state.list.length) return '';
     const remain = Math.max(0, p.total - p.n);
-    const here = Math.round(state.fill * 100);
+    const summary = remain
+      ? (p.n + ' dari ' + p.total + ' selesai · ' + remain + ' lagi')
+      : (p.n + ' dari ' + p.total + ' selesai');
     return '<div class="rj-board" data-progress-path data-sid="' + esc(sid) + '" role="group" aria-label="Progress kurikulum, ' + p.n + ' dari ' + p.total + ' selesai">' +
-      '<div class="rj-board-head"><span>Progress kamu</span><span class="rj-pct">' + p.pct + '% selesai</span></div>' +
       pathRailHtml(sid, state) +
-      '<div class="path-foot" style="--here:' + here + '">' +
-        '<div class="path-here"><strong>' + p.n + ' / ' + p.total + ' materi selesai</strong>' +
-        '<span>Kamu sedang di sini</span></div>' +
-        '<p class="path-remain">' + (remain ? (remain + ' materi lagi sampai selesai') : 'Semua materi selesai') + '</p>' +
-      '</div>' +
+      '<p class="rj-summary"><span class="rj-pct">' + p.pct + '%</span> · ' + esc(summary) + '</p>' +
       resumeMileHtml(sid, p) +
       '</div>';
   }
@@ -4324,33 +4321,38 @@
       const c = crmOf(sid);
       const goTes = !c.examScore;
       return '<button type="button" class="rj-mile" data-act="' + (goTes ? 'tab' : 'lihat-kur') + '" data-id="' + (goTes ? 'tes' : '') + '">' +
-        '<span class="rj-mile-ico" aria-hidden="true">' + svgIcon('target') + '</span>' +
-        '<span class="rj-mile-copy"><em>Kurikulum selesai</em>' +
-        '<strong>' + (goTes ? 'Ambil tes akhir untuk sertifikat' : 'Semua materi sudah ditandai selesai') + '</strong></span>' +
+        '<span class="rj-mile-copy"><em>Selesai</em>' +
+        '<strong>' + (goTes ? 'Ambil tes akhir' : 'Semua materi selesai') + '</strong></span>' +
         '<span class="rj-mile-go" aria-hidden="true">›</span></button>';
     }
     return '<button type="button" class="rj-mile" data-act="lihat-kur">' +
-      '<span class="rj-mile-ico" aria-hidden="true">' + svgIcon('target') + '</span>' +
-      '<span class="rj-mile-copy"><em>Milestone berikutnya</em>' +
-      '<strong>Selesaikan ' + mile.need + ' materi lagi untuk mencapai ' + mile.pct + '%</strong></span>' +
+      '<span class="rj-mile-copy"><em>Berikutnya</em>' +
+      '<strong>' + mile.need + ' materi lagi → ' + mile.pct + '%</strong></span>' +
       '<span class="rj-mile-go" aria-hidden="true">›</span></button>';
+  }
+  function homeSocialStripHtml() {
+    const icons = schoolSocialIconsHtml(schoolProfile());
+    if (!icons) return '';
+    return '<div class="home-socials" aria-label="Sosial mentor">' + icons + '</div>';
   }
   function resumeJourneyHtml(sid, last, preview) {
     const p = kurProgress(sid);
     return '<section class="card resume-journey">' +
       '<div class="rj-hero">' +
-        '<p class="rj-kicker">' + (preview ? 'Coba video 1' : 'Lanjutkan belajar') + '</p>' +
+        '<p class="rj-kicker">' + (preview ? 'Coba dulu' : 'Lanjutkan') + '</p>' +
         '<h2>' + esc(last.title) + '</h2>' +
-        '<p class="rj-meta">' + esc(typeLabel(last.type)) + ' · ' + p.n + '/' + p.total + ' video' +
+        '<p class="rj-meta">' + esc(typeLabel(last.type)) +
         (preview ? ' · video lain terkunci sampai lunas' : '') + '</p>' +
       '</div>' +
       resumePathHtml(sid, last.id) +
       '<div class="rj-acts">' +
-        '<button type="button" class="btn" data-act="open-lec" data-id="' + esc(last.id) + '">' +
-          svgIcon('play') + ' Buka materi</button>' +
+        '<button type="button" class="btn rj-primary" data-act="open-lec" data-id="' + esc(last.id) + '">' +
+          svgIcon('play') + ' ' + (preview ? 'Tonton video' : 'Lanjutkan') + '</button>' +
         '<button type="button" class="btn secondary" data-act="lihat-kur">' +
-          svgIcon('book') + ' Lihat kurikulum</button>' +
-      '</div></section>';
+          'Semua materi</button>' +
+      '</div>' +
+      homeSocialStripHtml() +
+      '</section>';
   }
   function currentWeekId(sid) {
     for (let i = 0; i < db.weeks.length; i += 1) {
@@ -9327,40 +9329,41 @@
     const banner = preview ? offerBanner(s.id) : '';
     const resume = last ? resumeJourneyHtml(s.id, last, preview) : '';
     const nextCard = ses
-      ? ('<section class="card">' +
-          '<h2>Sesi berikutnya</h2>' +
+      ? ('<section class="card home-session">' +
+          '<p class="rj-kicker">Sesi berikutnya</p>' +
+          '<h2>' + esc(ses.title) + '</h2>' +
           (preview
-            ? '<p class="muted">Live class terkunci sampai mentoring lunas. Jadwal tetap kelihatan.</p>'
+            ? '<p class="muted">Live class terkunci sampai mentoring lunas.</p>'
             : '') +
-          '<p><strong>' + esc(ses.title) + '</strong></p>' +
-          '<p class="muted">' + fmtWhen(ses.startsAt) + ' · ' + esc(ses.location) + '</p>' +
-          '<p class="muted">' + esc(ses.notes || '') + '</p>' +
-          '<div class="row" style="margin-top:10px">' +
+          '<p class="home-session-when">' + fmtWhen(ses.startsAt) +
+            (ses.location ? (' · ' + esc(ses.location)) : '') + '</p>' +
+          (ses.notes ? '<p class="muted">' + esc(ses.notes) + '</p>' : '') +
+          '<div class="home-session-acts">' +
             (preview
-              ? '<button class="btn" data-act="tab" data-id="daftar">Buka dengan mentoring</button>'
+              ? '<button class="btn rj-primary" data-act="tab" data-id="daftar">Buka mentoring</button>'
               : (ses.meetUrl
-                ? '<a class="btn" href="' + esc(ses.meetUrl) + '" target="_blank" rel="noopener">Buka Meet</a>'
+                ? '<a class="btn rj-primary" href="' + esc(ses.meetUrl) + '" target="_blank" rel="noopener">Gabung Meet</a>'
                 : '')) +
             (waFabEnabled()
-              ? '<a class="wa" href="' + esc(waLink(ownerWa(), 'Halo ' + ownerFirstName() +
+              ? '<a class="btn secondary" href="' + esc(waLink(ownerWa(), 'Halo ' + ownerFirstName() +
                 ', saya dari ' + ((db && db.businessName) || 'kelas') + '.')) +
-                '">Chat ' + esc(ownerFirstName()) + ' di WA</a>'
+                '">Chat ' + esc(ownerFirstName()) + '</a>'
               : '') +
           '</div>' +
-          calSyncButtons(ses) +
-          (!preview
-            ? '<div class="row" style="margin-top:8px">' +
-                '<button type="button" class="btn-sm" data-act="cal-ics-all">Unduh semua sesi (.ics)</button>' +
-              '</div>'
-            : '') +
+          calSyncButtons(ses, true) +
         '</section>')
+      : '';
+    const socialOnly = (!resume && homeSocialStripHtml())
+      ? ('<section class="card home-social-card">' + homeSocialStripHtml() + '</section>')
       : '';
     return (
       banner +
-      (resume || nextCard
-        ? ('<div class="grid-2">' + resume + nextCard + '</div>')
-        : '') +
-      '<div class="home-jadwal" style="margin-top:14px">' + viewJadwal(false) + '</div>'
+      '<div class="home-stack">' +
+        (resume || nextCard
+          ? ('<div class="grid-2">' + resume + nextCard + '</div>')
+          : socialOnly) +
+        '<div class="home-jadwal">' + viewJadwal(false) + '</div>' +
+      '</div>'
     );
   }
 
