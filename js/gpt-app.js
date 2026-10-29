@@ -17751,8 +17751,8 @@ function sddvCancel() {
 
 /* ── Extension install video ───────────────────────────────────────────────
  *  Desktop only (cwsExtOfferable), including admins. The laptop popup plays
- *  once, about 2s after the first view, then again after the 5th Deep Dive
- *  in this page session if Pasang ekstensi was not clicked. A reload
+ *  once, about 2s after the first Deep Dive, then again after the 5th Deep
+ *  Dive in this page session if Pasang ekstensi was not clicked. A reload
  *  restarts the dive count. Pasang ekstensi and Lanjut stay locked until
  *  the clip fires `ended`. After unlock the clip loops.
  *
@@ -17794,7 +17794,7 @@ function eddvPrefetch() {
   try { v.load(); } catch (_) {}
 }
 
-/** Desktop intro. A modal that is already open does not consume the flag. */
+/** Desktop intro on first Deep Dive. Flag is set only when the popup opens. */
 function scheduleExtIntroVideo() {
   if (_eddvIntroTimer) { clearTimeout(_eddvIntroTimer); _eddvIntroTimer = null; }
   if (!cwsExtOfferable()) return;
@@ -17810,11 +17810,13 @@ function scheduleExtIntroVideo() {
 async function eddvTryIntro() {
   if (!cwsExtOfferable()) return;
   if (eddvInstallClicked() || eddvFlag(EDDV_INTRO_KEY)) return;
+  if (state.view !== 'deepdive') return;
   if ($('ext-dd-video')?.classList.contains('open')) return;
   if (document.querySelector('.modal-overlay.open')) return;
   try {
     if (await probeCwsExtInstalled()) return;
   } catch (_) {}
+  if (state.view !== 'deepdive') return;
   if (document.querySelector('.modal-overlay.open')) return;
   if ($('ext-dd-video')?.classList.contains('open')) return;
   eddvFire('intro');
@@ -17846,7 +17848,10 @@ function eddvQueueDd5() {
 function eddvFire(via) {
   if (!cwsExtOfferable()) return;
   if (eddvInstallClicked()) return;
-  if (via === 'intro' && eddvFlag(EDDV_INTRO_KEY)) return;
+  if (via === 'intro') {
+    if (eddvFlag(EDDV_INTRO_KEY)) return;
+    if (state.view !== 'deepdive') return;
+  }
   if (via === 'dd5') {
     if (eddvFlag(EDDV_DD5_KEY)) return;
     if (state.view !== 'deepdive') {
@@ -20519,8 +20524,9 @@ async function openDeepDive(product, ddOpts = {}) {
   saveLocalState();
   if (!isExporListing(product)) {
     if (isFirstDeepDive) schedulePantauNavPulse(product);
-    // Why-it's-free founder clip stays parked. Desktop intro is
-    // scheduleExtIntroVideo(); this call is only the post-5 replay.
+    // Why-it's-free founder clip stays parked. Intro once on first dive;
+    // scheduleExtDdVideo is the post-5 replay in this page session.
+    scheduleExtIntroVideo();
     scheduleExtDdVideo();
   }
   rememberProducts([product]);
@@ -29432,7 +29438,6 @@ async function boot() {
       { preview }
     );
   }
-  scheduleExtIntroVideo();
 }
 
 
