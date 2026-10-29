@@ -1443,6 +1443,12 @@
           '<div class="ps-card-id-main">' +
             (org ? '<p class="ps-card-org">' + esc(org) + '</p>' : '') +
             (name ? '<h1 class="ps-card-name">' + esc(name) + '</h1>' : '') +
+            (editable
+              ? (() => {
+                  const mail = String((accountSettings().email || ownerEmail() || '')).trim();
+                  return mail ? '<p class="muted ps-card-email">' + esc(mail) + '</p>' : '';
+                })()
+              : '') +
             headlineHtml +
           '</div>' +
           (editable ? '<button type="button" class="btn ps-edit" data-act="profile-edit">Edit</button>' : '') +
@@ -2680,6 +2686,7 @@
     return apiBase() + '/state/' + slug + '?k=' + k;
   }
   function schedulePush() {
+    if (isSiswaReadonly()) return;
     if (!syncEnabled() || !syncReady) return;
     clearTimeout(syncTimer);
     syncTimer = setTimeout(pushState, 800);
@@ -2687,6 +2694,7 @@
   // Two browsers can save at once. The older rev gets 409 and reloads the server
   // copy, so the losing edit disappears. Known limitation; sync is last-write-wins.
   async function pushState(force, opts) {
+    if (isSiswaReadonly()) return false;
     if (!syncEnabled()) return false;
     if (syncInFlight && !force) return false;
     const payload = {
@@ -2998,6 +3006,7 @@
     return billingOf(id).status === 'pending';
   }
   function canMentoring(id) {
+    if (isSiswaReadonly() && id && id === ui.personaId) return true;
     if (schoolIsFree() && db.applications[id]) return true;
     const b = billingOf(id);
     if (b.status === 'gratis') return true;
@@ -3103,6 +3112,7 @@
     return !!(app && app.at);
   }
   function needsWizard(id) {
+    if (isSiswaReadonly() || (ui.present && ui.presentPane === 'student')) return false;
     if (!id) return true;
     if (applicationDone(id)) return false;
     /* A real login is not the form. The wizard stays until that form is saved. */
@@ -3113,7 +3123,7 @@
     return c.stage === 'wa_baru' || c.stage === 'form';
   }
   function needsAuthGate() {
-    if (isStaff() || ui.present || ui.admin || ui.coach) return false;
+    if (isSiswaReadonly() || isStaff() || ui.present || ui.admin || ui.coach) return false;
     if (!syncEnabled()) return false;
     return !ui.studentAuthed;
   }
@@ -5076,8 +5086,8 @@
   }
   function lmsHeaders(extra) {
     const headers = Object.assign({ 'content-type': 'application/json' }, extra || {});
-    if (!ui.admin && !ui.staffId) headers['x-lms-view'] = 'student';
-    else {
+    if (isSiswaReadonly() || (!ui.admin && !ui.staffId)) headers['x-lms-view'] = 'student';
+    if (!isSiswaReadonly() && (ui.admin || ui.staffId)) {
       const auth = lmsAuth();
       if (auth && auth.access_token) headers.authorization = 'Bearer ' + auth.access_token;
     }
@@ -5849,6 +5859,7 @@
   const MAX_VID_CLASS = 5 * 1024 * 1024 * 1024;
   const MAX_IMG = 5 * 1024 * 1024;
   const MAX_FILE = 20 * 1024 * 1024;
+  const MAX_KUR_FILE = 200 * 1024 * 1024;
 
   function moveLecInSection(id, dir) {
     const l = lectureById(id);
@@ -5958,7 +5969,8 @@
   }
   function uploadClassVideo(file, lecId, onProgress, kind) {
     const partSize = 8 * 1024 * 1024;
-    const mediaKind = kind === 'image' || kind === 'file' ? kind : 'video';
+    const kurikulum = kind === 'kurfile';
+    const mediaKind = kind === 'image' ? 'image' : (kind === 'file' || kind === 'kurfile' ? 'file' : 'video');
     const job = (mediaKind === 'video' && ui.vidUploads && ui.vidUploads[lecId])
       ? ui.vidUploads[lecId]
       : null;
@@ -5977,7 +5989,8 @@
         size: file.size,
         lecId: lecId,
         slug: schoolSlug(),
-        kind: mediaKind
+        kind: mediaKind,
+        kurikulum: kurikulum
       }),
       signal: signal
     }).then((res) => {
@@ -6360,8 +6373,8 @@
   }
   function ingestResourceFile(file, lecId) {
     if (!file) return;
-    if (file.size > MAX_FILE) {
-      toast('File maks 20 MB.');
+    if (file.size > MAX_KUR_FILE) {
+      toast('File maks 200 MB.');
       return;
     }
     const l = lectureById(lecId);
@@ -6370,7 +6383,7 @@
     const blobId = fileKey(lecId, Date.now());
     if (syncEnabled()) {
       toast('Mengunggah file…');
-      uploadClassVideo(file, blobId, null, 'file').then((info) => {
+      uploadClassVideo(file, blobId, null, 'kurfile').then((info) => {
         l.resources.push({ name: file.name, url: mediaFileUrl(info.key), blob: false, fileKey: info.key });
         save();
         toast('File tersimpan di kelas.');
@@ -7506,6 +7519,7 @@
     $('app').classList.toggle('is-onboard', isOnboardScreen() || needsAuthGate());
     $('app').classList.toggle('is-belajar', !isStaff() && ui.tab === 'belajar');
     $('app').classList.toggle('is-diskusi', isStaff() ? ui.mentorTab === 'diskusi' : ui.tab === 'diskusi');
+    $('app').classList.toggle('is-otomasi', isStaff() && ui.mentorTab === 'otomasi');
     const chromeOrg = (db && db.businessName) || (antonSchoolData() ? SEED.school.name : 'Kelas');
     $('school-name').textContent = chromeOrg;
     if (chromeOrg) document.title = chromeOrg;
@@ -11617,33 +11631,32 @@
       '</div>';
     return html;
   }
-  function viewOtomasiList() {
+  function viewOtomasiRail() {
     const d = db.dunning;
     const plans = db.actionPlans || [];
     const showArchived = !!ui.showArchivedPlans;
     const visible = plans.filter((p) => showArchived || !p.archived);
-    const cards = visible.length
-      ? '<div class="oto-list">' + visible.map((p) => {
-          const n = (p.steps || []).length;
-          const kinds = Array.from(new Set((p.steps || []).map((s) => stepKindLabel(s.kind)))).slice(0, 3).join(' · ');
-          return '<button type="button" class="oto-plan-card" data-act="plan-edit" data-id="' + esc(p.id) + '">' +
-            '<strong>' + esc(p.name) + (p.archived ? ' · arsip' : '') + '</strong>' +
-            '<span class="muted">Hook: ' + esc(triggerLabel(p.trigger)) + '</span>' +
-            '<span class="muted">' + n + ' langkah' + (kinds ? ' · ' + esc(kinds) : '') + '</span>' +
-          '</button>';
-        }).join('') + '</div>'
-      : '<div class="oto-empty"><p class="muted">Belum ada otomasi. Buat yang pertama: hook → jeda → aksi.</p></div>';
-    return '<div class="oto-page">' +
-      '<header class="oto-head">' +
-        '<div><h2>Otomasi</h2>' +
-          '<p class="muted">Alur otomatis setelah siswa bayar, isi form, atau event lain.</p></div>' +
-        '<div class="row">' +
-          '<button type="button" class="btn-sm" data-act="plan-show-arch">' +
-            (showArchived ? 'Sembunyikan arsip' : 'Lihat arsip') + '</button>' +
-          '<button type="button" class="btn oto-primary" data-act="plan-new">+ Buat otomasi</button>' +
-        '</div>' +
-      '</header>' +
-      cards +
+    const rows = visible.map((p) => {
+      const n = (p.steps || []).length;
+      const on = p.id === ui.editPlanId;
+      const kinds = Array.from(new Set((p.steps || []).map((s) => stepKindLabel(s.kind)))).slice(0, 2).join(' · ');
+      return '<button type="button" class="oto-row' + (on ? ' is-on' : '') +
+        '" data-act="plan-edit" data-id="' + esc(p.id) + '" aria-selected="' + on + '">' +
+        '<span class="oto-row-copy"><strong>' + esc(p.name || 'Tanpa nama') +
+          (p.archived ? ' · arsip' : '') + '</strong>' +
+          '<em>' + esc(triggerLabel(p.trigger)) + ' · ' + n + ' langkah' +
+            (kinds ? ' · ' + esc(kinds) : '') + '</em></span>' +
+      '</button>';
+    }).join('');
+    return '<aside class="oto-rail">' +
+      '<div class="oto-rail-h"><strong>Otomasi</strong>' +
+        '<button type="button" class="btn oto-primary" data-act="plan-new">+ Buat otomasi</button></div>' +
+      '<div class="oto-rail-tools">' +
+        '<button type="button" class="btn-sm" data-act="plan-show-arch">' +
+          (showArchived ? 'Sembunyikan arsip' : 'Lihat arsip') + '</button></div>' +
+      '<div class="oto-rail-scroll">' +
+        (rows || '<p class="muted oto-rail-empty">Belum ada otomasi. Buat yang pertama.</p>') +
+      '</div>' +
       '<details class="oto-dunning">' +
         '<summary>Pengaturan perpanjangan</summary>' +
         '<form class="compose" data-act="save-dunning">' +
@@ -11654,17 +11667,22 @@
           '<button class="btn" type="submit">Simpan</button>' +
         '</form>' +
       '</details>' +
-    '</div>';
+    '</aside>';
   }
-  function viewOtomasiEdit() {
-    const open = planById(ui.editPlanId);
+  function viewOtomasiPane() {
+    const open = ui.editPlanId ? planById(ui.editPlanId) : null;
     if (!open) {
-      ui.otoEdit = false;
-      return viewOtomasiList();
+      return '<section class="oto-pane"><div class="oto-pane-empty">' +
+        '<h2>Otomasi</h2>' +
+        '<p class="muted">Pilih otomasi di samping, atau buat yang baru: hook → jeda → aksi.</p>' +
+      '</div></section>';
     }
-    return '<div class="oto-page oto-builder">' +
-      '<header class="oto-head">' +
-        '<button type="button" class="btn secondary" data-act="plan-back">← Kembali</button>' +
+    if (waApiEnabled() && !ui.waLive) refreshWaStatus().then(() => {
+      if (ui.mentorTab === 'otomasi' && ui.editPlanId === open.id) render();
+    });
+    return '<section class="oto-pane">' +
+      '<header class="oto-pane-h">' +
+        '<h2>' + (open.name && open.name !== 'Rencana baru' ? esc(open.name) : 'Buat Otomasi') + '</h2>' +
         '<div class="row">' +
           '<button type="button" class="btn-sm" data-act="plan-dup" data-id="' + esc(open.id) + '">Salin</button>' +
           (open.archived
@@ -11672,20 +11690,17 @@
             : '<button type="button" class="btn-sm" data-act="plan-arch" data-id="' + esc(open.id) + '">Arsip</button>') +
         '</div>' +
       '</header>' +
-      '<div class="oto-builder-card">' +
-        '<h2>' + (open.name && open.name !== 'Rencana baru' ? esc(open.name) : 'Buat Otomasi') + '</h2>' +
-        '<p class="oto-sub">Pemicu dulu, lalu tambah jeda atau aksi dengan tombol +.</p>' +
-        autoMapHtml(open) +
-      '</div></div>';
+      '<div class="oto-pane-scroll">' +
+        '<div class="oto-builder-card">' +
+          '<p class="oto-sub">Pemicu dulu, lalu tambah jeda atau aksi dengan tombol +.</p>' +
+          autoMapHtml(open) +
+        '</div>' +
+      '</div></section>';
   }
   function viewOtomasi() {
-    if (ui.otoEdit && ui.editPlanId && planById(ui.editPlanId)) {
-      if (waApiEnabled() && !ui.waLive) refreshWaStatus().then(() => {
-        if (ui.mentorTab === 'otomasi' && ui.otoEdit) render();
-      });
-      return viewOtomasiEdit();
-    }
-    return viewOtomasiList();
+    const open = ui.editPlanId ? planById(ui.editPlanId) : null;
+    if (!open || (open.archived && !ui.showArchivedPlans)) ui.editPlanId = null;
+    return '<div class="oto-shell">' + viewOtomasiRail() + viewOtomasiPane() + '</div>';
   }
   function viewJaringan() {
     const ownerId = schoolOwnerId();
@@ -15784,6 +15799,7 @@
       const p = planById(btn.getAttribute('data-id'));
       if (p) {
         p.archived = true;
+        if (!ui.showArchivedPlans && ui.editPlanId === p.id) ui.editPlanId = null;
         ui.otoEdit = false;
         save();
         render();
@@ -17489,12 +17505,22 @@
       const presentStudent = PRESENT && PRESENT_PANE === 'student';
       const coachRoot = onCoachRootPath();
       let admin = false;
+      /* Siswa view is a read-only student phone, even when the mentor's login is in this browser. */
+      if (presentStudent) {
+        ui.admin = false;
+        ui.coach = false;
+        ui.staffId = '';
+        ui.role = 'student';
+        ui.visitorLive = true;
+        ui.studentAuthed = true;
+        if (ui.tab === 'daftar' || ui.tab === 'masuk') ui.tab = 'home';
+      }
       /* Owners may open mentor chrome on /s/{their-slug}/ (Contabo door lands here). */
-      if (vanity || coachRoot || onMentorPath()) admin = await claimCoach();
-      if (!admin && !vanity) admin = await claimAdmin();
-      if (!admin && !vanity) await claimStaff();
+      if (!presentStudent && (vanity || coachRoot || onMentorPath())) admin = await claimCoach();
+      if (!presentStudent && !admin && !vanity) admin = await claimAdmin();
+      if (!presentStudent && !admin && !vanity) await claimStaff();
       const forceStudent = presentStudent || (vanity && !admin);
-      if (!admin) await bootSession();
+      if (!presentStudent && !admin) await bootSession();
       await bootSync();
       if (!ui.admin && !ui.staffId && !ui.sessionStudentId) {
         if (syncEnabled() && !ui.present) {

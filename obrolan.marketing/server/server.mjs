@@ -38,6 +38,7 @@ const MAX_PART = 8 * 1024 * 1024;
 const MAX_VIDEO = 5 * 1024 * 1024 * 1024;
 const MAX_IMAGE = 5 * 1024 * 1024;
 const MAX_FILE = 20 * 1024 * 1024;
+const MAX_KUR_FILE = 200 * 1024 * 1024;
 const MAX_EVENT_BYTES = 16 * 1024;
 
 const stateDir = path.join(DATA, 'state');
@@ -272,9 +273,53 @@ function emptySchool(slug, user, body, photoUrl) {
       announcements: [],
       chats: {},
       attendance: {},
-      directory: []
+      directory: [],
+      accountSettings: {
+        email: ownerAuthEmail(user),
+        twoFactor: false,
+        passwordSet: false,
+        notifications: { studentJoin: true, studentPay: true, lessonComplete: false, comment: true }
+      },
+      ownerContact: { wa: '', email: ownerAuthEmail(user), waFab: false }
     }
   };
+}
+
+function ownerAuthEmail(user) {
+  return String(user && user.email || '').trim().slice(0, 160);
+}
+
+/** Fill a blank mentor email from Google/password auth. Never replace one they already saved. */
+function applyOwnerEmail(state, user) {
+  const email = ownerAuthEmail(user);
+  if (!email || !state || typeof state !== 'object') return false;
+  let changed = false;
+  if (!state.accountSettings || typeof state.accountSettings !== 'object' || Array.isArray(state.accountSettings)) {
+    state.accountSettings = {};
+    changed = true;
+  }
+  if (!String(state.accountSettings.email || '').trim()) {
+    state.accountSettings.email = email;
+    changed = true;
+  }
+  if (!state.ownerContact || typeof state.ownerContact !== 'object' || Array.isArray(state.ownerContact)) {
+    state.ownerContact = { wa: '', email: '', waFab: false };
+    changed = true;
+  }
+  if (!String(state.ownerContact.email || '').trim()) {
+    state.ownerContact.email = email;
+    changed = true;
+  }
+  return changed;
+}
+
+function fillOwnerEmail(slug, user) {
+  if (!slug || !ownerAuthEmail(user)) return;
+  const rec = readState(slug);
+  if (!rec || !rec.state || !applyOwnerEmail(rec.state, user)) return;
+  rec.rev = (Number(rec.rev) || 0) + 1;
+  rec.updatedAt = new Date().toISOString();
+  writeState(rec, slug);
 }
 
 function profileKeyOk(key) {
@@ -349,9 +394,9 @@ function adminCookie(req, value, maxAge) {
   return 'anton_admin=' + value + '; HttpOnly; SameSite=Lax; Path=/obrolan.marketing' + secure + age;
 }
 
-function uploadCap(kind) {
+function uploadCap(kind, kurikulum) {
   if (kind === 'image') return MAX_IMAGE;
-  if (kind === 'file') return MAX_FILE;
+  if (kind === 'file') return kurikulum ? MAX_KUR_FILE : MAX_FILE;
   return MAX_VIDEO;
 }
 
@@ -1920,6 +1965,7 @@ const server = http.createServer((req, res) => {
       }
       const owners = readOwners();
       if (owners[user.id]) {
+        fillOwnerEmail(owners[user.id], user);
         json(res, 200, { slug: owners[user.id], created: false });
         return;
       }
@@ -1941,6 +1987,7 @@ const server = http.createServer((req, res) => {
       if (status === 'taken' && ownerOf(slug) === user.id) {
         owners[user.id] = slug;
         writeOwners(owners);
+        fillOwnerEmail(slug, user);
         json(res, 200, { slug: slug, created: false });
         return;
       }
@@ -1991,6 +2038,7 @@ const server = http.createServer((req, res) => {
       }
       const owners = readOwners();
       if (owners[user.id]) {
+        fillOwnerEmail(owners[user.id], user);
         json(res, 200, { slug: owners[user.id], created: false });
         return;
       }
@@ -2186,6 +2234,11 @@ const server = http.createServer((req, res) => {
         const raw = rec && rec.state;
         let state;
         if (staff) {
+          if (user && raw && applyOwnerEmail(raw, user)) {
+            rec.rev = (Number(rec.rev) || 0) + 1;
+            rec.updatedAt = new Date().toISOString();
+            writeState(rec, slug);
+          }
           state = Object.assign({}, raw || projectGuest(null));
           state.staffAdmins = listStaff(raw).map((item) => publicStaff(item, true));
         } else if (staffRow) state = viewForStaff(raw || {}, staffRow);
@@ -2243,6 +2296,7 @@ const server = http.createServer((req, res) => {
             if (!(body && body.reset === true) && rec && rec.state) {
               nextState = preserveJoinedRoster(rec.state, nextState);
             }
+            if (staff && user) applyOwnerEmail(nextState, user);
           }
         } else {
           const base = (rec && rec.state) || {};
@@ -2281,7 +2335,8 @@ const server = http.createServer((req, res) => {
           return;
         }
         const kind = body.kind === 'image' || body.kind === 'file' ? body.kind : 'video';
-        const cap = uploadCap(kind);
+        const kurikulum = kind === 'file' && body.kurikulum === true;
+        const cap = uploadCap(kind, kurikulum);
         const size = Number(body.size) || 0;
         if (!size || size > cap) {
           json(res, 413, { error: 'too_large', max: cap });

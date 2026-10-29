@@ -2827,14 +2827,108 @@ html[data-theme="light"] .fub-plat-ico.is-x { color: #111; }
 }
 .auto-pipe { width: 2px; height: 16px; background: var(--line-2); }
 
-/* ── Otomasi flow builder (kurikulum-style, compact ~50%) ───────────── */
-.oto-page {
+/* ── Otomasi: list on the left, builder on the right ───────────────── */
+html[data-mode="mentor"] #app.is-otomasi {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+html[data-mode="mentor"] #app.is-otomasi .workspace {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+html[data-mode="mentor"] #app.is-otomasi .tabs { min-height: 0; }
+html[data-mode="mentor"] #app.is-otomasi .main {
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+.oto-shell {
   --oto-brand: #B5202A;
   --oto-brand-dark: #8E1820;
   --oto-brand-soft: #FDECEE;
-  max-width: 380px;
-  margin: 0 auto;
-  padding: 2px 0 28px;
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+}
+.oto-rail, .oto-pane { min-width: 0; min-height: 0; }
+.oto-rail {
+  display: flex;
+  flex-direction: column;
+  background: var(--ink-2);
+  border-right: 1px solid var(--line);
+}
+.oto-rail-h {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 12px 8px;
+}
+.oto-rail-h strong { font-size: .95rem; letter-spacing: -.02em; }
+.oto-rail-tools { flex: none; padding: 0 12px 8px; }
+.oto-rail-scroll { flex: 1; overflow: auto; padding: 0 8px 8px; }
+.oto-rail-empty { padding: 8px; font-size: .8rem; }
+.oto-row {
+  width: 100%;
+  display: flex;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  border-radius: 12px;
+  padding: 10px;
+  cursor: pointer;
+  font: inherit;
+}
+.oto-row:hover { background: var(--ink-3); }
+.oto-row.is-on { background: var(--ink-3); box-shadow: inset 0 0 0 1px var(--line); }
+.oto-row-copy { display: grid; gap: 2px; min-width: 0; }
+.oto-row-copy strong {
+  font-size: .84rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.oto-row-copy em {
+  font-style: normal;
+  color: var(--muted);
+  font-size: .72rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.oto-pane {
+  display: flex;
+  flex-direction: column;
+  background: var(--ink);
+}
+.oto-pane-h {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.oto-pane-h h2 { margin: 0; font-size: 1.05rem; letter-spacing: -.02em; }
+.oto-pane-scroll { flex: 1; overflow: auto; padding: 16px 18px 28px; }
+.oto-pane-empty {
+  margin: auto;
+  max-width: 22rem;
+  text-align: center;
+  padding: 24px;
+}
+.oto-pane-empty h2 { margin: 0 0 6px; }
+.oto-pane-empty .muted { margin: 0; }
+@media (max-width: 900px) {
+  .oto-shell { grid-template-columns: 1fr; grid-template-rows: minmax(180px, 38vh) minmax(0, 1fr); }
+  .oto-rail { border-right: 0; border-bottom: 1px solid var(--line); }
 }
 .oto-head {
   display: flex;
@@ -2847,7 +2941,7 @@ html[data-theme="light"] .fub-plat-ico.is-x { color: #111; }
 .oto-head h2 { margin: 0 0 2px; font-size: 1.05rem; letter-spacing: -.02em; }
 .oto-head .muted { margin: 0; font-size: .78rem; }
 .btn.oto-primary {
-  background: var(--oto-brand);
+  background: var(--oto-brand, #B5202A);
   color: #fff;
   border-color: transparent;
   font-size: .8rem;
@@ -2882,10 +2976,12 @@ html[data-theme="light"] .fub-plat-ico.is-x { color: #111; }
   font-size: .8rem;
 }
 .oto-dunning {
-  margin-top: 12px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 6px 10px;
+  flex: none;
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  padding: 6px 10px 10px;
   background: var(--ink-2);
 }
 .oto-dunning summary {
