@@ -1274,8 +1274,9 @@
     if (full) return full.split(/\s+/)[0] || full;
     return ownerFirstName();
   }
-  /** Steven Wilson's test school — no Bayar, full mentoring gratis. */
+  /** Free school — no Bayar, full mentoring gratis. */
   function schoolIsFree() {
+    if (PAYWALL_DISABLED) return true;
     if (typeof db !== 'undefined' && db && db.freeAccess === true) return true;
     if (typeof db !== 'undefined' && db && db.freeAccess === false) return false;
     const p = schoolProfile();
@@ -2004,16 +2005,43 @@
         '</div>' +
       '</div>';
   }
+  function viewAccountWa() {
+    const c = ownerContact();
+    const wa = c.wa || ownerWa();
+    const on = !!c.waFab;
+    const label = waFabLabel();
+    return '<form class="ps-form as-form" id="account-wa-form" data-act="save-account-wa">' +
+      '<div class="as-section">' +
+        '<h2>WhatsApp siswa</h2>' +
+        '<p class="muted">Tombol hijau di pojok kanan bawah tampilan siswa. Kalau aktif, siswa bisa chat langsung ke nomor mentor.</p>' +
+        '<label class="as-toggle">' +
+          '<input type="checkbox" name="waFab"' + (on ? ' checked' : '') + '>' +
+          '<span>Tampilkan tombol ' + esc(label) + '</span>' +
+        '</label>' +
+        '<label class="ps-field"><span class="ps-label">Nomor WhatsApp mentor</span>' +
+          '<input name="ownerWa" value="' + esc(wa) + '" placeholder="628…" inputmode="tel" autocomplete="tel"></label>' +
+        '<p class="muted">Label di siswa: <strong>' + esc(label) + '</strong> · pakai nama depan di Profile.</p>' +
+      '</div>' +
+      '<div class="ps-actions">' +
+        '<button class="btn ps-save" type="submit">Simpan</button>' +
+        '<button type="button" class="btn-sm" data-act="tab" data-id="siswa">Close</button>' +
+      '</div>' +
+    '</form>';
+  }
   function viewAccountSettings() {
     ensureAccountSettings();
     const a = accountSettings();
     const pane = ui.accountPane === 'notifications'
       ? 'notifications'
-      : (ui.accountPane === 'onboarding' ? 'onboarding' : 'security');
+      : (ui.accountPane === 'onboarding'
+        ? 'onboarding'
+        : (ui.accountPane === 'wa' ? 'wa' : 'security'));
     ui.accountPane = pane;
     const body = pane === 'notifications'
       ? viewAccountNotifications(a)
-      : (pane === 'onboarding' ? viewAccountOnboarding() : viewAccountSecurity(a));
+      : (pane === 'onboarding'
+        ? viewAccountOnboarding()
+        : (pane === 'wa' ? viewAccountWa() : viewAccountSecurity(a)));
     return '<section class="ps-page">' +
       '<div class="ps-page-head">' +
         '<h1>Account settings</h1>' +
@@ -2021,6 +2049,8 @@
       '<nav class="ps-tabs" role="tablist">' +
         '<button type="button" role="tab" data-act="account-pane" data-id="security" aria-selected="' +
           (pane === 'security') + '">Account security</button>' +
+        '<button type="button" role="tab" data-act="account-pane" data-id="wa" aria-selected="' +
+          (pane === 'wa') + '">WhatsApp</button>' +
         '<button type="button" role="tab" data-act="account-pane" data-id="notifications" aria-selected="' +
           (pane === 'notifications') + '">Notifications</button>' +
         '<button type="button" role="tab" data-act="account-pane" data-id="onboarding" aria-selected="' +
@@ -2194,7 +2224,7 @@
       daftarCustom: [],
       liveStudents: [],
       directory: [],
-      ownerContact: { wa: '', email: '' },
+      ownerContact: { wa: '', email: '', waFab: false },
       lynkProducts: { month: { url: '', title: '', price: 0 }, quarter: { url: '', title: '', price: 0 }, half: { url: '', title: '', price: 0 } },
       schoolProfile: defaultSchoolProfile(),
       accountSettings: defaultAccountSettings(),
@@ -2999,6 +3029,8 @@
   }
   // Flip true when billing settings UI is ready for owners again.
   const SHOW_PENGATURAN_BAYAR = false;
+  // Until mentor payment detail ships: no paywall, kurikulum fully open.
+  const PAYWALL_DISABLED = true;
 
   const BATCH_MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
   function monthKey(iso) {
@@ -3303,6 +3335,21 @@
       const chev = btn.querySelector('.dk-chevron');
       const jump = total ? nextUnreadJump() : null;
       if (chev && jump) chev.setAttribute('data-dir', jump.dir || 'down');
+    });
+    const label = total > 99 ? '99+' : String(total);
+    document.querySelectorAll('#tabs [data-id="diskusi"], #dock [data-id="diskusi"]').forEach((btn) => {
+      let badge = btn.querySelector('.tab-badge');
+      if (total > 0) {
+        if (!badge) {
+          badge = document.createElement('span');
+          badge.className = 'tab-badge';
+          const wrap = btn.querySelector('.dock-ico-wrap');
+          (wrap || btn).appendChild(badge);
+        }
+        badge.textContent = label;
+        badge.setAttribute('aria-label', total + ' pesan baru');
+        badge.hidden = false;
+      } else if (badge) badge.remove();
     });
   }
   function canPostIn(sid, batchId) {
@@ -3803,16 +3850,36 @@
     return 'whatsapp://send?phone=' + n + (encoded ? ('&text=' + encoded) : '');
   }
   function ownerContact() {
-    if (!db.ownerContact) db.ownerContact = { wa: '', email: '' };
+    if (!db.ownerContact || typeof db.ownerContact !== 'object') {
+      db.ownerContact = { wa: '', email: '', waFab: false };
+    } else {
+      if (db.ownerContact.wa == null) db.ownerContact.wa = '';
+      if (db.ownerContact.email == null) db.ownerContact.email = '';
+      if (typeof db.ownerContact.waFab !== 'boolean') {
+        // Anton demo defaults on when a number exists; new schools stay off.
+        const hasWa = !!(normalizeWa(db.ownerContact.wa) || (antonSchoolData() && ownerWaSeed()));
+        db.ownerContact.waFab = antonSchoolData() && hasWa;
+      }
+    }
     return db.ownerContact;
+  }
+  function ownerWaSeed() {
+    return normalizeWa((SEED.staff[0] && SEED.staff[0].wa) || '');
   }
   function ownerWa() {
     const own = normalizeWa(ownerContact().wa || '');
     if (own || !antonSchoolData()) return own;
-    return normalizeWa((SEED.staff[0] && SEED.staff[0].wa) || '');
+    return ownerWaSeed();
   }
   function ownerEmail() {
     return String(ownerContact().email || '').trim();
+  }
+  function waFabEnabled() {
+    const c = ownerContact();
+    return !!c.waFab && !!ownerWa();
+  }
+  function waFabLabel() {
+    return 'WA (' + ownerFirstName() + ')';
   }
   function openApp(href) {
     if (!href) return;
@@ -7126,12 +7193,18 @@
     return t;
   }
 
+  function tabUnreadBadge(tabId) {
+    if (tabId !== 'diskusi') return '';
+    const n = unreadTotal();
+    if (!n) return '';
+    return '<span class="tab-badge" aria-label="' + n + ' pesan baru">' + (n > 99 ? '99+' : n) + '</span>';
+  }
   function renderTabs() {
     const items = isStaff() ? mentorTabs() : studentTabs();
     const cur = isStaff() ? (ui.mentorTab === 'orang' ? 'siswa' : ui.mentorTab) : ui.tab;
     $('tabs').innerHTML = items.map((t) =>
       '<button type="button" role="tab" data-act="tab" data-id="' + t.id + '" aria-selected="' +
-      (t.id === cur) + '">' + esc(t.label) + '</button>'
+      (t.id === cur) + '">' + esc(t.label) + tabUnreadBadge(t.id) + '</button>'
     ).join('');
     const dock = $('dock');
     if (!isStaff()) {
@@ -7147,7 +7220,8 @@
           '<button type="button" data-act="tab" data-id="' + t.id + '" aria-selected="' +
           (t.id === ui.tab || (ui.tab === 'sku' && t.id === 'alat') ||
             (ui.tab === 'kurikulum' && t.id === 'belajar')) + '">' +
-          dockIcon(t.id) + '<span>' + esc(t.label) + '</span></button>'
+          '<span class="dock-ico-wrap">' + dockIcon(t.id) + tabUnreadBadge(t.id) + '</span>' +
+          '<span>' + esc(t.label) + '</span></button>'
         ).join('');
       }
     } else {
@@ -7575,33 +7649,39 @@
     return tab || 'siswa';
   }
 
+  function activateLazyEmbed(el) {
+    if (!el || !el.isConnected) return false;
+    if (el.getAttribute('data-lazy-playing')) return true;
+    el.setAttribute('data-lazy-playing', '1');
+    const watchLec = el.getAttribute('data-watch-lec') || '';
+    const videoId = el.getAttribute('data-yt-id') || '';
+    if (videoId) {
+      const hostId = 'yt-watch-' + (watchLec || 'play') + '-' + Date.now();
+      const host = document.createElement('div');
+      host.className = 'yt-watch-host';
+      host.id = hostId;
+      el.replaceWith(host);
+      mountYtWatchPlayer(hostId, videoId, watchLec);
+      return true;
+    }
+    const src = el.getAttribute('data-embed');
+    if (!src) {
+      el.removeAttribute('data-lazy-playing');
+      toast('Video tidak ditemukan.');
+      return false;
+    }
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
+    iframe.setAttribute('allowfullscreen', '');
+    iframe.setAttribute('title', 'Video materi');
+    iframe.style.cssText = 'width:100%;aspect-ratio:16/9;border:0;display:block;background:#000';
+    el.replaceWith(iframe);
+    // Set src after insert so autoplay still counts as a user gesture.
+    iframe.src = src;
+    return true;
+  }
   function bindLazy() {
-    $('main').querySelectorAll('[data-embed]').forEach((el) => {
-      if (el.getAttribute('data-lazy-bound')) return;
-      el.setAttribute('data-lazy-bound', '1');
-      el.addEventListener('click', () => {
-        const watchLec = el.getAttribute('data-watch-lec');
-        const videoId = el.getAttribute('data-yt-id');
-        if (videoId) {
-          const hostId = 'yt-watch-' + (watchLec || 'play') + '-' + Date.now();
-          const host = document.createElement('div');
-          host.className = 'yt-watch-host';
-          host.id = hostId;
-          el.replaceWith(host);
-          mountYtWatchPlayer(hostId, videoId, watchLec || '');
-          return;
-        }
-        const src = el.getAttribute('data-embed');
-        if (!src) return;
-        const iframe = document.createElement('iframe');
-        iframe.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
-        iframe.setAttribute('allowfullscreen', '');
-        iframe.setAttribute('title', 'Video materi');
-        el.replaceWith(iframe);
-        // Set src after insert so autoplay still counts as a user gesture.
-        iframe.src = src;
-      });
-    });
+    // Clicks go through data-act="play-lazy" in the main handler.
   }
 
   function bindBlobMedia() {
@@ -7809,12 +7889,15 @@
   function waAntonFab() {
     if (isStaff()) return '';
     if (isOnboardScreen()) return '';
-    if (canMentoring(ui.personaId)) return '';
+    if (!waFabEnabled()) return '';
     const s = student();
-    const text = 'Halo Anton, saya ' + (s.name || 'siswa') + ' dari MasterMind with Anton GC.';
-    return '<a class="wa-fab" href="' + esc(waLink(ownerWa(), text)) + '" aria-label="WhatsApp Anton">' +
+    const name = ownerFirstName();
+    const text = 'Halo ' + name + ', saya ' + (displayNameOf(s) || s.name || 'siswa') +
+      (db.businessName ? (' dari ' + db.businessName) : '') + '.';
+    const label = waFabLabel();
+    return '<a class="wa-fab" href="' + esc(waLink(ownerWa(), text)) + '" aria-label="' + esc(label) + '">' +
       '<span class="wa-fab-ico" aria-hidden="true">' + waFabIcon() + '</span>' +
-      '<span>WA Anton</span></a>';
+      '<span>' + esc(label) + '</span></a>';
   }
   function placeWaFab() {
     let host = document.getElementById('wa-fab-host');
@@ -8152,15 +8235,8 @@
     const preview = canPreview(s.id) && !canMentoring(s.id) && !schoolIsFree();
     const banner = preview ? offerBanner(s.id) : '';
     const resume = last ? resumeJourneyHtml(s.id, last, preview) : '';
-    if (!ses) {
-      return banner + resume +
-        '<section class="card"><h2>' + esc((db && db.businessName) || 'Kelas') + '</h2><p class="muted">Jadwal belum dipasang.</p></section>';
-    }
-    return (
-      banner +
-      '<div class="grid-2">' +
-        resume +
-        '<section class="card">' +
+    const nextCard = ses
+      ? ('<section class="card">' +
           '<h2>Sesi berikutnya</h2>' +
           (preview
             ? '<p class="muted">Live class terkunci sampai mentoring lunas. Jadwal tetap kelihatan.</p>'
@@ -8171,11 +8247,13 @@
           '<div class="row" style="margin-top:10px">' +
             (preview
               ? '<button class="btn" data-act="tab" data-id="daftar">Buka dengan mentoring</button>'
-              : '<a class="btn" href="' + esc(ses.meetUrl) + '" target="_blank" rel="noopener">Buka Meet</a>') +
-            (ownerWa()
-              ? '<a class="wa" href="' + esc(waLink(ownerWa(), antonSchoolData()
-                ? 'Halo Anton, saya dari Batch September.'
-                : ('Halo ' + ownerFirstName() + ', saya mau ikut kelas.'))) + '">Chat ' + esc(antonSchoolData() ? 'Anton' : ownerFirstName()) + ' di WA</a>'
+              : (ses.meetUrl
+                ? '<a class="btn" href="' + esc(ses.meetUrl) + '" target="_blank" rel="noopener">Buka Meet</a>'
+                : '')) +
+            (waFabEnabled()
+              ? '<a class="wa" href="' + esc(waLink(ownerWa(), 'Halo ' + ownerFirstName() +
+                ', saya dari ' + ((db && db.businessName) || 'kelas') + '.')) +
+                '">Chat ' + esc(ownerFirstName()) + ' di WA</a>'
               : '') +
           '</div>' +
           calSyncButtons(ses) +
@@ -8184,9 +8262,13 @@
                 '<button type="button" class="btn-sm" data-act="cal-ics-all">Unduh semua sesi (.ics)</button>' +
               '</div>'
             : '') +
-          '<p class="muted" style="margin-top:10px">Grup WA kelas: undangan hanya lewat Anton.</p>' +
-        '</section>' +
-      '</div>' +
+        '</section>')
+      : '';
+    return (
+      banner +
+      (resume || nextCard
+        ? ('<div class="grid-2">' + resume + nextCard + '</div>')
+        : '') +
       '<div class="home-jadwal" style="margin-top:14px">' + viewJadwal(false) + '</div>'
     );
   }
@@ -8344,13 +8426,14 @@
       const bg = thumb
         ? ' style="background-image:url(\'' + esc(thumb) + '\')"'
         : '';
-      return '<div class="lazy-embed' + ((cover || thumb) ? ' has-cover' : '') + '"' + bg +
-        ' data-embed="' + esc(e.embed) + '"' +
+      return '<button type="button" class="lazy-embed' + ((cover || thumb) ? ' has-cover' : '') + '"' + bg +
+        ' data-act="play-lazy" data-embed="' + esc(e.embed) + '"' +
         (e.videoId ? ' data-yt-id="' + esc(e.videoId) + '"' : '') +
-        (watchFirst && e.videoId ? ' data-watch-lec="' + esc(lec.id) + '"' : '') + '>' +
+        (watchFirst && e.videoId ? ' data-watch-lec="' + esc(lec.id) + '"' : '') +
+        ' aria-label="Putar video">' +
         (cover || '') +
-        '<div class="play-orb" aria-hidden="true">' + svgIcon('play') + '</div>' +
-      '</div>';
+        '<span class="play-orb" aria-hidden="true">' + svgIcon('play') + '</span>' +
+      '</button>';
     }
     if (lec.url) {
       return '<div class="article">' + (cover || '') + '<p>Video ini tidak bisa diputar di dalam kelas (TikTok / tautan lain).</p>' +
@@ -8420,7 +8503,7 @@
     const top = opts.phone
       ? '<div class="lesson-chrome">' +
           '<div class="lesson-top">' +
-            '<button type="button" class="lesson-back" data-act="lihat-kur" aria-label="Kurikulum">←</button>' +
+            '<button type="button" class="lesson-back" data-act="lihat-kur" aria-label="Kembali ke Kurikulum">←</button>' +
             '<strong class="lesson-tab">Belajar</strong>' +
             '<button type="button" class="lesson-count" data-act="toggle-kur" aria-label="Kurikulum">' +
               nb.n + ' / ' + nb.total + '</button>' +
@@ -8513,19 +8596,16 @@
     const meta = ensureKurikulumMeta();
     const curId = ui.lectureId || db.lastLecture[sid] || firstLectureId();
     const title = (meta && meta.name) || (db && db.businessName) || 'Kurikulum';
+    const head =
+      '<div class="stu-kur-head">' +
+        '<button type="button" class="lesson-back stu-kur-back" data-act="tab" data-id="home" aria-label="Kembali ke Home">←</button>' +
+        '<div><p class="muted me-kicker">Kurikulum</p><h1>' + esc(title) + '</h1></div>' +
+      '</div>';
     if (!lectures().length) {
-      return '<section class="stu-kur-page">' +
-        '<div class="stu-kur-head">' +
-          '<button type="button" class="lesson-back" data-act="tab" data-id="home" aria-label="Kembali">←</button>' +
-          '<div><p class="muted me-kicker">Kurikulum</p><h1>' + esc(title) + '</h1></div>' +
-        '</div>' +
+      return '<section class="stu-kur-page">' + head +
         '<div class="card kur-empty"><p class="muted">Belum ada materi.</p></div></section>';
     }
-    return '<section class="stu-kur-page">' +
-      '<div class="stu-kur-head">' +
-        '<button type="button" class="lesson-back" data-act="tab" data-id="home" aria-label="Kembali">←</button>' +
-        '<div><p class="muted me-kicker">Kurikulum</p><h1>' + esc(title) + '</h1></div>' +
-      '</div>' +
+    return '<section class="stu-kur-page">' + head +
       lessonDotsHtml(sid, curId) +
       progressBarHtml(sid) +
       '<div class="stu-kur-list card">' + renderKurikulumSidebar(sid, { skipProgress: true }) + '</div>' +
@@ -8623,12 +8703,14 @@
       } else {
         const e = parseEmbed(lec.url);
         if (e && e.embed) {
-          body = '<div class="lazy-embed" data-embed="' + esc(e.embed) + '"' +
-            (watchFirst && e.videoId ? ' data-watch-lec="' + esc(lec.id) + '" data-yt-id="' + esc(e.videoId) + '"' : '') + '>' +
+          body = '<button type="button" class="lazy-embed" data-act="play-lazy" data-embed="' + esc(e.embed) + '"' +
+            (e.videoId ? ' data-yt-id="' + esc(e.videoId) + '"' : '') +
+            (watchFirst && e.videoId ? ' data-watch-lec="' + esc(lec.id) + '"' : '') +
+            ' aria-label="Putar video">' +
             (cover || '') +
-            '<div class="play-orb">▶</div>' +
-            '<div class="lazy-note">Ketuk untuk memuat · ' + (e.kind === 'drive' ? 'Google Drive' : 'hemat data') +
-            (watchFirst ? ' · selesai otomatis ≥85%' : '') + '</div></div>';
+            '<span class="play-orb" aria-hidden="true">' + svgIcon('play') + '</span>' +
+            '<span class="lazy-note">Ketuk untuk memuat · ' + (e.kind === 'drive' ? 'Google Drive' : 'hemat data') +
+            (watchFirst ? ' · selesai otomatis ≥85%' : '') + '</span></button>';
         } else if (lec.url) {
           body = '<div class="article">' + (cover || '') + '<p>Video ini tidak bisa diputar di dalam kelas (TikTok / tautan lain).</p>' +
             '<a class="btn" href="' + esc(lec.url) + '" target="_blank" rel="noopener">Buka video</a>' +
@@ -8917,11 +8999,13 @@
     } else {
       const e = parseEmbed(p.url);
       body = '<div class="card" style="padding:0;overflow:hidden;margin-top:10px"><div class="canvas">' +
-        '<div class="lazy-embed' + (p.cover ? ' has-cover' : '') + '"' +
+        '<button type="button" class="lazy-embed' + (p.cover ? ' has-cover' : '') + '"' +
         (p.cover ? ' style="background-image:url(\'' + esc(p.cover) + '\')"' : '') +
-        ' data-embed="' + esc(e ? e.embed : '') + '">' +
-        '<div class="play-orb">▶</div>' +
-        '<div class="lazy-note">Ketuk untuk memuat · hemat data</div></div></div></div>';
+        ' data-act="play-lazy" data-embed="' + esc(e ? e.embed : '') + '"' +
+        (e && e.videoId ? ' data-yt-id="' + esc(e.videoId) + '"' : '') +
+        ' aria-label="Putar video">' +
+        '<span class="play-orb" aria-hidden="true">' + svgIcon('play') + '</span>' +
+        '<span class="lazy-note">Ketuk untuk memuat · hemat data</span></button></div></div>';
       if (p.outline && p.outline.length) {
         extra = '<div class="card" style="margin-top:10px"><h3>Isi rekaman</h3><ul class="muted">' +
           p.outline.map((x) => '<li>' + esc(x) + '</li>').join('') +
@@ -14103,6 +14187,9 @@
       ui.kurEdit = false;
       ui.lectureId = firstLectureId();
       render();
+    } else if (act === 'play-lazy') {
+      e.preventDefault();
+      activateLazyEmbed(btn.closest('.lazy-embed') || btn);
     } else if (act === 'play-hosted') {
       e.preventDefault();
       const player = btn.closest('.lec-player');
@@ -14141,6 +14228,9 @@
           video.load();
         }).catch(() => toast('Gagal memuat video.'));
         return;
+      }
+      if (!video.getAttribute('src') && !video.src && video.getAttribute('data-src')) {
+        video.src = video.getAttribute('data-src');
       }
       if (video.readyState >= 2) tryPlay();
       else {
@@ -14283,7 +14373,9 @@
       const pane = btn.getAttribute('data-id');
       ui.accountPane = pane === 'notifications'
         ? 'notifications'
-        : (pane === 'onboarding' ? 'onboarding' : 'security');
+        : (pane === 'onboarding'
+          ? 'onboarding'
+          : (pane === 'wa' ? 'wa' : 'security'));
       ui.mentorTab = 'account';
       render();
     } else if (act === 'bio-wrap') {
@@ -15836,7 +15928,8 @@
       }
       db.ownerContact = {
         wa: normalizeWa(fd.get('ownerWa') || ''),
-        email: String(fd.get('ownerEmail') || '').trim()
+        email: String(fd.get('ownerEmail') || '').trim(),
+        waFab: !!ownerContact().waFab
       };
       save();
       toast('Kontak dan undangan disimpan');
@@ -15951,6 +16044,23 @@
       };
       save();
       toast('Notification preferences saved');
+      render();
+    } else if (act === 'save-account-wa') {
+      if (!canBill()) return;
+      const wa = normalizeWa(fd.get('ownerWa') || '');
+      const wantFab = !!fd.get('waFab');
+      if (wantFab && !wa) {
+        toast('Isi nomor WhatsApp dulu.');
+        return;
+      }
+      const cur = ownerContact();
+      db.ownerContact = {
+        wa: wa,
+        email: String(cur.email || '').trim(),
+        waFab: wantFab
+      };
+      save();
+      toast(wantFab ? ('Tombol ' + waFabLabel() + ' aktif untuk siswa.') : 'Tombol WA siswa dimatikan.');
       render();
 } else if (act === 'exam') {
       const qs = SEED.exam.questions;

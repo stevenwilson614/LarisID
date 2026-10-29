@@ -1222,7 +1222,7 @@ function schoolShell(state) {
     lynkProducts: pick('lynkProducts', {}),
     batchNames: pick('batchNames', {}),
     chats: pick('chats', {}),
-    ownerContact: pick('ownerContact', { wa: '', email: '' }),
+    ownerContact: pick('ownerContact', { wa: '', email: '', waFab: false }),
     clockOffsetMs: typeof src.clockOffsetMs === 'number' ? src.clockOffsetMs : 0,
     people: {},
     liveStudents: [],

@@ -642,6 +642,8 @@ html[data-mode="student"] .theme-btn { display: none; }
 .lazy-embed {
   position: relative; width: 100%; aspect-ratio: 16/9; cursor: pointer;
   background: #111; display: grid; place-items: center;
+  border: 0; padding: 0; margin: 0; color: inherit; font: inherit;
+  appearance: none; -webkit-appearance: none;
 }
 .play-orb {
   width: 56px; height: 56px; border-radius: 50%; border: 1px solid #fff;
@@ -934,6 +936,24 @@ html[data-mode="mentor"] #wa-fab-host { display: none; }
   background: var(--ink-2); border-top: 1px solid var(--line);
   padding: 6px 4px calc(10px + var(--safe-bottom));
 }
+.dock-ico-wrap {
+  position: relative; display: inline-grid; place-items: center;
+  width: 24px; height: 22px;
+}
+.tab-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 16px; height: 16px; padding: 0 4px; margin-left: 6px;
+  border-radius: 99px; background: #ef4444; color: #fff;
+  font-size: .62rem; font-weight: 800; line-height: 1;
+  vertical-align: middle;
+}
+.dock .tab-badge,
+.dock-ico-wrap .tab-badge {
+  position: absolute; top: -4px; right: -8px; margin: 0;
+  min-width: 15px; height: 15px; font-size: .58rem;
+  box-shadow: 0 0 0 2px var(--ink-2);
+}
+.tabs button { position: relative; }
 .dock button {
   border: 0; background: transparent; font-size: .62rem; font-weight: 650;
   color: var(--muted); padding: 8px 2px; cursor: pointer; font-family: inherit;
@@ -1249,6 +1269,11 @@ html[data-mode="student"] .dock {
 .stu-kur-page { display: grid; gap: 14px; padding-bottom: 8px; }
 .stu-kur-head {
   display: flex; align-items: flex-start; gap: 10px;
+}
+.stu-kur-head .stu-kur-back,
+.stu-kur-head .lesson-back {
+  flex: none;
+  margin-top: 2px;
 }
 .stu-kur-head h1 {
   margin: 0; font-size: 1.25rem; letter-spacing: -.02em; font-weight: 750;

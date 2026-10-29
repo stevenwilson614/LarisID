@@ -20,6 +20,12 @@ bash scripts/deploy-static.sh
 
 Do not revive `js/lms-join.js` or public invite-code file downloads as the share model.
 
+### Student app notes (current)
+
+- **Paywall off** (`PAYWALL_DISABLED` in `obrolan.marketing/js/app.js`): kurikulum is open; mentor “Pengaturan bayar” stays hidden (`SHOW_PENGATURAN_BAYAR`) until a fuller mentor billing UI exists.
+- **WA pill**: mentors toggle number + on/off under Account settings → WhatsApp. Students see `WA (Nama)` bottom-right when enabled.
+- Student Home always shows **Jadwal** (Minggu / Bulan). Diskusi dock/tab shows an unread count badge.
+
 ---
 
 ## Contabo landing + auth (`/lms`)
