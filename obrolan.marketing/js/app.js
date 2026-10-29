@@ -1266,24 +1266,53 @@
     const unav = 'https://unavatar.io/' + encodeURIComponent(net) + '/' + encodeURIComponent(h);
     return fetch(unav).then((r) => r.ok ? r.blob() : null).catch(() => null);
   }
+  function applySchoolPhotoUpload(info, mode) {
+    if (db.schoolProfile.photoKey && db.schoolProfile.photoKey !== info.key) deleteRemoteVideo(db.schoolProfile.photoKey);
+    db.schoolProfile.photoUrl = mediaFileUrl(info.key);
+    db.schoolProfile.photoKey = info.key;
+    db.schoolProfile.photoBlob = false;
+    db.schoolProfile.photoMode = mode === 'social' ? 'social' : 'upload';
+    save();
+  }
+  /**
+   * Mentor-only: a social sync that only wrote IndexedDB (photoBlob) never reaches students.
+   * Push that blob — or re-fetch the social avatar — so schoolProfile.photoUrl is public.
+   */
+  function ensureRemoteSchoolPhoto() {
+    if (!syncEnabled() || !isStaff() || isSiswaReadonly()) return Promise.resolve(false);
+    ensureSchoolProfile();
+    const p = schoolProfile();
+    if (p.photoUrl) return Promise.resolve(true);
+    const pushBlob = () => blobGet(schoolPhotoKey()).then((file) => {
+      if (!file) return false;
+      const ready = file instanceof File ? file : new File([file], 'profile.jpg', { type: file.type || 'image/jpeg' });
+      return uploadClassVideo(ready, schoolPhotoKey(), null, 'image').then((info) => {
+        applySchoolPhotoUpload(info, p.photoMode);
+        render();
+        return true;
+      });
+    }).catch(() => false);
+    if (p.photoBlob) {
+      return pushBlob().then((ok) => ok ? true : refreshSchoolPhotoFromSocial(true));
+    }
+    if (p.photoMode === 'social') return refreshSchoolPhotoFromSocial(true);
+    return Promise.resolve(false);
+  }
   function refreshSchoolPhotoFromSocial(force) {
     ensureSchoolProfile();
     const p = schoolProfile();
     const src = p.socialSource || 'tiktok';
     const handle = (p.socials && p.socials[src]) || '';
     if (!handle) return Promise.resolve(false);
-    if (p.photoBlob && p.photoMode === 'social' && !force) return Promise.resolve(true);
+    /* Local blob alone is not enough once the school is hosted — students need photoUrl. */
+    if (p.photoUrl && p.photoMode === 'social' && !force) return Promise.resolve(true);
+    if (p.photoBlob && p.photoMode === 'social' && !force && !syncEnabled()) return Promise.resolve(true);
     return fetchSocialAvatar(src, handle).then((blob) => {
       if (!blob) return false;
       if (syncEnabled()) {
         const file = new File([blob], 'profile.jpg', { type: blob.type || 'image/jpeg' });
         return uploadClassVideo(file, schoolPhotoKey(), null, 'image').then((info) => {
-          if (db.schoolProfile.photoKey && db.schoolProfile.photoKey !== info.key) deleteRemoteVideo(db.schoolProfile.photoKey);
-          db.schoolProfile.photoUrl = mediaFileUrl(info.key);
-          db.schoolProfile.photoKey = info.key;
-          db.schoolProfile.photoBlob = false;
-          db.schoolProfile.photoMode = 'social';
-          save();
+          applySchoolPhotoUpload(info, 'social');
           return true;
         });
       }
@@ -1305,6 +1334,105 @@
         esc(initialsOf(schoolDisplayName(p) || p.firstName || 'K')) + '</span>';
     }
     return '<img class="' + c + '" src="' + esc(SEED.school.photo || SEED.school.logo) + '" alt="">';
+  }
+  /** Homescreen / PWA card must be this school — never Anton's shared manifest. */
+  function applyInstallMeta(chromeOrg) {
+    const slug = schoolSlug();
+    if (!slug) return;
+    const name = String(chromeOrg || schoolDisplayName() || 'Kelas').trim() || 'Kelas';
+    const short = name.split(/\s+/).slice(0, 2).join(' ').slice(0, 12) || 'Kelas';
+    const p = schoolProfile();
+    let icon = String(p.photoUrl || '').trim();
+    if (!icon && antonSchoolData() && (SEED.school.photo || SEED.school.logo)) {
+      icon = SEED.school.photo || SEED.school.logo;
+    }
+    if (icon && icon.charAt(0) === '/') icon = location.origin + icon;
+    if (!icon) icon = location.origin + '/obrolan.marketing/assets/obrolan/logo-mark.png';
+
+    let man = document.querySelector('link[rel="manifest"]');
+    if (!man) {
+      man = document.createElement('link');
+      man.rel = 'manifest';
+      document.head.appendChild(man);
+    }
+    const nextMan = apiBase() + '/manifest?slug=' + encodeURIComponent(slug);
+    if (man.getAttribute('href') !== nextMan) man.setAttribute('href', nextMan);
+
+    let apple = document.querySelector('link[rel="apple-touch-icon"]');
+    if (!apple) {
+      apple = document.createElement('link');
+      apple.rel = 'apple-touch-icon';
+      document.head.appendChild(apple);
+    }
+    if (apple.getAttribute('href') !== icon) apple.setAttribute('href', icon);
+
+    let titleMeta = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+    if (!titleMeta) {
+      titleMeta = document.createElement('meta');
+      titleMeta.setAttribute('name', 'apple-mobile-web-app-title');
+      document.head.appendChild(titleMeta);
+    }
+    titleMeta.setAttribute('content', short);
+  }
+  function paintMeBtn(meBtn) {
+    if (!meBtn || isStaff()) return;
+    const s = (typeof student === 'function') ? student() : null;
+    const label = 'Profil saya';
+    meBtn.setAttribute('aria-label', label);
+    meBtn.title = label;
+    const showFallback = () => {
+      meBtn.classList.remove('has-photo');
+      if (!meBtn.querySelector('svg')) {
+        meBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+      }
+      const img = meBtn.querySelector('img.me-photo');
+      if (img) img.remove();
+      const init = meBtn.querySelector('.me-fallback');
+      if (init) init.remove();
+    };
+    if (!s || (!s.photoUrl && !s.photoBlob)) {
+      showFallback();
+      return;
+    }
+    const placeImg = (src) => {
+      meBtn.classList.add('has-photo');
+      const svg = meBtn.querySelector('svg');
+      if (svg) svg.remove();
+      let init = meBtn.querySelector('.me-fallback');
+      if (init) init.remove();
+      let img = meBtn.querySelector('img.me-photo');
+      if (!img) {
+        img = document.createElement('img');
+        img.className = 'me-photo';
+        img.alt = '';
+        meBtn.appendChild(img);
+      }
+      img.onerror = () => {
+        meBtn.classList.remove('has-photo');
+        img.remove();
+        const span = document.createElement('span');
+        span.className = 'me-fallback';
+        span.setAttribute('aria-hidden', 'true');
+        span.textContent = initialsOf(displayNameOf(s) || s.name || '?');
+        meBtn.appendChild(span);
+      };
+      img.src = src;
+    };
+    if (s.photoUrl && !s.photoBlob) {
+      placeImg(s.photoUrl);
+      return;
+    }
+    if (s.photoBlob) {
+      blobGet(photoKey(s.id)).then((file) => {
+        if (!file || !meBtn.isConnected) {
+          showFallback();
+          return;
+        }
+        placeImg(URL.createObjectURL(file));
+      }).catch(showFallback);
+      return;
+    }
+    showFallback();
   }
   function schoolOwnerId() {
     if (typeof db !== 'undefined' && db && db.ownerId) return String(db.ownerId);
@@ -6133,6 +6261,37 @@
     q.set('slug', schoolSlug());
     return apiBase() + '/media/file?' + q.toString();
   }
+  const playUrlCache = {};
+  function mediaPlayUrl(key) {
+    const now = Date.now();
+    const hit = playUrlCache[key];
+    if (hit && hit.url && hit.exp > now + 60000) return Promise.resolve(hit.url);
+    if (hit && hit.pending) return hit.pending;
+    const q = new URLSearchParams();
+    q.set('key', key);
+    q.set('slug', schoolSlug());
+    const pending = fetch(apiBase() + '/media/play-token?' + q.toString(), {
+      headers: mediaAuthHeaders(),
+      credentials: 'same-origin',
+      cache: 'no-store'
+    }).then((res) => res.json().then((data) => {
+      if (!res.ok || !data || !data.url) {
+        const err = new Error((data && data.error) || 'play');
+        err.code = (data && data.error) || 'play';
+        throw err;
+      }
+      playUrlCache[key] = { url: data.url, exp: Number(data.exp) || (now + 60 * 60 * 1000) };
+      return data.url;
+    })).catch((err) => {
+      if (playUrlCache[key] && playUrlCache[key].pending) delete playUrlCache[key];
+      throw err;
+    });
+    playUrlCache[key] = { pending: pending };
+    return pending;
+  }
+  function videoLockAttrs() {
+    return ' controlsList="nodownload noremoteplayback"';
+  }
   function deleteRemoteVideo(key) {
     if (!key || !syncEnabled()) return;
     fetch(apiBase() + '/media?' + mediaAuthQuery(), {
@@ -6219,7 +6378,7 @@
       headers: mediaAuthHeaders({ 'content-type': 'application/json' }),
       body: JSON.stringify({
         name: file.name,
-        type: file.type || (mediaKind === 'image' ? 'image/jpeg' : 'video/mp4'),
+        type: file.type || (mediaKind === 'image' ? 'image/jpeg' : (mediaKind === 'file' ? 'application/octet-stream' : 'video/mp4')),
         size: file.size,
         lecId: lecId,
         slug: schoolSlug(),
@@ -7809,7 +7968,7 @@
       const showLogoImg = (src) => {
         if (fallback) fallback.hidden = true;
         logo.hidden = false;
-        logo.alt = '';
+        logo.alt = schoolDisplayName() || chromeOrg || '';
         logo.onerror = () => paintLogoFallback();
         logo.src = src;
       };
@@ -7821,7 +7980,7 @@
         logo.setAttribute('data-blob', schoolPhotoKey());
         if (fallback) fallback.hidden = true;
         logo.hidden = false;
-        logo.alt = '';
+        logo.alt = schoolDisplayName() || chromeOrg || '';
         blobGet(schoolPhotoKey()).then((file) => {
           if (!file || !logo.isConnected) {
             paintLogoFallback();
@@ -7838,6 +7997,7 @@
         else paintLogoFallback();
       }
     }
+    applyInstallMeta(chromeOrg);
     const personEl = $('school-person');
     if (personEl) {
       const prof = schoolProfile();
@@ -7893,7 +8053,7 @@
       brandBtn.disabled = isSiswaReadonly() || !isStaff();
       brandBtn.setAttribute('aria-label', isStaff()
         ? (isSiswaReadonly() ? 'Siswa view' : 'Profile menu')
-        : SEED.school.name);
+        : (schoolDisplayName() || chromeOrg || 'Kelas'));
       brandBtn.title = brandBtn.getAttribute('aria-label');
     }
     const themeBtn = $('btn-theme');
@@ -7902,6 +8062,7 @@
     if (meBtn) {
       meBtn.hidden = isStaff();
       meBtn.classList.toggle('is-on', !isStaff() && ui.tab === 'profil');
+      paintMeBtn(meBtn);
     }
     const headerEl = $('school-header');
     if (headerEl) {
@@ -8464,6 +8625,7 @@
         el.src = URL.createObjectURL(file);
       });
     });
+    bindHostedPlay();
     $('main').querySelectorAll('a[data-blob-href]').forEach((el) => {
       const id = el.getAttribute('data-blob-href');
       blobGet(id).then((file) => {
@@ -8528,6 +8690,48 @@
       window.addEventListener('pointercancel', onUp);
     });
   }
+  function showHostedVideoError(el) {
+    const code = el.error && el.error.code;
+    const msg = (code === 2)
+      ? 'Video gagal dimuat. Coba muat ulang.'
+      : 'Video tidak bisa diputar. Unggah MP4 (H.264) atau WebM.';
+    const host = el.parentElement;
+    if (!host || host.querySelector('.lec-vid-error')) return;
+    const note = document.createElement('p');
+    note.className = 'lec-vid-error';
+    note.textContent = msg;
+    el.insertAdjacentElement('afterend', note);
+  }
+  function bindHostedPlay() {
+    const root = $('main');
+    if (!root) return;
+    root.querySelectorAll('video[data-video-key]').forEach((video) => {
+      if (video.getAttribute('src')) return;
+      if (video.getAttribute('data-gated') === '1') return;
+      if (video.closest && video.closest('.lec-player.has-poster')) return;
+      if (video.getAttribute('data-play-loading')) return;
+      const key = video.getAttribute('data-video-key');
+      if (!key) return;
+      video.setAttribute('data-play-loading', '1');
+      mediaPlayUrl(key).then((url) => {
+        video.removeAttribute('data-play-loading');
+        if (!video.isConnected || video.getAttribute('src')) return;
+        video.src = url;
+      }).catch(() => {
+        video.removeAttribute('data-play-loading');
+      });
+    });
+    if (!root.getAttribute('data-vid-menu')) {
+      root.setAttribute('data-vid-menu', '1');
+      root.addEventListener('contextmenu', (ev) => {
+        const t = ev.target;
+        if (!t || !t.closest) return;
+        if (t.closest('.lec-player, .ud-preview-player, video.lec-video, video.ud-preview-vid')) {
+          ev.preventDefault();
+        }
+      });
+    }
+  }
   function bindHostedVideoErrors() {
     const root = $('main');
     if (!root) return;
@@ -8535,16 +8739,25 @@
       if (el.getAttribute('data-err-bound')) return;
       el.setAttribute('data-err-bound', '1');
       el.addEventListener('error', () => {
-        const code = el.error && el.error.code;
-        const msg = (code === 2)
-          ? 'Video gagal dimuat. Coba muat ulang.'
-          : 'Video tidak bisa diputar. Unggah MP4 (H.264) atau WebM.';
-        const host = el.parentElement;
-        if (!host || host.querySelector('.lec-vid-error')) return;
-        const note = document.createElement('p');
-        note.className = 'lec-vid-error';
-        note.textContent = msg;
-        el.insertAdjacentElement('afterend', note);
+        if (!el.getAttribute('src')) return;
+        const key = el.getAttribute('data-video-key');
+        if (key && el.getAttribute('data-token-retry') !== '1') {
+          el.setAttribute('data-token-retry', '1');
+          delete playUrlCache[key];
+          const at = el.currentTime || 0;
+          mediaPlayUrl(key).then((url) => {
+            if (!el.isConnected) return;
+            const note = el.parentElement && el.parentElement.querySelector('.lec-vid-error');
+            if (note) note.remove();
+            el.src = url;
+            el.addEventListener('loadedmetadata', () => {
+              try { if (at > 0) el.currentTime = at; } catch (err) { /* ignore */ }
+            }, { once: true });
+            el.load();
+          }).catch(() => showHostedVideoError(el));
+          return;
+        }
+        showHostedVideoError(el);
       });
     });
   }
@@ -9261,15 +9474,13 @@
     const poster = (!gated && o.poster) ? (' poster="' + esc(o.poster) + '"') : '';
     const watch = watchFirst ? ' data-watch-lec="' + esc(lec.id) + '"' : '';
     const controls = gated ? '' : ' controls';
+    const guard = videoLockAttrs();
     if (lec.videoBlob && !lec.videoKey) {
-      return '<video class="' + cls + '"' + controls + ' playsinline preload="' + (gated ? 'none' : preload) + '"' +
+      return '<video class="' + cls + '"' + controls + guard + ' playsinline preload="' + (gated ? 'none' : preload) + '"' +
         ' data-blob="' + esc(lec.id) + '"' + (gated ? ' data-gated="1"' : '') + poster + watch + '></video>';
     }
-    const srcAttr = gated
-      ? (' data-src="' + esc(mediaFileUrl(lec.videoKey)) + '"')
-      : (' src="' + esc(mediaFileUrl(lec.videoKey)) + '"');
-    return '<video class="' + cls + '"' + controls + ' playsinline preload="' + (gated ? 'none' : preload) + '"' +
-      srcAttr + poster + watch + '></video>';
+    return '<video class="' + cls + '"' + controls + guard + ' playsinline preload="' + (gated ? 'none' : preload) + '"' +
+      ' data-video-key="' + esc(lec.videoKey) + '"' + (gated ? ' data-gated="1"' : '') + poster + watch + '></video>';
   }
   function hostedPosterHtml(lec, watchFirst, cls) {
     const coverSrc = lectureCoverUrl(lec);
@@ -12877,9 +13088,9 @@
     if (fileReady && (cover || lectureCoverUrl(l))) {
       vid = '<div class="ud-preview-player">' + hostedPosterHtml(l, false, 'lec-video ud-preview-vid') + '</div>';
     } else if (l.videoKey) {
-      vid = '<video class="ud-preview-vid" controls playsinline preload="metadata" src="' + esc(mediaFileUrl(l.videoKey)) + '"></video>';
+      vid = '<video class="ud-preview-vid" controls' + videoLockAttrs() + ' playsinline preload="metadata" data-video-key="' + esc(l.videoKey) + '"></video>';
     } else if (l.videoBlob) {
-      vid = '<video class="ud-preview-vid" controls playsinline preload="metadata" data-blob="' + esc(l.id) + '"></video>';
+      vid = '<video class="ud-preview-vid" controls' + videoLockAttrs() + ' playsinline preload="metadata" data-blob="' + esc(l.id) + '"></video>';
     } else {
       const e = parseEmbed(l.url);
       if (e && e.kind === 'youtube' && e.videoId) {
@@ -13956,12 +14167,7 @@
       if (syncEnabled()) {
         toast('Mengunggah foto…');
         uploadClassVideo(file, schoolPhotoKey(), null, 'image').then((info) => {
-          if (db.schoolProfile.photoKey && db.schoolProfile.photoKey !== info.key) deleteRemoteVideo(db.schoolProfile.photoKey);
-          db.schoolProfile.photoUrl = mediaFileUrl(info.key);
-          db.schoolProfile.photoKey = info.key;
-          db.schoolProfile.photoBlob = false;
-          db.schoolProfile.photoMode = 'upload';
-          save();
+          applySchoolPhotoUpload(info, 'upload');
           toast('Foto profil tersimpan.');
           render();
         }).catch(() => toast('Gagal unggah foto.'));
@@ -15350,6 +15556,16 @@
           });
         }
       };
+      const armPlay = () => {
+        if (video.readyState >= 2) tryPlay();
+        else {
+          video.addEventListener('loadeddata', tryPlay, { once: true });
+          video.load();
+          setTimeout(() => {
+            if (video.paused) tryPlay();
+          }, 400);
+        }
+      };
       if (video.getAttribute('data-blob') && !video.getAttribute('src')) {
         const id = video.getAttribute('data-blob');
         blobGet(id).then((file) => {
@@ -15363,18 +15579,19 @@
         }).catch(() => toast('Gagal memuat video.'));
         return;
       }
+      const videoKey = video.getAttribute('data-video-key');
+      if (videoKey && !video.getAttribute('src')) {
+        mediaPlayUrl(videoKey).then((url) => {
+          if (!video.isConnected) return;
+          video.src = url;
+          armPlay();
+        }).catch(() => toast('Gagal memuat video.'));
+        return;
+      }
       if (!video.getAttribute('src') && video.getAttribute('data-src')) {
         video.src = video.getAttribute('data-src');
       }
-      if (video.readyState >= 2) tryPlay();
-      else {
-        video.addEventListener('loadeddata', tryPlay, { once: true });
-        video.load();
-        // Fallback if metadata never fires (some CDNs).
-        setTimeout(() => {
-          if (video.paused) tryPlay();
-        }, 400);
-      }
+      armPlay();
     } else if (act === 'lec-extra') {
       const id = btn.getAttribute('data-id');
       const key = btn.getAttribute('data-k');
@@ -17925,6 +18142,7 @@
           paintWaChrome();
         });
         ensureWaPoll();
+        ensureRemoteSchoolPhoto().catch(() => {});
       }
     } finally {
       // Only show chrome after the correct school identity is painted.

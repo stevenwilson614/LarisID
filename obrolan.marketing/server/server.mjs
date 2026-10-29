@@ -328,6 +328,35 @@ function profileKeyOk(key) {
   return /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?\/profile\.(png|jpe?g|webp)$/.test(String(key || ''));
 }
 
+/** Key stored on schoolProfile after a mentor upload (slug/photo-school/hex). */
+function schoolPhotoKeyFromState(slug) {
+  const rec = readState(slug);
+  const sp = (rec && rec.state && rec.state.schoolProfile) || {};
+  const pk = String(sp.photoKey || '').trim();
+  if (pk) return pk;
+  const url = String(sp.photoUrl || '');
+  const m = /[?&]key=([^&]+)/.exec(url);
+  if (!m) return '';
+  try { return decodeURIComponent(m[1]); } catch (err) { return m[1]; }
+}
+
+/**
+ * School branding photos stay public (no cookie). Signup writes slug/profile.*,
+ * Profile picture tab writes slug/photo-school/{hex}. Students and Add-to-Home-Screen
+ * icons need that without a media session.
+ */
+function publicPhotoKey(key) {
+  const k = String(key || '');
+  if (profileKeyOk(k)) return true;
+  const parts = k.split('/');
+  if (parts.length !== 3) return false;
+  const slug = mediaSlug(parts[0]);
+  if (!slug || slug !== parts[0]) return false;
+  if (parts[1] === 'photo-school' && /^[A-Za-z0-9]{8,64}$/.test(parts[2])) return true;
+  const current = schoolPhotoKeyFromState(slug);
+  return !!(current && current === k);
+}
+
 function readState(slug) {
   try {
     return JSON.parse(fs.readFileSync(statePath(slug), 'utf8'));
@@ -456,6 +485,72 @@ function signMedia(slug, role) {
   const payload = Buffer.from(JSON.stringify({ s: slug, e: exp, r: role }), 'utf8').toString('base64url');
   const sig = crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('hex');
   return payload + '.' + sig;
+}
+
+const PLAY_TOKEN_MS = 90 * 60 * 1000;
+
+function readMediaMeta(key) {
+  try { return JSON.parse(fs.readFileSync(metaFile(key), 'utf8')); } catch (err) { return {}; }
+}
+
+function curriculumVideoKey(key) {
+  const slug = String(key || '').split('/')[0];
+  if (!slug) return false;
+  const rec = readState(slug);
+  const lectures = rec && rec.state && Array.isArray(rec.state.lectures) ? rec.state.lectures : [];
+  return lectures.some((lec) => lec && String(lec.videoKey || '') === key);
+}
+
+/** Kurikulum video only. Images, lembar kerja, and diskusi files stay cookie-only. */
+function videoNeedsPlayToken(key, meta) {
+  const info = meta || {};
+  const kind = String(info.kind || '');
+  if (kind === 'image' || kind === 'file') return false;
+  if (kind === 'video') return true;
+  const mime = String(info.type || '').toLowerCase().trim();
+  const name = String(info.name || '');
+  if (mime.startsWith('video/')) {
+    if (/\.(pdf|docx?|xlsx?|pptx?|zip|txt|csv|png|jpe?g|webp|gif)$/i.test(name)) return false;
+    return true;
+  }
+  if (mime) return false;
+  return curriculumVideoKey(key);
+}
+
+function playActor(req, slug) {
+  const grant = readMediaGrant(req);
+  if (grant && grant.slug === slug) return 'staff';
+  const studentId = readStudentCookie(req);
+  if (studentId) return 'stu:' + studentId;
+  return 'staff';
+}
+
+function signPlayToken(key, actor) {
+  const exp = Date.now() + PLAY_TOKEN_MS;
+  const payload = Buffer.from(JSON.stringify({ k: key, e: exp, a: actor }), 'utf8').toString('base64url');
+  const sig = crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('hex');
+  return { token: payload + '.' + sig, exp };
+}
+
+function readPlayToken(raw) {
+  const text = String(raw || '');
+  const dot = text.lastIndexOf('.');
+  if (dot < 1) return null;
+  const payload = text.slice(0, dot);
+  const sig = text.slice(dot + 1);
+  const expect = crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('hex');
+  if (!sameSecret(sig, expect)) return null;
+  let data;
+  try { data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')); } catch (err) { return null; }
+  if (!data || !data.k || Number(data.e) < Date.now()) return null;
+  return { key: String(data.k), exp: Number(data.e), actor: String(data.a || '') };
+}
+
+function playFileUrl(key, token) {
+  const slug = String(key || '').split('/')[0];
+  return '/obrolan.marketing/api/media/file?key=' + encodeURIComponent(key) +
+    '&slug=' + encodeURIComponent(slug) +
+    '&t=' + encodeURIComponent(token);
 }
 
 function readMediaGrant(req) {
@@ -2051,6 +2146,69 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  /* Per-school PWA card so Add to Home Screen opens this mentor, not Anton. */
+  if (req.method === 'GET' && pathname === '/manifest') {
+    const slug = resolveLiveSlug(q.slug) || (q.slug === ANTON_SLUG ? ANTON_SLUG : '');
+    if (!slug) {
+      json(res, 404, { error: 'slug' });
+      return;
+    }
+    const rec = readState(slug);
+    if (!rec && slug !== ANTON_SLUG) {
+      json(res, 404, { error: 'slug' });
+      return;
+    }
+    const state = (rec && rec.state) || {};
+    const sp = state.schoolProfile || {};
+    const name = String(state.businessName || '').trim()
+      || [sp.firstName, sp.lastName].filter(Boolean).join(' ').trim()
+      || (slug === ANTON_SLUG ? 'MasterMind with Anton GC' : 'Kelas');
+    const short = name.split(/\s+/).slice(0, 2).join(' ').slice(0, 12) || 'Kelas';
+    const start = slug === ANTON_SLUG ? '/s/obrolan.marketing/' : ('/s/' + slug + '/');
+    const host = String(req.headers['x-forwarded-host'] || req.headers.host || 'larisid.com').split(',')[0].trim();
+    const proto = String(req.headers['x-forwarded-proto'] || 'https').split(',')[0].trim() || 'https';
+    const origin = proto + '://' + host;
+    let icon = origin + '/obrolan.marketing/assets/obrolan/logo-mark.png';
+    const photoUrl = String(sp.photoUrl || '').trim();
+    let photoKey = schoolPhotoKeyFromState(slug);
+    if (!photoKey) {
+      ['png', 'jpg', 'jpeg', 'webp'].some((ext) => {
+        const cand = slug + '/profile.' + ext;
+        if (fs.existsSync(mediaFile(cand))) {
+          photoKey = cand;
+          return true;
+        }
+        return false;
+      });
+    }
+    if (photoUrl) {
+      icon = photoUrl.startsWith('http') ? photoUrl : (origin + (photoUrl.startsWith('/') ? photoUrl : '/' + photoUrl));
+    } else if (photoKey) {
+      icon = origin + '/obrolan.marketing/api/media/file?key=' + encodeURIComponent(photoKey);
+    } else if (slug === ANTON_SLUG) {
+      icon = origin + '/obrolan.marketing/assets/obrolan/profile.png';
+    }
+    const body = JSON.stringify({
+      name: name,
+      short_name: short,
+      start_url: start,
+      scope: start,
+      display: 'standalone',
+      orientation: 'portrait',
+      background_color: '#18181b',
+      theme_color: '#18181b',
+      lang: 'id',
+      icons: [{ src: icon, sizes: '192x192', type: 'image/png', purpose: 'any' }]
+    });
+    res.writeHead(200, {
+      'content-type': 'application/manifest+json; charset=utf-8',
+      'cache-control': 'public, max-age=300',
+      'x-robots-tag': 'noindex'
+    });
+    res.end(body);
+    return;
+  }
+
   if (req.method === 'GET' && pathname === '/admin/enter') {
     if (!ADMIN_KEY) {
       json(res, 503, { error: 'unconfigured' });
@@ -2676,6 +2834,7 @@ const server = http.createServer((req, res) => {
           key: meta.key,
           name: meta.name,
           type: meta.type,
+          kind: meta.kind === 'image' || meta.kind === 'file' || meta.kind === 'video' ? meta.kind : '',
           size
         }));
         fs.rmSync(dir, { recursive: true, force: true });
@@ -2716,30 +2875,55 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  if (pathname === '/media/file' && req.method === 'GET') {
-    const publicPhoto = profileKeyOk(q.key);
-    const key = publicPhoto ? q.key : (keyOk(q.key) ? q.key : '');
+  if (pathname === '/media/play-token' && req.method === 'GET') {
+    const key = keyOk(q.key) ? q.key : '';
     if (!key) {
       json(res, 400, { error: 'key' });
       return;
     }
-    const sendFile = () => {
+    const slug = key.split('/')[0];
+    mediaReadOk(req, q, slug).then((ok) => {
+      if (!ok) {
+        json(res, 403, { error: 'forbidden' });
+        return;
+      }
+      const meta = readMediaMeta(key);
+      if (!videoNeedsPlayToken(key, meta)) {
+        json(res, 400, { error: 'not_video' });
+        return;
+      }
+      const signed = signPlayToken(key, playActor(req, slug));
+      json(res, 200, { url: playFileUrl(key, signed.token), exp: signed.exp });
+    }).catch(() => {
+      if (!res.headersSent) json(res, 500, { error: 'media' });
+    });
+    return;
+  }
+
+  if (pathname === '/media/file' && req.method === 'GET') {
+    const publicPhoto = publicPhotoKey(q.key);
+    const key = publicPhoto ? q.key : (keyOk(q.key) ? q.key : (profileKeyOk(q.key) ? q.key : ''));
+    if (!key) {
+      json(res, 400, { error: 'key' });
+      return;
+    }
+    const sendFile = (video) => {
       const file = mediaFile(key);
       if (!fs.existsSync(file)) {
         json(res, 404, { error: 'missing' });
         return;
       }
-      let meta = {};
-      try { meta = JSON.parse(fs.readFileSync(metaFile(key), 'utf8')); } catch (err) { meta = {}; }
+      const meta = readMediaMeta(key);
       const size = fs.statSync(file).size;
       const range = parseRange(req.headers.range, size);
-      const mime = meta.type || 'video/mp4';
+      const mime = meta.type || (publicPhoto ? 'image/jpeg' : 'video/mp4');
       const headers = {
         'content-type': mime,
         'accept-ranges': 'bytes',
-        'cache-control': 'private, max-age=3600',
+        'cache-control': video ? 'private, no-store' : (publicPhoto ? 'public, max-age=86400' : 'private, max-age=3600'),
         'x-robots-tag': 'noindex'
       };
+      if (video) headers['content-disposition'] = 'inline';
       if (range) {
         headers['content-range'] = 'bytes ' + range.start + '-' + range.end + '/' + size;
         headers['content-length'] = String(range.end - range.start + 1);
@@ -2752,15 +2936,30 @@ const server = http.createServer((req, res) => {
       fs.createReadStream(file).pipe(res);
     };
     if (publicPhoto) {
-      sendFile();
+      sendFile(false);
       return;
     }
     mediaReadOk(req, q, key.split('/')[0]).then((ok) => {
       if (!ok) {
-        json(res, 403, { error: 'forbidden' });
-        return;
+        /* Student may still load their own uploaded profile photo. */
+        const studentId = readStudentCookie(req);
+        const ownPhoto = studentId && key.indexOf('/photo-' + studentId + '/') !== -1;
+        if (!ownPhoto) {
+          json(res, 403, { error: 'forbidden' });
+          return;
+        }
       }
-      sendFile();
+      const meta = readMediaMeta(key);
+      const video = videoNeedsPlayToken(key, meta);
+      if (video) {
+        const tok = readPlayToken(q.t);
+        const slug = key.split('/')[0];
+        if (!tok || tok.key !== key || tok.actor !== playActor(req, slug)) {
+          json(res, 403, { error: 'token' });
+          return;
+        }
+      }
+      sendFile(video);
     }).catch(() => {
       if (!res.headersSent) json(res, 500, { error: 'media' });
     });
