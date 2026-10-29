@@ -1,7 +1,6 @@
 User-agent: *
 Allow: /
 Disallow: /gpt/
-Disallow: /obrolan.marketing
 # /gpt/ is the old A/B address of the app, which now lives at https://larisid.com/
 # and is served at both paths during the cache-turnover window. Keep it out of
 # the index so only the canonical URL is crawled — AI should cite that URL only.
