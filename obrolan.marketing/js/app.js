@@ -2400,6 +2400,8 @@
     lecExtras: {},
     kurEdit: false,
     kurWizStep: 1,
+    kurFromPublish: false,
+    vidUploads: {},
     composeMode: 'note',
     personMidTab: 'timeline',
     brandMenuOpen: false,
@@ -5517,6 +5519,24 @@
       body: JSON.stringify({ key: key })
     }).catch(() => {});
   }
+  function putMediaPart(url, chunk, onChunk) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', url);
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve();
+        else reject(new Error('part'));
+      };
+      xhr.onerror = () => reject(new Error('part'));
+      xhr.onabort = () => reject(new Error('part'));
+      if (xhr.upload && onChunk) {
+        xhr.upload.onprogress = (ev) => {
+          if (ev.lengthComputable) onChunk(ev.loaded, ev.total || chunk.size);
+        };
+      }
+      xhr.send(chunk);
+    });
+  }
   function uploadClassVideo(file, lecId, onProgress, kind) {
     const partSize = 8 * 1024 * 1024;
     const mediaKind = kind === 'image' || kind === 'file' ? kind : 'video';
@@ -5537,14 +5557,14 @@
     }).then(async (init) => {
       const parts = Math.max(1, Math.ceil(file.size / partSize));
       for (let i = 0; i < parts; i += 1) {
-        const chunk = file.slice(i * partSize, Math.min(file.size, (i + 1) * partSize));
-        const res = await fetch(apiBase() + '/media/part?' + mediaAuthQuery() +
-          '&uploadId=' + encodeURIComponent(init.uploadId) + '&partNumber=' + (i + 1), {
-          method: 'PUT',
-          body: chunk
+        const start = i * partSize;
+        const chunk = file.slice(start, Math.min(file.size, start + partSize));
+        const url = apiBase() + '/media/part?' + mediaAuthQuery() +
+          '&uploadId=' + encodeURIComponent(init.uploadId) + '&partNumber=' + (i + 1);
+        await putMediaPart(url, chunk, (loaded) => {
+          if (!onProgress || !file.size) return;
+          onProgress(Math.min(99, Math.round(((start + loaded) / file.size) * 100)));
         });
-        if (!res.ok) throw new Error('part');
-        if (onProgress) onProgress(Math.round(((i + 1) / parts) * 100));
       }
       const done = await fetch(apiBase() + '/media/complete?' + mediaAuthQuery() +
         '&uploadId=' + encodeURIComponent(init.uploadId), {
@@ -5553,8 +5573,70 @@
         body: '{}'
       });
       if (!done.ok) throw new Error('complete');
+      if (onProgress) onProgress(100);
       return done.json();
     });
+  }
+  function videoUploadPending() {
+    const map = ui.vidUploads || {};
+    return Object.keys(map).some((id) => map[id] && !map[id].error);
+  }
+  function paintVidUpload(id) {
+    const job = ui.vidUploads && ui.vidUploads[id];
+    const root = document.querySelector('[data-vid-upload="' + id + '"]');
+    if (!root || !job) return;
+    const label = root.querySelector('.vid-upload-label');
+    const meter = root.querySelector('progress');
+    if (job.error) {
+      root.classList.add('is-error');
+      if (label) label.textContent = 'Gagal unggah. Pilih file lagi.';
+      if (meter) meter.value = 0;
+      return;
+    }
+    root.classList.remove('is-error');
+    const pct = Math.max(0, Math.min(100, Number(job.pct) || 0));
+    if (label) {
+      label.textContent = job.indeterminate
+        ? ('Menyimpan ' + (job.name || 'video') + '…')
+        : ('Mengunggah ' + pct + '%');
+    }
+    if (meter) {
+      if (job.indeterminate) meter.removeAttribute('value');
+      else meter.value = pct;
+    }
+  }
+  function vidUploadHtml(l) {
+    const job = ui.vidUploads && ui.vidUploads[l.id];
+    if (!job) return '';
+    const pct = Math.max(0, Math.min(100, Number(job.pct) || 0));
+    const label = job.error
+      ? 'Gagal unggah. Pilih file lagi.'
+      : (job.indeterminate
+        ? ('Menyimpan ' + (job.name || 'video') + '…')
+        : ('Mengunggah ' + pct + '%'));
+    return '<div class="vid-upload' + (job.error ? ' is-error' : '') + '" data-vid-upload="' + esc(l.id) + '" role="status">' +
+      '<p class="vid-upload-label">' + esc(label) + '</p>' +
+      '<progress class="vid-upload-meter" max="100"' +
+        (job.indeterminate && !job.error ? '' : (' value="' + pct + '"')) + '>' + pct + '%</progress></div>';
+  }
+  function captureOpenLecDraft() {
+    document.querySelectorAll('[data-act="lec-field"][data-k="title"], [data-act="lec-body"], [data-act="lec-points"], [data-act="lec-req"]').forEach((el) => {
+      const l = lectureById(el.getAttribute('data-id'));
+      if (!l) return;
+      const act = el.getAttribute('data-act');
+      if (act === 'lec-body') l.body = el.value;
+      else if (act === 'lec-points') {
+        l.points = String(el.value || '').split('\n').map((s) => s.trim()).filter(Boolean);
+      } else if (act === 'lec-req') l.requiredBefore = !!el.checked;
+      else if (el.getAttribute('data-k') === 'title') l.title = el.value;
+    });
+  }
+  function markVidUploadFailed(id) {
+    ui.vidUploads = ui.vidUploads || {};
+    const job = ui.vidUploads[id] || { pct: 0, name: '' };
+    job.error = true;
+    job.indeterminate = false;
+    ui.vidUploads[id] = job;
   }
   function ingestVideoFile(file, opts) {
     opts = opts || {};
@@ -5597,29 +5679,57 @@
         questions: [],
         resources: []
       });
-      ui.editLecId = id;
+    }
+    if (ui.vidUploads && ui.vidUploads[id] && !ui.vidUploads[id].error) {
+      toast('Video ini masih diunggah.');
+      return;
     }
     const lec = lectureById(id);
+    captureOpenLecDraft();
+    ui.vidUploads = ui.vidUploads || {};
+    ui.vidUploads[id] = {
+      pct: 0,
+      name: file.name,
+      indeterminate: !syncEnabled()
+    };
+    if (lec) {
+      lec.type = 'video';
+      lec.videoName = file.name;
+    }
+    ui.editLecId = id;
+    if (lec && lec.weekId) setSecOpen(lec.weekId, true);
+    save();
+    render();
     if (syncEnabled()) {
-      toast('Mengunggah video…');
+      toast('Mengunggah video… Isi cover dan poin penting dulu. Publikasikan setelah selesai.');
       const oldKey = lec && lec.videoKey;
       uploadClassVideo(file, id, (pct) => {
-        const span = document.querySelector('[data-act="vid-drop"][data-id="' + id + '"] span');
-        if (span) span.textContent = 'Mengunggah ' + pct + '%';
+        const job = ui.vidUploads && ui.vidUploads[id];
+        if (!job || job.error) return;
+        const next = Math.max(0, Math.min(99, Math.round(pct)));
+        if (job.pct === next && !job.indeterminate) return;
+        job.pct = next;
+        job.indeterminate = false;
+        paintVidUpload(id);
       }).then((info) => {
+        captureOpenLecDraft();
+        if (ui.vidUploads) delete ui.vidUploads[id];
         if (oldKey && oldKey !== info.key) deleteRemoteVideo(oldKey);
-        if (lec) {
-          lec.videoKey = info.key;
-          lec.videoName = info.name || file.name;
-          lec.videoMime = info.mime || file.type || 'video/mp4';
-          lec.videoBlob = false;
-          lec.url = '';
-          lec.type = 'video';
+        const row = lectureById(id) || lec;
+        if (row) {
+          row.videoKey = info.key;
+          row.videoName = info.name || file.name;
+          row.videoMime = info.mime || file.type || 'video/mp4';
+          row.videoBlob = false;
+          row.url = '';
+          row.type = 'video';
         }
         save();
         toast('Video tersimpan di kelas. Siswa bisa putar.');
         render();
       }).catch(() => {
+        captureOpenLecDraft();
+        markVidUploadFailed(id);
         trackEvent('upload_fail', { lessonId: id, message: file.name });
         postIssue({
           kind: 'upload',
@@ -5628,20 +5738,29 @@
           body: 'Gagal unggah video ' + file.name
         });
         toast('Gagal unggah video.');
+        render();
       });
       return;
     }
     blobPut(id, file).then(() => {
-      if (lec) {
-        lec.videoBlob = true;
-        lec.videoName = file.name;
-        lec.type = 'video';
-        lec.videoKey = '';
+      captureOpenLecDraft();
+      if (ui.vidUploads) delete ui.vidUploads[id];
+      const row = lectureById(id) || lec;
+      if (row) {
+        row.videoBlob = true;
+        row.videoName = file.name;
+        row.type = 'video';
+        row.videoKey = '';
       }
       save();
       toast('Video tersimpan di browser ini.');
       render();
-    }).catch(() => toast('Gagal simpan video di browser.'));
+    }).catch(() => {
+      captureOpenLecDraft();
+      markVidUploadFailed(id);
+      toast('Gagal simpan video di browser.');
+      render();
+    });
   }
   function ingestCoverFile(file, kind, id) {
     if (!file) return;
@@ -11304,6 +11423,40 @@
     return '▶';
   }
 
+  function publishKurikulum() {
+    if (videoUploadPending()) {
+      toast('Tunggu video selesai diunggah dulu.');
+      return false;
+    }
+    const meta = ensureKurikulumMeta();
+    if (!String(meta.name || '').trim()) {
+      toast('Isi nama kelas dulu.');
+      ui.kurEdit = true;
+      ui.kurWizStep = 1;
+      ui.kurFromPublish = false;
+      render();
+      return false;
+    }
+    if (!lectures().length) {
+      toast('Tambah minimal satu materi dulu.');
+      ui.kurEdit = true;
+      ui.kurWizStep = 2;
+      ui.kurFromPublish = false;
+      render();
+      return false;
+    }
+    const wasLive = !!meta.published;
+    meta.published = true;
+    if (!db.businessName) db.businessName = meta.name;
+    ui.kurEdit = false;
+    ui.editLecId = null;
+    ui.kurFromPublish = false;
+    save();
+    toast(wasLive ? 'Kurikulum diperbarui.' : 'Kurikulum dipublikasikan.');
+    render();
+    return true;
+  }
+
   function viewKurikulum() {
     if (!ui.kurEdit) return viewKurikulumStudent();
     return viewKurikulumWizard();
@@ -11327,12 +11480,25 @@
         '</div>';
     }
     ui.lectureId = lec.id;
-    const bar = '<div class="kur-mode-bar">' +
-      '<div><strong>Tampilan siswa</strong>' +
-        '<p class="muted" style="margin:2px 0 0">Begini materi terlihat di Belajar. ' +
+    const fromPub = !!(canEdit && ui.kurFromPublish);
+    const pubLabel = meta.published ? 'Simpan & selesai' : 'Publikasikan';
+    const uploading = videoUploadPending();
+    const hint = fromPub
+      ? ('Preview siswa. Publikasikan dari sini, atau kembali ke langkah publikasi.' +
+        (uploading ? ' Video masih diunggah.' : ''))
+      : ('Begini materi terlihat di Belajar. ' +
         (canEdit ? 'Klik Edit kalau mau ubah konten.' : 'Asisten hanya lihat.') +
-        (meta.published ? '' : ' · Belum dipublikasikan.') + '</p></div>' +
+        (meta.published ? '' : ' · Belum dipublikasikan.'));
+    const bar = '<div class="kur-mode-bar">' +
+      '<div><strong>' + (fromPub ? 'Preview publikasi' : 'Tampilan siswa') + '</strong>' +
+        '<p class="muted" style="margin:2px 0 0">' + hint + '</p></div>' +
       '<div class="row">' +
+        (fromPub
+          ? '<button type="button" class="btn secondary" data-act="kur-pub-back">Kembali ke publikasi</button>' +
+            '<button type="button" class="btn kur-wiz-primary" data-act="kur-wiz-publish"' +
+              (uploading ? ' disabled' : '') + '>' +
+              kurRocketIcon() + ' ' + pubLabel + '</button>'
+          : '') +
         (canEdit
           ? '<button type="button" class="btn secondary" data-act="kur-edit-lec" data-id="' + esc(lec.id) + '">Edit materi ini</button>' +
             '<button type="button" class="btn" data-act="kur-edit-on">Edit kurikulum</button>'
@@ -11490,6 +11656,7 @@
     const nSec = db.weeks.length;
     const total = lectures().length;
     const ready = !!(meta.name && total > 0);
+    const uploading = videoUploadPending();
     const cover = coverHtml('kur', 'course', 'kur-pub-cover');
     const desc = meta.description || '—';
     return '<section class="kur-pub">' +
@@ -11519,11 +11686,12 @@
         '</div>' +
       '</div>' +
       (ready ? '' : '<p class="kur-wiz-warn">Isi nama kelas dan tambah minimal satu materi sebelum publikasi.</p>') +
+      (uploading ? '<p class="kur-wiz-warn">Tunggu video selesai diunggah sebelum publikasi.</p>' : '') +
       (meta.published ? '<p class="kur-wiz-live">Kurikulum sudah dipublikasikan. Simpan lagi untuk memperbarui.</p>' : '') +
       '<div class="kur-pub-actions">' +
         '<button type="button" class="btn kur-pub-back" data-act="kur-wiz-step" data-id="2">‹ Kembali</button>' +
         '<button type="button" class="btn kur-wiz-primary kur-pub-go" data-act="kur-wiz-publish"' +
-          (ready ? '' : ' disabled') + '>' +
+          (ready && !uploading ? '' : ' disabled') + '>' +
           kurRocketIcon() + ' ' + (meta.published ? 'Simpan & selesai' : 'Publikasikan') + '</button>' +
       '</div></section>';
   }
@@ -11609,6 +11777,8 @@
   function lecEditorCard(l, readonly, n) {
     const open = ui.editLecId === l.id;
     const has = lecHasContent(l);
+    const uploadJob = ui.vidUploads && ui.vidUploads[l.id];
+    const uploading = !!(uploadJob && !uploadJob.error);
     const kindNote = l.type === 'video' ? videoKindLabel(l) : (l.type === 'text' ? 'Bacaan' : ((l.resources || []).length + ' file'));
     const head = '<div class="ud-item-head">' +
       (readonly ? '' : '<span class="drag-handle" draggable="true" data-drag="lec" data-id="' + esc(l.id) + '" title="Geser materi">⋮⋮</span>') +
@@ -11622,7 +11792,10 @@
             (has ? 'Edit' : '+ Konten') + '</button>')) +
         (readonly ? '' : '<button type="button" class="btn-sm" data-act="del-lec" data-id="' + esc(l.id) + '">Hapus</button>') +
       '</div></div>';
-    if (!open) return '<article class="ud-item" data-lec-drop="' + esc(l.id) + '">' + head + '</article>';
+    if (!open) {
+      return '<article class="ud-item" data-lec-drop="' + esc(l.id) + '">' + head +
+        vidUploadHtml(l) + '</article>';
+    }
     const qs = (l.questions || []).concat([{ q: '', hint: '' }]);
     const qHtml = qs.map((q, i) =>
       '<div class="q-row">' +
@@ -11664,12 +11837,17 @@
             ? ''
             : '<h4>Video</h4>' +
               '<p class="muted">YouTube paling lancar. Drive juga bisa. Atau unggah MP4 (maks 5 GB, tersimpan di kelas).</p>' +
-              '<input data-act="lec-field" data-id="' + esc(l.id) + '" data-k="url" value="' + esc(l.url || '') + '" placeholder="https://youtube.com/…">' +
-              '<label class="vid-drop" data-act="vid-drop" data-id="' + esc(l.id) + '">' +
-                '<input type="file" data-act="vid-file" data-id="' + esc(l.id) + '" accept="video/mp4,video/webm,.mp4,.webm,.m4v" hidden>' +
-                '<span>' + (l.videoKey || l.videoBlob ? ('Ganti file · sekarang: ' + esc(l.videoName || 'video')) : 'Drop / pilih file MP4') + '</span>' +
+              '<input data-act="lec-field" data-id="' + esc(l.id) + '" data-k="url" value="' + esc(l.url || '') + '" placeholder="https://youtube.com/…"' +
+                (uploading ? ' disabled' : '') + '>' +
+              '<label class="vid-drop' + (uploading ? ' is-busy' : '') + '" data-act="vid-drop" data-id="' + esc(l.id) + '">' +
+                '<input type="file" data-act="vid-file" data-id="' + esc(l.id) + '" accept="video/mp4,video/webm,.mp4,.webm,.m4v" hidden' +
+                  (uploading ? ' disabled' : '') + '>' +
+                '<span>' + (uploading
+                  ? 'Mengunggah…'
+                  : (l.videoKey || l.videoBlob ? ('Ganti file · sekarang: ' + esc(l.videoName || 'video')) : 'Drop / pilih file MP4')) + '</span>' +
               '</label>' +
-              (l.videoKey || l.videoBlob ? '<button type="button" class="btn-sm" data-act="clear-vid" data-id="' + esc(l.id) + '">Hapus file, pakai tautan</button>' : '')) +
+              vidUploadHtml(l) +
+              (!uploading && (l.videoKey || l.videoBlob) ? '<button type="button" class="btn-sm" data-act="clear-vid" data-id="' + esc(l.id) + '">Hapus file, pakai tautan</button>' : '')) +
           lecEditorPreviewHtml(l) +
           '<h4>' + descLabel + '</h4>' +
           '<textarea data-act="lec-body" data-id="' + esc(l.id) + '" rows="6" placeholder="' + esc(descPh) + '">' +
@@ -12570,6 +12748,11 @@
         if (l.videoKey) deleteRemoteVideo(l.videoKey);
         l.videoBlob = false;
         l.videoKey = '';
+        if (ui.vidUploads && ui.vidUploads[l.id] && ui.vidUploads[l.id].error) {
+          delete ui.vidUploads[l.id];
+          const box = document.querySelector('[data-vid-upload="' + l.id + '"]');
+          if (box) box.remove();
+        }
       }
       save();
       return;
@@ -12962,6 +13145,8 @@
     z.classList.remove('is-over');
     const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
     if (!file) return;
+    const busy = z.querySelector('input[type="file"]');
+    if (busy && busy.disabled) return;
     const form = z.closest('form');
     const titleInp = form && form.querySelector('[name="title"]');
     const title = titleInp ? String(titleInp.value || '').trim() : '';
@@ -13871,6 +14056,7 @@
     } else if (act === 'kur-edit-on') {
       if (!staffCan('editClasses')) return;
       const meta = ensureKurikulumMeta();
+      ui.kurFromPublish = false;
       ui.kurEdit = true;
       ui.mentorTab = 'kurikulum';
       ui.kurWizStep = (meta.name && lectures().length) ? 2 : 1;
@@ -13901,32 +14087,19 @@
       ui.kurWizStep = Math.max(1, Math.min(3, to));
       render();
     } else if (act === 'kur-wiz-publish') {
-      const meta = ensureKurikulumMeta();
-      if (!String(meta.name || '').trim()) {
-        toast('Isi nama kelas dulu.');
-        ui.kurWizStep = 1;
-        render();
-        return;
-      }
-      if (!lectures().length) {
-        toast('Tambah minimal satu materi dulu.');
-        ui.kurWizStep = 2;
-        render();
-        return;
-      }
-      const wasLive = !!meta.published;
-      meta.published = true;
-      if (!db.businessName) db.businessName = meta.name;
-      ui.kurEdit = false;
-      ui.editLecId = null;
-      save();
-      toast(wasLive ? 'Kurikulum diperbarui.' : 'Kurikulum dipublikasikan.');
+      publishKurikulum();
+    } else if (act === 'kur-pub-back') {
+      ui.kurFromPublish = false;
+      ui.kurEdit = true;
+      ui.kurWizStep = 3;
+      ui.mentorTab = 'kurikulum';
       render();
     } else if (act === 'kur-pub-preview') {
       if (!lectures().length) {
         toast('Tambah minimal satu materi dulu.');
         return;
       }
+      ui.kurFromPublish = true;
       ui.kurEdit = false;
       ui.lectureId = firstLectureId();
       render();
@@ -13990,6 +14163,7 @@
     } else if (act === 'kur-edit-lec') {
       const id = btn.getAttribute('data-id');
       const lec = lectureById(id);
+      ui.kurFromPublish = false;
       ui.kurEdit = true;
       ui.kurWizStep = 2;
       ui.editLecId = id;
