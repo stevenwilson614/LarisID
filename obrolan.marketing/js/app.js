@@ -3408,8 +3408,23 @@
   }
   function mountYtWatchPlayer(hostId, videoId, lecId) {
     const WATCH_PCT = 0.85;
+    const host = () => document.getElementById(hostId);
+    const fallbackIframe = () => {
+      const el = host();
+      if (!el || el.tagName === 'IFRAME') return;
+      const iframe = document.createElement('iframe');
+      iframe.src = 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(videoId) +
+        '?autoplay=1&rel=0&modestbranding=1&playsinline=1';
+      iframe.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
+      iframe.setAttribute('allowfullscreen', '');
+      iframe.setAttribute('title', 'Video materi');
+      iframe.style.cssText = 'width:100%;aspect-ratio:16/9;border:0;display:block;background:#000';
+      el.replaceWith(iframe);
+    };
+    const apiTimer = setTimeout(fallbackIframe, 3500);
     loadYtApi().then(() => {
-      if (!document.getElementById(hostId)) return;
+      clearTimeout(apiTimer);
+      if (!host()) return;
       let poll = null;
       const stop = () => { if (poll) { clearInterval(poll); poll = null; } };
       const player = new window.YT.Player(hostId, {
@@ -3422,7 +3437,9 @@
           origin: location.origin
         },
         events: {
+          onError: () => fallbackIframe(),
           onStateChange: (ev) => {
+            if (!lecId) return;
             if (ev.data === window.YT.PlayerState.PLAYING) {
               stop();
               poll = setInterval(() => {
@@ -3443,7 +3460,10 @@
           }
         }
       });
-    }).catch(() => { /* offline / blocked */ });
+    }).catch(() => {
+      clearTimeout(apiTimer);
+      fallbackIframe();
+    });
   }
   function progressPct(sid, weekId) {
     const list = weekId ? lecturesInWeek(weekId) : lectures();
@@ -5539,22 +5559,35 @@
         if (l) Object.assign(l, patch);
       }
     };
-    if (syncEnabled()) {
-      toast('Mengunggah cover…');
-      uploadClassVideo(file, coverKey(kind, id), null, 'image').then((info) => {
-        applyCover({ coverUrl: mediaFileUrl(info.key), coverKey: info.key, coverBlob: false });
+    const saveCover = (ready) => {
+      if (syncEnabled()) {
+        toast('Mengunggah cover…');
+        uploadClassVideo(ready, coverKey(kind, id), null, 'image').then((info) => {
+          applyCover({ coverUrl: mediaFileUrl(info.key), coverKey: info.key, coverBlob: false });
+          save();
+          toast('Cover tersimpan di kelas.');
+          render();
+        }).catch(() => toast('Gagal unggah cover.'));
+        return;
+      }
+      blobPut(coverKey(kind, id), ready).then(() => {
+        applyCover({ coverBlob: true });
         save();
-        toast('Cover tersimpan di kelas.');
+        toast('Cover tersimpan di browser ini.');
         render();
-      }).catch(() => toast('Gagal unggah cover.'));
-      return;
-    }
-    blobPut(coverKey(kind, id), file).then(() => {
-      applyCover({ coverBlob: true });
-      save();
-      toast('Cover tersimpan di browser ini.');
-      render();
-    }).catch(() => toast('Gagal simpan cover.'));
+      }).catch(() => toast('Gagal simpan cover.'));
+    };
+    shrinkCoverImage(file).then((ready) => {
+      if (!ready) {
+        toast('Cover tidak bisa dibaca.');
+        return;
+      }
+      if (ready.size > MAX_IMG) {
+        toast('Cover masih di atas 5 MB setelah diperkecil.');
+        return;
+      }
+      saveCover(ready);
+    }).catch(() => toast('Gagal proses cover.'));
   }
   function ingestResourceFile(file, lecId) {
     if (!file) return;
@@ -6267,13 +6300,27 @@
     const inner = esc(text || '').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
     return '<p>' + inner + '</p>';
   }
-  function coverHtml(kind, id, cls) {
+  function coverHtml(kind, id, cls, opts) {
+    const o = opts || {};
+    const load = o.eager
+      ? ' fetchpriority="high" decoding="async"'
+      : ' loading="lazy" decoding="async"';
     const rec = kind === 'kur'
       ? ensureKurikulumMeta()
       : (kind === 'week' ? (db.weeks.find((w) => w.id === id) || {}) : (lectureById(id) || {}));
-    if (rec.coverUrl) return '<img class="' + (cls || 'cover-thumb') + '" src="' + esc(rec.coverUrl) + '" alt="">';
-    if (rec.coverBlob) return '<img class="' + (cls || 'cover-thumb') + '" data-blob="' + esc(coverKey(kind, id)) + '" alt="">';
+    if (rec.coverUrl) {
+      return '<img class="' + (cls || 'cover-thumb') + '" src="' + esc(rec.coverUrl) + '" alt=""' + load + '>';
+    }
+    if (rec.coverBlob) {
+      return '<img class="' + (cls || 'cover-thumb') + '" data-blob="' + esc(coverKey(kind, id)) + '" alt=""' + load + '>';
+    }
     return '';
+  }
+  function lectureCoverUrl(lec) {
+    if (!lec) return '';
+    if (lec.coverUrl) return lec.coverUrl;
+    const e = parseEmbed(lec.url);
+    return (e && e.thumb) || '';
   }
   function fetchTikTokAvatar(handle) {
     const h = tiktokHandle(handle);
@@ -7269,18 +7316,29 @@
 
   function bindLazy() {
     $('main').querySelectorAll('[data-embed]').forEach((el) => {
+      if (el.getAttribute('data-lazy-bound')) return;
+      el.setAttribute('data-lazy-bound', '1');
       el.addEventListener('click', () => {
         const watchLec = el.getAttribute('data-watch-lec');
         const videoId = el.getAttribute('data-yt-id');
-        if (watchLec && videoId) {
-          const hostId = 'yt-watch-' + watchLec + '-' + Date.now();
-          el.outerHTML = '<div class="yt-watch-host" id="' + hostId + '"></div>';
-          mountYtWatchPlayer(hostId, videoId, watchLec);
+        if (videoId) {
+          const hostId = 'yt-watch-' + (watchLec || 'play') + '-' + Date.now();
+          const host = document.createElement('div');
+          host.className = 'yt-watch-host';
+          host.id = hostId;
+          el.replaceWith(host);
+          mountYtWatchPlayer(hostId, videoId, watchLec || '');
           return;
         }
         const src = el.getAttribute('data-embed');
         if (!src) return;
-        el.outerHTML = '<iframe src="' + esc(src) + '" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen title="Video materi"></iframe>';
+        const iframe = document.createElement('iframe');
+        iframe.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
+        iframe.setAttribute('allowfullscreen', '');
+        iframe.setAttribute('title', 'Video materi');
+        el.replaceWith(iframe);
+        // Set src after insert so autoplay still counts as a user gesture.
+        iframe.src = src;
       });
     });
   }
@@ -7973,37 +8031,55 @@
     const name = String((lec && lec.videoName) || '');
     return /quicktime|hevc/i.test(mime) || /\.(mov|qt)$/i.test(name);
   }
-  function hostedVideoHtml(lec, watchFirst, cls) {
+  function hostedVideoHtml(lec, watchFirst, cls, opts) {
+    const o = opts || {};
+    const preload = o.preload || 'metadata';
+    const poster = o.poster ? (' poster="' + esc(o.poster) + '"') : '';
+    const watch = watchFirst ? ' data-watch-lec="' + esc(lec.id) + '"' : '';
     if (lec.videoBlob && !lec.videoKey) {
-      return '<video class="' + cls + '" controls playsinline preload="metadata" data-blob="' + esc(lec.id) + '"' +
-        (watchFirst ? ' data-watch-lec="' + esc(lec.id) + '"' : '') + '></video>';
+      return '<video class="' + cls + '" controls playsinline preload="' + preload + '" data-blob="' +
+        esc(lec.id) + '"' + poster + watch + '></video>';
     }
-    return '<video class="' + cls + '" controls playsinline preload="metadata" src="' + esc(mediaFileUrl(lec.videoKey)) + '"' +
-      (watchFirst ? ' data-watch-lec="' + esc(lec.id) + '"' : '') + '></video>';
+    return '<video class="' + cls + '" controls playsinline preload="' + preload + '" src="' +
+      esc(mediaFileUrl(lec.videoKey)) + '"' + poster + watch + '></video>';
   }
   function hostedPlayerHtml(lec, watchFirst) {
-    const cover = coverHtml('lec', lec.id, 'lec-poster');
+    const coverSrc = lectureCoverUrl(lec);
+    const cover = coverHtml('lec', lec.id, 'lec-poster', { eager: true });
     if (videoFileUnsupported(lec)) {
       return '<div class="lec-player is-bad">' +
         (cover || '') +
         '<p class="lec-vid-error">Video tidak bisa diputar. Unggah MP4 (H.264) atau WebM.</p></div>';
     }
-    const video = hostedVideoHtml(lec, watchFirst, 'lec-video');
-    if (!cover) return '<div class="lec-player">' + video + '</div>';
+    if (!coverSrc && !cover) {
+      return '<div class="lec-player">' + hostedVideoHtml(lec, watchFirst, 'lec-video') + '</div>';
+    }
+    const video = hostedVideoHtml(lec, watchFirst, 'lec-video', {
+      preload: 'none',
+      poster: coverSrc || undefined
+    });
     return '<div class="lec-player has-poster">' + video +
       '<button type="button" class="lec-poster-hit" data-act="play-hosted" aria-label="Putar video">' +
-        cover +
+        (cover || (coverSrc
+          ? '<img class="lec-poster" src="' + esc(coverSrc) + '" alt="" fetchpriority="high" decoding="async">'
+          : '')) +
         '<span class="play-orb" aria-hidden="true">' + svgIcon('play') + '</span>' +
       '</button></div>';
   }
   function lessonVideoHtml(lec) {
-    const cover = coverHtml('lec', lec.id, 'lec-poster');
+    const cover = coverHtml('lec', lec.id, 'lec-poster', { eager: true });
     const watchFirst = lec.type === 'video' && lec.id === firstLectureId();
     if (lec.videoKey || lec.videoBlob) return hostedPlayerHtml(lec, watchFirst);
     const e = parseEmbed(lec.url);
     if (e && e.embed) {
-      return '<div class="lazy-embed' + (cover ? ' has-cover' : '') + '" data-embed="' + esc(e.embed) + '"' +
-        (watchFirst && e.videoId ? ' data-watch-lec="' + esc(lec.id) + '" data-yt-id="' + esc(e.videoId) + '"' : '') + '>' +
+      const thumb = cover ? '' : (e.thumb || '');
+      const bg = thumb
+        ? ' style="background-image:url(\'' + esc(thumb) + '\')"'
+        : '';
+      return '<div class="lazy-embed' + ((cover || thumb) ? ' has-cover' : '') + '"' + bg +
+        ' data-embed="' + esc(e.embed) + '"' +
+        (e.videoId ? ' data-yt-id="' + esc(e.videoId) + '"' : '') +
+        (watchFirst && e.videoId ? ' data-watch-lec="' + esc(lec.id) + '"' : '') + '>' +
         (cover || '') +
         '<div class="play-orb" aria-hidden="true">' + svgIcon('play') + '</div>' +
       '</div>';
@@ -8728,8 +8804,10 @@
     return viewDiskusiApp(true);
   }
 
-  function shrinkImage(file) {
-    const maxEdge = 1600;
+  function shrinkImage(file, opts) {
+    const o = opts || {};
+    const maxEdge = o.maxEdge || 1600;
+    const quality = o.quality == null ? 0.85 : o.quality;
     const toFile = (source, sw, sh) => new Promise((resolve) => {
       let w = sw;
       let h = sh;
@@ -8748,11 +8826,11 @@
         if (!blob) { resolve(file); return; }
         const base = String(file.name || 'foto').replace(/\.[^.]+$/, '') || 'foto';
         resolve(new File([blob], base + '.jpg', { type: 'image/jpeg' }));
-      }, 'image/jpeg', 0.85);
+      }, 'image/jpeg', quality);
     });
     if (window.createImageBitmap) {
-      const opts = { imageOrientation: 'from-image' };
-      return createImageBitmap(file, opts).then((bmp) => toFile(bmp, bmp.width, bmp.height)).catch(() => {
+      const bmpOpts = { imageOrientation: 'from-image' };
+      return createImageBitmap(file, bmpOpts).then((bmp) => toFile(bmp, bmp.width, bmp.height)).catch(() => {
         return createImageBitmap(file).then((bmp) => toFile(bmp, bmp.width, bmp.height)).catch(() => null);
       });
     }
@@ -8766,6 +8844,9 @@
       img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
       img.src = url;
     });
+  }
+  function shrinkCoverImage(file) {
+    return shrinkImage(file, { maxEdge: 1280, quality: 0.8 });
   }
 
   function capturePostBody() {
@@ -10245,8 +10326,19 @@
     }
     return '';
   }
+  function otoWaitUnitOf(st) {
+    if (st && st.waitUnit === 'days') return 'days';
+    if (st && st.waitUnit === 'hours') return 'hours';
+    const h = Number(st && st.waitHours) || 0;
+    return (h >= 24 && h % 24 === 0) ? 'days' : 'hours';
+  }
+  function otoWaitDisplay(st) {
+    const h = Number(st && st.waitHours) || 0;
+    return otoWaitUnitOf(st) === 'days' ? (h / 24) : h;
+  }
   function otoWaitCard(p, st) {
-    const h = Number(st.waitHours) || 0;
+    const unit = otoWaitUnitOf(st);
+    const display = otoWaitDisplay(st);
     return '<div class="oto-card oto-delay">' +
       '<div class="oto-card-top">' +
         '<span class="oto-kicker">Jeda waktu</span>' +
@@ -10255,10 +10347,15 @@
       '</div>' +
       '<div class="oto-delay-row">' +
         '<input data-act="plan-wait" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) +
-          '" type="number" min="0" value="' + esc(h) + '" aria-label="Jam jeda">' +
-        '<span>jam setelah langkah sebelumnya</span>' +
+          '" type="number" min="0" step="any" value="' + esc(display) + '" aria-label="Lama jeda">' +
+        '<select data-act="plan-wait-unit" data-pid="' + esc(p.id) + '" data-sid="' + esc(st.id) +
+          '" aria-label="Satuan jeda">' +
+          '<option value="hours"' + (unit === 'hours' ? ' selected' : '') + '>jam</option>' +
+          '<option value="days"' + (unit === 'days' ? ' selected' : '') + '>hari</option>' +
+        '</select>' +
+        '<span>setelah langkah sebelumnya</span>' +
       '</div>' +
-      '<p class="muted oto-hint">Contoh: 12 = setengah hari · 24 = sehari · 168 = seminggu</p>' +
+      '<p class="muted oto-hint">Contoh: 12 jam · 1 hari · 7 hari (seminggu)</p>' +
     '</div>';
   }
   function otoInsertMenu(p, at) {
@@ -11421,7 +11518,11 @@
     return Math.max(30, +(s && s.mins) || 90);
   }
   function sessionIcsEvent(s) {
+    if (!s || !s.startsAt) return '';
     const start = new Date(s.startsAt);
+    if (!isFinite(start.getTime())) return '';
+    const startStamp = icsUtcStamp(start);
+    if (!startStamp) return '';
     const end = new Date(start.getTime() + sessionDurationMins(s) * 60e3);
     const remindMins = Math.max(0, Number(s.remind && s.remind.whenMins) || 60);
     const desc = [
@@ -11429,6 +11530,7 @@
       s.meetUrl ? ('Meet: ' + s.meetUrl) : '',
       'Kelas: ' + sessionAudienceLabel(s)
     ].filter(Boolean).join('\n');
+    const uidHost = String(schoolSlug() || 'kelas').replace(/[^a-zA-Z0-9.-]/g, '-') || 'kelas';
     const alarm = [
       'BEGIN:VALARM',
       'TRIGGER:-PT' + remindMins + 'M',
@@ -11438,9 +11540,9 @@
     ].join('\r\n');
     return [
       'BEGIN:VEVENT',
-      'UID:' + String(s.id || 'ses') + '@' + schoolSlug(),
+      'UID:' + String(s.id || ('ses-' + startStamp)) + '@' + uidHost,
       'DTSTAMP:' + icsUtcStamp(new Date()),
-      'DTSTART:' + icsUtcStamp(start),
+      'DTSTART:' + startStamp,
       'DTEND:' + icsUtcStamp(end),
       'SUMMARY:' + icsEscape(s.title || 'Sesi kelas'),
       'DESCRIPTION:' + icsEscape(desc),
@@ -11451,32 +11553,45 @@
     ].filter(Boolean).join('\r\n');
   }
   function buildSessionsIcs(list) {
-    const body = (list || visibleSessions(true)).map(sessionIcsEvent).join('\r\n');
+    const events = (list || visibleSessions(true))
+      .map(sessionIcsEvent)
+      .filter(Boolean);
     const calName = ((db && db.businessName) || SEED.school.name || 'Kelas') + ' · Jadwal';
+    const slug = String(schoolSlug() || 'kelas').replace(/[^a-zA-Z0-9.-]/g, '-') || 'kelas';
     return 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Laris Mentor//' +
-      icsEscape(schoolSlug() || 'kelas') + '//ID\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nX-WR-CALNAME:' +
+      slug + '//ID\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nX-WR-CALNAME:' +
       icsEscape(calName) +
-      '\r\n' + body + '\r\nEND:VCALENDAR\r\n';
+      '\r\n' + events.join('\r\n') + '\r\nEND:VCALENDAR\r\n';
   }
-  function downloadIcs(filename, icsText) {
+  function downloadIcs(filename, icsText, mode) {
     const blob = new Blob([icsText], { type: 'text/calendar;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = filename || 'jadwal-anton.ics';
+    if (mode === 'apple') {
+      // Prefer open (not forced download) so Calendar.app / iOS can import.
+      a.target = '_blank';
+      a.rel = 'noopener';
+    } else {
+      a.download = filename || 'jadwal-anton.ics';
+    }
     document.body.appendChild(a);
     a.click();
     a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1500);
+    setTimeout(() => URL.revokeObjectURL(url), mode === 'apple' ? 60000 : 8000);
   }
   function googleCalUrl(s) {
+    if (!s || !s.startsAt) return '';
     const start = new Date(s.startsAt);
+    if (!isFinite(start.getTime())) return '';
     const end = new Date(start.getTime() + sessionDurationMins(s) * 60e3);
-    const dates = icsUtcStamp(start) + '/' + icsUtcStamp(end);
+    const startStamp = icsUtcStamp(start);
+    const endStamp = icsUtcStamp(end);
+    if (!startStamp || !endStamp) return '';
     const q = new URLSearchParams({
       action: 'TEMPLATE',
       text: s.title || 'Sesi kelas',
-      dates: dates,
+      dates: startStamp + '/' + endStamp,
       details: [s.notes || '', s.meetUrl || ''].filter(Boolean).join('\n'),
       location: s.location || 'Online'
     });
@@ -11735,7 +11850,7 @@
             (staffCan('editClasses')
               ? '<button type="button" class="btn secondary" data-act="cal-composer" data-id="new">+ Acara baru</button>'
               : '') +
-            '<span class="muted">' + nSes + ' acara · sync unduh .ics · Google buka template / impor file</span>' +
+            '<span class="muted">' + nSes + ' acara · Google buka template / impor .ics · Apple buka .ics</span>' +
           '</div>'
         : '') +
       body +
@@ -12609,6 +12724,14 @@
       save();
       render();
     }
+    if (t.matches('[data-act="plan-wait-unit"]')) {
+      const plan = planById(t.getAttribute('data-pid'));
+      const st = plan && (plan.steps || []).find((x) => x.id === t.getAttribute('data-sid'));
+      if (!st) return;
+      st.waitUnit = t.value === 'days' ? 'days' : 'hours';
+      save();
+      render();
+    }
   });
 
   document.addEventListener('input', (e) => {
@@ -12685,14 +12808,25 @@
       }
       return;
     }
-    if (t.matches('[data-act="plan-wait"]') || t.matches('[data-act="plan-title"]') || t.matches('[data-act="plan-body"]') || t.matches('[data-act="plan-subject"]') || t.matches('[data-act="plan-name"]')) {
+    if (t.matches('[data-act="plan-wait"]') || t.matches('[data-act="plan-wait-unit"]') ||
+        t.matches('[data-act="plan-title"]') || t.matches('[data-act="plan-body"]') ||
+        t.matches('[data-act="plan-subject"]') || t.matches('[data-act="plan-name"]')) {
       const plan = planById(t.getAttribute('data-pid'));
       if (!plan) return;
       if (t.matches('[data-act="plan-name"]')) { plan.name = t.value; save(); return; }
       const st = plan.steps.find((x) => x.id === t.getAttribute('data-sid'));
       if (!st) return;
-      if (t.matches('[data-act="plan-wait"]')) st.waitHours = +t.value || 0;
-      else if (t.matches('[data-act="plan-title"]')) st.title = t.value;
+      if (t.matches('[data-act="plan-wait"]')) {
+        const unit = otoWaitUnitOf(st);
+        const n = Math.max(0, Number(t.value) || 0);
+        st.waitHours = unit === 'days' ? n * 24 : n;
+        st.waitUnit = unit;
+      } else if (t.matches('[data-act="plan-wait-unit"]')) {
+        st.waitUnit = t.value === 'days' ? 'days' : 'hours';
+        save();
+        render();
+        return;
+      } else if (t.matches('[data-act="plan-title"]')) st.title = t.value;
       else if (t.matches('[data-act="plan-subject"]')) st.subject = t.value;
       else st.body = t.value;
       save();
@@ -13494,13 +13628,52 @@
       ui.lectureId = firstLectureId();
       render();
     } else if (act === 'play-hosted') {
+      e.preventDefault();
       const player = btn.closest('.lec-player');
       const video = player && player.querySelector('video');
       if (player) player.classList.remove('has-poster');
       btn.hidden = true;
-      if (video) {
+      if (!video) {
+        toast('Video tidak ditemukan.');
+        return;
+      }
+      const tryPlay = () => {
+        video.setAttribute('preload', 'auto');
         const play = video.play();
-        if (play && typeof play.catch === 'function') play.catch(() => {});
+        if (play && typeof play.catch === 'function') {
+          play.catch((err) => {
+            const name = err && err.name;
+            if (name === 'NotAllowedError') {
+              toast('Browser memblokir autoplay. Tekan play di kontrol video.');
+            } else if (video.error) {
+              toast('Video gagal diputar. Coba format MP4 (H.264).');
+            } else {
+              toast('Video belum siap. Coba lagi sebentar.');
+            }
+          });
+        }
+      };
+      if (video.getAttribute('data-blob') && !video.getAttribute('src') && !video.src) {
+        const id = video.getAttribute('data-blob');
+        blobGet(id).then((file) => {
+          if (!file || !video.isConnected) {
+            toast('File video tidak ada di browser ini.');
+            return;
+          }
+          video.src = URL.createObjectURL(file);
+          video.addEventListener('loadeddata', tryPlay, { once: true });
+          video.load();
+        }).catch(() => toast('Gagal memuat video.'));
+        return;
+      }
+      if (video.readyState >= 2) tryPlay();
+      else {
+        video.addEventListener('loadeddata', tryPlay, { once: true });
+        video.load();
+        // Fallback if metadata never fires (some CDNs).
+        setTimeout(() => {
+          if (video.paused) tryPlay();
+        }, 400);
       }
     } else if (act === 'lec-extra') {
       const id = btn.getAttribute('data-id');
@@ -13869,18 +14042,29 @@
       ui.calYM = ui.calDay.slice(0, 7);
       render();
     } else if (act === 'cal-ics-all' || act === 'cal-sync-apple' || act === 'cal-sync-google') {
-      const list = visibleSessions(true);
+      const list = visibleSessions(true).filter((s) => s && s.startsAt && isFinite(new Date(s.startsAt).getTime()));
       if (!list.length) {
         toast('Belum ada acara di jadwal. Tambah acara dulu.');
         return;
       }
-      downloadIcs('jadwal-' + schoolSlug() + '.ics', buildSessionsIcs(list));
+      const ics = buildSessionsIcs(list);
       if (act === 'cal-sync-google') {
+        if (list.length === 1) {
+          const gUrl = googleCalUrl(list[0]);
+          if (gUrl) {
+            window.open(gUrl, '_blank', 'noopener');
+            toast('Membuka Google Calendar untuk acara ini.');
+            return;
+          }
+        }
+        downloadIcs('jadwal-' + schoolSlug() + '.ics', ics, 'google');
         toast('File .ics diunduh. Di Google Calendar: Settings → Import & export → Import.');
         window.open('https://calendar.google.com/calendar/u/0/r/settings/export', '_blank', 'noopener');
       } else if (act === 'cal-sync-apple') {
-        toast('File .ics diunduh — buka di Apple Calendar (Calendar.app / iOS).');
+        downloadIcs('jadwal-' + schoolSlug() + '.ics', ics, 'apple');
+        toast('Membuka file .ics — pilih Calendar / Kalender untuk menambah acara.');
       } else {
+        downloadIcs('jadwal-' + schoolSlug() + '.ics', ics, 'google');
         toast('File .ics diunduh — Apple Calendar atau impor di Google Calendar.');
       }
     } else if (act === 'cal-ics-one') {
@@ -13890,8 +14074,8 @@
         toast('Sesi tidak ditemukan.');
         return;
       }
-      downloadIcs((ses.id || 'sesi') + '.ics', buildSessionsIcs([ses]));
-      toast('File .ics diunduh — Apple Calendar / Google Import.');
+      downloadIcs((ses.id || 'sesi') + '.ics', buildSessionsIcs([ses]), 'apple');
+      toast('Membuka file .ics — pilih Calendar / Kalender.');
     } else if (act === 'cal-composer') {
       if (!staffCan('editClasses')) return;
       const id = btn.getAttribute('data-id') || 'new';
@@ -14245,19 +14429,25 @@
       if (at === 'end') {
         if (!p.steps.length) {
           p.steps.push({
-            id: 'st-' + Date.now(), waitHours: 24, kind: 'wa', title: '', body: '', assignAdmin: true
+            id: 'st-' + Date.now(), waitHours: 24, waitUnit: 'days', kind: 'wa', title: '', body: '', assignAdmin: true
           });
         } else {
           const last = p.steps[p.steps.length - 1];
-          if (!(Number(last.waitHours) > 0)) last.waitHours = 24;
+          if (!(Number(last.waitHours) > 0)) {
+            last.waitHours = 24;
+            last.waitUnit = 'days';
+          }
         }
       } else {
         const i = Math.max(0, Math.min(p.steps.length, +at || 0));
         if (p.steps[i]) {
-          if (!(Number(p.steps[i].waitHours) > 0)) p.steps[i].waitHours = 24;
+          if (!(Number(p.steps[i].waitHours) > 0)) {
+            p.steps[i].waitHours = 24;
+            p.steps[i].waitUnit = 'days';
+          }
         } else {
           p.steps.splice(i, 0, {
-            id: 'st-' + Date.now(), waitHours: 24, kind: 'wa', title: '', body: '', assignAdmin: true
+            id: 'st-' + Date.now(), waitHours: 24, waitUnit: 'days', kind: 'wa', title: '', body: '', assignAdmin: true
           });
         }
       }
