@@ -1494,22 +1494,27 @@ html[data-mode="mentor"] body { background: var(--ink); }
 html[data-mode="mentor"] #app {
   max-width: none; display: flex; flex-direction: column; min-height: 100vh;
 }
+html[data-mode="mentor"] .topbar {
+  background: var(--ink);
+  border-bottom: 0;
+}
 html[data-mode="mentor"] .workspace {
   display: grid; grid-template-columns: var(--rail) minmax(0, 1fr);
   flex: 1; min-height: 0;
 }
 html[data-mode="mentor"] .tabs {
   display: flex; flex-direction: column; gap: 2px;
-  padding: 16px 12px; border-right: 1px solid var(--line);
-  background: var(--ink-2); overflow: auto;
+  padding: 16px 12px; border-right: 0;
+  background: var(--ink); overflow: auto;
 }
 html[data-mode="mentor"] .tabs button {
   text-align: left; border-radius: var(--r); padding: 10px 12px;
   border-bottom: 0; width: 100%;
 }
 html[data-mode="mentor"] .tabs button[aria-selected="true"] {
-  background: var(--ink-3); color: var(--text);
-  box-shadow: inset 0 0 0 1px var(--line);
+  background: color-mix(in srgb, var(--ok) 16%, var(--ink-2));
+  color: var(--fg-strong);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ok) 42%, transparent);
 }
 html[data-mode="mentor"] .dock { display: none !important; }
 html[data-mode="mentor"] .main {
@@ -1545,7 +1550,7 @@ html[data-mode="mentor"] .kanban-col {
 html[data-mode="mentor"] .kur-toolbar {
   position: sticky; top: calc(var(--top-h) + var(--vid-bar-h, 0px)); z-index: 6;
   background: var(--ink); margin: -8px 0 14px; padding: 12px 0 14px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 0;
 }
 .kur-toolbar-actions { flex: none; }
 .btn-sm.on { background: var(--ink-3); color: var(--text); border-color: var(--line-2); }
@@ -2021,8 +2026,8 @@ html.present-pane[data-mode="student"] .kurikulum-pane.is-open {
   --dash-scheme: dark;
   display: grid; gap: 16px; max-width: 980px;
   margin: -8px -4px 0; padding: 16px 14px 28px;
-  background: var(--dash-bg); color: var(--dash-text);
-  border: 1px solid var(--dash-border); border-radius: 14px;
+  background: transparent; color: var(--dash-text);
+  border: 0; border-radius: 14px;
 }
 /* Cursor Day: same structure, light surfaces */
 html[data-theme="light"] .dash-page {
@@ -2048,7 +2053,7 @@ html[data-theme="light"] .dash-page {
 .dash-page .dash-sub, .dash-page .dash-footnote { color: var(--dash-muted); margin: 6px 0 0; }
 .dash-range {
   display: flex; flex-wrap: wrap; gap: 4px;
-  padding: 4px; background: var(--dash-panel); border: 1px solid var(--dash-border);
+  padding: 4px; background: var(--ink-2); border: 0;
   border-radius: 10px; width: fit-content; max-width: 100%;
 }
 .dash-range-btn {
@@ -2057,13 +2062,13 @@ html[data-theme="light"] .dash-page {
   padding: 8px 12px; border-radius: 7px; cursor: pointer;
   min-width: 2.4rem;
 }
-.dash-range-btn:hover { color: var(--dash-text); background: var(--dash-hover); }
+.dash-range-btn:hover { color: var(--dash-text); background: var(--ink-3); }
 .dash-range-btn[aria-selected="true"] {
-  background: var(--dash-accent); color: #ffffff;
+  background: var(--ok); color: var(--on-ok);
 }
 .dash-custom {
   display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: end;
-  padding: 12px 14px; background: var(--dash-panel); border: 1px solid var(--dash-border);
+  padding: 12px 14px; background: var(--ink-2); border: 0;
   border-radius: 10px;
 }
 .dash-custom label {
@@ -2075,7 +2080,7 @@ html[data-theme="light"] .dash-page {
   color-scheme: var(--dash-scheme);
 }
 .dash-apply {
-  background: var(--dash-accent) !important; color: #fff !important;
+  background: var(--ok) !important; color: var(--on-ok) !important;
   border-color: transparent !important;
 }
 .dash-grid {
@@ -2086,20 +2091,19 @@ html[data-theme="light"] .dash-page {
 .dash-card {
   appearance: none; -webkit-appearance: none;
   text-align: left; width: 100%; cursor: pointer;
-  background: var(--dash-card); border: 1px solid var(--dash-border);
+  background: var(--ink-2); border: 0;
   border-radius: 10px; padding: 14px 16px; min-height: 96px;
   display: grid; align-content: start; gap: 4px;
   color: inherit; font: inherit;
-  transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+  transition: background .15s ease, box-shadow .15s ease;
 }
 .dash-card:hover {
-  background: var(--dash-card-hover);
-  border-color: var(--dash-border-2);
+  background: var(--ink-3);
 }
 .dash-card.is-on {
-  border-color: var(--dash-accent);
-  box-shadow: inset 0 0 0 1px var(--dash-accent);
-  background: var(--dash-on-bg);
+  border: 0;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ok) 55%, transparent);
+  background: color-mix(in srgb, var(--ok) 14%, var(--ink-2));
 }
 .dash-card-label {
   font-size: .7rem; font-weight: 700; letter-spacing: .04em;
@@ -2117,7 +2121,7 @@ html[data-theme="light"] .dash-page {
 .dash-footnote { font-size: .78rem; max-width: 52rem; }
 
 .dash-list {
-  background: var(--dash-panel); border: 1px solid var(--dash-border);
+  background: var(--ink-2); border: 0;
   border-radius: 10px; overflow: hidden;
 }
 .dash-list-head {
@@ -3868,15 +3872,21 @@ html:not([data-theme="light"]) .kur-wiz-ico {
 .cal-day { margin-top: 16px; }
 .home-jadwal .cal-sync-bar { display: none; }
 
-/* Student home / session blocks — solid fills, no outlines */
+/* Home / session / mentor cards — solid fills, no outlines */
 html[data-mode="student"] .main .card,
 html[data-mode="student"] .main .resume-journey,
-html[data-mode="student"] .home-session {
+html[data-mode="student"] .home-session,
+html[data-mode="mentor"] .main .card,
+html[data-mode="mentor"] .main .resume-journey,
+html[data-mode="mentor"] .home-session,
+html[data-mode="mentor"] .ps-card,
+html[data-mode="mentor"] .ps-page {
   border: 0;
   background: var(--ink-2);
   box-shadow: none;
 }
-html[data-mode="student"] .rj-mile {
+html[data-mode="student"] .rj-mile,
+html[data-mode="mentor"] .rj-mile {
   border-color: var(--ink-3);
   background: color-mix(in srgb, var(--ink-3) 55%, transparent);
 }
@@ -3896,6 +3906,14 @@ html[data-mode="student"] .rj-mile {
   line-height: 1.2;
   color: var(--fg-strong);
 }
+.thread.home-session {
+  border-top: 0;
+  margin-top: 10px;
+  padding: 14px 16px;
+  border-radius: var(--r);
+  background: var(--ink-2);
+}
+.thread.home-session + .thread.home-session { margin-top: 8px; }
 .home-session .ses-when {
   display: flex;
   align-items: center;
@@ -4641,12 +4659,12 @@ html[data-theme="light"] .ps-cover.is-empty {
 .ps-card-site:hover { text-decoration: underline; }
 .ps-card-socials { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .ps-soc {
-  width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line);
-  display: grid; place-items: center; color: var(--text); background: var(--ink);
+  width: 36px; height: 36px; border-radius: 50%; border: 0;
+  display: grid; place-items: center; color: var(--text); background: var(--ink-3);
   text-decoration: none;
 }
 .ps-soc svg { width: 16px; height: 16px; display: block; }
-.ps-soc:hover { border-color: var(--text); }
+.ps-soc:hover { background: var(--line); color: var(--fg-strong); }
 .ps-card-bio { margin-top: 16px; font-size: .92rem; line-height: 1.55; }
 .ps-card-bio p { margin: 0 0 8px; }
 .ps-empty {

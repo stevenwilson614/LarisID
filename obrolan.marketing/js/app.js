@@ -13625,19 +13625,25 @@
             if (ev.kind === 'meet') {
               const ses = (db.sessions || []).find((s) => s.id === ev.id) || ev;
               const nAud = sessionAudienceIds(ses).length;
-              return '<article class="thread"><h4>' + esc(kindLabel.meet) + ' · ' + esc(ev.title) + '</h4>' +
-                '<p class="muted">' + fmtWhen(ev.at) + (ev.loc ? ' · ' + esc(ev.loc) : '') +
+              return '<article class="thread home-session">' +
+                '<p class="ses-kicker">' + esc(kindLabel.meet) + '</p>' +
+                '<h4 class="ses-title">' + esc(ev.title) + '</h4>' +
+                '<p class="ses-when">' + brandIcon('cal') +
+                  '<span>' + fmtWhen(ev.at) + (ev.loc ? ' · ' + esc(ev.loc) : '') +
                   ' · ' + esc(sessionAudienceLabel(ses)) +
                   (nAud ? (' · ' + nAud + ' siswa') : '') +
-                '</p>' +
-                (staff && staffCan('editClasses')
-                  ? '<form class="compose" data-act="meet" data-id="' + esc(ev.id) + '"><input name="meetUrl" value="' + esc(ev.url || '') + '" placeholder="https://meet.google.com/..."><button class="btn" type="submit">Simpan tautan Meet</button></form>' +
-                    '<div class="row cal-event-acts">' +
-                      '<button type="button" class="btn-sm" data-act="cal-composer" data-id="' + esc(ev.id) + '">Edit</button>' +
+                '</span></p>' +
+                '<div class="row ses-acts">' +
+                  meetOpenBtn(ev.url) +
+                  (staff && staffCan('editClasses')
+                    ? '<button type="button" class="btn-sm" data-act="cal-composer" data-id="' + esc(ev.id) + '">Edit</button>' +
                       '<button type="button" class="btn-sm" data-act="cal-remind-now" data-id="' + esc(ev.id) + '">Kirim pengingat</button>' +
-                      '<button type="button" class="btn-sm" data-act="cal-del" data-id="' + esc(ev.id) + '">Hapus</button>' +
-                    '</div>'
-                  : meetOpenBtn(ev.url)) +
+                      '<button type="button" class="btn-sm" data-act="cal-del" data-id="' + esc(ev.id) + '">Hapus</button>'
+                    : '') +
+                '</div>' +
+                (staff && staffCan('editClasses')
+                  ? '<form class="compose" data-act="meet" data-id="' + esc(ev.id) + '"><input name="meetUrl" value="' + esc(ev.url || '') + '" placeholder="https://meet.google.com/..."><button class="btn" type="submit">Simpan tautan Meet</button></form>'
+                  : '') +
                 calSyncButtons(ses) +
                 '</article>';
             }
