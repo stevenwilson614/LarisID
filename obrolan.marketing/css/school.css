@@ -3719,6 +3719,11 @@ html:not([data-theme="light"]) .kur-wiz-ico {
   position: absolute; inset: 0; z-index: 2; border: 0; padding: 0; margin: 0;
   background: #000; cursor: pointer; display: block;
 }
+/* Author `display: block` above beats the UA [hidden] rule — same pattern as .dock[hidden]. */
+.lec-poster-hit[hidden],
+.lec-player:not(.has-poster) > .lec-poster-hit {
+  display: none !important;
+}
 .lesson-stage .lec-poster-hit .lec-poster,
 .lec-poster-hit .lec-poster {
   position: absolute; inset: 0; width: 100%; height: 100%;

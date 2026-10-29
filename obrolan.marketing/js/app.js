@@ -15323,7 +15323,10 @@
       const player = btn.closest('.lec-player');
       const video = player && player.querySelector('video');
       if (player) player.classList.remove('has-poster');
+      // Cover must leave the stacking context. `hidden` alone is not enough while
+      // .lec-poster-hit { display:block } overrides the UA [hidden] rule.
       btn.hidden = true;
+      if (btn.parentNode) btn.remove();
       if (!video) {
         toast('Video tidak ditemukan.');
         return;
@@ -15331,6 +15334,7 @@
       video.controls = true;
       video.removeAttribute('data-gated');
       const tryPlay = () => {
+        if (!video.isConnected) return;
         video.setAttribute('preload', 'auto');
         const play = video.play();
         if (play && typeof play.catch === 'function') {
