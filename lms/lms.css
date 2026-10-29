@@ -1041,7 +1041,17 @@ textarea { min-height: 96px; resize: vertical; }
   gap: 8px;
   margin-top: 10px;
 }
-.photo-file-btn { cursor: pointer; margin: 0; font-weight: 700; }
+.photo-file-btn { position: relative; cursor: pointer; margin: 0; font-weight: 700; }
+.photo-file-btn input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
 .slug-field {
   display: flex;
   align-items: stretch;

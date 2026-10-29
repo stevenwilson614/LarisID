@@ -69,6 +69,8 @@ $$;
 drop function if exists public.lms_register_mentor(text);
 drop function if exists public.lms_register_mentor(text, text);
 
+drop function if exists public.lms_register_mentor(text);
+
 create or replace function public.lms_register_mentor(p_name text, p_org text default null)
 returns jsonb
 language plpgsql

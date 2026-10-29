@@ -39,7 +39,7 @@ Never `supabase db push --linked`.
 
 Each mentor has `org_name` and optional `avatar_url` (public bucket `lms-avatars`). The in-app tab title is `LMS (org_name)` and the favicon is the mentor photo when set.
 
-Invite share links use `https://api.larisid.com/functions/v1/lms-invite-card?invite=…`. That HTML carries `og:title` / `og:image` / favicon so WhatsApp and browser previews match the mentor. Humans are redirected to `/lms/?invite=…`. Brand lookup is `lms_invite_brand` — title and avatar only, never curriculum.
+The link a mentor copies is `https://larisid.com/lms/card/?invite=…`. Caddy serves that from the `lms-invite-card` function, which returns HTML with `og:title`, `og:image`, and a favicon for WhatsApp and browser previews, then sends the person to `/lms/?invite=…`. Brand lookup is `lms_invite_brand` — title and avatar only, never curriculum. The function is public (`NO_VERIFY_JWT_FUNCTIONS`) because link previews have no login.
 
 ```bash
 bash scripts/apply-selfhost.sh supabase/migrations/20261029140000_lms_mentor_brand.sql

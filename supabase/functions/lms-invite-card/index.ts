@@ -88,11 +88,11 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
     const { data, error } = await sb.rpc('lms_invite_brand', { p_token: invite })
-    if (error) {
-      console.error('lms-invite-card rpc', error.message)
+    if (error || !data || !data.org_name) {
+      if (error) console.error('lms-invite-card rpc', error.message)
       return fallback
     }
-    const org = String((data && data.org_name) || '').trim() || 'Kelas'
+    const org = String(data.org_name).trim() || 'Kelas'
     const title = String((data && data.brand_title) || `LMS (${org})`)
     const image = String((data && data.avatar_url) || '').trim() || FALLBACK_ICON
     return htmlPage({

@@ -502,15 +502,15 @@
         var file = $('brand-avatar-file').files && $('brand-avatar-file').files[0];
         if (!file) return;
         appError('');
-        window.LmsApi.uploadAvatar(file).then(function (shot) {
+        window.LmsApi.uploadAvatar(file).then(function (url) {
           var preview = $('brand-avatar-preview');
           if (preview) {
-            preview.src = shot.display || shot.url;
-            preview.dataset.url = shot.url;
+            preview.src = url;
+            preview.dataset.url = url;
             preview.hidden = false;
           }
           var org = ($('brand-org') && $('brand-org').value.trim()) || '';
-          return window.LmsApi.updateBrand(org, shot.url).then(function (me) {
+          return window.LmsApi.updateBrand(org, url).then(function (me) {
             applyBrand(me);
           });
         }).catch(function (err) {
