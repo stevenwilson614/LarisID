@@ -47,11 +47,13 @@
     var authWrap = $('auth-wrap');
     var auth = $('view-auth');
     var register = $('view-register');
+    var mfa = $('view-mfa');
     var app = $('view-app');
     if (land) land.hidden = which !== 'land';
-    if (authWrap) authWrap.hidden = which !== 'auth' && which !== 'register';
+    if (authWrap) authWrap.hidden = which !== 'auth' && which !== 'register' && which !== 'mfa';
     if (auth) auth.hidden = which !== 'auth';
     if (register) register.hidden = which !== 'register';
+    if (mfa) mfa.hidden = which !== 'mfa';
     if (app) app.hidden = which !== 'app';
     window.scrollTo(0, 0);
   }
@@ -788,6 +790,17 @@
   }
 
   async function routeNow(session) {
+    if (session && window.Lms.mfaRequired) {
+      var factor = null;
+      try { factor = await window.Lms.mfaRequired(session); } catch (err) { factor = null; }
+      if (factor && factor.id) {
+        window._lmsMfaFactor = factor.id;
+        show('mfa');
+        var mfaErr = $('mfa-err');
+        if (mfaErr) mfaErr.textContent = '';
+        return;
+      }
+    }
     if (!session) {
       if (!oauthSettled) {
         show('auth');
@@ -980,6 +993,30 @@
         route(res.data.session);
       });
     });
+    if ($('mfa-form')) {
+      $('mfa-form').addEventListener('submit', function (event) {
+        event.preventDefault();
+        var errEl = $('mfa-err');
+        if (errEl) errEl.textContent = '';
+        var code = ($('mfa-code') && $('mfa-code').value) || '';
+        window.Lms.sb.auth.getSession().then(function (res) {
+          var session = res.data && res.data.session;
+          return window.Lms.mfaVerify(session, window._lmsMfaFactor, code);
+        }).then(function (session) {
+          window._lmsMfaFactor = '';
+          route(session);
+        }).catch(function (err) {
+          if (err && err.mfaOff) {
+            window._lmsMfaFactor = '';
+            window.Lms.sb.auth.getSession().then(function (res) {
+              route(res.data && res.data.session);
+            });
+            return;
+          }
+          if (errEl) errEl.textContent = 'Kode salah. Coba lagi.';
+        });
+      });
+    }
     $('register-form').addEventListener('submit', function (event) {
       event.preventDefault();
       registerError('');

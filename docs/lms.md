@@ -18,7 +18,7 @@ Editing kurikulum in that app: **Preview** on the publikasi step opens the stude
 bash scripts/deploy-static.sh
 ```
 
-`obrolan.marketing/server/server.mjs` is excluded from that rsync. Directory cards include `photoUrl`, and a new student is not assigned Anton’s id on another school. Install that file on the Contabo `anton-school` process separately.
+`obrolan.marketing/server/server.mjs` is excluded from that rsync. Directory cards include `photoUrl`, and a new student is not assigned Anton’s id on another school. Kurikulum file cap (200 MB), the Google email backfill, and pending-admin permission updates live in that process. Install the file on Contabo `anton-school` separately from the static deploy.
 
 Do not revive `js/lms-join.js` or public invite-code file downloads as the share model.
 
@@ -38,9 +38,15 @@ Do not revive `js/lms-join.js` or public invite-code file downloads as the share
 - Top-left chrome is one circle: the school profile photo when it loads, otherwise initials. `[hidden]` on `.brand img` and `.brand-fallback` is `display: none`. No second initials badge and no seed mark beside that circle.
 - **Perpustakaan** is per-school catalog — never falls back to Anton’s lynk/photo for other coaches.
 - **Kurikulum** (mentor): landing shows the whole curriculum overview; click a materi to edit that module, or “Atur kurikulum” for the wizard.
-- **Otomasi**: compact builder (~half previous card size). Automation copy is per mentor. Other schools use `{mentor}` and `{org}` (`Halo {name}, ini {mentor} dari {org}.`). Anton’s school keeps his own seed text. Do not copy “MasterMind with Anton GC” or “Anton di sini” onto another coach.
+- **Otomasi**: left column lists every automation (name, hook, step count); the builder stays open on the right. Archived rows show only while “Lihat arsip” is on. Perpanjangan settings sit under the list. Automation copy is per mentor. Other schools use `{mentor}` and `{org}` (`Halo {name}, ini {mentor} dari {org}.`). Anton’s school keeps his own seed text. Do not copy “MasterMind with Anton GC” or “Anton di sini” onto another coach.
 - **Assigned** on a student profile is this mentor plus admins they added (`staffAdmins`, not revoked). It does not list pipeline “Mentor” students or Anton’s seed staff on another school.
-- **Diskusi**: chat list with search + red “+ Chat baru”; thread title + anggota; soft post bubble; like is the word Suka (no emoji); nested comments; bottom composer with file / foto / poll + red send. Posted photos stay small and use `object-fit: contain` so they are not cropped. A comment or post stores `authorPhoto` when the author has a shared photo URL. The school profile photo uploads to class media the same way as the banner. Other viewers get that URL on the public directory card (`photoUrl`). Anton’s photo and name are not the fallback on another school.
+- **Grup diskusi** on a student profile lists every chat they are in. A mentor who can edit students can remove them, add them to an existing chat, or create a named group and add them. A month batch they are removed from stays removed (`chats.removed`) so the paid-month default does not put them back.
+- **Kurikulum files** (lembar kerja / document upload) cap at 200 MB. Diskusi attachments stay at 20 MB. Covers stay at 5 MB. Video stays at 5 GB. The higher cap is `kurikulum: true` on `/media/init` only.
+- **Siswa view** (profile menu) is a phone-sized read-only student app (`?present=1&pane=student&readonly=1`). It skips login and the join wizard, can open Home, Belajar, Alat, and Diskusi, and does not PUT state or send the mentor bearer. Desktop toggle remains.
+- **Google signup email** is written to `accountSettings.email` and `ownerContact.email` when those fields are still empty (claim, new school, owner GET/PUT). A saved address is not replaced. The mentor Profile card shows it.
+- **Two-factor**: authenticator TOTP via GoTrue (`/auth/v1/factors`) on Account security, and a code step on `/lms/` login only when a verified factor exists and the session is still aal1. If enroll is disabled or there is no mentor session, the control stays hidden and login is not blocked. There is no mock 2FA checkbox.
+- **Admin** lives on Account settings, not Profile. Invite link: name, then email + password (`POST /staff/accept`). Permission checkboxes persist on the pending invite. The owner can change the eight switches, revoke, and restore an accepted admin at any time. Revoked admins cannot log in.
+- **Diskusi**: chat list with search + red “+ Chat baru”; thread title + anggota; soft post bubble; like is the word Suka (no emoji); nested comments; bottom composer with file / foto / poll + red send. Posted photos stay small and use `object-fit: contain` so they are not cropped. File attachments stay at 20 MB. A comment or post stores `authorPhoto` when the author has a shared photo URL. The school profile photo uploads to class media the same way as the banner. Other viewers get that URL on the public directory card (`photoUrl`). Anton’s photo and name are not the fallback on another school.
 
 ---
 

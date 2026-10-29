@@ -368,6 +368,17 @@
       <p class="err" id="auth-err" role="status"></p>
       <div class="auth-toggle" id="auth-toggle-text">Sudah punya akun? <a id="email-mode" role="button" tabindex="0">Masuk</a></div>
     </section>
+    <section id="view-mfa" class="panel auth-panel" hidden>
+      <div class="auth-brand">LMS</div>
+      <h2>Kode authenticator</h2>
+      <p class="sub">Masukkan 6 digit dari aplikasi authenticator.</p>
+      <form id="mfa-form" class="auth-email-block">
+        <label for="mfa-code">Kode</label>
+        <input id="mfa-code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" required>
+        <button type="submit" class="btn btn-red auth-submit">Lanjut</button>
+      </form>
+      <p class="err" id="mfa-err" role="status"></p>
+    </section>
     <section id="view-register" class="panel auth-panel" hidden>
       <div class="auth-brand">LMS</div>
       <h2>Nama kamu sebagai mentor</h2>

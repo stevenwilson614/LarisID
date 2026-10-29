@@ -1709,25 +1709,22 @@
   function viewProfilEdit() {
     ensureSchoolProfile();
     const p = schoolProfile();
-    const pane = ui.profilePane === 'photo' ? 'photo' : (ui.profilePane === 'admin' ? 'admin' : 'info');
+    const pane = ui.profilePane === 'photo' ? 'photo' : 'info';
     ui.profilePane = pane;
     let body;
-    if (pane === 'admin') body = viewProfilAdmin();
-    else if (pane === 'photo') body = viewProfilPhotoPane(p);
+    if (pane === 'photo') body = viewProfilPhotoPane(p);
     else if (ui.profileMode !== 'edit') body = viewProfilCard(p, { editable: true });
     else body = viewProfilInfoForm(p);
     return '<section class="ps-page">' +
       '<div class="ps-page-head">' +
         '<h1>Profile &amp; settings</h1>' +
-        (pane === 'admin' ? '' : studentViewToggleHtml()) +
+        studentViewToggleHtml() +
       '</div>' +
       '<nav class="ps-tabs" role="tablist">' +
         '<button type="button" role="tab" data-act="profile-pane" data-id="info" aria-selected="' +
           (pane === 'info') + '">Profile</button>' +
         '<button type="button" role="tab" data-act="profile-pane" data-id="photo" aria-selected="' +
           (pane === 'photo') + '">Profile picture</button>' +
-        '<button type="button" role="tab" data-act="profile-pane" data-id="admin" aria-selected="' +
-          (pane === 'admin') + '">Admin</button>' +
       '</nav>' +
       '<div class="ps-body">' + body + '</div>' +
     '</section>';
@@ -1801,7 +1798,7 @@
     return '<form class="ps-form as-form" id="account-security-form" data-act="save-account-security">' +
       '<div class="as-section">' +
         '<h2>Email</h2>' +
-        '<p class="muted">Login email for this school. Prototype stores it locally only.</p>' +
+        '<p class="muted">Login email for this school. A Google signup fills this when it is still empty.</p>' +
         '<label class="ps-field"><span class="ps-label">Email address</span>' +
           '<input name="email" type="email" required value="' + esc(a.email || '') + '" autocomplete="email"></label>' +
       '</div>' +
@@ -1815,19 +1812,210 @@
         '<label class="ps-field"><span class="ps-label">Confirm new password</span>' +
           '<input name="confirmPassword" type="password" autocomplete="new-password" placeholder="Repeat new password"></label>' +
       '</div>' +
-      '<div class="as-section">' +
-        '<h2>Two-factor authentication</h2>' +
-        '<p class="muted">Mock toggle for the prototype — no real authenticator app yet.</p>' +
-        '<label class="as-toggle">' +
-          '<input type="checkbox" name="twoFactor"' + (a.twoFactor ? ' checked' : '') + '>' +
-          '<span>Require a second step when signing in</span>' +
-        '</label>' +
-      '</div>' +
       '<div class="ps-actions">' +
         '<button class="btn ps-save" type="submit">Save</button>' +
         '<button type="button" class="btn-sm" data-act="tab" data-id="siswa">Close</button>' +
       '</div>' +
-    '</form>';
+    '</form>' + viewMfaBlock();
+  }
+  function mentorAccessToken() {
+    const auth = lmsAuth();
+    return (auth && auth.access_token) || '';
+  }
+  function mfaOffResponse(status, data) {
+    const msg = String((data && (data.msg || data.message || data.error_description || data.error_code || data.error)) || '');
+    if (status === 404 || status === 501) return true;
+    return /mfa/i.test(msg) && /disabled|not enabled|unavailable/i.test(msg);
+  }
+  async function mfaFetch(path, opts) {
+    const token = mentorAccessToken();
+    if (!token) {
+      const err = new Error('auth');
+      err.code = 'auth';
+      throw err;
+    }
+    const opt = opts || {};
+    const res = await fetch('https://api.larisid.com' + path, {
+      method: opt.method || 'GET',
+      headers: {
+        apikey: STU_SUPA_KEY,
+        authorization: 'Bearer ' + token,
+        'content-type': 'application/json'
+      },
+      body: opt.body == null ? undefined : JSON.stringify(opt.body)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error((data && (data.msg || data.message)) || 'mfa');
+      err.status = res.status;
+      err.data = data;
+      throw err;
+    }
+    return data;
+  }
+  function verifiedTotpFactor(list) {
+    const rows = (list && (list.totp || list.all)) || [];
+    return rows.find((f) => f && f.factor_type === 'totp' && f.status === 'verified') || null;
+  }
+  function storeMfaSession(data) {
+    if (!data || !data.access_token) return;
+    try {
+      const raw = localStorage.getItem('lms_auth_v1');
+      const cur = raw ? JSON.parse(raw) : {};
+      const next = Object.assign({}, cur, {
+        access_token: data.access_token,
+        refresh_token: data.refresh_token || cur.refresh_token,
+        expires_in: data.expires_in || cur.expires_in,
+        expires_at: data.expires_at || (data.expires_in ? Math.floor(Date.now() / 1000) + Number(data.expires_in) : cur.expires_at),
+        token_type: data.token_type || cur.token_type || 'bearer',
+        user: data.user || cur.user
+      });
+      localStorage.setItem('lms_auth_v1', JSON.stringify(next));
+      const coachRaw = localStorage.getItem('laris_lms_coach');
+      if (coachRaw) {
+        const coach = JSON.parse(coachRaw);
+        localStorage.setItem('laris_lms_coach', JSON.stringify(Object.assign({}, coach, {
+          access_token: data.access_token,
+          refresh_token: data.refresh_token || coach.refresh_token
+        })));
+      }
+    } catch (err) { /* private mode */ }
+  }
+  function ensureMfa() {
+    if (ui.mfa && ui.mfa.phase) return;
+    if (!mentorAccessToken()) {
+      ui.mfa = { phase: 'off', unavailable: true, factorId: '', qr: '', secret: '', error: '' };
+      return;
+    }
+    ui.mfa = { phase: 'loading', unavailable: false, factorId: '', qr: '', secret: '', error: '' };
+    refreshMfa();
+  }
+  function refreshMfa() {
+    if (!mentorAccessToken()) return;
+    mfaFetch('/auth/v1/factors').then((list) => {
+      const on = verifiedTotpFactor(list);
+      ui.mfa = on
+        ? { phase: 'on', unavailable: false, factorId: on.id, qr: '', secret: '', error: '' }
+        : { phase: 'ready', unavailable: false, factorId: '', qr: '', secret: '', error: '' };
+      if (ui.mentorTab === 'account' && ui.accountPane === 'security') render();
+    }).catch((err) => {
+      ui.mfa = {
+        phase: 'off',
+        unavailable: !!(err && (err.code === 'auth' || mfaOffResponse(err.status, err.data))),
+        factorId: '',
+        qr: '',
+        secret: '',
+        error: ''
+      };
+      if (!ui.mfa.unavailable) ui.mfa = { phase: 'ready', unavailable: false, factorId: '', qr: '', secret: '', error: '' };
+      if (ui.mentorTab === 'account' && ui.accountPane === 'security') render();
+    });
+  }
+  async function startMfaEnroll() {
+    try {
+      const list = await mfaFetch('/auth/v1/factors');
+      const rows = (list && (list.all || list.totp)) || [];
+      for (let i = 0; i < rows.length; i += 1) {
+        const row = rows[i];
+        if (row && row.factor_type === 'totp' && row.status !== 'verified' && row.id) {
+          await mfaFetch('/auth/v1/factors/' + encodeURIComponent(row.id), { method: 'DELETE' });
+        }
+      }
+      const data = await mfaFetch('/auth/v1/factors', {
+        method: 'POST',
+        body: { factor_type: 'totp', friendly_name: 'Laris LMS' }
+      });
+      const totp = data.totp || {};
+      ui.mfa = {
+        phase: 'enroll',
+        unavailable: false,
+        factorId: data.id || '',
+        qr: totp.qr_code || '',
+        secret: totp.secret || '',
+        error: ''
+      };
+      render();
+    } catch (err) {
+      if (err && (err.code === 'auth' || mfaOffResponse(err.status, err.data))) {
+        ui.mfa = { phase: 'off', unavailable: true, factorId: '', qr: '', secret: '', error: '' };
+        render();
+        return;
+      }
+      toast('2FA could not be started.');
+    }
+  }
+  async function confirmMfaCode(code) {
+    const factorId = ui.mfa && ui.mfa.factorId;
+    const clean = String(code || '').replace(/\s/g, '');
+    if (!factorId || !/^\d{6}$/.test(clean)) {
+      if (ui.mfa) ui.mfa.error = 'Enter the 6-digit code.';
+      render();
+      return;
+    }
+    try {
+      const challenge = await mfaFetch('/auth/v1/factors/' + encodeURIComponent(factorId) + '/challenge', {
+        method: 'POST',
+        body: {}
+      });
+      const verified = await mfaFetch('/auth/v1/factors/' + encodeURIComponent(factorId) + '/verify', {
+        method: 'POST',
+        body: { challenge_id: challenge.id, code: clean }
+      });
+      storeMfaSession(verified);
+      ui.mfa = { phase: 'on', unavailable: false, factorId: factorId, qr: '', secret: '', error: '' };
+      toast('Two-factor authentication is on.');
+      render();
+    } catch (err) {
+      if (err && mfaOffResponse(err.status, err.data)) {
+        ui.mfa = { phase: 'off', unavailable: true, factorId: '', qr: '', secret: '', error: '' };
+        render();
+        return;
+      }
+      if (ui.mfa) ui.mfa.error = 'Code did not match. Try again.';
+      render();
+    }
+  }
+  async function disableMfa() {
+    const factorId = ui.mfa && ui.mfa.factorId;
+    if (!factorId) return;
+    try {
+      await mfaFetch('/auth/v1/factors/' + encodeURIComponent(factorId), { method: 'DELETE' });
+      ui.mfa = { phase: 'ready', unavailable: false, factorId: '', qr: '', secret: '', error: '' };
+      toast('Two-factor authentication is off.');
+      render();
+    } catch (err) {
+      toast('Could not turn off 2FA. Sign in again and retry.');
+    }
+  }
+  function viewMfaBlock() {
+    ensureMfa();
+    const m = ui.mfa || { phase: 'loading' };
+    if (m.unavailable || m.phase === 'off') return '';
+    if (m.phase === 'loading') {
+      return '<div class="as-section"><h2>Two-factor authentication</h2>' +
+        '<p class="muted">Checking authenticator support…</p></div>';
+    }
+    if (m.phase === 'on') {
+      return '<div class="as-section"><h2>Two-factor authentication</h2>' +
+        '<p class="muted">On. The next sign-in asks for a code from your authenticator app.</p>' +
+        '<button type="button" class="btn-sm" data-act="mfa-disable">Turn off</button></div>';
+    }
+    if (m.phase === 'enroll') {
+      return '<div class="as-section"><h2>Two-factor authentication</h2>' +
+        '<p class="muted">Scan this QR in an authenticator app, then enter the 6-digit code.</p>' +
+        (m.qr ? '<img class="mfa-qr" alt="Authenticator QR" src="' + esc(m.qr) + '">' : '') +
+        (m.secret ? '<p class="muted">Manual key: <code>' + esc(m.secret) + '</code></p>' : '') +
+        '<form class="ps-form" data-act="mfa-verify">' +
+          '<label class="ps-field"><span class="ps-label">Code</span>' +
+            '<input name="code" inputmode="numeric" autocomplete="one-time-code" required maxlength="8" placeholder="123456"></label>' +
+          '<div class="ps-actions"><button class="btn ps-save" type="submit">Confirm</button>' +
+            '<button type="button" class="btn-sm" data-act="mfa-cancel">Cancel</button></div></form>' +
+          (m.error ? '<p class="muted">' + esc(m.error) + '</p>' : '') +
+        '</div>';
+    }
+    return '<div class="as-section"><h2>Two-factor authentication</h2>' +
+      '<p class="muted">Optional authenticator app. If this server cannot enroll, the control hides and sign-in stays unchanged.</p>' +
+      '<button type="button" class="btn" data-act="mfa-enroll">Turn on</button></div>';
   }
   function viewAccountNotifications(a) {
     const n = a.notifications || {};
@@ -2104,13 +2292,17 @@
       ? 'notifications'
       : (ui.accountPane === 'onboarding'
         ? 'onboarding'
-        : (ui.accountPane === 'wa' ? 'wa' : 'security'));
+        : (ui.accountPane === 'wa'
+          ? 'wa'
+          : (ui.accountPane === 'admin' ? 'admin' : 'security')));
     ui.accountPane = pane;
-    const body = pane === 'notifications'
-      ? viewAccountNotifications(a)
-      : (pane === 'onboarding'
-        ? viewAccountOnboarding()
-        : (pane === 'wa' ? viewAccountWa() : viewAccountSecurity(a)));
+    const body = pane === 'admin'
+      ? viewProfilAdmin()
+      : (pane === 'notifications'
+        ? viewAccountNotifications(a)
+        : (pane === 'onboarding'
+          ? viewAccountOnboarding()
+          : (pane === 'wa' ? viewAccountWa() : viewAccountSecurity(a))));
     return '<section class="ps-page">' +
       '<div class="ps-page-head">' +
         '<h1>Account settings</h1>' +
@@ -2124,6 +2316,8 @@
           (pane === 'notifications') + '">Notifications</button>' +
         '<button type="button" role="tab" data-act="account-pane" data-id="onboarding" aria-selected="' +
           (pane === 'onboarding') + '">Onboarding</button>' +
+        '<button type="button" role="tab" data-act="account-pane" data-id="admin" aria-selected="' +
+          (pane === 'admin') + '">Admin</button>' +
       '</nav>' +
       '<div class="ps-body">' + body + '</div>' +
     '</section>';
@@ -2517,6 +2711,7 @@
     staffInviteToken: String(PRESENT_QS.get('staff_invite') || ''),
     profileMode: 'view',
     accountPane: 'security',
+    mfa: { phase: '' },
     profilePreview: null,
     profilePreviewKind: null,
     onboardPreview: null,
@@ -2585,6 +2780,7 @@
     postUploading: false,
     lightbox: '',
     replyTo: null,
+    commentExpand: '',
     commentDrafts: {},
     commentFocus: '',
     unreadJump: ''
@@ -3571,12 +3767,17 @@
     const auto = isMonthChat(chatId) && canMentoring(sid) && batchOf(sid) === chatId;
     if (auto && rec.removed.indexOf(sid) < 0) rec.removed.push(sid);
   }
-  function createChat() {
-    if (!isStaff()) return;
+  function createNamedChat(name) {
     ensureDiskusi();
     const id = 'c-' + Date.now().toString(36) + Math.floor(Math.random() * 1e3).toString(36);
     db.chats[id] = { added: [], removed: [], createdAt: isoNow() };
-    db.batchNames[id] = 'Batch baru';
+    db.batchNames[id] = String(name || '').trim().slice(0, 60) || 'Grup baru';
+    rememberDiskusiChat(id);
+    return id;
+  }
+  function createChat() {
+    if (!isStaff()) return;
+    const id = createNamedChat('Batch baru');
     rememberDiskusiChat(id);
     ui.diskusiBatch = id;
     ui.diskusiSub = 'batch';
@@ -6708,20 +6909,39 @@
       '</div>';
   }
   function personGroupsHtml(id) {
-    const batchId = batchOf(id);
-    if (!batchId) {
-      return '<div class="fub-section">' +
-        '<div class="fub-section-h">Grup diskusi</div>' +
-        '<p class="muted fub-link-empty">Belum masuk grup diskusi.</p>' +
-      '</div>';
-    }
+    ensureDiskusi();
+    const can = staffCan('editStudents');
+    const mine = chatsFor(id);
+    const mineIds = {};
+    mine.forEach((c) => { mineIds[c.id] = 1; });
+    const others = chatList().filter((c) => !mineIds[c.id]);
+    const rows = mine.length
+      ? mine.map((c) =>
+          '<div class="fub-group-chip is-row">' +
+            '<span class="fub-group-name">' + esc(c.label) + '</span>' +
+            (can
+              ? '<button type="button" class="btn-sm" data-act="person-group-remove" data-id="' + esc(id) +
+                '" data-chat="' + esc(c.id) + '">Keluarkan</button>'
+              : '') +
+          '</div>'
+        ).join('')
+      : '<p class="muted fub-link-empty">Belum masuk grup diskusi.</p>';
+    const add = can
+      ? '<div class="fub-addrow">' +
+          '<select data-group-for="' + esc(id) + '" aria-label="Pilih grup">' +
+            '<option value="">Pilih grup…</option>' +
+            others.map((c) => '<option value="' + esc(c.id) + '">' + esc(c.label) + '</option>').join('') +
+          '</select>' +
+          '<button type="button" class="btn-sm" data-act="person-group-add" data-id="' + esc(id) + '">Tambah</button>' +
+        '</div>' +
+        '<form class="fub-addrow" data-act="person-group-new" data-id="' + esc(id) + '">' +
+          '<input name="name" maxlength="60" placeholder="Nama grup baru">' +
+          '<button type="submit" class="btn-sm">Buat grup</button>' +
+        '</form>'
+      : '';
     return '<div class="fub-section">' +
       '<div class="fub-section-h">Grup diskusi</div>' +
-      '<div class="fub-group-chip">' +
-        '<span class="fub-group-name">' + esc(batchLabel(batchId)) + '</span>' +
-        '<span class="muted">' + esc(batchId) + '</span>' +
-      '</div>' +
-      personBatchField(id) +
+      rows + add +
     '</div>';
   }
   function personOnboardFieldsHtml(id) {
@@ -6800,6 +7020,16 @@
     if (ms < 86400000) return Math.max(1, Math.floor(ms / 3600000)) + ' jam lalu';
     if (ms < 172800000) return 'kemarin';
     return fmtWhen(iso);
+  }
+  function relWhenShort(iso) {
+    if (!iso) return '';
+    const t = new Date(iso).getTime();
+    if (!isFinite(t)) return '';
+    const ms = nowMs() - t;
+    if (ms < 45000) return 'baru saja';
+    if (ms < 3600000) return Math.max(1, Math.floor(ms / 60000)) + 'm';
+    if (ms < 86400000) return Math.max(1, Math.floor(ms / 3600000)) + 'h';
+    return Math.max(1, Math.floor(ms / 86400000)) + 'd';
   }
   function stageHue(i) {
     return PIPE_STAGE_COLORS[i % PIPE_STAGE_COLORS.length];
@@ -7792,7 +8022,7 @@
       ui.pollFocus = '';
     }
     if (ui.commentFocus) {
-      const form = document.querySelector('.dk-comment-form[data-id="' + String(ui.commentFocus).replace(/"/g, '') + '"] input[name="body"]');
+      const form = document.querySelector('.dk-comment-form[data-focus="' + String(ui.commentFocus).replace(/"/g, '') + '"] input[name="body"]');
       if (form) {
         form.focus();
         const n = form.value.length;
@@ -10300,16 +10530,38 @@
     });
     return html;
   }
-  function replyQuoteHtml(row) {
-    if (!row || !row.replyTo) return '';
-    const target = (db.comments || []).find((c) => c && c.id === row.replyTo);
-    if (!target) return '';
-    const snippet = String(target.body || '').replace(/\s+/g, ' ').trim().slice(0, 80);
-    return '<div class="dk-reply">' +
-      '<button type="button" class="dk-quote" data-act="comment-jump" data-id="' + esc(target.id) + '">' +
-        '<strong>@' + esc(nameOf(target.authorId)) + '</strong>' +
-        '<span>' + esc(snippet || 'Komentar') + '</span>' +
-      '</button></div>';
+  function commentByIdMap(comments) {
+    const byId = {};
+    (comments || []).forEach((c) => { if (c && c.id) byId[c.id] = c; });
+    return byId;
+  }
+  function commentRootId(row, byId) {
+    let cur = row;
+    const seen = {};
+    while (cur && cur.replyTo && byId[cur.replyTo] && !seen[cur.id]) {
+      seen[cur.id] = true;
+      cur = byId[cur.replyTo];
+    }
+    return cur && cur.id ? cur.id : (row && row.id) || '';
+  }
+  function commentChildrenMap(comments) {
+    const byId = commentByIdMap(comments);
+    const children = {};
+    (comments || []).forEach((c) => {
+      if (!c || !c.id) return;
+      const root = commentRootId(c, byId);
+      if (!root || root === c.id) return;
+      if (!children[root]) children[root] = [];
+      children[root].push(c);
+    });
+    return { byId: byId, children: children };
+  }
+  function commentDraftKey(postId, replyToId) {
+    return replyToId ? String(postId) + ':' + String(replyToId) : String(postId || '');
+  }
+  function commentExpandIcon(open) {
+    const path = open ? 'M6 14l6-6 6 6' : 'M6 10l6 6 6-6';
+    return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + path + '"/></svg>';
   }
   function commentHtml(row, staff, chatId) {
     const mine = row.authorId === actorId();
@@ -10317,28 +10569,32 @@
     const likes = commentLikes(row);
     const liked = likes.indexOf(actorId()) !== -1;
     const unread = isUnreadAt(chatId, row.createdAt, row.authorId);
-    const canWrite = canPostIn(actorId(), chatId);
+    const canWrite = canPostIn(actorId(), chatId) && !isSiswaReadonly();
+    const open = ui.commentExpand === row.id;
     return '<div class="dk-threadlet">' +
-      replyQuoteHtml(row) +
       '<div class="dk-comment' + (row.replyTo ? ' is-reply' : '') + '" id="dkc-' + esc(row.id) + '"' +
         (unread ? ' data-unread="1" data-unread-at="' + esc(row.createdAt) + '"' : '') + '>' +
-        (row.replyTo ? '<span class="dk-reply-arrow" aria-hidden="true"></span>' : '') +
         actorAvatar(row.authorId, 'avatar sm', row.authorPhoto) +
-        '<div class="dk-comment-body">' +
-          '<strong>' + esc(nameOf(row.authorId)) + '</strong>' +
-          '<span class="muted"> · ' + esc(relWhen(row.createdAt)) + '</span>' +
-          '<p>' + mentionHtml(row.body) + '</p>' +
-          '<div class="dk-comment-acts">' +
-            (canWrite
-              ? '<button type="button" class="dk-like' + (liked ? ' is-on' : '') + '" data-act="comment-like" data-id="' + esc(row.id) + '" aria-pressed="' + (liked ? 'true' : 'false') + '">Suka' +
-                  (likes.length ? '<span>' + likes.length + '</span>' : '') + '</button>' +
-                '<button type="button" class="dk-reply-btn" data-act="comment-reply" data-id="' + esc(row.id) + '" data-post="' + esc(row.postId) + '">Balas</button>'
-              : '') +
+        '<div class="dk-comment-main">' +
+          '<div class="dk-comment-body">' +
+            '<strong>' + esc(nameOf(row.authorId)) + '</strong>' +
+            '<span class="muted"> · ' + esc(relWhenShort(row.createdAt)) + '</span>' +
+            '<p>' + mentionHtml(row.body) + '</p>' +
+            '<div class="dk-comment-acts">' +
+              (canWrite
+                ? '<button type="button" class="dk-like' + (liked ? ' is-on' : '') + '" data-act="comment-like" data-id="' + esc(row.id) + '" aria-pressed="' + (liked ? 'true' : 'false') + '">Suka' +
+                    (likes.length ? '<span>' + likes.length + '</span>' : '') + '</button>' +
+                  '<button type="button" class="dk-reply-btn" data-act="comment-reply" data-id="' + esc(row.id) + '" data-post="' + esc(row.postId) + '">Balas</button>'
+                : '') +
+            '</div>' +
           '</div>' +
+          (canWrite
+            ? '<button type="button" class="dk-expand" data-act="comment-expand" data-id="' + esc(row.id) + '" data-post="' + esc(row.postId) + '" aria-expanded="' + (open ? 'true' : 'false') + '" aria-label="' + (open ? 'Tutup balasan' : 'Tulis balasan') + '">' + commentExpandIcon(open) + '</button>'
+            : '') +
+          (canDel
+            ? '<button type="button" class="btn-sm" data-act="comment-del" data-id="' + esc(row.id) + '">Hapus</button>'
+            : '') +
         '</div>' +
-        (canDel
-          ? '<button type="button" class="btn-sm" data-act="comment-del" data-id="' + esc(row.id) + '">Hapus</button>'
-          : '') +
       '</div></div>';
   }
 
@@ -10349,23 +10605,22 @@
     });
   }
 
-  function commentFormHtml(post) {
-    const reply = ui.replyTo && ui.replyTo.postId === post.id ? ui.replyTo : null;
-    const target = reply && (db.comments || []).find((c) => c && c.id === reply.commentId && c.postId === post.id);
-    const draft = (ui.commentDrafts && ui.commentDrafts[post.id]) || '';
-    const snippet = target ? String(target.body || '').replace(/\s+/g, ' ').trim().slice(0, 80) : '';
-    const bar = target
-      ? '<div class="dk-replying">' +
-          '<span class="dk-reply-arrow" aria-hidden="true"></span>' +
-          '<span class="dk-replying-copy"><strong>@' + esc(nameOf(target.authorId)) + '</strong> ' + esc(snippet || 'Komentar') + '</span>' +
-          '<button type="button" data-act="comment-reply-clear" aria-label="Batal balas">×</button></div>'
-      : '';
+  function commentFormHtml(post, opts) {
+    opts = opts || {};
     if (isSiswaReadonly()) return '';
+    const replyToId = opts.replyToId || '';
+    const compact = !!opts.compact;
+    const target = replyToId
+      ? (db.comments || []).find((c) => c && c.id === replyToId && c.postId === post.id)
+      : null;
+    const key = commentDraftKey(post.id, target ? target.id : '');
+    const draft = (ui.commentDrafts && ui.commentDrafts[key]) || '';
     const sendIco = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>';
-    return '<form class="dk-comment-form" data-act="post-comment" data-id="' + esc(post.id) + '" data-reply="' + esc(target ? target.id : '') + '">' +
-      bar +
+    const placeholder = target ? 'Balas @' + nameOf(target.authorId) : 'Tulis komentar…';
+    return '<form class="dk-comment-form' + (compact ? ' is-inline' : '') + '" data-act="post-comment" data-id="' + esc(post.id) + '" data-reply="' + esc(target ? target.id : '') + '" data-focus="' + esc(key) + '">' +
       '<div class="dk-comment-row">' +
-        '<input name="body" required maxlength="2000" placeholder="' + (target ? 'Balas @' + esc(nameOf(target.authorId)) : 'Tulis komentar…') + '" value="' + esc(draft) + '">' +
+        (compact ? actorAvatar(actorId(), 'avatar sm', authorPhotoUrl()) : '') +
+        '<input name="body" required maxlength="2000" placeholder="' + esc(placeholder) + '" value="' + esc(draft) + '">' +
         '<button class="dk-comment-send" type="submit" aria-label="Kirim">' + sendIco + '</button>' +
       '</div></form>';
   }
@@ -10373,6 +10628,8 @@
     const mine = post.authorId === actorId();
     const comments = (db.comments || []).filter((c) => c && c.postId === post.id).slice()
       .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    const tree = commentChildrenMap(comments);
+    const roots = comments.filter((c) => commentRootId(c, tree.byId) === c.id);
     const canDel = !!staff || mine;
     const canWrite = canPostIn(actorId(), post.batchId);
     const firstUnread = firstUnreadElId(post.batchId);
@@ -10403,10 +10660,22 @@
       postReactionsHtml(post, canWrite) +
       '<div class="dk-comments">' +
         (comments.length ? '<p class="dk-comments-n">' + comments.length + ' komentar</p>' : '') +
-        comments.map((c) =>
-          (firstUnread === 'dkc-' + c.id ? '<div class="dk-unread-line">Belum dibaca</div>' : '') +
-          commentHtml(c, staff, post.batchId)
-        ).join('') +
+        roots.map((c) => {
+          const kids = tree.children[c.id] || [];
+          const rootOpen = canWrite && ui.commentExpand === c.id;
+          const replies = kids.map((k) =>
+            (firstUnread === 'dkc-' + k.id ? '<div class="dk-unread-line">Belum dibaca</div>' : '') +
+            commentHtml(k, staff, post.batchId) +
+            (canWrite && ui.commentExpand === k.id ? commentFormHtml(post, { replyToId: k.id, compact: true }) : '')
+          ).join('');
+          const replyBlock = (kids.length || rootOpen)
+            ? '<div class="dk-replies">' + replies +
+                (rootOpen ? commentFormHtml(post, { replyToId: c.id, compact: true }) : '') +
+              '</div>'
+            : '';
+          return (firstUnread === 'dkc-' + c.id ? '<div class="dk-unread-line">Belum dibaca</div>' : '') +
+            '<div class="dk-thread">' + commentHtml(c, staff, post.batchId) + replyBlock + '</div>';
+        }).join('') +
         (canWrite ? commentFormHtml(post) : '') +
       '</div></article>';
   }
@@ -10501,7 +10770,7 @@
     } else {
       const info = list.find((c) => c.id === batchId) || visibleChats().find((c) => c.id === batchId);
       const count = info ? info.count : chatMembers(batchId).length;
-      const can = canPostIn(actorId(), batchId);
+      const inChat = isStaff() || memberOfChat(actorId(), batchId);
       const posts = postsInBatch(batchId);
       const title = staff
         ? '<input class="dk-title" data-act="chat-rename" data-id="' + esc(batchId) + '" maxlength="60" value="' + esc(batchLabel(batchId)) + '" aria-label="Nama chat">'
@@ -10518,7 +10787,7 @@
             ? posts.map((p) => postCardHtml(p, !!staff)).join('')
             : '<p class="muted dk-empty-note">Belum ada catatan. Tulis di bawah, tempel foto, lampirkan file, atau buat poll.</p>') +
         '</div>' +
-        (can ? composerHtml(batchId) : '<p class="muted dk-compose-locked">Kamu belum masuk chat ini.</p>') +
+        (inChat ? composerHtml(batchId) : '<p class="muted dk-compose-locked">Kamu belum masuk chat ini.</p>') +
         chatPeopleHtml(batchId, !!staff) +
         '</section>';
     }
@@ -14083,7 +14352,7 @@
     }
     if (t.matches('.dk-comment-form input[name="body"]')) {
       const form = t.closest('form');
-      const id = form && form.getAttribute('data-id');
+      const id = form && (form.getAttribute('data-focus') || form.getAttribute('data-id'));
       if (id) {
         ui.commentDrafts = ui.commentDrafts || {};
         ui.commentDrafts[id] = t.value;
@@ -14218,8 +14487,9 @@
       render();
       return;
     }
-    if (e.key === 'Escape' && ui.replyTo) {
+    if (e.key === 'Escape' && (ui.replyTo || ui.commentExpand)) {
       ui.replyTo = null;
+      ui.commentExpand = '';
       render();
       return;
     }
@@ -14337,7 +14607,7 @@
   const SISWA_RO_BLOCK = new Set([
     'post-new', 'post-comment', 'post-files', 'post-attach', 'post-img-remove',
     'poll-toggle', 'poll-cancel', 'poll-add-opt', 'poll-opt-remove', 'poll-vote',
-    'comment-reply', 'comment-reply-clear', 'comment-like', 'post-like', 'post-pin', 'post-del',
+    'comment-reply', 'comment-expand', 'comment-reply-clear', 'comment-like', 'post-like', 'post-pin', 'post-del',
     'wiz-next', 'wiz-shop', 'wiz-heard', 'wiz-tools', 'ob-single', 'ob-multi', 'apply',
     'mark-done', 'toggle-done', 'exam', 'exam-submit',
     'pay-term', 'pay-buy', 'pay-prompt', 'pay-prompt-close', 'pay-prompt-go', 'pay-lynk', 'pay-manual', 'pay-now', 'pay-later',
@@ -14394,6 +14664,7 @@
       ui.diskusiOpened = true;
       ui.chatPeopleOpen = false;
       ui.replyTo = null;
+      ui.commentExpand = '';
       ui.diskusiScroll = unreadCount(id) ? 'unread' : 'bottom';
       render();
       return;
@@ -14407,6 +14678,7 @@
         return;
       }
       ui.replyTo = null;
+      ui.commentExpand = '';
       if (jump.chatId !== activeDiskusiBatch() || ui.diskusiSub === 'tanya') {
         ui.diskusiBatch = jump.chatId;
         ui.diskusiSub = 'batch';
@@ -14553,6 +14825,7 @@
       pendingDiskusi.comments.delete(row.id);
       db.comments = db.comments.filter((c) => c && c.id !== row.id);
       if (ui.replyTo && ui.replyTo.commentId === row.id) ui.replyTo = null;
+      if (ui.commentExpand === row.id) ui.commentExpand = '';
       save();
       render();
       return;
@@ -14584,24 +14857,35 @@
       render();
       return;
     }
-    if (act === 'comment-reply') {
+    if (act === 'comment-expand' || act === 'comment-reply') {
       ensureDiskusi();
       const commentId = btn.getAttribute('data-id') || '';
       const postId = btn.getAttribute('data-post') || '';
       const row = db.comments.find((c) => c && c.id === commentId && c.postId === postId);
       const post = row && db.posts.find((p) => p && p.id === postId);
       if (!row || !post || !canPostIn(actorId(), post.batchId)) return;
+      if (act === 'comment-expand' && ui.commentExpand === commentId) {
+        ui.commentExpand = '';
+        if (ui.replyTo && ui.replyTo.commentId === commentId) ui.replyTo = null;
+        render();
+        return;
+      }
       ui.replyTo = { postId: postId, commentId: commentId };
-      const prefix = '@' + nameOf(row.authorId) + ' ';
-      ui.commentDrafts = ui.commentDrafts || {};
-      const cur = ui.commentDrafts[postId] || '';
-      if (cur.indexOf('@') !== 0) ui.commentDrafts[postId] = prefix + cur;
-      ui.commentFocus = postId;
+      ui.commentExpand = commentId;
+      const key = commentDraftKey(postId, commentId);
+      if (act === 'comment-reply') {
+        const prefix = '@' + nameOf(row.authorId) + ' ';
+        ui.commentDrafts = ui.commentDrafts || {};
+        const cur = ui.commentDrafts[key] || '';
+        if (cur.indexOf('@') !== 0) ui.commentDrafts[key] = prefix + cur;
+      }
+      ui.commentFocus = key;
       render();
       return;
     }
     if (act === 'comment-reply-clear') {
       ui.replyTo = null;
+      ui.commentExpand = '';
       render();
       return;
     }
@@ -15155,7 +15439,7 @@
     } else if (act === 'profile-pane') {
       if (!canBill()) return;
       const paneId = btn.getAttribute('data-id');
-      ui.profilePane = paneId === 'photo' || paneId === 'admin' ? paneId : 'info';
+      ui.profilePane = paneId === 'photo' ? 'photo' : 'info';
       ui.mentorTab = 'profil';
       render();
     } else if (act === 'staff-invite-new' || act === 'staff-invite-rotate') {
@@ -15172,6 +15456,33 @@
         toast(next === 'revoked' ? 'Akses dicabut.' : 'Akses dikembalikan.');
         render();
       }).catch(() => toast('Gagal menyimpan akses.'));
+    } else if (act === 'mfa-enroll') {
+      if (!canBill()) return;
+      startMfaEnroll();
+    } else if (act === 'mfa-cancel') {
+      ui.mfa = { phase: 'ready', unavailable: false, factorId: '', qr: '', secret: '', error: '' };
+      render();
+    } else if (act === 'mfa-disable') {
+      if (!canBill()) return;
+      disableMfa();
+    } else if (act === 'person-group-add' || act === 'person-group-remove') {
+      if (!staffCan('editStudents')) return;
+      const sid = btn.getAttribute('data-id') || '';
+      let chatId = btn.getAttribute('data-chat') || '';
+      if (act === 'person-group-add') {
+        const sel = document.querySelector('[data-group-for="' + sid.replace(/"/g, '') + '"]');
+        chatId = sel ? sel.value : '';
+        if (!chatId) {
+          toast('Pilih grup dulu.');
+          return;
+        }
+        addChatMember(chatId, sid);
+      } else {
+        removeChatMember(chatId, sid);
+      }
+      rememberDiskusiChat(chatId);
+      save();
+      render();
     } else if (act === 'staff-login-open') {
       ui.staffInviteToken = '';
       ui.staffLoginOpen = true;
@@ -15186,7 +15497,7 @@
         ? 'notifications'
         : (pane === 'onboarding'
           ? 'onboarding'
-          : (pane === 'wa' ? 'wa' : 'security'));
+          : (pane === 'wa' ? 'wa' : (pane === 'admin' ? 'admin' : 'security')));
       ui.mentorTab = 'account';
       render();
     } else if (act === 'bio-wrap') {
@@ -16263,6 +16574,25 @@
       return;
     }
     const fd = new FormData(form);
+    if (act === 'mfa-verify') {
+      confirmMfaCode(fd.get('code'));
+      return;
+    }
+    if (act === 'person-group-new') {
+      if (!staffCan('editStudents')) return;
+      const sid = form.getAttribute('data-id') || '';
+      const name = String(fd.get('name') || '').trim();
+      if (name.length < 2) {
+        toast('Isi nama grup dulu.');
+        return;
+      }
+      const chatId = createNamedChat(name);
+      addChatMember(chatId, sid);
+      save();
+      toast('Grup dibuat.');
+      render();
+      return;
+    }
     if (act === 'staff-wiz-name') {
       const name = String(fd.get('name') || '').trim();
       if (name.length < 2) { toast('Isi nama dulu.'); return; }
@@ -16354,8 +16684,10 @@
       };
       db.comments.push(row);
       rememberDiskusiComment(row);
-      if (ui.commentDrafts) delete ui.commentDrafts[postId];
-      if (ui.replyTo && ui.replyTo.postId === postId) ui.replyTo = null;
+      const focusKey = form.getAttribute('data-focus') || postId;
+      if (ui.commentDrafts) delete ui.commentDrafts[focusKey];
+      ui.replyTo = null;
+      ui.commentExpand = '';
       ui.diskusiScroll = 'bottom';
       save();
       render();
@@ -16892,9 +17224,8 @@
         db.accountSettings.passwordSet = true;
       }
       db.accountSettings.email = email;
-      db.accountSettings.twoFactor = !!fd.get('twoFactor');
       save();
-      toast(db.accountSettings.twoFactor ? 'Security saved · 2FA on (mock)' : 'Security saved');
+      toast('Security saved');
       render();
     } else if (act === 'save-account-notifications') {
       if (!canBill()) return;

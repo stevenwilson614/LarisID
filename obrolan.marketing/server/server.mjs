@@ -1763,11 +1763,20 @@ function handleStaff(req, res, url, q, pathname) {
 
       if (pathname === '/staff/update') {
         const row = state.staffAdmins.find((item) => item.id === String(body.id || ''));
-        if (!row || row.status === 'pending') {
+        if (!row) {
           json(res, 404, { error: 'missing' });
           return;
         }
         if (body.permissions) row.permissions = cleanStaffPerms(body.permissions);
+        if (row.status === 'pending') {
+          const storedPending = saveStaffState(slug, rec, state);
+          json(res, 200, {
+            ok: true,
+            rev: storedPending.rev,
+            staffAdmins: state.staffAdmins.map((item) => publicStaff(item, true))
+          });
+          return;
+        }
         if (body.status === 'revoked') {
           row.status = 'revoked';
           row.revokedAt = new Date().toISOString();

@@ -169,6 +169,83 @@
     schoolUrl: function (slug) {
       return 'https://larisid.com' + schoolPath(slug);
     },
-    errorText: errorText
+    errorText: errorText,
+    mfaRequired: mfaRequired,
+    mfaVerify: mfaVerify
   };
+
+  function jwtAal(token) {
+    try {
+      var part = String(token || '').split('.')[1] || '';
+      var pad = part.replace(/-/g, '+').replace(/_/g, '/');
+      while (pad.length % 4) pad += '=';
+      var json = JSON.parse(atob(pad));
+      return String(json.aal || '');
+    } catch (err) { return ''; }
+  }
+  function mfaMessage(data) {
+    return String((data && (data.msg || data.message || data.error_description || data.error_code || data.error)) || '');
+  }
+  function mfaOff(status, data) {
+    var msg = mfaMessage(data);
+    if (status === 404 || status === 501) return true;
+    return /mfa/i.test(msg) && /disabled|not enabled|unavailable/i.test(msg);
+  }
+  async function mfaRequired(session) {
+    if (!session || !session.access_token || !sb) return null;
+    if (jwtAal(session.access_token) === 'aal2') return null;
+    var res = await fetch(SUPA_URL + '/auth/v1/factors', {
+      headers: { apikey: SUPA_KEY, authorization: 'Bearer ' + session.access_token }
+    });
+    var data = {};
+    try { data = await res.json(); } catch (err) { data = {}; }
+    if (!res.ok || mfaOff(res.status, data)) return null;
+    var rows = (data && (data.totp || data.all)) || [];
+    for (var i = 0; i < rows.length; i += 1) {
+      var row = rows[i];
+      if (row && row.status === 'verified' && row.factor_type === 'totp') return row;
+    }
+    return null;
+  }
+  async function mfaVerify(session, factorId, code) {
+    if (!session || !session.access_token || !factorId || !sb) {
+      var missing = new Error('mfa');
+      throw missing;
+    }
+    var headers = {
+      apikey: SUPA_KEY,
+      authorization: 'Bearer ' + session.access_token,
+      'content-type': 'application/json'
+    };
+    var challenge = await fetch(SUPA_URL + '/auth/v1/factors/' + encodeURIComponent(factorId) + '/challenge', {
+      method: 'POST',
+      headers: headers,
+      body: '{}'
+    });
+    var ch = {};
+    try { ch = await challenge.json(); } catch (err) { ch = {}; }
+    if (!challenge.ok || !ch.id) {
+      var chErr = new Error(mfaMessage(ch) || 'mfa');
+      chErr.mfaOff = mfaOff(challenge.status, ch);
+      throw chErr;
+    }
+    var verify = await fetch(SUPA_URL + '/auth/v1/factors/' + encodeURIComponent(factorId) + '/verify', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({ challenge_id: ch.id, code: String(code || '').replace(/\s/g, '') })
+    });
+    var body = {};
+    try { body = await verify.json(); } catch (err2) { body = {}; }
+    if (!verify.ok || !body.access_token) {
+      var bad = new Error(mfaMessage(body) || 'code');
+      bad.mfaOff = mfaOff(verify.status, body);
+      throw bad;
+    }
+    var set = await sb.auth.setSession({
+      access_token: body.access_token,
+      refresh_token: body.refresh_token || session.refresh_token
+    });
+    if (set.error) throw set.error;
+    return set.data && set.data.session;
+  }
 })();
