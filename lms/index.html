@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/lms/lms.css?v=20261029cal">
+  <link rel="stylesheet" href="/lms/lms.css?v=20261029disk">
 </head>
 <body>
   <div id="view-land">
@@ -154,7 +154,7 @@
               <div class="coach"><img src="/lms/hero.png" alt=""><div><strong>Raka Wijaya</strong><span>Batch Contoh</span></div></div>
               <ul><li>Ringkasan</li><li>Siswa</li><li>Kurikulum</li><li class="is-on">Diskusi</li><li>Otomasi</li><li>Jadwal</li></ul>
             </aside>
-            <div class="stage-main">
+            <div class="stage-main dk-stage">
               <header class="stage-bar"><strong>Diskusi batch</strong><span>Minggu 1</span></header>
               <div class="thread feed">
                 <article class="post p0">
@@ -164,16 +164,65 @@
                     <p>Materi minggu ini sudah di kurikulum. Siapa yang sudah coba setup toko?</p>
                   </div>
                 </article>
-                <article class="cmt c1 reply"><i>SR</i><span><strong>Sari</strong><em>Sudah, Pak. Lembar kerjanya saya kumpulkan malam ini.</em></span></article>
-                <article class="cmt c2 reply nest"><img src="/lms/hero.png" alt=""><span><strong>Raka Wijaya</strong><em>Bagus, Sari. Kirim juga foto etalase tokonya.</em></span></article>
-                <article class="cmt c3 reply"><i>DM</i><span><strong>Dimas</strong><em>Kalau sesi live bentrok, boleh tanya di sini?</em></span></article>
-                <article class="cmt c4 reply nest"><img src="/lms/hero.png" alt=""><span><strong>Raka Wijaya</strong><em>Boleh, Dimas. Tulis jam yang bentrok — kita cari slot.</em></span></article>
+                <article class="cmt c1">
+                  <i>SR</i>
+                  <div class="cmt-body">
+                    <strong>Sari <span class="when">Baru saja</span></strong>
+                    <p>Sudah, Pak. Lembar kerjanya saya kumpulkan malam ini.</p>
+                    <div class="cmt-acts"><span>♡</span><span class="balas">Balas</span></div>
+                  </div>
+                </article>
+                <article class="cmt c2 is-reply">
+                  <span class="reply-arrow" aria-hidden="true"></span>
+                  <img src="/lms/hero.png" alt="">
+                  <div class="cmt-body">
+                    <strong>Raka Wijaya <span class="when">Baru saja</span></strong>
+                    <p>Bagus, Sari. Kirim juga foto etalase tokonya.</p>
+                    <div class="cmt-acts"><span>♡</span><span class="balas">Balas</span></div>
+                  </div>
+                </article>
+                <article class="cmt c3">
+                  <i>DM</i>
+                  <div class="cmt-body">
+                    <strong>Dimas <span class="when">Baru saja</span></strong>
+                    <p>Kalau sesi live bentrok, boleh tanya di sini?</p>
+                    <div class="cmt-acts"><span>♡</span><span class="balas">Balas</span></div>
+                  </div>
+                </article>
+                <article class="cmt c4 is-reply">
+                  <span class="reply-arrow" aria-hidden="true"></span>
+                  <img src="/lms/hero.png" alt="">
+                  <div class="cmt-body">
+                    <strong>Raka Wijaya <span class="when">Baru saja</span></strong>
+                    <p>Boleh, Dimas. Tulis jam yang bentrok — kita cari slot.</p>
+                    <div class="cmt-acts"><span>♡</span><span class="balas">Balas</span></div>
+                  </div>
+                </article>
+              </div>
+              <div class="dk-compose">
+                <div class="replying r-sari">
+                  <span class="reply-arrow" aria-hidden="true"></span>
+                  <span class="replying-copy"><strong>@Sari</strong> Sudah, Pak. Lembar kerjanya…</span>
+                </div>
+                <div class="replying r-dimas">
+                  <span class="reply-arrow" aria-hidden="true"></span>
+                  <span class="replying-copy"><strong>@Dimas</strong> Kalau sesi live bentrok…</span>
+                </div>
+                <div class="compose-row">
+                  <div class="compose-field">
+                    <span class="type type-sari">Bagus, Sari. Kirim juga foto etalase tokonya.</span>
+                    <span class="type type-dimas">Boleh, Dimas. Tulis jam yang bentrok — kita cari slot.</span>
+                    <span class="type-ph">Balas komentar…</span>
+                    <i class="caret" aria-hidden="true"></i>
+                  </div>
+                  <span class="compose-send">Kirim</span>
+                </div>
               </div>
             </div>
           </div>
           <figcaption>
             <strong>Diskusi</strong>
-            <span>Posting mentor, lalu murid komentar dan balasan berantai di bawahnya.</span>
+            <span>Balas dengan panah kecil, ketik di kolom bawah, lalu kirim — sama seperti di kelas.</span>
           </figcaption>
         </figure>
         <figure data-panel="otomasi" hidden>
@@ -425,8 +474,8 @@
     </div>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
-  <script src="/lms/js/auth.js?v=20261029shot" defer></script>
-  <script src="/lms/js/api.js?v=20261029shot" defer></script>
-  <script src="/lms/js/app.js?v=20261029shot" defer></script>
+  <script src="/lms/js/auth.js?v=20261029disk" defer></script>
+  <script src="/lms/js/api.js?v=20261029disk" defer></script>
+  <script src="/lms/js/app.js?v=20261029disk" defer></script>
 </body>
 </html>

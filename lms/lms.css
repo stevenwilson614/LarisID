@@ -384,10 +384,18 @@ button, a { font: inherit; }
 .lessons strong { font-size: 0.84rem; }
 .mod-late { opacity: 0; transform: translateY(6px); }
 .thread { display: grid; gap: 8px; }
-.thread.feed { align-content: start; min-height: 280px; }
+.thread.feed { align-content: start; min-height: 200px; flex: 1; }
+.dk-stage {
+  display: flex;
+  flex-direction: column;
+  min-height: 420px;
+  padding-bottom: 0;
+}
+.dk-stage .stage-bar { flex: none; }
 .post, .cmt {
   display: flex;
   gap: 10px;
+  align-items: flex-start;
   background: #fff;
   border-radius: 14px;
   padding: 12px;
@@ -404,12 +412,120 @@ button, a { font: inherit; }
 .post strong { display: block; font-size: 0.88rem; }
 .post strong em { font-style: normal; color: var(--merah); font-weight: 750; font-size: 0.72rem; }
 .post p { margin: 4px 0 0; font-size: 0.88rem; color: #3f3f46; line-height: 1.4; }
-.cmt strong { font-size: 0.86rem; }
-.reply { margin-left: 18px; }
-.reply.nest {
-  margin-left: 36px;
-  border-left: 2px solid #f0c9cc;
-  border-radius: 0 14px 14px 0;
+.cmt-body { min-width: 0; flex: 1; text-align: left; }
+.cmt-body strong { display: block; font-size: 0.86rem; }
+.cmt-body .when {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.72rem;
+}
+.cmt-body p {
+  margin: 2px 0 0;
+  font-size: 0.86rem;
+  color: #3f3f46;
+  line-height: 1.4;
+}
+.cmt-acts {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.cmt-acts .balas { color: var(--muted); }
+.cmt.is-reply { align-items: flex-end; margin-left: 10px; }
+.reply-arrow {
+  flex: none;
+  width: 14px;
+  height: 16px;
+  margin: 0 0 10px -2px;
+  border-left: 2px solid #a8a29e;
+  border-bottom: 2px solid #a8a29e;
+  border-bottom-left-radius: 10px;
+}
+.dk-compose {
+  flex: none;
+  margin: 10px 0 0;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 14px;
+  opacity: 0;
+}
+.dk-compose .replying {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-height: 0;
+  margin: 0;
+  padding: 0 8px;
+  overflow: hidden;
+  opacity: 0;
+  border-radius: 10px;
+  background: #f4f4f5;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.dk-compose .replying .reply-arrow {
+  margin: 0;
+  width: 12px;
+  height: 14px;
+}
+.dk-compose .replying-copy {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dk-compose .replying-copy strong { color: var(--ink); font-weight: 750; }
+.compose-row { display: flex; gap: 8px; align-items: center; }
+.compose-field {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 12px;
+  border: 1px solid #e4e4e7;
+  border-radius: 10px;
+  background: #fafafa;
+  font-size: 0.86rem;
+  color: var(--ink);
+  text-align: left;
+  overflow: hidden;
+}
+.compose-field .type,
+.compose-field .type-ph {
+  display: inline-block;
+  white-space: nowrap;
+  overflow: hidden;
+  vertical-align: bottom;
+}
+.compose-field .type {
+  width: 0;
+  opacity: 0;
+}
+.compose-field .type-ph { color: var(--muted); max-width: 20ch; }
+.compose-field .caret {
+  width: 1.5px;
+  height: 1em;
+  background: var(--merah);
+  flex: none;
+  opacity: 0;
+}
+.compose-send {
+  flex: none;
+  background: var(--merah);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.82rem;
+  border-radius: 10px;
+  padding: 9px 14px;
+  transform: scale(1);
 }
 .auto-board {
   display: grid;
@@ -618,11 +734,19 @@ button, a { font: inherit; }
 .stage.is-play .fold-poin { animation: fold-poin 6.4s ease infinite; }
 .stage.is-play .mod-late:nth-child(4) { animation: mod-in-a 6.4s ease infinite; }
 .stage.is-play .mod-late:nth-child(5) { animation: mod-in-b 6.4s ease infinite; }
-.stage.is-play .p0 { animation: post-in 7.4s ease infinite; }
-.stage.is-play .c1 { animation: cmt-1 7.4s ease infinite; }
-.stage.is-play .c2 { animation: cmt-2 7.4s ease infinite; }
-.stage.is-play .c3 { animation: cmt-3 7.4s ease infinite; }
-.stage.is-play .c4 { animation: cmt-4 7.4s ease infinite; }
+.stage.is-play .p0 { animation: post-in 10.5s ease infinite; }
+.stage.is-play .c1 { animation: cmt-1 10.5s ease infinite; }
+.stage.is-play .c2 { animation: cmt-2 10.5s ease infinite; }
+.stage.is-play .c3 { animation: cmt-3 10.5s ease infinite; }
+.stage.is-play .c4 { animation: cmt-4 10.5s ease infinite; }
+.stage.is-play .dk-compose { animation: compose-in 10.5s ease infinite; }
+.stage.is-play .dk-compose .r-sari { animation: reply-bar-sari 10.5s ease infinite; }
+.stage.is-play .dk-compose .r-dimas { animation: reply-bar-dimas 10.5s ease infinite; }
+.stage.is-play .compose-field .type-ph { animation: type-ph 10.5s ease infinite; }
+.stage.is-play .compose-field .type-sari { animation: type-sari 10.5s steps(36, end) infinite; }
+.stage.is-play .compose-field .type-dimas { animation: type-dimas 10.5s steps(40, end) infinite; }
+.stage.is-play .compose-field .caret { animation: caret-blink 10.5s linear infinite; }
+.stage.is-play .compose-send { animation: send-press 10.5s ease infinite; }
 .stage.is-play .mail-card { animation: mail-fly 6.2s ease infinite; }
 .stage.is-play .mail-stamp::before { animation: stamp-draw 6.2s ease infinite; }
 .stage.is-play .mail-check { animation: check-pop 6.2s ease infinite; }
@@ -684,29 +808,79 @@ button, a { font: inherit; }
   94%, 100% { opacity: 0; }
 }
 @keyframes post-in {
-  0%, 4% { opacity: 0; transform: translateY(10px); }
-  12%, 88% { opacity: 1; transform: none; }
+  0%, 3% { opacity: 0; transform: translateY(10px); }
+  8%, 90% { opacity: 1; transform: none; }
   96%, 100% { opacity: 0; }
 }
 @keyframes cmt-1 {
-  0%, 18% { opacity: 0; transform: translateY(8px); }
-  28%, 88% { opacity: 1; transform: none; }
+  0%, 10% { opacity: 0; transform: translateY(8px); }
+  16%, 90% { opacity: 1; transform: none; }
   96%, 100% { opacity: 0; }
 }
 @keyframes cmt-2 {
-  0%, 34% { opacity: 0; transform: translateY(8px); }
-  44%, 88% { opacity: 1; transform: none; }
+  0%, 38% { opacity: 0; transform: translateY(8px); }
+  44%, 90% { opacity: 1; transform: none; }
   96%, 100% { opacity: 0; }
 }
 @keyframes cmt-3 {
-  0%, 50% { opacity: 0; transform: translateY(8px); }
-  60%, 88% { opacity: 1; transform: none; }
+  0%, 52% { opacity: 0; transform: translateY(8px); }
+  58%, 90% { opacity: 1; transform: none; }
   96%, 100% { opacity: 0; }
 }
 @keyframes cmt-4 {
-  0%, 64% { opacity: 0; transform: translateY(8px); }
-  74%, 88% { opacity: 1; transform: none; }
+  0%, 78% { opacity: 0; transform: translateY(8px); }
+  84%, 90% { opacity: 1; transform: none; }
   96%, 100% { opacity: 0; }
+}
+@keyframes compose-in {
+  0%, 16% { opacity: 0; transform: translateY(8px); }
+  20%, 90% { opacity: 1; transform: none; }
+  96%, 100% { opacity: 0; }
+}
+@keyframes reply-bar-sari {
+  0%, 18% { opacity: 0; max-height: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; }
+  22%, 40% { opacity: 1; max-height: 36px; margin-bottom: 6px; padding-top: 6px; padding-bottom: 6px; }
+  42%, 100% { opacity: 0; max-height: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; }
+}
+@keyframes reply-bar-dimas {
+  0%, 58% { opacity: 0; max-height: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; }
+  62%, 80% { opacity: 1; max-height: 36px; margin-bottom: 6px; padding-top: 6px; padding-bottom: 6px; }
+  82%, 100% { opacity: 0; max-height: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; }
+}
+@keyframes type-ph {
+  0%, 21% { opacity: 1; max-width: 20ch; }
+  22%, 40% { opacity: 0; max-width: 0; }
+  41%, 61% { opacity: 1; max-width: 20ch; }
+  62%, 80% { opacity: 0; max-width: 0; }
+  81%, 100% { opacity: 0.65; max-width: 20ch; }
+}
+@keyframes type-sari {
+  0%, 22% { width: 0; opacity: 0; }
+  23% { width: 0; opacity: 1; }
+  38%, 40% { width: 36ch; opacity: 1; }
+  41%, 100% { width: 0; opacity: 0; }
+}
+@keyframes type-dimas {
+  0%, 62% { width: 0; opacity: 0; }
+  63% { width: 0; opacity: 1; }
+  78%, 80% { width: 42ch; opacity: 1; }
+  81%, 100% { width: 0; opacity: 0; }
+}
+@keyframes caret-blink {
+  0%, 21% { opacity: 0; }
+  22%, 24%, 26%, 28%, 30%, 32%, 34%, 36%, 38%, 40% { opacity: 1; }
+  23%, 25%, 27%, 29%, 31%, 33%, 35%, 37%, 39% { opacity: 0; }
+  41%, 61% { opacity: 0; }
+  62%, 64%, 66%, 68%, 70%, 72%, 74%, 76%, 78%, 80% { opacity: 1; }
+  63%, 65%, 67%, 69%, 71%, 73%, 75%, 77%, 79% { opacity: 0; }
+  81%, 100% { opacity: 0; }
+}
+@keyframes send-press {
+  0%, 38% { transform: scale(1); filter: none; }
+  40%, 42% { transform: scale(0.94); filter: brightness(0.92); }
+  44%, 78% { transform: scale(1); filter: none; }
+  80%, 82% { transform: scale(0.94); filter: brightness(0.92); }
+  84%, 100% { transform: scale(1); filter: none; }
 }
 @keyframes mail-fly {
   0%, 8% { opacity: 0; transform: translateY(22px) scale(0.92); }
@@ -753,7 +927,11 @@ button, a { font: inherit; }
   .count span:first-child, .pipa-empty { opacity: 0; }
   .count span:last-child { opacity: 1; }
   .fold, .fold .doc-new, .mod-late, .post, .cmt, .mail-card, .mail-check, .auto-task,
-  .day small.pop, .people-list li, .income .dot { opacity: 1; transform: none; max-height: none; }
+  .day small.pop, .people-list li, .income .dot, .dk-compose { opacity: 1; transform: none; max-height: none; }
+  .dk-compose .replying { opacity: 1; max-height: 36px; margin-bottom: 6px; padding-top: 6px; padding-bottom: 6px; }
+  .dk-compose .r-dimas { display: none; }
+  .compose-field .type-sari { width: 36ch; opacity: 1; }
+  .compose-field .type-dimas, .compose-field .type-ph, .compose-field .caret { opacity: 0; width: 0; }
   .income .line-total { stroke-dashoffset: 0; }
   .mail-stamp::before { transform: scaleX(1); }
   .stage.is-play .mover,
@@ -766,6 +944,12 @@ button, a { font: inherit; }
   .stage.is-play .mod-late,
   .stage.is-play .p0,
   .stage.is-play .cmt,
+  .stage.is-play .dk-compose,
+  .stage.is-play .dk-compose .replying,
+  .stage.is-play .compose-field .type,
+  .stage.is-play .compose-field .type-ph,
+  .stage.is-play .compose-field .caret,
+  .stage.is-play .compose-send,
   .stage.is-play .mail-card,
   .stage.is-play .mail-stamp::before,
   .stage.is-play .mail-check,
@@ -1267,8 +1451,8 @@ select {
   .pipa { min-width: 640px; }
   .stage-main { overflow-x: auto; }
   .stats { grid-template-columns: repeat(2, 1fr); }
-  .reply { margin-left: 8px; }
-  .reply.nest { margin-left: 18px; }
+  .cmt.is-reply { margin-left: 4px; }
+  .dk-compose { margin-left: 8px; margin-right: 8px; }
   .school { padding-left: 16px; padding-right: 16px; }
   .school-bar { align-items: flex-start; }
   .row2 { grid-template-columns: 1fr; }
