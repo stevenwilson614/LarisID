@@ -69,6 +69,10 @@
     pendingName: function () { return read(NAME_KEY); },
     setPendingName: function (name) { write(NAME_KEY, String(name || '').trim()); },
     redirectTo: function () { return location.origin + '/lms/'; },
+    /* Share URL hits the OG card so WhatsApp/iMessage see mentor title + photo. */
+    inviteShareUrl: function (token) {
+      return 'https://api.larisid.com/functions/v1/lms-invite-card?invite=' + encodeURIComponent(token || '');
+    },
     errorText: errorText
   };
 })();

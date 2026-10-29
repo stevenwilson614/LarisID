@@ -35,6 +35,17 @@ bash scripts/apply-selfhost.sh supabase/migrations/20261029120000_lms_schools.sq
 
 Never `supabase db push --linked`.
 
+## Browser tab + invite share brand
+
+Each mentor has `org_name` and optional `avatar_url` (public bucket `lms-avatars`). The in-app tab title is `LMS (org_name)` and the favicon is the mentor photo when set.
+
+Invite share links use `https://api.larisid.com/functions/v1/lms-invite-card?invite=…`. That HTML carries `og:title` / `og:image` / favicon so WhatsApp and browser previews match the mentor. Humans are redirected to `/lms/?invite=…`. Brand lookup is `lms_invite_brand` — title and avatar only, never curriculum.
+
+```bash
+bash scripts/apply-selfhost.sh supabase/migrations/20261029140000_lms_mentor_brand.sql
+bash scripts/deploy-function-selfhost.sh lms-invite-card
+```
+
 ## Do not bring back
 
 The old class was a JSON file per slug, a browser copy (`lms-school-v1`, `anton-school-v3`), and an invite code that could read uploads (`?k=` on `/obrolan.marketing/api/media/file`). That app, `js/lms-join.js`, and the `anton-school` process are gone. Disk data may still sit on the VPS volume; it is not served. Do not route `/{slug}` or `/s/{slug}` at a school again.

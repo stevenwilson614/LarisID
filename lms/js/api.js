@@ -41,10 +41,53 @@
     fail(res.error);
     return res.data || null;
   }
-  async function registerMentor(name) {
-    var res = await sb().rpc('lms_register_mentor', { p_name: name });
+  async function registerMentor(name, org) {
+    var res = await sb().rpc('lms_register_mentor', {
+      p_name: name,
+      p_org: org || name || null
+    });
     fail(res.error);
     return res.data;
+  }
+  async function updateBrand(org, avatarUrl) {
+    var res = await sb().rpc('lms_update_brand', {
+      p_org: org,
+      p_avatar_url: avatarUrl == null ? null : avatarUrl
+    });
+    fail(res.error);
+    return res.data;
+  }
+  async function inviteBrand(token) {
+    var res = await sb().rpc('lms_invite_brand', { p_token: token });
+    fail(res.error);
+    return res.data || null;
+  }
+  async function uploadAvatar(file) {
+    if (!file) throw new Error('lms_name');
+    if (file.size > 5 * 1024 * 1024) throw new Error('lms_size');
+    var mime = String(file.type || '').toLowerCase();
+    var ext = mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : (mime === 'image/jpeg' || mime === 'image/jpg') ? 'jpg' : '';
+    if (!ext) {
+      var name = String(file.name || '').toLowerCase();
+      if (name.endsWith('.png')) { mime = 'image/png'; ext = 'png'; }
+      else if (name.endsWith('.webp')) { mime = 'image/webp'; ext = 'webp'; }
+      else if (name.endsWith('.jpg') || name.endsWith('.jpeg')) { mime = 'image/jpeg'; ext = 'jpg'; }
+    }
+    if (!ext) throw new Error('lms_mime');
+    var session = await sb().auth.getSession();
+    var user = session.data && session.data.session && session.data.session.user;
+    if (!user) throw new Error('lms_auth');
+    var path = user.id + '/avatar.' + ext;
+    var up = await sb().storage.from('lms-avatars').upload(path, file, {
+      contentType: mime,
+      upsert: true
+    });
+    fail(up.error);
+    var pub = sb().storage.from('lms-avatars').getPublicUrl(path);
+    var url = pub && pub.data && pub.data.publicUrl;
+    if (!url) throw new Error('lms_path');
+    /* Stable public URL in DB; cache-bust only in the img src. */
+    return { url: url, display: url + (url.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now() };
   }
   async function createInvite() {
     var res = await sb().rpc('lms_create_invite');
@@ -160,6 +203,9 @@
   window.LmsApi = {
     me: me,
     registerMentor: registerMentor,
+    updateBrand: updateBrand,
+    inviteBrand: inviteBrand,
+    uploadAvatar: uploadAvatar,
     createInvite: createInvite,
     acceptInvite: acceptInvite,
     students: students,

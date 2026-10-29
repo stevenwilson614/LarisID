@@ -82,6 +82,63 @@
     if (el) el.textContent = msg || '';
   }
 
+  var DEFAULT_ICON = '/images/brand/appicon-bird.png';
+  function brandTitle(org) {
+    var name = String(org || '').trim() || 'Kelas';
+    return 'LMS (' + name + ')';
+  }
+  function setMeta(property, content, isName) {
+    if (!content) return;
+    var sel = isName
+      ? 'meta[name="' + property + '"]'
+      : 'meta[property="' + property + '"]';
+    var el = document.head.querySelector(sel);
+    if (!el) {
+      el = document.createElement('meta');
+      if (isName) el.setAttribute('name', property);
+      else el.setAttribute('property', property);
+      document.head.appendChild(el);
+    }
+    el.setAttribute('content', content);
+  }
+  function setIcon(href) {
+    var links = document.head.querySelectorAll('link[rel="icon"], link[rel="apple-touch-icon"]');
+    if (!links.length) {
+      var icon = document.createElement('link');
+      icon.rel = 'icon';
+      icon.href = href;
+      document.head.appendChild(icon);
+      var apple = document.createElement('link');
+      apple.rel = 'apple-touch-icon';
+      apple.href = href;
+      document.head.appendChild(apple);
+      return;
+    }
+    Array.prototype.forEach.call(links, function (link) {
+      link.setAttribute('href', href);
+    });
+  }
+  function applyBrand(brand) {
+    var org = brand && (brand.org_name || brand.display_name);
+    var title = (brand && brand.brand_title) || brandTitle(org);
+    var avatar = (brand && brand.avatar_url) || DEFAULT_ICON;
+    document.title = title;
+    setMeta('og:title', title);
+    setMeta('og:site_name', 'LMS');
+    setMeta('og:image', avatar);
+    setMeta('twitter:title', title, true);
+    setMeta('twitter:image', avatar, true);
+    setMeta('apple-mobile-web-app-title', title, true);
+    setIcon(avatar);
+  }
+  function paintInviteBrand() {
+    var token = window.Lms.invite();
+    if (!token || !window.LmsApi || !window.LmsApi.inviteBrand) return;
+    window.LmsApi.inviteBrand(token).then(function (brand) {
+      if (brand) applyBrand(brand);
+    }).catch(function () { /* keep default */ });
+  }
+
   function lessonsOf(pack, moduleId) {
     return (pack.lessons || []).filter(function (row) { return row.module_id === moduleId; })
       .sort(function (a, b) { return (a.sort_order - b.sort_order) || String(a.created_at).localeCompare(String(b.created_at)); });
@@ -156,8 +213,11 @@
 
   function render(me, pack, people) {
     var mentor = me.role === 'mentor';
+    applyBrand(me);
     $('app-kicker').textContent = mentor ? 'Mentor' : 'Siswa';
-    $('app-name').textContent = mentor ? me.display_name : me.mentor_name;
+    $('app-name').textContent = mentor
+      ? (me.org_name || me.display_name)
+      : (me.org_name || me.mentor_name);
     $('app-sub').textContent = mentor
       ? 'Siswa yang kamu undang hanya melihat pelajaran yang ditayangkan.'
       : 'Kurikulum ' + (me.mentor_name || 'mentor') + '. Kelas mentor lain tidak terbuka.';
@@ -168,6 +228,19 @@
     if (mentor) {
       var names = (people || []).map(function (row) { return '<li>' + esc(row.display_name) + '</li>'; }).join('');
       $('student-list').innerHTML = names || '<li class="muted">Belum ada siswa.</li>';
+      var orgInput = $('brand-org');
+      var preview = $('brand-avatar-preview');
+      if (orgInput) orgInput.value = me.org_name || me.display_name || '';
+      if (preview) {
+        if (me.avatar_url) {
+          preview.src = me.avatar_url;
+          preview.dataset.url = me.avatar_url;
+        } else {
+          preview.src = DEFAULT_ICON;
+          delete preview.dataset.url;
+        }
+        preview.hidden = false;
+      }
       $('kurikulum').innerHTML = mentorHtml(pack);
       bindMentor($('kurikulum'), pack);
     } else {
@@ -403,7 +476,8 @@
       event.preventDefault();
       registerError('');
       var name = $('mentor-name').value.trim();
-      window.LmsApi.registerMentor(name).then(function (me) {
+      var org = ($('mentor-org') && $('mentor-org').value.trim()) || name;
+      window.LmsApi.registerMentor(name, org).then(function (me) {
         window.Lms.setPendingName('');
         return loadApp(me);
       }).catch(function (err) {
@@ -412,10 +486,42 @@
     });
     $('register-out').addEventListener('click', signOut);
     $('app-out').addEventListener('click', signOut);
+    if ($('brand-form')) {
+      $('brand-form').addEventListener('submit', function (event) {
+        event.preventDefault();
+        var org = ($('brand-org') && $('brand-org').value.trim()) || '';
+        run(function () {
+          return window.LmsApi.updateBrand(org, null).then(function (me) {
+            applyBrand(me);
+          });
+        });
+      });
+    }
+    if ($('brand-avatar-file')) {
+      $('brand-avatar-file').addEventListener('change', function () {
+        var file = $('brand-avatar-file').files && $('brand-avatar-file').files[0];
+        if (!file) return;
+        appError('');
+        window.LmsApi.uploadAvatar(file).then(function (shot) {
+          var preview = $('brand-avatar-preview');
+          if (preview) {
+            preview.src = shot.display || shot.url;
+            preview.dataset.url = shot.url;
+            preview.hidden = false;
+          }
+          var org = ($('brand-org') && $('brand-org').value.trim()) || '';
+          return window.LmsApi.updateBrand(org, shot.url).then(function (me) {
+            applyBrand(me);
+          });
+        }).catch(function (err) {
+          appError(window.Lms.errorText(err));
+        });
+      });
+    }
     $('invite-btn').addEventListener('click', function () {
       appError('');
       window.LmsApi.createInvite().then(function (row) {
-        var url = window.Lms.redirectTo() + '?invite=' + encodeURIComponent(row.token);
+        var url = window.Lms.inviteShareUrl(row.token);
         $('invite-url').value = url;
         $('invite-box').hidden = false;
       }).catch(function (err) {
@@ -438,6 +544,7 @@
       }
     });
 
+    paintInviteBrand();
     window.Lms.sb.auth.onAuthStateChange(function (event, session) {
       if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') return;
       if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') route(session);

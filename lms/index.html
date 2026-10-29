@@ -3,19 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Laris Mentor — kelas online</title>
+  <title>LMS</title>
   <meta name="description" content="LMS untuk mentor: buat kurikulum, undang siswa, dan simpan berkas kelas. Siswa hanya melihat kurikulum mentor yang mengundang mereka.">
   <link rel="canonical" href="https://larisid.com/lms/">
   <meta name="robots" content="index, follow">
-  <meta property="og:title" content="Laris Mentor — kelas online">
+  <meta name="apple-mobile-web-app-title" content="LMS">
+  <meta property="og:site_name" content="LMS">
+  <meta property="og:title" content="LMS">
   <meta property="og:description" content="Buat dan kelola kelas online. Kurikulum, siswa, diskusi, dan jadwal dalam satu tautan.">
   <meta property="og:url" content="https://larisid.com/lms/">
+  <meta property="og:image" content="https://larisid.com/images/brand/appicon-bird.png">
   <link rel="icon" type="image/png" href="/images/brand/appicon-bird.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/images/brand/appicon-bird-180.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/lms/lms.css?v=20261029lms">
+  <link rel="stylesheet" href="/lms/lms.css?v=20261029brand">
 </head>
 <body>
   <div id="view-land">
@@ -296,7 +299,7 @@
   <main class="auth-wrap" id="auth-wrap" hidden>
     <button type="button" class="back" id="auth-back">← Kembali</button>
     <section id="view-auth" class="panel auth-panel" hidden>
-      <div class="auth-brand">Laris<span class="auth-brand-id"> Mentor</span></div>
+      <div class="auth-brand">LMS</div>
       <h2 id="auth-title">Buat akun mentor</h2>
       <p class="sub" id="auth-subtitle">Akun khusus untuk mengajar di halaman ini.</p>
       <button type="button" class="auth-alt-row" id="google-btn">
@@ -317,12 +320,14 @@
       <div class="auth-toggle" id="auth-toggle-text">Sudah punya akun? <a id="email-mode" role="button" tabindex="0">Masuk</a></div>
     </section>
     <section id="view-register" class="panel auth-panel" hidden>
-      <div class="auth-brand">Laris<span class="auth-brand-id"> Mentor</span></div>
+      <div class="auth-brand">LMS</div>
       <h2>Nama kamu sebagai mentor</h2>
-      <p class="sub">Siswa akan melihat nama ini di kelas.</p>
+      <p class="sub">Nama organisasi tampil di tab browser dan tautan undangan.</p>
       <form id="register-form">
         <label for="mentor-name">Nama</label>
         <input id="mentor-name" autocomplete="name" maxlength="80" required>
+        <label for="mentor-org">Nama organisasi</label>
+        <input id="mentor-org" maxlength="80" placeholder="contoh: MasterMind">
         <button type="submit" class="btn btn-red auth-submit">Buat kelas</button>
       </form>
       <p class="err" id="register-err" role="status"></p>
@@ -342,14 +347,33 @@
     <p class="err" id="app-err" role="status"></p>
     <div class="school-grid">
       <aside id="mentor-col" class="card">
-        <h2>Siswa</h2>
+        <h2>Kelas</h2>
+        <form id="brand-form" class="brand-form">
+          <label for="brand-org">Nama organisasi</label>
+          <input id="brand-org" maxlength="80" required>
+          <div class="photo-block">
+            <p class="muted" style="margin:0">Foto profil mentor — dipakai di tab browser dan saat bagikan tautan.</p>
+            <div class="photo-preview">
+              <img id="brand-avatar-preview" alt="" width="72" height="72" hidden>
+              <div class="photo-preview-meta">
+                <strong>Foto kelas</strong>
+                <span>JPG, PNG, atau WebP. Maks 5 MB.</span>
+              </div>
+            </div>
+            <div class="photo-actions">
+              <label class="btn btn-white photo-file-btn">Ganti foto<input id="brand-avatar-file" type="file" accept="image/jpeg,image/png,image/webp" hidden></label>
+              <button type="submit" class="btn btn-red">Simpan nama</button>
+            </div>
+          </div>
+        </form>
+        <h2 style="margin-top:22px">Siswa</h2>
         <p class="muted">Setiap tautan dipakai satu siswa. Siswa itu hanya melihat pelajaran yang kamu tayangkan.</p>
         <button type="button" class="btn btn-red" id="invite-btn">Undang siswa</button>
         <div id="invite-box" hidden>
           <label for="invite-url">Tautan undangan</label>
           <input id="invite-url" readonly>
           <button type="button" class="btn btn-white" id="invite-copy">Salin</button>
-          <p class="muted">Berlaku 14 hari, untuk satu orang.</p>
+          <p class="muted">Berlaku 14 hari, untuk satu orang. Penerima melihat nama organisasi dan foto kamu.</p>
         </div>
         <ul id="student-list" class="people"></ul>
       </aside>
@@ -360,8 +384,8 @@
     </div>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
-  <script src="/lms/js/auth.js?v=20261029lms" defer></script>
-  <script src="/lms/js/api.js?v=20261029lms" defer></script>
-  <script src="/lms/js/app.js?v=20261029lms" defer></script>
+  <script src="/lms/js/auth.js?v=20261029brand" defer></script>
+  <script src="/lms/js/api.js?v=20261029brand" defer></script>
+  <script src="/lms/js/app.js?v=20261029brand" defer></script>
 </body>
 </html>
