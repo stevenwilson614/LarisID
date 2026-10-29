@@ -5,8 +5,8 @@ Two URLs, one product:
 | URL | Role |
 | --- | --- |
 | [`https://larisid.com/lms/`](https://larisid.com/lms/) | Mentor **landing + signup/login** (Contabo marketing shell in `lms/`) |
-| [`https://larisid.com/obrolan.marketing/`](https://larisid.com/obrolan.marketing/) | Mentor **class app** (left-rail UI: Dashboard, Students, Kurikulum, Otomasi, …) |
-| [`https://larisid.com/s/{slug}/`](https://larisid.com/s/test-1/) | Student (and mentor school) class app |
+| [`https://larisid.com/s/{slug}/`](https://larisid.com/s/test-1/) | **The class.** Every new mentor from `/lms/` lands here in the left-rail UI (Dashboard, Students, Kurikulum, Otomasi, …). Students use the same link. |
+| [`https://larisid.com/obrolan.marketing/`](https://larisid.com/obrolan.marketing/) | Anton’s existing school only. Not the signup destination. |
 
 After Contabo login/daftar succeeds, mentors are claimed into a disk school (`POST /obrolan.marketing/api/owners/claim`) and opened at `/s/{org_slug}/` in **mentor** chrome (left rail). Students open `/s/{org_slug}/` as students. Do not show the Contabo sidebar “Kelas / Edit kurikulum” shell as the live class UI. Do not dump new mentors into `/s/obrolan.marketing`.
 

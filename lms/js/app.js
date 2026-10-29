@@ -708,8 +708,10 @@
 
   function classAppUrl(me, slug) {
     var school = String(slug || (me && me.org_slug) || '').trim();
-    if (school) return '/s/' + encodeURIComponent(school) + '/';
-    return '/obrolan.marketing/';
+    if (!school) return '';
+    /* Anton's existing school keeps its hub. Every other mentor gets their own class. */
+    if (school === 'obrolan.marketing') return '/obrolan.marketing/';
+    return '/s/' + encodeURIComponent(school) + '/';
   }
 
   function mirrorCoachSession(session, slug) {
@@ -725,10 +727,14 @@
     } catch (err) { /* private mode */ }
   }
 
-  function nextClassPath() {
+  function nextClassPath(slug) {
+    var school = String(slug || '').trim();
+    if (!school) return '';
     try {
       var next = String(new URLSearchParams(location.search).get('next') || '').trim();
-      if (next.indexOf('/s/') === 0 || next.indexOf('/obrolan.marketing') === 0) return next;
+      var own = classAppUrl(null, school);
+      if (!own) return '';
+      if (next === own || next === own.replace(/\/$/, '')) return own;
     } catch (err) { /* ignore */ }
     return '';
   }
@@ -777,16 +783,42 @@
           return data.slug;
         }
       }
-    } catch (err) { /* fall through to Contabo slug */ }
+      var fail = await claim.json().catch(function () { return {}; });
+      var blocked = new Error(fail.error || 'school');
+      blocked.claim = true;
+      throw blocked;
+    } catch (err) {
+      if (err && err.claim) throw err;
+    }
     mirrorCoachSession(session, slug);
     return slug;
   }
 
   async function loadApp(me) {
-    /* Landing/signup stay on Contabo /lms; open the mentor's own left-rail school. */
-    var slug = await claimClassSchool(me);
-    var next = nextClassPath();
-    location.replace(next || classAppUrl(me, slug));
+    /* Landing stays on /lms. The class itself is /s/{slug}/ for every new mentor. */
+    var slug = '';
+    try {
+      slug = await claimClassSchool(me);
+    } catch (err) {
+      show('register');
+      var code = String(err && err.message || '');
+      registerError(code === 'taken' || code === 'reserved'
+        ? 'Nama kelas ini sudah dipakai. Ubah nama organisasi, lalu coba lagi.'
+        : 'Kelas belum bisa dibuka. Coba lagi.');
+      return;
+    }
+    var dest = nextClassPath(slug) || classAppUrl(me, slug);
+    if (!dest) {
+      if (me && me.role === 'student') {
+        show('auth');
+        authError('Minta tautan kelas dari mentor.');
+        return;
+      }
+      show('register');
+      registerError('Isi nama kelas dulu.');
+      return;
+    }
+    location.replace(dest);
   }
 
   async function routeNow(session) {

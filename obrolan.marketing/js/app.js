@@ -132,7 +132,8 @@
   }
   /** Public student URL: /s/{slug}/ */
   function schoolPublicPath() {
-    const slug = schoolSlug() || 'obrolan.marketing';
+    const slug = schoolSlug();
+    if (!slug) return '/lms/';
     return '/s/' + slug + '/';
   }
   function schoolMentorPath() {
@@ -187,7 +188,7 @@
       const link = miss.querySelector('a');
       if (askedEl) askedEl.textContent = asked;
       if (knownEl) knownEl.textContent = known;
-      if (link) link.href = schoolPublicPath();
+      if (link) link.href = '/lms/';
     }
     const app = $('app');
     if (app) app.hidden = true;
@@ -12088,7 +12089,7 @@
     const local = schoolLocalUrl();
     return '<section class="card school-url-card">' +
       '<h2>Alamat sekolah</h2>' +
-      '<p class="muted">Kelas siswa ada di <strong>larisid.com' + esc(schoolPublicPath()) + '</strong>. Mentor di /obrolan.marketing/. Checkout tetap di lynk.</p>' +
+      '<p class="muted">Kelas ini dibuka di <strong>larisid.com' + esc(schoolPublicPath()) + '</strong>. Siswa dan mentor memakai tautan yang sama.</p>' +
       '<form class="compose" data-act="save-school-url">' +
         '<label class="muted">Kode undangan batch</label>' +
         '<input name="invite" value="' + esc(schoolInviteCode()) + '" maxlength="40" autocomplete="off" spellcheck="false">' +
@@ -17117,7 +17118,6 @@
       const nextInvite = inviteFromLabel(fd.get('invite'));
       const derived = derivedInviteFrom(db.businessName, schoolSlug());
       const seed = seedInviteCode();
-      db.schoolSlug = 'obrolan.marketing';
       if (nextInvite && nextInvite !== derived && nextInvite !== seed) {
         db.inviteCode = nextInvite;
         db.inviteCodeCustom = true;
