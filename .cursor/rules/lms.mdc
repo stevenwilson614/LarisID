@@ -1,0 +1,19 @@
+---
+description: LMS product naming and surfaces (larisid.com/lms)
+globs: lms/**,obrolan.marketing/**,docs/lms.md,.cursor/lms/**,supabase/migrations/*lms*,supabase/functions/lms-*/**
+alwaysApply: false
+---
+
+# LMS
+
+Product name is **LMS**. Entry: **https://larisid.com/lms/**.
+
+Formerly referred to as Anton’s app, Anton’s school, or Obrolan Marketing. Use **LMS** in docs, comments aimed at agents, and chat. Keep `obrolan.marketing/` and Contabo `anton-school` only as path/service names.
+
+Cursor home for LMS notes: **[`.cursor/lms/`](../lms/README.md)**. Full product doc: **[docs/lms.md](../../docs/lms.md)**.
+
+- Landing/auth: `lms/` → `/lms/`
+- Live class UI: `obrolan.marketing/` → `/s/{slug}/`
+- After Contabo login, open the left-rail class app — not the Contabo “Kelas / Edit kurikulum” shell
+- No public `?k=` media share pattern
+- Deploy: `deploy-static.sh` + `deploy-school-api.sh`; SQL via `apply-selfhost.sh` only

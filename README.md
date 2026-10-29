@@ -15,6 +15,7 @@ It defines **what we are building, why, how, who is involved, and what we will n
 | Web app | `index.html` (landing + dashboard SPA) |
 | User journey funnel (onboarding, Discover → Deep Dive) | **`index.html`** — see **[docs/journey-funnel.md](./docs/journey-funnel.md)** |
 | SEO / marketing pages | `perbandingan/`, `harga/`, `tentang/`, `cara-kerja/`, `llms.txt` — see **[docs/seo.md](./docs/seo.md)** |
+| LMS (mentor classes) | `lms/` + class UI in `obrolan.marketing/` — entry **https://larisid.com/lms/** — see **[docs/lms.md](./docs/lms.md)** and **[`.cursor/lms/`](./.cursor/lms/README.md)** |
 | Shared static styles | `styles/seo-pages.css` |
 | Privacy policy | `privacy/` |
 | Supabase (DB, auth, edge functions) | `supabase/` — see [supabase/README.md](./supabase/README.md) |
@@ -31,6 +32,7 @@ It defines **what we are building, why, how, who is involved, and what we will n
 | [pricing-research.md](./docs/pricing-research.md) | Competitor pricing facts (must stay accurate on site) |
 | [SCRAPER_TODO.md](./docs/SCRAPER_TODO.md) | Listing ingest / `total_sold` scraper work |
 | [BRAND_V2_PHOENIX.md](./docs/BRAND_V2_PHOENIX.md) | Logo lockups, color schemes, paint text, voice |
+| [lms.md](./docs/lms.md) | LMS landing, class UI, Contabo school API |
 
 ## Architecture
 

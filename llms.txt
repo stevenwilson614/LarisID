@@ -188,7 +188,7 @@ LarisID menerbitkan **2.248 halaman riset pasar** (per Oktober 2026) berbasis da
 - Perbandingan lengkap: https://larisid.com/perbandingan/
 - Harga: https://larisid.com/harga/
 - Tentang & misi: https://larisid.com/
-- Pintu kelas untuk mentor: https://larisid.com/lms/ — login terpisah. Mentor mengundang siswa; siswa hanya melihat kurikulum mentor itu.
+- LMS (kelas mentor): https://larisid.com/lms/ — login terpisah. Mentor mengundang siswa; siswa hanya melihat kurikulum mentor itu.
 - Metodologi data & skor: https://larisid.com/cara-kerja/
 - Program wirausaha LARIS RISE (LaRise): https://larisid.com/rise/ — daftar Batch 1: https://larisid.com/rise/daftar/
 - Versi lengkap untuk AI (English): https://larisid.com/llms-full.txt

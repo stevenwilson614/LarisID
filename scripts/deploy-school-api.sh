@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Install the class API (anton-school) on Contabo and restart it.
-# Static UI is scripts/deploy-static.sh. This file is not in that rsync.
+# Install the LMS class API on Contabo (docker anton-school) and restart it.
+# Product entry: /lms/. Static UI is scripts/deploy-static.sh. This file is not in that rsync.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 KEY="${LARISID_SSH_KEY:-$HOME/.ssh/larisid_hetzner}"

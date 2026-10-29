@@ -1,27 +1,33 @@
 # LMS
 
+**Product name:** LMS. **Entry:** [https://larisid.com/lms/](https://larisid.com/lms/).
+
+Formerly referred to in this repo as Anton’s app, Anton’s school, or Obrolan Marketing. Use **LMS** in docs and agent talk. Keep legacy path/service names (`obrolan.marketing/`, Contabo `anton-school`) only when pointing at code or infra.
+
+Cursor home for LMS agent notes: [`.cursor/lms/`](../.cursor/lms/README.md).
+
 Two URLs, one product:
 
 | URL | Role |
 | --- | --- |
 | [`https://larisid.com/lms/`](https://larisid.com/lms/) | Mentor **landing + signup/login** (Contabo marketing shell in `lms/`) |
 | [`https://larisid.com/s/{slug}/`](https://larisid.com/s/test-1/) | **The class.** Every new mentor from `/lms/` lands here in the left-rail UI (Dashboard, Students, Kurikulum, Otomasi, …). Students use the same link. |
-| [`https://larisid.com/obrolan.marketing/`](https://larisid.com/obrolan.marketing/) | Anton’s existing school only. Not the signup destination. |
+| [`https://larisid.com/obrolan.marketing/`](https://larisid.com/obrolan.marketing/) | Legacy hub for the founding tenant slug only. Not the signup destination. |
 
 After Contabo login/daftar succeeds, mentors are claimed into a disk school (`POST /obrolan.marketing/api/owners/claim`) and opened at `/s/{org_slug}/` in **mentor** chrome (left rail). Students open `/s/{org_slug}/` as students. Do not show the Contabo sidebar “Kelas / Edit kurikulum” shell as the live class UI. Do not dump new mentors into `/s/obrolan.marketing`.
 
 Class app source: `obrolan.marketing/`. Contabo `anton-school` serves `/obrolan.marketing/api/*` and `/api/*` from disk (`docker/volumes/anton-school`). Disk is the class source of truth (kurikulum, roster, video bytes). Postgres `lms_*` is auth, org name, and slug.
 
-A logged-out `GET /state/{slug}` is the public card (name, profile photo, headline). Lectures and file keys are not in that payload. A draft (`kurikulum.published === false`) stays off the student payload. Anton’s school stays open for students already on his roster.
+A logged-out `GET /state/{slug}` is the public card (name, profile photo, headline). Lectures and file keys are not in that payload. A draft (`kurikulum.published === false`) stays off the student payload. The founding tenant (`obrolan.marketing`) stays open for students already on that roster.
 
 The invite code on `/s/{slug}/?invite=` admits a new student. It is not a media password. New schools get a random code. A school still on a name-derived code gets a random one the next time the owner loads it. Video and files stay on the Contabo volume (`media/{slug}/…`, up to 5 GB) and play with `GET /media/file` Range requests. Staff playback uses a short-lived HttpOnly `lms_media` cookie because `<video>` cannot send a bearer token. Students use `lms_student`. `?k=` does not authorize a download. Profile photos (`{slug}/profile.*`) stay public.
 
 ```bash
 bash scripts/deploy-static.sh          # class UI and /lms
-bash scripts/deploy-school-api.sh      # obrolan.marketing/server/server.mjs
+bash scripts/deploy-school-api.sh      # LMS class API (obrolan.marketing/server/server.mjs)
 ```
 
-`server.mjs` is not in the static rsync. The API script restarts `anton-school`. `LMS_SESSION_SECRET` or `ANTON_ADMIN_KEY` must be set on that service so student cookies survive a restart.
+`server.mjs` is not in the static rsync. The API script restarts Contabo `anton-school`. `LMS_SESSION_SECRET` or `ANTON_ADMIN_KEY` must be set on that service so student cookies survive a restart.
 
 Editing kurikulum in that app: **Preview** on the publikasi step opens the student view with **Publikasikan** on that screen. Choosing or dropping a video starts the upload immediately, before **Simpan materi**. If that already created the materi, Simpan materi only saves the title and text. Progress shows on the materi card, on the same row as that materi’s cover when a cover is attached. On the publikasi step the same meter sits beside the class cover, not in the full-width strip under the header. The header strip (`Mengunggah N%`, with × to cancel) stays on the other kurikulum steps and on Preview siswa. Left-rail tabs stay locked on Kurikulum until the upload finishes or they cancel with ×. Publish waits until that upload finishes. **Hapus bagian** asks once, then deletes that bagian and every materi in it (video, cover, files, and any in-flight upload), including an empty bagian and the last remaining bagian. A cover sits on the video with no `src` and no controls until the cover is clicked. Clicking play removes `.has-poster` and the cover button (CSS also hides `.lec-poster-hit` once `.has-poster` is gone — author `display:block` otherwise beats the UA `[hidden]` rule).
 
@@ -29,7 +35,7 @@ Editing kurikulum in that app: **Preview** on the publikasi step opens the stude
 bash scripts/deploy-static.sh
 ```
 
-`obrolan.marketing/server/server.mjs` is excluded from that rsync. Directory cards include `photoUrl`, and a new student is not assigned Anton’s id on another school. Kurikulum file cap (200 MB), the Google email backfill, and pending-admin permission updates live in that process. Install it with `bash scripts/deploy-school-api.sh`.
+`obrolan.marketing/server/server.mjs` is excluded from that rsync. Directory cards include `photoUrl`, and a new student is not assigned the founding owner’s id on another school. Kurikulum file cap (200 MB), the Google email backfill, and pending-admin permission updates live in that process. Install it with `bash scripts/deploy-school-api.sh`.
 
 Do not revive `js/lms-join.js` or public invite-code file downloads as the share model.
 
@@ -47,17 +53,17 @@ Do not revive `js/lms-join.js` or public invite-code file downloads as the share
 - Profile picture tab: cover banner can be panned (object-position) after upload.
 - Social icons use official brand glyphs (Simple Icons paths).
 - Top-left chrome is one circle: the school profile photo when it loads, otherwise initials. `[hidden]` on `.brand img` and `.brand-fallback` is `display: none`. No second initials badge and no seed mark beside that circle.
-- **Perpustakaan** is per-school catalog — never falls back to Anton’s lynk/photo for other coaches.
+- **Perpustakaan** is per-school catalog — never falls back to another coach’s lynk/photo.
 - **Kurikulum** (mentor): landing shows the whole curriculum overview; click a materi to edit that module, or “Atur kurikulum” for the wizard.
-- **Otomasi**: left column lists every automation (name, hook, step count); the builder stays open on the right. Archived rows show only while “Lihat arsip” is on. Perpanjangan settings sit under the list. Automation copy is per mentor. Other schools use `{mentor}` and `{org}` (`Halo {name}, ini {mentor} dari {org}.`). Anton’s school keeps his own seed text. Do not copy “MasterMind with Anton GC” or “Anton di sini” onto another coach.
-- **Assigned** on a student profile is this mentor plus admins they added (`staffAdmins`, not revoked). It does not list pipeline “Mentor” students or Anton’s seed staff on another school.
+- **Otomasi**: left column lists every automation (name, hook, step count); the builder stays open on the right. Archived rows show only while “Lihat arsip” is on. Perpanjangan settings sit under the list. Automation copy is per mentor. Other schools use `{mentor}` and `{org}` (`Halo {name}, ini {mentor} dari {org}.`). The founding tenant may keep its own seed text. Do not copy founding-tenant seed phrases onto another coach.
+- **Assigned** on a student profile is this mentor plus admins they added (`staffAdmins`, not revoked). It does not list pipeline “Mentor” students or seed staff from another school.
 - **Grup diskusi** on a student profile lists every chat they are in. A mentor who can edit students can remove them, add them to an existing chat, or create a named group and add them. A month batch they are removed from stays removed (`chats.removed`) so the paid-month default does not put them back.
 - **Kurikulum files** (lembar kerja / document upload) cap at 200 MB. Diskusi attachments stay at 20 MB. Covers stay at 5 MB. Video stays at 5 GB. The higher cap is `kurikulum: true` on `/media/init` only.
 - **Siswa view** (profile menu) is a phone-sized read-only student app (`?present=1&pane=student&readonly=1`). It skips login and the join wizard, can open Home, Belajar, Alat, and Diskusi, and does not PUT state or send the mentor bearer. Desktop toggle remains.
 - **Google signup email** is written to `accountSettings.email` and `ownerContact.email` when those fields are still empty (claim, new school, owner GET/PUT). A saved address is not replaced. The mentor Profile card shows it.
 - **Two-factor**: authenticator TOTP via GoTrue (`/auth/v1/factors`) on Account security, and a code step on `/lms/` login only when a verified factor exists and the session is still aal1. If enroll is disabled or there is no mentor session, the control stays hidden and login is not blocked. There is no mock 2FA checkbox.
 - **Admin** lives on Account settings, not Profile. Invite link: name, then email + password (`POST /staff/accept`). Permission checkboxes persist on the pending invite. The owner can change the eight switches, revoke, and restore an accepted admin at any time. Revoked admins cannot log in.
-- **Diskusi**: chat list with search + red “+ Chat baru”; thread title + anggota; soft post bubble; like is the word Suka (no emoji); comments are flat (avatar, name, `20h`/`1d`) with replies indented one level under the parent. The chevron or Balas opens an inline reply composer; the comment field at the bottom is only for a new top-level comment. Post composer still has file / foto / poll + red send. Posted photos stay small and use `object-fit: contain` so they are not cropped. File attachments stay at 20 MB. A comment or post stores `authorPhoto` when the author has a shared photo URL. The school profile photo uploads to class media the same way as the banner. Other viewers get that URL on the public directory card (`photoUrl`). Anton’s photo and name are not the fallback on another school.
+- **Diskusi**: chat list with search + red “+ Chat baru”; thread title + anggota; soft post bubble; like is the word Suka (no emoji); comments are flat (avatar, name, `20h`/`1d`) with replies indented one level under the parent. The chevron or Balas opens an inline reply composer; the comment field at the bottom is only for a new top-level comment. Post composer still has file / foto / poll + red send. Posted photos stay small and use `object-fit: contain` so they are not cropped. File attachments stay at 20 MB. A comment or post stores `authorPhoto` when the author has a shared photo URL. The school profile photo uploads to class media the same way as the banner. Other viewers get that URL on the public directory card (`photoUrl`). Another coach’s photo and name are not the fallback on a different school.
 
 ---
 
@@ -69,7 +75,7 @@ Marketing landing, Google/email auth, and “Buat kelas” live in `lms/index.ht
 
 Invite preview card: `/lms/card/?invite=…` → `lms-invite-card`.
 
-Belajar and LarisRise are separate products — do not fold them into this app.
+Belajar and LarisRise are separate products — do not fold them into LMS.
 
 ### Postgres schema (auth LMS)
 

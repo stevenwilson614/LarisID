@@ -28,11 +28,13 @@ Cari Produk defaults to **Tabel** (listing-row spreadsheet: photo, harga, omset,
 
 ## LMS
 
+**Product name:** LMS (entry [https://larisid.com/lms/](https://larisid.com/lms/)). Formerly Anton’s app / Anton’s school / Obrolan Marketing — use **LMS** in docs and agent talk. Cursor home: **[`.cursor/lms/`](./.cursor/lms/README.md)**.
+
 - **Landing / signup:** `/lms/` — Contabo marketing + auth in `lms/`
-- **Live class UI:** left-rail app at `/obrolan.marketing/` (mentor) and `/s/{slug}/` (student) — source `obrolan.marketing/`, disk state via Contabo `anton-school`
+- **Live class UI:** left-rail app at `/s/{slug}/` — source `obrolan.marketing/`, disk state via Contabo `anton-school` (legacy path/service names only)
 - After Contabo login, send users into that left-rail app. Do not use the Contabo “Kelas / Edit kurikulum” shell as the class UI.
 
-Before changing either surface, read **[docs/lms.md](./docs/lms.md)**. Do not reintroduce invite-code raw file URLs (`?k=` on media) as a public share pattern.
+Before changing either surface, read **[docs/lms.md](./docs/lms.md)** (and [`.cursor/lms/AGENTS.md`](./.cursor/lms/AGENTS.md)). Do not reintroduce invite-code raw file URLs (`?k=` on media) as a public share pattern.
 
 ## LarisExpor (`pasar=expor`)
 

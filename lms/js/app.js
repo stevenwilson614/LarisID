@@ -709,7 +709,7 @@
   function classAppUrl(me, slug) {
     var school = String(slug || (me && me.org_slug) || '').trim();
     if (!school) return '';
-    /* Anton's existing school keeps its hub. Every other mentor gets their own class. */
+    /* Founding tenant slug keeps the legacy hub. Every other mentor gets /s/{slug}/. */
     if (school === 'obrolan.marketing') return '/obrolan.marketing/';
     return '/s/' + encodeURIComponent(school) + '/';
   }
