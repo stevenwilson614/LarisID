@@ -196,13 +196,14 @@
   async function mfaRequired(session) {
     if (!session || !session.access_token || !sb) return null;
     if (jwtAal(session.access_token) === 'aal2') return null;
-    var res = await fetch(SUPA_URL + '/auth/v1/factors', {
+    /* Current GoTrue has no GET /factors (405). Factors live on GET /user. */
+    var res = await fetch(SUPA_URL + '/auth/v1/user', {
       headers: { apikey: SUPA_KEY, authorization: 'Bearer ' + session.access_token }
     });
     var data = {};
     try { data = await res.json(); } catch (err) { data = {}; }
     if (!res.ok || mfaOff(res.status, data)) return null;
-    var rows = (data && (data.totp || data.all)) || [];
+    var rows = (data && data.factors) || [];
     for (var i = 0; i < rows.length; i += 1) {
       var row = rows[i];
       if (row && row.status === 'verified' && row.factor_type === 'totp') return row;

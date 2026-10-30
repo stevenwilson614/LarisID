@@ -2093,7 +2093,7 @@
   }
   function mfaOffResponse(status, data) {
     const msg = String((data && (data.msg || data.message || data.error_description || data.error_code || data.error)) || '');
-    if (status === 404 || status === 501) return true;
+    if (status === 404 || status === 405 || status === 501) return true;
     return /mfa/i.test(msg) && /disabled|not enabled|unavailable/i.test(msg);
   }
   async function mfaFetch(path, opts) {
@@ -2122,9 +2122,34 @@
     }
     return data;
   }
+  /** GoTrue dropped GET /factors; list via GET /user.factors (auth-js listFactors). */
+  async function mfaListFactors() {
+    const user = await mfaFetch('/auth/v1/user');
+    const all = Array.isArray(user && user.factors) ? user.factors : [];
+    return {
+      all: all,
+      totp: all.filter((f) => f && f.factor_type === 'totp'),
+      phone: all.filter((f) => f && f.factor_type === 'phone')
+    };
+  }
   function verifiedTotpFactor(list) {
     const rows = (list && (list.totp || list.all)) || [];
     return rows.find((f) => f && f.factor_type === 'totp' && f.status === 'verified') || null;
+  }
+  function mfaQrSrc(qr) {
+    const raw = String(qr || '');
+    if (!raw) return '';
+    if (/^data:image\/svg\+xml/i.test(raw)) {
+      const comma = raw.indexOf(',');
+      if (comma < 0) return raw;
+      const meta = raw.slice(0, comma);
+      const payload = raw.slice(comma + 1);
+      if (payload.indexOf('<svg') >= 0) {
+        return meta.replace(/;utf-8$/i, '') + ';utf-8,' + encodeURIComponent(payload);
+      }
+      return raw;
+    }
+    return 'data:image/svg+xml;utf-8,' + encodeURIComponent(raw);
   }
   function storeMfaSession(data) {
     if (!data || !data.access_token) return;
@@ -2161,7 +2186,7 @@
   }
   function refreshMfa() {
     if (!mentorAccessToken()) return;
-    mfaFetch('/auth/v1/factors').then((list) => {
+    mfaListFactors().then((list) => {
       const on = verifiedTotpFactor(list);
       ui.mfa = on
         ? { phase: 'on', unavailable: false, factorId: on.id, qr: '', secret: '', error: '' }
@@ -2182,7 +2207,7 @@
   }
   async function startMfaEnroll() {
     try {
-      const list = await mfaFetch('/auth/v1/factors');
+      const list = await mfaListFactors();
       const rows = (list && (list.all || list.totp)) || [];
       for (let i = 0; i < rows.length; i += 1) {
         const row = rows[i];
@@ -2192,7 +2217,7 @@
       }
       const data = await mfaFetch('/auth/v1/factors', {
         method: 'POST',
-        body: { factor_type: 'totp', friendly_name: 'Laris LMS' }
+        body: { factor_type: 'totp', friendly_name: 'Laris LMS', issuer: 'Laris LMS' }
       });
       const totp = data.totp || {};
       ui.mfa = {
@@ -2272,7 +2297,7 @@
     if (m.phase === 'enroll') {
       return '<div class="as-section"><h2>Two-factor authentication</h2>' +
         '<p class="muted">Scan this QR in an authenticator app, then enter the 6-digit code.</p>' +
-        (m.qr ? '<img class="mfa-qr" alt="Authenticator QR" src="' + esc(m.qr) + '">' : '') +
+        (m.qr ? '<img class="mfa-qr" alt="Authenticator QR" src="' + esc(mfaQrSrc(m.qr)) + '">' : '') +
         (m.secret ? '<p class="muted">Manual key: <code>' + esc(m.secret) + '</code></p>' : '') +
         '<form class="ps-form" data-act="mfa-verify">' +
           '<label class="ps-field"><span class="ps-label">Code</span>' +
@@ -3060,6 +3085,8 @@
     presentReady: false,
     mayar: null,
     admin: false,
+    platformAdmin: false,
+    platformSummary: null,
     visitorId: '',
     visitorLive: false,
     studentAuthed: false,
@@ -8633,6 +8660,7 @@
   }
   function mentorTabs() {
     const t = [{ id: 'dash', label: 'Dashboard' }];
+    if (ui.platformAdmin) t.push({ id: 'platform', label: 'Admin' });
     if (staffCan('viewStudents')) t.push({ id: 'siswa', label: 'Students' });
     if (staffCan('viewClasses')) t.push({ id: 'kurikulum', label: 'Kurikulum' });
     t.push({ id: 'otomasi', label: 'Otomasi' });
@@ -9006,6 +9034,7 @@
       else if (tab === 'harga' && SHOW_PENGATURAN_BAYAR && canBill()) main.innerHTML = viewHarga();
       else if (tab === 'profil' && canBill()) main.innerHTML = viewProfilEdit();
       else if (tab === 'account' && canBill()) main.innerHTML = viewAccountSettings();
+      else if (tab === 'platform' && ui.platformAdmin) main.innerHTML = viewPlatformAdmin();
       else if (tab === 'admin' && ui.admin) main.innerHTML = viewAdmin();
       else main.innerHTML = viewSiswaHub();
     } else {
@@ -9105,6 +9134,7 @@
     if ((tab === 'siswa' || tab === 'orang' || tab === 'tugas') && !staffCan('viewStudents')) return 'dash';
     if ((tab === 'kurikulum' || tab === 'jadwal') && !staffCan('viewClasses')) return 'dash';
     if ((tab === 'profil' || tab === 'account' || tab === 'admin' || tab === 'harga') && !isOwner()) return 'dash';
+    if (tab === 'platform' && !ui.platformAdmin) return 'dash';
     return tab || 'siswa';
   }
 
@@ -12924,6 +12954,48 @@
     });
     html += '</section>';
     return html;
+  }
+  function viewPlatformAdmin() {
+    const s = ui.platformSummary;
+    if (!s) {
+      return '<section class="card"><h2>Admin</h2><p class="muted">Memuat mentor dan siswa…</p></section>';
+    }
+    if (s.error) {
+      return '<section class="card"><h2>Admin</h2><p class="muted">Ringkasan tidak terbaca. Coba refresh.</p></section>';
+    }
+    const mentors = s.mentors || [];
+    const rows = mentors.map((m) => {
+      const href = m.slug === 'obrolan.marketing'
+        ? '/obrolan.marketing/'
+        : '/s/' + encodeURIComponent(m.slug) + '/';
+      return '<tr>' +
+        '<td><a href="' + esc(href) + '">' + esc(m.name || m.slug) + '</a>' +
+          '<div class="muted">' + esc(m.slug || '') + '</div></td>' +
+        '<td>' + esc(m.email || '—') + '</td>' +
+        '<td>' + esc(String(m.students || 0)) + '</td>' +
+        '<td>' + esc(m.published ? 'Published' : 'Draft') + '</td>' +
+        '</tr>';
+    }).join('');
+    return '<section class="card">' +
+      '<h2>Platform LMS</h2>' +
+      '<p class="muted">Semua mentor di disk dan jumlah siswa di kelas mereka.</p>' +
+      '<div class="fub-stats">' +
+        '<div><strong>' + esc(String(s.mentorCount || 0)) + '</strong><span class="muted">Mentor</span></div>' +
+        '<div><strong>' + esc(String(s.studentCount || 0)) + '</strong><span class="muted">Siswa (total)</span></div>' +
+        '<div><strong>' + esc(String(mentors.length ? Math.round((s.studentCount || 0) / mentors.length) : 0)) +
+          '</strong><span class="muted">Rata-rata / mentor</span></div>' +
+      '</div>' +
+      '<div class="row" style="margin-top:12px;justify-content:flex-end">' +
+        '<button type="button" class="btn-sm" data-act="platform-refresh">Refresh</button>' +
+      '</div>' +
+      '</section>' +
+      '<section class="card" style="margin-top:12px">' +
+      '<h2>Mentor</h2>' +
+      (mentors.length
+        ? '<table class="table"><thead><tr><th>Kelas</th><th>Email</th><th>Siswa</th><th>Status</th></tr></thead><tbody>' +
+          rows + '</tbody></table>'
+        : '<p class="muted">Belum ada mentor.</p>') +
+      '</section>';
   }
   function viewAdmin() {
     const s = ui.adminSummary;
@@ -19116,6 +19188,45 @@
       ui.adminSummary = { error: true };
     }
     if (ui.mentorTab === 'admin') render();
+  }
+  async function claimPlatformAdmin() {
+    if (!ui.coach && !isOwner()) return false;
+    const auth = lmsAuth();
+    if (!auth || !auth.access_token) return false;
+    try {
+      const res = await fetch(apiBase() + '/platform/me', {
+        headers: { authorization: 'Bearer ' + auth.access_token },
+        cache: 'no-store'
+      });
+      if (!res.ok) {
+        ui.platformAdmin = false;
+        return false;
+      }
+      ui.platformAdmin = true;
+      return true;
+    } catch (err) {
+      ui.platformAdmin = false;
+      return false;
+    }
+  }
+  async function refreshPlatformAdmin() {
+    if (!ui.platformAdmin) return;
+    const auth = lmsAuth();
+    if (!auth || !auth.access_token) {
+      ui.platformSummary = { error: true };
+      if (ui.mentorTab === 'platform') render();
+      return;
+    }
+    try {
+      const res = await fetch(apiBase() + '/platform/summary', {
+        headers: { authorization: 'Bearer ' + auth.access_token },
+        cache: 'no-store'
+      });
+      ui.platformSummary = res.ok ? await res.json() : { error: true };
+    } catch (err) {
+      ui.platformSummary = { error: true };
+    }
+    if (ui.mentorTab === 'platform') render();
   }
   function markPageView() {
     try {
