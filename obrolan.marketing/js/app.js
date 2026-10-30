@@ -109,6 +109,7 @@
       ...calc,
       price: 0,
       coret: 0,
+      mentorPrice: 0,
       lynk: '',
       example: false,
       includedInMentoring: true,
@@ -2939,6 +2940,8 @@
     pipaTipOpen: false,
     pipaDeleteId: null,
     pustakaAddOpen: false,
+    pustakaEditId: '',
+    pustakaPending: null,
     cariSiswa: '',
     cariOpen: false,
     tagPickerId: null,
@@ -5916,9 +5919,35 @@
   }
   function monthlyPrice() { return Number(db.pricing.monthlyIdr) || 500000; }
   function toolDiscountPct() { return Number(db.pricing.toolDiscountPct) || 50; }
+  function hasMentorPrice(p) {
+    return !!(p && p.mentorPrice != null && p.mentorPrice !== '');
+  }
   function toolMemberPrice(p) {
+    if (hasMentorPrice(p)) return Math.max(0, Number(p.mentorPrice) || 0);
     const list = Number(p && p.price) || 0;
     return Math.round(list * (1 - toolDiscountPct() / 100));
+  }
+  function mentorPriceLabel(p) {
+    const n = toolMemberPrice(p);
+    if (n <= 0) return 'Gratis di mentoring';
+    if (hasMentorPrice(p)) return fmtRp(n) + ' di mentoring';
+    return '−' + toolDiscountPct() + '% mentoring';
+  }
+  function skuCoverBlobId(id) { return 'sku-cover-' + String(id || ''); }
+  function skuFileBlobId(id) { return 'sku-file-' + String(id || ''); }
+  function skuVideoBlobId(id) { return 'sku-video-' + String(id || ''); }
+  function skuCoverSrc(p) {
+    if (!p) return '';
+    if (p.coverUrl) return String(p.coverUrl);
+    if (p.cover) return String(p.cover);
+    return '';
+  }
+  function parseMentorPriceField(raw) {
+    const s = String(raw == null ? '' : raw).trim();
+    if (!s) return null;
+    const n = Number(s);
+    if (!isFinite(n) || n < 0) return null;
+    return Math.round(n);
   }
   function termMonths(term) {
     return { month: 1, autopay: 1, quarter: 3, half: 6, year: 12 }[term] || 1;
@@ -6890,6 +6919,172 @@
       toast('File tersimpan di browser ini.');
       render();
     }).catch(() => toast('Gagal simpan file.'));
+  }
+  function ensureCatalogMutable() {
+    db.catalog = catalog().map((p) => ({ ...p, outline: (p.outline || []).slice() }));
+    return db.catalog;
+  }
+  function patchCatalogProduct(id, patch) {
+    ensureCatalogMutable();
+    const p = db.catalog.find((x) => x && x.id === id);
+    if (!p) return null;
+    Object.assign(p, patch);
+    return p;
+  }
+  function ingestPustakaCover(file, productId) {
+    if (!file || !canBill()) return;
+    if (file.type && file.type.indexOf('image') !== 0) {
+      toast('Cover harus gambar.');
+      return;
+    }
+    if (file.size > MAX_IMG) {
+      toast('Cover maks 5 MB.');
+      return;
+    }
+    const p = productById(productId);
+    if (!p) return;
+    const blobId = skuCoverBlobId(productId);
+    const saveCover = (ready) => {
+      if (syncEnabled()) {
+        toast('Mengunggah cover…');
+        uploadClassVideo(ready, blobId, null, 'image').then((info) => {
+          if (p.coverKey && p.coverKey !== info.key) deleteRemoteVideo(p.coverKey);
+          patchCatalogProduct(productId, {
+            coverUrl: mediaFileUrl(info.key),
+            coverKey: info.key,
+            coverBlob: false,
+            cover: mediaFileUrl(info.key)
+          });
+          save();
+          toast('Cover tersimpan.');
+          render();
+        }).catch(() => toast('Gagal unggah cover.'));
+        return;
+      }
+      blobPut(blobId, ready).then(() => {
+        patchCatalogProduct(productId, { coverBlob: true, coverUrl: '', coverKey: '' });
+        save();
+        toast('Cover tersimpan di browser ini.');
+        render();
+      }).catch(() => toast('Gagal simpan cover.'));
+    };
+    shrinkCoverImage(file).then((ready) => {
+      if (!ready) {
+        toast('Cover tidak bisa dibaca.');
+        return;
+      }
+      if (ready.size > MAX_IMG) {
+        toast('Cover masih di atas 5 MB setelah diperkecil.');
+        return;
+      }
+      saveCover(ready);
+    }).catch(() => toast('Gagal proses cover.'));
+  }
+  function ingestPustakaFile(file, productId) {
+    if (!file || !canBill()) return;
+    if (file.size > MAX_KUR_FILE) {
+      toast('File maks 200 MB.');
+      return;
+    }
+    const p = productById(productId);
+    if (!p) return;
+    const blobId = skuFileBlobId(productId);
+    if (syncEnabled()) {
+      toast('Mengunggah file…');
+      uploadClassVideo(file, blobId, null, 'kurfile').then((info) => {
+        if (p.fileKey && p.fileKey !== info.key) deleteRemoteVideo(p.fileKey);
+        patchCatalogProduct(productId, {
+          fileUrl: mediaFileUrl(info.key),
+          fileKey: info.key,
+          fileName: file.name,
+          fileBlob: false
+        });
+        save();
+        toast('File tersimpan.');
+        render();
+      }).catch(() => toast('Gagal unggah file.'));
+      return;
+    }
+    blobPut(blobId, file).then(() => {
+      patchCatalogProduct(productId, {
+        fileBlob: true,
+        fileUrl: '',
+        fileKey: '',
+        fileName: file.name
+      });
+      save();
+      toast('File tersimpan di browser ini.');
+      render();
+    }).catch(() => toast('Gagal simpan file.'));
+  }
+  function ingestPustakaVideo(file, productId) {
+    if (!file || !canBill()) return;
+    const cap = syncEnabled() ? MAX_VID_CLASS : MAX_VID_LOCAL;
+    if (file.size > cap) {
+      toast(syncEnabled() ? 'Video maks 5 GB.' : 'Video lokal maks 80 MB. Masuk kelas untuk unggah lebih besar.');
+      return;
+    }
+    const p = productById(productId);
+    if (!p) return;
+    const blobId = skuVideoBlobId(productId);
+    if (syncEnabled()) {
+      toast('Mengunggah rekaman…');
+      uploadClassVideo(file, blobId, null, 'video').then((info) => {
+        if (p.videoKey && p.videoKey !== info.key) deleteRemoteVideo(p.videoKey);
+        patchCatalogProduct(productId, {
+          videoKey: info.key,
+          videoUrl: mediaFileUrl(info.key),
+          videoName: file.name,
+          videoMime: file.type || '',
+          videoBlob: false,
+          kind: 'video',
+          group: p.group === 'alat' ? 'rekaman' : p.group
+        });
+        save();
+        toast('Rekaman tersimpan.');
+        render();
+      }).catch(() => toast('Gagal unggah rekaman.'));
+      return;
+    }
+    blobPut(blobId, file).then(() => {
+      patchCatalogProduct(productId, {
+        videoBlob: true,
+        videoKey: '',
+        videoUrl: '',
+        videoName: file.name,
+        videoMime: file.type || '',
+        kind: 'video',
+        group: p.group === 'alat' ? 'rekaman' : p.group
+      });
+      save();
+      toast('Rekaman tersimpan di browser ini.');
+      render();
+    }).catch(() => toast('Gagal simpan rekaman.'));
+  }
+  function applyPustakaPending(productId) {
+    const pending = ui.pustakaPending;
+    ui.pustakaPending = null;
+    if (!pending || !productId) return;
+    if (pending.cover) ingestPustakaCover(pending.cover, productId);
+    if (pending.file) ingestPustakaFile(pending.file, productId);
+    if (pending.video) ingestPustakaVideo(pending.video, productId);
+  }
+  function readPustakaFields(fd) {
+    const group = String(fd.get('group') || 'alat') === 'rekaman' ? 'rekaman' : 'alat';
+    const mentorPrice = parseMentorPriceField(fd.get('mentorPrice'));
+    return {
+      group: group,
+      kind: group === 'rekaman' ? 'video' : 'tool',
+      title: String(fd.get('title') || '').trim(),
+      job: String(fd.get('job') || '').trim(),
+      price: Math.max(0, +fd.get('price') || 0),
+      coret: Math.max(0, +fd.get('coret') || 0),
+      mentorPrice: mentorPrice,
+      lynk: String(fd.get('lynk') || '').trim(),
+      url: String(fd.get('url') || '').trim(),
+      example: !!fd.get('example'),
+      includedInMentoring: !!fd.get('mentor')
+    };
   }
 
   function payChip(st, source) {
@@ -9064,17 +9259,22 @@
   function dualCta(p, extraClass) {
     const sid = ui.personaId;
     const owned = canSku(sid, p.id);
+    const lynk = p.lynk || SEED.school.lynk || '';
     if (owned) {
       return '<button class="btn" data-act="open-sku" data-from="' + (extraClass || 'alat') + '" data-id="' + esc(p.id) + '">Buka</button>';
     }
     if (canMentoring(sid) && bundled(p)) {
-      return '<button class="btn" data-act="claim-tool" data-from="' + (extraClass || 'alat') + '" data-id="' + esc(p.id) + '">Ambil −' + toolDiscountPct() + '%</button>' +
-        '<a class="btn secondary" href="' + esc(p.lynk || SEED.school.lynk) + '" target="_blank" rel="noopener">Harga satuan</a>';
+      const claimLabel = toolMemberPrice(p) <= 0 ? 'Ambil gratis' : ('Ambil · ' + mentorPriceLabel(p));
+      return '<button class="btn" data-act="claim-tool" data-from="' + (extraClass || 'alat') + '" data-id="' + esc(p.id) + '">' +
+        esc(claimLabel) + '</button>' +
+        (lynk ? '<a class="btn secondary" href="' + esc(lynk) + '" target="_blank" rel="noopener">Harga satuan</a>' : '');
     }
     const mentorLine = bundled(p)
-      ? '<button class="btn secondary" data-act="tab" data-id="daftar">Ikut mentoring, −' + toolDiscountPct() + '% alat</button>'
+      ? '<button class="btn secondary" data-act="tab" data-id="daftar">Ikut mentoring · ' + esc(mentorPriceLabel(p)) + '</button>'
       : '<span class="muted">Tidak termasuk mentoring. Harga satuan.</span>';
-    return '<a class="btn" href="' + esc(p.lynk || SEED.school.lynk) + '" target="_blank" rel="noopener">Beli satuan</a>' + mentorLine +
+    return (lynk
+      ? '<a class="btn" href="' + esc(lynk) + '" target="_blank" rel="noopener">Beli satuan</a>'
+      : '') + mentorLine +
       '<button class="btn secondary" data-act="contoh-sku" data-from="' + (extraClass || 'alat') + '" data-id="' + esc(p.id) + '">Lihat contoh</button>';
   }
   function obChrome(step, opts) {
@@ -10126,17 +10326,36 @@
 
   function skuPriceHtml(p) {
     const list = Number(p.price) || 0;
+    const member = toolMemberPrice(p);
     if (canMentoring(ui.personaId) && bundled(p) && !canSku(ui.personaId, p.id)) {
-      return '<span class="price-coret">' + fmtRp(list) + '</span> <strong>' + fmtRp(toolMemberPrice(p)) + '</strong>' +
-        '<span class="muted"> · mentoring −' + toolDiscountPct() + '%</span>';
+      if (member <= 0) {
+        return (list ? '<span class="price-coret">' + fmtRp(list) + '</span> ' : '') +
+          '<strong>Gratis</strong><span class="muted"> · mentoring</span>';
+      }
+      return '<span class="price-coret">' + fmtRp(list) + '</span> <strong>' + fmtRp(member) + '</strong>' +
+        '<span class="muted"> · ' + esc(mentorPriceLabel(p)) + '</span>';
+    }
+    if (isStaff() && bundled(p)) {
+      const strike = p.coret ? '<span class="price-coret">' + fmtRp(p.coret) + '</span> ' : '';
+      const listHtml = list ? ('<strong>' + fmtRp(list) + '</strong>') : '<strong>Gratis</strong>';
+      return strike + listHtml +
+        '<span class="muted"> · mentoring: ' +
+        (member <= 0 ? 'Gratis' : fmtRp(member)) + '</span>';
     }
     if (p.coret) return '<span class="price-coret">' + fmtRp(p.coret) + '</span> <strong>' + fmtRp(list) + '</strong>';
+    if (!list) return '<strong>Gratis</strong>';
     return '<strong>' + fmtRp(list) + '</strong>';
   }
 
   function skuCoverHtml(p, cls) {
-    if (!p || !p.cover) return '';
-    return '<img class="' + (cls || 'sku-cover') + '" src="' + esc(p.cover) + '" alt="' + esc(p.title) + '">';
+    if (!p) return '';
+    const c = cls || 'sku-cover';
+    if (p.coverBlob) {
+      return '<img class="' + c + '" data-blob="' + esc(skuCoverBlobId(p.id)) + '" alt="' + esc(p.title || '') + '">';
+    }
+    const src = skuCoverSrc(p);
+    if (!src) return '';
+    return '<img class="' + c + '" src="' + esc(src) + '" alt="' + esc(p.title || '') + '">';
   }
 
   function catalogHero() {
@@ -10226,6 +10445,32 @@
       '<div class="row" style="margin-top:10px">' + dualCta(p, 'pustaka') + '</div></div></div>';
   }
 
+  function skuFileDownloadHtml(p) {
+    if (!p || !(p.fileUrl || p.fileKey || p.fileBlob)) return '';
+    const label = 'Unduh ' + (p.fileName || 'file');
+    if (p.fileBlob && !p.fileUrl) {
+      return '<a class="btn secondary" data-blob-href="' + esc(skuFileBlobId(p.id)) + '" download="' +
+        esc(p.fileName || 'file') + '">' + esc(label) + '</a>';
+    }
+    const href = p.fileUrl || (p.fileKey ? mediaFileUrl(p.fileKey) : '');
+    if (!href) return '';
+    return '<a class="btn secondary" href="' + esc(href) + '" target="_blank" rel="noopener" download="' +
+      esc(p.fileName || '') + '">' + esc(label) + '</a>';
+  }
+  function skuHostedVideoHtml(p) {
+    if (!p || !(p.videoKey || p.videoBlob)) return '';
+    const lecLike = {
+      id: skuVideoBlobId(p.id),
+      videoKey: p.videoKey || '',
+      videoBlob: !!p.videoBlob && !p.videoKey,
+      videoName: p.videoName || '',
+      videoMime: p.videoMime || ''
+    };
+    const poster = skuCoverSrc(p);
+    return '<div class="card" style="padding:0;overflow:hidden;margin-top:10px"><div class="lec-player">' +
+      hostedVideoHtml(lecLike, false, 'lec-video', { poster: poster || undefined }) +
+      '</div></div>';
+  }
   function viewSkuPage() {
     const p = productById(ui.skuId);
     if (!p) return viewStudentPustaka();
@@ -10234,37 +10479,50 @@
     if (!owned && !preview) return viewStudentPustaka();
     let body = '';
     let extra = '';
-    if (p.kind === 'tool') {
+    const coverSrc = skuCoverSrc(p);
+    const isTool = p.kind === 'tool' || p.group === 'alat';
+    if (isTool && (p.iframe || p.id === 'calc' || p.id === 'ai-creative' || p.id === 'ai-data')) {
       body = nativeToolHtml(p, preview);
+    } else if (p.videoKey || p.videoBlob) {
+      body = skuHostedVideoHtml(p);
     } else {
-      const e = parseEmbed(p.url);
-      body = '<div class="card" style="padding:0;overflow:hidden;margin-top:10px"><div class="canvas">' +
-        '<button type="button" class="lazy-embed' + (p.cover ? ' has-cover' : '') + '"' +
-        (p.cover ? ' style="background-image:url(\'' + esc(p.cover) + '\')"' : '') +
-        ' data-act="play-lazy" data-embed="' + esc(e ? e.embed : '') + '"' +
-        (e && e.videoId ? ' data-yt-id="' + esc(e.videoId) + '"' : '') +
-        ' aria-label="Putar video">' +
-        '<span class="play-orb" aria-hidden="true">' + svgIcon('play') + '</span>' +
-        '<span class="lazy-note">Ketuk untuk memuat · hemat data</span></button></div></div>';
-      if (p.outline && p.outline.length) {
-        extra = '<div class="card" style="margin-top:10px"><h3>Isi rekaman</h3><ul class="muted">' +
-          p.outline.map((x) => '<li>' + esc(x) + '</li>').join('') +
-          '</ul></div>';
+      const e = parseEmbed(p.url || p.videoUrl || '');
+      if (e && e.embed) {
+        body = '<div class="card" style="padding:0;overflow:hidden;margin-top:10px"><div class="canvas">' +
+          '<button type="button" class="lazy-embed' + (coverSrc ? ' has-cover' : '') + '"' +
+          (coverSrc ? ' style="background-image:url(\'' + esc(coverSrc) + '\')"' : '') +
+          ' data-act="play-lazy" data-embed="' + esc(e.embed) + '"' +
+          (e.videoId ? ' data-yt-id="' + esc(e.videoId) + '"' : '') +
+          ' aria-label="Putar video">' +
+          '<span class="play-orb" aria-hidden="true">' + svgIcon('play') + '</span>' +
+          '<span class="lazy-note">Ketuk untuk memuat · hemat data</span></button></div></div>';
+      } else if (coverSrc || p.coverBlob) {
+        body = '<div class="card" style="padding:0;overflow:hidden;margin-top:10px">' +
+          skuCoverHtml(p, 'sku-cover') + '</div>';
       }
     }
-    if (p.kind !== 'tool' && p.sheet) {
-      extra += '<div class="card" style="margin-top:10px"><h3>Spreadsheet Anton</h3>' +
-        '<p class="muted">Tangkapan layar rumus Set harga. Pakai tombol contoh di kalkulator.</p>' +
-        '<img class="sheet-shot" src="' + esc(p.sheet) + '" alt="Spreadsheet kalkulator TikTok"></div>';
+    if (p.outline && p.outline.length) {
+      extra += '<div class="card" style="margin-top:10px"><h3>Isi rekaman</h3><ul class="muted">' +
+        p.outline.map((x) => '<li>' + esc(x) + '</li>').join('') +
+        '</ul></div>';
     }
+    if (p.sheet) {
+      extra += '<div class="card" style="margin-top:10px"><h3>Spreadsheet</h3>' +
+        '<img class="sheet-shot" src="' + esc(p.sheet) + '" alt=""></div>';
+    }
+    const fileBtn = skuFileDownloadHtml(p);
+    const lynk = p.lynk || '';
     const bar = '<div class="sku-tool-bar">' +
       '<div><strong>' + esc(alatName(p)) + '</strong>' +
-      '<div class="muted">' + (owned ? 'Punya kamu' : 'Contoh sampai Anton isi file') +
+      '<div class="muted">' + (owned ? 'Punya kamu' : (preview ? 'Contoh' : 'Belum punya')) +
       (p.id === 'calc' ? ' · Unduh PDF di dalam kalkulator' : '') + '</div></div>' +
-      (owned
-        ? '<a class="btn secondary" href="' + esc(p.lynk) + '" target="_blank" rel="noopener">Halaman lynk</a>'
-        : '<a class="btn" href="' + esc(p.lynk) + '" target="_blank" rel="noopener">Beli di lynk.id</a>') +
-      '</div>';
+      '<div class="row">' + fileBtn +
+      (lynk
+        ? (owned
+          ? '<a class="btn secondary" href="' + esc(lynk) + '" target="_blank" rel="noopener">Halaman jual</a>'
+          : '<a class="btn" href="' + esc(lynk) + '" target="_blank" rel="noopener">Beli</a>')
+        : '') +
+      '</div></div>';
     return '<button type="button" class="kur-toggle" data-act="tab" data-id="' + esc(ui.skuFrom || 'alat') + '">← ' +
       (ui.skuFrom === 'home' ? 'Home' : 'Alat') + '</button>' +
       exampleBanner(p, preview) +
@@ -13410,9 +13668,100 @@
     return '<div class="kur-extra-adds">' + file + points + quiz + '</div>';
   }
 
+  function pustakaAssetHint(p, kind) {
+    if (kind === 'cover') {
+      if (p && (p.coverBlob || skuCoverSrc(p))) return 'Cover terpasang — unggah lagi untuk ganti.';
+      return 'Belum ada cover. Unggah foto (maks 5 MB).';
+    }
+    if (kind === 'file') {
+      if (p && (p.fileUrl || p.fileKey || p.fileBlob)) {
+        return 'File: ' + (p.fileName || 'terpasang') + ' — unggah lagi untuk ganti.';
+      }
+      return 'Opsional. PDF, sheet, zip, dll (maks 200 MB).';
+    }
+    if (p && (p.videoKey || p.videoBlob || p.videoUrl)) {
+      return 'Rekaman: ' + (p.videoName || 'terpasang') + ' — unggah lagi untuk ganti.';
+    }
+    return 'Unggah MP4/WebM (maks 5 GB di kelas), atau isi tautan YouTube di bawah.';
+  }
+  function pustakaFormHtml(p) {
+    const edit = !!p;
+    const id = edit ? p.id : '';
+    const group = (p && p.group) || 'alat';
+    const mentorVal = hasMentorPrice(p) ? String(Number(p.mentorPrice) || 0) : '';
+    const coverPreview = skuCoverHtml(p, 'pustaka-form-cover') ||
+      '<span class="pustaka-cover-empty" aria-hidden="true">Cover</span>';
+    return '<form class="compose add-sku pustaka-form" data-act="' + (edit ? 'save-sku' : 'add-sku') + '"' +
+      (edit ? ' data-id="' + esc(id) + '"' : '') + '>' +
+      '<strong>' + (edit ? ('Edit · ' + esc(p.title || 'produk')) : 'Tambah produk') + '</strong>' +
+      '<div class="row2">' +
+        '<div><label class="muted">Judul</label><input name="title" required placeholder="Nama alat / rekaman" value="' +
+          esc((p && p.title) || '') + '"' + (edit && p.platform ? '' : '') + '></div>' +
+        '<div><label class="muted">Grup</label><select name="group">' +
+          '<option value="alat"' + (group === 'alat' ? ' selected' : '') + '>Alat / file</option>' +
+          '<option value="rekaman"' + (group === 'rekaman' ? ' selected' : '') + '>Rekaman</option>' +
+        '</select></div>' +
+      '</div>' +
+      '<label class="muted">Untuk apa</label>' +
+      '<input name="job" placeholder="Satu kalimat" value="' + esc((p && p.job) || '') + '">' +
+      '<div class="row2">' +
+        '<div><label class="muted">Harga (Rp)</label><input name="price" type="number" min="0" value="' +
+          esc(String(p ? (Number(p.price) || 0) : 99000)) + '"></div>' +
+        '<div><label class="muted">Harga coret</label><input name="coret" type="number" min="0" value="' +
+          esc(String(p ? (Number(p.coret) || 0) : 129000)) + '" placeholder="Opsional"></div>' +
+      '</div>' +
+      '<div class="row2">' +
+        '<div><label class="muted">Harga jika sudah mentoring</label>' +
+          '<input name="mentorPrice" type="number" min="0" value="' + esc(mentorVal) +
+            '" placeholder="Kosong = % default · 0 = gratis"></div>' +
+        '<div class="pustaka-mentor-hint"><label class="muted">Termasuk mentoring</label>' +
+          '<label class="muted pustaka-check"><input type="checkbox" name="mentor"' +
+            ((p ? p.includedInMentoring !== false : true) ? ' checked' : '') +
+            '> Siswa mentoring boleh ambil</label></div>' +
+      '</div>' +
+      '<p class="muted pustaka-field-hint">Harga mentoring: isi <strong>0</strong> untuk gratis, atau nominal tetap. Kosongkan supaya pakai diskon alat global (−' +
+        toolDiscountPct() + '%).</p>' +
+      '<label class="muted">Tautan jual (opsional)</label>' +
+      '<input name="lynk" placeholder="https://…" value="' + esc((p && p.lynk) || '') + '">' +
+      '<label class="muted">Tautan YouTube / video (opsional, untuk rekaman)</label>' +
+      '<input name="url" placeholder="https://youtube.com/…" value="' + esc((p && p.url) || '') + '">' +
+      '<div class="pustaka-media">' +
+        '<div class="pustaka-media-col">' +
+          '<label class="muted">Cover</label>' +
+          '<div class="pustaka-cover-wrap">' + coverPreview + '</div>' +
+          '<p class="muted pustaka-field-hint">' + esc(pustakaAssetHint(p, 'cover')) + '</p>' +
+          '<label class="btn-sm">' + (edit ? 'Unggah cover' : 'Pilih cover') +
+            '<input type="file" hidden data-act="pustaka-cover-file"' +
+            (edit ? ' data-id="' + esc(id) + '"' : '') + ' accept="image/*"></label>' +
+        '</div>' +
+        '<div class="pustaka-media-col">' +
+          '<label class="muted">File</label>' +
+          '<p class="muted pustaka-field-hint">' + esc(pustakaAssetHint(p, 'file')) + '</p>' +
+          '<label class="btn-sm">' + (edit ? 'Unggah file' : 'Pilih file') +
+            '<input type="file" hidden data-act="pustaka-asset-file"' +
+            (edit ? ' data-id="' + esc(id) + '"' : '') + '></label>' +
+        '</div>' +
+        '<div class="pustaka-media-col">' +
+          '<label class="muted">Rekaman (video)</label>' +
+          '<p class="muted pustaka-field-hint">' + esc(pustakaAssetHint(p, 'video')) + '</p>' +
+          '<label class="btn-sm">' + (edit ? 'Unggah rekaman' : 'Pilih rekaman') +
+            '<input type="file" hidden data-act="pustaka-video-file"' +
+            (edit ? ' data-id="' + esc(id) + '"' : '') +
+            ' accept="video/mp4,video/webm,.mp4,.webm,.m4v"></label>' +
+        '</div>' +
+      '</div>' +
+      '<div class="row">' +
+        '<label class="muted"><input type="checkbox" name="example"' +
+          ((p ? !!p.example : false) ? ' checked' : '') + '> Contoh dulu</label>' +
+        '<button class="btn" type="submit">' + (edit ? 'Simpan' : 'Tambah ke perpustakaan') + '</button>' +
+        '<button type="button" class="btn secondary" data-act="pustaka-form-cancel">Batal</button>' +
+      '</div></form>';
+  }
   function viewPustaka() {
     const canAdd = canBill();
-    const addOpen = canAdd && ui.pustakaAddOpen;
+    const editId = canAdd ? String(ui.pustakaEditId || '') : '';
+    const editProduct = editId ? productById(editId) : null;
+    const formOpen = canAdd && (ui.pustakaAddOpen || !!editProduct);
     const items = catalog();
     const anton = antonSchoolData();
     return catalogHero() +
@@ -13421,44 +13770,23 @@
         '<div><h2 style="margin:0">Perpustakaan</h2>' +
           '<p class="muted" style="margin:6px 0 0">' +
             (anton
-              ? 'Produk lynk kelas ini. Toggle Contoh → File Anton setelah dia isi.'
-              : 'Produk kelas ini. Kalkulator harga sudah termasuk — centang SKU di profil siswa untuk memberi akses. Tambah alat lain sendiri.') +
+              ? 'Produk lynk kelas ini. Edit cover, harga, dan file per item. Toggle Contoh setelah file siap.'
+              : 'Produk kelas ini. Edit kalkulator atau tambah alat/rekaman — cover, file, harga, dan harga mentoring.') +
           '</p></div>' +
         (canAdd
-          ? '<button type="button" class="btn' + (addOpen ? ' secondary' : '') + '" data-act="pustaka-add-toggle">' +
-              (addOpen ? 'Tutup' : '+ Tambah') + '</button>'
+          ? '<button type="button" class="btn' + (formOpen && !editProduct ? ' secondary' : '') +
+              '" data-act="pustaka-add-toggle">' +
+              (formOpen && !editProduct ? 'Tutup' : '+ Tambah') + '</button>'
           : '') +
       '</div>' +
-      (addOpen
-        ? '<form class="compose add-sku" data-act="add-sku">' +
-            '<strong>Tambah produk</strong>' +
-            '<div class="row2">' +
-              '<div><label class="muted">Judul</label><input name="title" required placeholder="Nama alat / rekaman"></div>' +
-              '<div><label class="muted">Grup</label><select name="group"><option value="alat">Alat</option><option value="rekaman">Rekaman</option></select></div>' +
-            '</div>' +
-            '<label class="muted">Untuk apa</label>' +
-            '<input name="job" placeholder="Satu kalimat">' +
-            '<div class="row2">' +
-              '<div><label class="muted">Harga</label><input name="price" type="number" min="0" value="99000"></div>' +
-              '<div><label class="muted">Coret</label><input name="coret" type="number" min="0" value="129000"></div>' +
-            '</div>' +
-            '<label class="muted">Tautan jual (lynk / lainnya)</label>' +
-            '<input name="lynk" placeholder="https://…">' +
-            '<label class="muted">Cover URL (opsional)</label>' +
-            '<input name="cover" placeholder="https://…">' +
-            '<div class="row">' +
-              '<label class="muted"><input type="checkbox" name="example" checked> Contoh dulu</label>' +
-              '<label class="muted"><input type="checkbox" name="mentor" checked> Termasuk mentoring</label>' +
-              '<button class="btn" type="submit">Tambah ke perpustakaan</button>' +
-              '<button type="button" class="btn secondary" data-act="pustaka-add-toggle">Batal</button>' +
-            '</div></form>'
-        : '') +
+      (formOpen ? pustakaFormHtml(editProduct) : '') +
       (items.length
         ? '<div class="tool-grid">' + items.map((p) =>
-            '<div class="card tool-tile sku">' +
+            '<div class="card tool-tile sku' + (editId === p.id ? ' is-editing' : '') + '">' +
               skuCoverHtml(p) +
               '<div class="sku-body">' +
               '<span class="chip">' + esc(p.group) + '</span>' +
+              (p.platform ? ' <span class="chip">Platform</span>' : '') +
               (p.example
                 ? ' <span class="chip warn">Contoh</span>'
                 : ' <span class="chip lunas">' + (anton ? 'File Anton' : 'Siap') + '</span>') +
@@ -13466,6 +13794,9 @@
               '<p class="muted">' + esc(p.job) + '</p>' +
               '<p class="sku-price">' + skuPriceHtml(p) + '</p>' +
               '<div class="row" style="margin-top:10px">' +
+                (canBill()
+                  ? '<button class="btn-sm" data-act="pustaka-edit" data-id="' + esc(p.id) + '">Edit</button>'
+                  : '') +
                 (canBill()
                   ? '<button class="btn-sm" data-act="toggle-example" data-id="' + esc(p.id) + '">' +
                     (p.example ? 'Tandai sudah siap' : 'Kembalikan ke contoh') + '</button>'
@@ -14365,6 +14696,48 @@
     if (t.matches('[data-act="lec-body"]')) {
       const l = lectureById(t.getAttribute('data-id'));
       if (l) { l.body = t.value; save(); }
+      return;
+    }
+    if (t.matches('[data-act="pustaka-cover-file"]')) {
+      if (!canBill()) return;
+      const file = t.files && t.files[0];
+      if (!file) return;
+      const id = t.getAttribute('data-id') || ui.pustakaEditId || '';
+      if (id && productById(id)) {
+        ingestPustakaCover(file, id);
+      } else {
+        ui.pustakaPending = Object.assign({}, ui.pustakaPending || {}, { cover: file });
+        toast('Cover siap. Tekan Tambah untuk menyimpan.');
+      }
+      t.value = '';
+      return;
+    }
+    if (t.matches('[data-act="pustaka-asset-file"]')) {
+      if (!canBill()) return;
+      const file = t.files && t.files[0];
+      if (!file) return;
+      const id = t.getAttribute('data-id') || ui.pustakaEditId || '';
+      if (id && productById(id)) {
+        ingestPustakaFile(file, id);
+      } else {
+        ui.pustakaPending = Object.assign({}, ui.pustakaPending || {}, { file: file });
+        toast('File siap. Tekan Tambah untuk menyimpan.');
+      }
+      t.value = '';
+      return;
+    }
+    if (t.matches('[data-act="pustaka-video-file"]')) {
+      if (!canBill()) return;
+      const file = t.files && t.files[0];
+      if (!file) return;
+      const id = t.getAttribute('data-id') || ui.pustakaEditId || '';
+      if (id && productById(id)) {
+        ingestPustakaVideo(file, id);
+      } else {
+        ui.pustakaPending = Object.assign({}, ui.pustakaPending || {}, { video: file });
+        toast('Rekaman siap. Tekan Tambah untuk menyimpan.');
+      }
+      t.value = '';
       return;
     }
     if (t.matches('[data-act="cover-file"]')) {
@@ -15706,7 +16079,11 @@
         ui.mentorTab = id;
         if (id !== 'orang') ui.personId = null;
         if (id === 'kurikulum') ui.kurEdit = false;
-        if (id === 'pustaka') ui.pustakaAddOpen = false;
+        if (id === 'pustaka') {
+          ui.pustakaAddOpen = false;
+          ui.pustakaEditId = '';
+          ui.pustakaPending = null;
+        }
         if (id === 'harga') refreshMayarStatus().then(() => { if (ui.mentorTab === 'harga') render(); });
         if (id === 'admin') {
           ui.adminSummary = null;
@@ -16344,12 +16721,37 @@
     } else if (act === 'del-sku') {
       const id = btn.getAttribute('data-id');
       if (!canBill() || String(id).indexOf('sku-') !== 0) return;
+      const doomed = productById(id);
+      if (doomed) {
+        if (doomed.coverKey) deleteRemoteVideo(doomed.coverKey);
+        if (doomed.fileKey) deleteRemoteVideo(doomed.fileKey);
+        if (doomed.videoKey) deleteRemoteVideo(doomed.videoKey);
+        blobDel(skuCoverBlobId(id));
+        blobDel(skuFileBlobId(id));
+        blobDel(skuVideoBlobId(id));
+      }
       db.catalog = catalog().filter((p) => p.id !== id);
+      if (ui.pustakaEditId === id) ui.pustakaEditId = '';
       save();
-      toast('SKU dihapus dari perpustakaan lokal');
+      toast('SKU dihapus dari perpustakaan');
       render();
     } else if (act === 'pustaka-add-toggle') {
+      ui.pustakaEditId = '';
+      ui.pustakaPending = null;
       ui.pustakaAddOpen = !ui.pustakaAddOpen;
+      render();
+    } else if (act === 'pustaka-edit') {
+      if (!canBill()) return;
+      ui.pustakaAddOpen = false;
+      ui.pustakaPending = null;
+      ui.pustakaEditId = btn.getAttribute('data-id') || '';
+      render();
+      const form = document.querySelector('form.pustaka-form');
+      if (form) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (act === 'pustaka-form-cancel') {
+      ui.pustakaAddOpen = false;
+      ui.pustakaEditId = '';
+      ui.pustakaPending = null;
       render();
     } else if (act === 'close-drawer' || act === 'close-person') {
       closePerson();
@@ -16894,13 +17296,13 @@
       const pid = btn.getAttribute('data-id');
       const p = productById(pid);
       if (!canMentoring(ui.personaId) || !bundled(p)) {
-        toast('Harga mentoring −' + toolDiscountPct() + '% setelah lunas.');
+        toast('Ambil alat setelah mentoring aktif · ' + mentorPriceLabel(p || {}));
         return;
       }
       const b = billingOf(ui.personaId);
       if (b.products.indexOf(pid) < 0) b.products.push(pid);
       save();
-      toast(p.title + ' kebuka di harga mentoring (−' + toolDiscountPct() + '%). Prototype, bukan tagihan lynk.');
+      toast(p.title + ' kebuka · ' + mentorPriceLabel(p) + '. Prototype, bukan tagihan.');
       render();
     } else if (act === 'pay-later') {
       withApplication(() => {
@@ -17598,25 +18000,67 @@
       render();
     } else if (act === 'add-sku') {
       if (!canBill()) return;
-      const title = String(fd.get('title') || '').trim();
-      if (!title) return;
-      db.catalog = catalog();
+      const fields = readPustakaFields(fd);
+      if (!fields.title) return;
+      ensureCatalogMutable();
+      const id = 'sku-' + Date.now();
       db.catalog.push({
-        id: 'sku-' + Date.now(),
-        group: String(fd.get('group') || 'alat'),
-        kind: String(fd.get('group')) === 'rekaman' ? 'video' : 'tool',
-        title: title,
-        job: String(fd.get('job') || '').trim(),
-        price: +fd.get('price') || 0,
-        coret: +fd.get('coret') || 0,
-        lynk: String(fd.get('lynk') || '').trim(),
-        cover: String(fd.get('cover') || '').trim(),
-        example: !!fd.get('example'),
-        includedInMentoring: !!fd.get('mentor')
+        id: id,
+        group: fields.group,
+        kind: fields.kind,
+        title: fields.title,
+        job: fields.job,
+        price: fields.price,
+        coret: fields.coret,
+        mentorPrice: fields.mentorPrice,
+        lynk: fields.lynk,
+        url: fields.url,
+        cover: '',
+        coverUrl: '',
+        coverKey: '',
+        coverBlob: false,
+        example: fields.example,
+        includedInMentoring: fields.includedInMentoring
       });
       save();
-      toast('Produk masuk perpustakaan (lokal)');
       ui.pustakaAddOpen = false;
+      ui.pustakaEditId = id;
+      toast('Produk ditambah. Mengunggah berkas jika ada…');
+      render();
+      applyPustakaPending(id);
+    } else if (act === 'save-sku') {
+      if (!canBill()) return;
+      const id = form.getAttribute('data-id') || '';
+      const p = productById(id);
+      if (!p) return;
+      const fields = readPustakaFields(fd);
+      if (!fields.title) {
+        toast('Judul wajib.');
+        return;
+      }
+      const keepPlatform = !!p.platform;
+      const keepIframe = p.iframe || '';
+      const keepSheet = p.sheet || '';
+      patchCatalogProduct(id, {
+        group: fields.group,
+        kind: keepIframe || p.id === 'calc' ? (p.kind || 'tool') : fields.kind,
+        title: fields.title,
+        job: fields.job,
+        price: fields.price,
+        coret: fields.coret,
+        mentorPrice: fields.mentorPrice,
+        lynk: fields.lynk,
+        url: fields.url,
+        example: fields.example,
+        includedInMentoring: fields.includedInMentoring,
+        platform: keepPlatform,
+        iframe: keepIframe,
+        sheet: keepSheet
+      });
+      save();
+      ui.pustakaEditId = '';
+      ui.pustakaAddOpen = false;
+      toast('Produk disimpan.');
       render();
     } else if (act === 'save-dunning') {
       db.dunning.warningDays = Math.max(1, +fd.get('warningDays') || 5);

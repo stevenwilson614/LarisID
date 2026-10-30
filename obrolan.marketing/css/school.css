@@ -4101,6 +4101,51 @@ html[data-mode="mentor"] .rj-mile {
   .cal-cell { min-height: 64px; }
 }
 .add-sku { margin: 12px 0 18px; padding: 12px; border: 1px dashed var(--line-2); border-radius: 12px; }
+.pustaka-form { display: grid; gap: 10px; }
+.pustaka-form > strong { font-size: .95rem; }
+.pustaka-field-hint { margin: 0; font-size: .72rem; line-height: 1.4; }
+.pustaka-check { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.pustaka-check input { width: auto; }
+.pustaka-mentor-hint { display: grid; align-content: start; gap: 2px; }
+.pustaka-media {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+.pustaka-media-col {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  background: var(--ink-2);
+}
+.pustaka-cover-wrap {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--media-bg, var(--ink-3));
+  display: grid;
+  place-items: center;
+}
+.pustaka-form-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.pustaka-cover-empty {
+  color: var(--muted);
+  font-size: .72rem;
+  font-weight: 650;
+}
+.tool-tile.sku.is-editing { outline: 2px solid var(--kur-brand, #B5202A); outline-offset: 2px; }
+@media (max-width: 720px) {
+  .pustaka-media { grid-template-columns: 1fr; }
+}
 .pustaka-head {
   display: flex; justify-content: space-between; gap: 12px; align-items: flex-start;
   flex-wrap: wrap; margin-bottom: 14px;

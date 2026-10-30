@@ -230,6 +230,7 @@ function platformCalcSku() {
     job: 'Set harga, cek margin, dan simulasi laba rugi. Tarif kategori TikTok.',
     price: 0,
     coret: 0,
+    mentorPrice: 0,
     lynk: '',
     cover: './assets/obrolan/cover-calc.webp',
     sheet: './assets/obrolan/calc-sheet.png',
