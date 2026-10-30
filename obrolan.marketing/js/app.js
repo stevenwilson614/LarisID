@@ -7201,6 +7201,29 @@
     if (pending.file) ingestPustakaFile(pending.file, productId);
     if (pending.video) ingestPustakaVideo(pending.video, productId);
   }
+  function pustakaPendingToast(kind) {
+    const editing = !!ui.pustakaEditId;
+    const label = kind === 'cover' ? 'Cover' : (kind === 'video' ? 'Rekaman' : 'File');
+    return editing
+      ? (label + ' siap. Tekan Simpan untuk menerapkan, atau Batal untuk buang.')
+      : (label + ' siap. Tekan Tambah untuk menyimpan.');
+  }
+  function refreshPustakaPendingHint(inputEl, kind) {
+    const col = inputEl && inputEl.closest('.pustaka-media-col');
+    const hint = col && col.querySelector('.pustaka-field-hint');
+    if (!hint) return;
+    const p = productById(ui.pustakaEditId) || null;
+    hint.textContent = pustakaAssetHint(p, kind);
+    if (kind === 'cover' && ui.pustakaPending && ui.pustakaPending.cover) {
+      const wrap = col.querySelector('.pustaka-cover-wrap');
+      if (wrap) {
+        try {
+          const url = URL.createObjectURL(ui.pustakaPending.cover);
+          wrap.innerHTML = '<img class="pustaka-form-cover" src="' + url + '" alt="">';
+        } catch (e) { /* ignore */ }
+      }
+    }
+  }
   function readPustakaFields(fd) {
     const group = String(fd.get('group') || 'alat') === 'rekaman' ? 'rekaman' : 'alat';
     const mentorPrice = parseMentorPriceField(fd.get('mentorPrice'));
@@ -13829,20 +13852,33 @@
   }
 
   function pustakaAssetHint(p, kind) {
+    const pending = ui.pustakaPending;
     if (kind === 'cover') {
-      if (p && (p.coverBlob || skuCoverSrc(p))) return 'Cover terpasang — unggah lagi untuk ganti.';
-      return 'Belum ada cover. Unggah foto (maks 5 MB).';
+      if (pending && pending.cover) {
+        return 'Cover baru dipilih (' + (pending.cover.name || 'file') +
+          ') — tekan Simpan untuk menerapkan, Batal untuk buang.';
+      }
+      if (p && (p.coverBlob || skuCoverSrc(p))) return 'Cover terpasang — pilih lagi untuk ganti (baru setelah Simpan).';
+      return 'Belum ada cover. Pilih foto (maks 5 MB), lalu Simpan.';
     }
     if (kind === 'file') {
+      if (pending && pending.file) {
+        return 'File baru dipilih (' + (pending.file.name || 'file') +
+          ') — tekan Simpan untuk menerapkan, Batal untuk buang.';
+      }
       if (p && (p.fileUrl || p.fileKey || p.fileBlob)) {
-        return 'File: ' + (p.fileName || 'terpasang') + ' — unggah lagi untuk ganti.';
+        return 'File: ' + (p.fileName || 'terpasang') + ' — pilih lagi untuk ganti (baru setelah Simpan).';
       }
       return 'Opsional. PDF, sheet, zip, dll (maks 200 MB).';
     }
-    if (p && (p.videoKey || p.videoBlob || p.videoUrl)) {
-      return 'Rekaman: ' + (p.videoName || 'terpasang') + ' — unggah lagi untuk ganti.';
+    if (pending && pending.video) {
+      return 'Rekaman baru dipilih (' + (pending.video.name || 'file') +
+        ') — tekan Simpan untuk menerapkan, Batal untuk buang.';
     }
-    return 'Unggah MP4/WebM (maks 5 GB di kelas), atau isi tautan YouTube di bawah.';
+    if (p && (p.videoKey || p.videoBlob || p.videoUrl)) {
+      return 'Rekaman: ' + (p.videoName || 'terpasang') + ' — pilih lagi untuk ganti (baru setelah Simpan).';
+    }
+    return 'Pilih MP4/WebM (maks 5 GB di kelas), atau isi tautan YouTube di bawah.';
   }
   function pustakaFormHtml(p) {
     const edit = !!p;
@@ -14862,13 +14898,10 @@
       if (!canBill()) return;
       const file = t.files && t.files[0];
       if (!file) return;
-      const id = t.getAttribute('data-id') || ui.pustakaEditId || '';
-      if (id && productById(id)) {
-        ingestPustakaCover(file, id);
-      } else {
-        ui.pustakaPending = Object.assign({}, ui.pustakaPending || {}, { cover: file });
-        toast('Cover siap. Tekan Tambah untuk menyimpan.');
-      }
+      // Stage until Simpan/Tambah — Batal clears pustakaPending without uploading.
+      ui.pustakaPending = Object.assign({}, ui.pustakaPending || {}, { cover: file });
+      refreshPustakaPendingHint(t, 'cover');
+      toast(pustakaPendingToast('cover'));
       t.value = '';
       return;
     }
@@ -14876,13 +14909,14 @@
       if (!canBill()) return;
       const file = t.files && t.files[0];
       if (!file) return;
-      const id = t.getAttribute('data-id') || ui.pustakaEditId || '';
-      if (id && productById(id)) {
-        ingestPustakaFile(file, id);
-      } else {
-        ui.pustakaPending = Object.assign({}, ui.pustakaPending || {}, { file: file });
-        toast('File siap. Tekan Tambah untuk menyimpan.');
+      if (file.size > MAX_KUR_FILE) {
+        toast('File maks 200 MB.');
+        t.value = '';
+        return;
       }
+      ui.pustakaPending = Object.assign({}, ui.pustakaPending || {}, { file: file });
+      refreshPustakaPendingHint(t, 'file');
+      toast(pustakaPendingToast('file'));
       t.value = '';
       return;
     }
@@ -14890,13 +14924,15 @@
       if (!canBill()) return;
       const file = t.files && t.files[0];
       if (!file) return;
-      const id = t.getAttribute('data-id') || ui.pustakaEditId || '';
-      if (id && productById(id)) {
-        ingestPustakaVideo(file, id);
-      } else {
-        ui.pustakaPending = Object.assign({}, ui.pustakaPending || {}, { video: file });
-        toast('Rekaman siap. Tekan Tambah untuk menyimpan.');
+      const cap = syncEnabled() ? MAX_VID_CLASS : MAX_VID_LOCAL;
+      if (file.size > cap) {
+        toast(syncEnabled() ? 'Video maks 5 GB.' : 'Video lokal maks 80 MB. Masuk kelas untuk unggah lebih besar.');
+        t.value = '';
+        return;
       }
+      ui.pustakaPending = Object.assign({}, ui.pustakaPending || {}, { video: file });
+      refreshPustakaPendingHint(t, 'video');
+      toast(pustakaPendingToast('video'));
       t.value = '';
       return;
     }
@@ -16918,9 +16954,12 @@
       const form = document.querySelector('form.pustaka-form');
       if (form) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } else if (act === 'pustaka-form-cancel') {
+      const discarded = !!(ui.pustakaPending &&
+        (ui.pustakaPending.cover || ui.pustakaPending.file || ui.pustakaPending.video));
       ui.pustakaAddOpen = false;
       ui.pustakaEditId = '';
       ui.pustakaPending = null;
+      if (discarded) toast('Perubahan media dibuang.');
       render();
     } else if (act === 'close-drawer' || act === 'close-person') {
       closePerson();
@@ -18210,6 +18249,8 @@
       const keepPlatform = !!p.platform;
       const keepIframe = p.iframe || '';
       const keepSheet = p.sheet || '';
+      const hadPending = !!(ui.pustakaPending &&
+        (ui.pustakaPending.cover || ui.pustakaPending.file || ui.pustakaPending.video));
       patchCatalogProduct(id, {
         group: fields.group,
         kind: keepIframe || p.id === 'calc' ? (p.kind || 'tool') : fields.kind,
@@ -18229,8 +18270,9 @@
       save();
       ui.pustakaEditId = '';
       ui.pustakaAddOpen = false;
-      toast('Produk disimpan.');
+      toast(hadPending ? 'Produk disimpan. Mengunggah berkas…' : 'Produk disimpan.');
       render();
+      applyPustakaPending(id);
     } else if (act === 'save-dunning') {
       db.dunning.warningDays = Math.max(1, +fd.get('warningDays') || 5);
       db.dunning.graceDays = Math.max(0, +fd.get('graceDays') || 1);
