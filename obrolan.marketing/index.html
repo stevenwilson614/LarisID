@@ -2,6 +2,16 @@
 <html lang="id" data-mode="student" class="lms-booting">
 <head>
   <meta charset="UTF-8">
+  <!-- Microsoft Clarity — same project as larisid.com; filter lms_role / lms_slug / lms_tab -->
+  <script type="text/javascript">
+    window.clarity = window.clarity || function () { (window.clarity.q = window.clarity.q || []).push(arguments); };
+    window.clarity('set', 'lms_surface', 'class');
+    (function(c,l,a,r,i,t,y){
+      c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+      t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+      y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "vykppujn5k");
+  </script>
   <script>
     if (location.hostname === 'larisid.pages.dev') {
       location.replace('https://larisid.com' + location.pathname + location.search + location.hash);
@@ -176,6 +186,6 @@
   <script src="./js/seed.js?v=20261030pustaka"></script>
   <script src="./js/calc-engine.js?v=20261027calc6"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8/dist/umd/supabase.js"></script>
-  <script src="./js/app.js?v=20261030pustaka"></script>
+  <script src="./js/app.js?v=20261030clarity"></script>
 </body>
 </html>

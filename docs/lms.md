@@ -27,6 +27,21 @@ bash scripts/deploy-static.sh          # class UI and /lms
 bash scripts/deploy-school-api.sh      # LMS class API (obrolan.marketing/server/server.mjs)
 ```
 
+### Analytics (Clarity)
+
+Same Microsoft Clarity project as the main site (`vykppujn5k`). Snippets load on `/lms/` (landing) and `/s/{slug}/` (class UI). Mentor signup landing also loads the shared Google Ads gtag (`AW-862519971`).
+
+In Clarity → Filters → Custom tags:
+
+| Tag | Values | Use |
+| --- | --- | --- |
+| `lms_surface` | `landing` \| `class` | Mentor door vs live class |
+| `lms_role` | `mentor` \| `admin` \| `student` \| `visitor` \| `preview` | Who is using the UI |
+| `lms_slug` | school slug | One coach’s class |
+| `lms_tab` | e.g. `siswa`, `kurikulum`, `home`, `belajar` | Where they are in the left rail / dock |
+
+Useful events: `lms_landing_view`, `lms_cta_daftar`, `lms_cta_login`, `lms_mentor_enter_class`, `lms_student_login`, `lms_class_view`, `lms_tab`, plus student disk events mirrored as `lms_join` / `lms_lesson_*` (no name / WA / email in Clarity tags). Identify uses hashed `lms:{authUserId}`.
+
 `server.mjs` is not in the static rsync. The API script restarts Contabo `anton-school`. `LMS_SESSION_SECRET` or `ANTON_ADMIN_KEY` must be set on that service so student cookies survive a restart.
 
 Editing kurikulum in that app: **Preview** on the publikasi step opens the student view with **Publikasikan** on that screen. Choosing or dropping a video starts the upload immediately, before **Simpan materi**. If that already created the materi, Simpan materi only saves the title and text. Progress shows on the materi card, on the same row as that materi’s cover when a cover is attached. On the publikasi step the same meter sits beside the class cover, not in the full-width strip under the header. The header strip (`Mengunggah N%`, with × to cancel) stays on the other kurikulum steps and on Preview siswa. Left-rail tabs stay locked on Kurikulum until the upload finishes or they cancel with ×. Publish waits until that upload finishes. **Hapus bagian** asks once, then deletes that bagian and every materi in it (video, cover, files, and any in-flight upload), including an empty bagian and the last remaining bagian. A cover sits on the video with no `src` and no controls until the cover is clicked. Clicking play removes `.has-poster` and the cover button (CSS also hides `.lec-poster-hit` once `.has-poster` is gone — author `display:block` otherwise beats the UA `[hidden]` rule).

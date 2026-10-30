@@ -31,6 +31,64 @@
   const SYNC_MAX = 5 * 1024 * 1024;
   const $ = (id) => document.getElementById(id);
 
+  /* Clarity (vykppujn5k). Filter recordings by lms_role / lms_slug / lms_tab. */
+  function _clarity() {
+    const w = window;
+    if (!w.clarity) w.clarity = function () { (w.clarity.q = w.clarity.q || []).push(arguments); };
+    try { w.clarity.apply(w, arguments); } catch (err) { /* ignore */ }
+  }
+  function clarityEvt(name, props) {
+    try {
+      _clarity('event', name);
+      if (props) {
+        Object.keys(props).forEach((k) => {
+          const v = props[k];
+          if (v == null || v === '') return;
+          _clarity('set', k, String(v).slice(0, 120));
+        });
+      }
+    } catch (err) { /* ignore */ }
+  }
+  function jwtSub(token) {
+    try {
+      const part = String(token || '').split('.')[1];
+      if (!part) return '';
+      const b64 = part.replace(/-/g, '+').replace(/_/g, '/');
+      const json = JSON.parse(atob(b64));
+      return json && json.sub ? String(json.sub) : '';
+    } catch (err) { return ''; }
+  }
+  let _claritySig = '';
+  function syncLmsClarity() {
+    try {
+      const role = ui.present
+        ? 'preview'
+        : (isStaff()
+          ? (ui.role === 'asisten' ? 'admin' : 'mentor')
+          : (ui.studentAuthed ? 'student' : (needsAuthGate() ? 'visitor' : 'student')));
+      const tab = isStaff()
+        ? String(ui.mentorTab === 'orang' ? 'siswa' : (ui.mentorTab || 'dash'))
+        : String(ui.tab || (needsAuthGate() ? 'auth' : 'home'));
+      const slug = String(typeof schoolSlug === 'function' ? schoolSlug() : PATH_SLUG || '').slice(0, 64);
+      const authId = jwtSub(mentorAccessToken() || studentAccessToken() || '') ||
+        String(ui.sessionStudentId || ui.personaId || ui.visitorId || '');
+      const sig = [role, tab, slug, authId, ui.present ? '1' : '0'].join('|');
+      if (sig === _claritySig) return;
+      _claritySig = sig;
+      _clarity('set', 'lms_surface', 'class');
+      _clarity('set', 'lms_role', role);
+      if (slug) _clarity('set', 'lms_slug', slug);
+      _clarity('set', 'lms_tab', tab);
+      if (ui.present) _clarity('set', 'lms_preview', '1');
+      if (authId) {
+        const hint = role === 'mentor' || role === 'admin'
+          ? (role + (slug ? ':' + slug : ''))
+          : (role + (ui.sessionStudentId ? ':' + String(ui.sessionStudentId).slice(0, 12) : ''));
+        _clarity('identify', 'lms:' + authId, undefined, undefined, hint.slice(0, 80));
+      }
+    } catch (err) { /* ignore */ }
+  }
+
   /* ── theme (dark default, light via topbar toggle) ─────────────────
      index.html applies the saved value before CSS paints; this keeps the
      button, <meta theme-color>, and storage in sync. Tool iframes share
@@ -4616,6 +4674,20 @@
     }
   }
   function trackEvent(type, extra) {
+    /* Clarity gets mentor + student events (no PII in tags). Disk /events stays student-only. */
+    try {
+      const safe = {};
+      const skip = { name: 1, wa: 1, email: 1, message: 1 };
+      Object.keys(extra || {}).forEach((k) => {
+        if (skip[k]) return;
+        const v = extra[k];
+        if (v == null || v === '') return;
+        safe['lms_' + k] = String(v).slice(0, 120);
+      });
+      safe.lms_role = isStaff() ? (ui.role === 'asisten' ? 'admin' : 'mentor') : 'student';
+      if (schoolSlug()) safe.lms_slug = String(schoolSlug()).slice(0, 64);
+      clarityEvt('lms_' + String(type || 'event').slice(0, 40), safe);
+    } catch (err) { /* ignore */ }
     if (ui.present || ui.admin) return;
     const person = (typeof people === 'function') ? (people().find((s) => s.id === ui.personaId) || {}) : {};
     const demo = !ui.visitorLive || String(ui.personaId || '').indexOf('s-') === 0;
@@ -8265,6 +8337,7 @@
     }
     const mode = isStaff() ? 'mentor' : 'student';
     document.documentElement.dataset.mode = mode;
+    syncLmsClarity();
     document.documentElement.dataset.plan = isStaff()
       ? 'mentor'
       : (canMentoring(ui.personaId) ? 'mentoring' : (canPreview(ui.personaId) ? 'trial' : (billingOf(ui.personaId).products.length ? 'sku' : 'none')));
@@ -16129,6 +16202,7 @@
         if (id === 'harga') refreshMayarStatus().then(() => { if (ui.mentorTab === 'harga') render(); });
         if (id === 'admin') {
           ui.adminSummary = null;
+          clarityEvt('lms_tab', { lms_tab: id, lms_role: 'mentor' });
           render();
           refreshAdmin();
           return;
@@ -16140,6 +16214,10 @@
           ui.lectureId = firstLectureId();
         }
       }
+      clarityEvt('lms_tab', {
+        lms_tab: id,
+        lms_role: isStaff() ? (ui.role === 'asisten' ? 'admin' : 'mentor') : 'student'
+      });
       render();
     } else if (act === 'kur-edit-on') {
       if (!staffCan('editClasses')) return;
@@ -18640,6 +18718,10 @@
     }
     ui.stuAuthErr = '';
     ui.stuSmsSent = false;
+    clarityEvt('lms_student_login', {
+      lms_slug: schoolSlug(),
+      lms_needs_wizard: needsWizard(ui.personaId) ? '1' : '0'
+    });
     if (needsWizard(ui.personaId)) {
       const saved = (db.people && db.people[ui.personaId] && db.people[ui.personaId].wizDraft) || null;
       ui.wizStep = saved && typeof saved.step === 'number' ? saved.step : 0;
@@ -18881,6 +18963,15 @@
     if (ui.mentorTab === 'admin') render();
   }
   function markPageView() {
+    try {
+      if (!sessionStorage.getItem('lms-clarity-view')) {
+        sessionStorage.setItem('lms-clarity-view', '1');
+        clarityEvt('lms_class_view', {
+          lms_role: isStaff() ? (ui.role === 'asisten' ? 'admin' : 'mentor') : (ui.studentAuthed ? 'student' : 'visitor'),
+          lms_slug: schoolSlug()
+        });
+      }
+    } catch (err) { /* still continue */ }
     if (ui.admin || ui.present || !syncEnabled()) return;
     try {
       if (sessionStorage.getItem('anton-page-view')) return;
@@ -18983,8 +19074,8 @@
       }
       if (presentStudent) applyPresentSkuDeepLink();
       render();
+      markPageView();
       if (admin || ui.admin) refreshAdmin();
-      else markPageView();
       refreshMayarStatus().then(() => {
         if (!mayarReady()) return;
         if (isStaff() && ui.mentorTab === 'harga') render();

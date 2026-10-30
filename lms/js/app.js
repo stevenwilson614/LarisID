@@ -2,6 +2,36 @@
 (function () {
   if (location.hostname === 'www.larisid.com') return;
   var $ = function (id) { return document.getElementById(id); };
+
+  /* Clarity (project vykppujn5k). Tags: lms_surface=landing, lms_role=mentor|student. */
+  function lmsClarity() {
+    var w = window;
+    if (!w.clarity) w.clarity = function () { (w.clarity.q = w.clarity.q || []).push(arguments); };
+    try { w.clarity.apply(w, arguments); } catch (err) { /* ignore */ }
+  }
+  function lmsClarityEvt(name, props) {
+    try {
+      lmsClarity('event', name);
+      if (props) {
+        Object.keys(props).forEach(function (k) {
+          var v = props[k];
+          if (v == null || v === '') return;
+          lmsClarity('set', k, String(v).slice(0, 120));
+        });
+      }
+    } catch (err) { /* ignore */ }
+  }
+  function lmsIdentify(session, role) {
+    try {
+      var user = session && session.user;
+      var id = user && user.id;
+      if (!id) return;
+      var name = (user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name)) || '';
+      lmsClarity('identify', 'lms:' + id, undefined, undefined, String(name || role || 'lms').slice(0, 80));
+      lmsClarity('set', 'lms_role', role === 'student' ? 'student' : 'mentor');
+      lmsClarity('set', 'lms_authed', 'true');
+    } catch (err) { /* ignore */ }
+  }
   function oauthSnap() {
     var search = new URLSearchParams(location.search || '');
     var hash = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));
@@ -839,6 +869,10 @@
       registerError('Isi nama kelas dulu.');
       return;
     }
+    if (slug) lmsClarity('set', 'lms_slug', String(slug).slice(0, 64));
+    lmsClarityEvt(me && me.role === 'student' ? 'lms_student_enter_class' : 'lms_mentor_enter_class', {
+      lms_slug: slug || ''
+    });
     location.replace(dest);
   }
 
@@ -869,6 +903,7 @@
       }
       return;
     }
+    lmsIdentify(session, isStudentGate() ? 'student' : 'mentor');
     var me = await window.LmsApi.me();
     var freshInvite = window.Lms.invite();
     var invite = freshInvite || pendingInvite(session);
@@ -1008,6 +1043,7 @@
         clearMentorSlug();
         window.Lms.setIntent('mentor');
         setAuthMode('signup');
+        lmsClarityEvt('lms_cta_daftar', { lms_role: 'mentor' });
         show('auth');
       });
     });
@@ -1016,8 +1052,12 @@
         clearMentorSlug();
         window.Lms.setIntent(isStudentGate() ? 'student' : 'mentor');
         setAuthMode('login');
+        lmsClarityEvt('lms_cta_login', { lms_role: isStudentGate() ? 'student' : 'mentor' });
         show('auth');
       });
+    });
+    lmsClarityEvt('lms_landing_view', {
+      lms_role: isStudentGate() ? 'student' : 'mentor'
     });
     $('auth-back').addEventListener('click', function () {
       authError('');

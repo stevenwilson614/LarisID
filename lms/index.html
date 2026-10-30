@@ -1,6 +1,25 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
+<!-- Google tag (gtag.js) — same Ads property as larisid.com -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=AW-862519971"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'AW-862519971');
+</script>
+<!-- Microsoft Clarity — filter by custom tags lms_role / lms_surface / lms_slug -->
+<script type="text/javascript">
+  window.clarity = window.clarity || function () { (window.clarity.q = window.clarity.q || []).push(arguments); };
+  window.clarity('set', 'lms_surface', 'landing');
+  window.clarity('set', 'lms_role', 'mentor');
+  (function(c,l,a,r,i,t,y){
+    c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+    t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+    y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+  })(window, document, "clarity", "script", "vykppujn5k");
+</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>LMS</title>
@@ -507,6 +526,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8/dist/umd/supabase.js" defer></script>
   <script src="/lms/js/auth.js?v=20261030auth" defer></script>
   <script src="/lms/js/api.js?v=20261030google2" defer></script>
-  <script src="/lms/js/app.js?v=20261030auth" defer></script>
+  <script src="/lms/js/app.js?v=20261030clarity" defer></script>
 </body>
 </html>
