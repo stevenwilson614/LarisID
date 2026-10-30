@@ -93,9 +93,10 @@
         detectSessionInUrl: true,
         storage: window.localStorage,
         storageKey: 'lms_auth_v1',
-        /* Implicit: Google returns tokens in the URL hash. PKCE needed a
-           code-verifier in localStorage that was missing after redirect, so
-           mentors saw “Login Google terputus” after a good Google callback. */
+        /* Implicit only. PKCE stores a code-verifier in localStorage; after
+           logout / redirect that verifier is often gone, so existing Google
+           accounts come back from Google and then fail (“Login Google terputus”).
+           Tokens in the URL hash do not need that verifier. */
         flowType: 'implicit'
       }
     });

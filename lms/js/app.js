@@ -935,13 +935,49 @@
     });
   }
 
+  function wantLoginGate() {
+    try { return new URLSearchParams(location.search || '').get('login') === '1'; } catch (err) { return false; }
+  }
+  function stripLoginQuery() {
+    try {
+      var q = new URLSearchParams(location.search || '');
+      if (!q.has('login')) return;
+      q.delete('login');
+      var next = location.pathname + (q.toString() ? '?' + q.toString() : '') + (location.hash || '');
+      history.replaceState({}, '', next);
+    } catch (err) { /* ignore */ }
+  }
+  function clearAuthStorageExtras() {
+    try {
+      localStorage.removeItem('laris_lms_coach');
+      localStorage.removeItem('lms_auth_v1-code-verifier');
+      var drop = [];
+      for (var i = 0; i < localStorage.length; i += 1) {
+        var key = localStorage.key(i);
+        if (key && (/^lms_auth_v1/i.test(key) || /code-verifier/i.test(key))) drop.push(key);
+      }
+      drop.forEach(function (key) { localStorage.removeItem(key); });
+    } catch (err) { /* private mode */ }
+  }
   function boot() {
     if (!window.Lms || !window.Lms.sb) {
       show('auth');
       authError('Gagal memuat koneksi. Muat ulang halaman ini.');
       return;
     }
-    setAuthMode(window.Lms.invite() ? 'signup' : (window.Lms.pathSlug() ? 'login' : 'signup'));
+    /* Cached PKCE builds of auth.js break Google return for existing accounts. */
+    if (window.Lms.sb.auth && window.Lms.sb.auth.flowType && window.Lms.sb.auth.flowType !== 'implicit') {
+      console.warn('[lms] auth flowType is', window.Lms.sb.auth.flowType, '— expected implicit. Hard-refresh /lms/.');
+    }
+    var openLogin = wantLoginGate();
+    setAuthMode(window.Lms.invite() ? 'signup' : ((window.Lms.pathSlug() || openLogin) ? 'login' : 'signup'));
+    if (openLogin && !oauthPending && !isStudentGate()) {
+      stripLoginQuery();
+      clearMentorSlug();
+      window.Lms.setIntent('mentor');
+      setAuthMode('login');
+      show('auth');
+    }
     document.querySelectorAll('[data-shot]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         selectShot(btn.getAttribute('data-shot'));
@@ -973,11 +1009,13 @@
       clearMentorSlug();
       window.Lms.setIntent(isStudentGate() ? 'student' : 'mentor');
       authError('Sedang masuk…');
+      /* Implicit flow: tokens return in the hash. Avoid PKCE verifier loss after redirect. */
       window.Lms.sb.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: window.Lms.redirectTo(),
-          skipBrowserRedirect: true
+          skipBrowserRedirect: true,
+          queryParams: { prompt: 'select_account' }
         }
       }).then(function (res) {
         if (res.error) {
@@ -1346,9 +1384,9 @@
   function signOut() {
     appError('');
     authError('');
-    try { localStorage.removeItem('laris_lms_coach'); } catch (err) { /* private mode */ }
+    clearAuthStorageExtras();
     window.Lms.sb.auth.signOut().then(function () {
-      try { localStorage.removeItem('laris_lms_coach'); } catch (err2) { /* private mode */ }
+      clearAuthStorageExtras();
       show(isStudentGate() ? 'auth' : 'land');
       if (isStudentGate()) setAuthMode('login');
     });

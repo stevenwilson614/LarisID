@@ -17713,7 +17713,14 @@
       try {
         localStorage.removeItem('lms_auth_v1');
         localStorage.removeItem('lms-auth-v1');
+        localStorage.removeItem('lms_auth_v1-code-verifier');
         localStorage.removeItem('laris_lms_coach');
+        const drop = [];
+        for (let i = 0; i < localStorage.length; i += 1) {
+          const key = localStorage.key(i);
+          if (key && (/^lms_auth_v1/i.test(key) || /code-verifier/i.test(key))) drop.push(key);
+        }
+        drop.forEach((key) => localStorage.removeItem(key));
       } catch (err) { /* private mode */ }
       try {
         sessionStorage.removeItem('anton-admin');
@@ -17776,7 +17783,7 @@
         location.href = location.pathname + '?staff_login=1';
         return;
       }
-      location.replace('/lms/');
+      location.replace('/lms/?login=1');
     };
     const jobs = [
       clearMentorBrowserSession(),
