@@ -1333,7 +1333,7 @@
       route(null);
     }
     /* Implicit tokens land in the hash. Prefer setSession from the hash, then
-       fall back to detectSessionInUrl / getSession polling. */
+       fall back to detectSessionInUrl / getSession polling. Also accept ?code=. */
     function waitForOAuthSession(tries) {
       return window.Lms.sb.auth.getSession().then(function (res) {
         var session = res.data && res.data.session;
@@ -1355,12 +1355,21 @@
       });
     }
     function startOAuthWait() {
+      if (oauth.code && window.Lms.sb.auth.exchangeCodeForSession) {
+        return window.Lms.sb.auth.exchangeCodeForSession(oauth.code).then(function (res) {
+          if (res.data && res.data.session) return finishOAuth(res.data.session);
+          if (res.error) return finishOAuth(null, window.Lms.errorText(res.error));
+          return waitForOAuthSession(40);
+        }).catch(function (err) {
+          return finishOAuth(null, window.Lms.errorText(err));
+        });
+      }
       if (oauth.accessToken) {
         var hash = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));
         var at = hash.get('access_token') || oauth.accessToken;
         var rt = hash.get('refresh_token') || '';
-        if (at && rt) {
-          return window.Lms.sb.auth.setSession({ access_token: at, refresh_token: rt }).then(function (res) {
+        if (at) {
+          return window.Lms.sb.auth.setSession({ access_token: at, refresh_token: rt || '' }).then(function (res) {
             if (res.data && res.data.session) return finishOAuth(res.data.session);
             return waitForOAuthSession(40);
           }).catch(function () { return waitForOAuthSession(40); });

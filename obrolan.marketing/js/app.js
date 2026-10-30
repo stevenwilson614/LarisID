@@ -5456,17 +5456,9 @@
     }
     return '';
   }
-  function lmsAuth() {
-    /* Contabo door mirrors a coach session; supabase storageKey is lms_auth_v1. */
+  function authBlobFromStorage(key) {
     try {
-      const coachRaw = localStorage.getItem('laris_lms_coach') || '';
-      if (coachRaw) {
-        const coach = JSON.parse(coachRaw);
-        if (coach && coach.access_token) return coach;
-      }
-    } catch (err) { /* ignore */ }
-    try {
-      const raw = localStorage.getItem('lms_auth_v1') || localStorage.getItem('lms-auth-v1') || '';
+      const raw = localStorage.getItem(key) || '';
       if (!raw) return null;
       const parsed = JSON.parse(raw);
       const access = tokenFrom(parsed, 0);
@@ -5474,8 +5466,34 @@
       if (parsed && parsed.access_token) return parsed;
       if (parsed && parsed.currentSession && parsed.currentSession.access_token) return parsed.currentSession;
       if (parsed && parsed.session && parsed.session.access_token) return parsed.session;
-      return { access_token: access };
+      return Object.assign({}, parsed && typeof parsed === 'object' ? parsed : {}, { access_token: access });
     } catch (err) { return null; }
+  }
+  function mirrorMentorSession(auth, slug) {
+    if (!auth || !auth.access_token) return;
+    const school = String(slug || schoolSlug() || '').trim();
+    try {
+      localStorage.setItem('lms_auth_v1', JSON.stringify(auth));
+      localStorage.setItem('laris_lms_coach', JSON.stringify(Object.assign({}, auth, {
+        access_token: auth.access_token,
+        refresh_token: auth.refresh_token || '',
+        slug: school
+      })));
+    } catch (err) { /* private mode */ }
+  }
+  function lmsAuth() {
+    /* Contabo door mirrors a coach session; supabase storageKey is lms_auth_v1.
+       Owners who Google-login on /s/{slug}/ land in lms_student_auth_v1 first. */
+    try {
+      const coachRaw = localStorage.getItem('laris_lms_coach') || '';
+      if (coachRaw) {
+        const coach = JSON.parse(coachRaw);
+        if (coach && coach.access_token) return coach;
+      }
+    } catch (err) { /* ignore */ }
+    return authBlobFromStorage('lms_auth_v1')
+      || authBlobFromStorage('lms-auth-v1')
+      || authBlobFromStorage(STU_AUTH_KEY);
   }
   function lmsHeaders(extra) {
     const headers = Object.assign({ 'content-type': 'application/json' }, extra || {});
@@ -9082,7 +9100,9 @@
         (signup
           ? 'Sudah punya akun? <button type="button" data-act="stu-auth-mode" data-id="login">Masuk</button>'
           : 'Belum punya akun? <button type="button" data-act="stu-auth-mode" data-id="signup">Daftar</button>') +
-      '</p></section>';
+      '</p>' +
+      '<p class="stu-auth-toggle muted">Mentor kelas ini? <a href="' + esc(coachLoginUrl()) + '">Masuk sebagai mentor</a></p>' +
+      '</section>';
   }
   function viewWizard() {
     const step = wizIdx();
@@ -18054,11 +18074,23 @@
     if (!sb) { stuAuthError('Login tidak bisa dimuat. Muat ulang halaman.'); return; }
     ui.stuAuthBusy = true;
     const back = location.origin + location.pathname + location.search;
-    const { error } = await sb.auth.signInWithOAuth({
+    const { data, error } = await sb.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: back }
+      options: {
+        redirectTo: back,
+        skipBrowserRedirect: true,
+        queryParams: { prompt: 'select_account' }
+      }
     });
-    if (error) stuAuthError('Login Google gagal. Coba lagi.');
+    if (error) {
+      stuAuthError('Login Google gagal. Coba lagi.');
+      return;
+    }
+    if (data && data.url) {
+      location.assign(data.url);
+      return;
+    }
+    stuAuthError('Login Google gagal. Coba lagi.');
   }
   async function stuEmail(email, password, mode) {
     const sb = studentSb();
@@ -18149,8 +18181,10 @@
   async function bootSession() {
     if (!syncEnabled() || ui.present || ui.admin || ui.staffId) return;
     try {
-      const headers = lmsHeaders();
-      const token = studentAccessToken();
+      /* Do not send x-lms-view:student here — that forces isStaffFor false and
+         loops school owners who Google-login on /s/{slug}/ back to the gate. */
+      const headers = { 'content-type': 'application/json' };
+      const token = studentAccessToken() || mentorAccessToken();
       if (token) headers.authorization = 'Bearer ' + token;
       const res = await fetch(apiBase() + '/session', {
         method: 'POST',
@@ -18170,6 +18204,8 @@
         ui.visitorLive = false;
         ui.studentAuthed = false;
         ui.sessionStudentId = '';
+        const auth = lmsAuth() || (token ? { access_token: token } : null);
+        if (auth) mirrorMentorSession(auth, schoolSlug());
         return;
       }
       const authed = !!(data && data.role === 'student' && data.studentId &&
@@ -18271,7 +18307,8 @@
     trackEvent('page_view');
   }
   function coachLoginUrl() {
-    return '/lms/?next=' + encodeURIComponent(location.pathname + location.search);
+    const next = encodeURIComponent(location.pathname + location.search);
+    return '/lms/?login=1&next=' + next;
   }
   function mirroredCoachSlug() {
     try {
@@ -18308,9 +18345,7 @@
         return false;
       }
       if (data.slug !== here) return false;
-      try {
-        localStorage.setItem('laris_lms_coach', JSON.stringify(Object.assign({}, auth, { slug: data.slug })));
-      } catch (err) { /* ignore */ }
+      mirrorMentorSession(auth, data.slug);
       ui.admin = true;
       ui.role = 'owner';
       ui.coach = true;
