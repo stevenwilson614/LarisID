@@ -1685,12 +1685,12 @@
       ? '<p class="ps-card-headline">' + esc(headline) + '</p>'
       : (editable
         ? '<p class="ps-card-headline"><button type="button" class="ps-empty" data-act="profile-edit" data-focus="headline">Tambah headline</button></p>'
-        : '<p class="ps-card-headline ps-empty">Tambah headline</p>');
+        : '');
     const bioHtml = bio
       ? '<div class="ps-card-bio">' + mdish(bio) + '</div>'
       : (editable
         ? '<button type="button" class="ps-empty ps-empty-bio" data-act="profile-edit" data-focus="biography">Tambah bio</button>'
-        : '<p class="ps-empty ps-empty-bio">Tambah bio</p>');
+        : '');
     const icons = schoolSocialIconsHtml(prof);
     return '<section class="ps-card">' +
       '<div class="ps-cover' + (cover ? '' : ' is-empty') + '">' + cover + '</div>' +
@@ -1724,9 +1724,20 @@
     const o = opts || {};
     const p = o.profile || schoolProfile();
     const back = o.student
-      ? '<div class="row" style="margin-top:14px"><button type="button" class="btn secondary" data-act="tab" data-id="home">← Back</button></div>'
+      ? '<div class="row" style="margin-top:14px"><button type="button" class="btn secondary" data-act="tab" data-id="home">← Kembali</button></div>'
       : '';
     return viewProfilCard(p, { editable: false }) + back;
+  }
+  function openMentorPublicProfile() {
+    if (isStaff() || isSiswaReadonly()) return false;
+    if (needsAuthGate()) return false;
+    if (needsWizard(ui.personaId)) {
+      toast('Selesaikan form dulu.');
+      return false;
+    }
+    ui.tab = 'mentor';
+    render();
+    return true;
   }
   /** Live Profile form draft so Student view shows unsaved bio/links. */
   function draftSchoolProfileFromForm() {
@@ -8535,11 +8546,13 @@
     if (menuSiswa) menuSiswa.hidden = !canBill() || isSiswaReadonly();
     const brandBtn = $('brand-btn');
     if (brandBtn) {
-      brandBtn.disabled = isSiswaReadonly() || !isStaff();
+      /* Mentors: profile menu. Students: open mentor public profile. */
+      brandBtn.disabled = isSiswaReadonly();
       brandBtn.setAttribute('aria-label', isStaff()
         ? (isSiswaReadonly() ? 'Siswa view' : 'Profile menu')
-        : (schoolDisplayName() || chromeOrg || 'Kelas'));
+        : ('Profil ' + (mentorDisplayName() || schoolDisplayName() || chromeOrg || 'mentor')));
       brandBtn.title = brandBtn.getAttribute('aria-label');
+      brandBtn.classList.toggle('is-on', !isStaff() && ui.tab === 'mentor');
     }
     const themeBtn = $('btn-theme');
     if (themeBtn) {
@@ -8564,7 +8577,7 @@
         ui.tab = 'masuk';
       } else {
       ensureFreeSchoolAccess();
-      const allowed = studentTabs().map((t) => t.id).concat(['sku', 'alat', 'daftar', 'tes', 'sertifikat', 'diskusi', 'profil', 'kurikulum']);
+      const allowed = studentTabs().map((t) => t.id).concat(['sku', 'alat', 'daftar', 'tes', 'sertifikat', 'diskusi', 'profil', 'mentor', 'kurikulum']);
       if (ui.studentAuthed && needsWizard(ui.personaId) && ui.wizStep == null) {
         const saved = (db.people && db.people[ui.personaId] && db.people[ui.personaId].wizDraft) || null;
         if (saved && typeof saved.step === 'number') ui.wizStep = saved.step;
@@ -8989,6 +9002,7 @@
         else if (tab === 'tes') main.innerHTML = viewExam();
         else if (tab === 'sertifikat') main.innerHTML = viewSertifikat(ui.personaId);
         else if (tab === 'profil') main.innerHTML = viewStudentMe();
+        else if (tab === 'mentor') main.innerHTML = viewSchoolPublic({ student: true });
         else main.innerHTML = viewHome();
       }
     }
@@ -18491,6 +18505,11 @@
     btn.setAttribute('aria-expanded', String(show));
   }
   $('brand-btn').addEventListener('click', () => {
+    if (!isStaff()) {
+      setBrandMenu(false);
+      openMentorPublicProfile();
+      return;
+    }
     setBrandMenu($('brand-menu').hidden);
   });
   document.addEventListener('click', (e) => {

@@ -201,6 +201,16 @@ a { color: inherit; }
 }
 
 /* ── shell ─────────────────────────────────────────────────────────── */
+.lms-stage-banner { display: none; }
+html[data-lms-stage="1"] { --stage-banner-h: 34px; }
+html[data-lms-stage="1"] .lms-stage-banner {
+  display: flex; align-items: center; justify-content: center;
+  position: sticky; top: 0; z-index: 60;
+  min-height: var(--stage-banner-h); padding: 6px 14px;
+  background: #9a3412; color: #fff; text-align: center;
+  font-size: .78rem; font-weight: 700; letter-spacing: .01em;
+}
+html[data-lms-stage="1"] .topbar { top: var(--stage-banner-h); }
 #app { min-height: 100vh; background: var(--ink); }
 .workspace { min-width: 0; }
 
@@ -250,6 +260,7 @@ a { color: inherit; }
 .brand-btn img,
 .brand-btn .brand-fallback { grid-area: 1 / 1; }
 .brand-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.brand-btn.is-on { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
 .brand-caret { display: none !important; }
 .brand-menu {
   position: absolute; left: 0; top: calc(100% + 8px); z-index: 40; min-width: 200px;
