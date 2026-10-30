@@ -30,6 +30,15 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Kelas">
   <meta name="application-name" content="Kelas">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="LMS">
+  <meta property="og:title" content="Kelas">
+  <meta property="og:description" content="Gabung kelas di LMS.">
+  <meta property="og:url" content="https://larisid.com/">
+  <meta property="og:image" content="https://larisid.com/obrolan.marketing/assets/obrolan/logo-mark.png">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Kelas">
+  <meta name="twitter:image" content="https://larisid.com/obrolan.marketing/assets/obrolan/logo-mark.png">
   <link rel="apple-touch-icon" href="/obrolan.marketing/assets/obrolan/logo-mark.png">
   <link rel="manifest" href="/obrolan.marketing/manifest.webmanifest">
   <title>Kelas</title>
@@ -43,6 +52,10 @@
       if (!slug) return;
       var start = '/s/' + encodeURIComponent(slug) + '/';
       var man = document.querySelector('link[rel="manifest"]');
+      function setMeta(sel, attr, value) {
+        var el = document.querySelector(sel);
+        if (el && value) el.setAttribute(attr, value);
+      }
       function applyManifest(info) {
         if (!man) return;
         var name = String((info && info.name) || (info && info.short_name) || slug).trim() || slug;
@@ -68,9 +81,15 @@
         var appName = document.querySelector('meta[name="application-name"]');
         if (appName) appName.setAttribute('content', name.slice(0, 40));
         document.title = name;
+        setMeta('meta[property="og:title"]', 'content', name);
+        setMeta('meta[name="twitter:title"]', 'content', name);
+        setMeta('meta[property="og:description"]', 'content', 'Gabung kelas ' + name + ' di LMS.');
+        setMeta('meta[property="og:url"]', 'content', location.origin + start + (location.search || ''));
         if (icons[0] && icons[0].src) {
           var touch = document.querySelector('link[rel="apple-touch-icon"]');
           if (touch) touch.setAttribute('href', icons[0].src);
+          setMeta('meta[property="og:image"]', 'content', icons[0].src);
+          setMeta('meta[name="twitter:image"]', 'content', icons[0].src);
         }
       }
       /* Set start_url immediately so Add to Home Screen cannot fall back to /lms/. */

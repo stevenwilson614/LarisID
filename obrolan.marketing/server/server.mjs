@@ -370,6 +370,56 @@ function schoolPhotoKeyFromState(slug) {
   try { return decodeURIComponent(m[1]); } catch (err) { return m[1]; }
 }
 
+function escHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/** Public school card for PWA manifest + WhatsApp/OG share previews. */
+function schoolBrandCard(req, rawSlug) {
+  const slug = resolveLiveSlug(rawSlug) || (rawSlug === ANTON_SLUG ? ANTON_SLUG : '');
+  if (!slug) return null;
+  const rec = readState(slug);
+  if (!rec && slug !== ANTON_SLUG) return null;
+  const state = (rec && rec.state) || {};
+  const sp = state.schoolProfile || {};
+  const name = String(state.businessName || '').trim()
+    || [sp.firstName, sp.lastName].filter(Boolean).join(' ').trim()
+    || (slug === ANTON_SLUG ? 'MasterMind with Anton GC' : 'Kelas');
+  const short = String(state.businessName || '').trim().slice(0, 12)
+    || name.split(/\s+/).slice(0, 2).join(' ').slice(0, 12)
+    || 'Kelas';
+  const startPath = slug === ANTON_SLUG ? '/s/obrolan.marketing/' : ('/s/' + slug + '/');
+  const host = String(req.headers['x-forwarded-host'] || req.headers.host || 'larisid.com').split(',')[0].trim();
+  const proto = String(req.headers['x-forwarded-proto'] || 'https').split(',')[0].trim() || 'https';
+  const origin = proto + '://' + host;
+  let icon = origin + '/obrolan.marketing/assets/obrolan/logo-mark.png';
+  const photoUrl = String(sp.photoUrl || '').trim();
+  let photoKey = schoolPhotoKeyFromState(slug);
+  if (!photoKey) {
+    ['png', 'jpg', 'jpeg', 'webp'].some((ext) => {
+      const cand = slug + '/profile.' + ext;
+      if (fs.existsSync(mediaFile(cand))) {
+        photoKey = cand;
+        return true;
+      }
+      return false;
+    });
+  }
+  if (photoUrl) {
+    icon = photoUrl.startsWith('http') ? photoUrl : (origin + (photoUrl.startsWith('/') ? photoUrl : '/' + photoUrl));
+  } else if (photoKey) {
+    icon = origin + '/obrolan.marketing/api/media/file?key=' + encodeURIComponent(photoKey);
+  } else if (slug === ANTON_SLUG) {
+    icon = origin + '/obrolan.marketing/assets/obrolan/profile.png';
+  }
+  const headline = String(sp.headline || '').trim();
+  return { slug, name, short, startPath, origin, icon, headline };
+}
+
 /**
  * School branding photos stay public (no cookie). Signup writes slug/profile.*,
  * Profile picture tab writes slug/photo-school/{hex}. Students and Add-to-Home-Screen
@@ -2178,60 +2228,22 @@ const server = http.createServer((req, res) => {
 
   /* Per-school PWA card so Add to Home Screen opens this mentor, not Anton. */
   if (req.method === 'GET' && pathname === '/manifest') {
-    const slug = resolveLiveSlug(q.slug) || (q.slug === ANTON_SLUG ? ANTON_SLUG : '');
-    if (!slug) {
+    const brand = schoolBrandCard(req, q.slug);
+    if (!brand) {
       json(res, 404, { error: 'slug' });
       return;
-    }
-    const rec = readState(slug);
-    if (!rec && slug !== ANTON_SLUG) {
-      json(res, 404, { error: 'slug' });
-      return;
-    }
-    const state = (rec && rec.state) || {};
-    const sp = state.schoolProfile || {};
-    /* Prefer org / business name for Add-to-Home-Screen — not the mentor first name. */
-    const name = String(state.businessName || '').trim()
-      || [sp.firstName, sp.lastName].filter(Boolean).join(' ').trim()
-      || (slug === ANTON_SLUG ? 'MasterMind with Anton GC' : 'Kelas');
-    const short = String(state.businessName || '').trim().slice(0, 12)
-      || name.split(/\s+/).slice(0, 2).join(' ').slice(0, 12)
-      || 'Kelas';
-    const start = slug === ANTON_SLUG ? '/s/obrolan.marketing/' : ('/s/' + slug + '/');
-    const host = String(req.headers['x-forwarded-host'] || req.headers.host || 'larisid.com').split(',')[0].trim();
-    const proto = String(req.headers['x-forwarded-proto'] || 'https').split(',')[0].trim() || 'https';
-    const origin = proto + '://' + host;
-    let icon = origin + '/obrolan.marketing/assets/obrolan/logo-mark.png';
-    const photoUrl = String(sp.photoUrl || '').trim();
-    let photoKey = schoolPhotoKeyFromState(slug);
-    if (!photoKey) {
-      ['png', 'jpg', 'jpeg', 'webp'].some((ext) => {
-        const cand = slug + '/profile.' + ext;
-        if (fs.existsSync(mediaFile(cand))) {
-          photoKey = cand;
-          return true;
-        }
-        return false;
-      });
-    }
-    if (photoUrl) {
-      icon = photoUrl.startsWith('http') ? photoUrl : (origin + (photoUrl.startsWith('/') ? photoUrl : '/' + photoUrl));
-    } else if (photoKey) {
-      icon = origin + '/obrolan.marketing/api/media/file?key=' + encodeURIComponent(photoKey);
-    } else if (slug === ANTON_SLUG) {
-      icon = origin + '/obrolan.marketing/assets/obrolan/profile.png';
     }
     const body = JSON.stringify({
-      name: name,
-      short_name: short,
-      start_url: start,
-      scope: start,
+      name: brand.name,
+      short_name: brand.short,
+      start_url: brand.startPath,
+      scope: brand.startPath,
       display: 'standalone',
       orientation: 'portrait',
       background_color: '#101012',
       theme_color: '#101012',
       lang: 'id',
-      icons: [{ src: icon, sizes: '192x192', type: 'image/png', purpose: 'any' }]
+      icons: [{ src: brand.icon, sizes: '192x192', type: 'image/png', purpose: 'any' }]
     });
     res.writeHead(200, {
       'content-type': 'application/manifest+json; charset=utf-8',
@@ -2239,6 +2251,58 @@ const server = http.createServer((req, res) => {
       'x-robots-tag': 'noindex'
     });
     res.end(body);
+    return;
+  }
+
+  /* WhatsApp / social crawlers: HTML with org og:title (static SPA says "Kelas"). */
+  if (req.method === 'GET' && pathname === '/share-card') {
+    const brand = schoolBrandCard(req, q.slug);
+    if (!brand) {
+      res.writeHead(404, {
+        'content-type': 'text/html; charset=utf-8',
+        'cache-control': 'no-store',
+        'x-robots-tag': 'noindex'
+      });
+      res.end('<!DOCTYPE html><title>Kelas</title><p>Kelas tidak ditemukan.</p>');
+      return;
+    }
+    const invite = String(q.invite || '').trim().slice(0, 128);
+    const pageUrl = brand.origin + brand.startPath + (invite ? ('?invite=' + encodeURIComponent(invite)) : '');
+    const title = brand.name;
+    const desc = brand.headline
+      ? brand.headline
+      : ('Gabung kelas ' + brand.name + ' di LMS.');
+    const html = '<!DOCTYPE html>\n' +
+      '<html lang="id"><head>\n' +
+      '<meta charset="UTF-8">\n' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
+      '<title>' + escHtml(title) + '</title>\n' +
+      '<meta name="description" content="' + escHtml(desc) + '">\n' +
+      '<meta name="robots" content="noindex, nofollow">\n' +
+      '<link rel="icon" href="' + escHtml(brand.icon) + '">\n' +
+      '<link rel="apple-touch-icon" href="' + escHtml(brand.icon) + '">\n' +
+      '<meta property="og:type" content="website">\n' +
+      '<meta property="og:site_name" content="LMS">\n' +
+      '<meta property="og:title" content="' + escHtml(title) + '">\n' +
+      '<meta property="og:description" content="' + escHtml(desc) + '">\n' +
+      '<meta property="og:url" content="' + escHtml(pageUrl) + '">\n' +
+      '<meta property="og:image" content="' + escHtml(brand.icon) + '">\n' +
+      '<meta property="og:image:width" content="512">\n' +
+      '<meta property="og:image:height" content="512">\n' +
+      '<meta name="twitter:card" content="summary">\n' +
+      '<meta name="twitter:title" content="' + escHtml(title) + '">\n' +
+      '<meta name="twitter:description" content="' + escHtml(desc) + '">\n' +
+      '<meta name="twitter:image" content="' + escHtml(brand.icon) + '">\n' +
+      '<link rel="canonical" href="' + escHtml(pageUrl) + '">\n' +
+      '</head><body>\n' +
+      '<p><a href="' + escHtml(pageUrl) + '">Buka ' + escHtml(title) + '</a></p>\n' +
+      '</body></html>\n';
+    res.writeHead(200, {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': 'public, max-age=120',
+      'x-robots-tag': 'noindex'
+    });
+    res.end(html);
     return;
   }
 
