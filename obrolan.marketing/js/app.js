@@ -660,8 +660,10 @@
     const def = daftarColDef(colId);
     if (!def) return '<span class="muted">—</span>';
     if (def.custom) {
+      const val = personCustomVal(s.id, colId);
+      if (!canEditPerson(s.id)) return '<span>' + esc(val || '—') + '</span>';
       return '<input class="inline-edit daftar-custom-in" data-act="daftar-custom-val" data-id="' + esc(s.id) +
-        '" data-col="' + esc(colId) + '" value="' + esc(personCustomVal(s.id, colId)) + '" placeholder="—">';
+        '" data-col="' + esc(colId) + '" value="' + esc(val) + '" placeholder="—">';
     }
     if (colId === 'name') {
       const tags = (s.tags || []).slice(0, 2);
@@ -1775,7 +1777,8 @@
   }
   function canEditPerson(id) {
     if (isSiswaReadonly()) return false;
-    if (isStaff()) return true;
+    /* Owners always; invited admins only with editStudents. Students: own row only. */
+    if (isStaff()) return staffCan('editStudents');
     return !!id && id === ui.personaId;
   }
   function studentAuthOf(id) {
@@ -7514,10 +7517,11 @@
     });
   }
   function personLinksHtml(id, s, app) {
+    const can = canEditPerson(id);
     const socials = personSocialLinks(s);
     const shops = personShopLinks(s, app);
-    const socialPick = ui.socialPick;
-    const shopPick = ui.shopPick;
+    const socialPick = can ? ui.socialPick : null;
+    const shopPick = can ? ui.shopPick : null;
     const socialList = socials.length
       ? socials.map((row) =>
           '<div class="fub-link">' +
@@ -7525,10 +7529,12 @@
               esc(platLabel(SOCIAL_PLATFORMS, row.platform) + (row.handle ? ' · ' + row.handle : '')) + '" aria-label="' +
               esc(platLabel(SOCIAL_PLATFORMS, row.platform)) + '">' + platIcon(row.platform, 18) + '</a>' +
             '<a class="fub-link-a" href="' + esc(row.url) + '" target="_blank" rel="noopener">' + esc(row.handle || row.url) + '</a>' +
-            '<button type="button" class="btn-sm fub-link-del" data-act="del-social" data-id="' + esc(id) + '" data-lid="' + esc(row.id || '') + '" data-plat="' + esc(row.platform) + '" title="Hapus">×</button>' +
+            (can
+              ? '<button type="button" class="btn-sm fub-link-del" data-act="del-social" data-id="' + esc(id) + '" data-lid="' + esc(row.id || '') + '" data-plat="' + esc(row.platform) + '" title="Hapus">×</button>'
+              : '') +
           '</div>'
         ).join('')
-      : '<p class="muted fub-link-empty">Belum ada. Pilih platform di bawah.</p>';
+      : '<p class="muted fub-link-empty">' + (can ? 'Belum ada. Pilih platform di bawah.' : 'Belum ada tautan sosial.') + '</p>';
     const shopList = shops.length
       ? shops.map((row) =>
           '<div class="fub-link">' +
@@ -7536,12 +7542,14 @@
               esc(platLabel(SHOP_PLATFORMS, row.platform) + (row.handle ? ' · ' + row.handle : '')) + '" aria-label="' +
               esc(platLabel(SHOP_PLATFORMS, row.platform)) + '">' + platIcon(row.platform, 18) + '</a>' +
             '<a class="fub-link-a" href="' + esc(row.url) + '" target="_blank" rel="noopener">' + esc(row.handle || row.url) + '</a>' +
-            '<button type="button" class="btn-sm fub-link-del" data-act="del-shop" data-id="' + esc(id) + '" data-lid="' + esc(row.id || '') + '" data-plat="' + esc(row.platform) + '" title="Hapus">×</button>' +
+            (can
+              ? '<button type="button" class="btn-sm fub-link-del" data-act="del-shop" data-id="' + esc(id) + '" data-lid="' + esc(row.id || '') + '" data-plat="' + esc(row.platform) + '" title="Hapus">×</button>'
+              : '') +
           '</div>'
         ).join('')
-      : '<p class="muted fub-link-empty">Belum ada. Pilih marketplace di bawah.</p>';
-    const socialEditor =
-      '<div class="fub-plat-pick" role="group" aria-label="Pilih sosial">' +
+      : '<p class="muted fub-link-empty">' + (can ? 'Belum ada. Pilih marketplace di bawah.' : 'Belum ada tautan toko.') + '</p>';
+    const socialEditor = can
+      ? ('<div class="fub-plat-pick" role="group" aria-label="Pilih sosial">' +
         SOCIAL_PLATFORMS.map((p) =>
           '<button type="button" class="btn-sm fub-plat fub-plat-ico-btn' + (socialPick === p.id ? ' is-on' : '') +
             '" data-act="pick-social" data-id="' + p.id + '" title="' + esc(p.label) + '" aria-label="' + esc(p.label) + '"' +
@@ -7553,9 +7561,11 @@
             '<input class="inline-edit" data-act="social-input" data-id="' + esc(id) + '" maxlength="200" placeholder="@nama atau tautan ' + esc(platLabel(SOCIAL_PLATFORMS, socialPick)) + '">' +
             '<button type="button" class="btn-sm" data-act="add-social" data-id="' + esc(id) + '">Tambah</button>' +
           '</div>'
-        : '');
-    const shopEditor =
-      '<div class="fub-plat-pick" role="group" aria-label="Pilih toko">' +
+        : ''))
+      : '';
+    const shopName = s.shopName || (app && app.shopName) || '';
+    const shopEditor = can
+      ? ('<div class="fub-plat-pick" role="group" aria-label="Pilih toko">' +
         SHOP_PLATFORMS.map((p) =>
           '<button type="button" class="btn-sm fub-plat fub-plat-ico-btn' + (shopPick === p.id ? ' is-on' : '') +
             '" data-act="pick-shop" data-id="' + p.id + '" title="' + esc(p.label) + '" aria-label="' + esc(p.label) + '">' +
@@ -7572,7 +7582,8 @@
                 : ('Tautan ' + platLabel(SHOP_PLATFORMS, shopPick))) + '">' +
             '<button type="button" class="btn-sm" data-act="add-shop" data-id="' + esc(id) + '">Tambah</button>' +
           '</div>'
-        : '');
+        : ''))
+      : '';
     return '<div class="fub-section">' +
         '<div class="fub-section-h">Sosial</div>' +
         '<div class="fub-linklist">' + socialList + '</div>' +
@@ -7580,8 +7591,10 @@
       '</div>' +
       '<div class="fub-section">' +
         '<div class="fub-section-h">Toko</div>' +
-        '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="shopName" value="' +
-          esc(s.shopName || (app && app.shopName) || '') + '" placeholder="Nama toko (opsional)">' +
+        (can
+          ? '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="shopName" value="' +
+              esc(shopName) + '" placeholder="Nama toko (opsional)">'
+          : (shopName ? '<p class="muted" style="margin:0 0 8px">' + esc(shopName) + '</p>' : '')) +
         '<div class="fub-linklist">' + shopList + '</div>' +
         shopEditor +
       '</div>';
@@ -7656,6 +7669,7 @@
         '<p class="muted fub-link-empty">Belum ada field join. Tambah di Account → Onboarding.</p>' +
       '</div>';
     }
+    const can = canEditPerson(id);
     return '<div class="fub-section">' +
       '<div class="fub-section-h">Join / onboarding</div>' +
       defs.map((def) => {
@@ -7665,8 +7679,10 @@
           : raw;
         return '<label class="fub-ob-field">' +
           '<span class="muted">' + esc(ownerText(def.label)) + '</span>' +
-          '<input class="inline-edit" data-act="daftar-custom-val" data-id="' + esc(id) +
-            '" data-col="' + esc(def.id) + '" value="' + esc(shown) + '" placeholder="—">' +
+          (can
+            ? '<input class="inline-edit" data-act="daftar-custom-val" data-id="' + esc(id) +
+                '" data-col="' + esc(def.id) + '" value="' + esc(shown) + '" placeholder="—">'
+            : '<div>' + esc(shown || '—') + '</div>') +
         '</label>';
       }).join('') +
     '</div>';
@@ -8315,22 +8331,30 @@
   function personTagsHtml(id) {
     const s = people().find((x) => x.id === id);
     const tags = ((s && s.tags) || []).filter(Boolean);
-    const open = ui.tagPickerId === id;
+    const can = canEditPerson(id);
+    const open = can && ui.tagPickerId === id;
     return '<dd class="fub-tags" id="fub-tags">' +
-      tags.map((t) =>
-        '<span class="tag-chip has-x">' + esc(t) +
-          '<button type="button" class="tag-x" data-act="tag-remove" data-id="' + esc(id) +
-            '" data-tag="' + esc(t) + '" aria-label="Hapus tag ' + esc(t) + '">×</button></span>'
-      ).join('') +
-      '<button type="button" class="tag-add-btn' + (open ? ' is-open' : '') +
-        '" data-act="tag-toggle" data-id="' + esc(id) + '" aria-expanded="' + open +
-        '" title="Tambah tag" aria-label="Tambah tag">+</button>' +
-      (open
-        ? '<div class="tag-picker" id="tag-picker">' +
-            '<input class="tag-picker-in" data-act="tag-query" data-id="' + esc(id) +
-              '" value="' + esc(ui.tagQuery || '') + '" placeholder="Cari tag atau buat baru…" autocomplete="off">' +
-            '<div class="tag-picker-list" id="tag-picker-list">' + tagPickerListHtml(id) + '</div>' +
-          '</div>'
+      (tags.length
+        ? tags.map((t) =>
+            '<span class="tag-chip' + (can ? ' has-x' : '') + '">' + esc(t) +
+              (can
+                ? '<button type="button" class="tag-x" data-act="tag-remove" data-id="' + esc(id) +
+                    '" data-tag="' + esc(t) + '" aria-label="Hapus tag ' + esc(t) + '">×</button>'
+                : '') +
+            '</span>'
+          ).join('')
+        : (can ? '' : '<span class="muted">—</span>')) +
+      (can
+        ? ('<button type="button" class="tag-add-btn' + (open ? ' is-open' : '') +
+            '" data-act="tag-toggle" data-id="' + esc(id) + '" aria-expanded="' + open +
+            '" title="Tambah tag" aria-label="Tambah tag">+</button>' +
+          (open
+            ? '<div class="tag-picker" id="tag-picker">' +
+                '<input class="tag-picker-in" data-act="tag-query" data-id="' + esc(id) +
+                  '" value="' + esc(ui.tagQuery || '') + '" placeholder="Cari tag atau buat baru…" autocomplete="off">' +
+                '<div class="tag-picker-list" id="tag-picker-list">' + tagPickerListHtml(id) + '</div>' +
+              '</div>'
+            : ''))
         : '') +
     '</dd>';
   }
@@ -13089,24 +13113,30 @@
     const pays = personPayments(id);
     const nameParts = personNameParts(s);
     const fullName = displayNameOf(s) || s.name || '';
+    const canEdit = canEditPerson(id);
     const left =
       '<aside class="fub-left">' +
         '<div class="fub-iden">' +
           personAvatarEdit(s, id) +
           '<div class="fub-iden-copy">' +
-            '<div class="fub-name-row">' +
-              '<input class="inline-edit name-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="firstName" value="' +
-                esc(nameParts.firstName) + '" placeholder="Nama depan" autocomplete="given-name">' +
-              '<input class="inline-edit name-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="lastName" value="' +
-                esc(nameParts.lastName) + '" placeholder="Nama belakang" autocomplete="family-name">' +
-            '</div>' +
-            '<input class="inline-edit name-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="city" value="' + esc(s.city || '') + '" placeholder="Kota">' +
+            (canEdit
+              ? ('<div class="fub-name-row">' +
+                  '<input class="inline-edit name-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="firstName" value="' +
+                    esc(nameParts.firstName) + '" placeholder="Nama depan" autocomplete="given-name">' +
+                  '<input class="inline-edit name-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="lastName" value="' +
+                    esc(nameParts.lastName) + '" placeholder="Nama belakang" autocomplete="family-name">' +
+                '</div>' +
+                '<input class="inline-edit name-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="city" value="' + esc(s.city || '') + '" placeholder="Kota">')
+              : ('<h2 class="fub-name-static" style="margin:0;font-size:1.05rem">' + esc(fullName || '—') + '</h2>' +
+                  (s.city ? '<p class="muted" style="margin:4px 0 0">' + esc(s.city) + '</p>' : ''))) +
           '</div>' +
         '</div>' +
         '<div class="fub-contact">' +
           '<div class="fub-contact-row">' +
             '<span class="fub-ico is-wa" aria-hidden="true">' + waIconSvg(16) + '</span>' +
-            '<input class="inline-edit ghost-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="wa" value="' + esc(s.wa || '') + '" placeholder="62812…" title="Klik untuk edit WA">' +
+            (canEdit
+              ? '<input class="inline-edit ghost-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="wa" value="' + esc(s.wa || '') + '" placeholder="62812…" title="Klik untuk edit WA">'
+              : '<span>' + esc(s.wa ? fmtPhone(s.wa) : '—') + '</span>') +
             (s.wa
               ? '<a class="fub-cell-link fub-ico-link" href="' + esc(waLink(s.wa, schoolGreeting(fullName))) +
                 '" title="Buka WhatsApp" aria-label="Buka WhatsApp">' + waIconSvg(16) + '</a>'
@@ -13114,7 +13144,9 @@
           '</div>' +
           '<div class="fub-contact-row">' +
             '<span class="fub-ico is-email" aria-hidden="true">' + emailIconSvg(16) + '</span>' +
-            '<input class="inline-edit ghost-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="email" type="email" value="' + esc(s.email || '') + '" placeholder="email" title="Klik untuk edit email">' +
+            (canEdit
+              ? '<input class="inline-edit ghost-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="email" type="email" value="' + esc(s.email || '') + '" placeholder="email" title="Klik untuk edit email">'
+              : '<span>' + esc(s.email || '—') + '</span>') +
             (s.email
               ? '<a class="fub-cell-link fub-ico-link" href="' + esc(mailLink(s.email, schoolMailSubject(), schoolGreeting(fullName))) +
                 '" title="Buka Gmail" aria-label="Buka Gmail">' + emailIconSvg(16) + '</a>'
@@ -14656,6 +14688,7 @@
     }
     if (t.matches('[data-act="person-batch"]')) {
       const id = t.getAttribute('data-id');
+      if (!canEditPerson(id)) return;
       const val = String(t.value || '');
       db.people = db.people || {};
       db.people[id] = Object.assign({}, db.people[id] || {});
@@ -15470,6 +15503,7 @@
     }
     if (t.matches('[data-act="daftar-custom-val"]')) {
       const sid = t.getAttribute('data-id');
+      if (!canEditPerson(sid)) return;
       const col = t.getAttribute('data-col');
       if (col && !daftarColDef(col)) {
         db.daftarCustom = daftarCustomList().concat([{
@@ -16077,6 +16111,7 @@
     }
     if (act === 'tag-toggle') {
       const id = btn.getAttribute('data-id');
+      if (!canEditPerson(id)) return;
       if (ui.tagPickerId === id) {
         ui.tagPickerId = null;
         ui.tagQuery = '';
@@ -16095,6 +16130,7 @@
     }
     if (act === 'tag-add') {
       const id = btn.getAttribute('data-id');
+      if (!canEditPerson(id)) return;
       const tag = btn.getAttribute('data-tag');
       if (addPersonTag(id, tag)) {
         ui.tagQuery = '';
@@ -16107,7 +16143,9 @@
       return;
     }
     if (act === 'tag-remove') {
-      removePersonTag(btn.getAttribute('data-id'), btn.getAttribute('data-tag'));
+      const id = btn.getAttribute('data-id');
+      if (!canEditPerson(id)) return;
+      removePersonTag(id, btn.getAttribute('data-tag'));
       render();
       return;
     }
