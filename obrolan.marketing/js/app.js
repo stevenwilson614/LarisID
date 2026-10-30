@@ -2928,6 +2928,7 @@
     visitorLive: false,
     studentAuthed: false,
     stuAuthMode: 'signup',
+    stuAuthPanel: '',
     stuSmsPhone: '',
     stuSmsSent: false,
     stuAuthErr: '',
@@ -9061,9 +9062,19 @@
       '<div class="ob-body">' + inner + '</div>' +
       '<div class="ob-foot' + (pay ? ' is-end' : '') + '">' + foot + '</div></section>';
   }
+  function stuAuthIcons() {
+    return {
+      google: '<svg class="stu-auth-ico" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 12 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.66l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>',
+      phone: '<svg class="stu-auth-ico" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#22C55E" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-3 11H7v-2h10v2zm0-3H7V8h10v2z"/></svg>',
+      email: '<svg class="stu-auth-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" stroke-width="1.8" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 7 9-7"/></svg>',
+      chevron: '<svg class="stu-auth-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>'
+    };
+  }
   function viewStudentAuth() {
     const signup = ui.stuAuthMode !== 'login';
     const busy = ui.stuAuthBusy ? ' disabled' : '';
+    const ico = stuAuthIcons();
+    const panel = ui.stuSmsSent ? 'phone' : (ui.stuAuthPanel === 'phone' || ui.stuAuthPanel === 'email' ? ui.stuAuthPanel : '');
     const err = '<p class="stu-auth-err" id="stu-auth-err"' + (ui.stuAuthErr ? '' : ' hidden') + '>' +
       esc(ui.stuAuthErr || '') + '</p>';
     const sms = ui.stuSmsSent
@@ -9073,36 +9084,61 @@
         '<button type="button" class="btn" data-act="stu-sms-verify"' + busy + '>Verifikasi</button>' +
         '<button type="button" class="btn secondary" data-act="stu-sms-send">Kirim ulang</button>'
       : '<label for="stu-phone">Nomor HP</label>' +
-        '<input id="stu-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="08…" value="' +
-          esc(ui.stuSmsPhone) + '">' +
+        '<div class="stu-auth-phone">' +
+          '<span class="stu-auth-cc" aria-hidden="true">+62</span>' +
+          '<span class="stu-auth-phone-sep" aria-hidden="true"></span>' +
+          '<input id="stu-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="812 3456 7890" value="' +
+            esc(ui.stuSmsPhone) + '">' +
+        '</div>' +
         '<button type="button" class="btn" data-act="stu-sms-send"' + busy + '>Kirim kode SMS</button>';
     return '<section class="stu-auth">' +
+      '<div class="stu-auth-card">' +
       '<h2>' + (signup ? 'Daftar untuk ikut kelas' : 'Masuk ke kelas') + '</h2>' +
-      '<p class="muted">Pakai Gmail, email, atau SMS. Setiap siswa punya login sendiri. Setelah masuk, baru isi data kelas.</p>' +
-      '<button type="button" class="btn secondary stu-google" data-act="stu-google"' + busy + '>Lanjut dengan Google</button>' +
-      '<p class="stu-auth-or">atau SMS</p>' +
-      '<div class="stu-auth-sms">' + sms + '</div>' +
-      '<p class="stu-auth-or">atau email</p>' +
-      '<form data-act="stu-email">' +
+      '<p class="stu-auth-sub">' +
         (signup
-          ? '<label for="stu-name">Nama</label><input id="stu-name" name="name" autocomplete="name" maxlength="80">'
+          ? 'Buat akunmu dulu. Setiap siswa punya login sendiri.'
+          : 'Gunakan akunmu untuk masuk. Setiap siswa punya login sendiri.') +
+      '</p>' +
+      '<div class="stu-auth-stack">' +
+        '<button type="button" class="stu-auth-row" data-act="stu-google"' + busy + '>' +
+          ico.google + '<span>Lanjut dengan Google</span>' + ico.chevron +
+        '</button>' +
+        '<button type="button" class="stu-auth-row' + (panel === 'phone' ? ' is-open' : '') +
+          '" data-act="stu-auth-panel" data-id="phone" aria-expanded="' + (panel === 'phone' ? 'true' : 'false') + '"' + busy + '>' +
+          ico.phone +
+          '<span>' + (signup ? 'Daftar dengan nomor HP' : 'Masuk dengan nomor HP') + '</span>' +
+          ico.chevron +
+        '</button>' +
+        (panel === 'phone' ? '<div class="stu-auth-panel stu-auth-sms">' + sms + '</div>' : '') +
+        '<button type="button" class="stu-auth-row' + (panel === 'email' ? ' is-open' : '') +
+          '" data-act="stu-auth-panel" data-id="email" aria-expanded="' + (panel === 'email' ? 'true' : 'false') + '"' + busy + '>' +
+          ico.email +
+          '<span>' + (signup ? 'Daftar dengan email' : 'Masuk dengan email') + '</span>' +
+          ico.chevron +
+        '</button>' +
+        (panel === 'email'
+          ? '<form class="stu-auth-panel" data-act="stu-email">' +
+              (signup
+                ? '<label for="stu-name">Nama</label><input id="stu-name" name="name" autocomplete="name" maxlength="80">'
+                : '') +
+              '<label for="stu-email">Email</label>' +
+              '<input id="stu-email" name="email" type="email" autocomplete="email" required>' +
+              '<label for="stu-password">Password</label>' +
+              '<input id="stu-password" name="password" type="password" minlength="6" required autocomplete="' +
+                (signup ? 'new-password' : 'current-password') + '">' +
+              '<button class="btn" type="submit"' + busy + '>' +
+                (signup ? 'Daftar dengan email' : 'Masuk dengan email') + '</button>' +
+            '</form>'
           : '') +
-        '<label for="stu-email">Email</label>' +
-        '<input id="stu-email" name="email" type="email" autocomplete="email" required>' +
-        '<label for="stu-password">Password</label>' +
-        '<input id="stu-password" name="password" type="password" minlength="6" required autocomplete="' +
-          (signup ? 'new-password' : 'current-password') + '">' +
-        '<button class="btn" type="submit"' + busy + '>' +
-          (signup ? 'Daftar dengan email' : 'Masuk dengan email') + '</button>' +
-      '</form>' +
+      '</div>' +
       err +
       '<p class="stu-auth-toggle">' +
         (signup
           ? 'Sudah punya akun? <button type="button" data-act="stu-auth-mode" data-id="login">Masuk</button>'
           : 'Belum punya akun? <button type="button" data-act="stu-auth-mode" data-id="signup">Daftar</button>') +
       '</p>' +
-      '<p class="stu-auth-toggle muted">Mentor kelas ini? <a href="' + esc(coachLoginUrl()) + '">Masuk sebagai mentor</a></p>' +
-      '</section>';
+      '<p class="stu-auth-mentor">Mentor kelas ini? <a href="' + esc(coachLoginUrl()) + '">Masuk sebagai mentor</a></p>' +
+      '</div></section>';
   }
   function viewWizard() {
     const step = wizIdx();
@@ -16991,8 +17027,21 @@
       stuGoogle();
     } else if (act === 'stu-auth-mode') {
       ui.stuAuthMode = btn.getAttribute('data-id') === 'login' ? 'login' : 'signup';
+      ui.stuAuthPanel = '';
       ui.stuAuthErr = '';
       render();
+    } else if (act === 'stu-auth-panel') {
+      const next = btn.getAttribute('data-id') === 'email' ? 'email' : 'phone';
+      ui.stuAuthPanel = ui.stuAuthPanel === next && !ui.stuSmsSent ? '' : next;
+      ui.stuAuthErr = '';
+      render();
+      if (ui.stuAuthPanel === 'phone') {
+        const phoneEl = document.getElementById(ui.stuSmsSent ? 'stu-otp' : 'stu-phone');
+        if (phoneEl) phoneEl.focus();
+      } else if (ui.stuAuthPanel === 'email') {
+        const emailEl = document.getElementById(ui.stuAuthMode !== 'login' ? 'stu-name' : 'stu-email');
+        if (emailEl) emailEl.focus();
+      }
     } else if (act === 'stu-sms-send') {
       e.preventDefault();
       const phoneEl = document.getElementById('stu-phone');
@@ -18145,6 +18194,7 @@
       }
       ui.stuSmsPhone = data.phone || raw;
       ui.stuSmsSent = true;
+      ui.stuAuthPanel = 'phone';
       ui.stuAuthErr = '';
       ui.stuAuthBusy = false;
       render();

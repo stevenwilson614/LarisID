@@ -995,14 +995,29 @@ button, a { font: inherit; }
 .shot-frame figcaption { padding: 22px 26px 28px; }
 .shot-frame figcaption strong { display: block; font-size: 1.35rem; }
 .shot-frame figcaption > span { color: var(--muted); }
-.auth-wrap { max-width: 420px; margin: 0 auto; padding: 28px 18px 64px; }
+.auth-wrap {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: 40px 18px 64px;
+  min-height: 100dvh;
+  box-sizing: border-box;
+  background: #f3f3f5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
 .back {
   background: none;
   border: 0;
   color: var(--muted);
   font-weight: 700;
   cursor: pointer;
-  padding: 0 0 12px;
+  padding: 0;
+  width: min(380px, 100%);
+  text-align: left;
 }
 .panel {
   background: #fff;
@@ -1030,10 +1045,13 @@ textarea { min-height: 96px; resize: vertical; }
   --auth-wa: #B5202A;
   --auth-wa-soft: #F9EAE4;
   position: relative;
+  width: 100%;
   max-width: 380px;
   margin: 0 auto;
   padding: 32px 28px 28px;
   border-radius: 24px;
+  border: 1px solid #e8e8e8;
+  box-shadow: 0 8px 28px rgba(16, 16, 18, .06);
 }
 .auth-title-sr {
   position: absolute;
@@ -1052,10 +1070,19 @@ textarea { min-height: 96px; resize: vertical; }
   margin: 4px 0 8px;
 }
 .auth-brand-id { color: var(--auth-wa); }
+.auth-panel > h2 {
+  text-align: center;
+  margin: 0 0 8px;
+  font-size: 1.45rem;
+  letter-spacing: -.03em;
+  font-weight: 750;
+  color: #111;
+}
 .auth-panel > .sub {
   text-align: center;
   margin: 0 0 22px;
   font-size: .84rem;
+  line-height: 1.45;
   color: #9a9a9a;
 }
 .auth-mascot {
@@ -1169,6 +1196,7 @@ textarea { min-height: 96px; resize: vertical; }
 }
 .auth-alt-row.is-open .auth-alt-chevron { transform: rotate(180deg); }
 .auth-email-block { padding: 4px 2px 2px; }
+.auth-email-block[hidden] { display: none !important; }
 .auth-toggle {
   text-align: center;
   margin-top: 18px;
@@ -1179,6 +1207,7 @@ textarea { min-height: 96px; resize: vertical; }
   color: var(--merah);
   font-weight: 700;
   cursor: pointer;
+  text-decoration: underline;
 }
 .auth-toggle a:hover { text-decoration: underline; }
 .auth-panel.is-otp #auth-sep-wa,

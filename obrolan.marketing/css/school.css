@@ -1022,31 +1022,177 @@ html[data-mode="mentor"] #wa-fab-host { display: none; }
 .pay-look .btn { width: 100%; }
 
 #app.is-onboard .main { padding: 0; }
-.stu-auth {
-  max-width: 420px;
-  margin: 28px auto 48px;
-  display: grid;
-  gap: 10px;
-  padding: 0 16px;
+html[data-mode="student"] .main:has(.stu-auth) {
+  background: #f3f3f5;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 16px 48px;
 }
-.stu-auth h2 { margin: 0; font-size: 1.35rem; letter-spacing: -.03em; }
+.stu-auth {
+  width: min(420px, 100%);
+  margin: 0 auto;
+  padding: 0;
+}
+.stu-auth-card {
+  background: #fff;
+  color: #18181b;
+  border: 1px solid #e8e8e8;
+  border-radius: 24px;
+  padding: 32px 28px 28px;
+  box-shadow: 0 8px 28px rgba(16, 16, 18, .06);
+  display: grid;
+  gap: 0;
+}
+.stu-auth h2 {
+  margin: 0;
+  font-size: 1.45rem;
+  letter-spacing: -.03em;
+  text-align: center;
+  color: #111;
+  font-weight: 750;
+}
+.stu-auth-sub {
+  margin: 8px 0 22px;
+  text-align: center;
+  font-size: .84rem;
+  line-height: 1.45;
+  color: #9a9a9a;
+  font-weight: 450;
+}
+.stu-auth-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.stu-auth-row {
+  width: 100%;
+  padding: 13px 14px;
+  border-radius: 12px;
+  border: 1px solid #e8e8e8;
+  background: #f5f5f5;
+  color: #18181b;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font: inherit;
+  font-size: .9rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: background .12s, border-color .12s;
+}
+.stu-auth-row:hover { background: #efefef; }
+.stu-auth-row:disabled { opacity: .55; cursor: not-allowed; }
+.stu-auth-row > span { flex: 1; }
+.stu-auth-ico { flex-shrink: 0; display: block; }
+.stu-auth-chevron {
+  flex-shrink: 0;
+  color: #b0b0b0;
+  transition: transform .18s ease;
+}
+.stu-auth-row.is-open .stu-auth-chevron { transform: rotate(180deg); }
+.stu-auth-panel {
+  display: grid;
+  gap: 8px;
+  padding: 4px 2px 2px;
+}
 .stu-auth form,
 .stu-auth-sms { display: grid; gap: 8px; }
-.stu-auth label { font-size: .72rem; font-weight: 700; color: var(--muted); }
-.stu-auth-or {
-  margin: 8px 0 0;
-  text-align: center;
-  color: var(--muted);
-  font-size: .75rem;
-  font-weight: 650;
+.stu-auth label {
+  font-size: .72rem;
+  font-weight: 700;
+  color: #71717a;
 }
-.stu-auth-err { color: var(--warn); margin: 0; font-size: .82rem; }
+.stu-auth input {
+  width: 100%;
+  font: inherit;
+  padding: 11px 12px;
+  border-radius: 12px;
+  border: 1px solid #e0e0e0;
+  background: #fff;
+  color: #18181b;
+}
+.stu-auth input:focus {
+  outline: none;
+  border-color: #B5202A;
+}
+.stu-auth-phone {
+  display: flex;
+  align-items: center;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+.stu-auth-phone:focus-within { border-color: #B5202A; }
+.stu-auth-cc {
+  flex-shrink: 0;
+  padding: 12px 10px 12px 12px;
+  font-size: .9rem;
+  font-weight: 600;
+  color: #18181b;
+  user-select: none;
+}
+.stu-auth-phone-sep {
+  width: 1px;
+  height: 22px;
+  background: #e5e5e5;
+  flex-shrink: 0;
+}
+.stu-auth-phone input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 12px 14px;
+}
+.stu-auth-phone input:focus { outline: none; border: 0; }
+.stu-auth-panel .btn {
+  width: 100%;
+  margin-top: 4px;
+  padding: 12px 16px;
+  border-radius: 999px;
+  justify-content: center;
+  background: #B5202A;
+  color: #fff;
+  border: 0;
+}
+.stu-auth-panel .btn.secondary {
+  background: transparent;
+  color: #18181b;
+  border: 1px solid #e0e0e0;
+}
+.stu-auth-panel .muted { color: #9a9a9a; margin: 0; }
+.stu-auth-err { color: #b45309; margin: 12px 0 0; font-size: .82rem; text-align: center; }
 .stu-auth-err[hidden] { display: none !important; }
-.stu-auth-toggle { margin: 4px 0 0; font-size: .82rem; }
+.stu-auth-toggle {
+  margin: 18px 0 0;
+  font-size: .84rem;
+  text-align: center;
+  color: #9a9a9a;
+}
 .stu-auth-toggle button {
-  border: 0; background: transparent; color: var(--text);
-  font: inherit; font-weight: 750; cursor: pointer; text-decoration: underline;
+  border: 0;
+  background: transparent;
+  color: #B5202A;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
   padding: 0;
+}
+.stu-auth-mentor {
+  margin: 10px 0 0;
+  font-size: .78rem;
+  text-align: center;
+  color: #9a9a9a;
+}
+.stu-auth-mentor a {
+  color: #18181b;
+  font-weight: 650;
 }
 .ob-flow {
   display: flex; flex-direction: column;

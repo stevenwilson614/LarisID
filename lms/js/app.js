@@ -77,6 +77,21 @@
     } catch (err2) { /* ignore */ }
     document.documentElement.removeAttribute('data-lms-oauth');
   }
+  function setEmailOpen(open) {
+    var form = $('email-form');
+    var toggle = $('email-toggle');
+    if (form) form.hidden = !open;
+    if (toggle) {
+      toggle.classList.toggle('is-open', !!open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+    if (open) {
+      var signup = ($('email-submit') || {}).textContent !== 'Masuk dengan email';
+      var focus = signup ? $('full-name') : $('email');
+      if (focus && !focus.hidden) focus.focus();
+      else if ($('email')) $('email').focus();
+    }
+  }
   function setAuthMode(mode) {
     var signup = mode !== 'login';
     var student = isStudentGate();
@@ -84,6 +99,7 @@
     var sub = $('auth-subtitle');
     var submit = $('email-submit');
     var google = $('auth-google-label');
+    var emailToggleLabel = $('auth-email-toggle-label');
     var toggle = $('auth-toggle-text');
     var nameLabel = $('name-label');
     var name = $('full-name');
@@ -91,22 +107,28 @@
     if (back) back.hidden = !!student;
     if (title) {
       title.textContent = student
-        ? (signup ? 'Buat akun siswa' : 'Masuk ke kelas')
+        ? (signup ? 'Daftar untuk ikut kelas' : 'Masuk ke kelas')
         : (signup ? 'Buat akun mentor' : 'Masuk sebagai mentor');
     }
     if (sub) {
       sub.textContent = student
-        ? (window.Lms.invite()
-          ? 'Undangan ini membuka kurikulum mentor yang mengundang kamu.'
-          : 'Masuk untuk lanjut ke kelas mentor kamu.')
-        : 'Akun khusus untuk mengajar di halaman ini.';
+        ? (signup
+          ? 'Buat akunmu dulu. Setiap siswa punya login sendiri.'
+          : 'Gunakan akunmu untuk masuk. Setiap siswa punya login sendiri.')
+        : (signup
+          ? 'Buat akun untuk mengajar di halaman ini.'
+          : 'Gunakan akun mentor kamu untuk masuk.');
     }
-    if (submit) submit.textContent = signup ? 'Daftar dengan email' : 'Masuk';
-    if (google) google.textContent = signup ? 'Daftar dengan Google' : 'Masuk dengan Google';
+    if (submit) submit.textContent = signup ? 'Daftar dengan email' : 'Masuk dengan email';
+    if (google) google.textContent = 'Lanjut dengan Google';
+    if (emailToggleLabel) {
+      emailToggleLabel.textContent = signup ? 'Daftar dengan email' : 'Masuk dengan email';
+    }
     if (nameLabel) nameLabel.hidden = !signup;
     if (name) name.hidden = !signup;
     var password = $('password');
     if (password) password.autocomplete = signup ? 'new-password' : 'current-password';
+    setEmailOpen(false);
     if (toggle) {
       toggle.innerHTML = signup
         ? 'Sudah punya akun? <a id="email-mode" role="button" tabindex="0">Masuk</a>'
@@ -120,7 +142,7 @@
     if (!link || link.dataset.bound) return;
     link.dataset.bound = '1';
     link.addEventListener('click', function () {
-      var signup = ($('email-submit') || {}).textContent !== 'Masuk';
+      var signup = ($('email-submit') || {}).textContent !== 'Masuk dengan email';
       setAuthMode(signup ? 'login' : 'signup');
     });
   }
@@ -190,8 +212,6 @@
     if ($('app-name') && org && !$('view-app').hidden) {
       $('app-name').textContent = org;
     }
-    var authBrand = $('auth-brand');
-    if (authBrand && org) authBrand.textContent = title;
   }
   function ensureSchoolPath(slug) {
     var s = String(slug || '').trim();
@@ -1003,6 +1023,12 @@
       authError('');
       show(isStudentGate() ? 'auth' : 'land');
     });
+    if ($('email-toggle')) {
+      $('email-toggle').addEventListener('click', function () {
+        var form = $('email-form');
+        setEmailOpen(!!(form && form.hidden));
+      });
+    }
     $('google-btn').addEventListener('click', function () {
       var name = $('full-name') && !$('full-name').hidden ? $('full-name').value : '';
       window.Lms.setPendingName(name);
@@ -1029,7 +1055,7 @@
     $('email-form').addEventListener('submit', function (event) {
       event.preventDefault();
       authError('');
-      var signup = ($('email-submit') || {}).textContent !== 'Masuk';
+      var signup = ($('email-submit') || {}).textContent !== 'Masuk dengan email';
       var email = $('email').value.trim();
       var password = $('password').value;
       var name = $('full-name').value.trim();
