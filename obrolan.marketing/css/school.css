@@ -2642,17 +2642,28 @@ html[data-mode="mentor"] .main:has(.fub-page) { padding: 0; }
 .fub-name-row {
   display: grid; grid-template-columns: 1fr 1fr; gap: 6px; min-width: 0;
 }
-.fub-iden .name-edit {
+.fub-iden input.name-edit,
+.me-iden input.name-edit {
   font-size: 1rem; font-weight: 750; letter-spacing: -.02em;
   border: 0; background: transparent; color: var(--text); padding: 0;
   min-width: 0; width: 100%; box-sizing: border-box;
 }
-.fub-iden .name-edit:hover,
-.fub-iden .name-edit:focus {
+.fub-iden input.name-edit:hover,
+.fub-iden input.name-edit:focus,
+.me-iden input.name-edit:hover,
+.me-iden input.name-edit:focus {
   border: 1px solid var(--line-2); background: var(--ink-3);
   padding: 2px 6px; border-radius: 6px;
 }
-.fub-photo-btn { margin-top: 4px; width: fit-content; }
+.fub-avatar-edit {
+  display: block; width: fit-content; cursor: pointer; border-radius: 50%;
+  line-height: 0;
+}
+.fub-avatar-edit .avatar { cursor: pointer; }
+.fub-avatar-edit:hover .avatar,
+.fub-avatar-edit:focus-within .avatar {
+  outline: 2px solid var(--line-2); outline-offset: 2px;
+}
 .fub-section {
   margin: 0 0 12px; padding: 10px 0 4px;
   border-top: 1px solid var(--line);
@@ -2720,13 +2731,15 @@ html[data-mode="mentor"] .main:has(.fub-page) { padding: 0; }
 .fub-plat-ico.is-x { color: #f4f4f5; }
 .fub-plat-ico.is-shopee { color: #ee4d2d; }
 .fub-plat-ico.is-tokped { color: #42b549; }
-.fub-plat-ico.is-lazada { color: #0f146d; }
+.fub-plat-ico.is-lazada { color: #f36f21; }
 .fub-plat-ico.is-blibli { color: #0095da; }
 .fub-plat-ico.is-other { color: var(--muted); }
-.fub-plat-ico.is-wa { color: #16a34a; }
-.fub-plat-ico.is-email { color: #2563eb; }
+.fub-plat-ico.is-wa { color: #25d366; }
+.fub-plat-ico.is-email { color: #ea4335; }
+.fub-plat-ico.is-ttshop { color: #f4f4f5; }
 .fub-plat.is-on .fub-plat-ico { color: #fff; }
 html[data-theme="light"] .fub-plat-ico.is-tt,
+html[data-theme="light"] .fub-plat-ico.is-ttshop,
 html[data-theme="light"] .fub-plat-ico.is-x { color: #111; }
 .fub-plat:disabled { opacity: .35; cursor: default; }
 .fub-mid-tabs {
@@ -2777,8 +2790,8 @@ html[data-theme="light"] .fub-plat-ico.is-x { color: #111; }
   width: 22px; display: inline-flex; align-items: center; justify-content: center;
   color: var(--muted); font-size: .85rem; flex: none;
 }
-.fub-ico.is-wa { color: #16a34a; }
-.fub-ico.is-email { color: #2563eb; }
+.fub-ico.is-wa { color: #25d366; }
+.fub-ico.is-email { color: #ea4335; }
 .fub-meta { margin: 0; }
 .fub-field {
   display: grid; grid-template-columns: 84px minmax(0, 1fr);

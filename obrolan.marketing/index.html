@@ -49,6 +49,7 @@
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="Kelas">
   <meta name="twitter:image" content="https://larisid.com/obrolan.marketing/assets/obrolan/logo-mark.png">
+  <link rel="icon" href="/images/brand/appicon-bird-48.png">
   <link rel="apple-touch-icon" href="/obrolan.marketing/assets/obrolan/logo-mark.png">
   <link rel="manifest" href="/obrolan.marketing/manifest.webmanifest">
   <title>Kelas</title>
@@ -90,7 +91,7 @@
         if (apple) apple.setAttribute('content', name.slice(0, 40));
         var appName = document.querySelector('meta[name="application-name"]');
         if (appName) appName.setAttribute('content', name.slice(0, 40));
-        document.title = name;
+        document.title = !name ? 'LMS' : (/^LMS(\s|$)/i.test(name) ? name : ('LMS ' + name));
         setMeta('meta[property="og:title"]', 'content', name);
         setMeta('meta[name="twitter:title"]', 'content', name);
         setMeta('meta[property="og:description"]', 'content', 'Gabung kelas ' + name + ' di LMS.');

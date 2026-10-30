@@ -1426,6 +1426,13 @@
     }
     return '<img class="' + c + '" src="' + esc(SEED.school.photo || SEED.school.logo) + '" alt="">';
   }
+  /** Tab title is "LMS {org}". Homescreen label stays the org name only. */
+  function classTabTitle(name) {
+    const org = String(name || '').trim();
+    if (!org || org === 'Kelas') return 'LMS';
+    if (/^LMS(\s|$)/i.test(org)) return org;
+    return 'LMS ' + org;
+  }
   /** Homescreen label = org (businessName), never a hardcoded Anton short_name. */
   function applyInstallMeta(chromeOrg) {
     const slug = schoolSlug();
@@ -1458,6 +1465,15 @@
     }
     if (apple.getAttribute('href') !== icon) apple.setAttribute('href', icon);
 
+    const bird = '/images/brand/appicon-bird-48.png';
+    let fav = document.querySelector('link[rel="icon"]');
+    if (!fav) {
+      fav = document.createElement('link');
+      fav.rel = 'icon';
+      document.head.appendChild(fav);
+    }
+    if (fav.getAttribute('href') !== bird) fav.setAttribute('href', bird);
+
     let titleMeta = document.querySelector('meta[name="apple-mobile-web-app-title"]');
     if (!titleMeta) {
       titleMeta = document.createElement('meta');
@@ -1472,7 +1488,7 @@
       document.head.appendChild(appName);
     }
     appName.setAttribute('content', name.slice(0, 40));
-    if (name) document.title = name;
+    document.title = classTabTitle(name);
   }
   function paintMeBtn(meBtn) {
     if (!meBtn || isStaff()) return;
@@ -1618,17 +1634,26 @@
     }
     return '';
   }
-  /** Official brand glyphs (Simple Icons paths). */
+  /** Official brand glyphs (Simple Icons paths, 24×24). Tokopedia owl and Lazada L match those marks. */
+  const BRAND_PATHS = {
+    instagram: 'M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z',
+    tiktok: 'M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z',
+    facebook: 'M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z',
+    linkedin: 'M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z',
+    youtube: 'M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z',
+    x: 'M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z',
+    whatsapp: 'M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z',
+    gmail: 'M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z',
+    shopee: 'M15.9414 17.9633c.229-1.879-.981-3.077-4.1758-4.0969-1.548-.528-2.277-1.22-2.26-2.1719.065-1.056 1.048-1.825 2.352-1.85a5.2898 5.2898 0 0 1 2.8838.89c.116.072.197.06.263-.039.09-.145.315-.494.39-.62.051-.081.061-.187-.068-.281-.185-.1369-.704-.4149-.983-.5319a6.4697 6.4697 0 0 0-2.5118-.514c-1.909.008-3.4129 1.215-3.5389 2.826-.082 1.1629.494 2.1078 1.73 2.8278.262.152 1.6799.716 2.2438.892 1.774.552 2.695 1.5419 2.478 2.6969-.197 1.047-1.299 1.7239-2.818 1.7439-1.2039-.046-2.2878-.537-3.1278-1.19l-.141-.11c-.104-.08-.218-.075-.287.03-.05.077-.376.547-.458.67-.077.108-.035.168.045.234.35.293.817.613 1.134.775a6.7097 6.7097 0 0 0 2.8289.727 4.9048 4.9048 0 0 0 2.0759-.354c1.095-.465 1.8029-1.394 1.9449-2.554zM11.9986 1.4009c-2.068 0-3.7539 1.95-3.8329 4.3899h7.6657c-.08-2.44-1.765-4.3899-3.8328-4.3899zm7.8516 22.5981-.08.001-15.7843-.002c-1.074-.04-1.863-.91-1.971-1.991l-.01-.195L1.298 6.2858a.459.459 0 0 1 .45-.494h4.9748C6.8448 2.568 9.1607 0 11.9996 0c2.8388 0 5.1537 2.5689 5.2757 5.7898h4.9678a.459.459 0 0 1 .458.483l-.773 15.5883-.007.131c-.094 1.094-.979 1.9769-2.0709 2.0059z',
+    blibli: 'M5.8018 5.9457c2.4792.2543 4.3228.3814 6.1663.3814l-.89-2.9243a1.0171 1.0171 0 0 0-1.2714-.6357l-3.6235.9536c-.5721.1271-.89.7629-.6357 1.2714l.1907.89zm12.5234 0V3.9114c.0636-.6357-.6357-1.0807-1.2714-.6993l-3.6871 2.4157c-.2543.1272-.445.3814-.5086.6357 1.5257 0 3.1785-.1271 5.467-.3178zm-4.3228-2.0343a1.9707 1.9707 0 1 0-.9536-3.8142 1.9707 1.9707 0 1 0 .9536 3.8142Zm5.1492 2.6067v.0633h-.1266c-3.0514.3178-5.0857.4445-6.9928.4445-2.0343 0-4.0057-.1267-7.1207-.4445h-.0633c-.6357 0-1.0171.3812-.9536 1.0169 1.0172 6.0392 1.0167 9.7901-.509 15.1936C3.1949 23.364 3.7034 24 4.339 24H19.724c.5721 0 1.081-.5726.8902-1.1448a30.1325 30.1325 0 0 1-.509-15.257c.1271-.572-.3179-1.0801-.9536-1.0801Zm-10.298 3.623c.445 0 .7624.3178.7624.6357v.0633c0 .3814-.3173.7003-.7623.7003a.6357.6357 0 0 1-.6357-.7003.6357.6357 0 0 1 .6357-.699zm6.2292 0c.3815 0 .7636.3176.7636.699 0 .3814-.3821.7003-.7636.7003a.6357.6357 0 0 1-.6357-.7636.6357.6357 0 0 1 .6357-.6357Zm-6.6116 2.6061c.3179 0 .5091.2548.5091.5091a2.9243 2.9243 0 0 0 2.9873 2.924c2.2886 0 3.052-1.9704 3.052-2.924 0-.2543.1901-.509.4444-.509s.509.2547.509.509c0 1.2714-.954 3.8142-4.0054 3.8142-2.9878 0-3.9409-2.5428-3.9409-3.8142 0-.2543.1903-.509.4445-.509z',
+    tokopedia: 'M12 1.35c.55.95.35 1.85.12 2.45a7.4 7.4 0 0 1 3.55 1.85c.55-.75 1.35-1.15 2.05-.75.85.5.7 1.65-.05 2.35A8.15 8.15 0 0 1 20.6 14c0 4.7-3.85 8.45-8.6 8.45S3.4 18.7 3.4 14a8.15 8.15 0 0 1 2.93-6.75c-.75-.7-.9-1.85-.05-2.35.7-.4 1.5 0 2.05.75a7.4 7.4 0 0 1 3.55-1.85c-.23-.6-.43-1.5.12-2.45zM8.15 12.05a1.45 1.45 0 1 0 2.9 0 1.45 1.45 0 1 0-2.9 0zM12.95 12.05a1.45 1.45 0 1 0 2.9 0 1.45 1.45 0 1 0-2.9 0zM12 14.85l1.15 1.7h-2.3z',
+    lazada: 'M5.2 3.8c-.9 0-1.6.7-1.6 1.6v10.55c0 1.55 1.25 2.8 2.8 2.8h11.2c.9 0 1.6-.7 1.6-1.6v-2.15c0-.9-.7-1.6-1.6-1.6H9.4V5.4c0-.9-.7-1.6-1.6-1.6H5.2z',
+  };
   function socialIconSvg(key) {
-    const icons = {
-      instagram: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>',
-      tiktok: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>',
-      facebook: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>',
-      linkedin: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>',
-      youtube: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>',
-      x: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg>'
-    };
-    return icons[key] || '';
+    const d = BRAND_PATHS[key];
+    if (!d) return '';
+    const rule = key === 'tokopedia' ? ' fill-rule="evenodd"' : '';
+    return '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path' + rule + ' d="' + d + '"/></svg>';
   }
   function schoolSocialIconsHtml(profile) {
     const s = ((profile || schoolProfile()).socials) || {};
@@ -1768,7 +1793,7 @@
       '</div>' +
       '<section class="card me-card">' +
         '<div class="me-iden">' +
-          avatarHtml(s, 'avatar lg') +
+          personAvatarEdit(s, id) +
           '<div class="me-iden-copy">' +
             '<div class="fub-name-row">' +
               '<input class="inline-edit name-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="firstName" value="' +
@@ -1776,10 +1801,8 @@
               '<input class="inline-edit name-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="lastName" value="' +
                 esc(parts.lastName) + '" placeholder="Nama belakang" autocomplete="family-name">' +
             '</div>' +
-            '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="city" value="' +
+            '<input class="inline-edit name-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="city" value="' +
               esc(s.city || '') + '" placeholder="Kota">' +
-            '<label class="btn-sm fub-photo-btn">Unggah foto<input type="file" hidden data-act="photo-file" data-id="' +
-              esc(id) + '" accept="image/*"></label>' +
           '</div>' +
         '</div>' +
         '<label class="ps-field"><span class="ps-label">Bio</span>' +
@@ -7274,28 +7297,47 @@
     const cls = (opts && opts.cls) || 'fub-plat-ico';
     return '<svg class="' + cls + '" width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="' + fill + '" aria-hidden="true">' + path + '</svg>';
   }
+  function brandIco(key, size, extraCls) {
+    const d = BRAND_PATHS[key];
+    if (!d) return '';
+    const rule = key === 'tokopedia' ? ' fill-rule="evenodd"' : '';
+    return icoSvg('<path' + rule + ' d="' + d + '"/>', {
+      size: size,
+      cls: 'fub-plat-ico ' + (extraCls || '')
+    });
+  }
+  function tiktokShopIcon(size) {
+    const d = BRAND_PATHS.tiktok || '';
+    return '<svg class="fub-plat-ico is-ttshop" width="' + size + '" height="' + size + '" viewBox="0 0 24 24" aria-hidden="true">' +
+      '<g transform="translate(0,0.35) scale(0.68)" fill="currentColor"><path d="' + d + '"/></g>' +
+      '<path fill="currentColor" d="M14.15 13.35h8.15l-.85 7.7H15z"/>' +
+      '<path fill="none" stroke="currentColor" stroke-width="1.2" d="M16.15 13.35a2.05 2.05 0 0 1 4.1 0"/>' +
+    '</svg>';
+  }
   function platIcon(platform, size) {
     const s = size || 16;
-    const map = {
-      instagram: icoSvg('<path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm5 5.2A4.8 4.8 0 1 0 16.8 12 4.8 4.8 0 0 0 12 7.2zm0 7.7A2.9 2.9 0 1 1 14.9 12 2.9 2.9 0 0 1 12 14.9zM17.7 6a1.1 1.1 0 1 0 1.1 1.1A1.1 1.1 0 0 0 17.7 6z"/>', { size: s, cls: 'fub-plat-ico is-ig' }),
-      tiktok: icoSvg('<path d="M14.5 3h2.2a5.4 5.4 0 0 0 3.3 3.1v2.3a7.5 7.5 0 0 1-3.3-1v6.4a5.8 5.8 0 1 1-5.8-5.8c.3 0 .6 0 .9.1v2.5a3.3 3.3 0 1 0 2.4 3.2V3z"/>', { size: s, cls: 'fub-plat-ico is-tt' }),
-      youtube: icoSvg('<path d="M23 12.2s0-3.4-.4-5a2.9 2.9 0 0 0-2-2C18.7 4.7 12 4.7 12 4.7s-6.7 0-8.6.5a2.9 2.9 0 0 0-2 2c-.4 1.6-.4 5-.4 5s0 3.4.4 5a2.9 2.9 0 0 0 2 2c1.9.5 8.6.5 8.6.5s6.7 0 8.6-.5a2.9 2.9 0 0 0 2-2c.4-1.6.4-5 .4-5zM9.8 15.5V8.9l6.3 3.3z"/>', { size: s, cls: 'fub-plat-ico is-yt' }),
-      facebook: icoSvg('<path d="M14 9h3V6h-3c-2.2 0-4 1.8-4 4v2H7v3h3v7h3v-7h3.1l.9-3H13v-2c0-.6.4-1 1-1z"/>', { size: s, cls: 'fub-plat-ico is-fb' }),
-      x: icoSvg('<path d="M4 4h4.2l4.1 5.6L16.8 4H20l-6.1 7.2L20.5 20h-4.2l-4.5-6.1L7.2 20H4l6.5-7.6z"/>', { size: s, cls: 'fub-plat-ico is-x' }),
-      tiktok_shop: icoSvg('<path d="M14.5 3h2.2a5.4 5.4 0 0 0 3.3 3.1v2.3a7.5 7.5 0 0 1-3.3-1v6.4a5.8 5.8 0 1 1-5.8-5.8c.3 0 .6 0 .9.1v2.5a3.3 3.3 0 1 0 2.4 3.2V3z"/>', { size: s, cls: 'fub-plat-ico is-tt' }),
-      shopee: icoSvg('<path d="M6 8h12l1 13H5L6 8zm2.2-3.2A3.8 3.8 0 0 1 12 3a3.8 3.8 0 0 1 3.8 1.8L14.5 6A2 2 0 0 0 12 4.8 2 2 0 0 0 9.5 6z"/>', { size: s, cls: 'fub-plat-ico is-shopee' }),
-      tokopedia: icoSvg('<path d="M12 2 3 7v10l9 5 9-5V7zm0 3.2 5.5 3-5.5 3-5.5-3z"/>', { size: s, cls: 'fub-plat-ico is-tokped' }),
-      lazada: icoSvg('<path d="M4 5h16v3.2H8.5L19 19h-3.8L5.5 8.8V19H4z"/>', { size: s, cls: 'fub-plat-ico is-lazada' }),
-      blibli: icoSvg('<path d="M5 5h6.5a4.5 4.5 0 0 1 0 9H8v5H5zm3 3v3h3.3a1.5 1.5 0 0 0 0-3zM14 10h5v3h-2.2L19 19h-3.3l-2.1-6H14z"/>', { size: s, cls: 'fub-plat-ico is-blibli' }),
-      other: icoSvg('<path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 15h-2v-2h2zm0-4h-2V7h2z"/>', { size: s, cls: 'fub-plat-ico is-other' })
+    const cls = {
+      instagram: 'is-ig',
+      tiktok: 'is-tt',
+      youtube: 'is-yt',
+      facebook: 'is-fb',
+      x: 'is-x',
+      shopee: 'is-shopee',
+      tokopedia: 'is-tokped',
+      lazada: 'is-lazada',
+      blibli: 'is-blibli'
     };
-    return map[platform] || map.other;
+    if (platform === 'tiktok_shop') return tiktokShopIcon(s);
+    if (!BRAND_PATHS[platform]) {
+      return icoSvg('<path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 15h-2v-2h2zm0-4h-2V7h2z"/>', { size: s, cls: 'fub-plat-ico is-other' });
+    }
+    return brandIco(platform, s, cls[platform] || 'is-other');
   }
   function waIconSvg(size) {
-    return icoSvg('<path d="M17.5 14.4c-.3-.1-1.8-.9-2-.9s-.5-.1-.7.2-.8 1-.9 1.1-.3.2-.6.1a8 8 0 0 1-2.4-1.5 8.9 8.9 0 0 1-1.6-2c-.2-.3 0-.5.1-.6l.5-.5.3-.5c.1-.2 0-.4 0-.5s-.7-1.6-.9-2.2-.5-.5-.7-.5h-.6a1.5 1.5 0 0 0-1.1.5 4.5 4.5 0 0 0-1.4 3.3 7.8 7.8 0 0 0 1.7 4.1 17.8 17.8 0 0 0 6.8 6c.9.4 1.7.6 2.3.8a4 4 0 0 0 1.9.1 3.4 3.4 0 0 0 2.2-1.6 2.8 2.8 0 0 0 .2-1.6c-.1-.1-.3-.2-.6-.3zM12 21.8h0a9.9 9.9 0 0 1-5-.1l-.4-.2-3.7 1 1-3.6-.2-.4A9.9 9.9 0 1 1 12 21.8z"/>', { size: size || 16, cls: 'fub-plat-ico is-wa', fill: 'currentColor' });
+    return brandIco('whatsapp', size || 16, 'is-wa');
   }
   function emailIconSvg(size) {
-    return icoSvg('<path d="M3 5h18a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zm0 2.3 9 5.7 9-5.7V7L12 12.7 3 7z"/>', { size: size || 16, cls: 'fub-plat-ico is-email', fill: 'currentColor' });
+    return brandIco('gmail', size || 16, 'is-email');
   }
   function payKindLabel(kind) {
     return { mentoring: 'Mentoring', renewal: 'Perpanjang', sku: 'SKU' }[kind] || (kind || 'Bayar');
@@ -7597,6 +7639,14 @@
     if (s && s.photoUrl) return '<img class="' + c + '" src="' + esc(s.photoUrl) + '" alt="">';
     if (s && s.photoBlob) return '<img class="' + c + '" data-blob="' + esc(photoKey(s.id)) + '" alt="">';
     return '<span class="' + c + ' avatar-fallback" aria-hidden="true">' + esc(initialsOf(displayNameOf(s) || (s && s.name))) + '</span>';
+  }
+  function personAvatarEdit(s, id) {
+    const face = avatarHtml(s, 'avatar lg');
+    if (!canEditPerson(id)) return face;
+    return '<label class="fub-avatar-edit" title="Ganti foto">' +
+      face +
+      '<input type="file" hidden data-act="photo-file" data-id="' + esc(id) + '" accept="image/*">' +
+    '</label>';
   }
   function fmtPhone(wa) {
     const d = String(wa || '').replace(/\D/g, '');
@@ -8349,7 +8399,7 @@
     $('app').classList.toggle('is-otomasi', isStaff() && ui.mentorTab === 'otomasi');
     const chromeOrg = (db && db.businessName) || (antonSchoolData() ? SEED.school.name : 'Kelas');
     $('school-name').textContent = chromeOrg;
-    if (chromeOrg) document.title = chromeOrg;
+    document.title = classTabTitle(chromeOrg);
     const logo = $('school-logo');
     if (logo) {
       const brandBtn = logo.parentElement;
@@ -12998,7 +13048,7 @@
     const left =
       '<aside class="fub-left">' +
         '<div class="fub-iden">' +
-          avatarHtml(s, 'avatar lg') +
+          personAvatarEdit(s, id) +
           '<div class="fub-iden-copy">' +
             '<div class="fub-name-row">' +
               '<input class="inline-edit name-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="firstName" value="' +
@@ -13006,8 +13056,7 @@
               '<input class="inline-edit name-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="lastName" value="' +
                 esc(nameParts.lastName) + '" placeholder="Nama belakang" autocomplete="family-name">' +
             '</div>' +
-            '<input class="inline-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="city" value="' + esc(s.city || '') + '" placeholder="Kota">' +
-            '<label class="btn-sm fub-photo-btn">Unggah foto<input type="file" hidden data-act="photo-file" data-id="' + esc(id) + '" accept="image/*"></label>' +
+            '<input class="inline-edit name-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="city" value="' + esc(s.city || '') + '" placeholder="Kota">' +
           '</div>' +
         '</div>' +
         '<div class="fub-contact">' +
@@ -13024,7 +13073,7 @@
             '<input class="inline-edit ghost-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="email" type="email" value="' + esc(s.email || '') + '" placeholder="email" title="Klik untuk edit email">' +
             (s.email
               ? '<a class="fub-cell-link fub-ico-link" href="' + esc(mailLink(s.email, schoolMailSubject(), schoolGreeting(fullName))) +
-                '" title="Buka Email" aria-label="Buka Email">' + emailIconSvg(16) + '</a>'
+                '" title="Buka Gmail" aria-label="Buka Gmail">' + emailIconSvg(16) + '</a>'
               : '') +
           '</div>' +
         '</div>' +
