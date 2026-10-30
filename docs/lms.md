@@ -53,7 +53,8 @@ Do not revive `js/lms-join.js` or public invite-code file downloads as the share
 - Profile picture tab: cover banner can be panned (object-position) after upload.
 - Social icons use official brand glyphs (Simple Icons paths).
 - Top-left chrome is one circle: the school profile photo when it loads, otherwise initials. `[hidden]` on `.brand img` and `.brand-fallback` is `display: none`. No second initials badge and no seed mark beside that circle.
-- **Perpustakaan** is per-school catalog — never falls back to another coach’s lynk/photo.
+- **Perpustakaan** is per-school catalog — never falls back to another coach’s lynk/photo. New schools (and existing non-Anton schools on next state load) auto-receive the platform **TikTok Seller Profit Calculator** (`calc`) in `catalog` so mentors can grant it under student SKU checkboxes. Other Anton lynk SKUs stay Anton-only unless the mentor adds their own.
+- **Platform calc**: engine in `obrolan.marketing/js/calc-engine.js`, fee table in `obrolan.marketing/data/tiktok-kategori-fees.json`. Seeded via `SEED.platformCatalog` (client) and `platformCalcSku()` in `obrolan.marketing/server/server.mjs` on claim / state GET·PUT.
 - **Kurikulum** (mentor): landing shows the whole curriculum overview; click a materi to edit that module, or “Atur kurikulum” for the wizard.
 - **Otomasi**: left column lists every automation (name, hook, step count); the builder stays open on the right. Archived rows show only while “Lihat arsip” is on. Perpanjangan settings sit under the list. Automation copy is per mentor. Other schools use `{mentor}` and `{org}` (`Halo {name}, ini {mentor} dari {org}.`). The founding tenant may keep its own seed text. Do not copy founding-tenant seed phrases onto another coach.
 - **Assigned** on a student profile is this mentor plus admins they added (`staffAdmins`, not revoked). It does not list pipeline “Mentor” students or seed staff from another school.

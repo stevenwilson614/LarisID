@@ -88,6 +88,25 @@ window.ANTON_SEED = {
     url: 'https://www.tiktok.com/@bule_barat',
     name: 'Steven'
   },
+  /* Auto-seeded into every new LMS school (not Anton’s full lynk catalog). */
+  platformCatalog: [
+    {
+      id: 'calc',
+      group: 'alat',
+      kind: 'tool',
+      title: 'TikTok Seller Profit Calculator',
+      job: 'Set harga, cek margin, dan simulasi laba rugi. Tarif kategori TikTok.',
+      price: 0,
+      coret: 0,
+      lynk: '',
+      cover: './assets/obrolan/cover-calc.webp',
+      sheet: './assets/obrolan/calc-sheet.png',
+      iframe: './tools/harga.html',
+      example: false,
+      includedInMentoring: true,
+      platform: true
+    }
+  ],
   catalog: [
     {
       id: 'calc',

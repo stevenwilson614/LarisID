@@ -220,6 +220,35 @@ function derivedInvite(state, slug) {
   return inviteFromLabel((state && state.schoolSlug) || slug || '');
 }
 
+/** Platform Alat shipped to every new LMS school (not Anton’s lynk catalog). */
+function platformCalcSku() {
+  return {
+    id: 'calc',
+    group: 'alat',
+    kind: 'tool',
+    title: 'TikTok Seller Profit Calculator',
+    job: 'Set harga, cek margin, dan simulasi laba rugi. Tarif kategori TikTok.',
+    price: 0,
+    coret: 0,
+    lynk: '',
+    cover: './assets/obrolan/cover-calc.webp',
+    sheet: './assets/obrolan/calc-sheet.png',
+    iframe: './tools/harga.html',
+    example: false,
+    includedInMentoring: true,
+    platform: true
+  };
+}
+
+/** Ensure platform tools exist on non-Anton schools. Returns true if catalog changed. */
+function ensurePlatformCatalog(state, slug) {
+  if (!state || typeof state !== 'object' || slug === ANTON_SLUG) return false;
+  if (!Array.isArray(state.catalog)) state.catalog = [];
+  if (state.catalog.some((p) => p && p.id === 'calc')) return false;
+  state.catalog.push(platformCalcSku());
+  return true;
+}
+
 function emptySchool(slug, user, body, photoUrl) {
   const ownerId = 'u-' + String(user.id).replace(/[^a-zA-Z0-9]/g, '').slice(0, 16);
   const socials = cleanSocials(body.socials);
@@ -246,7 +275,7 @@ function emptySchool(slug, user, body, photoUrl) {
         socials: socials
       },
       lectures: [],
-      catalog: [],
+      catalog: [platformCalcSku()],
       weeks: [],
       sessions: [],
       pricing: {},
@@ -2617,6 +2646,11 @@ const server = http.createServer((req, res) => {
           const updatedAt = rec && rec.updatedAt || null;
           const rev = rec && rec.rev || 0;
           const raw = rec && rec.state;
+          if (raw && ensurePlatformCatalog(raw, slug)) {
+            rec.rev = (Number(rec.rev) || 0) + 1;
+            rec.updatedAt = new Date().toISOString();
+            writeState(rec, slug);
+          }
           let state;
           if (staff) {
             if (user && raw && applyOwnerEmail(raw, user)) {
@@ -2686,6 +2720,7 @@ const server = http.createServer((req, res) => {
               keepServerInvite(rec.state, nextState, slug);
             }
             if (staff && user) applyOwnerEmail(nextState, user);
+            ensurePlatformCatalog(nextState, slug);
           }
         } else {
           const base = (rec && rec.state) || {};

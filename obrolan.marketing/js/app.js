@@ -97,6 +97,38 @@
     if (PATH_SLUG === 'obrolan.marketing') return true;
     return isLocalHost() && PRESENT_QS.get('demo') === '1';
   }
+  /** Platform Alat auto-seeded for every new LMS school (not Anton’s full lynk catalog). */
+  function platformCatalogDefaults() {
+    const rows = Array.isArray(SEED.platformCatalog) ? SEED.platformCatalog : [];
+    if (rows.length) {
+      return rows.map((p) => ({ ...p, outline: (p.outline || []).slice() }));
+    }
+    const calc = (SEED.catalog || []).find((p) => p && p.id === 'calc');
+    if (!calc) return [];
+    return [{
+      ...calc,
+      price: 0,
+      coret: 0,
+      lynk: '',
+      example: false,
+      includedInMentoring: true,
+      platform: true,
+      outline: (calc.outline || []).slice()
+    }];
+  }
+  /** Insert missing platform tools. Returns true if catalog changed. */
+  function ensurePlatformCatalog(state) {
+    if (!state || antonSchoolData()) return false;
+    if (!Array.isArray(state.catalog)) state.catalog = [];
+    let changed = false;
+    platformCatalogDefaults().forEach((p) => {
+      if (!p || !p.id) return;
+      if (state.catalog.some((x) => x && x.id === p.id)) return;
+      state.catalog.push({ ...p, outline: (p.outline || []).slice() });
+      changed = true;
+    });
+    return changed;
+  }
   function pathSlug() {
     if (onMentorPath()) return 'obrolan.marketing';
     const m = cleanPath().match(/^\/s\/([^/]+)$/i);
@@ -2578,7 +2610,9 @@
     const anton = antonSchoolData();
     const state = {
       lectures: anton ? cloneLectures() : [],
-      catalog: anton ? SEED.catalog.map((p) => ({ ...p, outline: (p.outline || []).slice() })) : [],
+      catalog: anton
+        ? SEED.catalog.map((p) => ({ ...p, outline: (p.outline || []).slice() }))
+        : platformCatalogDefaults(),
       weeks: anton ? SEED.weeks.map((w) => ({ ...w })) : [],
       sessions: anton ? SEED.sessions.map((s) => ({ ...s })) : [],
       billing: demo ? JSON.parse(JSON.stringify(SEED.billing)) : {},
@@ -2740,6 +2774,7 @@
       const merged = Object.assign(defaultState(), JSON.parse(raw));
       if (!antonSchoolData()) {
         merged.catalog = Array.isArray(merged.catalog) ? merged.catalog : [];
+        ensurePlatformCatalog(merged);
         hydrateCurriculum(merged);
         hydrateFunnel(merged);
         if (!Array.isArray(merged.directory)) merged.directory = [];
@@ -2930,6 +2965,7 @@
   function isSiswaReadonly() { return !!SISWA_READONLY || !!ui.siswaReadonly; }
 
   function save() {
+    ensurePlatformCatalog(db);
     const copy = { ...db, kolab: db.kolab };
     localStorage.setItem(KEY, JSON.stringify(copy));
     if (ui.presentApplying || ui.reloading) return;
@@ -13295,7 +13331,7 @@
           '<p class="muted" style="margin:6px 0 0">' +
             (anton
               ? 'Produk lynk kelas ini. Toggle Contoh → File Anton setelah dia isi.'
-              : 'Produk milik kelas ini saja. Tambah tautan / cover sendiri — bukan katalog Anton.') +
+              : 'Produk kelas ini. Kalkulator harga sudah termasuk — centang SKU di profil siswa untuk memberi akses. Tambah alat lain sendiri.') +
           '</p></div>' +
         (canAdd
           ? '<button type="button" class="btn' + (addOpen ? ' secondary' : '') + '" data-act="pustaka-add-toggle">' +
@@ -18313,6 +18349,7 @@
       const forceStudent = presentStudent || (vanity && !admin);
       if (!presentStudent && !admin) await bootSession();
       await bootSync();
+      if ((ui.admin || ui.staffId) && ensurePlatformCatalog(db)) save();
       if (!ui.admin && !ui.staffId && !ui.sessionStudentId) {
         if (syncEnabled() && !ui.present) {
           ui.role = 'student';
