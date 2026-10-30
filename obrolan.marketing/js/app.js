@@ -3019,6 +3019,8 @@
   let syncTimer = null;
   let syncPoll = null;
   let syncInFlight = false;
+  let syncPullQueued = false;
+  let syncPullInFlight = false;
   let syncReady = false;
   let syncStatus = '';
   const pendingDiskusi = { posts: new Map(), comments: new Map(), chats: new Map() };
@@ -3141,7 +3143,7 @@
       if (res.status === 409) {
         syncStatus = 'revisi lama';
         syncInFlight = false;
-        await pullState();
+        await pullState(true);
         reapplyPendingDiskusi();
         return false;
       }
@@ -3163,11 +3165,25 @@
       syncStatus = 'offline';
     } finally {
       syncInFlight = false;
+      if (syncPullQueued) {
+        syncPullQueued = false;
+        pullState(true);
+      }
     }
     return ok;
   }
   async function pullState(force) {
-    if (!syncEnabled() || syncInFlight) return;
+    if (!syncEnabled()) return;
+    /* Don't drop mentor roster polls while a PUT is in flight — queue one. */
+    if (syncInFlight) {
+      syncPullQueued = true;
+      return;
+    }
+    if (syncPullInFlight) {
+      if (force) syncPullQueued = true;
+      return;
+    }
+    syncPullInFlight = true;
     try {
       const res = await fetch(syncUrl() + (!force && syncRev ? ('&rev=' + encodeURIComponent(syncRev)) : ''), { headers: lmsHeaders(), cache: 'no-store' });
       if (res.status === 404) return;
@@ -3190,19 +3206,40 @@
       reloadDb();
     } catch (err) {
       syncStatus = 'offline';
+    } finally {
+      syncPullInFlight = false;
+      if (syncPullQueued && !syncInFlight) {
+        syncPullQueued = false;
+        pullState(true);
+      }
     }
+  }
+  let syncPollCadence = 0;
+  function syncPollMs() {
+    /* Staff on Siswa need new joins quickly; 4s felt like “never until refresh”. */
+    if (isStaff() && normalizeMentorTab(ui.mentorTab) === 'siswa') return 2000;
+    return 4000;
+  }
+  function ensureSyncPoll() {
+    if (!syncEnabled() || !syncReady) return;
+    const ms = syncPollMs();
+    if (syncPoll && syncPollCadence === ms) return;
+    if (syncPoll) clearInterval(syncPoll);
+    syncPollCadence = ms;
+    syncPoll = setInterval(() => {
+      if (document.visibilityState === 'hidden') return;
+      pullState();
+      /* Cadence can change when mentor opens Siswa — retune without waiting. */
+      ensureSyncPoll();
+    }, ms);
   }
   async function bootSync() {
     if (!syncEnabled()) return;
     await pullState(true);
     syncReady = true;
-    if (syncPoll) clearInterval(syncPoll);
-    syncPoll = setInterval(() => {
-      if (document.visibilityState === 'hidden') return;
-      pullState();
-    }, 4000);
+    ensureSyncPoll();
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') pullState();
+      if (document.visibilityState === 'visible') pullState(true);
     });
   }
 
@@ -5544,10 +5581,10 @@
     return headers;
   }
   async function claimStudentRecord(profile) {
-    const held = ui.sessionStudentId || ui.personaId;
-    if (ui.studentAuthed && /^(stu_|live-)/.test(String(held || ''))) {
-      return { studentId: held };
-    }
+    /* Always POST /join on form finish — even when already signed in — so
+       applications + crm land on disk immediately for mentor daftar/pipa.
+       Skipping left roster updates to a later student PUT that mentors often
+       missed until a full refresh. */
     const res = await fetch(apiBase() + '/join', {
       method: 'POST',
       headers: lmsHeaders(),
@@ -8766,6 +8803,7 @@
     if (isStaff()) {
       const tab = normalizeMentorTab(ui.mentorTab);
       ui.mentorTab = tab;
+      ensureSyncPoll();
       if (tab === 'dash') main.innerHTML = viewDashboard();
       else if (tab === 'siswa') main.innerHTML = viewSiswaHub();
       else if (tab === 'orang') main.innerHTML = viewPerson(ui.personId);
@@ -16083,6 +16121,10 @@
           ui.pustakaAddOpen = false;
           ui.pustakaEditId = '';
           ui.pustakaPending = null;
+        }
+        if (id === 'siswa' || id === 'crm' || id === 'bayar' || id === 'progres') {
+          ensureSyncPoll();
+          pullState(true);
         }
         if (id === 'harga') refreshMayarStatus().then(() => { if (ui.mentorTab === 'harga') render(); });
         if (id === 'admin') {

@@ -2614,10 +2614,23 @@ const server = http.createServer((req, res) => {
       if (!rec.state || typeof rec.state !== 'object') rec.state = {};
       stripDemoPeople(rec.state);
       const state = rec.state;
-      let row = findByWa(state, wa);
+      const user = await supabaseUser(req);
+      const cookieId = readStudentCookie(req);
+      /* Prefer the signed-in / cookie row so a finished wizard never mints a
+         second stu_… when WA was blank on POST /session. */
+      let row = null;
+      if (cookieId && lookupPerson(state, cookieId) && !isMentorRow(state, cookieId, {})) {
+        const live = (state.liveStudents || []).find((s) => s && s.id === cookieId) || {};
+        const person = (state.people && state.people[cookieId]) || {};
+        row = Object.assign({ id: cookieId }, person, live);
+      }
+      if (!row && user && user.id) {
+        const byAuth = findByAuthUser(state, user.id);
+        if (byAuth && !isMentorRow(state, byAuth.id, byAuth)) row = byAuth;
+      }
+      if (!row) row = findByWa(state, wa);
       let created = false;
       if (!row) {
-        const user = await supabaseUser(req);
         const staff = isStaffFor(req, q, slug, user);
         if (!staff && !inviteAccepted(rec, bodyInvite(body, q), slug)) {
           json(res, 403, { error: 'invite' });
@@ -2635,6 +2648,7 @@ const server = http.createServer((req, res) => {
         const live = (state.liveStudents || []).find((s) => s && s.id === row.id);
         row = Object.assign({}, live || {}, row);
       }
+      if (user && user.id && !row.authUserId) row.authUserId = user.id;
       applyJoinProfile(row, body);
       if (!row.mentorId) row.mentorId = state.ownerId || '';
       if (row.kind !== 'mentor') row.kind = 'student';
