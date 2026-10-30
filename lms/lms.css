@@ -25,6 +25,14 @@ body {
 }
 img { max-width: 100%; }
 button, a { font: inherit; }
+.lms-stage-banner { display: none; }
+html[data-lms-stage="1"] .lms-stage-banner {
+  display: flex; align-items: center; justify-content: center;
+  position: sticky; top: 0; z-index: 60;
+  min-height: 34px; padding: 6px 14px;
+  background: #9a3412; color: #fff; text-align: center;
+  font-size: .78rem; font-weight: 700; letter-spacing: .01em;
+}
 .nav {
   display: flex;
   align-items: center;

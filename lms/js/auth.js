@@ -143,6 +143,7 @@
   function siteOrigin() {
     var host = String(location.hostname || '');
     if (host === 'localhost' || host === '127.0.0.1') return location.origin;
+    if (host === 'stage.larisid.com') return 'https://stage.larisid.com';
     return 'https://larisid.com';
   }
 
@@ -165,10 +166,10 @@
     redirectTo: function () { return siteOrigin() + redirectPath(); },
     /* Share URL hits the OG card so WhatsApp/iMessage see mentor title + photo. */
     inviteShareUrl: function (token) {
-      return 'https://larisid.com/lms/card/?invite=' + encodeURIComponent(token || '');
+      return siteOrigin() + '/lms/card/?invite=' + encodeURIComponent(token || '');
     },
     schoolUrl: function (slug) {
-      return 'https://larisid.com' + schoolPath(slug);
+      return siteOrigin() + schoolPath(slug);
     },
     errorText: errorText,
     mfaRequired: mfaRequired,

@@ -23,3 +23,14 @@ Keep these when pointing at code or Contabo services — do not use them as the 
 - Founding tenant slug: `obrolan.marketing` (one school among many)
 
 Belajar and LarisRise are separate products — do not fold them into LMS.
+
+## Staging
+
+`https://stage.larisid.com` is a separate static tree and disk (`anton-school-stage`). It does not share production kurikulum or students.
+
+```bash
+bash scripts/deploy-static-stage.sh
+bash scripts/deploy-school-api-stage.sh
+```
+
+`main` CI deploys production only. Try a tab or button on stage, then `bash scripts/deploy-static.sh`. School JSON backups are `state/{slug}.json.bak.1` (newest) through `.bak.5` on that environment’s volume. Details: [docs/lms.md](../../docs/lms.md).

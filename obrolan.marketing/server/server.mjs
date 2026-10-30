@@ -445,8 +445,26 @@ function readState(slug) {
   }
 }
 
+const STATE_BAK_KEEP = 5;
+
+/** Keep the previous school file as `{slug}.json.bak.1` (newest) through `.bak.5`. */
+function rotateStateBackup(file) {
+  if (!file || !fs.existsSync(file)) return;
+  const oldest = file + '.bak.' + STATE_BAK_KEEP;
+  if (fs.existsSync(oldest)) fs.unlinkSync(oldest);
+  for (let i = STATE_BAK_KEEP - 1; i >= 1; i--) {
+    const src = file + '.bak.' + i;
+    if (!fs.existsSync(src)) continue;
+    fs.renameSync(src, file + '.bak.' + (i + 1));
+  }
+  fs.copyFileSync(file, file + '.bak.1');
+}
+
 function writeState(rec, slug) {
   const file = statePath(slug);
+  try { rotateStateBackup(file); } catch (err) {
+    console.warn('state-backup ' + (slug || '') + ' ' + (err && err.message ? err.message : 'fail'));
+  }
   const tmp = file + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify(rec));
   fs.renameSync(tmp, file);
@@ -1963,6 +1981,41 @@ function preserveJoinedRoster(prev, next) {
   return out;
 }
 
+function kurikulumFilled(kur) {
+  if (!kur || typeof kur !== 'object' || Array.isArray(kur)) return false;
+  if (String(kur.name || '').trim()) return true;
+  if (String(kur.description || '').trim()) return true;
+  if (String(kur.coverUrl || '').trim() || String(kur.coverKey || '').trim()) return true;
+  if (kur.coverBlob === true) return true;
+  return false;
+}
+
+/** A staff save that drops the outline (empty or missing lectures/weeks) or
+ *  an empty kurikulum object keeps the disk copy. Explicit body.reset skips this. */
+function preserveCurriculumOutline(prev, next, slug) {
+  const base = prev && typeof prev === 'object' ? prev : {};
+  const out = next && typeof next === 'object' ? next : {};
+  const prevLectures = Array.isArray(base.lectures) ? base.lectures.length : 0;
+  const prevWeeks = Array.isArray(base.weeks) ? base.weeks.length : 0;
+  const wipeLectures = prevLectures > 0 && (!Array.isArray(out.lectures) || out.lectures.length === 0);
+  const wipeWeeks = prevWeeks > 0 && (!Array.isArray(out.weeks) || out.weeks.length === 0);
+  let kept = false;
+  if (wipeLectures || wipeWeeks) {
+    if (wipeLectures) out.lectures = base.lectures;
+    if (wipeWeeks) out.weeks = base.weeks;
+    if (base.kurikulum && typeof base.kurikulum === 'object') out.kurikulum = base.kurikulum;
+    kept = true;
+  }
+  const nextKur = out.kurikulum;
+  const nextEmpty = !nextKur || typeof nextKur !== 'object' || Array.isArray(nextKur) || !kurikulumFilled(nextKur);
+  if (kurikulumFilled(base.kurikulum) && nextEmpty) {
+    out.kurikulum = base.kurikulum;
+    kept = true;
+  }
+  if (kept) console.warn('preserve-curriculum ' + (slug || '') + ' kept disk outline');
+  return out;
+}
+
 function upsertJoined(state, row) {
   state.liveStudents = Array.isArray(state.liveStudents) ? state.liveStudents : [];
   const i = state.liveStudents.findIndex((s) => s && s.id === row.id);
@@ -2796,6 +2849,7 @@ const server = http.createServer((req, res) => {
                Keep disk students the client omitted unless this is an explicit reset. */
             if (!(body && body.reset === true) && rec && rec.state) {
               nextState = preserveJoinedRoster(rec.state, nextState);
+              nextState = preserveCurriculumOutline(rec.state, nextState, slug);
               keepServerInvite(rec.state, nextState, slug);
             }
             if (staff && user) applyOwnerEmail(nextState, user);

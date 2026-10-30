@@ -21,4 +21,7 @@ Before changing LMS landing, auth, class UI, school API, or `lms_*` schema, read
 - Disk is class source of truth (kurikulum, roster, video). Postgres `lms_*` is auth, org name, and slug.
 - SQL on Contabo: `bash scripts/apply-selfhost.sh supabase/migrations/…` — never `supabase db push --linked`.
 - Static + class UI: `bash scripts/deploy-static.sh`. Class API: `bash scripts/deploy-school-api.sh`.
+- Staging (separate disk): `bash scripts/deploy-static-stage.sh` and `bash scripts/deploy-school-api-stage.sh` → `https://stage.larisid.com`. Do not copy production `{slug}.json` or media into the stage volume. `main` CI does not deploy staging.
+- A left-rail tab is UI-only. Kurikulum on disk stays `weeks` + `lectures` + `kurikulum` meta.
+- School JSON: `state/{slug}.json.bak.1` (newest) through `.bak.5`. Copy a bak over `{slug}.json` to restore; no API restart.
 - Belajar and LarisRise stay separate.
