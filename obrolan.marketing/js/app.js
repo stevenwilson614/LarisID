@@ -777,13 +777,16 @@
     const kurBase = defaultKurikulumMeta(antonSchoolData());
     const kurCur = (merged.kurikulum && typeof merged.kurikulum === 'object' && !Array.isArray(merged.kurikulum))
       ? merged.kurikulum : {};
-    merged.kurikulum = {
+    /* Keep coverUrl / coverKey / coverBlob / minPct. Rebuilding only
+       name+description+published used to strip them, then the next mentor
+       save wrote that strip back to disk. */
+    merged.kurikulum = Object.assign({}, kurBase, kurCur, {
       name: String(kurCur.name != null ? kurCur.name : (merged.businessName || kurBase.name || '')),
       description: String(kurCur.description != null ? kurCur.description : kurBase.description || ''),
       published: typeof kurCur.published === 'boolean'
         ? kurCur.published
         : (kurBase.published || !!(merged.lectures && merged.lectures.length))
-    };
+    });
     merged.accountSettings = Object.assign(defaultAccountSettings(), merged.accountSettings || {}, {
       notifications: Object.assign(defaultAccountSettings().notifications, ((merged.accountSettings || {}).notifications || {}))
     });
@@ -3764,11 +3767,14 @@
   }
   function markStaff(row) {
     ui.admin = false;
+    ui.coach = false;
     ui.role = 'asisten';
     ui.staffId = row.id;
     ui.staffName = row.name || '';
     ui.staffPerms = Object.assign(defaultStaffPerms(), row.permissions || {});
     ui.visitorLive = false;
+    ui.studentAuthed = false;
+    ui.sessionStudentId = '';
     if (!ui.mentorTab || ui.mentorTab === 'profil' || ui.mentorTab === 'account') ui.mentorTab = 'dash';
   }
   // Flip true when billing settings UI is ready for owners again.
@@ -8404,7 +8410,8 @@
   function fillChrome() {
     runAutomations();
     if (ui.present) ui.role = ui.presentPane === 'mentor' ? 'owner' : 'student';
-    if (onStudentVanityPath() && !ui.coach && !ui.admin) {
+    /* /s/{slug}/ hosts mentor + admin chrome too. Do not demote asisten/owner. */
+    if (onStudentVanityPath() && !ui.coach && !ui.admin && ui.role !== 'asisten' && !ui.staffId) {
       ui.role = 'student';
       ui.admin = false;
     }
@@ -18996,7 +19003,7 @@
     ui.visitorLive = false;
   }
   async function claimStaff() {
-    if (onStudentVanityPath() || ui.admin) return false;
+    if (ui.admin || ui.coach || ui.role === 'owner') return false;
     if (!syncEnabled()) {
       try {
         const raw = sessionStorage.getItem('anton-staff-session');
@@ -19141,12 +19148,13 @@
         ui.studentAuthed = true;
         if (ui.tab === 'daftar' || ui.tab === 'masuk') ui.tab = 'home';
       }
-      /* Owners may open mentor chrome on /s/{their-slug}/ (Contabo door lands here). */
+      /* Owners + invited admins open mentor chrome on /s/{their-slug}/. */
       if (!presentStudent && (vanity || coachRoot || onMentorPath())) admin = await claimCoach();
       if (!presentStudent && !admin && !vanity) admin = await claimAdmin();
-      if (!presentStudent && !admin && !vanity) await claimStaff();
-      const forceStudent = presentStudent || (vanity && !admin);
-      if (!presentStudent && !admin) await bootSession();
+      if (!presentStudent && !admin) await claimStaff();
+      const staffed = !!(ui.staffId && ui.role === 'asisten');
+      const forceStudent = presentStudent || (vanity && !admin && !staffed);
+      if (!presentStudent && !admin && !staffed) await bootSession();
       await bootSync();
       if ((ui.admin || ui.staffId) && ensurePlatformCatalog(db)) save();
       if (!ui.admin && !ui.staffId && !ui.sessionStudentId) {
@@ -19158,7 +19166,7 @@
           ensureLiveVisitor();
         }
       }
-      if (forceStudent && !ui.admin) {
+      if (forceStudent && !ui.admin && !ui.staffId) {
         ui.admin = false;
         ui.role = 'student';
         ui.visitorLive = true;

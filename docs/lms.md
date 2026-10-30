@@ -23,9 +23,33 @@ A logged-out `GET /state/{slug}` is the public card (name, profile photo, headli
 The invite code on `/s/{slug}/?invite=` admits a new student. It is not a media password. WhatsApp / social crawlers hitting `/s/{slug}/` get `GET /obrolan.marketing/api/share-card?slug=…` (org `og:title` + photo) via Caddy UA routing — the static SPA title stays `Kelas` for humans until JS loads, then the tab title is `LMS {org}` (for example `LMS Mastermind`) and the tab icon is the LarisID bird (`/images/brand/appicon-bird-48.png`). Homescreen / apple-touch name stays the org, not the `LMS` prefix. New schools get a random code. A school still on a name-derived code gets a random one the next time the owner loads it. Video and files stay on the Contabo volume (`media/{slug}/…`, up to 5 GB). Staff playback uses a short-lived HttpOnly `lms_media` cookie because `<video>` cannot send a bearer token. Students use `lms_student`. `?k=` does not authorize a download. Profile photos stay public: signup `{slug}/profile.*` and Profile-tab uploads `{slug}/photo-school/{hex}` (both served without a media cookie). The PWA manifest is per school (`GET /obrolan.marketing/api/manifest?slug=…`, also inlined as a data-URL in the class HTML head) so Add to Home Screen opens `/s/{slug}/` with that org’s name and photo — never mentor `/lms/` and not Anton’s founding tenant. Students who open the installed app stay on the class; coach re-login to `/lms/` only runs from the mentor hub paths. Kurikulum video does not use a stable file URL: the player calls `GET /media/play-token` and gets a signed URL (about 90 minutes) bound to that file and the current student or staff cookie, then plays it with `GET /media/file` Range requests. A video response requires that token plus the cookie, and sends `Content-Disposition: inline` and `Cache-Control: private, no-store`. The player hides the browser download control and blocks the video right-click menu. Lembar kerja and other non-video files stay downloadable with the cookie only. This does not stop screen recording.
 
 ```bash
-bash scripts/deploy-static.sh          # class UI and /lms
+bash scripts/deploy-static.sh          # class UI and /lms (production)
 bash scripts/deploy-school-api.sh      # LMS class API (obrolan.marketing/server/server.mjs)
 ```
+
+### Staging (`stage.larisid.com`)
+
+Separate static tree and disk so a tab, button, or bad save can be tried without touching live kurikulum or students. Production CI (`deploy-pages.yml` on `main`) does **not** deploy staging.
+
+| | Production | Staging |
+| --- | --- | --- |
+| URL | `https://larisid.com` | `https://stage.larisid.com` |
+| Static | `docker/volumes/www/larisid` | `docker/volumes/www/stage` |
+| API container | `anton-school` | `anton-school-stage` |
+| Disk | `docker/volumes/anton-school` | `docker/volumes/anton-school-stage` (empty sandbox; do not copy prod `{slug}.json` or media) |
+
+```bash
+bash scripts/deploy-static-stage.sh      # UI only
+bash scripts/deploy-school-api-stage.sh  # stage API only
+```
+
+DNS: Namecheap A record `stage` → `84.247.147.205` (same box as `@` / `www`). Caddy serves that host from the stage volume and proxies `/obrolan.marketing/api/*` to `anton-school-stage`. The class and `/lms/` show a **STAGING** bar only on that hostname. Mentor Google/email redirect stays on `https://stage.larisid.com` (`siteOrigin` in `lms/js/auth.js`); GoTrue allow-list includes `https://stage.larisid.com/**`.
+
+Hotfix: change the UI on a branch, `deploy-static-stage.sh`, check the sandbox school, then `deploy-static.sh`. Adding a left-rail tab is UI-only (`mentorTabs` in `obrolan.marketing/js/app.js`). Kurikulum on disk stays `weeks` + `lectures` + `kurikulum` meta — do not rename those keys.
+
+Rollback UI: re-rsync a known-good `_site` with `deploy-static.sh` (or the stage script). Rollback one school’s JSON: on the volume, copy `state/{slug}.json.bak.1` (newest) … `.bak.5` over `state/{slug}.json`. The next GET reads the file; no API restart. A staff `PUT /state` that sends empty `lectures` / `weeks`, or an empty `kurikulum` object, keeps the disk outline unless `body.reset` is true.
+
+
 
 ### Analytics (Clarity)
 
@@ -78,7 +102,7 @@ Do not revive `js/lms-join.js` or public invite-code file downloads as the share
 - **Siswa view** (profile menu) is a phone-sized read-only student app (`?present=1&pane=student&readonly=1`). It skips login and the join wizard, can open Home, Belajar, Alat, and Diskusi, and does not PUT state or send the mentor bearer. Desktop toggle remains. **Perpustakaan** tiles have a **Student view** button under each alat that opens the same preview deep-linked to that tool (`&sku={id}`).
 - **Google signup email** is written to `accountSettings.email` and `ownerContact.email` when those fields are still empty (claim, new school, owner GET/PUT). A saved address is not replaced. The mentor Profile card shows it.
 - **Two-factor**: authenticator TOTP via GoTrue (`/auth/v1/factors`) on Account security, and a code step on `/lms/` login only when a verified factor exists and the session is still aal1. If enroll is disabled or there is no mentor session, the control stays hidden and login is not blocked. There is no mock 2FA checkbox.
-- **Admin** lives on Account settings, not Profile. Invite link: name, then email + password (`POST /staff/accept`). Permission checkboxes persist on the pending invite. The owner can change the eight switches, revoke, and restore an accepted admin at any time. Revoked admins cannot log in.
+- **Admin** lives on Account settings, not Profile. Invite link (`/s/{slug}/?staff_invite=…`): name, then email + password (`POST /staff/accept`). After accept they get **mentor chrome** on the same `/s/{slug}/` URL (`role=asisten`), limited by the eight permission switches — not the student app. Cookie `lms_staff` restores that session via `/staff/me` on reload. The owner can change switches, revoke, and restore anytime. Revoked admins cannot log in.
 - **Diskusi**: chat list with search + red “+ Chat baru”; thread title + anggota; soft post bubble; like is the word Suka (no emoji); comments are flat (avatar, name, `20h`/`1d`) with replies indented one level under the parent. The chevron or Balas opens an inline reply composer; the comment field at the bottom is only for a new top-level comment. Post composer still has file / foto / poll + red send. Posted photos stay small and use `object-fit: contain` so they are not cropped. File attachments stay at 20 MB. A comment or post stores `authorPhoto` when the author has a shared photo URL. The school profile photo uploads to class media the same way as the banner. Other viewers get that URL on the public directory card (`photoUrl`). Another coach’s photo and name are not the fallback on a different school.
 
 ---
