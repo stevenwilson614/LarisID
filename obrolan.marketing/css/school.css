@@ -4106,6 +4106,12 @@ html[data-mode="mentor"] .rj-mile {
   flex-wrap: wrap; margin-bottom: 14px;
 }
 .pustaka-head .btn { flex: none; }
+.pustaka-student-view {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  text-align: center;
+}
 
 /* ── student lesson player (Belajar) ───────────────────────────────── */
 html[data-mode="student"] #app.is-belajar {

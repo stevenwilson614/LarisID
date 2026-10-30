@@ -2492,33 +2492,60 @@
       '<div class="ps-body">' + body + '</div>' +
     '</section>';
   }
-  function siswaPreviewSrc() {
+  function siswaPreviewSrc(skuId) {
     const u = new URL(location.origin + schoolPublicPath());
     u.searchParams.set('present', '1');
     u.searchParams.set('pane', 'student');
     u.searchParams.set('readonly', '1');
+    const sku = String(skuId || ui.profilePreviewSku || '').trim();
+    if (sku) u.searchParams.set('sku', sku);
     return u.pathname + u.search;
+  }
+  function applyPresentSkuDeepLink() {
+    if (!(PRESENT && PRESENT_PANE === 'student')) return;
+    const sku = String(PRESENT_QS.get('sku') || '').trim();
+    if (!sku || !productById(sku)) return;
+    ui.skuId = sku;
+    ui.skuPreview = !canSku(ui.personaId, sku);
+    ui.skuFrom = 'alat';
+    ui.tab = 'sku';
+  }
+  function openPustakaStudentView(skuId) {
+    if (!isStaff()) return;
+    const id = String(skuId || '').trim();
+    if (!id || !productById(id)) {
+      toast('Alat tidak ditemukan.');
+      return;
+    }
+    ui.profilePreviewSku = id;
+    ui.profilePreviewKind = 'app';
+    ui.profilePreview = ui.profilePreview === 'desktop' ? 'desktop' : 'phone';
+    paintProfilePreview({ force: true });
   }
   function syncStudentViewToggles(mode) {
     document.querySelectorAll('.ps-student-view .prof-preview-toggle .btn-sm, #profile-preview .prof-preview-toggle .btn-sm').forEach((b) => {
       b.classList.toggle('is-on', b.getAttribute('data-mode') === mode);
     });
   }
-  function paintProfilePreview() {
+  function paintProfilePreview(opts) {
     const host = $('profile-preview');
     if (!host) return;
     if (!ui.profilePreview) {
       host.hidden = true;
       host.innerHTML = '';
+      ui.profilePreviewSku = null;
       syncStudentViewToggles('');
       return;
     }
     const mode = ui.profilePreview === 'desktop' ? 'desktop' : 'phone';
     const kind = ui.profilePreviewKind === 'app' ? 'app' : 'profile';
+    const force = !!(opts && opts.force);
     const frame = host.querySelector('.prof-preview-frame');
     const iframe = host.querySelector('iframe.siswa-preview-frame');
     const isApp = !!(frame && frame.classList.contains('is-siswa-app') && iframe);
-    if (frame && !host.hidden && ((kind === 'app') === isApp)) {
+    const wantSrc = kind === 'app' ? siswaPreviewSrc() : '';
+    const sameSrc = !!(iframe && iframe.getAttribute('src') === wantSrc);
+    if (!force && frame && !host.hidden && ((kind === 'app') === isApp) && (kind !== 'app' || sameSrc)) {
       frame.classList.toggle('is-phone', mode === 'phone');
       frame.classList.toggle('is-desktop', mode === 'desktop');
       syncStudentViewToggles(mode);
@@ -2526,12 +2553,19 @@
     }
     host.hidden = false;
     if (kind === 'app') {
+      const skuHint = ui.profilePreviewSku
+        ? (' · ' + ((productById(ui.profilePreviewSku) && productById(ui.profilePreviewSku).title) || ui.profilePreviewSku))
+        : '';
       host.innerHTML =
         '<div class="prof-preview-scrim" data-act="profile-preview-close"></div>' +
         '<div class="prof-preview-panel" role="dialog" aria-label="Siswa view">' +
           '<div class="prof-preview-bar">' +
-            '<strong>Siswa view</strong>' +
-            '<span class="muted prof-preview-hint">Navigasi penuh · read-only (tanpa komentar / kirim)</span>' +
+            '<strong>Siswa view' + esc(skuHint) + '</strong>' +
+            '<span class="muted prof-preview-hint">' +
+              (ui.profilePreviewSku
+                ? 'Alat ini · read-only'
+                : 'Navigasi penuh · read-only (tanpa komentar / kirim)') +
+            '</span>' +
             '<div class="prof-preview-toggle" role="group" aria-label="Device">' +
               '<button type="button" class="btn-sm' + (mode === 'phone' ? ' is-on' : '') +
                 '" data-act="profile-preview" data-mode="phone">Phone</button>' +
@@ -2542,7 +2576,7 @@
           '</div>' +
           '<div class="prof-preview-stage">' +
             '<div class="prof-preview-frame is-' + mode + ' is-siswa-app">' +
-              '<iframe class="siswa-preview-frame" title="Tampilan siswa" src="' + esc(siswaPreviewSrc()) + '"></iframe>' +
+              '<iframe class="siswa-preview-frame" title="Tampilan siswa" src="' + esc(wantSrc) + '"></iframe>' +
             '</div>' +
           '</div>' +
         '</div>';
@@ -2887,6 +2921,7 @@
     mfa: { phase: '' },
     profilePreview: null,
     profilePreviewKind: null,
+    profilePreviewSku: null,
     onboardPreview: null,
     socialPick: null,
     shopPick: null,
@@ -13439,7 +13474,12 @@
                 (canBill() && String(p.id).indexOf('sku-') === 0
                   ? '<button class="btn-sm" data-act="del-sku" data-id="' + esc(p.id) + '">Hapus</button>'
                   : '') +
-              '</div></div></div>'
+              '</div>' +
+              (isStaff()
+                ? '<button type="button" class="btn-sm pustaka-student-view" data-act="pustaka-student-view" data-id="' +
+                    esc(p.id) + '">Student view</button>'
+                : '') +
+              '</div></div>'
           ).join('') + '</div>'
         : '<p class="muted" style="margin:16px 0 0">Belum ada produk. Tekan + Tambah untuk isi perpustakaan kelas ini.</p>') +
       '</div>';
@@ -15660,6 +15700,7 @@
       if (blockLeaveWhileVidUpload(id)) return;
       ui.profilePreview = null;
       ui.profilePreviewKind = null;
+      ui.profilePreviewSku = null;
       if (ui.onboardPreview) ui.onboardPreview = null;
       if (isStaff()) {
         ui.mentorTab = id;
@@ -15892,9 +15933,12 @@
         toast('Siswa view hanya untuk ' + mentorDisplayName() + '.');
         return;
       }
+      ui.profilePreviewSku = null;
       ui.profilePreviewKind = 'app';
       ui.profilePreview = ui.profilePreview === 'desktop' ? 'desktop' : 'phone';
-      paintProfilePreview();
+      paintProfilePreview({ force: true });
+    } else if (act === 'pustaka-student-view') {
+      openPustakaStudentView(btn.getAttribute('data-id'));
     } else if (act === 'profile-edit') {
       if (!canBill()) return;
       setBrandMenu(false);
@@ -16002,6 +16046,7 @@
     } else if (act === 'profile-preview-close') {
       ui.profilePreview = null;
       ui.profilePreviewKind = null;
+      ui.profilePreviewSku = null;
       paintProfilePreview();
     } else if (act === 'cover-pos-reset') {
       if (!canBill()) return;
@@ -17804,6 +17849,7 @@
     if (ui.profilePreview) {
       ui.profilePreview = null;
       ui.profilePreviewKind = null;
+      ui.profilePreviewSku = null;
       paintProfilePreview();
     }
     if (isOnboardPreview()) {
@@ -18449,6 +18495,7 @@
         ui.role = 'student';
         ui.visitorLive = true;
       }
+      if (presentStudent) applyPresentSkuDeepLink();
       render();
       if (admin || ui.admin) refreshAdmin();
       else markPageView();
