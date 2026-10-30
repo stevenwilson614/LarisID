@@ -16385,6 +16385,11 @@
       db.onboarding = normalizeOnboarding(ob);
       save();
       render();
+    } else if (act === 'platform-refresh') {
+      if (!ui.platformAdmin) return;
+      ui.platformSummary = null;
+      render();
+      refreshPlatformAdmin();
     } else if (act === 'issue-done') {
       if (!ui.admin) return;
       const id = btn.getAttribute('data-id');
@@ -16421,6 +16426,14 @@
           clarityEvt('lms_tab', { lms_tab: id, lms_role: 'mentor' });
           render();
           refreshAdmin();
+          return;
+        }
+        if (id === 'platform') {
+          if (!ui.platformAdmin) return;
+          ui.platformSummary = null;
+          clarityEvt('lms_tab', { lms_tab: id, lms_role: 'mentor' });
+          render();
+          refreshPlatformAdmin();
           return;
         }
       } else {
@@ -19340,9 +19353,11 @@
         ui.visitorLive = true;
       }
       if (presentStudent) applyPresentSkuDeepLink();
+      if ((admin || ui.coach || isOwner()) && !forceStudent) await claimPlatformAdmin();
       render();
       markPageView();
       if (admin || ui.admin) refreshAdmin();
+      if (ui.platformAdmin) refreshPlatformAdmin();
       refreshMayarStatus().then(() => {
         if (!mayarReady()) return;
         if (isStaff() && ui.mentorTab === 'harga') render();

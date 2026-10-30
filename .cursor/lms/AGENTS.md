@@ -23,5 +23,6 @@ Before changing LMS landing, auth, class UI, school API, or `lms_*` schema, read
 - Static + class UI: `bash scripts/deploy-static.sh`. Class API: `bash scripts/deploy-school-api.sh`.
 - Staging (separate disk): `bash scripts/deploy-static-stage.sh` and `bash scripts/deploy-school-api-stage.sh` → `https://stage.larisid.com`. Do not copy production `{slug}.json` or media into the stage volume. `main` CI does not deploy staging.
 - A left-rail tab is UI-only. Kurikulum on disk stays `weeks` + `lectures` + `kurikulum` meta.
+- Platform Admin left-rail tab is email allow-list only (`stevenwilson614@gmail.com` / `LMS_PLATFORM_ADMIN_EMAILS`). Do not expose mentor/student totals to other coaches.
 - School JSON: `state/{slug}.json.bak.1` (newest) through `.bak.5`. Copy a bak over `{slug}.json` to restore; no API restart.
 - Belajar and LarisRise stay separate.

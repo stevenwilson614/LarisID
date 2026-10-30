@@ -25,6 +25,13 @@ const ANTON_SLUG = SLUG;
 const SUPA_URL = String(process.env.SUPABASE_URL || 'https://api.larisid.com').replace(/\/+$/, '');
 const SUPA_ANON = String(process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzg0MzM2Njc5LCJleHAiOjI0MTUwNTY2Nzl9.IuuxcLjM-ljEyrn2lInAqzESImYfMXlBBTZI2i671Ec');
 const MENTOR_BANDS = ['1-10', '11-20', '21-30', '31-50', '51-100', '100+'];
+/** Platform LMS admin (mentor/student totals). Bearer email must match. */
+const PLATFORM_ADMIN_EMAILS = new Set(
+  String(process.env.LMS_PLATFORM_ADMIN_EMAILS || 'stevenwilson614@gmail.com')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean)
+);
 const RESERVED_SLUGS = new Set([
   'lms', 'harga', 'tentang', 'cara-kerja', 'perbandingan', 'riset', 'privacy', 'panduan',
   'kota', 'kalkulator', 'rise', 'data', 'expor', 'js', 'images', 'fonts', 'styles', 'api',
@@ -534,6 +541,87 @@ function adminAuthed(req, q) {
   if (!ADMIN_KEY) return false;
   if (sameSecret(q.key, ADMIN_KEY)) return true;
   return cookieValue(req, 'anton_admin') === '1';
+}
+
+function platformAdminEmail(user) {
+  const email = String((user && user.email) || '').trim().toLowerCase();
+  return email && PLATFORM_ADMIN_EMAILS.has(email);
+}
+
+function countSchoolStudents(state) {
+  const seen = new Set();
+  (state && state.liveStudents || []).forEach((row) => {
+    if (!row || !row.id || isDemoId(row.id) || seen.has(row.id)) return;
+    seen.add(row.id);
+  });
+  const apps = (state && state.applications) || {};
+  Object.keys(apps).forEach((id) => {
+    if (!id || isDemoId(id) || seen.has(id)) return;
+    if (apps[id] && apps[id].at) seen.add(id);
+  });
+  return seen.size;
+}
+
+function schoolDisplayLabel(state, slug) {
+  const src = state || {};
+  const profile = src.schoolProfile && typeof src.schoolProfile === 'object' ? src.schoolProfile : {};
+  const full = [profile.firstName, profile.lastName].map((p) => String(p || '').trim()).filter(Boolean).join(' ');
+  return clip(src.businessName || full || src.schoolSlug || slug, 120) || slug;
+}
+
+function listSchoolSlugs() {
+  const out = new Set();
+  try {
+    fs.readdirSync(stateDir).forEach((name) => {
+      if (!name.endsWith('.json') || name.indexOf('.bak.') >= 0 || name.endsWith('.tmp')) return;
+      const slug = name.slice(0, -5);
+      if (slug) out.add(slug);
+    });
+  } catch (err) { /* empty volume */ }
+  const owners = readOwners();
+  Object.keys(owners).forEach((uid) => {
+    const slug = String(owners[uid] || '').trim();
+    if (slug) out.add(slug);
+  });
+  return Array.from(out);
+}
+
+function platformSummary() {
+  const owners = readOwners();
+  const ownerBySlug = {};
+  Object.keys(owners).forEach((uid) => {
+    const slug = String(owners[uid] || '').trim();
+    if (slug && !ownerBySlug[slug]) ownerBySlug[slug] = uid;
+  });
+  const mentors = [];
+  listSchoolSlugs().forEach((slug) => {
+    const rec = readState(slug);
+    const state = (rec && rec.state) || null;
+    if (!state) return;
+    const contact = state.ownerContact && typeof state.ownerContact === 'object' ? state.ownerContact : {};
+    const account = state.accountSettings && typeof state.accountSettings === 'object' ? state.accountSettings : {};
+    const students = countSchoolStudents(state);
+    const kur = state.kurikulum && typeof state.kurikulum === 'object' ? state.kurikulum : {};
+    mentors.push({
+      slug: slug,
+      name: schoolDisplayLabel(state, slug),
+      email: clip(account.email || contact.email || '', 120),
+      ownerUserId: String(state.ownerUserId || ownerBySlug[slug] || ''),
+      students: students,
+      published: kur.published !== false && curriculumVisible(state, slug),
+      updatedAt: (rec && rec.updatedAt) || ''
+    });
+  });
+  mentors.sort((a, b) => {
+    if (b.students !== a.students) return b.students - a.students;
+    return String(a.name).localeCompare(String(b.name), 'id');
+  });
+  const studentTotal = mentors.reduce((sum, row) => sum + (Number(row.students) || 0), 0);
+  return {
+    mentorCount: mentors.length,
+    studentCount: studentTotal,
+    mentors: mentors
+  };
 }
 
 function adminCookie(req, value, maxAge) {
@@ -2418,6 +2506,39 @@ const server = http.createServer((req, res) => {
     lock(() => {
       persistStrip(takeState());
       json(res, 200, summary());
+    });
+    return;
+  }
+
+  /* Platform LMS admin: mentor count + students per mentor. Email allow-list only. */
+  if (req.method === 'GET' && pathname === '/platform/me') {
+    supabaseUser(req).then((user) => {
+      if (!user) {
+        json(res, 401, { error: 'auth' });
+        return;
+      }
+      if (!platformAdminEmail(user)) {
+        json(res, 403, { ok: false });
+        return;
+      }
+      json(res, 200, { ok: true, email: String(user.email || '').trim().toLowerCase() });
+    });
+    return;
+  }
+
+  if (req.method === 'GET' && pathname === '/platform/summary') {
+    supabaseUser(req).then((user) => {
+      if (!user) {
+        json(res, 401, { error: 'auth' });
+        return;
+      }
+      if (!platformAdminEmail(user)) {
+        json(res, 403, { error: 'forbidden' });
+        return;
+      }
+      lock(() => {
+        json(res, 200, platformSummary());
+      });
     });
     return;
   }
