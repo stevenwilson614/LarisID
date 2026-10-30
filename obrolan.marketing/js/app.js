@@ -2091,6 +2091,29 @@
     const auth = lmsAuth();
     return (auth && auth.access_token) || '';
   }
+  function jwtAal(token) {
+    try {
+      const part = String(token || '').split('.')[1] || '';
+      let pad = part.replace(/-/g, '+').replace(/_/g, '/');
+      while (pad.length % 4) pad += '=';
+      return String(JSON.parse(atob(pad)).aal || '');
+    } catch (err) { return ''; }
+  }
+  /** Mentors with verified TOTP must finish the /lms/ code step (aal2) before class chrome. */
+  async function ensureMentorMfaAal2() {
+    const token = mentorAccessToken();
+    if (!token || ui.present || isSiswaReadonly()) return true;
+    if (jwtAal(token) === 'aal2') return true;
+    try {
+      const list = await mfaListFactors();
+      if (!verifiedTotpFactor(list)) return true;
+      const next = '/lms/?login=1';
+      try { location.replace(next); } catch (err) { location.href = next; }
+      return false;
+    } catch (err) {
+      return true;
+    }
+  }
   function mfaOffResponse(status, data) {
     const msg = String((data && (data.msg || data.message || data.error_description || data.error_code || data.error)) || '');
     if (status === 404 || status === 405 || status === 501) return true;
@@ -2186,13 +2209,19 @@
   }
   function refreshMfa() {
     if (!mentorAccessToken()) return;
+    const gen = (ui.mfaGen = (Number(ui.mfaGen) || 0) + 1);
     mfaListFactors().then((list) => {
+      if (gen !== ui.mfaGen) return;
+      /* Never clobber an in-progress enroll (stale list responses wiped the Confirm UI). */
+      if (ui.mfa && ui.mfa.phase === 'enroll' && ui.mfa.factorId) return;
       const on = verifiedTotpFactor(list);
       ui.mfa = on
         ? { phase: 'on', unavailable: false, factorId: on.id, qr: '', secret: '', error: '' }
         : { phase: 'ready', unavailable: false, factorId: '', qr: '', secret: '', error: '' };
       if (ui.mentorTab === 'account' && ui.accountPane === 'security') render();
     }).catch((err) => {
+      if (gen !== ui.mfaGen) return;
+      if (ui.mfa && ui.mfa.phase === 'enroll' && ui.mfa.factorId) return;
       ui.mfa = {
         phase: 'off',
         unavailable: !!(err && (err.code === 'auth' || mfaOffResponse(err.status, err.data))),
@@ -2206,8 +2235,12 @@
     });
   }
   async function startMfaEnroll() {
+    const gen = (ui.mfaGen = (Number(ui.mfaGen) || 0) + 1);
     try {
+      ui.mfa = { phase: 'loading', unavailable: false, factorId: '', qr: '', secret: '', error: '' };
+      render();
       const list = await mfaListFactors();
+      if (gen !== ui.mfaGen) return;
       const rows = (list && (list.all || list.totp)) || [];
       for (let i = 0; i < rows.length; i += 1) {
         const row = rows[i];
@@ -2215,11 +2248,19 @@
           await mfaFetch('/auth/v1/factors/' + encodeURIComponent(row.id), { method: 'DELETE' });
         }
       }
+      if (gen !== ui.mfaGen) return;
       const data = await mfaFetch('/auth/v1/factors', {
         method: 'POST',
-        body: { factor_type: 'totp', friendly_name: 'Laris LMS', issuer: 'Laris LMS' }
+        body: { factor_type: 'totp', friendly_name: 'Laris LMS', issuer: 'https://larisid.com' }
       });
+      if (gen !== ui.mfaGen) return;
       const totp = data.totp || {};
+      if (!data.id || !(totp.qr_code || totp.secret)) {
+        toast('2FA could not be started.');
+        ui.mfa = { phase: 'ready', unavailable: false, factorId: '', qr: '', secret: '', error: '' };
+        render();
+        return;
+      }
       ui.mfa = {
         phase: 'enroll',
         unavailable: false,
@@ -2230,19 +2271,22 @@
       };
       render();
     } catch (err) {
+      if (gen !== ui.mfaGen) return;
       if (err && (err.code === 'auth' || mfaOffResponse(err.status, err.data))) {
         ui.mfa = { phase: 'off', unavailable: true, factorId: '', qr: '', secret: '', error: '' };
         render();
         return;
       }
       toast('2FA could not be started.');
+      ui.mfa = { phase: 'ready', unavailable: false, factorId: '', qr: '', secret: '', error: '' };
+      render();
     }
   }
   async function confirmMfaCode(code) {
     const factorId = ui.mfa && ui.mfa.factorId;
-    const clean = String(code || '').replace(/\s/g, '');
+    const clean = String(code || '').replace(/\D/g, '');
     if (!factorId || !/^\d{6}$/.test(clean)) {
-      if (ui.mfa) ui.mfa.error = 'Enter the 6-digit code.';
+      if (ui.mfa) ui.mfa.error = 'Enter the 6-digit code from your authenticator app.';
       render();
       return;
     }
@@ -2251,13 +2295,17 @@
         method: 'POST',
         body: {}
       });
+      const challengeId = challenge && (challenge.id || challenge.challenge_id);
+      if (!challengeId) throw new Error('challenge');
       const verified = await mfaFetch('/auth/v1/factors/' + encodeURIComponent(factorId) + '/verify', {
         method: 'POST',
-        body: { challenge_id: challenge.id, code: clean }
+        body: { challenge_id: challengeId, code: clean }
       });
+      if (!verified || !verified.access_token) throw new Error('verify');
       storeMfaSession(verified);
+      ui.mfaGen = (Number(ui.mfaGen) || 0) + 1;
       ui.mfa = { phase: 'on', unavailable: false, factorId: factorId, qr: '', secret: '', error: '' };
-      toast('Two-factor authentication is on.');
+      toast('Two-factor authentication is on. Next sign-in will ask for a code.');
       render();
     } catch (err) {
       if (err && mfaOffResponse(err.status, err.data)) {
@@ -2265,7 +2313,11 @@
         render();
         return;
       }
-      if (ui.mfa) ui.mfa.error = 'Code did not match. Try again.';
+      if (ui.mfa) {
+        ui.mfa.error = (err && err.data && (err.data.msg || err.data.message))
+          ? String(err.data.msg || err.data.message)
+          : 'Code did not match. Try the newest 6 digits.';
+      }
       render();
     }
   }
@@ -2296,15 +2348,15 @@
     }
     if (m.phase === 'enroll') {
       return '<div class="as-section"><h2>Two-factor authentication</h2>' +
-        '<p class="muted">Scan this QR in an authenticator app, then enter the 6-digit code.</p>' +
+        '<p class="muted">Scan this QR (or type the manual key) in Google Authenticator / 1Password / Authy, then enter the 6-digit code to finish. 2FA is not on until Confirm succeeds.</p>' +
         (m.qr ? '<img class="mfa-qr" alt="Authenticator QR" src="' + esc(mfaQrSrc(m.qr)) + '">' : '') +
         (m.secret ? '<p class="muted">Manual key: <code>' + esc(m.secret) + '</code></p>' : '') +
         '<form class="ps-form" data-act="mfa-verify">' +
-          '<label class="ps-field"><span class="ps-label">Code</span>' +
-            '<input name="code" inputmode="numeric" autocomplete="one-time-code" required maxlength="8" placeholder="123456"></label>' +
-          '<div class="ps-actions"><button class="btn ps-save" type="submit">Confirm</button>' +
+          '<label class="ps-field"><span class="ps-label">Authenticator code</span>' +
+            '<input name="code" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" required maxlength="8" placeholder="123456"></label>' +
+          '<div class="ps-actions"><button class="btn ps-save" type="submit">Confirm &amp; turn on</button>' +
             '<button type="button" class="btn-sm" data-act="mfa-cancel">Cancel</button></div></form>' +
-          (m.error ? '<p class="muted">' + esc(m.error) + '</p>' : '') +
+          (m.error ? '<p class="err" style="color:var(--danger, #b91c1c)">' + esc(m.error) + '</p>' : '') +
         '</div>';
     }
     return '<div class="as-section"><h2>Two-factor authentication</h2>' +
@@ -16706,6 +16758,7 @@
       if (!canBill()) return;
       startMfaEnroll();
     } else if (act === 'mfa-cancel') {
+      ui.mfaGen = (Number(ui.mfaGen) || 0) + 1;
       ui.mfa = { phase: 'ready', unavailable: false, factorId: '', qr: '', secret: '', error: '' };
       render();
     } else if (act === 'mfa-disable') {
@@ -19331,6 +19384,10 @@
       }
       /* Owners + invited admins open mentor chrome on /s/{their-slug}/. */
       if (!presentStudent && (vanity || coachRoot || onMentorPath())) admin = await claimCoach();
+      if (admin) {
+        const mfaOk = await ensureMentorMfaAal2();
+        if (!mfaOk) return;
+      }
       if (!presentStudent && !admin && !vanity) admin = await claimAdmin();
       if (!presentStudent && !admin) await claimStaff();
       const staffed = !!(ui.staffId && ui.role === 'asisten');

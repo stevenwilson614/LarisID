@@ -193,9 +193,19 @@
     if (status === 404 || status === 501) return true;
     return /mfa/i.test(msg) && /disabled|not enabled|unavailable/i.test(msg);
   }
+  function pickVerifiedTotp(rows) {
+    var list = Array.isArray(rows) ? rows : [];
+    for (var i = 0; i < list.length; i += 1) {
+      var row = list[i];
+      if (row && row.status === 'verified' && row.factor_type === 'totp') return row;
+    }
+    return null;
+  }
   async function mfaRequired(session) {
     if (!session || !session.access_token || !sb) return null;
     if (jwtAal(session.access_token) === 'aal2') return null;
+    var fromSession = pickVerifiedTotp(session.user && session.user.factors);
+    if (fromSession) return fromSession;
     /* Current GoTrue has no GET /factors (405). Factors live on GET /user. */
     var res = await fetch(SUPA_URL + '/auth/v1/user', {
       headers: { apikey: SUPA_KEY, authorization: 'Bearer ' + session.access_token }
@@ -203,12 +213,7 @@
     var data = {};
     try { data = await res.json(); } catch (err) { data = {}; }
     if (!res.ok || mfaOff(res.status, data)) return null;
-    var rows = (data && data.factors) || [];
-    for (var i = 0; i < rows.length; i += 1) {
-      var row = rows[i];
-      if (row && row.status === 'verified' && row.factor_type === 'totp') return row;
-    }
-    return null;
+    return pickVerifiedTotp(data && data.factors);
   }
   async function mfaVerify(session, factorId, code) {
     if (!session || !session.access_token || !factorId || !sb) {
@@ -235,7 +240,10 @@
     var verify = await fetch(SUPA_URL + '/auth/v1/factors/' + encodeURIComponent(factorId) + '/verify', {
       method: 'POST',
       headers: headers,
-      body: JSON.stringify({ challenge_id: ch.id, code: String(code || '').replace(/\s/g, '') })
+      body: JSON.stringify({
+        challenge_id: ch.id || ch.challenge_id,
+        code: String(code || '').replace(/\D/g, '')
+      })
     });
     var body = {};
     try { body = await verify.json(); } catch (err2) { body = {}; }
