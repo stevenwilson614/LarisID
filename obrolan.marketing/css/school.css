@@ -2693,8 +2693,28 @@ html[data-mode="mentor"] .main:has(.fub-page) { padding: 0; }
   flex-direction: row; align-items: center; justify-content: space-between; gap: 8px;
 }
 .fub-addrow select { flex: 1; min-width: 0; font: inherit; }
+.mfa-qr-wrap {
+  display: inline-block;
+  padding: 12px;
+  margin: 8px 0 12px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+}
 .mfa-qr {
-  width: 180px; height: 180px; background: #fff; border-radius: 8px; display: block; margin: 8px 0;
+  width: 220px; height: 220px; background: #fff; display: block; image-rendering: pixelated;
+}
+.mfa-secret { margin: 0 0 12px; font-size: .85rem; color: var(--muted); }
+.mfa-secret-code {
+  display: inline-block;
+  margin: 4px 6px 4px 0;
+  padding: 6px 8px;
+  font-size: .95rem;
+  letter-spacing: .06em;
+  word-break: break-all;
+  color: var(--text);
+  background: var(--ink-3);
+  border-radius: 6px;
 }
 .fub-group-name { font-size: .82rem; font-weight: 700; }
 .fub-linklist { display: grid; gap: 4px; margin-bottom: 8px; }

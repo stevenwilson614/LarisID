@@ -2162,17 +2162,38 @@
   function mfaQrSrc(qr) {
     const raw = String(qr || '');
     if (!raw) return '';
-    if (/^data:image\/svg\+xml/i.test(raw)) {
-      const comma = raw.indexOf(',');
-      if (comma < 0) return raw;
-      const meta = raw.slice(0, comma);
-      const payload = raw.slice(comma + 1);
-      if (payload.indexOf('<svg') >= 0) {
-        return meta.replace(/;utf-8$/i, '') + ';utf-8,' + encodeURIComponent(payload);
+    if (/^data:image\//i.test(raw)) {
+      if (/^data:image\/svg\+xml/i.test(raw)) {
+        const comma = raw.indexOf(',');
+        if (comma < 0) return raw;
+        const meta = raw.slice(0, comma);
+        const payload = raw.slice(comma + 1);
+        if (payload.indexOf('<svg') >= 0) {
+          return meta.replace(/;utf-8$/i, '') + ';utf-8,' + encodeURIComponent(payload);
+        }
       }
       return raw;
     }
     return 'data:image/svg+xml;utf-8,' + encodeURIComponent(raw);
+  }
+  /** Crisp PNG from otpauth URI — iPhone Camera / Authenticator scan SVG poorly. */
+  function mfaUriToPng(uri) {
+    const text = String(uri || '');
+    if (!text || !window.QRCode || typeof window.QRCode.toDataURL !== 'function') {
+      return Promise.resolve('');
+    }
+    return new Promise((resolve) => {
+      try {
+        window.QRCode.toDataURL(text, {
+          width: 280,
+          margin: 2,
+          errorCorrectionLevel: 'M',
+          color: { dark: '#000000', light: '#ffffff' }
+        }, (err, url) => resolve((!err && url) ? String(url) : ''));
+      } catch (e) {
+        resolve('');
+      }
+    });
   }
   function storeMfaSession(data) {
     if (!data || !data.access_token) return;
@@ -2251,21 +2272,26 @@
       if (gen !== ui.mfaGen) return;
       const data = await mfaFetch('/auth/v1/factors', {
         method: 'POST',
-        body: { factor_type: 'totp', friendly_name: 'Laris LMS', issuer: 'https://larisid.com' }
+        body: { factor_type: 'totp', friendly_name: 'Laris LMS', issuer: 'Laris LMS' }
       });
       if (gen !== ui.mfaGen) return;
       const totp = data.totp || {};
-      if (!data.id || !(totp.qr_code || totp.secret)) {
+      if (!data.id || !(totp.qr_code || totp.uri || totp.secret)) {
         toast('2FA could not be started.');
         ui.mfa = { phase: 'ready', unavailable: false, factorId: '', qr: '', secret: '', error: '' };
         render();
         return;
       }
+      const uri = String(totp.uri || '');
+      const qrPng = uri ? await mfaUriToPng(uri) : '';
+      if (gen !== ui.mfaGen) return;
       ui.mfa = {
         phase: 'enroll',
         unavailable: false,
         factorId: data.id || '',
-        qr: totp.qr_code || '',
+        qr: qrPng || totp.qr_code || '',
+        qrPng: qrPng || '',
+        uri: uri,
         secret: totp.secret || '',
         error: ''
       };
@@ -2347,10 +2373,16 @@
         '<button type="button" class="btn-sm" data-act="mfa-disable">Turn off</button></div>';
     }
     if (m.phase === 'enroll') {
+      const qrSrc = m.qrPng || (m.qr ? mfaQrSrc(m.qr) : '');
       return '<div class="as-section"><h2>Two-factor authentication</h2>' +
-        '<p class="muted">Scan this QR (or type the manual key) in Google Authenticator / 1Password / Authy, then enter the 6-digit code to finish. 2FA is not on until Confirm succeeds.</p>' +
-        (m.qr ? '<img class="mfa-qr" alt="Authenticator QR" src="' + esc(mfaQrSrc(m.qr)) + '">' : '') +
-        (m.secret ? '<p class="muted">Manual key: <code>' + esc(m.secret) + '</code></p>' : '') +
+        '<p class="muted">Open your authenticator app → add account → scan this QR (or enter the manual key). Then type the newest 6-digit code. 2FA is not on until Confirm succeeds.</p>' +
+        (qrSrc
+          ? '<div class="mfa-qr-wrap"><img class="mfa-qr" alt="Authenticator QR" width="280" height="280" src="' + esc(qrSrc) + '"></div>'
+          : '') +
+        (m.secret
+          ? '<p class="mfa-secret">Manual key<br><code class="mfa-secret-code">' + esc(m.secret) + '</code> ' +
+            '<button type="button" class="btn-sm" data-act="mfa-copy-secret">Copy</button></p>'
+          : '') +
         '<form class="ps-form" data-act="mfa-verify">' +
           '<label class="ps-field"><span class="ps-label">Authenticator code</span>' +
             '<input name="code" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" required maxlength="8" placeholder="123456"></label>' +
@@ -16757,10 +16789,23 @@
     } else if (act === 'mfa-enroll') {
       if (!canBill()) return;
       startMfaEnroll();
+    } else if (act === 'mfa-copy-secret') {
+      const secret = ui.mfa && ui.mfa.secret;
+      if (!secret) return;
+      const done = () => toast('Manual key copied.');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(secret).then(done).catch(() => toast(secret));
+      } else {
+        toast(secret);
+      }
     } else if (act === 'mfa-cancel') {
+      const cancelId = ui.mfa && ui.mfa.factorId;
       ui.mfaGen = (Number(ui.mfaGen) || 0) + 1;
       ui.mfa = { phase: 'ready', unavailable: false, factorId: '', qr: '', secret: '', error: '' };
       render();
+      if (cancelId) {
+        mfaFetch('/auth/v1/factors/' + encodeURIComponent(cancelId), { method: 'DELETE' }).catch(() => {});
+      }
     } else if (act === 'mfa-disable') {
       if (!canBill()) return;
       disableMfa();
