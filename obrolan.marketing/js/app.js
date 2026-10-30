@@ -17707,19 +17707,83 @@
     }
   });
 
+  function clearMentorBrowserSession() {
+    const token = mentorAccessToken();
+    const wipeLocal = () => {
+      try {
+        localStorage.removeItem('lms_auth_v1');
+        localStorage.removeItem('lms-auth-v1');
+        localStorage.removeItem('laris_lms_coach');
+      } catch (err) { /* private mode */ }
+      try {
+        sessionStorage.removeItem('anton-admin');
+        sessionStorage.removeItem('anton-staff-session');
+      } catch (err2) { /* private mode */ }
+      ui.admin = false;
+      ui.coach = false;
+      ui.role = 'student';
+      ui.visitorLive = true;
+    };
+    let revoke = Promise.resolve();
+    if (token && window.supabase && window.supabase.createClient) {
+      try {
+        const sb = window.supabase.createClient(STU_SUPA_URL, STU_SUPA_KEY, {
+          auth: {
+            persistSession: true,
+            autoRefreshToken: false,
+            detectSessionInUrl: false,
+            storage: window.localStorage,
+            storageKey: 'lms_auth_v1',
+            flowType: 'implicit'
+          }
+        });
+        revoke = sb.auth.signOut({ scope: 'global' }).catch(() => {});
+      } catch (err3) {
+        revoke = fetch(STU_SUPA_URL + '/auth/v1/logout', {
+          method: 'POST',
+          headers: {
+            apikey: STU_SUPA_KEY,
+            authorization: 'Bearer ' + token,
+            'content-type': 'application/json'
+          },
+          cache: 'no-store'
+        }).catch(() => {});
+      }
+    } else if (token) {
+      revoke = fetch(STU_SUPA_URL + '/auth/v1/logout', {
+        method: 'POST',
+        headers: {
+          apikey: STU_SUPA_KEY,
+          authorization: 'Bearer ' + token,
+          'content-type': 'application/json'
+        },
+        cache: 'no-store'
+      }).catch(() => {});
+    }
+    return Promise.resolve(revoke).finally(wipeLocal);
+  }
   const adminOut = $('btn-admin-out');
   if (adminOut) adminOut.addEventListener('click', () => {
     setBrandMenu(false);
-    if (!confirm('Keluar dari admin di browser ini? Tab ini jadi pengunjung.')) return;
-    try {
-      sessionStorage.removeItem('anton-admin');
-      sessionStorage.removeItem('anton-staff-session');
-    } catch (err) { /* private mode */ }
-    const backToStaffLogin = !!ui.staffId && !ui.admin;
-    const done = () => { location.href = location.pathname + (backToStaffLogin ? '?staff_login=1' : ''); };
-    const jobs = [fetch(apiBase() + '/admin/logout', { method: 'POST', cache: 'no-store' })];
-    if (ui.staffId) jobs.push(fetch(apiBase() + '/staff/logout', { method: 'POST', cache: 'no-store' }));
-    Promise.all(jobs.map((p) => p.catch(() => {}))).finally(done);
+    const staffOnly = !!ui.staffId && !ui.admin && !ui.coach;
+    const msg = staffOnly
+      ? 'Keluar dari admin di browser ini?'
+      : 'Keluar dari akun mentor? Kamu akan kembali ke halaman masuk.';
+    if (!confirm(msg)) return;
+    const done = () => {
+      /* Mentors must land on /lms/ with no mirrored session, or claimCoach puts them back in. */
+      if (staffOnly) {
+        location.href = location.pathname + '?staff_login=1';
+        return;
+      }
+      location.replace('/lms/');
+    };
+    const jobs = [
+      clearMentorBrowserSession(),
+      fetch(apiBase() + '/admin/logout', { method: 'POST', cache: 'no-store' })
+    ];
+    if (ui.staffId || staffOnly) jobs.push(fetch(apiBase() + '/staff/logout', { method: 'POST', cache: 'no-store' }));
+    Promise.all(jobs.map((p) => Promise.resolve(p).catch(() => {}))).finally(done);
   });
   $('drawer-scrim').addEventListener('click', closeDrawer);
 

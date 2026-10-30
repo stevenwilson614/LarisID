@@ -1346,7 +1346,9 @@
   function signOut() {
     appError('');
     authError('');
+    try { localStorage.removeItem('laris_lms_coach'); } catch (err) { /* private mode */ }
     window.Lms.sb.auth.signOut().then(function () {
+      try { localStorage.removeItem('laris_lms_coach'); } catch (err2) { /* private mode */ }
       show(isStudentGate() ? 'auth' : 'land');
       if (isStudentGate()) setAuthMode('login');
     });
