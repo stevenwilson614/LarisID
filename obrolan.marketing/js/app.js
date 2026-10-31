@@ -3902,8 +3902,8 @@
     ui.sessionStudentId = '';
     if (!ui.mentorTab || ui.mentorTab === 'profil' || ui.mentorTab === 'account') ui.mentorTab = 'dash';
   }
-  // Flip true when billing settings UI is ready for owners again.
-  const SHOW_PENGATURAN_BAYAR = false;
+  // Staging only for now — try billing UI on stage.larisid.com without shipping live.
+  const SHOW_PENGATURAN_BAYAR = location.hostname === 'stage.larisid.com';
   // Until mentor payment detail ships: no paywall, kurikulum fully open.
   const PAYWALL_DISABLED = true;
 
@@ -8671,6 +8671,7 @@
     if (outBtn) outBtn.hidden = !((ui.admin && syncEnabled()) || (ui.staffId && !isOwner()));
     const menuProfil = $('btn-menu-profil');
     const menuAccount = $('btn-menu-account');
+    const menuPayment = $('btn-menu-payment');
     const menuSiswa = $('btn-menu-siswa-view');
     if (menuProfil) {
       menuProfil.hidden = !canBill();
@@ -8678,6 +8679,7 @@
       if (span) span.textContent = 'Profile';
     }
     if (menuAccount) menuAccount.hidden = !canBill() || isSiswaReadonly();
+    if (menuPayment) menuPayment.hidden = !(SHOW_PENGATURAN_BAYAR && canBill() && !isSiswaReadonly());
     if (menuSiswa) menuSiswa.hidden = !canBill() || isSiswaReadonly();
     const brandBtn = $('brand-btn');
     if (brandBtn) {
@@ -8751,7 +8753,7 @@
     t.push({ id: 'pustaka', label: 'Perpustakaan' });
     if (staffCan('viewClasses')) t.push({ id: 'jadwal', label: 'Jadwal' });
     t.push({ id: 'diskusi', label: 'Diskusi' });
-    if (SHOW_PENGATURAN_BAYAR && canBill()) t.push({ id: 'harga', label: 'Pengaturan bayar' });
+    /* Payment settings lives under the profile-pic menu (brand-menu), not the left rail. */
     return t;
   }
 
@@ -16736,6 +16738,19 @@
       ui.mentorTab = 'account';
       ui.accountPane = 'security';
       ui.personId = null;
+      render();
+    } else if (act === 'open-payment') {
+      setBrandMenu(false);
+      if (blockLeaveWhileVidUpload('harga')) return;
+      ui.profilePreview = null;
+      ui.profilePreviewKind = null;
+      if (!SHOW_PENGATURAN_BAYAR || !canBill()) {
+        toast('Payment settings hanya di staging untuk ' + mentorDisplayName() + '.');
+        return;
+      }
+      ui.mentorTab = 'harga';
+      ui.personId = null;
+      refreshMayarStatus().then(() => { if (ui.mentorTab === 'harga') render(); });
       render();
     } else if (act === 'open-siswa-view') {
       setBrandMenu(false);
