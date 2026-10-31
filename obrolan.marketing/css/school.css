@@ -5332,4 +5332,22 @@ html.siswa-readonly .brand-menu { display: none !important; }
   background: var(--ink);
 }
 .staff-card-top { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.pay-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.pay-tabs button {
+  border: 1px solid var(--line); background: transparent; color: inherit;
+  border-radius: 999px; padding: 6px 12px; font: inherit; cursor: pointer;
+}
+.pay-tabs button[aria-selected="true"] { background: var(--ink-3); font-weight: 700; }
+.pay-steps { margin: 8px 0 14px; padding-left: 1.2rem; }
+.pay-steps li { margin: 4px 0; }
+.pay-pkg { display: grid; grid-template-columns: 1.4fr .6fr .8fr auto; gap: 8px; align-items: end; margin-bottom: 8px; }
+.pay-pkg label, .pay-settings label.muted { display: grid; gap: 4px; }
+.pay-url { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pay-url code { word-break: break-all; }
+.pay-picks { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0 12px; }
+.pay-grant { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+.pay-unmatched { margin: 8px 0; padding-top: 8px; border-top: 1px solid var(--line); }
+@media (max-width: 720px) {
+  .pay-pkg { grid-template-columns: 1fr 1fr; }
+}
 

@@ -1252,6 +1252,16 @@
   }
   function normalizeObPage(raw) {
     const p = raw && typeof raw === 'object' ? raw : {};
+    if (p.kind === 'bayar') {
+      return {
+        id: String(p.id || 'ob-bayar'),
+        kind: 'bayar',
+        kicker: 'Bayar',
+        q: 'Beli mentoring',
+        sub: String(p.sub || '').slice(0, 240),
+        fields: []
+      };
+    }
     const fields = Array.isArray(p.fields) ? p.fields.map(normalizeObField) : [];
     return {
       id: String(p.id || uid('ob')),
@@ -1297,7 +1307,14 @@
   function normalizeOnboarding(raw) {
     const base = defaultOnboarding();
     const cur = raw && typeof raw === 'object' ? raw : {};
-    const pages = Array.isArray(cur.pages) ? cur.pages.map(normalizeObPage) : [];
+    const rawPages = Array.isArray(cur.pages) ? cur.pages.map(normalizeObPage) : [];
+    let seenBayar = false;
+    const pages = rawPages.filter((page) => {
+      if (!page || page.kind !== 'bayar') return true;
+      if (seenBayar) return false;
+      seenBayar = true;
+      return true;
+    });
     const ob = { pages: pages.length ? pages : base.pages.map(normalizeObPage) };
     return rewriteOnboardingStock(ob);
   }
@@ -1308,7 +1325,11 @@
   function obStoreId(field) {
     return String((field && field.id) || '');
   }
-  function wizFormPages() { return ensureOnboarding().pages; }
+  function wizFormPages() {
+    const pages = ensureOnboarding().pages;
+    if (!paymentsOn()) return pages.filter((page) => !page || page.kind !== 'bayar');
+    return pages;
+  }
   function wizPayIdx() { return wizFormPages().length; }
   function wizTotalSteps() { return wizPayIdx() + 1; }
   function isOnboardPreview() { return !!(ui.onboardPreview && ui.onboardPreview.open); }
@@ -1565,8 +1586,12 @@
     if (full) return full.split(/\s+/)[0] || full;
     return ownerFirstName();
   }
-  /** Free school — no Bayar, full mentoring gratis. */
+  function paymentsOn() {
+    return !!(typeof db !== 'undefined' && db && db.paymentsEnabled === true);
+  }
+  /** Open class until the mentor turns pembayaran on. */
   function schoolIsFree() {
+    if (paymentsOn()) return false;
     if (PAYWALL_DISABLED) return true;
     if (typeof db !== 'undefined' && db && db.freeAccess === true) return true;
     if (typeof db !== 'undefined' && db && db.freeAccess === false) return false;
@@ -2511,6 +2536,18 @@
     '</div>';
   }
   function viewObPageEditor(page, index, total) {
+    if (page && page.kind === 'bayar') {
+      return '<li class="ob-ed-page" data-page="' + esc(page.id) + '">' +
+        '<div class="ob-ed-page-h">' +
+          '<div class="ob-ed-page-title"><span class="ob-ed-grip" aria-hidden="true">' + obIco('grip') + '</span>' +
+            '<strong>Halaman ' + (index + 1) + ' – Bayar</strong></div>' +
+          '<div class="ob-ed-page-acts">' +
+            obIconBtn('ob-page-up', page.id, '', 'up', 'Naik', { disabled: index === 0 }) +
+            obIconBtn('ob-page-down', page.id, '', 'down', 'Turun', { disabled: index >= total - 1 }) +
+            obIconBtn('ob-page-del', page.id, '', 'trash', 'Hapus halaman', { danger: true, disabled: total <= 1 }) +
+          '</div></div>' +
+        '<p class="muted">Siswa melihat Beli mentoring di sini, hanya kalau pembayaran aktif. Mereka pilih paket lalu Bayar dengan QRIS.</p></li>';
+    }
     const title = 'Halaman ' + (index + 1) + (page.kicker ? ' – ' + page.kicker : '');
     const fieldCount = (page.fields || []).length;
     return '<li class="ob-ed-page" data-page="' + esc(page.id) + '">' +
@@ -2580,7 +2617,7 @@
         '<div class="ob-ed-head">' +
           '<div class="ob-ed-head-copy">' +
             '<h2>Student onboarding</h2>' +
-            '<p class="muted">Atur halaman &amp; pertanyaan yang siswa isi saat join. Setelah form, paket bayar (diskon 24 jam).</p>' +
+            '<p class="muted">Atur halaman yang siswa isi saat join. Bagian Bayar hanya muncul kalau pembayaran aktif.</p>' +
           '</div>' +
           '<div class="ob-ed-head-acts">' +
             '<button type="button" class="ob-ed-ghost" data-act="ob-preview">' + obIco('eye') +
@@ -2594,6 +2631,10 @@
         '</ol>' +
         '<button type="button" class="ob-ed-add-page" data-act="ob-page-add">' +
           obIco('plus') + ' Tambah halaman</button>' +
+        (pages.some((page) => page && page.kind === 'bayar')
+          ? ''
+          : '<button type="button" class="ob-ed-add-page" data-act="ob-bayar-add">' +
+              obIco('plus') + ' Tambah bagian Bayar</button>') +
       '</div>' +
       '<div class="ps-actions">' +
         '<button type="button" class="btn ps-save" data-act="ob-save">Simpan</button>' +
@@ -2612,6 +2653,8 @@
     const pages = wizFormPages();
     const prev = ui.onboardPreview;
     let body;
+    const previewStep = Math.max(0, Number(prev.step) || 0);
+    const previewPage = pages[previewStep];
     if (prev.done || prev.step >= pages.length) {
       body = '<section class="ob-flow">' +
         '<div class="ob-body">' +
@@ -2623,8 +2666,10 @@
           '<button type="button" class="btn ob-cta" data-act="ob-preview-restart">Ulangi dari awal</button>' +
           '<button type="button" class="btn secondary ob-cta" data-act="ob-preview-close">Tutup</button>' +
         '</div></section>';
+    } else if (previewPage && previewPage.kind === 'bayar') {
+      body = viewPayPage('preview');
     } else {
-      body = viewWizForm(Math.max(0, Number(prev.step) || 0));
+      body = viewWizForm(previewStep);
     }
     host.hidden = false;
     host.innerHTML =
@@ -3902,9 +3947,8 @@
     ui.sessionStudentId = '';
     if (!ui.mentorTab || ui.mentorTab === 'profil' || ui.mentorTab === 'account') ui.mentorTab = 'dash';
   }
-  // Staging only for now — try billing UI on stage.larisid.com without shipping live.
-  const SHOW_PENGATURAN_BAYAR = location.hostname === 'stage.larisid.com';
-  // Until mentor payment detail ships: no paywall, kurikulum fully open.
+  const SHOW_PENGATURAN_BAYAR = true;
+  // Schools stay open until the mentor turns pembayaran on.
   const PAYWALL_DISABLED = true;
 
   const BATCH_MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -5443,13 +5487,15 @@
       .replace(/\{anama\}/g, bank.name || ownerFirstName());
   }
   function termLabel(term) {
+    const pkg = packageById(term);
+    if (pkg) return pkg.label;
     return {
       month: '1 bulan',
       quarter: '3 bulan',
       half: '6 bulan',
       autopay: 'autopay',
       year: 'tahun'
-    }[term] || '—';
+    }[term] || (term ? String(term) : '—');
   }
   const HEARD_OPTS = ['Grup WA {owner}', 'Teman / murid {owner}', 'Grup WA Anton', 'Teman / murid Anton', 'TikTok', 'Instagram', 'Lainnya'];
   function splitPersonName(full) {
@@ -5677,10 +5723,11 @@
   function validateWizStep() {
     const pages = wizFormPages();
     const page = pages[wizIdx()];
-    if (!page) return true;
+    if (!page || page.kind === 'bayar') return true;
     const d = wizDraft();
-    for (let i = 0; i < page.fields.length; i += 1) {
-      const f = page.fields[i];
+    const fields = page.fields || [];
+    for (let i = 0; i < fields.length; i += 1) {
+      const f = fields[i];
       if (!f.required) continue;
       if (f.type === 'name' && !String(d.firstName || '').trim()) {
         toast('Isi nama depan dulu.');
@@ -5992,7 +6039,9 @@
       paintOnboardPreview();
       return;
     }
-    if (last) {
+    const nxt = pages[wizIdx() + 1];
+    const goPay = !!(nxt && nxt.kind === 'bayar');
+    if (last || goPay) {
       if (ui.joining) return;
       ui.joining = true;
       Promise.resolve(commitWizApplication()).then(async (ok) => {
@@ -6003,14 +6052,18 @@
         if (syncEnabled()) {
           try { await pushState(true); } catch (err) { /* pull on next boot */ }
         }
-        if (schoolIsFree()) {
+        if (goPay && paymentsOn()) {
+          ui.wizStep = wizIdx() + 1;
+          ui.tab = 'daftar';
+          toast('Form masuk. Lanjut beli mentoring.');
+        } else if (schoolIsFree()) {
           ui.wizStep = null;
           ui.tab = 'home';
           toast('Selamat datang. Kelas ini gratis — mulai dari Home.');
         } else {
           ui.wizStep = wizPayIdx();
           ui.tab = 'daftar';
-          toast('Form masuk. Diskon 24 jam jalan — lanjut ke Home atau lihat paket.');
+          toast('Form masuk. Lanjut beli mentoring.');
         }
         render();
       }).catch(() => {
@@ -6213,6 +6266,10 @@
     return Math.round(n);
   }
   function termMonths(term) {
+    const pkg = packageById(term);
+    if (pkg) return pkg.months;
+    const tagged = /^m(\d+)$/.exec(String(term || ''));
+    if (tagged) return Math.max(1, Number(tagged[1]) || 1);
     return { month: 1, autopay: 1, quarter: 3, half: 6, year: 12 }[term] || 1;
   }
   function termDiscountPct(term) {
@@ -6239,9 +6296,7 @@
   function grantMentoring(id, term, source, amount) {
     const b = billingOf(id);
     const renew = isRenewalPay(id);
-    const start = nowDate();
-    const until = new Date(start.getTime());
-    until.setMonth(until.getMonth() + termMonths(term));
+    const prevUntil = b.accessUntil;
     b.status = 'lunas';
     b.plan = 'mentoring';
     b.products = Array.isArray(b.products) ? b.products : [];
@@ -6249,10 +6304,9 @@
     b.source = source;
     b.amount = amount;
     b.paidAt = isoNow();
-    b.accessUntil = until.toISOString();
-    b.note = source === 'mayar'
-      ? ('Mayar · ' + termLabel(term))
-      : (term === 'autopay' ? 'Kartu autopay (mock)' : ('Transfer · ' + termLabel(term)));
+    b.packageId = (packageById(term) && packageById(term).id) || b.packageId || '';
+    b.accessUntil = extendAccessUntil(prevUntil, termMonths(term));
+    b.note = (source || 'transfer') + ' · ' + termLabel(term);
     delete b.pendingTerm;
     delete b.pendingAmount;
     delete b.pendingAt;
@@ -6284,7 +6338,94 @@
     pushTimeline(id, 'pay', 'Klaim transfer ' + fmtRp(amount) + ' · menunggu konfirmasi');
     addTask(id, 'Cek transfer ' + nameOf(id), 'Jumlah ' + fmtRp(amount) + ' ke ' + db.bank.bank + ' ' + db.bank.number, isoNow(), 'reminder');
   }
+  function normalizePackage(raw) {
+    const months = Math.max(1, Math.round(Number(raw && raw.months) || 0));
+    if (!months) return null;
+    const id = String((raw && raw.id) || uid('pkg')).slice(0, 40);
+    const priceIdr = Math.max(0, Math.round(Number(raw && raw.priceIdr) || 0));
+    const label = String((raw && raw.label) || '').trim().slice(0, 40) || (months + ' bulan');
+    return { id: id, months: months, priceIdr: priceIdr, label: label };
+  }
+  function ensurePayModel() {
+    if (!db) return;
+    if (!Array.isArray(db.packages)) {
+      const monthly = Number(db.pricing && db.pricing.monthlyIdr) || 500000;
+      const qPct = Number(db.pricing && db.pricing.quarterDiscountPct);
+      const hPct = Number(db.pricing && db.pricing.halfDiscountPct);
+      const qDisc = Number.isFinite(qPct) ? qPct : 15;
+      const hDisc = Number.isFinite(hPct) ? hPct : 25;
+      const old = db.lynkProducts || {};
+      db.packages = [
+        { id: 'pkg-1', months: 1, priceIdr: monthly, label: '1 bulan' },
+        { id: 'pkg-3', months: 3, priceIdr: Math.round(monthly * 3 * (1 - qDisc / 100)), label: '3 bulan' },
+        { id: 'pkg-6', months: 6, priceIdr: Math.round(monthly * 6 * (1 - hDisc / 100)), label: '6 bulan' }
+      ];
+      db.lynkByPackage = {
+        'pkg-1': { url: (old.month && old.month.url) || '', title: (old.month && old.month.title) || '', price: Number(old.month && old.month.price) || 0 },
+        'pkg-3': { url: (old.quarter && old.quarter.url) || '', title: (old.quarter && old.quarter.title) || '', price: Number(old.quarter && old.quarter.price) || 0 },
+        'pkg-6': { url: (old.half && old.half.url) || '', title: (old.half && old.half.title) || '', price: Number(old.half && old.half.price) || 0 }
+      };
+    } else {
+      db.packages = db.packages.map(normalizePackage).filter(Boolean);
+    }
+    if (!db.lynkByPackage || typeof db.lynkByPackage !== 'object' || Array.isArray(db.lynkByPackage)) db.lynkByPackage = {};
+    if (db.paymentsEnabled !== true) db.paymentsEnabled = false;
+    if (!db.checkoutProvider) db.checkoutProvider = '';
+  }
+  function packages() {
+    ensurePayModel();
+    return db.packages;
+  }
+  function packageById(id) {
+    return packages().find((row) => row && row.id === id) || null;
+  }
+  function packagePrice(id) {
+    const pkg = packageById(id);
+    return pkg ? pkg.priceIdr : 0;
+  }
+  function readPackageForm(form) {
+    const next = [];
+    if (!form) return packages().slice();
+    form.querySelectorAll('.pay-pkg').forEach((row) => {
+      const pkg = normalizePackage({
+        id: row.getAttribute('data-pkg'),
+        label: (row.querySelector('[name="label"]') || {}).value,
+        months: (row.querySelector('[name="months"]') || {}).value,
+        priceIdr: (row.querySelector('[name="price"]') || {}).value
+      });
+      if (pkg) next.push(pkg);
+    });
+    return next;
+  }
+  function extendAccessUntil(existingIso, months) {
+    const now = nowDate();
+    let base = now;
+    if (existingIso) {
+      const cur = new Date(existingIso);
+      if (isFinite(cur.getTime()) && cur.getTime() > now.getTime()) base = cur;
+    }
+    const until = new Date(base.getTime());
+    until.setMonth(until.getMonth() + (Number(months) || 1));
+    return until.toISOString();
+  }
+  function mentoringPaid(id) {
+    const b = billingOf(id);
+    if (b.status === 'gratis') return true;
+    if (b.status === 'pending' || b.status === 'belum' || b.status === 'trial' || !b.status) return false;
+    if (b.plan !== 'mentoring') return false;
+    if (b.accessUntil && nowMs() >= new Date(b.accessUntil).getTime() + graceMs()) return false;
+    return b.status === 'lunas' || b.status === 'cicilan';
+  }
   function lynkProduct(term) {
+    ensurePayModel();
+    const by = (db.lynkByPackage && db.lynkByPackage[term]) || null;
+    if (by && (by.url || by.title || by.price)) {
+      return {
+        url: String(by.url || '').trim(),
+        title: String(by.title || '').trim(),
+        price: Number(by.price) || 0
+      };
+    }
     const all = db.lynkProducts || {};
     const row = all[term] || {};
     return {
@@ -6297,8 +6438,73 @@
     const url = lynkProduct(term).url;
     return /^https:\/\//i.test(url) ? url : '';
   }
+  function payHookUrl(provider) {
+    const base = location.origin + apiBase() + '/webhooks/' + provider + '/' + schoolSlug();
+    if (provider === 'mayar') {
+      const token = ui.payStatus && ui.payStatus.mayarWebhookToken;
+      if (token) return base + '?token=' + encodeURIComponent(token);
+    }
+    return base;
+  }
+  function classReturnUrl() {
+    return location.origin + schoolPublicPath() + '?bayar=ok';
+  }
   function lynkWebhookUrl() {
-    return 'https://larisid.com/obrolan.marketing/api/webhooks/lynk';
+    return payHookUrl('lynk');
+  }
+  function checkoutReady(provider) {
+    const st = ui.payStatus || {};
+    if (provider === 'lynk') return packages().some((row) => lynkCheckoutUrl(row.id));
+    if (provider === 'mayar') return !!st.mayar;
+    if (provider === 'xendit') return !!st.xendit;
+    return false;
+  }
+  function ensureBayarPage() {
+    const ob = ensureOnboarding();
+    if (ob.pages.some((page) => page && page.kind === 'bayar')) return;
+    ob.pages.push(normalizeObPage({ id: uid('ob'), kind: 'bayar' }));
+    db.onboarding = normalizeOnboarding(ob);
+  }
+  function activatePayments() {
+    ensurePayModel();
+    if (!packages().length) {
+      toast('Tambah minimal satu paket.');
+      return false;
+    }
+    if (!db.checkoutProvider || !checkoutReady(db.checkoutProvider)) {
+      toast('Pilih checkout siswa yang sudah terhubung (Lynk, Mayar, atau Xendit).');
+      return false;
+    }
+    db.paymentsEnabled = true;
+    ensureBayarPage();
+    const weeks = db.weeks || [];
+    if (!weeks.some((week) => week && week.requirePay)) {
+      let marked = 0;
+      weeks.forEach((week, index) => {
+        if (week && index > 0) { week.requirePay = true; marked += 1; }
+      });
+      toast(marked
+        ? 'Pembayaran aktif. Bagian setelah yang pertama terkunci sampai lunas.'
+        : 'Pembayaran aktif. Bagian Bayar muncul di kuesioner siswa.');
+    } else {
+      toast('Pembayaran aktif. Bagian Bayar muncul di kuesioner siswa.');
+    }
+    save();
+    return true;
+  }
+  function enablePaymentsInteractive() {
+    ensurePayModel();
+    if (!packages().length || !db.checkoutProvider || !checkoutReady(db.checkoutProvider)) {
+      return activatePayments();
+    }
+    const lose = people().filter((row) => row && row.kind !== 'mentor' && db.applications && db.applications[row.id] && !mentoringPaid(row.id));
+    const names = lose.slice(0, 8).map((row) => nameOf(row.id)).join(', ');
+    const more = lose.length > 8 ? (' +' + (lose.length - 8)) : '';
+    const msg = lose.length
+      ? (lose.length + ' siswa belum lunas dan akan terkunci: ' + names + more + '. Yang sudah bayar tunai atau transfer, beri akses dulu. Nyalakan pembayaran?')
+      : 'Nyalakan pembayaran? Siswa baru harus bayar untuk bagian yang dikunci.';
+    if (!window.confirm(msg)) return false;
+    return activatePayments();
   }
   function openLynk(url) {
     if (!url) return;
@@ -6344,21 +6550,90 @@
   function mayarReady() {
     return !!(ui.mayar && ui.mayar.configured);
   }
-  async function refreshMayarStatus() {
-    ui.mayar = { configured: false, mode: 'unset' };
-    return ui.mayar;
+  async function refreshPayStatus() {
+    ui.payStatus = ui.payStatus || {};
+    if (!isStaff() || !canBill()) {
+      ui.mayar = { configured: false, mode: 'unset' };
+      return ui.payStatus;
+    }
+    try {
+      const res = await fetch(apiBase() + '/pay/status?slug=' + encodeURIComponent(schoolSlug()), {
+        headers: lmsHeaders(),
+        cache: 'no-store'
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) ui.payStatus = data || {};
+    } catch (err) { /* status stays empty */ }
+    ui.mayar = { configured: !!(ui.payStatus && ui.payStatus.mayar), mode: ui.payStatus && ui.payStatus.mayar ? 'live' : 'unset' };
+    return ui.payStatus;
   }
-  async function requestMayarInvoice(opts) {
-    const k = syncInvite();
-    const res = await fetch(apiBase() + '/pay/invoice?k=' + encodeURIComponent(k) +
-      '&slug=' + encodeURIComponent(schoolSlug()), {
+  async function refreshMayarStatus() {
+    return refreshPayStatus();
+  }
+  async function requestCheckout(packageId) {
+    const res = await fetch(apiBase() + '/pay/invoice?slug=' + encodeURIComponent(schoolSlug()), {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(Object.assign({ slug: schoolSlug() }, opts || {})),
+      headers: lmsHeaders(),
+      body: JSON.stringify({
+        slug: schoolSlug(),
+        personId: ui.personaId,
+        packageId: packageId,
+        returnUrl: classReturnUrl()
+      }),
       cache: 'no-store'
     });
     const data = await res.json().catch(() => ({}));
     return { ok: res.ok, status: res.status, data: data };
+  }
+  async function savePaySecrets(fields) {
+    const res = await fetch(apiBase() + '/pay/secrets?slug=' + encodeURIComponent(schoolSlug()), {
+      method: 'POST',
+      headers: lmsHeaders(),
+      body: JSON.stringify(Object.assign({ slug: schoolSlug() }, fields || {})),
+      cache: 'no-store'
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) ui.payStatus = data || {};
+    return { ok: res.ok, data: data };
+  }
+  function finishPaidReturn() {
+    ui.payWatch = false;
+    const pages = wizFormPages();
+    const index = pages.findIndex((page) => page && page.kind === 'bayar');
+    const next = index >= 0 ? index + 1 : pages.length;
+    if (next < pages.length) {
+      ui.wizStep = next;
+      ui.tab = 'daftar';
+      toast('Pembayaran masuk.');
+      render();
+      return;
+    }
+    ui.wizStep = null;
+    ui.tab = 'belajar';
+    toast('Pembayaran masuk. Kurikulum kebuka.');
+    render();
+  }
+  function watchPayReturn() {
+    if (ui.payWatch) return;
+    ui.payWatch = true;
+    ui.payWaitExpired = false;
+    const started = Date.now();
+    const tick = async () => {
+      if (!ui.payWatch) return;
+      try { await pullState(true); } catch (err) { /* retry */ }
+      if (canMentoring(ui.personaId)) {
+        finishPaidReturn();
+        return;
+      }
+      if (Date.now() - started > 30000) {
+        ui.payWatch = false;
+        ui.payWaitExpired = true;
+        render();
+        return;
+      }
+      setTimeout(tick, 1000);
+    };
+    tick();
   }
   function closeTransferTasks(id, taskId) {
     db.tasks.forEach((t) => {
@@ -9721,22 +9996,26 @@
       '</div></section>';
   }
   function viewWizard() {
-    const step = wizIdx();
-    const payAt = wizPayIdx();
-    if (schoolIsFree() && db.applications[ui.personaId]) {
+    const pages = wizFormPages();
+    let step = wizIdx();
+    if (step >= pages.length) step = Math.max(0, pages.length - 1);
+    const spec = pages[step];
+    if (schoolIsFree() && db.applications[ui.personaId] && (!spec || spec.kind !== 'bayar')) {
       ui.tab = 'home';
       return viewHome();
     }
-    const wantPay = step >= payAt || (wizardStep(ui.personaId) === 'pay' && ui.wizStep == null);
-    if (wantPay) {
-      if (!db.applications[ui.personaId]) {
-        const lastForm = Math.max(0, payAt - 1);
-        ui.wizStep = Math.min(typeof ui.wizStep === 'number' ? ui.wizStep : lastForm, lastForm);
-        if (ui.wizStep >= payAt) ui.wizStep = lastForm;
-        ui.wizFocusedStep = null;
-        return viewWizForm(ui.wizStep);
+    if (spec && spec.kind === 'bayar') {
+      if (!db.applications[ui.personaId] && !isOnboardPreview()) {
+        const prev = Math.max(0, step - 1);
+        ui.wizStep = prev;
+        const earlier = pages[prev];
+        if (earlier && earlier.kind !== 'bayar') return viewWizForm(prev);
       }
       return viewPayPage(ui.personaId);
+    }
+    if (!spec) {
+      ui.tab = 'home';
+      return viewHome();
     }
     return viewWizForm(step);
   }
@@ -9844,107 +10123,43 @@
     );
   }
   function viewPayPage(sid) {
-    const b = billingOf(sid);
-    if (b.status === 'pending') {
-      if (b.source === 'lynk') {
-        const again = b.lynkUrl || lynkCheckoutUrl(b.pendingTerm || b.term);
+    ensurePayModel();
+    const preview = isOnboardPreview();
+    const rows = packages();
+    const picked = ui.payPackage && packageById(ui.payPackage) ? ui.payPackage : (rows[0] && rows[0].id);
+    ui.payPackage = picked || '';
+    if (!preview && sid) {
+      const b = billingOf(sid);
+      if (canMentoring(sid) && (b.status === 'lunas' || b.status === 'gratis' || b.status === 'cicilan')) {
         return obWrap(wizPayIdx(),
-          '<p class="ob-kicker">Lynk</p>' +
-          '<h1 class="ob-q">Menunggu konfirmasi Lynk</h1>' +
-          '<p class="ob-sub">Checkout ' + fmtRp(b.pendingAmount || b.amount || 0) +
-          ' (' + esc(termLabel(b.pendingTerm || b.term)) +
-          '). ' + esc(mentorDisplayName()) + ' yang menerima uangnya. Kurikulum kebuka setelah Lynk mengonfirmasi. Video 1 tetap kebuka.</p>',
-          (again ? '<a class="btn ob-cta" href="' + esc(again) + '" target="_blank" rel="noopener">Buka halaman Lynk</a>' : '') +
-          '<button class="btn secondary ob-cta" data-act="tab" data-id="home">Kembali ke Home</button>',
+          '<p class="ob-kicker">Bayar</p><h1 class="ob-q">Mentoring aktif</h1>' +
+          '<p class="ob-sub">Akses kurikulum sudah kebuka.</p>',
+          '<button class="btn ob-cta" type="button" data-act="tab" data-id="belajar">Buka kurikulum</button>',
           true);
       }
-      if (b.source === 'mayar') {
+      if (ui.payWatch) {
         return obWrap(wizPayIdx(),
-          '<p class="ob-kicker">Mayar</p>' +
-          '<h1 class="ob-q">Menunggu pembayaran</h1>' +
-          '<p class="ob-sub">Invoice ' + fmtRp(b.pendingAmount || b.amount || 0) +
-          ' (' + esc(termLabel(b.pendingTerm || b.term)) +
-          '). Akses mentoring kebuka otomatis setelah pembayaran masuk. Video 1 tetap kebuka.</p>',
-          (b.mayarLink
-            ? '<a class="btn ob-cta" href="' + esc(b.mayarLink) + '" target="_blank" rel="noopener">Buka halaman bayar</a>'
-            : '') +
-          '<button class="btn secondary ob-cta" data-act="tab" data-id="home">Kembali ke Home</button>',
+          '<p class="ob-kicker">QRIS</p><h1 class="ob-q">Pembayaran diterima</h1>' +
+          '<p class="ob-sub">Membuka kurikulum…</p>',
+          '',
           true);
       }
-      return obWrap(wizPayIdx(),
-        '<p class="ob-kicker">Transfer</p>' +
-        '<h1 class="ob-q">Menunggu konfirmasi ' + esc(mentorDisplayName()) + '</h1>' +
-        '<p class="ob-sub">Kamu sudah klaim transfer ' + fmtRp(b.pendingAmount || b.amount || 0) +
-        ' (' + esc(termLabel(b.pendingTerm || b.term)) +
-        '). ' + esc(mentorDisplayName()) + ' cek rekening, lalu akses mentoring kebuka. Video 1 tetap kebuka.</p>',
-        '<button class="btn ob-cta" data-act="tab" data-id="home">Kembali ke Home</button>',
-        true);
     }
-    const welcome = welcomeOpen(sid) || !b.offerExpiresAt;
-    const exp = b.offerExpiresAt || addMs(isoNow(), 24 * 36e5);
-    const inWin = hoursLeft(exp) > 0;
-    const term = ui.payTerm || 'month';
-    const price = priceForTerm(term, welcome && inWin);
-    const list = listPriceForTerm(term);
-    const tools = catalog().filter((p) => bundled(p));
-    const toolPct = toolDiscountPct();
-    const include = '<ul class="ob-checks">' +
-      '<li>Kurikulum 12 video + lembar kerja</li>' +
-      '<li>Live class, diskusi, Kolab</li>' +
-      '<li>Undangan grup WA dari ' + esc(mentorDisplayName()) + '</li>' +
-      '<li><strong>−' + toolPct + '% semua alat</strong> di Perpustakaan</li>' +
-      '<li class="is-mute">Laris Affiliate tetap harga satuan</li></ul>' +
-      '<button type="button" class="ob-link" data-act="wiz-tools">' +
-      (ui.wizTools ? 'Sembunyikan harga alat' : 'Lihat harga alat −' + toolPct + '%') + '</button>' +
-      (ui.wizTools
-        ? '<div class="include-tools">' + tools.map((p) =>
-          '<div class="include-tool"><span>' + esc(p.title) + '</span>' +
-          '<span><span class="price-coret">' + fmtRp(p.price) + '</span> <strong>' + fmtRp(toolMemberPrice(p)) + '</strong></span></div>'
-        ).join('') + '</div>'
-        : '');
-    const inner = '<p class="ob-kicker">Paket</p>' +
-      '<h1 class="ob-q">Yang kamu dapat</h1>' +
-      '<p class="ob-sub">' + esc(mentorDisplayName()) + ' yang menerima pembayaran. LarisID tidak menahan uang. Kurikulum kebuka setelah Lynk mengonfirmasi, atau setelah ' + esc(mentorDisplayName()) + ' menandai transfer manual.</p>' +
-      include +
-      '<p class="ob-note">' + (inWin
-        ? 'Harga perkenalan 24 jam untuk 1 bulan &amp; autopay · sisa <strong>' + esc(fmtRemain(exp)) + '</strong>. 3 &amp; 6 bulan sudah diskon program, tidak ditumpuk.'
-        : 'Jendela 24 jam sudah habis. Harga program di bawah.') + '</p>' +
-      '<div class="pay-terms ob-terms">' +
-        termCard('month', term, inWin && welcome) +
-        termCard('quarter', term, false) +
-        termCard('half', term, false) +
-        termCard('autopay', term, inWin && welcome) +
-      '</div>' +
-      '<div class="ob-bank">' +
-        (lynkCheckoutUrl(term)
-          ? '<div class="ob-tf">' +
-              '<p class="ob-tf-kicker">Bayar di Lynk</p>' +
-              '<p class="muted">Halaman checkout ' + esc(mentorDisplayName()) + '. Kurikulum kebuka setelah Lynk mengirim konfirmasi.</p>' +
-              '<p class="muted">Jumlah di kelas: <strong>' + fmtRp(price) + '</strong>' +
-              (price < list ? ' <span class="price-coret">' + fmtRp(list) + '</span>' : '') +
-              ' · ' + esc(termLabel(term)) +
-              (lynkProduct(term).title ? ' · ' + esc(lynkProduct(term).title) : '') + '</p>' +
-            '</div>'
-          : '<div class="ob-tf">' +
-              '<p class="ob-tf-kicker">Transfer manual</p>' +
-              '<p><strong>' + esc(db.bank.bank) + '</strong> ' + esc(db.bank.number) + '<br>a.n. ' + esc(db.bank.name) + '</p>' +
-              '<p class="muted">Tautan Lynk untuk paket ini belum diisi. Jumlah sekarang: <strong>' + fmtRp(price) + '</strong> · ' + esc(termLabel(term)) + '</p>' +
-            '</div>') +
-        (lynkCheckoutUrl(term)
-          ? '<details class="ob-manual"><summary>Sudah transfer ke rekening ' + esc(mentorDisplayName()) + '</summary>' +
-              '<p><strong>' + esc(db.bank.bank) + '</strong> ' + esc(db.bank.number) + '<br>a.n. ' + esc(db.bank.name) + '</p>' +
-              '<p class="muted">' + esc(mentorDisplayName()) + ' menandai lunas di CRM kalau webhook Lynk tidak cocok.</p></details>'
-          : '') +
-      '</div>';
-    const foot =
-      (lynkCheckoutUrl(term)
-        ? '<button class="btn ob-cta" data-act="pay-lynk" data-term="' + esc(term) + '">Bayar di Lynk</button>' +
-          '<button type="button" class="btn secondary ob-cta" data-act="pay-manual" data-term="' + esc(term) + '">Saya sudah transfer</button>'
-        : '<button class="btn ob-cta" data-act="pay-now" data-term="' + esc(term) + '">' +
-          (term === 'autopay' ? 'Bayar kartu (mock)' : 'Saya sudah transfer / scan') + '</button>') +
-      '<button type="button" class="btn secondary ob-cta" data-act="pay-later">Bayar nanti, lihat dulu</button>' +
-      '<p class="ob-look-hint">Form sudah masuk — tab <strong>Belajar</strong> &amp; <strong>Diskusi</strong> di bawah. Video 1 kebuka; sisanya blur sampai lunas.</p>' +
-      '<button type="button" class="ob-text" data-act="not-interested">Tidak tertarik</button>';
+    const cards = rows.map((row) =>
+      '<button type="button" class="ob-pill' + (row.id === picked ? ' is-on' : '') +
+      '" data-act="pay-pick" data-id="' + esc(row.id) + '">' + esc(row.label) + ' · ' + fmtRp(row.priceIdr) + '</button>'
+    ).join('');
+    const wait = (!preview && ui.payWaitExpired)
+      ? '<p class="ob-sub">Pembayaran belum masuk. Coba QRIS lagi.</p>' : '';
+    const inner = '<p class="ob-kicker">Bayar</p>' +
+      '<h1 class="ob-q">Beli mentoring</h1>' +
+      '<p class="ob-sub">Pilih paket, bayar dengan QRIS, lalu kembali ke kelas. Kurikulum yang sudah dibayar kebuka dalam beberapa detik.</p>' +
+      wait +
+      '<div class="ob-pills pay-picks">' + (cards || '<p class="muted">Mentor belum mengisi paket.</p>') + '</div>';
+    const foot = preview
+      ? '<button type="button" class="btn secondary ob-cta" data-act="ob-preview-close">Tutup</button>'
+      : '<button class="btn ob-cta" type="button" data-act="pay-qris" data-id="' + esc(picked || '') + '">Bayar dengan QRIS</button>' +
+        '<button type="button" class="btn secondary ob-cta" data-act="pay-later">Bayar nanti, lihat dulu</button>';
     return obWrap(wizPayIdx(), inner, foot, true);
   }
   function qrisPlaceholderSvg() {
@@ -13154,83 +13369,170 @@
         : '<p class="muted" style="margin-top:8px">Tidak ada diskusi yang menunggu jawaban.</p>') +
       '</section>';
   }
-  function viewHarga() {
-    const p = db.pricing;
-    const b = db.bank;
-    const slug = schoolSlug();
-    const pub = schoolPublicUrl();
-    const join = schoolJoinUrl();
-    const local = schoolLocalUrl();
-    return '<section class="card school-url-card">' +
-      '<h2>Alamat sekolah</h2>' +
-      '<p class="muted">Kelas ini dibuka di <strong>larisid.com' + esc(schoolPublicPath()) + '</strong>. Siswa dan mentor memakai tautan yang sama.</p>' +
-      '<form class="compose" data-act="save-school-url">' +
-        '<label class="muted">Kode undangan batch</label>' +
-        '<input name="invite" value="' + esc(schoolInviteCode()) + '" maxlength="40" autocomplete="off" spellcheck="false">' +
-        '<label class="muted">Nomor WA ' + esc(mentorDisplayName()) + '</label>' +
-        '<input name="ownerWa" value="' + esc(ownerContact().wa || ownerWa()) + '" placeholder="628…" inputmode="tel">' +
-        '<label class="muted">Email ' + esc(mentorDisplayName()) + '</label>' +
-        '<input name="ownerEmail" type="email" value="' + esc(ownerContact().email || '') + '" placeholder="nama@email.com">' +
-        '<button class="btn" type="submit">Simpan kontak</button>' +
-      '</form>' +
-      '<dl class="url-share">' +
-        '<div><dt>Rumah siswa</dt><dd><code>' + esc(pub) + '</code>' +
-          '<button type="button" class="btn-sm" data-act="copy-url" data-url="' + esc(pub) + '">Salin</button></dd></div>' +
-        '<div><dt>Gabung + kode</dt><dd><code>' + esc(join) + '</code>' +
-          '<button type="button" class="btn-sm" data-act="copy-url" data-url="' + esc(join) + '">Salin</button></dd></div>' +
-        '<div><dt>Admin</dt><dd><code>' + esc(schoolAdminUrl()) + '</code>' +
-          '<button type="button" class="btn-sm" data-act="copy-url" data-url="' + esc(schoolAdminUrl()) + '">Salin</button></dd></div>' +
-        '<div><dt>Lokal (demo)</dt><dd><code>' + esc(local) + '</code>' +
-          '<button type="button" class="btn-sm" data-act="copy-url" data-url="' + esc(schoolJoinLocalUrl()) + '">Salin + invite</button></dd></div>' +
-      '</dl>' +
-      '<p class="muted">Lynk etalase: <a href="' + esc(SEED.school.lynk) + '" target="_blank" rel="noopener">' + esc(SEED.school.lynk) + '</a> — bukan URL kelas.</p>' +
-      '</section>' +
-      '<div class="grid-2"><section class="card"><h2>Harga mentoring (placeholder)</h2>' +
-      '<form class="compose" data-act="save-pricing">' +
-        '<label class="muted">Bulanan (IDR)</label><input name="monthlyIdr" type="number" value="' + esc(p.monthlyIdr) + '">' +
-        '<label class="muted">Diskon 3 bulan %</label><input name="quarterDiscountPct" type="number" value="' + esc(p.quarterDiscountPct || 15) + '">' +
-        '<label class="muted">Diskon 6 bulan %</label><input name="halfDiscountPct" type="number" value="' + esc(p.halfDiscountPct || 25) + '">' +
-        '<label class="muted">Diskon kartu autopay %</label><input name="autopayDiscountPct" type="number" value="' + esc(p.autopayDiscountPct) + '">' +
-        '<label class="muted">Diskon 24 jam % (1 bulan &amp; autopay)</label><input name="welcomeDiscountPct" type="number" value="' + esc(p.welcomeDiscountPct) + '">' +
-        '<label class="muted">Diskon alat mentoring %</label><input name="toolDiscountPct" type="number" value="' + esc(p.toolDiscountPct || 50) + '">' +
-        '<label class="muted">Licensing mentor %</label><input name="overridePct" type="number" value="' + esc(p.overridePct) + '">' +
-        '<button class="btn" type="submit">Simpan harga</button></form>' +
-      '<p class="muted">1 bulan ' + fmtRp(priceForTerm('month', false)) +
-      ' · 3 bulan ' + fmtRp(priceForTerm('quarter', false)) +
-      ' · 6 bulan ' + fmtRp(priceForTerm('half', false)) +
-      ' · autopay ' + fmtRp(priceForTerm('autopay', false)) +
-      ' · alat −' + toolDiscountPct() + '%</p>' +
-      '</section><section class="card"><h2>Rekening transfer</h2>' +
+  function payTabBtn(id, label, cur) {
+    return '<button type="button" role="tab" data-act="pay-pane" data-id="' + id + '" aria-selected="' + (id === cur) + '">' + esc(label) + '</button>';
+  }
+  function payCopyRow(label, url) {
+    return '<p class="pay-url"><span class="muted">' + esc(label) + '</span><code>' + esc(url) + '</code> ' +
+      '<button type="button" class="btn-sm" data-act="copy-url" data-url="' + esc(url) + '">Salin</button></p>';
+  }
+  function paySecretField(name, label, last) {
+    return '<label class="muted">' + esc(label) + (last ? ' · tersimpan ••••' + esc(last) : '') + '</label>' +
+      '<input name="' + name + '" type="password" autocomplete="off" placeholder="' + (last ? 'Kosongkan kalau tidak ganti' : 'Tempel di sini') + '">';
+  }
+  function viewPayPaket() {
+    const rows = packages();
+    const weeks = db.weeks || [];
+    const provider = db.checkoutProvider || '';
+    const on = paymentsOn();
+    return '<section class="card"><h2>Paket mentoring</h2>' +
+      '<p class="muted">Contoh: 1 bulan, 2 bulan, 3 bulan. Ubah bulan dan harga. Harga di sini yang ditagih Mayar dan Xendit. Diskon alat di Perpustakaan bukan paket ini.</p>' +
+      '<form class="compose" data-act="save-packages">' +
+        rows.map((row) =>
+          '<div class="pay-pkg" data-pkg="' + esc(row.id) + '">' +
+            '<label class="muted">Nama<input name="label" value="' + esc(row.label) + '" maxlength="40"></label>' +
+            '<label class="muted">Bulan<input name="months" type="number" min="1" step="1" value="' + esc(row.months) + '"></label>' +
+            '<label class="muted">Harga IDR<input name="price" type="number" min="0" step="1000" value="' + esc(row.priceIdr) + '"></label>' +
+            '<button type="button" class="btn-sm" data-act="pkg-del" data-id="' + esc(row.id) + '">Hapus</button>' +
+          '</div>'
+        ).join('') +
+        '<div class="row">' +
+          '<button type="button" class="btn secondary" data-act="pkg-add">Tambah paket</button>' +
+          '<button class="btn" type="submit">Simpan paket</button>' +
+        '</div></form>' +
+      '<h3>Checkout siswa</h3>' +
+      '<p class="muted">Satu metode untuk tombol Bayar dengan QRIS di kuesioner.</p>' +
+      '<div class="pay-picks">' +
+        ['lynk', 'mayar', 'xendit'].map((id) =>
+          '<label data-act="pick-checkout" data-id="' + id + '"><input type="radio" name="checkout"' +
+            (provider === id ? ' checked' : '') + '> ' + esc(id === 'lynk' ? 'Lynk' : (id === 'mayar' ? 'Mayar' : 'Xendit')) +
+            (checkoutReady(id) ? '' : ' <span class="muted">(belum terhubung)</span>') +
+          '</label>'
+        ).join('') +
+      '</div>' +
+      '<p>' + (on
+        ? '<button type="button" class="btn secondary" data-act="payments-off">Matikan pembayaran</button>'
+        : '<button type="button" class="btn" data-act="payments-on">Aktifkan pembayaran</button>') +
+      '</p>' +
+      '<p class="muted">' + (on
+        ? 'Pembayaran aktif. Bagian Bayar tampil di kuesioner siswa.'
+        : 'Masih gratis untuk siswa sampai kamu mengaktifkan.') + '</p>' +
+      '<h3>Yang terkunci tanpa bayar</h3>' +
+      (legacyKurGates()
+        ? '<p class="muted">Kelas ini masih aturan lama: yang belum bayar hanya bisa membuka video 1, sampai kamu mencentang bagian di bawah.</p>'
+        : '<p class="muted">Centang bagian yang harus lunas dulu. Kalau belum ada yang dicentang saat kamu mengaktifkan, Laris mengunci semua bagian kecuali yang pertama.</p>') +
+      (weeks.length
+        ? weeks.map((week) =>
+          '<label class="kur-gate"><input type="checkbox" data-act="sec-require-pay" data-id="' + esc(week.id) + '"' +
+            (week.requirePay ? ' checked' : '') + '> ' + esc(week.title || 'Bagian') + '</label>'
+        ).join('')
+        : '<p class="muted">Belum ada bagian kurikulum.</p>') +
+      '</section>';
+  }
+  function viewPayLynk() {
+    const hook = payHookUrl('lynk');
+    const back = classReturnUrl();
+    const st = ui.payStatus || {};
+    const rows = packages();
+    const unmatched = (st.unmatched || []);
+    const students = people().filter((row) => row && row.kind !== 'mentor');
+    return '<section class="card"><h2>Lynk</h2>' +
+      '<ol class="pay-steps">' +
+        '<li>Di lynk.id buat satu produk untuk setiap paket. Nyalakan QRIS.</li>' +
+        '<li>Isi tautan kembali produk dengan URL kelas di bawah.</li>' +
+        '<li>Judul dan harga produk harus sama dengan baris di sini. Mengubah harga di Laris tidak mengubah lynk.id.</li>' +
+        '<li>Tempel URL webhook di pengaturan webhook Lynk, lalu tempel Merchant Key di sini.</li>' +
+        '<li>Nomor WhatsApp pembeli di Lynk harus sama dengan WA siswa di kelas.</li>' +
+      '</ol>' +
+      payCopyRow('Webhook', hook) +
+      payCopyRow('Kembali ke kelas', back) +
+      '<form class="compose" data-act="save-pay-secret" data-provider="lynk">' +
+        paySecretField('lynkMerchantKey', 'Merchant Key', st.lynkLast4) +
+        '<button class="btn" type="submit">Simpan kunci Lynk</button></form>' +
+      '<form class="compose" data-act="save-lynk-packages">' +
+        rows.map((row) => {
+          const link = lynkProduct(row.id);
+          const mismatch = link.price && link.price !== row.priceIdr;
+          return '<h3>' + esc(row.label) + ' · ' + fmtRp(row.priceIdr) + '</h3>' +
+            '<label class="muted">URL checkout</label>' +
+            '<input name="url" data-pkg="' + esc(row.id) + '" value="' + esc(link.url) + '" placeholder="https://lynk.id/…">' +
+            '<label class="muted">Judul di Lynk (harus sama persis)</label>' +
+            '<input name="title" data-pkg="' + esc(row.id) + '" value="' + esc(link.title) + '">' +
+            '<label class="muted">Harga di Lynk</label>' +
+            '<input name="lynkPrice" data-pkg="' + esc(row.id) + '" type="number" value="' + esc(link.price || row.priceIdr) + '">' +
+            (mismatch ? '<p class="muted">Harga Lynk beda dengan paket Laris (' + fmtRp(row.priceIdr) + '). Samakan di lynk.id.</p>' : '');
+        }).join('') +
+        '<button class="btn" type="submit">Simpan produk Lynk</button></form>' +
+      (unmatched.length
+        ? '<h3>Belum cocok</h3>' + unmatched.map((row) =>
+          '<div class="pay-unmatched"><p><strong>' + esc((row.titles && row.titles[0]) || 'Tanpa judul') + '</strong> · ' +
+            esc(row.phone || 'tanpa WA') + ' · ' + esc(row.reason || '') + '</p>' +
+            '<select data-ref="' + esc(row.refId) + '">' +
+              '<option value="">Pilih siswa</option>' +
+              students.map((student) => '<option value="' + esc(student.id) + '">' + esc(nameOf(student.id)) + '</option>').join('') +
+            '</select> ' +
+            '<button type="button" class="btn-sm" data-act="match-lynk" data-ref="' + esc(row.refId) + '">Hubungkan ke siswa</button></div>'
+        ).join('')
+        : '') +
+      '</section>';
+  }
+  function viewPayMayar() {
+    const st = ui.payStatus || {};
+    return '<section class="card"><h2>Mayar</h2>' +
+      '<ol class="pay-steps">' +
+        '<li>Pakai akun mayar.id. Uji dulu di web.mayar.io kalau belum live.</li>' +
+        '<li>Tempel API key di bawah. Laris yang membuat invoice QRIS saat siswa bayar.</li>' +
+        '<li>Di Mayar: Integration → Webhook. Tempel URL di bawah, simpan, lalu test.</li>' +
+        '<li>Jangan pakai Mayar Membership untuk masa aktif. Ubah harga paket di tab Paket saja.</li>' +
+      '</ol>' +
+      payCopyRow('Webhook', payHookUrl('mayar')) +
+      '<form class="compose" data-act="save-pay-secret" data-provider="mayar">' +
+        paySecretField('mayarApiKey', 'API key', st.mayarLast4) +
+        '<button class="btn" type="submit">Simpan API key</button></form>' +
+      '<p class="muted">' + (st.mayar ? 'Mayar terhubung.' : 'API key belum tersimpan.') + '</p></section>';
+  }
+  function viewPayXendit() {
+    const st = ui.payStatus || {};
+    return '<section class="card"><h2>Xendit</h2>' +
+      '<ol class="pay-steps">' +
+        '<li>Dashboard Xendit, mode Live.</li>' +
+        '<li>Settings → Webhooks: produk Invoice diisi URL di bawah. Salin Webhook verification token ke sini.</li>' +
+        '<li>Tempel Secret API key. Laris membuat invoice QRIS dan mengembalikan siswa ke kelas.</li>' +
+        '<li>Ubah harga paket di tab Paket saja. Tidak perlu mengubah harga di Xendit.</li>' +
+      '</ol>' +
+      payCopyRow('Webhook Invoice', payHookUrl('xendit')) +
+      '<form class="compose" data-act="save-pay-secret" data-provider="xendit">' +
+        paySecretField('xenditSecretKey', 'Secret API key', st.xenditKeyLast4) +
+        paySecretField('xenditCallbackToken', 'Webhook verification token', st.xenditTokenLast4) +
+        '<button class="btn" type="submit">Simpan Xendit</button></form>' +
+      '<p class="muted">' + (st.xendit ? 'Xendit terhubung.' : 'Secret key dan token belum lengkap.') + '</p></section>';
+  }
+  function viewPayTunai() {
+    const b = db.bank || {};
+    return '<section class="card"><h2>Tunai dan transfer</h2>' +
+      '<p class="muted">Siswa yang bayar di luar QRIS tetap menunggu kamu. Di profil siswa, pilih paket lalu Beri akses (tunai atau transfer). Cabut akses mengunci lagi.</p>' +
       '<form class="compose" data-act="save-bank">' +
-        '<label class="muted">Bank</label><input name="bank" value="' + esc(b.bank) + '">' +
-        '<label class="muted">Nomor</label><input name="number" value="' + esc(b.number) + '">' +
-        '<label class="muted">Atas nama</label><input name="name" value="' + esc(b.name) + '">' +
-        '<button class="btn" type="submit">Simpan rekening</button></form>' +
-      '<p class="muted">Siswa menyalin ini kalau transfer manual. ' + esc(mentorDisplayName()) + ' menandai lunas di baris siswa / profil.</p>' +
-      '</section></div>' + lynkSettingsHtml();
+        '<label class="muted">Bank</label><input name="bank" value="' + esc(b.bank || '') + '">' +
+        '<label class="muted">Nomor</label><input name="number" value="' + esc(b.number || '') + '">' +
+        '<label class="muted">Atas nama</label><input name="name" value="' + esc(b.name || '') + '">' +
+        '<button class="btn" type="submit">Simpan rekening</button></form></section>';
   }
-  function lynkField(term, label) {
-    const row = lynkProduct(term);
-    return '<h3>' + esc(label) + '</h3>' +
-      '<label class="muted">URL checkout</label>' +
-      '<input name="' + term + 'Url" value="' + esc(row.url) + '" placeholder="https://lynk.id/…" inputmode="url">' +
-      '<label class="muted">Judul di Lynk</label>' +
-      '<input name="' + term + 'Title" value="' + esc(row.title) + '" placeholder="Sama persis dengan judul produk">' +
-      '<label class="muted">Harga IDR</label>' +
-      '<input name="' + term + 'Price" type="number" value="' + esc(row.price || '') + '" placeholder="400000">';
-  }
-  function lynkSettingsHtml() {
-    const hook = lynkWebhookUrl();
-    return '<section class="card" style="margin-top:12px"><h2>Lynk mentoring</h2>' +
-      '<p class="muted">Satu URL webhook per akun Lynk. Merchant Key ada di server, bukan di form ini. Judul yang tidak sama dengan paket di bawah tidak membuka 12 video.</p>' +
-      '<p><code>' + esc(hook) + '</code> ' +
-        '<button type="button" class="btn-sm" data-act="copy-url" data-url="' + esc(hook) + '">Salin webhook</button></p>' +
-      '<form class="compose" data-act="save-lynk">' +
-        lynkField('month', '1 bulan') +
-        lynkField('quarter', '3 bulan') +
-        lynkField('half', '6 bulan') +
-        '<button class="btn" type="submit">Simpan paket Lynk</button>' +
-      '</form></section>';
+  function viewHarga() {
+    ensurePayModel();
+    const pane = ui.payPane || 'paket';
+    const body = pane === 'lynk' ? viewPayLynk()
+      : pane === 'mayar' ? viewPayMayar()
+      : pane === 'xendit' ? viewPayXendit()
+      : pane === 'tunai' ? viewPayTunai()
+      : viewPayPaket();
+    return '<div class="pay-settings">' +
+      '<nav class="pay-tabs" role="tablist">' +
+        payTabBtn('paket', 'Paket', pane) +
+        payTabBtn('lynk', 'Lynk', pane) +
+        payTabBtn('mayar', 'Mayar', pane) +
+        payTabBtn('xendit', 'Xendit', pane) +
+        payTabBtn('tunai', 'Tunai & transfer', pane) +
+      '</nav>' + body + '</div>';
   }
   function personBatchField(id) {
     const person = people().find((s) => s.id === id) || {};
@@ -13340,6 +13642,16 @@
               ? '<span class="muted">Disembunyikan</span>'
               : (staffCan('editIncome') ? billStatusSelect(id, b) : payChip(b.status, b.source)) +
                 (confirmPaidBtn(id) ? '<div style="margin-top:6px">' + confirmPaidBtn(id) + '</div>' : '') +
+                (staffCan('editIncome')
+                  ? '<div class="pay-grant">' +
+                      '<select aria-label="Paket akses">' +
+                        packages().map((pkg) => '<option value="' + esc(pkg.id) + '">' + esc(pkg.label) + ' · ' + fmtRp(pkg.priceIdr) + '</option>').join('') +
+                        '<option value="gratis">Tanpa batas</option></select>' +
+                      '<button type="button" class="btn-sm" data-act="grant-access" data-id="' + esc(id) + '" data-source="cash">Beri akses · tunai</button>' +
+                      '<button type="button" class="btn-sm" data-act="grant-access" data-id="' + esc(id) + '" data-source="transfer">Beri akses · transfer</button>' +
+                      '<button type="button" class="btn-sm" data-act="revoke-access" data-id="' + esc(id) + '">Cabut akses</button>' +
+                    '</div>'
+                  : '') +
                 '<div class="muted" style="margin-top:6px">' + esc(termLabel(b.pendingTerm || b.term)) + '</div>' +
                 (staffCan('editIncome')
                   ? '<div style="margin-top:6px">' + billAmountInput(id, b) + '</div>'
@@ -15864,7 +16176,7 @@
     'comment-reply', 'comment-expand', 'comment-reply-clear', 'comment-like', 'post-like', 'post-pin', 'post-del',
     'wiz-next', 'wiz-shop', 'wiz-heard', 'wiz-tools', 'ob-single', 'ob-multi', 'apply',
     'mark-done', 'toggle-done', 'exam', 'exam-submit',
-    'pay-term', 'pay-buy', 'pay-prompt', 'pay-prompt-close', 'pay-prompt-go', 'pay-lynk', 'pay-manual', 'pay-now', 'pay-later',
+    'pay-term', 'pay-buy', 'pay-prompt', 'pay-prompt-close', 'pay-prompt-go', 'pay-lynk', 'pay-qris', 'pay-manual', 'pay-now', 'pay-later',
     'ask', 'reply', 'report-issue', 'chat-member-add', 'chat-member-remove', 'chat-new',
     'has-shop', 'heard-from', 'save-student-account', 'open-me', 'set-theme',
     'pick-social', 'pick-shop', 'add-social', 'add-shop', 'del-social', 'del-shop'
@@ -16395,6 +16707,27 @@
       syncOnboardingAccountFields();
       save();
       render();
+    } else if (act === 'ob-bayar-add') {
+      if (!canBill()) return;
+      captureOnboardingEditor();
+      const ob = ensureOnboarding();
+      if (ob.pages.some((page) => page && page.kind === 'bayar')) return;
+      if (!paymentsOn()) {
+        if (!window.confirm('Nyalakan pembayaran? Kalau tidak, bagian Bayar tidak muncul di kuesioner siswa.')) return;
+        ensurePayModel();
+        if (!packages().length || !db.checkoutProvider || !checkoutReady(db.checkoutProvider)) {
+          toast('Siapkan paket dan checkout dulu di Payment settings.');
+          ui.mentorTab = 'harga';
+          ui.payPane = 'paket';
+          render();
+          return;
+        }
+        if (!enablePaymentsInteractive()) return;
+      }
+      ensureBayarPage();
+      save();
+      toast('Bagian Bayar ditambahkan.');
+      render();
     } else if (act === 'ob-page-del') {
       if (!canBill()) return;
       captureOnboardingEditor();
@@ -16739,13 +17072,91 @@
       ui.accountPane = 'security';
       ui.personId = null;
       render();
+    } else if (act === 'pay-pane') {
+      ui.payPane = btn.getAttribute('data-id') || 'paket';
+      render();
+    } else if (act === 'pkg-add') {
+      if (!canBill()) return;
+      const form = document.querySelector('[data-act="save-packages"]');
+      if (form) db.packages = readPackageForm(form);
+      db.packages.push(normalizePackage({ id: uid('pkg'), months: 1, priceIdr: 0, label: 'Paket baru' }));
+      save();
+      render();
+    } else if (act === 'pkg-del') {
+      if (!canBill()) return;
+      const form = document.querySelector('[data-act="save-packages"]');
+      if (form) db.packages = readPackageForm(form);
+      const id = btn.getAttribute('data-id');
+      db.packages = packages().filter((row) => row.id !== id);
+      save();
+      render();
+    } else if (act === 'pick-checkout') {
+      if (!canBill()) return;
+      db.checkoutProvider = btn.getAttribute('data-id') || '';
+      save();
+      render();
+    } else if (act === 'payments-on') {
+      if (!canBill()) return;
+      if (enablePaymentsInteractive()) render();
+    } else if (act === 'payments-off') {
+      if (!canBill()) return;
+      if (!window.confirm('Matikan pembayaran? Bagian Bayar disembunyikan dari siswa. Kelas kembali terbuka.')) return;
+      db.paymentsEnabled = false;
+      save();
+      toast('Pembayaran dimatikan.');
+      render();
+    } else if (act === 'match-lynk') {
+      if (!canBill()) return;
+      const refId = btn.getAttribute('data-ref') || '';
+      const box = btn.closest('.pay-unmatched');
+      const sel = box && box.querySelector('select');
+      const personId = sel && sel.value;
+      if (!personId) { toast('Pilih siswa dulu.'); return; }
+      fetch(apiBase() + '/pay/match?slug=' + encodeURIComponent(schoolSlug()), {
+        method: 'POST',
+        headers: lmsHeaders(),
+        body: JSON.stringify({ slug: schoolSlug(), refId: refId, personId: personId })
+      }).then((res) => {
+        toast(res.ok ? 'Siswa terhubung. Akses kebuka.' : 'Tidak bisa menghubungkan.');
+        return refreshPayStatus();
+      }).then(() => { if (ui.mentorTab === 'harga') render(); });
+    } else if (act === 'grant-access') {
+      if (!staffCan('editIncome')) return;
+      const id = btn.getAttribute('data-id');
+      const source = btn.getAttribute('data-source') || 'transfer';
+      const box = btn.closest('.pay-grant');
+      const sel = box && box.querySelector('select');
+      const pick = (sel && sel.value) || (packages()[0] && packages()[0].id) || '';
+      if (pick === 'gratis') {
+        grantFreeAccess(id);
+        save();
+        toast('Akses tanpa batas · ' + nameOf(id));
+        render();
+        return;
+      }
+      const pkg = packageById(pick);
+      if (!pkg) { toast('Pilih paket dulu.'); return; }
+      grantMentoring(id, pkg.id, source === 'cash' ? 'tunai' : 'transfer', pkg.priceIdr);
+      save();
+      toast('Akses kebuka · ' + nameOf(id));
+      render();
+    } else if (act === 'revoke-access') {
+      if (!staffCan('editIncome')) return;
+      const id = btn.getAttribute('data-id');
+      const b = billingOf(id);
+      b.status = 'trial';
+      b.plan = 'preview';
+      b.accessUntil = isoNow();
+      save();
+      toast('Akses dicabut · ' + nameOf(id));
+      render();
     } else if (act === 'open-payment') {
       setBrandMenu(false);
       if (blockLeaveWhileVidUpload('harga')) return;
       ui.profilePreview = null;
       ui.profilePreviewKind = null;
       if (!SHOW_PENGATURAN_BAYAR || !canBill()) {
-        toast('Payment settings hanya di staging untuk ' + mentorDisplayName() + '.');
+        toast('Payment settings hanya untuk mentor.');
         return;
       }
       ui.mentorTab = 'harga';
@@ -17805,11 +18216,8 @@
         const term = btn.getAttribute('data-term') || ui.payTerm || 'month';
         const welcome = welcomeOpen(ui.personaId) || hoursLeft(billingOf(ui.personaId).offerExpiresAt) > 0;
         const amount = priceForTerm(term, welcome);
-        if (act === 'pay-now' && term === 'autopay' && !mayarReady()) {
-          grantMentoring(ui.personaId, term, 'mock', amount);
-          toast('Autopay mock · akses kebuka');
-        } else if (act === 'pay-now' && mayarReady()) {
-          toast('Pakai Bayar sekarang.');
+        if (act === 'pay-now' && term === 'autopay') {
+          toast('Pakai Bayar dengan QRIS.');
           return;
         } else {
           markPendingTransfer(ui.personaId, term, amount);
@@ -17819,50 +18227,40 @@
         ui.tab = 'home';
         render();
       });
-    } else if (act === 'pay-mayar' || act === 'mayar-test') {
-      const test = act === 'mayar-test';
-      if (test && !canBill()) return;
-      const runMayar = () => {
-      const term = btn.getAttribute('data-term') || ui.payTerm || 'month';
-      const welcome = !test && (welcomeOpen(ui.personaId) || hoursLeft(billingOf(ui.personaId).offerExpiresAt) > 0);
-      const amount = test ? 10000 : priceForTerm(term, welcome);
-      const who = test ? null : student();
-      btn.disabled = true;
-      requestMayarInvoice({
-        test: test,
-        personId: test ? 'mayar-test' : ui.personaId,
-        term: test ? 'month' : term,
-        amount: amount,
-        name: test ? 'Tes Mayar' : (who && who.name),
-        email: test ? 'tes.mayar@obrolan.marketing' : (who && who.email),
-        mobile: test ? '080000000000' : (who && who.wa)
-      }).then((res) => {
-        const data = res.data || {};
-        if (!res.ok || !data.link) {
-          const msg = data.message || data.error || 'Mayar gagal';
-          toast(msg === 'not_configured' ? 'Mayar belum dikonfigurasi.' : String(msg));
+    } else if (act === 'pay-pick') {
+      ui.payPackage = btn.getAttribute('data-id') || '';
+      render();
+    } else if (act === 'pay-qris' || act === 'pay-mayar') {
+      const packageId = btn.getAttribute('data-id') || ui.payPackage || (packages()[0] && packages()[0].id);
+      if (!packageId) { toast('Belum ada paket.'); return; }
+      ui.payPackage = packageId;
+      withApplication(() => {
+        btn.disabled = true;
+        if (db.checkoutProvider === 'lynk') {
+          const url = lynkCheckoutUrl(packageId);
+          if (!url) { toast('Tautan Lynk untuk paket ini belum diisi.'); render(); return; }
+          if (!normalizeWa(student().wa)) { toast('Nomor WA di form belum ada.'); render(); return; }
+          markPendingLynk(ui.personaId, packageId, packagePrice(packageId), url);
+          save();
+          location.href = url;
+          return;
+        }
+        requestCheckout(packageId).then((res) => {
+          const data = res.data || {};
+          if (!res.ok || !data.url) {
+            const code = data.error || '';
+            toast(code === 'unconfigured' || code === 'payments_off'
+              ? 'Pembayaran belum terhubung.'
+              : (code === 'wa' ? 'Isi nomor WhatsApp dulu.' : 'Checkout gagal. Coba lagi.'));
+            render();
+            return;
+          }
+          location.href = data.url;
+        }).catch(() => {
+          toast('Pembayaran tidak terjangkau.');
           render();
-          return;
-        }
-        if (test) {
-          window.open(data.link, '_blank', 'noopener');
-          toast('Invoice tes terbuka. Tidak mengubah akses kelas.');
-          refreshMayarStatus().then(() => { if (ui.mentorTab === 'harga') render(); });
-          return;
-        }
-        markPendingMayar(ui.personaId, term, amount, data);
-        save();
-        window.open(data.link, '_blank', 'noopener');
-        toast('Halaman Mayar terbuka. Akses kebuka setelah pembayaran masuk.');
-        ui.tab = 'home';
-        render();
-      }).catch(() => {
-        toast('Mayar tidak terjangkau.');
-        render();
+        });
       });
-      };
-      if (test) runMayar();
-      else withApplication(runMayar);
     } else if (act === 'confirm-paid') {
       const id = btn.getAttribute('data-id');
       if (!id || !staffCan('editIncome')) return;
@@ -18547,7 +18945,42 @@
       save();
       toast('Harga placeholder disimpan');
       render();
+    } else if (act === 'save-packages') {
+      if (!canBill()) return;
+      db.packages = readPackageForm(form);
+      save();
+      toast('Paket disimpan.');
+      render();
+    } else if (act === 'save-lynk-packages') {
+      if (!canBill()) return;
+      ensurePayModel();
+      const next = Object.assign({}, db.lynkByPackage || {});
+      form.querySelectorAll('[data-pkg]').forEach((el) => {
+        const id = el.getAttribute('data-pkg');
+        if (!id) return;
+        next[id] = next[id] || { url: '', title: '', price: 0 };
+        if (el.name === 'url') next[id].url = String(el.value || '').trim();
+        if (el.name === 'title') next[id].title = String(el.value || '').trim();
+        if (el.name === 'lynkPrice') next[id].price = Number(el.value) || 0;
+      });
+      db.lynkByPackage = next;
+      save();
+      toast('Produk Lynk disimpan.');
+      render();
+    } else if (act === 'save-pay-secret') {
+      if (!canBill()) return;
+      const fields = {};
+      ['lynkMerchantKey', 'mayarApiKey', 'xenditSecretKey', 'xenditCallbackToken'].forEach((key) => {
+        const value = String(fd.get(key) || '').trim();
+        if (value) fields[key] = value;
+      });
+      if (!Object.keys(fields).length) { toast('Tempel kunci dulu.'); return; }
+      savePaySecrets(fields).then((res) => {
+        toast(res.ok ? 'Kunci tersimpan di server.' : 'Kunci tidak tersimpan.');
+        if (ui.mentorTab === 'harga') render();
+      });
     } else if (act === 'save-bank') {
+      db.bank = db.bank || { bank: '', number: '', name: '' };
       db.bank.bank = String(fd.get('bank') || db.bank.bank);
       db.bank.number = String(fd.get('number') || db.bank.number);
       db.bank.name = String(fd.get('name') || db.bank.name);
@@ -19473,6 +19906,19 @@
       if ((admin || ui.coach || isOwner()) && !forceStudent) await claimPlatformAdmin();
       render();
       markPageView();
+      const bayarQs = new URLSearchParams(location.search);
+      if (bayarQs.get('bayar') === 'ok' && !isStaff()) {
+        bayarQs.delete('bayar');
+        const left = bayarQs.toString();
+        history.replaceState({}, '', location.pathname + (left ? '?' + left : '') + location.hash);
+        ui.tab = 'daftar';
+        const payPages = wizFormPages();
+        const payAt = payPages.findIndex((page) => page && page.kind === 'bayar');
+        ui.wizStep = payAt >= 0 ? payAt : 0;
+        ui.payWaitExpired = false;
+        watchPayReturn();
+        render();
+      }
       if (admin || ui.admin) refreshAdmin();
       if (ui.platformAdmin) refreshPlatformAdmin();
       refreshMayarStatus().then(() => {
