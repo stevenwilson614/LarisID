@@ -3216,6 +3216,8 @@
     admin: false,
     platformAdmin: false,
     platformSummary: null,
+    platformMentorSlug: '',
+    platformMentor: null,
     visitorId: '',
     visitorLive: false,
     studentAuthed: false,
@@ -13249,7 +13251,118 @@
     html += '</section>';
     return html;
   }
+  function fmtBytes(n) {
+    const v = Number(n) || 0;
+    if (v < 1024) return v + ' B';
+    if (v < 1024 * 1024) return (v / 1024).toFixed(1).replace(/\.0$/, '') + ' KB';
+    if (v < 1024 * 1024 * 1024) return (v / (1024 * 1024)).toFixed(1).replace(/\.0$/, '') + ' MB';
+    return (v / (1024 * 1024 * 1024)).toFixed(2).replace(/\.00$/, '') + ' GB';
+  }
+  function viewPlatformMentorDetail() {
+    const m = ui.platformMentor;
+    if (!m) {
+      return '<section class="card"><h2>Mentor</h2><p class="muted">Memuat profil mentor…</p></section>';
+    }
+    if (m.error) {
+      return '<section class="card">' +
+        '<div class="row" style="justify-content:space-between;align-items:center;gap:8px">' +
+          '<h2 style="margin:0">Mentor</h2>' +
+          '<button type="button" class="btn-sm" data-act="platform-back">← Semua mentor</button>' +
+        '</div>' +
+        '<p class="muted">Detail tidak terbaca. Coba lagi.</p></section>';
+    }
+    const media = m.media || {};
+    const students = m.students || [];
+    const payments = m.payments || [];
+    const href = m.slug === 'obrolan.marketing'
+      ? '/obrolan.marketing/'
+      : '/s/' + encodeURIComponent(m.slug) + '/';
+    const photo = m.photoUrl
+      ? '<img src="' + esc(m.photoUrl) + '" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover">'
+      : '<div style="width:64px;height:64px;border-radius:50%;background:var(--line,#ddd);display:grid;place-items:center;font-weight:600">' +
+          esc(String(m.name || m.slug || '?').slice(0, 1).toUpperCase()) + '</div>';
+    const socialBits = Object.keys(m.socials || {}).filter((k) => m.socials[k]).map((k) =>
+      '<span class="muted">' + esc(k) + ': </span>' + esc(m.socials[k])
+    );
+    const studentRows = students.map((s) =>
+      '<tr>' +
+        '<td>' + esc(s.name || '—') +
+          (s.email ? '<div class="muted">' + esc(s.email) + '</div>' : '') + '</td>' +
+        '<td>' + esc(s.wa || '—') + '</td>' +
+        '<td>' + esc(s.stage || '—') + '</td>' +
+        '<td>' + esc(s.status || '—') + '</td>' +
+        '<td>' + esc(s.accessUntil ? relWhen(s.accessUntil) : '—') + '</td>' +
+      '</tr>'
+    ).join('');
+    const payRows = payments.map((p) =>
+      '<tr>' +
+        '<td>' + esc(p.at ? relWhen(p.at) : '—') + '</td>' +
+        '<td>' + esc(p.name || '—') + '</td>' +
+        '<td>' + esc(fmtRp(p.amount || 0)) + '</td>' +
+        '<td>' + esc(p.source || '—') + '</td>' +
+        '<td>' + esc(p.kind || p.term || '—') + '</td>' +
+      '</tr>'
+    ).join('');
+    return '<section class="card">' +
+      '<div class="row" style="justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">' +
+        '<button type="button" class="btn-sm" data-act="platform-back">← Semua mentor</button>' +
+        '<div class="row" style="gap:8px">' +
+          '<a class="btn-sm" href="' + esc(href) + '">Buka kelas</a>' +
+          '<button type="button" class="btn-sm" data-act="platform-mentor-refresh">Refresh</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="row" style="margin-top:16px;gap:14px;align-items:flex-start">' +
+        photo +
+        '<div style="min-width:0;flex:1">' +
+          '<h2 style="margin:0">' + esc(m.name || m.slug) + '</h2>' +
+          (m.headline ? '<p class="muted" style="margin:4px 0 0">' + esc(m.headline) + '</p>' : '') +
+          '<p class="muted" style="margin:6px 0 0">' + esc(m.slug || '') +
+            (m.published ? ' · Published' : ' · Draft') +
+            (m.paymentsEnabled ? ' · Pembayaran on' : ' · Pembayaran off') +
+          '</p>' +
+        '</div>' +
+      '</div>' +
+      '<dl style="margin:16px 0 0;display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:.9rem">' +
+        '<dt class="muted">Nama</dt><dd style="margin:0">' + esc(m.fullName || m.name || '—') + '</dd>' +
+        '<dt class="muted">Organisasi</dt><dd style="margin:0">' + esc(m.businessName || '—') + '</dd>' +
+        '<dt class="muted">Email</dt><dd style="margin:0">' + esc(m.email || '—') + '</dd>' +
+        '<dt class="muted">Telepon</dt><dd style="margin:0">' + esc(m.phone || '—') + '</dd>' +
+        '<dt class="muted">Website</dt><dd style="margin:0">' + esc(m.website || '—') + '</dd>' +
+        '<dt class="muted">Update</dt><dd style="margin:0">' + esc(m.updatedAt ? relWhen(m.updatedAt) : '—') + '</dd>' +
+      '</dl>' +
+      (m.biography ? '<p style="margin:12px 0 0;white-space:pre-wrap">' + esc(m.biography) + '</p>' : '') +
+      (socialBits.length
+        ? '<p class="muted" style="margin:10px 0 0">' + socialBits.join(' · ') + '</p>'
+        : '') +
+      '</section>' +
+      '<section class="card" style="margin-top:12px">' +
+      '<h2>Penyimpanan</h2>' +
+      '<div class="fub-stats">' +
+        '<div><strong>' + esc(String(media.videos || 0)) + '</strong><span class="muted">Video</span></div>' +
+        '<div><strong>' + esc(String(media.docs || 0)) + '</strong><span class="muted">Dokumen</span></div>' +
+        '<div><strong>' + esc(String(media.images || 0)) + '</strong><span class="muted">Gambar</span></div>' +
+        '<div><strong>' + esc(fmtBytes(media.bytes || 0)) + '</strong><span class="muted">Total storage</span></div>' +
+      '</div>' +
+      '<p class="muted" style="margin-top:8px">' + esc(String(media.files || 0)) + ' file di media/' + esc(m.slug || '') + '</p>' +
+      '</section>' +
+      '<section class="card" style="margin-top:12px">' +
+      '<h2>Siswa (' + esc(String(students.length)) + ')</h2>' +
+      (students.length
+        ? '<table class="table"><thead><tr><th>Nama</th><th>WA</th><th>Stage</th><th>Status</th><th>Akses</th></tr></thead><tbody>' +
+          studentRows + '</tbody></table>'
+        : '<p class="muted">Belum ada siswa.</p>') +
+      '</section>' +
+      '<section class="card" style="margin-top:12px">' +
+      '<h2>Pembayaran (' + esc(String(payments.length)) + ')</h2>' +
+      '<p class="muted" style="margin-top:0">Total tercatat: ' + esc(fmtRp(m.paymentTotal || 0)) + '</p>' +
+      (payments.length
+        ? '<table class="table"><thead><tr><th>Waktu</th><th>Siswa</th><th>Jumlah</th><th>Sumber</th><th>Jenis</th></tr></thead><tbody>' +
+          payRows + '</tbody></table>'
+        : '<p class="muted">Belum ada pembayaran.</p>') +
+      '</section>';
+  }
   function viewPlatformAdmin() {
+    if (ui.platformMentorSlug) return viewPlatformMentorDetail();
     const s = ui.platformSummary;
     if (!s) {
       return '<section class="card"><h2>Admin</h2><p class="muted">Memuat mentor dan siswa…</p></section>';
@@ -13259,20 +13372,19 @@
     }
     const mentors = s.mentors || [];
     const rows = mentors.map((m) => {
-      const href = m.slug === 'obrolan.marketing'
-        ? '/obrolan.marketing/'
-        : '/s/' + encodeURIComponent(m.slug) + '/';
       return '<tr>' +
-        '<td><a href="' + esc(href) + '">' + esc(m.name || m.slug) + '</a>' +
+        '<td><button type="button" class="linkish" data-act="platform-mentor" data-slug="' + esc(m.slug || '') + '">' +
+          esc(m.name || m.slug) + '</button>' +
           '<div class="muted">' + esc(m.slug || '') + '</div></td>' +
         '<td>' + esc(m.email || '—') + '</td>' +
         '<td>' + esc(String(m.students || 0)) + '</td>' +
+        '<td>' + esc(String(m.paymentCount || 0)) + '</td>' +
         '<td>' + esc(m.published ? 'Published' : 'Draft') + '</td>' +
         '</tr>';
     }).join('');
     return '<section class="card">' +
       '<h2>Platform LMS</h2>' +
-      '<p class="muted">Semua mentor di disk dan jumlah siswa di kelas mereka.</p>' +
+      '<p class="muted">Semua mentor di disk. Klik nama untuk profil, siswa, pembayaran, dan storage.</p>' +
       '<div class="fub-stats">' +
         '<div><strong>' + esc(String(s.mentorCount || 0)) + '</strong><span class="muted">Mentor</span></div>' +
         '<div><strong>' + esc(String(s.studentCount || 0)) + '</strong><span class="muted">Siswa (total)</span></div>' +
@@ -13286,7 +13398,7 @@
       '<section class="card" style="margin-top:12px">' +
       '<h2>Mentor</h2>' +
       (mentors.length
-        ? '<table class="table"><thead><tr><th>Kelas</th><th>Email</th><th>Siswa</th><th>Status</th></tr></thead><tbody>' +
+        ? '<table class="table"><thead><tr><th>Kelas</th><th>Email</th><th>Siswa</th><th>Bayar</th><th>Status</th></tr></thead><tbody>' +
           rows + '</tbody></table>'
         : '<p class="muted">Belum ada mentor.</p>') +
       '</section>';
@@ -16811,8 +16923,29 @@
     } else if (act === 'platform-refresh') {
       if (!ui.platformAdmin) return;
       ui.platformSummary = null;
+      ui.platformMentorSlug = '';
+      ui.platformMentor = null;
       render();
       refreshPlatformAdmin();
+    } else if (act === 'platform-mentor') {
+      if (!ui.platformAdmin) return;
+      const slug = String(btn.getAttribute('data-slug') || '').trim();
+      if (!slug) return;
+      ui.platformMentorSlug = slug;
+      ui.platformMentor = null;
+      render();
+      refreshPlatformMentor(slug);
+    } else if (act === 'platform-back') {
+      if (!ui.platformAdmin) return;
+      ui.platformMentorSlug = '';
+      ui.platformMentor = null;
+      render();
+      if (!ui.platformSummary) refreshPlatformAdmin();
+    } else if (act === 'platform-mentor-refresh') {
+      if (!ui.platformAdmin || !ui.platformMentorSlug) return;
+      ui.platformMentor = null;
+      render();
+      refreshPlatformMentor(ui.platformMentorSlug);
     } else if (act === 'issue-done') {
       if (!ui.admin) return;
       const id = btn.getAttribute('data-id');
@@ -16853,8 +16986,14 @@
         }
         if (id === 'platform') {
           if (!ui.platformAdmin) return;
-          ui.platformSummary = null;
           clarityEvt('lms_tab', { lms_tab: id, lms_role: 'mentor' });
+          if (ui.platformMentorSlug) {
+            ui.platformMentor = null;
+            render();
+            refreshPlatformMentor(ui.platformMentorSlug);
+            return;
+          }
+          ui.platformSummary = null;
           render();
           refreshPlatformAdmin();
           return;
@@ -19789,7 +19928,28 @@
     } catch (err) {
       ui.platformSummary = { error: true };
     }
-    if (ui.mentorTab === 'platform') render();
+    if (ui.mentorTab === 'platform' && !ui.platformMentorSlug) render();
+  }
+  async function refreshPlatformMentor(slug) {
+    if (!ui.platformAdmin) return;
+    const live = String(slug || ui.platformMentorSlug || '').trim();
+    if (!live) return;
+    const auth = lmsAuth();
+    if (!auth || !auth.access_token) {
+      ui.platformMentor = { error: true };
+      if (ui.mentorTab === 'platform') render();
+      return;
+    }
+    try {
+      const res = await fetch(apiBase() + '/platform/mentor?slug=' + encodeURIComponent(live), {
+        headers: { authorization: 'Bearer ' + auth.access_token },
+        cache: 'no-store'
+      });
+      ui.platformMentor = res.ok ? await res.json() : { error: true };
+    } catch (err) {
+      ui.platformMentor = { error: true };
+    }
+    if (ui.mentorTab === 'platform' && ui.platformMentorSlug === live) render();
   }
   function markPageView() {
     try {

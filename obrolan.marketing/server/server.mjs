@@ -588,6 +588,104 @@ function listSchoolSlugs() {
   return Array.from(out);
 }
 
+function schoolMediaStats(slug) {
+  const root = path.join(mediaDir, String(slug || ''));
+  const out = { videos: 0, docs: 0, images: 0, other: 0, files: 0, bytes: 0 };
+  if (!slug || !fs.existsSync(root)) return out;
+  function walk(dir) {
+    let entries = [];
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch (err) { return; }
+    entries.forEach((ent) => {
+      const full = path.join(dir, ent.name);
+      if (ent.isDirectory()) {
+        walk(full);
+        return;
+      }
+      if (ent.name.endsWith('.json')) return;
+      let size = 0;
+      try { size = fs.statSync(full).size; } catch (err) { return; }
+      out.bytes += size;
+      out.files += 1;
+      let kind = '';
+      try {
+        const meta = JSON.parse(fs.readFileSync(full + '.json', 'utf8'));
+        kind = String((meta && meta.kind) || '').toLowerCase();
+        if (!kind && meta && meta.type) {
+          const t = String(meta.type).toLowerCase();
+          if (t.indexOf('video/') === 0) kind = 'video';
+          else if (t.indexOf('image/') === 0) kind = 'image';
+          else if (t.indexOf('application/') === 0 || t.indexOf('text/') === 0) kind = 'file';
+        }
+      } catch (err) { /* no sidecar */ }
+      if (!kind) {
+        const lower = String(ent.name || '').toLowerCase();
+        if (/\.(mp4|webm|mov|m4v|mkv)$/.test(lower)) kind = 'video';
+        else if (/\.(pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar|txt|csv)$/.test(lower)) kind = 'file';
+        else if (/\.(jpe?g|png|gif|webp|svg|heic)$/.test(lower)) kind = 'image';
+      }
+      if (kind === 'video') out.videos += 1;
+      else if (kind === 'file') out.docs += 1;
+      else if (kind === 'image') out.images += 1;
+      else out.other += 1;
+    });
+  }
+  walk(root);
+  return out;
+}
+
+function listPlatformStudents(state) {
+  const seen = new Set();
+  const out = [];
+  function add(id) {
+    if (!id || isDemoId(id) || seen.has(id)) return;
+    seen.add(id);
+    const person = personRecord(state, id) || lookupPerson(state, id) || { id: id };
+    const billing = (state.billing && state.billing[id]) || {};
+    const crm = (state.crm && state.crm[id]) || {};
+    const app = (state.applications && state.applications[id]) || {};
+    out.push({
+      id: id,
+      name: clip(person.name || '', 120),
+      wa: clip(person.wa || '', 40),
+      email: clip(person.email || '', 120),
+      stage: clip(crm.stage || '', 40),
+      status: clip(billing.status || '', 40),
+      accessUntil: billing.accessUntil || '',
+      paidAt: billing.paidAt || '',
+      amount: Number(billing.amount) || 0,
+      joinedAt: app.at || ''
+    });
+  }
+  (state.liveStudents || []).forEach((row) => {
+    if (row && row.id) add(row.id);
+  });
+  Object.keys(state.applications || {}).forEach((id) => {
+    if (state.applications[id] && state.applications[id].at) add(id);
+  });
+  out.sort((a, b) => String(a.name || a.id).localeCompare(String(b.name || b.id), 'id'));
+  return out;
+}
+
+function listPlatformPayments(state) {
+  const payments = Array.isArray(state.payments) ? state.payments : [];
+  return payments
+    .filter((row) => row && !isDemoId(row.personId))
+    .map((row) => {
+      const person = personRecord(state, row.personId) || lookupPerson(state, row.personId) || {};
+      return {
+        id: String(row.id || ''),
+        personId: String(row.personId || ''),
+        name: clip(person.name || '', 120),
+        at: row.at || '',
+        amount: Number(row.amount) || 0,
+        source: clip(row.source || '', 40),
+        kind: clip(row.kind || '', 40),
+        term: clip(row.term || '', 40)
+      };
+    })
+    .sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
+}
+
 function platformSummary() {
   const owners = readOwners();
   const ownerBySlug = {};
@@ -604,12 +702,14 @@ function platformSummary() {
     const account = state.accountSettings && typeof state.accountSettings === 'object' ? state.accountSettings : {};
     const students = countSchoolStudents(state);
     const kur = state.kurikulum && typeof state.kurikulum === 'object' ? state.kurikulum : {};
+    const payments = Array.isArray(state.payments) ? state.payments.filter((p) => p && !isDemoId(p.personId)) : [];
     mentors.push({
       slug: slug,
       name: schoolDisplayLabel(state, slug),
       email: clip(account.email || contact.email || '', 120),
       ownerUserId: String(state.ownerUserId || ownerBySlug[slug] || ''),
       students: students,
+      paymentCount: payments.length,
       published: kur.published !== false && curriculumVisible(state, slug),
       updatedAt: (rec && rec.updatedAt) || ''
     });
@@ -623,6 +723,56 @@ function platformSummary() {
     mentorCount: mentors.length,
     studentCount: studentTotal,
     mentors: mentors
+  };
+}
+
+function platformMentorDetail(slug) {
+  const live = String(slug || '').trim();
+  if (!live) return null;
+  const rec = readState(live);
+  const state = (rec && rec.state) || null;
+  if (!state) return null;
+  const owners = readOwners();
+  let ownerUserId = String(state.ownerUserId || '');
+  if (!ownerUserId) {
+    Object.keys(owners).forEach((uid) => {
+      if (String(owners[uid] || '').trim() === live && !ownerUserId) ownerUserId = uid;
+    });
+  }
+  const contact = state.ownerContact && typeof state.ownerContact === 'object' ? state.ownerContact : {};
+  const account = state.accountSettings && typeof state.accountSettings === 'object' ? state.accountSettings : {};
+  const profile = state.schoolProfile && typeof state.schoolProfile === 'object' ? state.schoolProfile : {};
+  const socials = cleanSocials(profile.socials || contact.socials || {});
+  const kur = state.kurikulum && typeof state.kurikulum === 'object' ? state.kurikulum : {};
+  const students = listPlatformStudents(state);
+  const payments = listPlatformPayments(state);
+  const media = schoolMediaStats(live);
+  const paymentTotal = payments.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
+  const fullName = [profile.firstName, profile.lastName].map((p) => String(p || '').trim()).filter(Boolean).join(' ');
+  return {
+    slug: live,
+    name: schoolDisplayLabel(state, live),
+    businessName: clip(state.businessName || '', 120),
+    firstName: clip(profile.firstName || '', 80),
+    lastName: clip(profile.lastName || '', 80),
+    fullName: clip(fullName, 160),
+    headline: clip(profile.headline || profile.header || '', 120),
+    biography: clip(profile.biography || '', 2000),
+    photoUrl: clip(profile.photoUrl || '', 500),
+    email: clip(account.email || contact.email || '', 120),
+    phone: clip(account.phone || contact.wa || contact.phone || '', 40),
+    website: clip(socials.website || '', 200),
+    socials: socials,
+    ownerUserId: ownerUserId,
+    published: kur.published !== false && curriculumVisible(state, live),
+    paymentsEnabled: state.paymentsEnabled === true,
+    updatedAt: (rec && rec.updatedAt) || '',
+    studentCount: students.length,
+    paymentCount: payments.length,
+    paymentTotal: paymentTotal,
+    media: media,
+    students: students,
+    payments: payments
   };
 }
 
@@ -3190,6 +3340,33 @@ const server = http.createServer((req, res) => {
       }
       lock(() => {
         json(res, 200, platformSummary());
+      });
+    });
+    return;
+  }
+
+  if (req.method === 'GET' && pathname === '/platform/mentor') {
+    supabaseUser(req).then((user) => {
+      if (!user) {
+        json(res, 401, { error: 'auth' });
+        return;
+      }
+      if (!platformAdminEmail(user)) {
+        json(res, 403, { error: 'forbidden' });
+        return;
+      }
+      const slug = String(q.slug || '').trim();
+      if (!slug) {
+        json(res, 400, { error: 'slug' });
+        return;
+      }
+      lock(() => {
+        const detail = platformMentorDetail(slug);
+        if (!detail) {
+          json(res, 404, { error: 'not_found' });
+          return;
+        }
+        json(res, 200, detail);
       });
     });
     return;
