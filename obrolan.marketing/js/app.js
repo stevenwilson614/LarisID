@@ -13510,7 +13510,7 @@
   function viewPayTunai() {
     const b = db.bank || {};
     return '<section class="card"><h2>Tunai dan transfer</h2>' +
-      '<p class="muted">Siswa yang bayar di luar QRIS tetap menunggu kamu. Di profil siswa, pilih paket lalu Beri akses (tunai atau transfer). Cabut akses mengunci lagi.</p>' +
+      '<p class="muted">Kalau siswa bayar tunai atau transfer, kamu yang membuka akses di profil siswa (Beri akses). Setiap pembayaran berikutnya juga harus dicatat manual di situ. Kalau tidak, akses siswa dicabut otomatis setelah masa paket habis. Tanpa batas tidak habis.</p>' +
       '<form class="compose" data-act="save-bank">' +
         '<label class="muted">Bank</label><input name="bank" value="' + esc(b.bank || '') + '">' +
         '<label class="muted">Nomor</label><input name="number" value="' + esc(b.number || '') + '">' +
