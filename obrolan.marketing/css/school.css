@@ -5334,9 +5334,20 @@ html.siswa-readonly .brand-menu { display: none !important; }
 .staff-card-top { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
 .pay-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
 .pay-tabs button {
+  display: inline-flex; align-items: center; gap: 6px;
   border: 1px solid var(--line); background: transparent; color: inherit;
   border-radius: 999px; padding: 6px 12px; font: inherit; cursor: pointer;
 }
+.pay-mark {
+  width: 26px; height: 26px; border-radius: 7px; background: #fff;
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08);
+}
+.pay-mark img { width: 22px; height: 22px; object-fit: contain; display: block; }
+.pay-mark.is-tile { background: transparent; box-shadow: none; }
+.pay-mark.is-tile img { width: 26px; height: 26px; }
+.pay-h { display: flex; align-items: center; gap: 8px; }
+.pay-picks label { display: inline-flex; align-items: center; gap: 6px; }
 .pay-tabs button[aria-selected="true"] { background: var(--ink-3); font-weight: 700; }
 .pay-steps { margin: 8px 0 14px; padding-left: 1.2rem; }
 .pay-steps li { margin: 4px 0; }

@@ -13369,8 +13369,18 @@
         : '<p class="muted" style="margin-top:8px">Tidak ada diskusi yang menunggu jawaban.</p>') +
       '</section>';
   }
+  function payMark(id) {
+    const src = {
+      lynk: '/obrolan.marketing/assets/pay/lynk.png',
+      mayar: '/obrolan.marketing/assets/pay/mayar.png',
+      xendit: '/obrolan.marketing/assets/pay/xendit.png'
+    }[id];
+    if (!src) return '';
+    return '<span class="pay-mark' + (id === 'xendit' ? ' is-tile' : '') + '"><img src="' + src + '" alt="" width="18" height="18"></span>';
+  }
   function payTabBtn(id, label, cur) {
-    return '<button type="button" role="tab" data-act="pay-pane" data-id="' + id + '" aria-selected="' + (id === cur) + '">' + esc(label) + '</button>';
+    return '<button type="button" role="tab" data-act="pay-pane" data-id="' + id + '" aria-selected="' + (id === cur) + '">' +
+      payMark(id) + '<span>' + esc(label) + '</span></button>';
   }
   function payCopyRow(label, url) {
     return '<p class="pay-url"><span class="muted">' + esc(label) + '</span><code>' + esc(url) + '</code> ' +
@@ -13404,7 +13414,8 @@
       '<p class="muted">Satu metode untuk tombol Bayar dengan QRIS di kuesioner.</p>' +
       '<div class="pay-picks">' +
         ['lynk', 'mayar', 'xendit'].map((id) =>
-          '<label data-act="pick-checkout" data-id="' + id + '"><input type="radio" name="checkout"' +
+          '<label data-act="pick-checkout" data-id="' + id + '">' + payMark(id) +
+            '<input type="radio" name="checkout"' +
             (provider === id ? ' checked' : '') + '> ' + esc(id === 'lynk' ? 'Lynk' : (id === 'mayar' ? 'Mayar' : 'Xendit')) +
             (checkoutReady(id) ? '' : ' <span class="muted">(belum terhubung)</span>') +
           '</label>'
@@ -13436,7 +13447,7 @@
     const rows = packages();
     const unmatched = (st.unmatched || []);
     const students = people().filter((row) => row && row.kind !== 'mentor');
-    return '<section class="card"><h2>Lynk</h2>' +
+    return '<section class="card"><h2 class="pay-h">' + payMark('lynk') + '<span>Lynk</span></h2>' +
       '<ol class="pay-steps">' +
         '<li>Di lynk.id buat satu produk untuk setiap paket. Nyalakan QRIS.</li>' +
         '<li>Isi tautan kembali produk dengan URL kelas di bawah.</li>' +
@@ -13478,7 +13489,7 @@
   }
   function viewPayMayar() {
     const st = ui.payStatus || {};
-    return '<section class="card"><h2>Mayar</h2>' +
+    return '<section class="card"><h2 class="pay-h">' + payMark('mayar') + '<span>Mayar</span></h2>' +
       '<ol class="pay-steps">' +
         '<li>Pakai akun mayar.id. Uji dulu di web.mayar.io kalau belum live.</li>' +
         '<li>Tempel API key di bawah. Laris yang membuat invoice QRIS saat siswa bayar.</li>' +
@@ -13493,7 +13504,7 @@
   }
   function viewPayXendit() {
     const st = ui.payStatus || {};
-    return '<section class="card"><h2>Xendit</h2>' +
+    return '<section class="card"><h2 class="pay-h">' + payMark('xendit') + '<span>Xendit</span></h2>' +
       '<ol class="pay-steps">' +
         '<li>Dashboard Xendit, mode Live.</li>' +
         '<li>Settings → Webhooks: produk Invoice diisi URL di bawah. Salin Webhook verification token ke sini.</li>' +
