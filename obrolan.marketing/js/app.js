@@ -9699,23 +9699,23 @@
       '<p class="muted">Akses mentoring kebuka setelah ' + esc(mentorDisplayName()) + ' konfirmasi di CRM. Video 1 tetap kebuka.</p>' +
       '</section>';
   }
+  function packagePriceLine() {
+    const rows = packages();
+    if (rows.length) {
+      return rows.map((row) => esc(row.label || 'Paket') + ' ' + fmtRp(row.priceIdr)).join(' · ');
+    }
+    return '1 bln ' + fmtRp(priceForTerm('month', false)) +
+      ' · 3 bln ' + fmtRp(priceForTerm('quarter', false)) +
+      ' · 6 bln ' + fmtRp(priceForTerm('half', false));
+  }
   function offerBanner(sid) {
     if (schoolIsFree() || canMentoring(sid)) return '';
     if (isPending(sid)) return pendingBanner(sid);
-    const b = billingOf(sid);
-    const exp = b.offerExpiresAt;
-    const open = welcomeOpen(sid);
-    const left = exp ? fmtRemain(exp) : '—';
     return '<section class="card trial-cta">' +
       '<p class="trial-kicker">Mentoring belum aktif</p>' +
       '<h3>Buka semua 12 video + live + alat −' + toolDiscountPct() + '%</h3>' +
-      (open
-        ? '<p class="trial-count">Diskon 24 jam · sisa <strong data-remain="' + esc(exp) + '">' + esc(left) + '</strong></p>' +
-          '<p class="muted">Jam nyata dari form. Bukan sisa kursi.</p>'
-        : '<p class="muted">Jendela diskon 24 jam sudah habis. Harga program tetap jujur di halaman bayar.</p>') +
-      '<p class="trial-prices">1 bln ' + fmtRp(priceForTerm('month', open)) +
-      ' · 3 bln ' + fmtRp(priceForTerm('quarter', false)) +
-      ' · 6 bln ' + fmtRp(priceForTerm('half', false)) + '</p>' +
+      '<p class="muted">Harga paket di bawah yang ditagih.</p>' +
+      '<p class="trial-prices">' + packagePriceLine() + '</p>' +
       '<div class="row" style="margin-top:10px">' +
         '<button class="btn" data-act="tab" data-id="daftar">Bayar mentoring</button>' +
         '<button class="btn secondary" data-act="tab" data-id="belajar">Lanjut video 1</button>' +
@@ -9740,20 +9740,13 @@
           '<button type="button" class="btn secondary" data-act="pay-prompt-close">Tutup</button>' +
         '</div>';
     }
-    const b = billingOf(sid);
-    const exp = b.offerExpiresAt;
-    const open = welcomeOpen(sid);
-    const left = exp ? fmtRemain(exp) : '—';
     const lec = lectureById(ui.payPromptLec || '') || null;
+    const priceLine = packagePriceLine();
     return '<p class="trial-kicker">Materi terkunci</p>' +
       '<h3>' + (lec ? esc(lec.title) : 'Lanjut mentoring') + '</h3>' +
       '<p class="muted">Buka semua 12 video + live + alat −' + toolDiscountPct() + '% setelah lunas.</p>' +
-      (open
-        ? '<p class="trial-count">Diskon 24 jam · sisa <strong data-remain="' + esc(exp) + '">' + esc(left) + '</strong></p>'
-        : '<p class="muted">Jendela diskon 24 jam sudah habis. Harga tetap jujur di halaman bayar.</p>') +
-      '<p class="trial-prices">1 bln ' + fmtRp(priceForTerm('month', open)) +
-      ' · 3 bln ' + fmtRp(priceForTerm('quarter', false)) +
-      ' · 6 bln ' + fmtRp(priceForTerm('half', false)) + '</p>' +
+      '<p class="muted">Harga paket di bawah yang ditagih.</p>' +
+      '<p class="trial-prices">' + priceLine + '</p>' +
       '<div class="row" style="margin-top:12px">' +
         '<button type="button" class="btn" data-act="pay-prompt-go">Bayar mentoring</button>' +
         '<button type="button" class="btn secondary" data-act="pay-prompt-close">Nanti</button>' +
