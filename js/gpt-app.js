@@ -5524,6 +5524,7 @@ function setView(name, opts = {}) {
     dwellStop();
     destroyAllCharts();
     sddvCancel();
+    stopDdDetailBusy();
     // A product is only "in context" while its deep dive (or its chat) is
     // open — a stale deepdiveProduct must not hijack later searches into
     // the product-AI path.
@@ -10416,9 +10417,10 @@ function listingIsAdMissing(error) {
 }
 
 /* ── product_details (PDP pass) ──────────────────────────────────────────
- * One row per item_id, overwritten each scrape, written daily by the
- * scraper's tracked/queue PDP pass. Coverage is partial by design, so every
- * consumer renders an honest empty state rather than a zero.
+ * One row per item_id, overwritten each scrape. Daily tracked pass, plus a
+ * live Mac fetch when someone taps Minta info (see docs/item-detail-live.md).
+ * Coverage is partial by design, so every consumer renders an honest empty
+ * state rather than a zero.
  * Shopee's PDP payload carries NO per-variant sold and NO per-variant stock
  * count (NULL in every model we have ever fetched) — never display either.
  */
@@ -12461,12 +12463,160 @@ function ddDetailGateHtml() {
 }
 
 const VARIAN_REQ_TOAST = {
-  queued: 'Sudah masuk antrean. Kami buka halaman produknya di scrape berikutnya dan kabari kamu di sini.',
-  queued_refresh: 'Sudah masuk antrean untuk diperbarui. Kami kabari kalau data barunya sudah masuk.',
+  queued: 'Belum sempat terbuka dalam semenit. Permintaan tetap di antrean — kami kabari di sini kalau datanya sudah masuk.',
+  queued_refresh: 'Belum sempat diperbarui dalam semenit. Permintaan tetap di antrean — kami kabari kalau data barunya sudah masuk.',
   already_live: 'Datanya ternyata sudah ada — aku muat ulang halamannya sekarang.',
   rate_limited: 'Hari ini sudah 5 permintaan. Besok bisa minta lagi — satu permintaan butuh waktu scrape yang nyata, bukan sekadar klik.',
   rejected_input: 'Produk ini tidak punya ID yang bisa kami antre.',
+  failed: 'Halaman produknya belum terbuka. Permintaan tetap di antrean scrape berikutnya.',
+  gone: 'Produk ini sudah tidak ada di Shopee.',
+  ready: 'Varian, SKU, dan ulasan sudah masuk.',
 };
+
+// Same wait budget and fact card as My Toko (js/gpt-alat-preview.js).
+const DD_DETAIL_WAIT_MS = 90000;
+const DD_DETAIL_POLL_MS = 2000;
+const DD_BUSY_FACT_MS = 7000;
+const DD_BUSY_SPURTS = [
+  [900, 6], [2400, 9], [4100, 18], [6800, 21], [9200, 34],
+  [12800, 37], [16100, 49], [20500, 52], [24800, 64], [30200, 67],
+  [35600, 78], [41800, 82], [47200, 91], [53000, 94], [60000, 100],
+];
+const DD_BUSY_FACTS = [
+  'Hampir setengah listing toko baru di data kami belum pernah terjual sekali pun.',
+  'Listing yang harganya pernah diubah tembus 100 unit kira-kira dua kali lebih sering. Itu observasi, bukan resep turunkan harga.',
+  'Median sampai terjual pertama sekitar 44 hari. Sampai 100 unit, sekitar 69 hari.',
+  '10% tercepat tembus 100 unit dalam sekitar 29 hari.',
+  'Hanya sekitar 11% listing toko baru yang tembus 100 unit.',
+  'Peluang tembus 100 unit paling tinggi di data kami: Makanan & Minuman, Hewan Peliharaan, dan Kecantikan.',
+  'Panjang judul hampir sama antara yang sepi dan yang laris. Yang beda biasanya pilihan katanya.',
+  'Di pasar kacang telur, ejaan “telor” jauh lebih sering muncul di listing yang laku daripada yang sepi.',
+];
+let _ddBusyTimers = [];
+let _ddBusyFactTimer = null;
+let _ddBusyFactIdx = 0;
+let _ddDetailWaitGen = 0;
+
+function ddBusyMotionReduced() {
+  return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+}
+
+function stopDdDetailBusy() {
+  _ddDetailWaitGen += 1;
+  _ddBusyTimers.forEach((t) => clearTimeout(t));
+  _ddBusyTimers = [];
+  if (_ddBusyFactTimer) {
+    clearInterval(_ddBusyFactTimer);
+    _ddBusyFactTimer = null;
+  }
+  document.getElementById('dd-detail-busy')?.remove();
+}
+
+function paintDdBusyFact(i, instant) {
+  const el = document.getElementById('dd-busy-fact');
+  if (!el || !DD_BUSY_FACTS.length) return;
+  const text = DD_BUSY_FACTS[i % DD_BUSY_FACTS.length];
+  if (instant || ddBusyMotionReduced()) {
+    el.classList.remove('is-swap');
+    el.textContent = text;
+    return;
+  }
+  el.classList.add('is-swap');
+  const swap = setTimeout(() => {
+    const node = document.getElementById('dd-busy-fact');
+    if (!node) return;
+    node.textContent = text;
+    node.classList.remove('is-swap');
+  }, 180);
+  _ddBusyTimers.push(swap);
+}
+
+function startDdBusyChrome() {
+  _ddBusyTimers.forEach((t) => clearTimeout(t));
+  _ddBusyTimers = [];
+  if (_ddBusyFactTimer) clearInterval(_ddBusyFactTimer);
+  _ddBusyFactIdx = Math.floor(Math.random() * DD_BUSY_FACTS.length);
+  paintDdBusyFact(_ddBusyFactIdx, true);
+  _ddBusyFactTimer = setInterval(() => {
+    _ddBusyFactIdx = (_ddBusyFactIdx + 1) % DD_BUSY_FACTS.length;
+    paintDdBusyFact(_ddBusyFactIdx);
+  }, DD_BUSY_FACT_MS);
+  const fill = document.getElementById('dd-busy-fill');
+  if (!fill) return;
+  fill.style.transition = ddBusyMotionReduced() ? 'none' : 'width .32s ease-out';
+  fill.style.width = '0%';
+  DD_BUSY_SPURTS.forEach((pair) => {
+    const t = setTimeout(() => {
+      const node = document.getElementById('dd-busy-fill');
+      if (node) node.style.width = `${pair[1]}%`;
+    }, pair[0]);
+    _ddBusyTimers.push(t);
+  });
+}
+
+function setDdBusyMsg(msg) {
+  const label = document.getElementById('dd-busy-msg');
+  if (label && msg) label.textContent = msg;
+}
+
+function showDdDetailBusy(msg) {
+  let root = document.getElementById('dd-detail-busy');
+  const fresh = !root;
+  if (!root) {
+    root = document.createElement('div');
+    root.id = 'dd-detail-busy';
+    root.className = 'dd-detail-busy';
+    root.setAttribute('role', 'status');
+    root.setAttribute('aria-live', 'polite');
+    root.innerHTML =
+      '<div class="alat-busy">' +
+        '<div class="alat-busy-bar" aria-hidden="true"><span class="alat-busy-fill" id="dd-busy-fill"></span></div>' +
+        '<span class="alat-busy-spin" aria-hidden="true"></span>' +
+        '<p class="alat-busy-title">Mengambil varian...</p>' +
+        '<p class="alat-busy-eta">Biasanya selesai sekitar 45 detik.</p>' +
+        '<p class="alat-busy-msg" id="dd-busy-msg"></p>' +
+        '<div class="alat-busy-factwrap">' +
+          '<img class="alat-busy-mascot" src="/images/brand/mascot-ask-face.webp" alt="" width="72" height="72">' +
+          '<div class="alat-busy-factbody">' +
+            '<p class="alat-busy-factkicker">Tahu nggak?</p>' +
+            '<p class="alat-busy-fact" id="dd-busy-fact"></p>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(root);
+  }
+  setDdBusyMsg(msg || 'Membuka halaman produk…');
+  if (fresh) startDdBusyChrome();
+  return root;
+}
+
+function sleepMs(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function pollItemDetailReady(itemId, gen) {
+  const started = Date.now();
+  while (Date.now() - started < DD_DETAIL_WAIT_MS) {
+    if (gen !== _ddDetailWaitGen) return { cancelled: true };
+    try {
+      const { data, error } = await _supabase.rpc('get_item_detail_status', {
+        p_item_id: Number(itemId),
+      });
+      if (!error && data && data.ok !== false) {
+        const status = String(data.status || '');
+        if (data.detail_ready || status === 'done') return { ok: true, status, data };
+        if (status === 'failed' || status === 'gone') return { ok: false, status, data };
+        if (status === 'claimed') setDdBusyMsg('Mac kami sedang membuka halaman produk…');
+        else setDdBusyMsg('Menunggu giliran buka halaman produk…');
+      }
+    } catch (e) {
+      console.warn('get_item_detail_status:', e?.message || e);
+    }
+    await sleepMs(DD_DETAIL_POLL_MS);
+    if (gen !== _ddDetailWaitGen) return { cancelled: true };
+  }
+  return { ok: false, status: 'timeout' };
+}
 
 function wireDdVarianRequest(root, product) {
   root?.querySelectorAll?.('[data-dd-varian-req]')?.forEach((btn) => {
@@ -12480,8 +12630,10 @@ function wireDdVarianRequest(root, product) {
         openAuthModal('signup', 'gpt_gate_varian');
         return;
       }
+      if (document.getElementById('dd-detail-busy')) return;
       btn.disabled = true;
-      btn.textContent = 'Mencatat…';
+      showDdDetailBusy('Mencatat permintaan…');
+      const gen = _ddDetailWaitGen;
       void (async () => {
         let verdict = 'queued';
         try {
@@ -12494,19 +12646,13 @@ function wireDdVarianRequest(root, product) {
           });
           if (error) throw error;
           verdict = String(data?.verdict || 'queued');
-        } catch (e) {
-          console.warn('request_item_detail:', e?.message || e);
+        } catch (err) {
+          console.warn('request_item_detail:', err?.message || err);
+          if (gen === _ddDetailWaitGen) stopDdDetailBusy();
           btn.disabled = false;
           btn.textContent = 'Minta info';
           showToast('Belum berhasil mencatat permintaanmu. Coba lagi sebentar lagi.');
           return;
-        }
-        btn.textContent = verdict === 'rate_limited' ? 'Besok lagi ya' : 'Sudah dicatat';
-        showToast(VARIAN_REQ_TOAST[verdict] || VARIAN_REQ_TOAST.queued);
-        // already_live means the row landed since this dive was painted: the
-        // honest move is to show it, not to promise it for tomorrow.
-        if (verdict === 'already_live' && state.deepdiveProduct) {
-          void openDeepDive(state.deepdiveProduct);
         }
         void logUserEvent('dd_varian_request', {
           ui: 'gpt',
@@ -12514,6 +12660,45 @@ function wireDdVarianRequest(root, product) {
           keyword: product?.keyword || '',
           verdict,
         });
+        if (gen !== _ddDetailWaitGen) return;
+
+        if (verdict === 'already_live') {
+          setDdBusyMsg('Datanya sudah ada — memuat ulang…');
+          try {
+            await openDeepDive(state.deepdiveProduct || product);
+          } finally {
+            if (gen === _ddDetailWaitGen) stopDdDetailBusy();
+          }
+          showToast(VARIAN_REQ_TOAST.already_live);
+          return;
+        }
+        if (verdict === 'rate_limited' || verdict === 'rejected_input') {
+          stopDdDetailBusy();
+          btn.disabled = false;
+          btn.textContent = verdict === 'rate_limited' ? 'Besok lagi ya' : 'Minta info';
+          showToast(VARIAN_REQ_TOAST[verdict] || VARIAN_REQ_TOAST.queued);
+          return;
+        }
+
+        setDdBusyMsg('Menunggu giliran buka halaman produk…');
+        const waited = await pollItemDetailReady(product.item_id, gen);
+        if (waited.cancelled || gen !== _ddDetailWaitGen) return;
+        if (waited.ok) {
+          setDdBusyMsg('Varian siap — memuat ulang…');
+          try {
+            await openDeepDive(state.deepdiveProduct || product);
+          } finally {
+            if (gen === _ddDetailWaitGen) stopDdDetailBusy();
+          }
+          showToast(VARIAN_REQ_TOAST.ready);
+          return;
+        }
+        stopDdDetailBusy();
+        btn.disabled = false;
+        btn.textContent = 'Minta info';
+        const failKey = waited.status === 'gone' ? 'gone'
+          : (verdict === 'queued_refresh' ? 'queued_refresh' : 'queued');
+        showToast(VARIAN_REQ_TOAST[waited.status] || VARIAN_REQ_TOAST[failKey] || VARIAN_REQ_TOAST.failed);
       })();
     });
   });

@@ -9904,6 +9904,26 @@ body.calc-resizing .calc-resize::before { background: var(--accent); }
   background: var(--bg-user); color: var(--muted); border-color: var(--line);
   box-shadow: none; cursor: default; transform: translate(-50%, -50%);
 }
+/* Live Minta info wait — same chrome as the My Toko busy card, as a popup. */
+.dd-detail-busy {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(26, 26, 26, .42);
+}
+.dd-detail-busy .alat-busy {
+  position: relative;
+  inset: auto;
+  width: min(440px, 100%);
+  min-height: 440px;
+  border: 1px solid var(--line, #E8E8E8);
+  border-radius: 16px;
+  background: #fff;
+}
 .ddr-panel-link {
   flex-shrink: 0; font-size: .72rem; font-weight: 650; color: var(--accent);
   text-decoration: none;
@@ -13029,7 +13049,7 @@ body.view-chat .sfb-card {
 <script src="/js/gpt-belajar.js?v=20261017f" defer></script>
 <script src="/js/gpt-alat-preview.js?v=20261101wait2" defer></script>
 <script src="/js/omset-week-shape.js?v=20261021shape1" defer></script>
-<script src="/js/gpt-app.js?v=20261101dd2" defer></script>
+<script src="/js/gpt-app.js?v=20261101minta1" defer></script>
 <style>
 .hl-hero-ctas-alat { display: none; }
 html.alat-preview #finder-xp-step { display: none; }
