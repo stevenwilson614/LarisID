@@ -10430,7 +10430,7 @@ const PDETAIL_COLS = 'item_id,shop_id,detail_scraped_at,brand,condition,preorder
 let _pdetailAvail = true;
 async function fetchProductDetail(product) {
   const id = product?.item_id;
-  if (!_pdetailAvail || id == null || product?._ptype) return null;
+  if (!_pdetailAvail || id == null || id === '') return null;
   try {
     // item_id is the primary key on its own and shop_id is nullable, so
     // adding .eq('shop_id') would silently return nothing for rows missing it.
@@ -12166,7 +12166,6 @@ function pdUniqueSpecs(detail) {
 }
 
 function ddSpecCardHtml(product, detail) {
-  if (product?._ptype) return '';
   const head = `<div class="ddr-sec-head"><h3>Spesifikasi Unik</h3>${detail
     ? '<span class="omset-chip omset-chip--terukur" title="Diambil langsung dari halaman produk Shopee.">terukur</span>'
     : ''}</div>`;
@@ -12227,8 +12226,6 @@ function ddSpecCardHtml(product, detail) {
 }
 
 function ddVarianCardHtml(product, detail) {
-  // A pasar row is a market, not a listing: it has no variants and no stars.
-  if (product?._ptype) return '';
   const head = `<div class="ddr-sec-head"><h3${detail ? ' class="ddr-sec-head--emphasis"' : ''}>Varian &amp; Harga</h3>${detail
     ? '<span class="omset-chip omset-chip--terukur" title="Diambil langsung dari halaman produk Shopee.">terukur</span>'
     : ''}</div>`;
@@ -12342,7 +12339,6 @@ function ddSampleReviewsHtml(detail) {
 }
 
 function ddUlasanCardHtml(product, detail, peers, niche) {
-  if (product?._ptype) return '';
   const stars = pdStars(detail);
   const samples = ddSampleReviewsHtml(detail);
   const reviews = Number(product?.reviews) || 0;
@@ -12396,6 +12392,22 @@ function ddUlasanCardHtml(product, detail, peers, niche) {
     ${scope}
     ${stars || samples ? ddDetailStaleNote(detail) : ''}
   </div>`;
+}
+
+function ddListingDetailHtml(product, detail, peers, niche) {
+  // Any real listing without a PDP row gets Minta info, including a keyword
+  // dive that is standing in for its top product.
+  if (product?.item_id == null || product.item_id === '' || isExporListing(product)) return '';
+  if (detail) {
+    return `<div class="ddr-hscroll ddr-hscroll--graphs2">
+      ${ddVarianCardHtml(product, detail)}
+      ${ddUlasanCardHtml(product, detail, peers, niche)}
+    </div>
+    <div class="ddr-hscroll ddr-hscroll--graphs2">
+      ${ddSpecCardHtml(product, detail)}
+    </div>`;
+  }
+  return ddDetailGateHtml();
 }
 
 function ddDetailGateHtml() {
@@ -21088,13 +21100,7 @@ async function openDeepDive(product, ddOpts = {}) {
     ${isDesktopDeepDive ? kompCardHtml : ''}
     ${ddAksiCepatHtml(product)}
     ${ddAlertCardHtml(product)}
-    ${product._ptype ? '' : (detail ? `<div class="ddr-hscroll ddr-hscroll--graphs2">
-      ${ddVarianCardHtml(product, detail)}
-      ${ddUlasanCardHtml(product, detail, peers, niche)}
-    </div>
-    <div class="ddr-hscroll ddr-hscroll--graphs2">
-      ${ddSpecCardHtml(product, detail)}
-    </div>` : ddDetailGateHtml())}
+    ${ddListingDetailHtml(product, detail, peers, niche)}
     <h2 class="ddr-konteks-head">Konteks pasar: ${esc(kw || 'keyword ini')}</h2>
     <div class="ddr-hscroll ddr-hscroll--graphs2">
       <div class="ddr-card" data-dd-sec="pangsa">
