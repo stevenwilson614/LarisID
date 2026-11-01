@@ -2,7 +2,7 @@
 
 Varian, SKU, and ulasan stay empty until `product_details` has a row. **Minta info** used to only park that item for the next daily `tracked_pass`. It now waits on the same Mac claim path as My Toko: enqueue, fun-facts popup, poll for about a minute, then repaint the dive.
 
-Live only works while `shop_claim_worker.py` is running on Steven’s Mac with a logged-in Chrome CDP window. If that worker is down or the page does not open in time, the row stays on the overnight queue and the toast says so. Auto-opens (priority 50, from just viewing a dive) are still daily-only. Only an explicit ask (priority 10) is claimed live.
+Live only works while `shop_claim_worker.py` is running on **Steven’s MacBook Pro** (laptop B, `Stevens-MacBook-Pro`, Shopee `acct614`, CDP 9224/9225). Laptop A does not claim these rows. If that worker is down or the page does not open in time, the row stays on the overnight queue and the toast says so. Auto-opens (priority 50, from just viewing a dive) are still daily-only. Only an explicit ask (priority 10) is claimed live.
 
 Per-varian sold still does not exist on Shopee’s PDP. The cards show what the page actually returns.
 
@@ -23,12 +23,15 @@ RPCs on `https://api.larisid.com`:
 
 Does not wait for `push_details.py`.
 
-## Run on Steven’s Mac
+## Run on Steven’s MacBook Pro (laptop B)
+
+Not on SOW’s MacBook Pro. That machine skips `claim_item_detail_jobs`.
 
 ```bash
 cd ~/shopee_scraper
-# Same logged-in Chrome as keyword scrapes (CDP 9224 or 9222).
-python3 shop_claim_worker.py          # poll every 2s; item detail, then shop
+git pull
+# Logged-in Chrome for acct614 (CDP 9224 or 9225).
+python3 shop_claim_worker.py --cdp http://127.0.0.1:9224
 # Back-to-back PDP asks wait 6–14s so one account is not hammered.
 # or: python3 shop_claim_worker.py --once
 ```
