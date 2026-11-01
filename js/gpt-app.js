@@ -12402,34 +12402,52 @@ function ddDetailGateHtml() {
       <div class="ddr-detail-mock-body">${body}</div>
     </div>`;
   const varian = mock('Varian &amp; SKU', `
-    <p class="ddr-varian-head">3 varian · 3 SKU</p>
+    <p class="ddr-varian-head">5 varian · 5 SKU</p>
+    <p class="ddr-varian-price">Termurah Rp 29.000 · termahal Rp 35.000.</p>
     <ul class="ddr-varian-list">
-      <li><span>Varian A</span><b>Rp •••</b></li>
-      <li><span>Varian B</span><b>Rp •••</b></li>
-      <li><span>Varian C</span><b>Rp •••</b></li>
-    </ul>`);
+      <li><span>Merah / M</span><b>Rp 29.000</b></li>
+      <li><span>Hitam / M</span><b>Rp 29.000</b></li>
+      <li><span>Merah / L</span><b>Rp 32.000</b></li>
+      <li><span>Hitam / L</span><b>Rp 32.000</b></li>
+      <li><span>Putih / XL</span><b>Rp 35.000</b><i>kosong</i></li>
+    </ul>
+    <p class="dd-sub">Satu varian kosong saat contoh ini diambil.</p>`);
   const rating = mock('Rating', `
     <div class="ddr-rating-hero">
       <div class="ddr-rating-hero-num">4,3<span>/5</span></div>
       ${ddYellowStarsHtml(4.3, 'lg')}
     </div>
+    <div class="review-wall">
+      <span class="review-pill">1.284 ulasan</span>
+      <span class="review-pill">dinding niche ±800</span>
+      <span class="review-pill review-pill--bad">ulasan buruk 6,2%</span>
+    </div>
     <ul class="ddr-sample-list">
       <li class="ddr-sample-review">
         <p class="ddr-sample-meta">${ddYellowStarsHtml(5, 'sm')}<span class="ddr-sample-who">Pembeli</span></p>
-        <p class="ddr-sample-varian">Varian A</p>
-        <p class="ddr-sample-body">Contoh ulasan.</p>
+        <p class="ddr-sample-varian">Merah / M</p>
+        <p class="ddr-sample-body">Jahitan rapi, ukuran pas, pengiriman cepat.</p>
+      </li>
+      <li class="ddr-sample-review">
+        <p class="ddr-sample-meta">${ddYellowStarsHtml(5, 'sm')}<span class="ddr-sample-who">Pembeli</span></p>
+        <p class="ddr-sample-varian">Hitam / L</p>
+        <p class="ddr-sample-body">Bahan adem dan warnanya sesuai foto.</p>
       </li>
       <li class="ddr-sample-review">
         <p class="ddr-sample-meta">${ddYellowStarsHtml(2, 'sm')}<span class="ddr-sample-who">Pembeli</span></p>
-        <p class="ddr-sample-varian">Varian B</p>
-        <p class="ddr-sample-body">Contoh ulasan.</p>
+        <p class="ddr-sample-varian">Putih / XL</p>
+        <p class="ddr-sample-body">Ukuran lebih kecil dari yang diharapkan.</p>
       </li>
     </ul>`);
   const spec = mock('Spesifikasi Unik', `
+    <div class="ddr-spec-chips"><span class="ddr-spec-chip">Gratis ongkir</span><span class="ddr-spec-chip">COD</span><span class="ddr-spec-chip">Baru</span></div>
     <ul class="ddr-spec-list">
-      <li><span>Bahan</span><b>••••</b></li>
-      <li><span>Ukuran</span><b>••••</b></li>
-      <li><span>Dikirim dari</span><b>••••</b></li>
+      <li><span>Bahan</span><b>Katun combed</b></li>
+      <li><span>Warna</span><b>Merah, Hitam, Putih</b></li>
+      <li><span>Ukuran</span><b>M, L, XL</b></li>
+      <li><span>Garansi</span><b>Tidak ada</b></li>
+      <li><span>Dikirim dari</span><b>Jakarta</b></li>
+      <li><span>Kondisi</span><b>Baru</b></li>
     </ul>`);
   return `<div class="ddr-detail-gate">
     <p class="ddr-detail-gate-note">Contoh tampilan — data belum diambil.</p>
