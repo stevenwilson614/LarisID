@@ -913,12 +913,15 @@
       busy.innerHTML =
         '<div class="alat-busy-bar" aria-hidden="true"><span class="alat-busy-fill" id="alat-busy-fill"></span></div>' +
         '<span class="alat-busy-spin" aria-hidden="true"></span>' +
-        '<p class="alat-busy-eta">Biasanya sekitar 45 detik.</p>' +
+        '<p class="alat-busy-title">Menganalisis produk...</p>' +
+        '<p class="alat-busy-eta">Biasanya selesai sekitar 45 detik.</p>' +
         '<p class="alat-busy-msg" id="alat-kabar-busy-msg"></p>' +
         '<div class="alat-busy-factwrap">' +
-          '<p class="alat-busy-factkicker">Tahu nggak?</p>' +
-          '<p class="alat-busy-fact" id="alat-busy-fact"></p>' +
-          '<p class="alat-busy-src">Dari riset LarisID</p>' +
+          '<img class="alat-busy-mascot" src="/images/brand/mascot-ask-face.webp" alt="" width="72" height="72">' +
+          '<div class="alat-busy-factbody">' +
+            '<p class="alat-busy-factkicker">Tahu nggak?</p>' +
+            '<p class="alat-busy-fact" id="alat-busy-fact"></p>' +
+          '</div>' +
         '</div>';
       card.appendChild(busy);
     }
