@@ -12977,7 +12977,7 @@ body.view-chat .sfb-card {
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260915a" defer></script>
 <script src="/js/gpt-belajar.js?v=20261017f" defer></script>
-<script src="/js/gpt-alat-preview.js?v=20261019door2" defer></script>
+<script src="/js/gpt-alat-preview.js?v=20261101wait1" defer></script>
 <script src="/js/omset-week-shape.js?v=20261021shape1" defer></script>
 <script src="/js/gpt-app.js?v=20261029ext1" defer></script>
 <style>
@@ -13898,7 +13898,7 @@ body.alat-focus.view-audit .alat-page--wide::after { display: none; }
   justify-content: center;
   gap: 14px;
   padding: 24px;
-  background: rgba(255, 255, 255, .82);
+  background: rgba(255, 255, 255, .94);
   border-radius: inherit;
   text-align: center;
 }
@@ -13910,13 +13910,72 @@ body.alat-focus.view-audit .alat-page--wide::after { display: none; }
   border-top-color: var(--accent, #B5202A);
   animation: spin .7s linear infinite;
 }
+.alat-busy-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: #E8E8E8;
+  overflow: hidden;
+}
+.alat-busy-fill {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: var(--accent, #B5202A);
+  border-radius: 0 3px 3px 0;
+  filter: blur(0.35px);
+  box-shadow: 0 0 6px rgba(181, 32, 42, .35);
+}
+.alat-busy-eta {
+  margin: 0;
+  max-width: 22rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1A1A1A;
+  line-height: 1.35;
+}
 .alat-busy-msg {
   margin: 0;
   max-width: 22rem;
+  font-size: .82rem;
+  font-weight: 500;
+  color: #6B6B6B;
+  line-height: 1.4;
+}
+.alat-busy-factwrap {
+  max-width: 22rem;
+  margin-top: 4px;
+}
+.alat-busy-factkicker {
+  margin: 0 0 4px;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--accent, #B5202A);
+}
+.alat-busy-fact {
+  margin: 0;
+  min-height: 2.8em;
   font-size: .9rem;
   font-weight: 600;
   color: #1A1A1A;
   line-height: 1.4;
+  transition: opacity .18s ease;
+}
+.alat-busy-fact.is-swap { opacity: 0; }
+.alat-busy-src {
+  margin: 8px 0 0;
+  font-size: .68rem;
+  font-weight: 500;
+  color: #8A8A8A;
+}
+@media (prefers-reduced-motion: reduce) {
+  .alat-busy-spin { animation: none; }
+  .alat-busy-fact { transition: none; }
+  .alat-busy-fill { transition: none !important; filter: none; box-shadow: none; }
 }
 .alat-kicker { font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted, #8A8A8A); margin: 0 0 6px; }
 .alat-card h2 { margin: 0 0 8px; font-size: clamp(1.1rem, 2vw, 1.25rem); }

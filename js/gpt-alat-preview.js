@@ -21,6 +21,27 @@
   var LIST_PREVIEW = 40;
   var SCRAPE_WAIT_MS = 90000;
   var SCRAPE_POLL_MS = 2000;
+  var BUSY_FACT_MS = 7000;
+  // Uneven jumps over 60s — pauses, then a leap. Not a linear timer.
+  var BUSY_SPURTS = [
+    [900, 6], [2400, 9], [4100, 18], [6800, 21], [9200, 34],
+    [12800, 37], [16100, 49], [20500, 52], [24800, 64], [30200, 67],
+    [35600, 78], [41800, 82], [47200, 91], [53000, 94], [60000, 100],
+  ];
+  // Observasi from docs/riset-toko-baru.md (77.013 listing toko baru). Not recipes.
+  var BUSY_FACTS = [
+    'Hampir setengah listing toko baru di data kami belum pernah terjual sekali pun.',
+    'Listing yang harganya pernah diubah tembus 100 unit kira-kira dua kali lebih sering. Itu observasi, bukan resep turunkan harga.',
+    'Median sampai terjual pertama sekitar 44 hari. Sampai 100 unit, sekitar 69 hari.',
+    '10% tercepat tembus 100 unit dalam sekitar 29 hari.',
+    'Hanya sekitar 11% listing toko baru yang tembus 100 unit.',
+    'Peluang tembus 100 unit paling tinggi di data kami: Makanan & Minuman, Hewan Peliharaan, dan Kecantikan.',
+    'Panjang judul hampir sama antara yang sepi dan yang laris. Yang beda biasanya pilihan katanya.',
+    'Di pasar kacang telur, ejaan “telor” jauh lebih sering muncul di listing yang laku daripada yang sepi.',
+  ];
+  var _busyTimers = [];
+  var _busyFactTimer = null;
+  var _busyFactIdx = 0;
 
   var host = null;
   var _shop = null;
@@ -824,10 +845,65 @@
     $('alat-kabar-go')?.addEventListener('click', function () { void finishPersonalInfo(shop); });
   }
 
+  function busyMotionReduced() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+
+  function stopBusyChrome() {
+    _busyTimers.forEach(function (t) { clearTimeout(t); });
+    _busyTimers = [];
+    if (_busyFactTimer) {
+      clearInterval(_busyFactTimer);
+      _busyFactTimer = null;
+    }
+  }
+
+  function paintBusyFact(i, instant) {
+    var el = $('alat-busy-fact');
+    if (!el || !BUSY_FACTS.length) return;
+    var text = BUSY_FACTS[i % BUSY_FACTS.length];
+    if (instant || busyMotionReduced()) {
+      el.classList.remove('is-swap');
+      el.textContent = text;
+      return;
+    }
+    el.classList.add('is-swap');
+    var swap = setTimeout(function () {
+      var node = $('alat-busy-fact');
+      if (!node) return;
+      node.textContent = text;
+      node.classList.remove('is-swap');
+    }, 180);
+    _busyTimers.push(swap);
+  }
+
+  function startBusyChrome() {
+    stopBusyChrome();
+    _busyFactIdx = Math.floor(Math.random() * BUSY_FACTS.length);
+    paintBusyFact(_busyFactIdx, true);
+    _busyFactTimer = setInterval(function () {
+      _busyFactIdx = (_busyFactIdx + 1) % BUSY_FACTS.length;
+      paintBusyFact(_busyFactIdx);
+    }, BUSY_FACT_MS);
+
+    var fill = $('alat-busy-fill');
+    if (!fill) return;
+    fill.style.transition = busyMotionReduced() ? 'none' : 'width .32s ease-out';
+    fill.style.width = '0%';
+    BUSY_SPURTS.forEach(function (pair) {
+      var t = setTimeout(function () {
+        var node = $('alat-busy-fill');
+        if (node) node.style.width = pair[1] + '%';
+      }, pair[0]);
+      _busyTimers.push(t);
+    });
+  }
+
   function setKabarBusy(msg) {
     var card = document.querySelector('#alat-root .alat-card');
     if (!card) return null;
     var busy = $('alat-kabar-busy');
+    var fresh = !busy;
     if (!busy) {
       busy = document.createElement('div');
       busy.id = 'alat-kabar-busy';
@@ -835,8 +911,15 @@
       busy.setAttribute('role', 'status');
       busy.setAttribute('aria-live', 'polite');
       busy.innerHTML =
+        '<div class="alat-busy-bar" aria-hidden="true"><span class="alat-busy-fill" id="alat-busy-fill"></span></div>' +
         '<span class="alat-busy-spin" aria-hidden="true"></span>' +
-        '<p class="alat-busy-msg" id="alat-kabar-busy-msg"></p>';
+        '<p class="alat-busy-eta">Biasanya sekitar 45 detik.</p>' +
+        '<p class="alat-busy-msg" id="alat-kabar-busy-msg"></p>' +
+        '<div class="alat-busy-factwrap">' +
+          '<p class="alat-busy-factkicker">Tahu nggak?</p>' +
+          '<p class="alat-busy-fact" id="alat-busy-fact"></p>' +
+          '<p class="alat-busy-src">Dari riset LarisID</p>' +
+        '</div>';
       card.appendChild(busy);
     }
     card.classList.add('is-busy');
@@ -852,6 +935,7 @@
     if (label) label.textContent = msg || 'Menyiapkan produk toko…';
     var status = $('alat-scrape-status');
     if (status) status.textContent = msg || 'Menyiapkan produk toko…';
+    if (fresh) startBusyChrome();
     return busy;
   }
 
@@ -890,12 +974,16 @@
             } else if (job.status === 'failed') {
               setKabarBusy('Ambil otomatis gagal — menyiapkan cadangan…');
             }
-            if (job.status === 'done' || job.status === 'failed') break;
+            if (job.status === 'done' || job.status === 'failed') {
+              stopBusyChrome();
+              break;
+            }
           }
         } catch (_) {}
         await new Promise(function (r) { setTimeout(r, SCRAPE_POLL_MS); });
       }
       if (!job || (job.status !== 'done' && job.status !== 'failed')) {
+        stopBusyChrome();
         job = { ok: true, status: 'timeout', job_id: _scrapeJobId };
       }
       if (job && job.status === 'done' && job.snap_id) {
@@ -930,6 +1018,7 @@
   }
 
   function renderExtBackup(shop, reason) {
+    stopBusyChrome();
     var root = $('alat-root');
     if (!root) return;
     root.className = 'alat-page';
@@ -1213,6 +1302,7 @@
   }
 
   async function loadShopWork(shop, opts) {
+    stopBusyChrome();
     opts = opts || {};
     var root = $('alat-root');
     if (!root) return;
