@@ -451,69 +451,46 @@ function ddKotaLabel(product, peers) {
   return (top && top[0]) || String(product?.location || '').trim() || '—';
 }
 
-/** How wide the keyword market is — shops / listings / monthly units. */
-function ddMarketScope(product, peers) {
-  const t = product?._ptype || null;
-  const list = Array.isArray(peers) ? peers : [];
-  const peerShops = new Set(list.map(p => String(p.shop_id || '')).filter(Boolean)).size;
-  const nSellers = Number(t?.n_sellers) || peerShops || 0;
-  const nListings = Number(t?.n_listings) || list.length || 0;
-  let soldBln = 0;
-  const wk = Number(t?.wk_units);
-  if (wk > 0) {
-    soldBln = Math.round(wk * 30 / 7);
-  } else {
-    const fromPeers = list.reduce((s, p) => {
-      const v = Number(p.nowcast_velocity_daily) || Number(p.sold_per_day) || 0;
-      return s + (v > 0 ? v * 30 : 0);
-    }, 0);
-    if (fromPeers > 0) soldBln = Math.round(fromPeers);
-  }
-  return { nSellers, nListings, soldBln, isPasar: false };
+/** Indonesian one-decimal rating, e.g. 4,3. Empty when there is no rating. */
+function ddRatingOne(n) {
+  const v = Number(n);
+  if (!(v > 0)) return '';
+  return v.toFixed(1).replace('.', ',');
 }
 
-function ddMarketNoteHtml(product, peers) {
-  const { nSellers, nListings, soldBln, isPasar } = ddMarketScope(product, peers);
-  if (!(nSellers > 0)) return '';
-  const nTxt = nSellers.toLocaleString('id-ID');
-  const fromType = Number(product?._ptype?.n_sellers) > 0;
-  const title = isPasar ? 'Ini adalah data tingkat pasar' : 'Konteks pasar keyword ini';
-  const body = (isPasar && fromType)
-    ? `Data ini merupakan gabungan dari ${nTxt} toko aktif yang menjual produk ini di Shopee.`
-    : `Dari listing yang terpantau, ada ${nTxt} toko aktif yang menjual produk serupa di Shopee.`;
-  const stats = [];
-  stats.push({
-    ico: 'store',
-    val: nSellers.toLocaleString('id-ID'),
-    lbl: 'Toko Aktif',
-  });
-  if (nListings > 0) {
-    stats.push({
-      ico: 'cart',
-      val: nListings.toLocaleString('id-ID'),
-      lbl: 'Total Listing',
-    });
+/** Yellow star row for a 0–5 rating. Returns '' when the rating is missing. */
+function ddYellowStarsHtml(rating, size = 'md') {
+  const r = Math.max(0, Math.min(5, Number(rating) || 0));
+  if (!(r > 0)) return '';
+  const bits = [];
+  for (let i = 1; i <= 5; i++) {
+    const state = r >= i - 0.25 ? 'is-full' : (r >= i - 0.75 ? 'is-half' : 'is-empty');
+    bits.push(`<span class="ddr-ystar ${state}"><span class="ddr-ystar-bg">★</span><span class="ddr-ystar-fg">★</span></span>`);
   }
-  if (soldBln > 0) {
-    stats.push({
-      ico: 'bag',
-      val: fmtIdCompact(soldBln),
-      lbl: 'Total Terjual/bln',
-      title: 'Perkiraan unit per bulan dari laju mingguan terukur (×30 hari).',
-    });
-  }
-  return `<aside class="ddr-market-note" aria-label="${esc(title)}">
-    <div class="ddr-market-note-head">
-      <span class="ddr-market-note-ico" aria-hidden="true">${ico('flame', 16)}</span>
-      <strong>${esc(title)}</strong>
+  const safeSize = size === 'sm' || size === 'lg' ? size : 'md';
+  return `<span class="ddr-ystars ddr-ystars--${safeSize}" role="img" aria-label="${esc(ddRatingOne(r))} dari 5">${bits.join('')}</span>`;
+}
+
+function ddMarketNoteHtml(product) {
+  const rating = Number(product?.rating) || 0;
+  const reviews = Number(product?.reviews) || 0;
+  const usia = listingUsiaLabel(product);
+  const score = rating > 0
+    ? `<div class="ddr-trust-score">${ddRatingOne(rating)}<span>/5</span></div>
+       ${ddYellowStarsHtml(rating, 'md')}`
+    : `<div class="ddr-trust-score ddr-trust-score--empty">—</div>
+       <p class="ddr-trust-empty">Rating belum ada</p>`;
+  const rev = reviews > 0
+    ? `${fmtSold(reviews)} ulasan`
+    : 'Belum ada ulasan';
+  return `<aside class="ddr-market-note ddr-trust" aria-label="Rating, ulasan, dan usia listing">
+    <div class="ddr-trust-rating">
+      ${score}
+      <div class="ddr-trust-reviews">${esc(rev)}</div>
     </div>
-    <p>${esc(body)}</p>
-    <div class="ddr-market-stats">
-      ${stats.map(s => `<div class="ddr-market-stat"${s.title ? ` title="${esc(s.title)}"` : ''}>
-        <span class="ddr-market-stat-ico" aria-hidden="true">${ico(s.ico, 15)}</span>
-        <span class="ddr-market-stat-val">${esc(s.val)}</span>
-        <span class="ddr-market-stat-lbl">${esc(s.lbl)}</span>
-      </div>`).join('')}
+    <div class="ddr-trust-usia" title="${esc(usia.title)}">
+      <span class="ddr-trust-usia-val">${esc(usia.text)}</span>
+      <span class="ddr-trust-usia-lbl">Usia listing</span>
     </div>
   </aside>`;
 }
@@ -12250,16 +12227,12 @@ function ddSpecCardHtml(product, detail) {
 function ddVarianCardHtml(product, detail) {
   // A pasar row is a market, not a listing: it has no variants and no stars.
   if (product?._ptype) return '';
-  const head = `<div class="ddr-sec-head"><h3>Varian &amp; Harga</h3>${detail
+  const head = `<div class="ddr-sec-head"><h3${detail ? ' class="ddr-sec-head--emphasis"' : ''}>Varian &amp; Harga</h3>${detail
     ? '<span class="omset-chip omset-chip--terukur" title="Diambil langsung dari halaman produk Shopee.">terukur</span>'
     : ''}</div>`;
   if (!detail) {
     return `<div class="ddr-card" data-dd-sec="varian">${head}
       <p class="dd-sub">Data varian produk ini belum kami ambil. Kami buka halaman produknya satu per satu, dan belum sampai ke yang ini.</p>
-      <button type="button" class="ddr-varian-req" data-dd-varian-req="1">Minta data varian</button>
-      <p class="dd-sub">${currentUser
-        ? 'Biasanya siap besok pagi, nanti kami kabari di sini.'
-        : 'Masuk dulu supaya kami bisa mengabari kamu kalau datanya sudah siap.'}</p>
     </div>`;
   }
   const v = pdVariantStats(detail);
@@ -12327,16 +12300,20 @@ function pdSampleReviews(detail) {
 
 function ddSampleReviewItemsHtml(rows) {
   return rows.map((r) => {
-    const star = Number(r.rating_star) > 0 ? `${Math.trunc(Number(r.rating_star))}★` : '';
+    const starN = Number(r.rating_star);
+    const stars = starN > 0 ? ddYellowStarsHtml(Math.trunc(starN), 'sm') : '';
     const who = String(r.author || 'Pembeli').trim() || 'Pembeli';
     const model = String(r.model_name || '').trim();
     const body = String(r.comment || '').trim();
     const text = body
       ? esc(body)
       : '<span class="dd-muted">Pembeli tidak menulis teks — hanya bintang.</span>';
-    const meta = [star, who, model ? `varian ${model}` : '']
-      .filter(Boolean).map(esc).join(' · ');
-    return `<li class="ddr-sample-review"><p class="ddr-sample-meta">${meta}</p><p class="ddr-sample-body">${text}</p></li>`;
+    const varian = model ? `<p class="ddr-sample-varian">${esc(model)}</p>` : '';
+    return `<li class="ddr-sample-review">
+      <p class="ddr-sample-meta">${stars}<span class="ddr-sample-who">${esc(who)}</span></p>
+      ${varian}
+      <p class="ddr-sample-body">${text}</p>
+    </li>`;
   }).join('');
 }
 
@@ -12371,11 +12348,15 @@ function ddUlasanCardHtml(product, detail, peers, niche) {
   const med = pdPeerMedianRating(peers);
   const wall = calcReviewWall(reviews, niche);
   const one = n => (Number(n) || 0).toFixed(1).replace('.', ',');
-  const ratingLine = rating > 0
-    ? (med != null
-      ? `Rating ${one(rating)} — median kompetitor di keyword ini ${one(med)}.`
-      : `Rating ${one(rating)}.`)
-    : 'Rating belum ada di data kami.';
+  const ratingHero = rating > 0
+    ? `<div class="ddr-rating-hero">
+        <div class="ddr-rating-hero-num">${one(rating)}<span>/5</span></div>
+        ${ddYellowStarsHtml(rating, 'lg')}
+      </div>`
+    : '<p class="ddr-varian-head">Rating belum ada di data kami.</p>';
+  const medLine = (rating > 0 && med != null)
+    ? `<p class="dd-sub">Median kompetitor di keyword ini ${one(med)}.</p>`
+    : '';
   // Bar widths normalise to the biggest bucket, not the total: a 2% 1★ bar
   // against 27k 5★ would otherwise render as nothing and read as zero.
   const histo = stars ? `<div class="ddr-stars">${[5, 4, 3, 2, 1].map(s => {
@@ -12402,8 +12383,9 @@ function ddUlasanCardHtml(product, detail, peers, niche) {
     ? '<span class="omset-chip omset-chip--terukur" title="Diambil langsung dari halaman produk Shopee.">terukur</span>'
     : '';
   return `<div class="ddr-card" data-dd-sec="ulasan">
-    <div class="ddr-sec-head"><h3>Kualitas Ulasan</h3>${measured}</div>
-    <p class="ddr-varian-head">${esc(ratingLine)}</p>
+    <div class="ddr-sec-head"><h3${detail ? ' class="ddr-sec-head--emphasis"' : ''}>Kualitas Ulasan</h3>${measured}</div>
+    ${ratingHero}
+    ${medLine}
     ${pills}
     ${histo}
     <p class="dd-sub">${esc(badLine)}</p>
@@ -12411,6 +12393,52 @@ function ddUlasanCardHtml(product, detail, peers, niche) {
     ${likedLine}
     ${scope}
     ${stars || samples ? ddDetailStaleNote(detail) : ''}
+  </div>`;
+}
+
+function ddDetailGateHtml() {
+  const mock = (title, body) => `<div class="ddr-card ddr-detail-mock">
+      <div class="ddr-sec-head"><h3>${title}</h3></div>
+      <div class="ddr-detail-mock-body">${body}</div>
+    </div>`;
+  const varian = mock('Varian &amp; SKU', `
+    <p class="ddr-varian-head">3 varian · 3 SKU</p>
+    <ul class="ddr-varian-list">
+      <li><span>Varian A</span><b>Rp •••</b></li>
+      <li><span>Varian B</span><b>Rp •••</b></li>
+      <li><span>Varian C</span><b>Rp •••</b></li>
+    </ul>`);
+  const rating = mock('Rating', `
+    <div class="ddr-rating-hero">
+      <div class="ddr-rating-hero-num">4,3<span>/5</span></div>
+      ${ddYellowStarsHtml(4.3, 'lg')}
+    </div>
+    <ul class="ddr-sample-list">
+      <li class="ddr-sample-review">
+        <p class="ddr-sample-meta">${ddYellowStarsHtml(5, 'sm')}<span class="ddr-sample-who">Pembeli</span></p>
+        <p class="ddr-sample-varian">Varian A</p>
+        <p class="ddr-sample-body">Contoh ulasan.</p>
+      </li>
+      <li class="ddr-sample-review">
+        <p class="ddr-sample-meta">${ddYellowStarsHtml(2, 'sm')}<span class="ddr-sample-who">Pembeli</span></p>
+        <p class="ddr-sample-varian">Varian B</p>
+        <p class="ddr-sample-body">Contoh ulasan.</p>
+      </li>
+    </ul>`);
+  const spec = mock('Spesifikasi Unik', `
+    <ul class="ddr-spec-list">
+      <li><span>Bahan</span><b>••••</b></li>
+      <li><span>Ukuran</span><b>••••</b></li>
+      <li><span>Dikirim dari</span><b>••••</b></li>
+    </ul>`);
+  return `<div class="ddr-detail-gate">
+    <p class="ddr-detail-gate-note">Contoh tampilan — data belum diambil.</p>
+    <div class="ddr-detail-gate-frame">
+      <div class="ddr-detail-gate-mocks" aria-hidden="true">
+        ${varian}${rating}${spec}
+      </div>
+      <button type="button" class="ddr-detail-gate-btn" data-dd-varian-req="1">Minta info</button>
+    </div>
   </div>`;
 }
 
@@ -12451,7 +12479,7 @@ function wireDdVarianRequest(root, product) {
         } catch (e) {
           console.warn('request_item_detail:', e?.message || e);
           btn.disabled = false;
-          btn.textContent = 'Minta data varian';
+          btn.textContent = 'Minta info';
           showToast('Belum berhasil mencatat permintaanmu. Coba lagi sebentar lagi.');
           return;
         }
@@ -16109,6 +16137,10 @@ function listingRowHtml(p, opts = {}) {
   const omset = estOmsetBulan(p);
   const usia = listingUsiaLabel(p);
   const reviews = Number(p.reviews) || 0;
+  const rating = Number(p.rating) || 0;
+  const ratingStars = opts.showRatingStars
+    ? `<span class="lrow-rating">${rating > 0 ? ddYellowStarsHtml(rating, 'sm') : ''}<span class="lrow-rating-num">${rating > 0 ? ddRatingOne(rating) : '—'}</span></span>`
+    : '';
   const expor = isExporListing(p);
   const soldN = expor
     ? (p.bought_past_month != null ? Number(p.bought_past_month) : null)
@@ -16181,7 +16213,7 @@ function listingRowHtml(p, opts = {}) {
     ${listingTrendCellHtml(p)}
     ${listingTrendSparkCellHtml(p)}
     <td class="lrow-num lrow-sold"><span class="lrow-metric-lbl">${expor ? 'Terjual/bln' : 'Terjual'}</span><span class="lrow-metric-val">${soldTxt}</span></td>
-    <td class="lrow-num lrow-wide lrow-reviews"><span class="lrow-metric-lbl">Review</span><span class="lrow-metric-val">${reviews ? fmtSold(reviews) : '0'}</span></td>
+    <td class="lrow-num lrow-wide lrow-reviews${ratingStars ? ' has-stars' : ''}"><span class="lrow-metric-lbl">Review</span><span class="lrow-metric-val">${reviews ? fmtSold(reviews) : '0'}</span>${ratingStars}</td>
     <td class="lrow-num lrow-wide lrow-usia" title="${esc(expor ? 'Usia listing Amazon belum diukur di v1.' : usia.title)}"><span class="lrow-metric-lbl">Usia</span><span class="lrow-metric-val">${esc(usiaTxt)}</span></td>
     ${expor ? '' : (window.LarisDirWorkbench ? LarisDirWorkbench.extraCellsHtml(p) : '')}
     ${actCell}
@@ -19723,8 +19755,6 @@ function ddHeroNumsHtml(product, peers) {
   const omsetMo = estOmsetBulan(product);
   const units = Number(product?.total_sold) || 0;
   const harga = Number(product?.price) || 0;
-  const reviews = Number(product?.reviews) || 0;
-  const usia = listingUsiaLabel(product);
   const kw = product?.keyword || '';
   const honesty = omsetHonesty(product);
   const num = (lbl, val, sub) => `<div class="ddr-hero-num">
@@ -19736,8 +19766,6 @@ function ddHeroNumsHtml(product, peers) {
     ${num('Harga', harga > 0 ? fmtRp(harga) : '—', 'Harga listing')}
     ${num('Omset / Bulan', omsetMo > 0 ? fmtOmsetHeroAmt(omsetMo) : '—', honesty.label)}
     ${num('Unit jual', units > 0 ? fmtSold(units) : '—', 'Total terjual (seumur hidup)')}
-    ${num('Review', reviews > 0 ? fmtSold(reviews) : '0', 'Ulasan listing')}
-    ${num('Usia', usia.text, 'Umur listing, bukan toko')}
     <p class="ddr-hero-foot">${n ? `Di keyword ${esc(kw)}: ${n} listing / ${shopN} toko` : kw ? `Di keyword ${esc(kw)}.` : ''}</p>
   </div>`;
 }
@@ -20108,7 +20136,7 @@ function ddKompetitorTableHtml(peers, opts = {}) {
   if (!list.length) return '<p class="dd-sub">Kompetitor belum tersedia untuk keyword ini.</p>';
   const highlightKey = opts.highlightKey || (_dd?.product ? prodKey(_dd.product) : '');
   const initial = opts.initial == null ? 5 : opts.initial;
-  const rowOpts = { highlightKey, compact: !!opts.compact, keepChat: true };
+  const rowOpts = { highlightKey, compact: !!opts.compact, keepChat: true, showRatingStars: true };
   if (opts.expanded || list.length <= initial) {
     return listingRowsHtml(list, rowOpts);
   }
@@ -20841,7 +20869,7 @@ async function openDeepDive(product, ddOpts = {}) {
           <button type="button" class="lrow-fav ddr-fav${isFavTracked(product) ? ' is-on' : ''}" data-ddr-fav="1" aria-pressed="${isFavTracked(product) ? 'true' : 'false'}" title="${isFavTracked(product) ? 'Hapus dari Favorit Aku' : 'Simpan ke Favorit Aku'}" aria-label="${isFavTracked(product) ? 'Hapus dari Favorit Aku' : 'Simpan ke Favorit Aku'}">${ico('bookmark', 18)}</button>
         </div>
         <p class="ddr-cat">${esc(ddKotaLabel(product, peers))}${ddBrandChipHtml(detail)}</p>
-        ${ddMarketNoteHtml(product, peers)}
+        ${ddMarketNoteHtml(product)}
       </div>
       <div class="ddr-score-stack">
         <div class="ddr-score ${scoreInfo.cls}">
@@ -20857,13 +20885,13 @@ async function openDeepDive(product, ddOpts = {}) {
     ${isDesktopDeepDive ? kompCardHtml : ''}
     ${ddAksiCepatHtml(product)}
     ${ddAlertCardHtml(product)}
-    ${product._ptype ? '' : `<div class="ddr-hscroll ddr-hscroll--graphs2">
+    ${product._ptype ? '' : (detail ? `<div class="ddr-hscroll ddr-hscroll--graphs2">
       ${ddVarianCardHtml(product, detail)}
       ${ddUlasanCardHtml(product, detail, peers, niche)}
     </div>
     <div class="ddr-hscroll ddr-hscroll--graphs2">
       ${ddSpecCardHtml(product, detail)}
-    </div>`}
+    </div>` : ddDetailGateHtml())}
     <h2 class="ddr-konteks-head">Konteks pasar: ${esc(kw || 'keyword ini')}</h2>
     <div class="ddr-hscroll ddr-hscroll--graphs2">
       <div class="ddr-card" data-dd-sec="pangsa">
@@ -28142,7 +28170,7 @@ async function loadAdminKeywordRequests() {
 
   // The PDP queue. Without a window onto it, a queue that stops draining
   // (a blocked scraper, a lane that never ran) is invisible until someone
-  // complains that their "Minta data varian" never arrived.
+  // complains that their "Minta info" never arrived.
   const dqEl = $('adm-detailq-list');
   const dqSum = $('adm-detailq-summary');
   if (dqEl) {
