@@ -20150,11 +20150,11 @@ function ddPeerNote(p) {
     who = `produk sejenis (kategori ${shapeCat}, skala terjual)`;
   }
   const via = p.fromReviews ? 'Skala terjual dari jumlah review. ' : '';
-  const flat = p.shape === 'level'
-    ? 'Belum cukup riwayat produk sejenis untuk bentuk mingguan, jadi garisnya datar di level perkiraan. '
+  const level = p.shape === 'level'
+    ? 'Belum cukup riwayat produk sejenis untuk bentuk mingguan, jadi bentuknya pola katalog di level perkiraan. '
     : '';
   const nBit = n ? `, ${n}` : '';
-  return `Satu scrape. ${via}${flat}Perkiraan dari ${who}${nBit}. Bukan riwayat produk ini.`;
+  return `Satu scrape. ${via}${level}Perkiraan dari ${who}${nBit}. Bukan riwayat produk ini.`;
 }
 
 /** Cohort weekly shape for a listing that has no real second scrape.
@@ -20170,17 +20170,23 @@ async function ddFetchPeerTrend(product) {
     if (r.error || !r.data || r.data.ok !== true) return null;
     const raw = r.data;
     if (raw.real_second_scrape) return { realSecond: true, weeks: [] };
-    const weeks = (Array.isArray(raw.weeks) ? raw.weeks : []).map((w) => {
+    // Server already reshapes flat peer weeks; client reshape is the same
+    // catalog rule as own-series so an older RPC still never draws identical weeks.
+    const weeks = _shapeFlatWeeks((Array.isArray(raw.weeks) ? raw.weeks : []).map((w) => {
       const d = String(w.week_start || '').slice(0, 10);
       const omset = w.omset == null ? null : Math.round(Number(w.omset) || 0);
       return {
         ts: ddPeerWeekTs(d),
         d,
-        omset: omset > 0 ? omset : null,
+        omset: omset > 0 ? omset : 0,
         units: 0,
         perkiraan: true,
       };
-    }).filter(w => Number.isFinite(w.ts));
+    }).filter(w => Number.isFinite(w.ts))).map((w) => ({
+      ...w,
+      omset: w.omset > 0 ? w.omset : null,
+      perkiraan: true,
+    }));
     const nextD = String(raw.next_week_start || '').slice(0, 10);
     const peer = {
       realSecond: false,

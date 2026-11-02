@@ -184,12 +184,15 @@ closed-form decay (`W(t') = W(t)·exp(−Δ/τ)`) revises this week and next wee
   then calls `peer_trend_for`: last 6 WIB Mondays, all perkiraan. The shape is
   the median measured weekly omset of the same category and sold scale-band
   (reviews pick the band only when lifetime sold is missing; a thin category
-  falls back to the band-only cohort). The newest cohort week is scaled to
-  `price × v_peer × 7`, this Monday is that same level, and weeks with too
-  few measured peers are a gap. Next week is that peer rate, still dashed.
-  If the cohort has no usable weeks the line is flat at the level and the
-  footnote says so. Top 10 Toko stays off until the listing has its own weeks.
-  This does not change card omset or `source=measured`.
+  falls back to **band-all** — every category in that sold band, not blank
+  category only). The newest cohort week is scaled to `price × v_peer × 7`,
+  this Monday is that same level, and weeks with too few measured peers are a
+  gap. Next week is that peer rate, still dashed. After that, both the cohort
+  and level paths run `shape_flat_week_totals` (client: `omset-week-shape.js`)
+  so the peer line is **never** identical week to week — a missing cohort
+  uses the catalog pattern at the peer level, still perkiraan, with a footnote.
+  Top 10 Toko stays off until the listing has its own weeks. This does not
+  change card omset or `source=measured`.
 - Favorit Aku **list** chart is the last 13 non-empty WIB Mondays (~3 months)
   from the same `product_daily_series` weekly bucket as Deep Dive Tren produk
   (omset + units, dual Y-axis, solid lines, week-start labels). Do **not**

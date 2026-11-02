@@ -78,6 +78,19 @@ ok('one scrape line is not flat', consecutiveDiffer(omsets(oneScrape)));
 ok('one scrape weeks are perkiraan', oneScrape.every(w => w.perkiraan === true));
 ok('one scrape recent week is higher', oneScrape[3].omset > oneScrape[0].omset);
 
+// peer_trend_for level path: six identical Mondays at the peer level.
+const peerLevel = shape.shapeFlatWeeks([
+  { omset: 2482192, units: 0 },
+  { omset: 2482192, units: 0 },
+  { omset: 2482192, units: 0 },
+  { omset: 2482192, units: 0 },
+  { omset: 2482192, units: 0 },
+  { omset: 2482192, units: 0 },
+]);
+eq('peer level keeps the total', sum(omsets(peerLevel)), 2482192 * 6);
+ok('peer level line is not flat', consecutiveDiffer(omsets(peerLevel)));
+ok('peer level recent week is higher', peerLevel[5].omset > peerLevel[0].omset);
+
 const already = shape.shapeFlatWeeks([
   { omset: 100, units: 5 },
   { omset: 101, units: 5 },
