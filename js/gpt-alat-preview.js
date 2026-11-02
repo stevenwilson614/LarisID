@@ -9,6 +9,7 @@
  *  - Sudah punya toko → 1/4 URL (enqueue Mac scrape) → 2/4 kabar/kontak
  *    (while scrape runs) → 3/4 pantau kompetitor → 4/4 analisis → My Toko.
  *    Extension “Ini toko saya” is the backup if Mac scrape fails.
+ * After the wizard, the connected page is the benchmark in js/mytoko-bench.js.
  */
 (function (global) {
   'use strict';
@@ -63,6 +64,13 @@
   var _shopLogo = '';
   var _selectedIdx = -1;
   var _detailTab = 'kompetitor'; // 'kompetitor' | 'analisa'
+  var _bench = null;
+  var _benchFor = 0;
+  var _benchLoading = false;
+  var _benchErr = '';
+  var _benchGen = 0;
+  var _benchTab = 'ringkasan';
+  var _benchManage = false;
   var _claimSnapId = '';
   var _scrapeJobId = '';
   var _pendingUrl = '';
@@ -1374,8 +1382,21 @@
     }
 
     if (wantCenter) {
-      // Don't preload peers for every keyword — load on product select.
+      var shopChanged = Number(_benchFor) !== Number(shop.shop_id);
+      if (shopChanged) {
+        _benchTab = 'ringkasan';
+        _benchManage = false;
+        _selectedIdx = -1;
+      }
+      if (opts.freshListings || shopChanged) {
+        _bench = null;
+        _benchErr = '';
+        _benchFor = Number(shop.shop_id) || 0;
+      }
+      var needBench = !!(opts.freshListings || shopChanged || !_bench);
+      if (needBench) _benchLoading = true;
       renderSellerCenter(shop);
+      if (needBench) void loadBenchmark(shop);
       return;
     }
     _peerChecks = Object.create(null);
@@ -1391,6 +1412,13 @@
     _shopMeta = null;
     _shopLogo = '';
     _selectedIdx = -1;
+    _bench = null;
+    _benchFor = 0;
+    _benchLoading = false;
+    _benchErr = '';
+    _benchGen++;
+    _benchTab = 'ringkasan';
+    _benchManage = false;
     _listings = [];
     _trackedIds = [];
     _claimSnapId = '';
@@ -2095,36 +2123,80 @@
     void loadShopWork(shop, { center: true });
   }
 
-  function storeStats() {
-    var n = _listings.length;
-    var sold = 0;
-    var revSum = 0;
-    var revN = 0;
-    var rateSum = 0;
-    var rateN = 0;
-    _listings.forEach(function (p) {
-      sold += Number(p.total_sold) || 0;
-      var r = Number(p.reviews);
-      if (Number.isFinite(r) && r > 0) { revSum += r; revN++; }
-      var rt = Number(p.rating);
-      if (Number.isFinite(rt) && rt > 0) { rateSum += rt; rateN++; }
-    });
-    return {
-      n: n,
-      sold: sold,
-      reviews: revSum,
-      rating: rateN ? (rateSum / rateN) : null,
-      metaN: _shopMeta && (_shopMeta.n_listings || _shopMeta.n_products),
-    };
+  function auditVisible() {
+    return !!(document.body && document.body.classList.contains('view-audit'));
   }
 
-  function renderSellerCenter(shop) {
+  function mergeBenchFields(listings, bench) {
+    if (!bench || !Array.isArray(bench.listings)) return;
+    var byId = Object.create(null);
+    bench.listings.forEach(function (p) {
+      if (p && p.item_id != null) byId[String(p.item_id)] = p;
+    });
+    (listings || []).forEach(function (p) {
+      var b = byId[String(p.item_id)];
+      if (!b) return;
+      if (b.nowcast_omset_monthly != null) p.nowcast_omset_monthly = b.nowcast_omset_monthly;
+      if (b.nowcast_method) p.nowcast_method = b.nowcast_method;
+      if (b.nowcast_velocity_daily != null) p.nowcast_velocity_daily = b.nowcast_velocity_daily;
+      if (b.listing_date && !p.listing_date) p.listing_date = b.listing_date;
+      if (!p.category && b.category) p.category = b.category;
+      if (!p.keyword && b.keyword) p.keyword = b.keyword;
+    });
+  }
+
+  async function loadBenchmark(shop) {
+    if (!shop || !shop.shop_id) return;
+    var gen = ++_benchGen;
+    _benchLoading = true;
+    _benchErr = '';
+    if (!user() || !sb()) {
+      if (gen !== _benchGen) return;
+      _benchLoading = false;
+      _bench = null;
+      _benchErr = 'Masuk untuk membandingkan dengan kompetitor.';
+      if (auditVisible()) renderSellerCenter(shop, { quiet: true });
+      return;
+    }
+    var kws = [];
+    var seen = Object.create(null);
+    (_listings || []).forEach(function (p) {
+      var k = String(p.keyword || '').trim();
+      if (!k || seen[k] || kws.length >= 25) return;
+      seen[k] = true;
+      kws.push(k);
+    });
+    try {
+      var res = await sb().rpc('get_toko_benchmark', {
+        p_shop_id: Number(shop.shop_id),
+        p_extra_keywords: kws,
+      });
+      if (gen !== _benchGen) return;
+      if (res.error) throw res.error;
+      var data = res.data;
+      if (data && data.ok === false) throw new Error(data.reason || 'benchmark');
+      _bench = data || null;
+      mergeBenchFields(_listings, _bench);
+    } catch (e) {
+      if (gen !== _benchGen) return;
+      _bench = null;
+      _benchErr = 'Perbandingan kompetitor belum bisa dimuat. Coba Analisis ulang.';
+      console.error('[My Toko] benchmark', e);
+    }
+    if (gen !== _benchGen) return;
+    _benchLoading = false;
+    if (auditVisible()) renderSellerCenter(shop, { quiet: true });
+  }
+
+  function renderSellerCenter(shop, opts) {
+    opts = opts || {};
     var root = $('alat-root');
     if (!root) return;
     root.className = 'alat-page alat-page--wide';
-    exitFocus();
-    syncNavLabels();
-    var st = storeStats();
+    if (!opts.quiet) {
+      exitFocus();
+      syncNavLabels();
+    }
     var trackedSet = Object.create(null);
     _trackedIds.forEach(function (id) { trackedSet[String(id)] = true; });
     _trackSelected = [];
@@ -2134,130 +2206,48 @@
       }
     });
     if (_selectedIdx >= _listings.length) _selectedIdx = -1;
-
-    var ratingTxt = st.rating != null ? st.rating.toFixed(1).replace('.', ',') : '—';
-    var loc = (_shopMeta && _shopMeta.location) || '';
-    var logoImg = _shopLogo
-      ? '<img class="myt-logo-img" src="' + esc(thumb(_shopLogo)) + '" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">'
-      : (_listings[0] && _listings[0].image_url
-        ? '<img class="myt-logo-img" src="' + esc(thumb(_listings[0].image_url)) + '" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">'
-        : '');
-    var cards = _listings.slice(0, LIST_PREVIEW).map(function (p, i) {
-      var on = !!trackedSet[String(p.item_id)];
-      var sel = i === _selectedIdx;
-      var rate = Number(p.rating) > 0 ? String(Number(p.rating).toFixed(1)).replace('.', ',') : '—';
-      return (
-        '<button type="button" class="myt-pcard' + (sel ? ' is-selected' : '') + (on ? ' is-tracked' : '') + '" data-myt-card="' + i + '">' +
-          '<div class="myt-pcard-img">' +
-            (p.image_url
-              ? '<img src="' + esc(thumb(p.image_url)) + '" alt="" loading="lazy">'
-              : '<span class="alat-ph"></span>') +
-            (on ? '<span class="myt-pcard-badge">Dipantau</span>'
-              : (p.from_snapshot ? '<span class="myt-pcard-badge is-snap">Snapshot</span>' : '')) +
-          '</div>' +
-          '<div class="myt-pcard-body">' +
-            '<b>' + esc((p.product_name || '').slice(0, 56)) + '</b>' +
-            '<span class="myt-pcard-price">' + fmtRp(p.price) + '</span>' +
-            '<span class="myt-pcard-meta">' + fmtN(p.total_sold) + ' terjual · ★ ' + rate + '</span>' +
-          '</div>' +
-        '</button>'
-      );
-    }).join('');
-
-    root.innerHTML =
-      '<div class="myt-center">' +
-        '<header class="myt-store">' +
-          '<div class="myt-store-id">' +
-            '<div class="myt-logo" aria-hidden="true">' +
-              '<span class="myt-logo-txt">' + esc(shopInitials(shop.store_name)) + '</span>' +
-              logoImg +
-            '</div>' +
-            '<div class="myt-store-text">' +
-              '<p class="alat-kicker">My Toko</p>' +
-              '<h2>' + esc(shop.store_name || ('Toko ' + shop.shop_id)) + '</h2>' +
-              '<p class="myt-store-sub">' +
-                (loc ? esc(loc) + ' · ' : '') +
-                'Shop ID ' + esc(String(shop.shop_id)) +
-                ' · 1 toko per akun' +
-                (anySnapshotListing() ? ' · Snapshot halaman' : '') +
-              '</p>' +
-            '</div>' +
-          '</div>' +
-          '<div class="myt-store-stats" aria-label="Ringkasan toko">' +
-            '<div><b>' + fmtN(st.metaN || st.n) + '</b><span>Produk</span></div>' +
-            '<div><b>' + fmtN(st.sold) + '</b><span>Terjual</span></div>' +
-            '<div><b>' + ratingTxt + '</b><span>Penilaian</span></div>' +
-            '<div><b>' + fmtN(st.reviews) + '</b><span>Ulasan</span></div>' +
-          '</div>' +
-        '</header>' +
-
-        '<section class="myt-products-sec">' +
-          '<div class="myt-sec-head">' +
-            '<div>' +
-              '<h3 class="alat-h3" style="margin:0">Produk toko</h3>' +
-              '<p class="alat-hint" id="myt-track-count" style="margin:4px 0 0">' +
-                _trackedIds.length + ' / ' + TRACK_MAX + ' dipantau · ketuk kartu untuk detail' +
-                (anySnapshotListing() ? ' · angka snapshot dari halaman Shopee, bukan sapuan mingguan' : '') +
-              '</p>' +
-            '</div>' +
-          '</div>' +
-          '<div class="myt-pcard-grid" id="myt-pcard-grid">' +
-            (cards || '<p class="alat-hint">Belum ada listing di sapuan kami.</p>') +
-          '</div>' +
-          '<div id="myt-detail" class="myt-detail" ' + (_selectedIdx < 0 ? 'hidden' : '') + '></div>' +
-        '</section>' +
-
-        '<section class="alat-card">' +
-          '<h3 class="alat-h3" style="margin-top:0">Ganti toko</h3>' +
-          '<p class="alat-lead">Hanya 1 toko. Mengganti URL menggantikan toko yang sekarang — pantauan produk toko lama dihapus.</p>' +
-          '<label class="alat-label" for="myt-swap-q">Link / nama toko baru</label>' +
-          '<div class="alat-row">' +
-            '<input type="text" id="myt-swap-q" class="alat-input" placeholder="shopee.co.id/shop/… atau nama toko" autocomplete="off">' +
-            '<button type="button" class="btn-primary" id="myt-swap-go">Ganti toko</button>' +
-          '</div>' +
-          '<p class="alat-err" id="myt-swap-err" hidden></p>' +
-          '<div id="myt-swap-picker" class="alat-picker" hidden></div>' +
-        '</section>' +
-
-        '<section class="alat-card myt-alerts">' +
-          '<h3 class="alat-h3" style="margin-top:0">Kabar harian kompetitor</h3>' +
-          '<p class="alat-lead">Opsional. Kami kirim ringkasan perubahan harga / promo kompetitor di keyword produk yang kamu pantau.</p>' +
-          '<div class="myt-alert-channels">' +
-            '<label class="myt-alert-card' + (_alerts.email ? ' is-on' : '') + '">' +
-              '<input type="checkbox" id="myt-alert-email"' + (_alerts.email ? ' checked' : '') + '>' +
-              '<span><b>Email</b><small>Ke email akun LarisID</small></span>' +
-            '</label>' +
-            '<label class="myt-alert-card' + (_alerts.wa ? ' is-on' : '') + '">' +
-              '<input type="checkbox" id="myt-alert-wa"' + (_alerts.wa ? ' checked' : '') + '>' +
-              '<span><b>WhatsApp</b><small>Pesan harian singkat</small></span>' +
-            '</label>' +
-          '</div>' +
-          '<div class="alat-row" id="myt-wa-row"' + (_alerts.wa ? '' : ' hidden') + ' style="margin-top:12px">' +
-            '<label class="alat-label" for="myt-wa-num" style="width:100%;margin:0">Nomor WhatsApp</label>' +
-            '<input type="tel" id="myt-wa-num" class="alat-input" inputmode="tel" placeholder="0812xxxxxxxx" value="' + esc(_alerts.wa_number || '') + '">' +
-          '</div>' +
-          '<fieldset class="myt-cadence">' +
-            '<legend>Frekuensi</legend>' +
-            '<label><input type="radio" name="myt-cadence" value="daily"' +
-              (_alerts.cadence !== 'weekly' ? ' checked' : '') + '> Setiap hari</label>' +
-            '<label><input type="radio" name="myt-cadence" value="weekly"' +
-              (_alerts.cadence === 'weekly' ? ' checked' : '') + '> Sekali seminggu</label>' +
-          '</fieldset>' +
-          '<div class="alat-row alat-row-end">' +
-            '<button type="button" class="btn-primary" id="myt-alert-save">Simpan preferensi kabar</button>' +
-          '</div>' +
-          '<p class="alat-hint" id="myt-alert-msg" hidden></p>' +
-        '</section>' +
-      '</div>';
-
+    if (!global.LarisMyTokoBench) {
+      root.innerHTML = '<p class="alat-hint">My Toko belum selesai dimuat. Muat ulang halaman.</p>';
+      return;
+    }
+    global.LarisMyTokoBench.mount(root, {
+      shop: shop,
+      shopMeta: _shopMeta,
+      shopLogo: _shopLogo,
+      listings: _listings,
+      trackedIds: _trackedIds,
+      trackMax: TRACK_MAX,
+      benchmark: _bench,
+      loading: _benchLoading,
+      error: _benchErr,
+      tab: _benchTab,
+      manageOpen: _benchManage,
+      selectedIdx: _selectedIdx,
+      alerts: _alerts,
+      onTab: function (tab) {
+        _benchTab = tab === 'produk' || tab === 'kompetitor' ? tab : 'ringkasan';
+        renderSellerCenter(shop, { quiet: true });
+      },
+      onManage: function (open) { _benchManage = !!open; },
+      onRefresh: function () {
+        void loadShopWork(shop, { center: true, freshListings: true });
+      },
+      onSelect: function (idx) {
+        if (_selectedIdx === idx) _selectedIdx = -1;
+        else {
+          _selectedIdx = idx;
+          _detailTab = 'kompetitor';
+        }
+        renderSellerCenter(shop, { quiet: true });
+      },
+    });
     wireSellerCenter(shop);
     if (_selectedIdx >= 0) paintProductDetail(shop);
-    // Late logo paint if fetch finishes after first paint.
     if (!_shopLogo) {
       void fetchShopLogo(shop.shop_id).then(function (url) {
         if (!url || _shop !== shop) return;
         _shopLogo = url;
-        var box = document.querySelector('.myt-logo');
+        var box = document.querySelector('.myt-bench .myt-logo');
         if (!box || box.querySelector('.myt-logo-img')) return;
         var img = document.createElement('img');
         img.className = 'myt-logo-img';
@@ -2270,6 +2260,7 @@
       });
     }
   }
+
 
   function wireSellerCenter(shop) {
     var countEl = $('myt-track-count');
@@ -2382,19 +2373,7 @@
     });
     $('myt-track-one')?.addEventListener('click', function () {
       toggleTrackProduct(shop, _selectedIdx);
-      paintProductDetail(shop);
-      // Refresh card badge
-      var card = document.querySelector('[data-myt-card="' + _selectedIdx + '"]');
-      if (card) {
-        var on = _trackedIds.indexOf(String(p.item_id)) >= 0;
-        card.classList.toggle('is-tracked', on);
-        var badge = card.querySelector('.myt-pcard-badge');
-        if (on && !badge) {
-          var wrap = card.querySelector('.myt-pcard-img');
-          if (wrap) wrap.insertAdjacentHTML('beforeend', '<span class="myt-pcard-badge">Dipantau</span>');
-        } else if (!on && badge) badge.remove();
-      }
-      if (wireSellerCenter._refreshCount) wireSellerCenter._refreshCount();
+      renderSellerCenter(shop, { quiet: true });
     });
 
     var panel = $('myt-tab-panel');
