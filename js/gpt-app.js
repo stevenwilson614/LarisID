@@ -10426,7 +10426,8 @@ function listingIsAdMissing(error) {
  */
 const PDETAIL_COLS = 'item_id,shop_id,detail_scraped_at,brand,condition,preorder_days,'
   + 'tier_variations_json,models_json,rating_breakdown_json,liked_count,comment_count,'
-  + 'shop_location,ships_from,is_free_shipping,attributes_json,sample_reviews_json';
+  + 'shop_location,ships_from,is_free_shipping,attributes_json,sample_reviews_json,'
+  + 'images_json';
 let _pdetailAvail = true;
 async function fetchProductDetail(product) {
   const id = product?.item_id;
@@ -10449,6 +10450,24 @@ async function fetchProductDetail(product) {
     }
     return data || null;
   } catch (_) { return null; }
+}
+
+/** Full gallery URLs from a product_details row (jsonb array or JSON string). */
+function ddDetailImageUrls(detail) {
+  let raw = detail?.images_json;
+  if (typeof raw === 'string') {
+    try { raw = JSON.parse(raw); } catch (_) { raw = null; }
+  }
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const u of raw) {
+    const s = String(u || '').trim();
+    if (!s || seen.has(s)) continue;
+    seen.add(s);
+    out.push(s);
+  }
+  return out;
 }
 
 function dedupeListings(rows) {
@@ -19251,19 +19270,90 @@ function fmtOmsetHeroAmt(n) {
   return `<span class="rp">Rp</span><span class="amt">${amt}</span>`;
 }
 
+function fmtScorePts(n) {
+  const r = Math.round((Number(n) || 0) * 10) / 10;
+  return r.toLocaleString('id-ID', { maximumFractionDigits: 1 });
+}
+
+function ddKompWhy(stats) {
+  const n = stats?.n || 0;
+  const top3Pct = Math.round((stats?.top3Share || 0) * 100);
+  if (!n) return 'Belum ada pembanding, jadi kompetisi belum terukur.';
+  if (stats.komp === 'Rendah') return `3 toko teratas cuma ${top3Pct}% penjualan — pasar belum terkunci.`;
+  if (stats.komp === 'Sedang') return `3 toko teratas pegang ${top3Pct}% penjualan.`;
+  return `3 toko teratas pegang ${top3Pct}% penjualan — susah disalip pemula.`;
+}
+
+function ddSampleWhy(n) {
+  n = n || 0;
+  if (n >= 20) return `${n} listing pembanding — cukup buat angka ini.`;
+  if (n >= 8) return `${n} listing pembanding — sampel sedang.`;
+  return `Sampel tipis (${n} listing) — angkanya kurang pasti.`;
+}
+
 // Deterministic 0–100 score from real signals only.
+// `parts` are the pre-round contributions. The headline `score` is still
+// Math.round(clamp 5–95) of their sum — do not change that formula.
 function ddScore(product, stats, niche) {
   const odds = calcBreakoutOdds(Number(product.price) || 0, niche);
-  let s = 35 * (odds.pct / 60);
-  s += stats.komp === 'Rendah' ? 25 : stats.komp === 'Sedang' ? 15 : 6;
-  s += Math.min(20, Math.log10((stats.totalSold || 0) + 1) * 3.4);
-  s += Math.min(10, Number(product.sold_per_day) || 0);
-  s += stats.n >= 20 ? 10 : stats.n >= 8 ? 6 : 2;
+  const st = stats || { komp: 'Tinggi', totalSold: 0, n: 0, top3Share: 0 };
+  const breakoutPts = 35 * (odds.pct / 60);
+  const kompPts = st.komp === 'Rendah' ? 25 : st.komp === 'Sedang' ? 15 : 6;
+  const marketPts = Math.min(20, Math.log10((st.totalSold || 0) + 1) * 3.4);
+  const velPts = Math.min(10, Number(product?.sold_per_day) || 0);
+  const samplePts = st.n >= 20 ? 10 : st.n >= 8 ? 6 : 2;
+  let s = breakoutPts + kompPts + marketPts + velPts + samplePts;
   s = Math.round(Math.max(5, Math.min(95, s)));
   const badge = s >= 70 ? { cls: 'badge-tinggi', label: 'Peluang Tinggi' }
     : s >= 45 ? { cls: 'badge-sedang', label: 'Peluang Sedang' }
     : { cls: 'badge-rendah', label: 'Peluang Rendah' };
-  return { score: s, ...badge, odds };
+  const sold = Math.round(st.totalSold || 0).toLocaleString('id-ID');
+  const spd = Number(product?.sold_per_day) || 0;
+  const spdLabel = spd > 0
+    ? spd.toLocaleString('id-ID', { maximumFractionDigits: 1 })
+    : '0';
+  const parts = [
+    { id: 'breakout', label: 'Peluang tembus', points: breakoutPts, max: 35, why: odds.hint },
+    { id: 'kompetisi', label: 'Kompetisi', points: kompPts, max: 25, why: ddKompWhy(st) },
+    { id: 'pasar', label: 'Besar pasar', points: marketPts, max: 20, why: `Total perkiraan terjual sepasar ${sold} dari ${st.n || 0} listing.` },
+    {
+      id: 'kecepatan',
+      label: 'Kecepatan jual',
+      points: velPts,
+      max: 10,
+      why: spd > 0
+        ? `Listing ini kira-kira ${spdLabel} unit per hari.`
+        : 'Belum ada sinyal kecepatan jual untuk listing ini.',
+    },
+    { id: 'sampel', label: 'Kekayaan sampel', points: samplePts, max: 10, why: ddSampleWhy(st.n) },
+  ];
+  const stillWorth = s < 70 && (st.n || 0) > 0 && (odds.tier === 'Tinggi' || st.komp === 'Rendah');
+  return { score: s, ...badge, odds, parts, stillWorth };
+}
+
+function scoreExplainHtml(info) {
+  const rows = (info.parts || []).map(p => {
+    const pct = Math.max(0, Math.min(100, (p.points / p.max) * 100));
+    return `<div class="dd-score-part">
+      <div class="dd-score-part-top">
+        <span class="dd-score-part-label">${esc(p.label)}</span>
+        <span class="dd-score-part-pts">${fmtScorePts(p.points)}<span>/${p.max}</span></span>
+      </div>
+      <div class="dd-score-bar" aria-hidden="true"><span style="width:${pct.toFixed(1)}%"></span></div>
+      <p class="dd-score-why">${esc(p.why)}</p>
+    </div>`;
+  }).join('');
+  const callout = info.stillWorth
+    ? '<p class="dd-score-callout">Masih bisa dicoba — pasar relatif terbuka. Skor rendah bukan berarti produk ini jelek.</p>'
+    : '';
+  return `<div class="dd-score-hero ${info.cls}">
+      <div class="dd-score-hero-num">${info.score}<span>/100</span></div>
+      <span class="badge ${info.cls}">${esc(info.label)}</span>
+    </div>
+    <p class="dd-score-honest">Skor ini perkiraan peluang di keyword ini, bukan jaminan laku.</p>
+    ${callout}
+    <div class="dd-score-parts">${rows}</div>
+    <p class="dd-score-foot">Dihitung dari data pasar yang kita punya. Skor tidak menyembunyikan atau memfilter produk. Angka akhir dibulatkan dan dibatasi 5–95.</p>`;
 }
 
 // Weekly market series from real scrape snapshots: per item, only consecutive
@@ -19758,25 +19848,47 @@ async function fetchPeerKeywordRows(peers) {
 }
 
 /**
- * Deep Dive header photo — only this listing's image.
- * `_ptype.images` and peer covers are other sellers' products, not extra shots
- * of the same listing (we only scrape one cover URL per item).
+ * Deep Dive header photos for THIS listing only.
+ * Prefer product_details.images_json (full PDP gallery from the detail pass).
+ * Fall back to the single search-scrape cover. Never use `_ptype.images` /
+ * peer covers — those are other sellers' products.
  */
-function ddHeaderImageList(product) {
-  const s = String(product?.image_url || '').trim();
-  return s ? [s] : [];
+function ddHeaderImageList(product, detail) {
+  const fromDetail = ddDetailImageUrls(detail);
+  if (fromDetail.length) return fromDetail;
+  const cover = String(product?.image_url || '').trim();
+  return cover ? [cover] : [];
 }
 
-/** Single product photo (carousel kept for a future multi-image scrape). */
-function ddHeaderMediaHtml(product) {
-  const imgs = ddHeaderImageList(product);
+/** Product photo(s) — single frame, or swipe/click carousel when detail has a gallery. */
+function ddHeaderMediaHtml(product, detail) {
+  const imgs = ddHeaderImageList(product, detail);
   if (!imgs.length) return '<span class="ph" aria-hidden="true"></span>';
-  return `<div class="ddr-gallery ddr-gallery--single" aria-label="Foto produk">
+  if (imgs.length === 1) {
+    return `<div class="ddr-gallery ddr-gallery--single" aria-label="Foto produk">
       <div class="ddr-gallery-main">
         <div class="ddr-carousel-track" data-ddr-track>
-          <div class="ddr-slide"><img src="${esc(imgs[0])}" alt="" draggable="false"></div>
+          <div class="ddr-slide"><img src="${esc(imgs[0])}" alt="" draggable="false" loading="eager" decoding="async" referrerpolicy="no-referrer"></div>
         </div>
       </div>
+    </div>`;
+  }
+  const slides = imgs.map((src, i) =>
+    `<div class="ddr-slide"><img src="${esc(src)}" alt="" draggable="false" loading="${i ? 'lazy' : 'eager'}" decoding="async" referrerpolicy="no-referrer"></div>`
+  ).join('');
+  const thumbs = imgs.map((src, i) =>
+    `<button type="button" class="ddr-gallery-thumb${i === 0 ? ' on' : ''}" data-ddr-dot="${i}" data-ddr-src="${esc(src)}" aria-label="Foto ${i + 1}" aria-selected="${i === 0 ? 'true' : 'false'}">
+      <img src="${esc(src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">
+    </button>`
+  ).join('');
+  return `<div class="ddr-gallery" data-ddr-carousel aria-label="Foto produk, ${imgs.length} foto" data-ddr-srcs="${esc(JSON.stringify(imgs))}">
+      <div class="ddr-gallery-main">
+        <div class="ddr-carousel-track" data-ddr-track>${slides}</div>
+        <button type="button" class="ddr-gallery-nav ddr-gallery-nav--prev" data-ddr-prev aria-label="Foto sebelumnya">${ico('arrowLeft', 16)}</button>
+        <button type="button" class="ddr-gallery-nav ddr-gallery-nav--next" data-ddr-next aria-label="Foto berikutnya">${ico('chevronRight', 16)}</button>
+        <span class="ddr-carousel-count"><span data-ddr-count>1</span> / ${imgs.length}</span>
+      </div>
+      <div class="ddr-gallery-thumbs" role="tablist">${thumbs}</div>
     </div>`;
 }
 
@@ -19786,6 +19898,8 @@ function bindDdrCarousel(root) {
   const track = car.querySelector('[data-ddr-track]');
   const stage = car.querySelector('.ddr-gallery-main');
   const thumbs = [...car.querySelectorAll('[data-ddr-dot]')];
+  const prevBtn = car.querySelector('[data-ddr-prev]');
+  const nextBtn = car.querySelector('[data-ddr-next]');
   let srcs = [];
   try { srcs = JSON.parse(car.getAttribute('data-ddr-srcs') || '[]'); } catch (_) { srcs = []; }
   if (!srcs.length) {
@@ -19797,6 +19911,7 @@ function bindDdrCarousel(root) {
   let sx = 0;
   let dx = 0;
   let tracking = false;
+  let dragged = false;
   let width = stage.clientWidth || 1;
 
   const apply = (offsetPx, animate) => {
@@ -19821,9 +19936,18 @@ function bindDdrCarousel(root) {
     e.preventDefault(); e.stopPropagation();
     show(Number(t.dataset.ddrDot) || 0, true);
   }));
+  prevBtn?.addEventListener('click', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    show(i - 1, true);
+  });
+  nextBtn?.addEventListener('click', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    show(i + 1, true);
+  });
 
   const onStart = (x) => {
     tracking = true;
+    dragged = false;
     sx = x;
     dx = 0;
     width = stage.clientWidth || 1;
@@ -19832,6 +19956,7 @@ function bindDdrCarousel(root) {
   const onMove = (x) => {
     if (!tracking) return;
     dx = x - sx;
+    if (Math.abs(dx) > 8) dragged = true;
     apply(dx, false);
   };
   const onEnd = () => {
@@ -19853,6 +19978,7 @@ function bindDdrCarousel(root) {
 
   stage.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'touch') return;
+    if (e.target?.closest?.('.ddr-gallery-nav, [data-ddr-dot]')) return;
     stage.setPointerCapture?.(e.pointerId);
     onStart(e.clientX);
   });
@@ -19868,6 +19994,15 @@ function bindDdrCarousel(root) {
     if (e.pointerType === 'touch') return;
     onEnd();
   });
+  // Tap (no drag) still opens the lightbox via the document click handler;
+  // a swipe must not. Flag the stage so that handler can skip.
+  stage.addEventListener('click', (e) => {
+    if (dragged) {
+      e.preventDefault();
+      e.stopPropagation();
+      dragged = false;
+    }
+  }, true);
 }
 
 function peerOmsetStats(peers) {
@@ -20722,11 +20857,21 @@ function ddDistChartConfig(distPoints, bandLo, bandHi, opts = {}) {
   };
 }
 
+function ddOverlayScrollLock() {
+  document.body.style.overflow = 'hidden';
+}
+
+function ddOverlayScrollRelease() {
+  const chartOpen = $('dd-chart-lightbox') && !$('dd-chart-lightbox').hidden;
+  const scoreOpen = $('dd-score-lightbox') && !$('dd-score-lightbox').hidden;
+  if (!chartOpen && !scoreOpen) document.body.style.overflow = '';
+}
+
 function closeDistChartLightbox() {
   const lb = $('dd-chart-lightbox');
   if (!lb || lb.hidden) return;
   lb.hidden = true;
-  document.body.style.overflow = '';
+  ddOverlayScrollRelease();
   const prev = _charts.get('ddr-dist-canvas-expanded');
   if (prev) {
     try { prev.destroy(); } catch (_) {}
@@ -20739,7 +20884,7 @@ async function openDistChartLightbox() {
   const lb = $('dd-chart-lightbox');
   if (!lb || !payload?.points?.length) return;
   lb.hidden = false;
-  document.body.style.overflow = 'hidden';
+  ddOverlayScrollLock();
   await larisEnsureChart();
   const chart = makeChart('ddr-dist-canvas-expanded', ddDistChartConfig(
     payload.points,
@@ -20765,6 +20910,60 @@ function wireDistChartLightbox() {
     if (e.target === lb) closeDistChartLightbox();
   });
   $('dd-chart-lightbox-panel')?.addEventListener('click', (e) => e.stopPropagation());
+}
+
+let _scoreExplainReturn = null;
+
+function closeScoreExplain() {
+  const lb = $('dd-score-lightbox');
+  if (!lb || lb.hidden) return;
+  lb.hidden = true;
+  ddOverlayScrollRelease();
+  const back = _scoreExplainReturn;
+  _scoreExplainReturn = null;
+  if (back && document.contains(back)) {
+    try { back.focus(); } catch (_) {}
+  }
+}
+
+function openScoreExplain(fromEl) {
+  const product = _dd?.product;
+  const stats = _dd?.stats;
+  const lb = $('dd-score-lightbox');
+  const body = $('dd-score-lightbox-body');
+  if (!lb || !body || !product || !stats) return;
+  const info = ddScore(product, stats, _dd.niche);
+  body.innerHTML = scoreExplainHtml(info);
+  _scoreExplainReturn = fromEl || document.activeElement;
+  lb.hidden = false;
+  ddOverlayScrollLock();
+  $('dd-score-lightbox-close')?.focus?.();
+  void logUserEvent('deepdive_section', { ui: 'gpt', section: 'skor_explain', via: 'click', keyword: product.keyword || '' });
+}
+
+function wireScoreExplain() {
+  const lb = $('dd-score-lightbox');
+  if (!lb || lb.dataset.ready) return;
+  lb.dataset.ready = '1';
+  $('dd-score-lightbox-close')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    closeScoreExplain();
+  });
+  lb.addEventListener('click', (e) => {
+    if (e.target === lb) closeScoreExplain();
+  });
+  $('dd-score-lightbox-panel')?.addEventListener('click', (e) => e.stopPropagation());
+}
+
+function wireDdrScoreOpen(root) {
+  root?.querySelectorAll?.('[data-ddr-score-open]')?.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openScoreExplain(btn);
+    });
+  });
 }
 
 
@@ -20949,7 +21148,9 @@ async function openDeepDive(product, ddOpts = {}) {
   // Fired now, awaited just before the template: the three fetches below are
   // sequential (the history one pages 5x1000), so a fourth await would add
   // latency for a single primary-key lookup.
-  const detailP = (cached && 'detail' in cached)
+  // Only reuse a real detail row. A cached null (no PDP yet) must not block
+  // a later Minta info / live fetch from reloading the gallery + varian cards.
+  const detailP = cached?.detail
     ? Promise.resolve(cached.detail)
     : fetchProductDetail(product);
   let peers = [];
@@ -21212,25 +21413,26 @@ async function openDeepDive(product, ddOpts = {}) {
     <div class="ddr-header" data-dd-sec="skor">
       <div class="ddr-media">
         <button type="button" class="ddr-back" id="ddr-back" aria-label="Kembali" title="Kembali">${ico('arrowLeft', 18)}</button>
-        ${ddHeaderMediaHtml(product)}
+        ${ddHeaderMediaHtml(product, detail)}
         <span class="ddr-views" hidden data-view-key="${esc(viewCountKey(product.item_id, product.shop_id))}" title="Orang yang melihat produk ini di Laris tahun ini">${ico('eye', 13)}<span class="ddr-views-num" data-view-num-self>${viewersYtd.toLocaleString('id-ID')}</span><span class="ddr-views-lbl">sedang melihat</span></span>
       </div>
       <div class="ddr-head-main">
         <div class="ddr-title-row">
           <span class="ddr-level ddr-level-produk" title="Angka di hero ini untuk satu listing penjual">PRODUK</span>
           <h1>${esc(product.product_name || kw || 'Produk')}</h1>
-          <span class="badge ${scoreInfo.cls}">${scoreInfo.label}</span>
+          <button type="button" class="badge ${scoreInfo.cls} ddr-score-open" data-ddr-score-open="1" aria-haspopup="dialog" title="Kenapa skor ini">${esc(scoreInfo.label)}</button>
           <button type="button" class="lrow-fav ddr-fav${isFavTracked(product) ? ' is-on' : ''}" data-ddr-fav="1" aria-pressed="${isFavTracked(product) ? 'true' : 'false'}" title="${isFavTracked(product) ? 'Hapus dari Favorit Aku' : 'Simpan ke Favorit Aku'}" aria-label="${isFavTracked(product) ? 'Hapus dari Favorit Aku' : 'Simpan ke Favorit Aku'}">${ico('bookmark', 18)}</button>
         </div>
         <p class="ddr-cat">${esc(ddKotaLabel(product, peers))}${ddBrandChipHtml(detail)}</p>
         ${ddMarketNoteHtml(product)}
       </div>
       <div class="ddr-score-stack">
-        <div class="ddr-score ${scoreInfo.cls}">
+        <button type="button" class="ddr-score ${scoreInfo.cls}" data-ddr-score-open="1" aria-haspopup="dialog" aria-label="Skor Produk ${scoreInfo.score} dari 100, ${esc(scoreInfo.label)}. Lihat alasan." title="Kenapa skor ini">
           <div class="lbl">Skor Produk</div>
           <div class="num">${scoreInfo.score}<span>/100</span></div>
-          <span class="badge ${scoreInfo.cls}">${scoreInfo.label}</span>
-        </div>
+          <span class="badge ${scoreInfo.cls}">${esc(scoreInfo.label)}</span>
+          <span class="ddr-score-hint">Lihat alasan</span>
+        </button>
       </div>
     </div>
     ${ddToolPillsHtml(product)}
@@ -21321,6 +21523,7 @@ async function openDeepDive(product, ddOpts = {}) {
     openKompPanel({ product, peers, via: 'deepdive' });
   });
   wireKompClicks(root, peers, { history });
+  wireDdrScoreOpen(root);
   wireDdrTrendToggles(root);
   bindDdrCarousel(root);
   wireDdrToolPills(root, product, peers);
@@ -22226,13 +22429,14 @@ function buildProductSystemPrompt(p, question, peers) {
   const skorStats = n ? ddStats(rows) : null;
   const scoreInfo = skorStats ? ddScore(p, skorStats, niche) : null;
   const rp = (v) => `Rp ${Math.round(Number(v) || 0).toLocaleString('id-ID')}`;
+  const skorParts = (scoreInfo?.parts || []).map(p =>
+    `- ${p.label}: ${fmtScorePts(p.points)}/${p.max}. ${p.why}`
+  ).join('\n');
   const skorBlock = scoreInfo ? `
-SKOR PRODUK INI: ${scoreInfo.score}/100 — "${scoreInfo.label}". Komponennya:
-- Peluang breakout: ${scoreInfo.odds.pct}% (${scoreInfo.odds.tier}; dihitung dari ${scoreInfo.odds.src})
-- Kompetisi: ${skorStats.komp} (3 seller teratas menguasai ${Math.round(skorStats.top3Share * 100)}% penjualan)
-- Harga pasar: median ${rp(skorStats.median)}, p25 ${rp(skorStats.p25)}, p75 ${rp(skorStats.p75)}
-- Total terjual sepasar: ${(skorStats.totalSold || 0).toLocaleString('id-ID')} dari ${skorStats.n} pembanding
-` : '';
+SKOR PRODUK INI: ${scoreInfo.score}/100 — "${scoreInfo.label}". Komponennya (sama dengan popup Skor Produk):
+${skorParts}
+- Harga pasar (konteks, bukan komponen skor): median ${rp(skorStats.median)}, p25 ${rp(skorStats.p25)}, p75 ${rp(skorStats.p75)}
+${scoreInfo.stillWorth ? '- Catatan: skor di bawah 70, tapi peluang tembus tinggi atau kompetisi rendah — pasar relatif terbuka.\n' : ''}` : '';
   const lang = detectReplyLanguage(question);
   const langLabel = replyLanguageLabel(lang);
   const voice = lang === 'en'
@@ -29237,10 +29441,12 @@ function wireUi() {
   $('img-lightbox')?.addEventListener('click', closeLightbox);
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
+    if (!$('dd-score-lightbox')?.hidden) { e.preventDefault(); closeScoreExplain(); return; }
     if (!$('dd-chart-lightbox')?.hidden) { e.preventDefault(); closeDistChartLightbox(); return; }
     if (!$('img-lightbox')?.hidden) { e.preventDefault(); closeLightbox(); }
   });
   wireDistChartLightbox();
+  wireScoreExplain();
   document.addEventListener('click', (e) => {
     const img = e.target?.closest?.('#product-pin-img, .ddr-header > img, [data-ddr-main], .dd-chat-card-top img, .ddr-gallery-main img, .ddr-slide img');
     if (!img || !img.getAttribute('src')) return;

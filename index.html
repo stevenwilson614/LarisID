@@ -6057,6 +6057,65 @@ body.view-edukasi .panel { background: #F7F7F8; }
   cursor: pointer; flex-shrink: 0;
 }
 .ddr-expand-btn:hover { border-color: var(--ink-soft); color: var(--ink); }
+
+.dd-score-lightbox {
+  position: fixed; inset: 0; z-index: 210;
+  background: rgba(10,10,12,.72);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.dd-score-lightbox[hidden] { display: none; }
+.dd-score-lightbox-panel {
+  position: relative;
+  width: min(440px, 96vw);
+  max-height: min(90vh, 720px);
+  overflow: auto;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.28);
+  padding: 16px 16px 14px;
+  animation: fadeUp .18s var(--ease);
+}
+.dd-score-lightbox-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-bottom: 8px;
+}
+.dd-score-lightbox-head h3 {
+  margin: 0; font-size: 1rem; font-weight: 700; color: var(--ink);
+}
+.dd-score-hero { text-align: center; padding: 4px 0 2px; }
+.dd-score-hero-num {
+  font-size: 2.4rem; font-weight: 800; letter-spacing: -.03em; line-height: 1;
+  color: var(--ink);
+}
+.dd-score-hero-num span { font-size: .95rem; font-weight: 600; opacity: .55; }
+.dd-score-hero.badge-tinggi .dd-score-hero-num { color: #16A34A; }
+.dd-score-hero.badge-sedang .dd-score-hero-num { color: #F59E0B; }
+.dd-score-hero.badge-rendah .dd-score-hero-num { color: #DC2626; }
+.dd-score-hero .badge { margin-top: 8px; display: inline-block; }
+.dd-score-honest {
+  margin: 10px 0 0; font-size: .82rem; color: var(--ink-soft); line-height: 1.45;
+}
+.dd-score-callout {
+  margin: 10px 0 0; padding: 10px 12px; border-radius: 10px;
+  background: #F0FDF4; color: #166534;
+  font-size: .8rem; line-height: 1.45;
+}
+.dd-score-parts { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
+.dd-score-part-top { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.dd-score-part-label { font-size: .82rem; font-weight: 700; color: var(--ink); }
+.dd-score-part-pts {
+  font-size: .78rem; font-weight: 700; color: var(--ink);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.dd-score-part-pts span { color: var(--muted); font-weight: 600; }
+.dd-score-bar {
+  height: 6px; border-radius: 99px; background: #EFEDEC;
+  margin: 6px 0 4px; overflow: hidden;
+}
+.dd-score-bar span { display: block; height: 100%; background: var(--ink); border-radius: 99px; }
+.dd-score-why { margin: 0; font-size: .75rem; color: var(--ink-soft); line-height: 1.4; }
+.dd-score-foot { margin: 14px 0 0; font-size: .68rem; color: var(--muted); line-height: 1.45; }
 .ddr-expand-btn svg { flex-shrink: 0; }
 
 @media (max-width: 860px) {
@@ -7311,9 +7370,25 @@ body.home-finder-done .home-hero {
   background: rgba(0,0,0,.55); color: #fff;
   font-size: .68rem; font-weight: 700; letter-spacing: .02em;
   padding: 3px 8px; border-radius: 8px;
+  pointer-events: none;
 }
+.ddr-gallery-nav {
+  position: absolute; top: 50%; z-index: 3;
+  transform: translateY(-50%);
+  width: 32px; height: 32px; padding: 0; margin: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; border-radius: 999px; cursor: pointer;
+  background: rgba(255,255,255,.92); color: #1a1a1a;
+  box-shadow: 0 1px 4px rgba(0,0,0,.18);
+  -webkit-tap-highlight-color: transparent;
+}
+.ddr-gallery-nav:hover { background: #fff; }
+.ddr-gallery-nav:active { transform: translateY(-50%) scale(.96); }
+.ddr-gallery-nav--prev { left: 8px; }
+.ddr-gallery-nav--next { right: 8px; }
 .ddr-gallery-thumbs {
-  display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(36px, 1fr)); gap: 5px;
+  max-height: 84px; overflow-y: auto;
 }
 .ddr-gallery-thumb {
   aspect-ratio: 1; padding: 0; border-radius: 8px; overflow: hidden;
@@ -7355,6 +7430,15 @@ body.home-finder-done .home-hero {
     border-radius: 0; width: 100%;
   }
   body.view-deepdive .ddr-gallery-thumbs { display: none; }
+  body.view-deepdive .ddr-gallery-nav {
+    width: 36px; height: 36px;
+    background: rgba(255,255,255,.88);
+  }
+  body.view-deepdive .ddr-gallery-nav--prev { left: 10px; }
+  body.view-deepdive .ddr-gallery-nav--next { right: 10px; }
+  body.view-deepdive .ddr-carousel-count {
+    left: auto; right: 12px; bottom: 12px;
+  }
   body.view-deepdive .ddr-media > .ddr-views {
     margin: 8px 14px 0;
     align-self: flex-start;
@@ -7683,6 +7767,26 @@ body.home-finder-done .home-hero {
 .ddr-score.badge-sedang .lbl { color: #B45309; }
 .ddr-score.badge-tinggi .lbl { color: #15803D; }
 .ddr-score .num span { color: inherit; opacity: .55; }
+button.ddr-score {
+  font: inherit; color: inherit; width: 100%;
+  box-sizing: border-box; cursor: pointer;
+  appearance: none; -webkit-appearance: none;
+}
+button.ddr-score:hover { filter: brightness(0.98); }
+button.ddr-score:focus-visible {
+  outline: 2px solid var(--ink); outline-offset: 2px;
+}
+.ddr-score-hint {
+  font-size: .62rem; font-weight: 650; color: var(--muted);
+  margin-top: 2px; text-decoration: underline; text-underline-offset: 2px;
+}
+button.badge.ddr-score-open {
+  font: inherit; border: 0; cursor: pointer; appearance: none; -webkit-appearance: none;
+}
+button.badge.ddr-score-open:hover { filter: brightness(0.96); }
+button.badge.ddr-score-open:focus-visible {
+  outline: 2px solid var(--ink); outline-offset: 2px;
+}
 /* ── Deep-dive hero row: pasar numbers (left) + trend chart (right) ────── */
 .ddr-hero-row { display: grid; gap: 12px; margin-bottom: 12px; align-items: stretch; }
 @media (min-width: 880px) {
@@ -10392,6 +10496,17 @@ body.view-chat .sfb-card {
     </div>
   </div>
 </div>
+<div class="dd-score-lightbox" id="dd-score-lightbox" hidden role="dialog" aria-modal="true" aria-labelledby="dd-score-lightbox-title">
+  <div class="dd-score-lightbox-panel" id="dd-score-lightbox-panel">
+    <div class="dd-score-lightbox-head">
+      <h3 id="dd-score-lightbox-title">Kenapa skor ini</h3>
+      <button type="button" class="dd-chart-lightbox-close" id="dd-score-lightbox-close" aria-label="Tutup" title="Tutup">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="dd-score-lightbox-body"></div>
+  </div>
+</div>
 <div class="app">
   <aside class="sidebar" id="sidebar">
     <a class="sidebar-brand" href="/" id="btn-home" title="Beranda LarisID">
@@ -13093,7 +13208,7 @@ body.view-chat .sfb-card {
 <script src="/js/gpt-belajar.js?v=20261017f" defer></script>
 <script src="/js/gpt-alat-preview.js?v=20261101wait2" defer></script>
 <script src="/js/omset-week-shape.js?v=20261021shape1" defer></script>
-<script src="/js/gpt-app.js?v=20261102peerflat1" defer></script>
+<script src="/js/gpt-app.js?v=20261102gallery1" defer></script>
 <style>
 .hl-hero-ctas-alat { display: none; }
 html.alat-preview #finder-xp-step { display: none; }
