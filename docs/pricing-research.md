@@ -41,14 +41,14 @@ And read §A itself as *what June 2026 looked like* — credits are gone, AI is 
 
 *This is the part of the report worth keeping.* All figures are the best public data found May 2026. Indonesian tools publish little detail and lean on "contact us / WhatsApp"; treat soft numbers as indicative. USD converted at ~Rp 16.000.
 
-> **✅ RE-VERIFIED 21 Aug 2026** — Datapinter, Tokpee and Shoptik figures below were read directly
-> off their own pricing pages on that date and supersede the May 2026 estimates.
-> **Kalodata updated 5 Sep 2026** to the public IDR figure we now quote: **Rp 325.000/bulan**.
+> **✅ RE-VERIFIED 2 Nov 2026** — Datapinter (`app.datapinter.com/harga`) and Shoptik
+> (`shoptik.id`) unchanged vs 21 Aug 2026. **Tokpee** (`tokpee.co`) moved to the figures below.
+> **Kalodata** still Cloudflare-walled on 2 Nov 2026 — keep **Rp 325.000/bulan** from 5 Sep 2026.
 
 | Tool | Type | Headline price (IDR/mo) | Billing | What you get | Free tier? |
 |---|---|---|---|---|---|
 | **Datapinter** ⭐ *closest competitor* | Subscription | **Rp 99.000 / Rp 299.000 / Rp 499.000 / Rp 2.999.000 per mo** (Go / Dasar / Pinter / Jenius) — **Rp 82.500 / Rp 149.167 / Rp 415.850 / Rp 2.499.200** billed annually | Fixed sub, monthly or annual toggle | Feature set comparable to LarisID (full product/market research, analytics), plus per-month download quotas (2.000 / 10.000 / unlimited products), Kata Kunci Shopee, Pasar Luar Negeri, Chrome extension for Shopee + Tokopedia. Top-up 10.000 download credits for Rp 200.000. The most direct, feature-equivalent rival. | **Yes** — Rp 0 tier with limited data and no downloads |
-| **Tokpee** (tokpee.co) | Chrome extension | **Rp 113.999/mo** · **Rp 303.999/4 mo** (≈Rp 75.999/mo) · **Rp 455.999/yr** (≈Rp 37.999/mo) | Fixed sub, billed in blocks | Relatively basic Chrome extension — product research, export to Excel; Shopee + Tokopedia; claims real-time data. *Narrower scope than LarisID.* | No — 14-day money-back only |
+| **Tokpee** (tokpee.co) | Chrome extension | **Rp 149.999/mo** · **Rp 399.999/4 mo** · **Rp 599.999/yr** (≈Rp 49.999/mo) | Fixed sub, billed in blocks | Relatively basic Chrome extension — product research, export to Excel; Shopee + Tokopedia; claims real-time data. *Narrower scope than LarisID.* | No — 14-day money-back only |
 | **Goleki** (Chrome ext.) | Subscription / daily | **~Rp 15.000/day ≈ Rp 450.000/mo** | Daily/period | Product research extension | Unclear |
 | **Shoptik** (shoptik.id) | Subscription | **Rp 537.000/yr** (≈Rp 44.750/mo) — a standing "50% OFF" from a listed Rp 994.000 | Fixed sub, annual | Shopee **Indonesia + Malaysia** product research; unlimited real-time data, unlimited product analysis, unlimited data download; Chrome & Kiwi browser extension; 1 year of updates + support | No |
 | **Shoper** (shoper.id) | Subscription | Not published ("Coba Gratis", WhatsApp for price) | Fixed sub | Chrome extension: hidden data (upload time, product age), price/age analysis, competitor "similar products" graphs | Free trial |
@@ -75,7 +75,7 @@ margin after TikTok Shop commission*, which the LarisID fee calculator does cove
 "if you need TikTok creator/video GMV analytics, use Kalodata" concession in all copy.
 
 ### Takeaways (market intel — still valid)
-- The **closest competitor is Datapinter, whose Dasar tier is Rp 299.000/mo** with a feature set comparable to LarisID. This **still validates the brand tagline "Kompetitor bayar 300rb/bulan"** — it is accurate against the most direct, feature-equivalent rival's mid tier. Tokpee (Rp 113.999/mo) is a relatively basic Chrome extension with narrower scope, so it is *not* the right comparison point.
+- The **closest competitor is Datapinter, whose Dasar tier is Rp 299.000/mo** with a feature set comparable to LarisID. This **still validates the brand tagline "Kompetitor bayar 300rb/bulan"** — it is accurate against the most direct, feature-equivalent rival's mid tier. Tokpee (Rp 149.999/mo) is a relatively basic Chrome extension with narrower scope, so it is *not* the right comparison point.
 - Everyone local is **flat subscription** with *unlimited* usage as the pitch. Datapinter is the only one with a permanent free tier, and it is deliberately data-limited. **LarisID being 100% free for the whole product is its sharpest differentiator.**
 - **Where the paid tools genuinely win, and our copy must say so:** **bulk/unlimited** Excel/CSV export (Tokpee, Datapinter, Shoptik; Kalodata for TikTok GMV). LarisID **does** ship listing + weekly-omset downloads with a daily cap (90 product rows + 12 history weeks; see [export-xlsx.md](./export-xlsx.md)) — never write “has none”. Also: real-time data (LarisID refreshes **weekly**, not live), Tokopedia listing data (Tokpee, Datapinter), Shopee Malaysia (Shoptik), and TikTok Shop creator/video/live GMV (Kalodata). Promote weekly omset in public copy, not monthly-only.
 - **History depth and export volume** are the levers competitors charge for. LarisID now gives a capped listing snapshot and Deep Dive weekly history away for free; paid tools still win on volume.

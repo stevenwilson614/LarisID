@@ -21,8 +21,8 @@ const ROOT = path.resolve(__dirname, '..');
 const OUT = path.join(ROOT, 'perbandingan');
 const SITE = 'https://larisid.com';
 const OG_IMAGE = `${SITE}/images/og-banner.jpg`;
-const UPDATED = '2026-09-14';
-const UPDATED_HUMAN = '14 September 2026';
+const UPDATED = '2026-11-02';
+const UPDATED_HUMAN = '2 November 2026';
 const KALO_UPDATED = '2026-09-05';
 const KALO_UPDATED_HUMAN = '5 September 2026';
 
@@ -133,7 +133,7 @@ const COMPETITORS = [
     h1: 'LarisID vs Tokpee',
     lead: 'Tokpee adalah ekstensi Chrome ringan untuk riset cepat di Shopee dan Tokopedia. LarisID adalah platform web yang lebih dalam per produk. Keduanya punya tempat.',
     rows: [
-      ['Harga', 'Rp 0 \u2014 100% gratis, selamanya, tanpa paket berbayar', 'Rp 113.999/bulan, atau Rp 455.999/tahun (\u2248Rp 37.999/bulan); tidak ada paket gratis permanen'],
+      ['Harga', 'Rp 0 \u2014 100% gratis, selamanya, tanpa paket berbayar', 'Rp 149.999/bulan, atau Rp 599.999/tahun (\u2248Rp 49.999/bulan); tidak ada paket gratis permanen'],
       ['Bentuk', 'Platform web + ekstensi', 'Ekstensi Chrome'],
       ['Marketplace', 'Shopee, TikTok Shop, Tokopedia, Lazada & Blibli', 'Shopee + Tokopedia'],
       ['Kedalaman analisis', 'Deep Dive + skor kelayakan per produk', 'Riset cepat + ekspor Excel'],
@@ -287,7 +287,7 @@ function listiclePage() {
   const tools = [
     { name: 'LarisID', price: 'Rp 0 \u2014 100% gratis, selamanya', best: 'Pemula & seller hemat budget yang butuh riset mendalam', pro: 'Gratis seluruhnya tanpa paket berbayar, skor kelayakan, Deep Dive, AI kontekstual, Favorit Aku (insight & omset harian), unduh listing + riwayat omset mingguan (kuota harian), kalkulator komisi 5 marketplace, data nyata', con: 'Ekspor Excel berkuota (bukan massal tanpa batas); katalog diperbarui mingguan (bukan real-time); belum punya analitik kreator & video TikTok Shop', href: '/' },
     { name: 'Datapinter', price: 'Rp 99.000\u2013Rp 2.999.000/bulan (Dasar Rp 299.000/bulan)', best: 'Seller yang butuh ekspor data & cakupan Tokopedia', pro: 'Cakupan riset marketplace luas, ekspor data, ada paket gratis terbatas', con: 'Langganan relatif mahal untuk pemula', href: '/perbandingan/larisid-vs-datapinter/' },
-    { name: 'Tokpee', price: 'Rp 113.999/bulan, atau Rp 455.999/tahun (\u2248Rp 37.999/bulan)', best: 'Riset cepat lintas Shopee + Tokopedia + ekspor Excel', pro: 'Ekstensi ringan, multi-marketplace, ekspor data', con: 'Analisis per produk kurang dalam; tidak ada paket gratis permanen', href: '/perbandingan/larisid-vs-tokpee/' },
+    { name: 'Tokpee', price: 'Rp 149.999/bulan, atau Rp 599.999/tahun (\u2248Rp 49.999/bulan)', best: 'Riset cepat lintas Shopee + Tokopedia + ekspor Excel', pro: 'Ekstensi ringan, multi-marketplace, ekspor data', con: 'Analisis per produk kurang dalam; tidak ada paket gratis permanen', href: '/perbandingan/larisid-vs-tokpee/' },
     { name: 'Shoptik', price: 'Rp 537.000/tahun (\u2248Rp 44.750/bulan), promo 50% dari Rp 994.000', best: 'Yang butuh ekspor data massal & pasar Shopee Malaysia', pro: 'Riset Shopee Indonesia & Malaysia, unduh data tanpa batas', con: 'Tidak ada paket gratis; tanpa skor kelayakan atau AI; harga selalu dibingkai promo', href: '/perbandingan/larisid-vs-shoptik/' },
   ];
   const faqs = [
@@ -441,7 +441,7 @@ const ANGLE_PAGES = [
     <p>Shopee membulatkan angka terjual, dan alat pihak ketiga hanya bisa mengestimasi dari data publik. Produk dengan "terjual" tinggi tapi ulasan sedikit patut dicurigai. Karena itu LarisID selalu menandai "terjual" sebagai estimasi dan mendorong kamu membaca ulasan + margin sebelum kulakan. Lihat <a href="/cara-kerja/">metodologi data</a>.</p>
 
     <h2>Alat cek produk terlaris Shopee</h2>
-    <p>Ada beberapa pilihan berbayar (Datapinter mulai Rp 99.000/bulan, Tokpee Rp 113.999/bulan, Shoptik Rp 537.000/tahun). <strong>LarisID</strong> menyediakan pengecekan produk terlaris — skor kelayakan, Deep Dive, data harga &amp; ulasan nyata, plus unduh listing dan riwayat omset ke Excel/CSV — <strong>100% gratis, selamanya</strong>. Yang belum ada di LarisID: ekspor massal tanpa batas dan data real-time. Bandingkan semuanya di <a href="/perbandingan/alat-riset-produk-shopee-terbaik/">alat riset produk Shopee terbaik</a>.</p>`,
+    <p>Ada beberapa pilihan berbayar (Datapinter mulai Rp 99.000/bulan, Tokpee Rp 149.999/bulan, Shoptik Rp 537.000/tahun). <strong>LarisID</strong> menyediakan pengecekan produk terlaris — skor kelayakan, Deep Dive, data harga &amp; ulasan nyata, plus unduh listing dan riwayat omset ke Excel/CSV — <strong>100% gratis, selamanya</strong>. Yang belum ada di LarisID: ekspor massal tanpa batas dan data real-time. Bandingkan semuanya di <a href="/perbandingan/alat-riset-produk-shopee-terbaik/">alat riset produk Shopee terbaik</a>.</p>`,
     faqs: [
       { q: 'Apa aplikasi cek produk terlaris Shopee yang gratis?', a: 'LarisID (larisid.com) memungkinkan kamu mengecek produk terlaris Shopee — harga, ulasan, jumlah toko, estimasi penjualan, plus unduh listing dan riwayat omset ke Excel/CSV. 100% gratis untuk semua pengguna, selamanya, tanpa kartu kredit dan tanpa paket berbayar. Halaman riset pasarnya bahkan bisa diakses tanpa login.' },
       { q: 'Apakah angka terjual di Shopee akurat?', a: 'Harga, rating, dan jumlah ulasan adalah data nyata. Angka "terjual" adalah estimasi dari data publik, bukan data resmi Shopee, jadi pakai sebagai sinyal tren — bukan angka pasti — dan silangkan dengan jumlah ulasan.' },
@@ -473,7 +473,7 @@ const ANGLE_PAGES = [
       <li>Ekspor data massal ke Excel untuk analisis sendiri.</li>
       <li>Volume riset sangat besar setiap hari sebagai bagian dari tim.</li>
     </ul>
-    <p>Untuk kebutuhan ini, Datapinter (paket Dasar Rp 299.000/bulan) atau Tokpee (Rp 113.999/bulan) bisa cocok. Lihat <a href="/perbandingan/larisid-vs-datapinter/">LarisID vs Datapinter</a> dan <a href="/perbandingan/larisid-vs-tokpee/">LarisID vs Tokpee</a>.</p>
+    <p>Untuk kebutuhan ini, Datapinter (paket Dasar Rp 299.000/bulan) atau Tokpee (Rp 149.999/bulan) bisa cocok. Lihat <a href="/perbandingan/larisid-vs-datapinter/">LarisID vs Datapinter</a> dan <a href="/perbandingan/larisid-vs-tokpee/">LarisID vs Tokpee</a>.</p>
 
     <h2>Cara riset produk Shopee gratis (langkah singkat)</h2>
     <ol>

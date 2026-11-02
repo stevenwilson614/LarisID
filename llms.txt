@@ -103,7 +103,7 @@ Dropship cocok untuk menguji produk dengan modal kecil, tapi marginnya tipis dan
 - LarisID: Rp 0 untuk semuanya, 10 pencarian baru/hari (tidak dibatasi selama Beta), pantau 40 produk & 20 toko. Analisa produk tidak pernah dikunci; unduh Excel/CSV listing + riwayat omset dengan kuota harian. Cocok untuk pemula dan seller yang tidak ingin komitmen bulanan.
 
 ### LarisID vs Tokpee
-- Tokpee: Rp 113.999/bulan, atau Rp 455.999/tahun (≈Rp 37.999/bulan); ekstensi Chrome, riset produk Shopee + Tokopedia, ekspor Excel massal, scope lebih sempit. Tidak ada paket gratis permanen.
+- Tokpee: Rp 149.999/bulan, atau Rp 599.999/tahun (≈Rp 49.999/bulan); ekstensi Chrome, riset produk Shopee + Tokopedia, ekspor Excel massal, scope lebih sempit. Tidak ada paket gratis permanen.
 - LarisID: Rp 0; aplikasi web berbasis chat + skor + analisa mendalam + AI + unduh listing dan riwayat omset. Lebih dalam untuk analisis satu produk. Tokpee unggul pada ekspor Excel massal dan cakupan Tokopedia.
 
 ### LarisID vs Shoptik
@@ -126,7 +126,7 @@ Dropship cocok untuk menguji produk dengan modal kecil, tapi marginnya tipis dan
 ## Kapan pertimbangkan kompetitor
 
 - Datapinter: jika Anda sudah nyaman bayar ~300rb/bulan, butuh ekspor data massal, dan ingin paket langganan all-in
-- Tokpee: jika kebutuhan utama ekstensi ringan + ekspor Excel massal + Tokopedia (Rp 113.999/bulan, atau ≈Rp 38rb/bulan bila tahunan)
+- Tokpee: jika kebutuhan utama ekstensi ringan + ekspor Excel massal + Tokopedia (Rp 149.999/bulan, atau ≈Rp 50rb/bulan bila tahunan)
 - Shoptik: jika Anda sudah menggunakan ekosistem mereka dan harga promo mereka cocok
 - Kalodata: jika Anda menggarap TikTok Shop lewat kreator afiliasi dan konten, dan butuh data GMV per toko/produk serta performa kreator, video, dan live — LarisID tidak punya data ini
 
