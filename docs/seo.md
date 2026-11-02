@@ -27,6 +27,7 @@ GitHub Pages and Cloudflare Pages mirrors are **retired**.
 | `cara-kerja/` | Data methodology, Viability Score, AI limits |
 | `riset/` | **Programmatic SEO** — per-keyword Shopee market pages + hub (generated; see below) |
 | `data/` | Public corpus-coverage page (generated weekly; Dataset schema, source for the landing stats) |
+| `tren/` | One market brief per coverage snapshot, linked from the homepage. Not a daily blog. |
 | `styles/seo-pages.css` | Shared CSS for static SEO pages |
 | `llms.txt` | Plain-text fact sheet for AI crawlers |
 | `sitemap.xml` | Submit in Google Search Console |
@@ -183,7 +184,9 @@ Internal links: nav + footer on every static page and the landing point to `/ris
 | `scripts/fetch-coverage.sh` → `scripts/sql/coverage.sql` | Corpus stats → `scripts/coverage.json` |
 | `scripts/build-coverage-page.mjs` | Writes `/data/` **and** rewrites the four landing `.hl-stats` tiles |
 | `scripts/fetch-riset-batch.mjs --limit N` | Appends the next N qualifying keywords to `seo-keywords.json` + `seo-detail.json` |
-| `scripts/build-seo-pages.mjs` | Rebuilds `/riset/` + the whole sitemap |
+| `scripts/fetch-weekly-brief.mjs` → `scripts/sql/weekly-brief.sql` | Top `mv_keyword_weekly` rows → `scripts/weekly-brief.json` |
+| `scripts/build-weekly-brief.mjs` | Writes `/tren/<snapshot>/` + hub + homepage block. No-op when that snapshot already has a brief |
+| `scripts/build-seo-pages.mjs` | Rebuilds `/riset/` + the whole sitemap, including `/tren/` from `scripts/tren-manifest.json` |
 
 **The old `scripts/fetch-seo-raw.sh` is dead** — `build-seo-pages.mjs` reads the committed JSON, so
 nothing consumes `scripts/_seo_raw/`. `refresh-seo.sh` still calls it; that call does nothing.
@@ -195,8 +198,30 @@ order); `ci-static-checks.sh` enforces that against `HEAD` and will fail the bui
 
 **Fail-closed freshness.** `ci-static-checks.sh` refuses to publish when the coverage snapshot is more
 than 10 days old, so a stalled scrape blocks the PR instead of shipping a fresh `dateModified` over
-stale numbers. Snapshot date is the last day clearing 10k rows, not `max(scraped_at)` — the daily
-tracked pass writes a few hundred rows and would otherwise masquerade as a full refresh.
+stale numbers. Snapshot date is the last day that closes a rolling 7-day window with ≥10k listing
+rows (the drip catalog pass), not a single-day ≥10k spike and not bare `max(scraped_at)` — a tiny
+tracked-only day must not claim a full refresh.
+
+### Weekly brief — `/tren/` (one page per snapshot, not per day)
+
+Google organic signups land on the homepage, so the Monday job also publishes a
+crawlable note and links it under the landing stat tiles.
+
+- **Cadence:** one URL, `/tren/<snapshot>/`, where `<snapshot>` is `coverage.json`'s
+  snapshot (the last day that cleared the coverage threshold). There is no daily
+  article. Scrapes land 12–17 days apart; a new date on an unchanged snapshot is rejected.
+- **No-op:** `build-weekly-brief.mjs` exits 0 without writing when that snapshot
+  already has a page.
+- **Numbers:** top keywords from `mv_keyword_weekly` by 7-day-equivalent `wk_units`
+  (`wk_units >= 25`, `wk_items >= 2`). The page says the median measured span and
+  that units are disetarakan ke 7 hari. Growth % uses the in-app badge formula
+  (this window vs `wk_units_prev`) and is hidden when `wk_base < 50` or the previous
+  window misses the same floors. See [terlaris-minggu.md](./terlaris-minggu.md).
+- **Copy:** unit terjual is an estimate. Do not write "katalog diperbarui harian"
+  or present a raw two-snapshot delta as "minggu ini".
+- **CI:** `tren-manifest.json` `latest`, the page `dateModified`, and the homepage
+  `data-tren-brief` must equal the coverage snapshot. A brief date that moves while
+  the snapshot does not fails the build.
 
 ### Laptop weekly agent — local Cursor CLI (not Cloud Agents)
 

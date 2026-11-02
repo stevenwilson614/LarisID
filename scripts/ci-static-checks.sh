@@ -82,6 +82,53 @@ process.exit(bad);
 ' || fail=1
 fi
 
+echo "== weekly brief date matches coverage snapshot =="
+if [[ -f scripts/tren-manifest.json && -f scripts/coverage.json ]]; then
+  node -e '
+const fs = require("fs");
+const { execSync } = require("child_process");
+const cov = String(JSON.parse(fs.readFileSync("scripts/coverage.json", "utf8")).snapshot).slice(0, 10);
+const man = JSON.parse(fs.readFileSync("scripts/tren-manifest.json", "utf8"));
+let bad = 0;
+if (man.latest !== cov) {
+  console.error(`FAIL: tren brief ${man.latest} != coverage snapshot ${cov}`);
+  bad = 1;
+}
+const page = `tren/${man.latest}/index.html`;
+if (!fs.existsSync(page)) {
+  console.error(`FAIL: missing ${page}`);
+  bad = 1;
+} else {
+  const html = fs.readFileSync(page, "utf8");
+  if (!html.includes(`article:modified_time" content="${cov}"`)) {
+    console.error("FAIL: brief dateModified is not the coverage snapshot");
+    bad = 1;
+  }
+}
+const home = fs.readFileSync("index.html", "utf8");
+if (!home.includes(`data-tren-brief="${cov}"`)) {
+  console.error("FAIL: homepage tren block is not stamped with the coverage snapshot");
+  bad = 1;
+}
+function gitShow(p) {
+  try { return execSync(`git show HEAD:${p}`, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }); }
+  catch (_) { return null; }
+}
+const headManRaw = gitShow("scripts/tren-manifest.json");
+const headCovRaw = gitShow("scripts/coverage.json");
+if (headManRaw && headCovRaw) {
+  const headLatest = JSON.parse(headManRaw).latest;
+  const headCov = String(JSON.parse(headCovRaw).snapshot).slice(0, 10);
+  if (man.latest !== headLatest && cov === headCov) {
+    console.error(`FAIL: brief date moved ${headLatest} -> ${man.latest} but coverage snapshot stayed ${cov}`);
+    bad = 1;
+  }
+}
+if (!bad) console.log(`ok weekly brief ${man.latest}`);
+process.exit(bad);
+' || fail=1
+fi
+
 echo "== landing stat tiles are generator-owned =="
 for key in products shops keywords categories; do
   if ! grep -q "data-coverage=\"$key\"" index.html; then

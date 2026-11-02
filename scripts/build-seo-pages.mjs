@@ -511,6 +511,24 @@ ${EXPOR_TAB}
 `;
 }
 
+function trenSitemapUrls() {
+  try {
+    const m = JSON.parse(fs.readFileSync(path.join(__dirname, 'tren-manifest.json'), 'utf8'));
+    const dates = (Array.isArray(m.briefs) ? m.briefs : [])
+      .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d));
+    const latest = /^\d{4}-\d{2}-\d{2}$/.test(m.latest) ? m.latest : dates[dates.length - 1];
+    if (!latest || !dates.length) return [];
+    return [
+      { loc: `${SITE}/tren/`, freq: 'weekly', pri: '0.8', mod: latest },
+      ...dates.slice().sort().reverse().map((d) => ({
+        loc: `${SITE}/tren/${d}/`, freq: 'weekly', pri: '0.8', mod: d,
+      })),
+    ];
+  } catch (_) {
+    return [];
+  }
+}
+
 function buildSitemap(entries) {
   // Carry over the /kota/ entries owned by build-city-pages.mjs so a riset
   // rebuild never drops the city pages from the sitemap.
@@ -557,6 +575,7 @@ function buildSitemap(entries) {
     { loc: `${SITE}/cara-kerja/`, freq: 'monthly', pri: '0.8', mod: COPY_2026_09 },
     { loc: `${SITE}/tentang/`, freq: 'monthly', pri: '0.7', mod: '2026-09-05' },
     { loc: `${SITE}/privacy/`, freq: 'yearly', pri: '0.3', mod: '2026-09-05' },
+    ...trenSitemapUrls(),
   ];
   const all = [
     ...staticUrls,
