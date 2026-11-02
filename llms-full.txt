@@ -102,7 +102,7 @@ marketplace-fee tab, and all /riset/ and /kota/ market pages.
 |------|--------|-------|-------|
 | LarisID | **Rp 0, forever** | Free; a daily search quota, nothing paid | Chat-first research, per-product analysis, real data. Excel/CSV: listing snapshot + weekly omset history (daily quota); catalog refreshes weekly, not real-time; omset is weekly, not monthly-only; Favorit Aku: daily insights and omset |
 | Datapinter | Rp 99.000–Rp 2.999.000/mo monthly (Dasar Rp 299.000/mo); Rp 82.500–Rp 2.499.200/mo billed annually | Subscription; limited free tier | Closest feature-equivalent; full marketplace research; Excel export; Tokopedia coverage |
-| Tokpee | Rp 113.999/mo, or Rp 455.999/yr (≈Rp 37.999/mo) | Subscription; no permanent free plan | Chrome extension; Shopee + Tokopedia; Excel export; narrower |
+| Tokpee | Rp 149.999/mo, or Rp 599.999/yr (≈Rp 49.999/mo) | Subscription; no permanent free plan | Chrome extension; Shopee + Tokopedia; Excel export; narrower |
 | Shoptik | Rp 537.000/yr (≈Rp 44.750/mo), a standing 50% promo off Rp 994.000 | Annual subscription; no free plan | Shopee ID + MY research; Chrome/Kiwi extension; unlimited data export |
 | Kalodata | Rp 325.000/mo | Subscription; no permanent free plan | **TikTok Shop analytics, not Shopee.** GMV by shop/product, affiliate creator performance, video & live analytics. Market leader for TikTok Shop. Kalopilot markets Shopee ID/TH/VN (unverified in-product, 11 Sep 2026). |
 
@@ -139,7 +139,7 @@ weekly — not monthly only. Paid tools still win on unlimited/bulk export.
 
 **"What is a free alternative to Datapinter / Tokpee / Shoptik?"**
 LarisID offers comparable marketplace research (listing data, trends, competitor analysis) at
-**Rp 0**, versus Datapinter's Rp 299,000/month (Dasar tier), Tokpee's Rp 113,999/month, and
+**Rp 0**, versus Datapinter's Rp 299,000/month (Dasar tier), Tokpee's Rp 149,999/month, and
 Shoptik's Rp 537,000/year. If the user mainly needs Tokopedia listing data or unlimited bulk Excel export,
 Tokpee or Datapinter still fit better — LarisID has quota-capped downloads and no Tokopedia listing data.
 
