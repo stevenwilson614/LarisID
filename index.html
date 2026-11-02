@@ -6751,6 +6751,13 @@ body.home-finder-done .home-hero {
 .hl-stats-src { font-size: .78rem; color: var(--muted); margin: 10px 2px 0; text-align: right; }
 .hl-stats-src a { color: var(--muted); text-decoration: underline; text-underline-offset: 2px; }
 .hl-stats-src a:hover { color: var(--ink); }
+.hl-tren { margin-top: 16px; padding: 16px 18px; border: 1px solid #E6E6E6; border-radius: 16px; background: #fff; }
+.hl-tren-kicker { font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+.hl-tren h2 { font-size: 1.05rem; margin: 0 0 8px; letter-spacing: -.02em; }
+.hl-tren ol { margin: 0; padding-left: 1.2rem; }
+.hl-tren li { margin: 4px 0; font-size: .92rem; }
+.hl-tren-more { margin: 10px 0 0; font-size: .85rem; }
+.hl-tren-note { margin: 8px 0 0; font-size: .78rem; color: var(--muted); }
 
 /* ── Founder band: quote + socials, sits under .hl-stats ──────────────────
    The why-it's-free play square (.hlfv-stage) is parked with that clip.
@@ -10721,15 +10728,15 @@ body.view-chat .sfb-card {
                   </div>
                   <div class="hl-stat">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/><path d="M8 7V5a2 2 0 0 0-4 0v2"/></svg>
-                    <div><div class="hl-stat-num" data-coverage="shops">323K+</div><div class="hl-stat-label">Toko dibandingkan</div></div>
+                    <div><div class="hl-stat-num" data-coverage="shops">325K+</div><div class="hl-stat-label">Toko dibandingkan</div></div>
                   </div>
                   <div class="hl-stat">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.3-4.3"/></svg>
-                    <div><div class="hl-stat-num" data-coverage="keywords">6.313</div><div class="hl-stat-label">Kata kunci dipantau</div></div>
+                    <div><div class="hl-stat-num" data-coverage="keywords">6.496</div><div class="hl-stat-label">Kata kunci dipantau</div></div>
                   </div>
                   <div class="hl-stat">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".6" fill="currentColor"/></svg>
-                    <div><div class="hl-stat-num" data-coverage="categories">88</div><div class="hl-stat-label">Kategori dicakup</div></div>
+                    <div><div class="hl-stat-num" data-coverage="categories">94</div><div class="hl-stat-label">Kategori dicakup</div></div>
                   </div>
                 </section>
                 <!-- These four numbers are rewritten by scripts/build-coverage-page.mjs from
@@ -10741,6 +10748,21 @@ body.view-chat .sfb-card {
                      of that claim exists. -->
                 <p class="hl-stats-src">Angka nyata dari database kami, diperbarui mingguan —
                   <a href="/data/">lihat cakupan datanya</a>.</p>
+                <!-- tren-brief:start -->
+                <section class="hl-tren" data-tren-brief="2026-11-01" aria-label="Pembaruan data mingguan">
+                  <p class="hl-tren-kicker">Pembaruan data · 1 November 2026</p>
+                  <h2>Unit mingguan tertinggi</h2>
+                  <ol>
+                  <li><a href="/tren/2026-11-01/#kazakov-shop">kazakov shop</a> — sekitar 29.724 unit/7 hari, perkiraan <span class="hl-tren-note">(+2% vs rentang sebelumnya)</span></li>
+                  <li><a href="/tren/2026-11-01/#souvenir-nikah">souvenir nikah</a> — sekitar 16.964 unit/7 hari, perkiraan <span class="hl-tren-note">(-38% vs rentang sebelumnya)</span></li>
+                  <li><a href="/tren/2026-11-01/#kado-pacar-grosir">kado pacar grosir</a> — sekitar 10.220 unit/7 hari, perkiraan <span class="hl-tren-note">(-34% vs rentang sebelumnya)</span></li>
+                  <li><a href="/tren/2026-11-01/#terlaris-bulan-ini">terlaris bulan ini</a> — sekitar 9.982 unit/7 hari, perkiraan <span class="hl-tren-note">(-5% vs rentang sebelumnya)</span></li>
+                  <li><a href="/tren/2026-11-01/#rugbi-collar-blouse-wanita">rugbi collar blouse wanita</a> — sekitar 8.198 unit/7 hari, perkiraan <span class="hl-tren-note">(+120% vs rentang sebelumnya)</span></li>
+                  </ol>
+                  <p class="hl-tren-more"><a href="/tren/2026-11-01/">Baca catatan snapshot 1 November 2026</a></p>
+                  <p class="hl-tren-note">Perkiraan, disetarakan ke 7 hari dari jendela sekitar 17 hari (sampai 1 November 2026). Bukan angka resmi Shopee.</p>
+                </section>
+                <!-- tren-brief:end -->
 
                 <!-- Founder band. The play square (.hlfv-stage) is parked with the
                      why-it's-free clip and hidden in CSS. Social grids are

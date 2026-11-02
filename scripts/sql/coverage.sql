@@ -5,10 +5,12 @@
 -- Two rules this query exists to enforce, because getting either wrong overstates
 -- the corpus on a public page:
 --
---   1. "Last scrape" is the most recent day whose row count clears SUBSTANTIAL_ROWS.
---      max(scraped_at) is the wrong answer: the daily tracked pass writes a few
---      hundred rows for ~15 keywords, so a tracked-only day looks like a full
---      corpus refresh and would claim a freshness the scrape did not deliver.
+--   1. "Last scrape" is the most recent day that closes a rolling 7-day window
+--      whose listing rows sum to ≥ SUBSTANTIAL_ROWS. A single-day ≥10k gate is
+--      wrong for the drip catalog pass (~1–5k rows/day across many keywords):
+--      max(scraped_at) alone is also wrong, because a tiny tracked-only day must
+--      not claim a full refresh. The 7-day window matches how the Mac scrapers
+--      actually cover the corpus now.
 --   2. Products are count(distinct item_id), never count(*). A product recurs once
 --      per (shop, keyword, scrape day), so row counts are ~4x product counts.
 --
@@ -28,11 +30,16 @@ recent_days as (
   where scraped_at >= now() - interval '45 days'
   group by 1
 ),
+rolling as (
+  select d, n,
+         sum(n) over (order by d rows between 6 preceding and current row) as rows_7d
+  from recent_days
+),
 substantial as (
   select max(d) as last_full_day,
-         (select n from recent_days r2 where r2.d = max(r1.d)) as last_full_rows
-  from recent_days r1
-  where n >= :SUBSTANTIAL_ROWS
+         (select rows_7d from rolling r2 where r2.d = max(r1.d)) as last_full_rows
+  from rolling r1
+  where rows_7d >= :SUBSTANTIAL_ROWS
 ),
 totals as (
   select count(*)::bigint            as listing_rows,

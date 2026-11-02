@@ -236,8 +236,8 @@ const html = `${head(TITLE, DESC, `${SITE}/data/`, dataset, SNAPSHOT)}
   menunjukkan seberapa luas datanya. Halaman ini kebalikannya: inilah ukuran korpus LarisID apa
   adanya, termasuk bagian yang masih tipis. Angkanya dihasilkan langsung dari database dan
   diperbarui mingguan.</p>
-  <p class="updated">Snapshot data: ${SNAPSHOT_HUMAN} · ${n(C.snapshot_rows)} baris terkumpul pada
-  hari itu · <a href="/cara-kerja/">metodologi &amp; batasan data</a> · <a href="/llms.txt">llms.txt</a></p>
+  <p class="updated">Snapshot data: ${SNAPSHOT_HUMAN} · ${n(C.snapshot_rows)} baris dalam 7 hari
+  hingga hari itu · <a href="/cara-kerja/">metodologi &amp; batasan data</a> · <a href="/llms.txt">llms.txt</a></p>
 
   <div class="stat-grid">
     <div class="stat"><div class="stat-num">${n(C.products)}</div><div class="stat-label">Produk dipantau</div><div class="stat-sub">produk unik, bukan baris data</div></div>

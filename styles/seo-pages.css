@@ -728,3 +728,10 @@ main.wide.harga-free {
   .expor-tab { padding: 9px 10px; font-size: .72rem; }
   .expor-tab svg { width: 13px; height: 13px; }
 }
+
+/* Weekly brief table. Keyword names wrap; the unit columns stay numeric. */
+.tren-table { width: 100%; border-collapse: collapse; margin: 16px 0 8px; font-size: .92rem; }
+.tren-table th, .tren-table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.tren-table th { font-size: .75rem; color: var(--tm); font-weight: 700; }
+.tren-table td.num, .tren-table th.num { text-align: right; white-space: nowrap; }
+.tren-table a { font-weight: 700; }

@@ -63,6 +63,11 @@ jobs:
           SSH_KEY: ~/.ssh/contabo_key
         run: bash scripts/fetch-coverage.sh
 
+      - name: Pull weekly brief rows
+        env:
+          SSH_KEY: ~/.ssh/contabo_key
+        run: node scripts/fetch-weekly-brief.mjs
+
       - name: Publish next /riset/ batch
         if: ${{ github.event.inputs.skip_riset != 'true' }}
         env:
@@ -72,6 +77,7 @@ jobs:
       - name: Rebuild pages
         run: |
           node scripts/build-coverage-page.mjs
+          node scripts/build-weekly-brief.mjs
           node scripts/build-seo-pages.mjs
 
       - name: Static checks
@@ -100,7 +106,8 @@ jobs:
           # Explicit paths — never `git add -A`, so an unrelated stray file in the
           # runner's tree can't ride along into a published commit.
           git add scripts/coverage.json scripts/seo-keywords.json scripts/seo-detail.json \
-                  data riset sitemap.xml index.html
+                  scripts/weekly-brief.json scripts/tren-manifest.json \
+                  data riset tren sitemap.xml index.html
           git commit -m "SEO refresh ${SNAPSHOT}: coverage + ${PAGES} riset pages"
           git push origin "$BRANCH"
 
@@ -114,6 +121,7 @@ jobs:
           - Coverage snapshot: \`${SNAPSHOT}\`
           - /riset/ pages after this batch: **${PAGES}**
           - Landing stat tiles re-sourced from \`scripts/coverage.json\`
+          - /tren/ brief written only when the coverage snapshot date moved
 
           Static checks passed, including the fail-closed staleness guard.
           Merging deploys via \`deploy-pages.yml\`.

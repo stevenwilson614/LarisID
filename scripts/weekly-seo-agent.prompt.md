@@ -15,14 +15,17 @@ Read `docs/seo.md`, `MISSION.md`, and `docs/self-host.md` before changing anythi
    - omset / terjual labelled as estimates
    - public copy leads with weekly catalog updates and weekly omset; Favorit Aku is the daily exception (insights + omset), never “katalog diperbarui harian”
    - landing tiles still have `data-coverage` hooks
-4. Do **not** regenerate `/perbandingan/`, `/panduan/`, or `/kalkulator/` on a timer — those are hand copy.
+   - `/tren/<snapshot>/` exists only for the coverage snapshot date. `dateModified` and the visible snapshot line match that date. No second page and no bumped date when the snapshot did not move
+   - unit counts are labelled perkiraan and described as disetarakan ke 7 hari from the measured window. No raw two-snapshot delta presented as "minggu ini". No "katalog diperbarui harian"
+   - homepage `data-tren-brief` matches the same snapshot
+4. Do **not** regenerate `/perbandingan/`, `/panduan/`, or `/kalkulator/` on a timer — those are hand copy. `/tren/` is the only dated page, and only when the snapshot moves.
 5. If the PR is honest and checks pass, merge it. Merging deploys via `deploy-pages.yml`. If anything looks like a mass dump or a stale scrape, comment and leave it open.
 6. After merge, spot-check https://larisid.com/data/ and 2–3 new `/riset/` pages. Report published page count vs the qualifying backlog (~4,335 qualify, ~748 published as of 13 Sep 2026).
 
 ## First Monday of the month, also
 
 1. Refresh `/kota/`: call `refresh_seo_city_data()` over ssh+psql on Contabo, then `node scripts/fetch-city-data.mjs` and `node scripts/build-city-pages.mjs`, extending toward all 232 qualifying cities. Open a PR; do not push `main`.
-2. Re-verify Datapinter, Tokpee, Shoptik, and Kalodata public prices. If any moved, update `llms.txt`, `llms-full.txt`, `/harga/`, comparison pages, `docs/seo.md`, and `docs/pricing-research.md` together.
+2. Re-verify Datapinter, Tokpee, Shoptik, and Kalodata public prices. If any moved, update `llms.txt`, `llms-full.txt`, `/harga/`, comparison pages, the comparison block in `index.html`, `docs/seo.md`, and `docs/pricing-research.md` together. Leave the prices alone when they have not moved.
 
 ## Hard rules
 
