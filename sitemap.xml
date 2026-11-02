@@ -211,24 +211,6 @@
     <lastmod>2026-09-05</lastmod>
   </url>
   <url>
-    <loc>https://larisid.com/tren/</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <lastmod>2026-11-01</lastmod>
-  </url>
-  <url>
-    <loc>https://larisid.com/tren/2026-11-01/</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <lastmod>2026-11-01</lastmod>
-  </url>
-  <url>
-    <loc>https://larisid.com/tren/2026-10-13/</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <lastmod>2026-10-13</lastmod>
-  </url>
-  <url>
     <loc>https://larisid.com/riset/shower-gel-aromaterapi/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -17321,5 +17303,17 @@
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <lastmod>2026-07-09</lastmod>
+  </url>
+  <url>
+    <loc>https://larisid.com/tren/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <lastmod>2026-11-01</lastmod>
+  </url>
+  <url>
+    <loc>https://larisid.com/tren/2026-11-01/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <lastmod>2026-11-01</lastmod>
   </url>
 </urlset>
