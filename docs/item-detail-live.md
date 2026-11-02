@@ -2,6 +2,8 @@
 
 Varian, SKU, and ulasan stay empty until `product_details` has a row. **Minta info** used to only park that item for the next daily `tracked_pass`. It now waits on the same Mac claim path as My Toko: enqueue, fun-facts popup, poll for up to **3 minutes** (the claim lease), then repaint the dive. A failed first open on the Mac waits ~2 minutes before reclaim, so a 90s SPA budget was too short.
 
+The live Mac pass must also pull **3 ulasan terbaik + 3 terburuk** (`sample_reviews_json` via Shopee `get_ratings` type=5 / type=1–3). PDP alone only has the star-count breakdown. The worker opens a throwaway CDP tab, clicks the star chips (same as LarisID-extension), then closes the tab so the main scrape lane never gets `Runtime.enable`. If a row is already live but samples are missing, **Minta info** re-queues (`queued_refresh`) instead of `already_live`.
+
 Every Deep Dive of a real listing with no `product_details` row shows **Minta info**, including a keyword dive that opens that keyword’s top product. Live only works while `shop_claim_worker.py` is running on **Steven’s MacBook Pro** (laptop B, `Stevens-MacBook-Pro`, Shopee `acct614`, CDP 9224/9225). Laptop A does not claim these rows. If that worker is down or the page does not open in time, the row stays on the overnight queue and the toast says so. Auto-opens (priority 50, from just viewing a dive) are still daily-only. Only an explicit ask (priority 10) is claimed live.
 
 Per-varian sold still does not exist on Shopee’s PDP. The cards show what the page actually returns.
@@ -12,7 +14,7 @@ Per-varian sold still does not exist on Shopee’s PDP. The cards show what the 
 |-------|--------|
 | Queue + RPCs | `supabase/migrations/20261101120000_item_detail_live.sql` |
 | SPA wait | `js/gpt-app.js` — `wireDdVarianRequest`, `#dd-detail-busy` (busy poll ≤3 min; quiet late-watch another ≤3 min after timeout) |
-| Mac worker | `~/shopee_scraper/shop_claim_worker.py` (item detail before shop jobs) |
+| Mac worker | `~/shopee_scraper/shop_claim_worker.py` + `scraper.fetch_product_detail_raw(..., with_sample_reviews=True)` |
 
 RPCs on `https://api.larisid.com`:
 
