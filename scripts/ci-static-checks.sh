@@ -36,22 +36,45 @@ fi
 
 echo "== coverage.json sanity =="
 if [[ -f scripts/coverage.json ]]; then
+  # Zero/missing stats always fail — a broken pull must never ship "0 produk".
+  # Age is fail-closed only when this commit touches corpus-derived SEO surfaces
+  # (/data/, /riset/, coverage/seo JSON). Otherwise a stalled scrape would block
+  # every main deploy (harga, llms, bugfixes) while the live /data/ page already
+  # shows the honest old snapshot. refresh-seo.yml always changes those paths.
+  SEO_SURFACES_TOUCHED=0
+  SEO_PATH_RE='^(scripts/coverage\.json|scripts/seo-keywords\.json|scripts/seo-detail\.json|data/|riset/)'
+  if [[ "${SEO_FRESHNESS_REQUIRED:-}" == "1" ]]; then
+    SEO_SURFACES_TOUCHED=1
+  else
+    # Committed diff (deploy-pages on main) OR dirty tree (refresh-seo before commit).
+    if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+      if git diff --name-only HEAD~1 HEAD | grep -Eq "$SEO_PATH_RE"; then
+        SEO_SURFACES_TOUCHED=1
+      fi
+    fi
+    if git status --porcelain | awk '{print $NF}' | grep -Eq "$SEO_PATH_RE"; then
+      SEO_SURFACES_TOUCHED=1
+    fi
+  fi
+  export SEO_SURFACES_TOUCHED
   node -e '
 const fs = require("fs");
 const c = JSON.parse(fs.readFileSync("scripts/coverage.json", "utf8"));
 let bad = 0;
-// A failed pull that writes zeroes would publish "0 produk dipantau" to the world.
+const requireFresh = process.env.SEO_SURFACES_TOUCHED === "1";
 for (const k of ["snapshot","listing_rows","products","shops","corpus_active","categories"]) {
   if (c[k] === null || c[k] === undefined || Number(c[k]) === 0) {
     console.error(`FAIL: coverage.${k} missing or zero`); bad = 1;
   }
 }
-// Fail closed on staleness. The whole point of /data/ is an honest freshness claim,
-// so a stalled scrape must block the publish rather than ship a fresh dateModified.
 const ageDays = Math.round((Date.now() - new Date(c.snapshot)) / 86400000);
 if (ageDays > 10) {
-  console.error(`FAIL: coverage snapshot ${c.snapshot} is ${ageDays} days old (max 10) — refusing to publish`);
-  bad = 1;
+  if (requireFresh) {
+    console.error(`FAIL: coverage snapshot ${c.snapshot} is ${ageDays} days old (max 10) — refusing to publish`);
+    bad = 1;
+  } else {
+    console.log(`ok coverage snapshot ${c.snapshot} (${ageDays}d old, age gate skipped — no SEO corpus surfaces in this commit), ${c.products} produk`);
+  }
 } else {
   console.log(`ok coverage snapshot ${c.snapshot} (${ageDays}d old), ${c.products} produk`);
 }
