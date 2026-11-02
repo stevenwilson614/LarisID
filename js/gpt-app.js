@@ -12334,13 +12334,155 @@ function ddSampleReviewsHtml(detail) {
     ${legacy.length
       ? block('Contoh ulasan', legacy)
       : `${block('3 ulasan terbaik (5★)', top)}${block('3 ulasan terburuk', bottom)}`}
-    <p class="dd-sub">Cuplikan dari filter bintang Shopee (bukan seluruh ulasan). Terburuk diisi dari 1★, lalu 2★, lalu 3★ sampai 3 ulasan. Kosong berarti tidak ada ulasan di bawah 4★.</p>
+  </div>`;
+}
+
+/** Common Shopee praise / complaint cues — labels stay short for the kesimpulan. */
+const PD_REVIEW_GOOD_LEX = [
+  { re: /pack+ing\s*rapi|pengemasan\s*(baik|rapi)|kemasan\s*rapi|packi?ng\s*rapih/, label: 'packing rapi' },
+  { re: /pengiriman\s*(cepet|cepat|kilat)|cepet\s*banget|cepat\s*(sampai|banget)/, label: 'pengiriman cepat' },
+  { re: /sesuai\s*(pict|foto|gambar|deskripsi|pesanan|order)/, label: 'sesuai foto/pesanan' },
+  { re: /harga\s*(murah|murmer|bersahabat)|worth\s*it|murmer/, label: 'harga bersahabat' },
+  { re: /respon\s*(seller|penjual)?\s*(ramah|cepat)|seller\s*ramah|cs\s*ramah/, label: 'seller ramah' },
+  { re: /kualitas\s*(bagus|ok|oke|mantap|baik)|barang(nya)?\s*bagus|bahan\s*(bagus|adem|halus|tebal)/, label: 'kualitas dipuji' },
+  { re: /ukuran\s*pas|pas\s*(banget|di\s*badan)/, label: 'ukuran pas' },
+  { re: /recommended|rekomend|mantap|puas|jos+|luar\s*biasa/, label: 'pembeli puas' },
+];
+const PD_REVIEW_BAD_LEX = [
+  { re: /tidak\s*sesuai|nggak\s*sesuai|gak\s*sesuai|beda\s*(sama|dari)|salah\s*(kirim|ukuran|warna|tipe|varian)|dikirimnya\s+(?!cepat|cepet|baik|aman|rapi|ok|oke|selamat)/, label: 'barang tidak sesuai pesanan' },
+  { re: /rusak|cacat|penyok|sobek|pecah|retak|(?<!tidak\s)kelipat/, label: 'barang rusak/cacat' },
+  { re: /kekecilan|kebesaran|ukuran\s*(tidak|nggak|gak|lebih\s*kecil)|lebih\s*kecil\s*dari/, label: 'ukuran bermasalah' },
+  { re: /lambat|terlalu\s*lama|pengiriman\s*lama|kirim(an)?\s*lama/, label: 'pengiriman lambat' },
+  { re: /tipis|murahan|jelek|kasar|bau\b|basah|jamur|berjamur/, label: 'kualitas dikeluhkan' },
+  { re: /palsu|\bkw\b|bukan\s*ori|ori\s*(gak|nggak)/, label: 'keaslian diragukan' },
+  { re: /kurang\s*(lengkap|isi)|isi\s*kurang/, label: 'isi kurang lengkap' },
+  { re: /lempar|pack+ing\s*(jelek|asal)|kemasan\s*(jelek|asal|rusak)/, label: 'packing dikeluhkan' },
+];
+
+function pdReviewComments(rows) {
+  return (rows || []).map((r) => String(r?.comment || '').trim()).filter(Boolean);
+}
+
+function pdReviewThemeLabels(comments, lexicon) {
+  const hits = [];
+  const seen = new Set();
+  for (const raw of comments) {
+    const t = String(raw || '').toLowerCase().replace(/\s+/g, ' ');
+    if (!t) continue;
+    for (const item of lexicon) {
+      if (seen.has(item.label)) continue;
+      if (item.re.test(t)) {
+        seen.add(item.label);
+        hits.push(item.label);
+        if (hits.length >= 3) return hits;
+      }
+    }
+  }
+  return hits;
+}
+
+function pdJoinId(parts) {
+  const xs = (parts || []).filter(Boolean);
+  if (!xs.length) return '';
+  if (xs.length === 1) return xs[0];
+  if (xs.length === 2) return `${xs[0]} dan ${xs[1]}`;
+  return `${xs.slice(0, -1).join(', ')}, dan ${xs[xs.length - 1]}`;
+}
+
+function pdReviewSnippet(comments, maxLen = 88) {
+  for (const raw of comments || []) {
+    const t = String(raw || '').replace(/\s+/g, ' ').trim();
+    if (t.length < 12) continue;
+    return t.length > maxLen ? `${t.slice(0, maxLen - 1).trim()}…` : t;
+  }
+  return '';
+}
+
+function pdSplitSampleBuckets(detail) {
+  const rows = pdSampleReviews(detail);
+  const top = rows.filter((r) => r.bucket === 'top'
+    || (!r.bucket && Number(r.rating_star) >= 4)).slice(0, 3);
+  const bottom = rows.filter((r) => r.bucket === 'bottom'
+    || (!r.bucket && Number(r.rating_star) > 0 && Number(r.rating_star) <= 3)).slice(0, 3);
+  return { rows, top, bottom };
+}
+
+/** Product-level takeaway from star mix + sample reviews (no LLM). */
+function ddUlasanKesimpulanCopy(product, detail, peers) {
+  if (!detail) return null;
+  const stars = pdStars(detail);
+  const rating = Number(product?.rating) || 0;
+  const { top, bottom } = pdSplitSampleBuckets(detail);
+  if (!stars && !top.length && !bottom.length && !(rating > 0)) return null;
+
+  const one = (n) => (Number(n) || 0).toFixed(1).replace('.', ',');
+  const topComments = pdReviewComments(top);
+  const bottomComments = pdReviewComments(bottom);
+  const goodThemes = pdReviewThemeLabels(topComments, PD_REVIEW_GOOD_LEX);
+  const badThemes = pdReviewThemeLabels(bottomComments, PD_REVIEW_BAD_LEX);
+  const med = pdPeerMedianRating(peers);
+
+  let good;
+  if (goodThemes.length) {
+    good = `pembeli sering puji ${pdJoinId(goodThemes)}`;
+  } else {
+    const snip = pdReviewSnippet(topComments);
+    if (snip) good = `pembeli menulis “${snip}”`;
+    else if (stars) {
+      const fivePct = stars.stars[4] / stars.total * 100;
+      good = `${pdPctId(fivePct)} ulasan 5★ dari ${stars.total.toLocaleString('id-ID')} total`;
+    } else if (rating > 0) {
+      good = `rating ${one(rating)}/5`;
+    } else {
+      good = 'belum ada cuplikan ulasan bagus yang bisa diringkas';
+    }
+  }
+  if (rating > 0 && med != null) {
+    const d = rating - med;
+    if (d >= 0.15) good += ` · rating ${one(rating)} di atas median keyword (${one(med)})`;
+    else if (d <= -0.15) good += ` · rating ${one(rating)} di bawah median keyword (${one(med)})`;
+  } else if (rating >= 4.7 && !good.includes('rating')) {
+    good += ` · rating ${one(rating)} kuat`;
+  }
+
+  let better;
+  if (badThemes.length) {
+    better = `perbaiki ${pdJoinId(badThemes)} — itu yang muncul di ulasan bawah`;
+  } else {
+    const snip = pdReviewSnippet(bottomComments);
+    if (snip) better = `ada keluhan: “${snip}”`;
+    else if (bottom.length && !bottomComments.length) {
+      better = stars && stars.bad === 0
+        ? 'cuplikan bawah tanpa teks; bintang 1–2 hampir tidak ada — sinyal kualitas kuat'
+        : 'cuplikan bawah tanpa teks — cek keluhan berfoto di Shopee';
+    } else if (!bottom.length && stars && (stars.stars[0] + stars.stars[1] + stars.stars[2]) === 0) {
+      better = 'belum ada ulasan di bawah 4★ — yang bisa ditingkatkan lebih ke diferensiasi listing, bukan perbaikan komplain';
+    } else if (stars && stars.badPct >= 2) {
+      better = `ulasan 1–2★ ${pdPctId(stars.badPct)} — baca keluhan spesifik di Shopee sebelum ikut jual`;
+    } else if (stars && stars.badPct > 0) {
+      better = `ulasan 1–2★ hanya ${pdPctId(stars.badPct)} — tetap baca 1–2 keluhan sebelum ikut pola listing ini`;
+    } else {
+      better = 'belum ada sinyal keluhan jelas dari cuplikan — pantau ukuran, packing, dan kesesuaian foto';
+    }
+  }
+
+  return { good, better };
+}
+
+function ddUlasanKesimpulanHtml(product, detail, peers) {
+  const copy = ddUlasanKesimpulanCopy(product, detail, peers);
+  if (!copy) return '';
+  return `<div class="ddr-ulasan-kesimpulan">
+    <p class="ddr-ulasan-kesimpulan-title">Kesimpulan</p>
+    <p><b>Sudah bagus:</b> ${esc(copy.good)}.</p>
+    <p><b>Bisa lebih baik:</b> ${esc(copy.better)}.</p>
   </div>`;
 }
 
 function ddUlasanCardHtml(product, detail, peers, niche) {
   const stars = pdStars(detail);
   const samples = ddSampleReviewsHtml(detail);
+  const kesimpulan = detail ? ddUlasanKesimpulanHtml(product, detail, peers) : '';
   const reviews = Number(product?.reviews) || 0;
   const rating = Number(product?.rating) || 0;
   const med = pdPeerMedianRating(peers);
@@ -12368,15 +12510,8 @@ function ddUlasanCardHtml(product, detail, peers, niche) {
     ${stars ? `<span class="review-pill review-pill--bad">ulasan buruk ${pdPctId(stars.badPct)}</span>` : ''}
   </div>`;
   const badLine = stars
-    ? `Bintang 1 dan 2 berjumlah ${stars.bad.toLocaleString('id-ID')} dari ${stars.total.toLocaleString('id-ID')} ulasan (${pdPctId(stars.badPct)}). Baca beberapa di Shopee — di situ keluhan yang bisa kamu perbaiki.`
+    ? `Bintang 1 dan 2 berjumlah ${stars.bad.toLocaleString('id-ID')} dari ${stars.total.toLocaleString('id-ID')} ulasan (${pdPctId(stars.badPct)}).`
     : 'Rincian per bintang baru ada setelah kami buka halaman produknya.';
-  const liked = Number(detail?.liked_count) || 0;
-  const likedLine = liked > 0
-    ? `<p class="dd-sub">Disimpan ke wishlist ${liked.toLocaleString('id-ID')} orang.</p>`
-    : '';
-  const scope = stars
-    ? '<p class="dd-sub">Rincian bintang ini dari halaman produk Shopee, khusus listing ini. Kompetitor belum kami buka satu per satu, jadi belum ada pembanding per bintang di keyword ini.</p>'
-    : '';
   const measured = stars || samples
     ? '<span class="omset-chip omset-chip--terukur" title="Diambil langsung dari halaman produk Shopee.">terukur</span>'
     : '';
@@ -12388,9 +12523,7 @@ function ddUlasanCardHtml(product, detail, peers, niche) {
     ${histo}
     <p class="dd-sub">${esc(badLine)}</p>
     ${samples}
-    ${likedLine}
-    ${scope}
-    ${stars || samples ? ddDetailStaleNote(detail) : ''}
+    ${kesimpulan}
   </div>`;
 }
 
