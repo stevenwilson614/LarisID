@@ -102,7 +102,11 @@ if (!/^\d{4}-\d{2}-\d{2}$/.test(snapshot)) {
 }
 
 const manifest = loadManifest();
-if (manifest.latest === snapshot && fs.existsSync(path.join(OUT_DIR, snapshot, 'index.html'))) {
+const liveBriefs = manifest.briefs.filter((d) => fs.existsSync(path.join(OUT_DIR, d, 'index.html')));
+const manifestClean = manifest.latest === snapshot
+  && liveBriefs.length === manifest.briefs.length
+  && liveBriefs.includes(snapshot);
+if (manifestClean) {
   console.log(`Brief already published for ${snapshot}. Nothing to write.`);
   process.exit(0);
 }
@@ -298,9 +302,7 @@ ${faqs.map((f) => `  <div class="faq-item">
 </main>
 ${footer}`;
 
-const briefs = manifest.briefs.includes(snapshot)
-  ? manifest.briefs
-  : [...manifest.briefs, snapshot];
+const briefs = liveBriefs.includes(snapshot) ? liveBriefs : [...liveBriefs, snapshot];
 const listed = briefs.slice().sort().reverse();
 
 const hubItems = listed.map((d) => {
