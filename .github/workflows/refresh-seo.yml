@@ -77,6 +77,8 @@ jobs:
       - name: Static checks
         # Includes the fail-closed staleness guard: a stalled scrape blocks the PR
         # instead of publishing a fresh dateModified over old numbers.
+        env:
+          SEO_FRESHNESS_REQUIRED: '1'
         run: bash scripts/ci-static-checks.sh
 
       - name: Open PR
