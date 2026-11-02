@@ -8267,6 +8267,91 @@ button.badge.ddr-score-open:focus-visible {
 .chart-legend { display: flex; flex-direction: column; gap: 5px; font-size: .7rem; color: var(--ink-soft); margin-top: 10px; }
 .chart-legend .row { display: flex; align-items: center; gap: 7px; }
 .chart-legend .swatch { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
+.ddr-sec-title {
+  display: flex; align-items: center; gap: 8px; margin: 0 0 12px;
+}
+.ddr-sec-title h3 { margin: 0; flex: 1; min-width: 0; }
+.ddr-sec-ico {
+  flex-shrink: 0; width: 28px; height: 28px; border-radius: 8px;
+  display: grid; place-items: center;
+  background: #FDECEC; color: #B5202A;
+}
+.ddr-sec-ico svg { width: 15px; height: 15px; }
+.ddr-sec-info {
+  flex-shrink: 0; color: var(--muted);
+  display: grid; place-items: center; cursor: help;
+}
+.ddr-sec-info svg { width: 15px; height: 15px; }
+.ddr-pangsa-body {
+  display: grid; grid-template-columns: 140px minmax(0, 1fr);
+  gap: 4px 10px; align-items: center;
+}
+.ddr-chart-wrap.sm.ddr-pangsa-chart { width: 140px; height: 140px; }
+.ddr-pangsa-table { width: 100%; border-collapse: collapse; font-size: .72rem; }
+.ddr-pangsa-table th {
+  text-align: right; font-size: .6rem; font-weight: 600; color: var(--muted);
+  padding: 0 0 8px; white-space: nowrap;
+}
+.ddr-pangsa-table th:first-child { text-align: left; }
+.ddr-pangsa-table td { padding: 5px 0; vertical-align: middle; }
+.ddr-pangsa-name {
+  display: flex; align-items: center; gap: 6px;
+  color: var(--ink); font-weight: 600; white-space: nowrap;
+}
+.ddr-pangsa-dot { width: 8px; height: 8px; border-radius: 99px; flex-shrink: 0; }
+.ddr-pangsa-pct {
+  text-align: right; font-weight: 700; color: var(--ink); padding-left: 8px;
+}
+.ddr-pangsa-omset { text-align: right; padding-left: 8px; }
+.ddr-pangsa-omset span {
+  display: inline-block; background: #F3F4F6; color: #4B5563;
+  border-radius: 999px; padding: 3px 8px; font-weight: 600;
+  font-size: .66rem; white-space: nowrap;
+}
+.ddr-usia-sub {
+  margin: -4px 0 12px; font-size: .72rem; color: var(--muted); line-height: 1.4;
+}
+.ddr-usia-head,
+.ddr-usia-row {
+  display: grid;
+  grid-template-columns: minmax(78px, .85fr) 36px minmax(40px, 1.3fr) auto;
+  gap: 8px; align-items: center;
+}
+.ddr-usia-head {
+  font-size: .6rem; font-weight: 600; color: var(--muted);
+  margin-bottom: 8px; line-height: 1.25;
+}
+.ddr-usia-head span:nth-child(3) { grid-column: 3 / 5; }
+.ddr-usia-row { margin-bottom: 10px; }
+.ddr-usia-row:last-child { margin-bottom: 0; }
+.ddr-usia-label { font-size: .74rem; font-weight: 600; color: var(--ink); white-space: nowrap; }
+.ddr-usia-pct { font-size: .74rem; font-weight: 700; color: var(--ink); }
+.ddr-usia-track {
+  display: block; height: 10px; background: #F3F4F6;
+  border-radius: 99px; overflow: hidden;
+}
+.ddr-usia-fill {
+  display: block; height: 100%; border-radius: 99px; background: #F5C6CA;
+}
+.ddr-usia-fill.is-hot { background: #B5202A; }
+.ddr-usia-unit {
+  justify-self: end; background: #FDECEC; color: #B5202A;
+  border-radius: 999px; padding: 3px 8px;
+  font-size: .66rem; font-weight: 700; white-space: nowrap;
+}
+@media (max-width: 879px) {
+  .ddr-hscroll > .ddr-card[data-dd-sec="pangsa"],
+  .ddr-hscroll > .ddr-card[data-dd-sec="usia_toko"] {
+    flex: 0 0 min(92vw, 420px);
+  }
+  .ddr-pangsa-body {
+    grid-template-columns: 112px minmax(0, 1fr);
+    gap: 4px 8px;
+  }
+  .ddr-chart-wrap.sm.ddr-pangsa-chart { width: 112px; height: 112px; }
+  .ddr-pangsa-table { font-size: .66rem; }
+  .ddr-pangsa-omset span { padding: 2px 6px; }
+}
 .ddr-table-wrap { overflow-x: auto; }
 .ddr-table { width: 100%; border-collapse: collapse; font-size: .76rem; min-width: 420px; }
 .ddr-komp-table { min-width: 620px; }
@@ -13208,7 +13293,7 @@ body.view-chat .sfb-card {
 <script src="/js/gpt-belajar.js?v=20261017f" defer></script>
 <script src="/js/gpt-alat-preview.js?v=20261101wait2" defer></script>
 <script src="/js/omset-week-shape.js?v=20261021shape1" defer></script>
-<script src="/js/gpt-app.js?v=20261102gallery1" defer></script>
+<script src="/js/gpt-app.js?v=20261102konteks1" defer></script>
 <style>
 .hl-hero-ctas-alat { display: none; }
 html.alat-preview #finder-xp-step { display: none; }

@@ -19750,22 +19750,31 @@ function ddShareData(peers) {
 }
 
 // Shop age proxy: oldest listing_date seen per shop in the scraped panel.
+// avgUnits is the mean 30-day unit rate of shops in that bucket (perkiraan).
 function ddShopAgeBuckets(peers) {
   const oldest = new Map();
-  for (const p of peers) {
+  const units = new Map();
+  for (const p of peers || []) {
+    const k = String(p.shop_id);
+    units.set(k, (units.get(k) || 0) + soldPerDayEst(p) * 30);
     if (!p.listing_date) continue;
     const t = Date.parse(p.listing_date);
     if (!isFinite(t)) continue;
-    const k = String(p.shop_id);
     if (!oldest.has(k) || t < oldest.get(k)) oldest.set(k, t);
   }
   const now = Date.now();
-  const b = { young: 0, mid: 0, old: 0 };
-  oldest.forEach(t => {
+  const b = { young: 0, mid: 0, old: 0, units: { young: 0, mid: 0, old: 0 } };
+  oldest.forEach((t, k) => {
     const yrs = (now - t) / (365.25 * 864e5);
-    if (yrs < 2) b.young++; else if (yrs < 5) b.mid++; else b.old++;
+    const key = yrs < 2 ? 'young' : yrs < 5 ? 'mid' : 'old';
+    b[key]++;
+    b.units[key] += units.get(k) || 0;
   });
-  return { ...b, total: oldest.size };
+  const avg = key => (b[key] ? Math.round(b.units[key] / b[key]) : 0);
+  return {
+    young: b.young, mid: b.mid, old: b.old, total: oldest.size,
+    avgUnits: { young: avg('young'), mid: avg('mid'), old: avg('old') },
+  };
 }
 
 function ddKeywordRows(peers) {
@@ -20722,12 +20731,12 @@ const _ddCenterTextPlugin = {
     ctx.save();
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = '600 10px "Plus Jakarta Sans", sans-serif';
+    ctx.font = '600 11px "Plus Jakarta Sans", sans-serif';
     ctx.fillStyle = '#8e8e8e';
-    ctx.fillText('Total omset', cx, cy - 9);
-    ctx.font = '750 13px "Plus Jakarta Sans", sans-serif';
+    ctx.fillText('Total Omzet', cx, cy - 11);
+    ctx.font = '800 15px "Plus Jakarta Sans", sans-serif';
     ctx.fillStyle = '#1f1f1f';
-    ctx.fillText(txt, cx, cy + 8);
+    ctx.fillText(txt, cx, cy + 9);
     ctx.restore();
   },
 };
@@ -21065,6 +21074,83 @@ function wireDdrToolPills(root, product, peers) {
   });
 }
 
+function ddKonteksTitleHtml(icon, title, tip) {
+  return `<div class="ddr-sec-title">
+    <span class="ddr-sec-ico" aria-hidden="true">${ico(icon, 15)}</span>
+    <h3>${esc(title)}</h3>
+    <span class="ddr-sec-info" title="${esc(tip)}" aria-label="${esc(tip)}">${ico('info', 14)}</span>
+  </div>`;
+}
+
+function ddPangsaCardHtml(share) {
+  const tip = 'Pangsa omset toko di sampel keyword ini. Estimasi dari harga × total terjual — perkiraan, bukan angka resmi Shopee.';
+  const ready = !!(share && share.shops && share.shops.length >= 4 && share.total > 0);
+  const rows = [
+    { key: 'top3', label: 'Top 3 Toko', color: '#B5202A' },
+    { key: 'mid', label: 'Peringkat 4 – 10', color: '#2563EB' },
+    { key: 'tail', label: 'Peringkat 11 – 30', color: '#93c5fd' },
+    { key: 'rest', label: 'Lainnya', color: '#e5e7eb' },
+  ];
+  const body = ready ? `
+    <div class="ddr-pangsa-body">
+      <div class="ddr-chart-wrap sm ddr-pangsa-chart"><canvas id="ddr-share-canvas"></canvas></div>
+      <table class="ddr-pangsa-table">
+        <thead><tr><th></th><th>Pangsa Pasar</th><th>Estimasi Omzet</th></tr></thead>
+        <tbody>${rows.map(r => {
+          const amt = Number(share[r.key]) || 0;
+          const pct = Math.round(amt / share.total * 100);
+          return `<tr>
+            <td class="ddr-pangsa-name"><span class="ddr-pangsa-dot" style="background:${r.color}"></span>${esc(r.label)}</td>
+            <td class="ddr-pangsa-pct">${pct}%</td>
+            <td class="ddr-pangsa-omset"><span>± ${esc(fmtRpShort(amt))}</span></td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>
+    </div>` : '<p class="dd-sub">Belum cukup data toko untuk memetakan pangsa pasar.</p>';
+  return `<div class="ddr-card" data-dd-sec="pangsa">
+    ${ddKonteksTitleHtml('store', 'Distribusi Pangsa Pasar', tip)}
+    ${body}
+  </div>`;
+}
+
+function ddUsiaCardHtml(age) {
+  const tip = 'Usia toko diperkirakan dari listing tertua di sampel. Rata-rata unit per 30 hari adalah perkiraan kecepatan jual, bukan angka resmi Shopee.';
+  const ready = !!(age && age.total >= 4);
+  const specs = [
+    { key: 'young', label: '0 – 2 tahun' },
+    { key: 'mid', label: '2 – 5 tahun' },
+    { key: 'old', label: '> 5 tahun' },
+  ];
+  const avgs = specs.map(r => Number(age && age.avgUnits && age.avgUnits[r.key]) || 0);
+  const maxAvg = Math.max(0, ...avgs);
+  const body = ready ? `
+    <p class="ddr-usia-sub">Perbandingan usia toko kompetitor dengan rata-rata penjualan per toko.</p>
+    <div class="ddr-usia-head" aria-hidden="true">
+      <span>Usia Toko</span>
+      <span>% dari Kompetitor</span>
+      <span>Rata-rata Penjualan / Toko (30 Hari)</span>
+    </div>
+    <div class="ddr-usia-rows">${specs.map((r, i) => {
+      const pct = age.total ? Math.round((age[r.key] || 0) / age.total * 100) : 0;
+      const avg = avgs[i];
+      const w = maxAvg > 0 && avg > 0 ? Math.max(8, Math.round(avg / maxAvg * 100)) : 0;
+      const hot = maxAvg > 0 && avg === maxAvg;
+      const unit = `± ${fmtSold(avg)} unit`;
+      return `<div class="ddr-usia-row">
+        <span class="ddr-usia-label">${esc(r.label)}</span>
+        <span class="ddr-usia-pct">${pct}%</span>
+        <span class="ddr-usia-bar" role="img" aria-label="${esc(r.label)}: ${esc(unit)} per 30 hari">
+          <span class="ddr-usia-track"><span class="ddr-usia-fill${hot ? ' is-hot' : ''}" style="width:${w}%"></span></span>
+        </span>
+        <span class="ddr-usia-unit">${esc(unit)}</span>
+      </div>`;
+    }).join('')}</div>` : '<p class="dd-sub">Belum cukup data tanggal listing untuk memetakan usia toko.</p>';
+  return `<div class="ddr-card" data-dd-sec="usia_toko">
+    ${ddKonteksTitleHtml('trendUp', 'Usia Toko & Performa Penjualan', tip)}
+    ${body}
+  </div>`;
+}
+
 async function openDeepDive(product, ddOpts = {}) {
   if (!currentUser) {
     // Anon users get ONE free deep dive. The first product they open is
@@ -21387,7 +21473,6 @@ async function openDeepDive(product, ddOpts = {}) {
   const bandLo = stats.p25, bandHi = stats.p75;
   const segLeft = stats.max > stats.min ? Math.round((bandLo - stats.min) / (stats.max - stats.min) * 100) : 0;
   const segWidth = stats.max > stats.min ? Math.max(4, Math.round((bandHi - bandLo) / (stats.max - stats.min) * 100)) : 100;
-  const agePct = k => age.total ? Math.round(age[k] / age.total * 100) : 0;
   const detail = await detailP;
   // ddCacheSet deletes-then-reinserts, so re-calling it is LRU-safe.
   ddCacheSet(cacheKey, { ...(ddCacheGet(cacheKey) || {}), peers, niche, history, detail });
@@ -21444,29 +21529,8 @@ async function openDeepDive(product, ddOpts = {}) {
     ${ddListingDetailHtml(product, detail, peers, niche)}
     <h2 class="ddr-konteks-head">Konteks pasar: ${esc(kw || 'keyword ini')}</h2>
     <div class="ddr-hscroll ddr-hscroll--graphs2">
-      <div class="ddr-card" data-dd-sec="pangsa">
-        <h3>Distribusi Pangsa Pasar</h3>
-        ${share.shops.length >= 4 ? `
-          <div class="ddr-chart-wrap sm"><canvas id="ddr-share-canvas"></canvas></div>
-          <div class="chart-legend">
-            <span class="row"><span class="swatch" style="background:#B5202A"></span>Top 3 Toko · ${Math.round(share.top3 / share.total * 100)}%</span>
-            <span class="row"><span class="swatch" style="background:#2563EB"></span>Peringkat 4–10 · ${Math.round(share.mid / share.total * 100)}%</span>
-            <span class="row"><span class="swatch" style="background:#93c5fd"></span>Peringkat 11–30 · ${Math.round(share.tail / share.total * 100)}%</span>
-            <span class="row"><span class="swatch" style="background:#e5e7eb"></span>Lainnya · ${Math.round(share.rest / share.total * 100)}%</span>
-          </div>`
-          : '<p class="dd-sub">Belum cukup data toko untuk memetakan pangsa pasar.</p>'}
-      </div>
-      <div class="ddr-card" data-dd-sec="usia_toko">
-        <h3>Usia Toko Kompetitor</h3>
-        ${age.total >= 4 ? `
-          <div class="ddr-chart-wrap" style="height:56px"><canvas id="ddr-age-canvas"></canvas></div>
-          <div class="chart-legend">
-            <span class="row"><span class="swatch" style="background:#2563EB"></span>0 – 2 th · ${agePct('young')}%</span>
-            <span class="row"><span class="swatch" style="background:#93c5fd"></span>2 – 5 th · ${agePct('mid')}%</span>
-            <span class="row"><span class="swatch" style="background:#dbeafe"></span>&gt; 5 th · ${agePct('old')}%</span>
-          </div>`
-          : '<p class="dd-sub">Belum cukup data tanggal listing untuk memetakan usia toko.</p>'}
-      </div>
+      ${ddPangsaCardHtml(share)}
+      ${ddUsiaCardHtml(age)}
     </div>
     <div class="ddr-hscroll ddr-hscroll--price">
       <div class="ddr-card" data-dd-sec="harga">
@@ -21612,24 +21676,6 @@ async function openDeepDive(product, ddOpts = {}) {
         plugins: { legend: { display: false } },
       },
       plugins: [_ddCenterTextPlugin],
-    });
-  }
-  if (age.total >= 4) {
-    makeChart('ddr-age-canvas', {
-      type: 'bar',
-      data: {
-        labels: [''],
-        datasets: [
-          { label: '0–2 th', data: [age.young], backgroundColor: '#2563EB', borderRadius: 4 },
-          { label: '2–5 th', data: [age.mid], backgroundColor: '#93c5fd', borderRadius: 4 },
-          { label: '> 5 th', data: [age.old], backgroundColor: '#dbeafe', borderRadius: 4 },
-        ],
-      },
-      options: {
-        indexAxis: 'y', maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { x: { stacked: true, display: false }, y: { stacked: true, display: false } },
-      },
     });
   }
   if (stats.n >= 6) {
