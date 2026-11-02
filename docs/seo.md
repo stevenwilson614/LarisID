@@ -198,9 +198,18 @@ order); `ci-static-checks.sh` enforces that against `HEAD` and will fail the bui
 
 **Fail-closed freshness.** `ci-static-checks.sh` refuses to publish when the coverage snapshot is more
 than 10 days old, so a stalled scrape blocks the PR instead of shipping a fresh `dateModified` over
-stale numbers. Snapshot date is the last day that closes a rolling 7-day window with ≥10k listing
-rows (the drip catalog pass), not a single-day ≥10k spike and not bare `max(scraped_at)` — a tiny
-tracked-only day must not claim a full refresh.
+stale numbers. Snapshot date (`scripts/sql/coverage.sql`) is the later of:
+
+1. last day closing a **rolling 7-day** window with ≥10k listing rows, or
+2. `last_row_day` when corpus health is fresh (`never_scraped = 0`, `oldest_age_days ≤ 10`,
+   `scraped_7d ≥ 85%` of active keywords) — insurance for a slow drip week that still rotated
+   the catalog.
+
+Not a single-day ≥10k spike and not bare `max(scraped_at)`. A tiny tracked-only day without
+healthy keyword rotation must not claim a full refresh. `coverage.json` records
+`snapshot_source` (`rolling_7d` | `health` | `stale`) so Monday agents can see which path fired.
+Do **not** revert this to a single-day row gate — that blocked publish for weeks in Oct 2026
+while scrapes were still landing.
 
 ### Weekly brief — `/tren/` (one page per snapshot, not per day)
 

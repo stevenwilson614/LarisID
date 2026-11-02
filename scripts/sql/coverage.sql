@@ -5,12 +5,19 @@
 -- Two rules this query exists to enforce, because getting either wrong overstates
 -- the corpus on a public page:
 --
---   1. "Last scrape" is the most recent day that closes a rolling 7-day window
---      whose listing rows sum to ≥ SUBSTANTIAL_ROWS. A single-day ≥10k gate is
---      wrong for the drip catalog pass (~1–5k rows/day across many keywords):
---      max(scraped_at) alone is also wrong, because a tiny tracked-only day must
---      not claim a full refresh. The 7-day window matches how the Mac scrapers
---      actually cover the corpus now.
+--   1. Snapshot freshness must survive the drip catalog pass (~hundreds–a few
+--      thousand listing rows/day across many keywords). A single-day ≥10k gate
+--      and bare max(scraped_at) are both wrong: the former blocked Monday SEO
+--      for weeks while the corpus stayed current; the latter would let a tiny
+--      tracked-only day claim a full refresh.
+--
+--      Snapshot is the later of:
+--        a) last day closing a rolling 7-day window with ≥ SUBSTANTIAL_ROWS, OR
+--        b) last_row_day when corpus health is fresh
+--           (never_scraped = 0, oldest_age_days ≤ 10, scraped_7d ≥ 85% of active).
+--      (b) is the insurance for a slow drip week that still rotated the keyword
+--      corpus. A truly stalled scrape fails both and keeps the old snapshot so
+--      ci-static-checks refuse to publish.
 --   2. Products are count(distinct item_id), never count(*). A product recurs once
 --      per (shop, keyword, scrape day), so row counts are ~4x product counts.
 --
@@ -82,11 +89,53 @@ per_category as (
     order by count(distinct item_id) desc
     limit 12
   ) x
+),
+-- Health backup: keyword rotation is current even if listing-row volume dipped.
+health_fresh as (
+  select
+    (select never_scraped from health) = 0
+    and (select oldest_age_days from health) <= 10
+    and (select corpus_active from corpus) > 0
+    and (select scraped_7d from health)::float
+        / (select corpus_active from corpus) >= 0.85
+    as ok
+),
+snap as (
+  select
+    case
+      when (select ok from health_fresh)
+        then greatest(
+          coalesce((select last_full_day from substantial), date '1970-01-01'),
+          (select last_row_day from bounds)
+        )
+      else (select last_full_day from substantial)
+    end as snapshot_day,
+    case
+      when (select ok from health_fresh)
+        and (select last_row_day from bounds)
+            >= coalesce((select last_full_day from substantial), date '1970-01-01')
+        then coalesce(
+          (select rows_7d from rolling r where r.d = (select last_row_day from bounds)),
+          (select last_full_rows from substantial),
+          0
+        )
+      else (select last_full_rows from substantial)
+    end as snapshot_rows,
+    case
+      when (select ok from health_fresh)
+        and (select last_row_day from bounds)
+            > coalesce((select last_full_day from substantial), date '1970-01-01')
+        then 'health'
+      when (select last_full_day from substantial) is not null
+        then 'rolling_7d'
+      else 'stale'
+    end as snapshot_source
 )
 select jsonb_pretty(jsonb_build_object(
   'generated_at',          to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSOF'),
-  'snapshot',              (select last_full_day from substantial),
-  'snapshot_rows',         (select last_full_rows from substantial),
+  'snapshot',              (select snapshot_day from snap),
+  'snapshot_rows',         (select snapshot_rows from snap),
+  'snapshot_source',       (select snapshot_source from snap),
   'last_row_day',          (select last_row_day from bounds),
   'first_scrape',          (select first_scrape from bounds),
   'listing_rows',          (select listing_rows from totals),
