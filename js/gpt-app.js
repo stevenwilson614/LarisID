@@ -12627,8 +12627,8 @@ function ddDetailGateHtml() {
 }
 
 const VARIAN_REQ_TOAST = {
-  queued: 'Belum sempat terbuka dalam semenit. Permintaan tetap di antrean — kami kabari di sini kalau datanya sudah masuk.',
-  queued_refresh: 'Belum sempat diperbarui dalam semenit. Permintaan tetap di antrean — kami kabari kalau data barunya sudah masuk.',
+  queued: 'Belum sempat terbuka dalam ~3 menit. Permintaan tetap di antrean — kami kabari di sini kalau datanya sudah masuk.',
+  queued_refresh: 'Belum sempat diperbarui dalam ~3 menit. Permintaan tetap di antrean — kami kabari kalau data barunya sudah masuk.',
   already_live: 'Datanya ternyata sudah ada — aku muat ulang halamannya sekarang.',
   rate_limited: 'Hari ini sudah 5 permintaan. Besok bisa minta lagi — satu permintaan butuh waktu scrape yang nyata, bukan sekadar klik.',
   rejected_input: 'Produk ini tidak punya ID yang bisa kami antre.',
@@ -12637,14 +12637,15 @@ const VARIAN_REQ_TOAST = {
   ready: 'Varian, SKU, dan ulasan sudah masuk.',
 };
 
-// Same wait budget and fact card as My Toko (js/gpt-alat-preview.js).
-const DD_DETAIL_WAIT_MS = 90000;
+// Match the Mac claim lease (3 min). A failed first open waits ~2 min
+// before reclaim, so 90s was giving up while the worker was still retrying.
+const DD_DETAIL_WAIT_MS = 180000;
 const DD_DETAIL_POLL_MS = 2000;
 const DD_BUSY_FACT_MS = 7000;
 const DD_BUSY_SPURTS = [
-  [900, 6], [2400, 9], [4100, 18], [6800, 21], [9200, 34],
-  [12800, 37], [16100, 49], [20500, 52], [24800, 64], [30200, 67],
-  [35600, 78], [41800, 82], [47200, 91], [53000, 94], [60000, 100],
+  [900, 4], [2400, 7], [5100, 12], [9800, 18], [16000, 24],
+  [24000, 31], [36000, 38], [52000, 46], [72000, 55], [95000, 64],
+  [120000, 74], [145000, 84], [165000, 93], [180000, 100],
 ];
 const DD_BUSY_FACTS = [
   'Hampir setengah listing toko baru di data kami belum pernah terjual sekali pun.',
@@ -12660,6 +12661,7 @@ let _ddBusyTimers = [];
 let _ddBusyFactTimer = null;
 let _ddBusyFactIdx = 0;
 let _ddDetailWaitGen = 0;
+let _ddDetailLateWatchId = 0;
 
 function ddBusyMotionReduced() {
   return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -12737,7 +12739,7 @@ function showDdDetailBusy(msg) {
         '<div class="alat-busy-bar" aria-hidden="true"><span class="alat-busy-fill" id="dd-busy-fill"></span></div>' +
         '<span class="alat-busy-spin" aria-hidden="true"></span>' +
         '<p class="alat-busy-title">Mengambil varian...</p>' +
-        '<p class="alat-busy-eta">Biasanya selesai sekitar 45 detik.</p>' +
+        '<p class="alat-busy-eta">Biasanya 1–2 menit; kalau Mac perlu coba lagi, sampai ~3 menit.</p>' +
         '<p class="alat-busy-msg" id="dd-busy-msg"></p>' +
         '<div class="alat-busy-factwrap">' +
           '<img class="alat-busy-mascot" src="/images/brand/mascot-ask-face.webp" alt="" width="72" height="72">' +
@@ -12782,6 +12784,43 @@ async function pollItemDetailReady(itemId, gen) {
   return { ok: false, status: 'timeout' };
 }
 
+/** After the busy popup gives up, keep watching so a late Mac finish still
+ *  refreshes the open dive — matches the toast promise "kami kabari".
+ *  Uses its own id so stopDdDetailBusy() (which bumps the busy gen) does
+ *  not cancel it; a new Minta info click does. */
+function watchItemDetailAfterTimeout(product) {
+  const itemId = Number(product?.item_id);
+  if (!itemId) return;
+  const watchId = ++_ddDetailLateWatchId;
+  void (async () => {
+    const started = Date.now();
+    while (Date.now() - started < DD_DETAIL_WAIT_MS) {
+      if (watchId !== _ddDetailLateWatchId) return;
+      try {
+        const { data, error } = await _supabase.rpc('get_item_detail_status', {
+          p_item_id: itemId,
+        });
+        if (!error && data && data.ok !== false) {
+          const status = String(data.status || '');
+          if (data.detail_ready || status === 'done') {
+            if (watchId !== _ddDetailLateWatchId) return;
+            const open = state.deepdiveProduct;
+            if (open && Number(open.item_id) === itemId) {
+              try { await openDeepDive(open); } catch (_) { /* best-effort */ }
+            }
+            showToast(VARIAN_REQ_TOAST.ready);
+            return;
+          }
+          if (status === 'failed' || status === 'gone') return;
+        }
+      } catch (e) {
+        console.warn('get_item_detail_status late:', e?.message || e);
+      }
+      await sleepMs(DD_DETAIL_POLL_MS * 2);
+    }
+  })();
+}
+
 function wireDdVarianRequest(root, product) {
   root?.querySelectorAll?.('[data-dd-varian-req]')?.forEach((btn) => {
     if (btn.dataset.boundVarianReq) return;
@@ -12795,6 +12834,7 @@ function wireDdVarianRequest(root, product) {
         return;
       }
       if (document.getElementById('dd-detail-busy')) return;
+      _ddDetailLateWatchId += 1; // cancel any quiet late-watch from a prior ask
       btn.disabled = true;
       showDdDetailBusy('Mencatat permintaan…');
       const gen = _ddDetailWaitGen;
@@ -12863,6 +12903,9 @@ function wireDdVarianRequest(root, product) {
         const failKey = waited.status === 'gone' ? 'gone'
           : (verdict === 'queued_refresh' ? 'queued_refresh' : 'queued');
         showToast(VARIAN_REQ_TOAST[waited.status] || VARIAN_REQ_TOAST[failKey] || VARIAN_REQ_TOAST.failed);
+        if (waited.status === 'timeout') {
+          watchItemDetailAfterTimeout(product);
+        }
       })();
     });
   });
