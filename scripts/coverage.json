@@ -6,10 +6,10 @@
   "detail_ok": 1818,
   "locations": 470,
   "categories": 94,
-  "scraped_7d": 6181,
+  "scraped_7d": 6199,
   "corpus_total": 6518,
   "first_scrape": "2026-04-08",
-  "generated_at": "2026-11-02T07:57:40+00",
+  "generated_at": "2026-11-02T08:10:35+00",
   "last_row_day": "2026-11-01",
   "listing_rows": 6117321,
   "per_category": [
@@ -79,8 +79,9 @@
   "never_scraped": 0,
   "snapshot_rows": 12327,
   "oldest_age_days": 8.1,
+  "snapshot_source": "rolling_7d",
   "products_with_omset": 637936,
-  "days_to_full_coverage": 7.4,
+  "days_to_full_coverage": 7.3,
   "products_with_history": 605630,
   "products_with_measured": 572035
 }

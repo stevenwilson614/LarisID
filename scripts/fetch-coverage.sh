@@ -36,7 +36,8 @@ for (const k of required) {
   }
 }
 fs.writeFileSync(process.argv[2], JSON.stringify(j, null, 2) + "\n");
-console.log(`ok: snapshot=${j.snapshot} products=${j.products} shops=${j.shops} rows=${j.listing_rows}`);
+const src = j.snapshot_source || "unknown";
+console.log(`ok: snapshot=${j.snapshot} source=${src} products=${j.products} shops=${j.shops} rows=${j.listing_rows} scraped_7d=${j.scraped_7d}/${j.corpus_active}`);
 ' "$TMP" "$OUT"
 
 echo "Wrote $OUT"

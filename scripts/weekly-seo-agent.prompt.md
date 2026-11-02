@@ -9,8 +9,8 @@ Read `docs/seo.md`, `MISSION.md`, and `docs/self-host.md` before changing anythi
 3. Review the PR:
    - 400–600 new `/riset/` pages, not thousands
    - `scripts/seo-keywords.json` is append-only (no reorder, no shrink)
-   - coverage snapshot is ≤10 days old
-   - no false freshness (do not bump dates over a stalled scrape)
+   - coverage snapshot is ≤10 days old. Freshness comes from `coverage.sql`: rolling 7-day ≥10k listing rows **or** healthy keyword rotation (`scraped_7d ≥ 85%`, `oldest_age_days ≤ 10`, `never_scraped = 0`). Do **not** treat “no single day with 10k rows” as a stalled scrape — the catalog is drip-fed. Only leave the PR open if both the rolling window and corpus health are stale (`snapshot_source` = `stale` or age > 10).
+   - no false freshness (do not bump dates over a truly stalled scrape)
    - no forbidden copy: "paket Free", "Laris Pro", "gratis selama Beta", any AI quota/cap
    - omset / terjual labelled as estimates
    - public copy leads with weekly catalog updates and weekly omset; Favorit Aku is the daily exception (insights + omset), never “katalog diperbarui harian”

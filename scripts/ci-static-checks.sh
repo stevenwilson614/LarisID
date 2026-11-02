@@ -42,7 +42,7 @@ if [[ -f scripts/coverage.json ]]; then
   # every main deploy (harga, llms, bugfixes) while the live /data/ page already
   # shows the honest old snapshot. refresh-seo.yml always changes those paths.
   SEO_SURFACES_TOUCHED=0
-  SEO_PATH_RE='^(scripts/coverage\.json|scripts/seo-keywords\.json|scripts/seo-detail\.json|data/|riset/)'
+  SEO_PATH_RE='^(scripts/coverage\.json|scripts/seo-keywords\.json|scripts/seo-detail\.json|scripts/weekly-brief\.json|scripts/tren-manifest\.json|data/|riset/|tren/)'
   if [[ "${SEO_FRESHNESS_REQUIRED:-}" == "1" ]]; then
     SEO_SURFACES_TOUCHED=1
   else
@@ -68,15 +68,18 @@ for (const k of ["snapshot","listing_rows","products","shops","corpus_active","c
   }
 }
 const ageDays = Math.round((Date.now() - new Date(c.snapshot)) / 86400000);
+const src = c.snapshot_source || 'unknown';
+const healthHint = `source=${src} scraped_7d=${c.scraped_7d}/${c.corpus_active} oldest=${c.oldest_age_days}d never_scraped=${c.never_scraped}`;
 if (ageDays > 10) {
   if (requireFresh) {
-    console.error(`FAIL: coverage snapshot ${c.snapshot} is ${ageDays} days old (max 10) — refusing to publish`);
+    console.error(`FAIL: coverage snapshot ${c.snapshot} is ${ageDays} days old (max 10) — refusing to publish (${healthHint})`);
+    console.error('Hint: drip scrapes are fine; only a stalled corpus (both rolling-7d rows and keyword health cold) should fail. See docs/seo.md fail-closed freshness.');
     bad = 1;
   } else {
-    console.log(`ok coverage snapshot ${c.snapshot} (${ageDays}d old, age gate skipped — no SEO corpus surfaces in this commit), ${c.products} produk`);
+    console.log(`ok coverage snapshot ${c.snapshot} (${ageDays}d old, age gate skipped — no SEO corpus surfaces in this commit), ${c.products} produk (${healthHint})`);
   }
 } else {
-  console.log(`ok coverage snapshot ${c.snapshot} (${ageDays}d old), ${c.products} produk`);
+  console.log(`ok coverage snapshot ${c.snapshot} (${ageDays}d old), ${c.products} produk (${healthHint})`);
 }
 process.exit(bad);
 ' || fail=1
