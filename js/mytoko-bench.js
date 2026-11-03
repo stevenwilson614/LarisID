@@ -1402,6 +1402,26 @@
     };
   }
 
+  function priceMapPoints(view, listing) {
+    var ranked = (view.points || []).filter(function (p) {
+      return num(p.price) > 0 && num(p.nowcast) > 0;
+    }).sort(function (a, b) {
+      return num(b.nowcast) - num(a.nowcast);
+    });
+    var top = ranked.slice(0, 10);
+    var mine = null;
+    if (listing) {
+      (view.points || []).forEach(function (p) {
+        if (String(p.item_id) === String(listing.item_id)) mine = p;
+      });
+    }
+    if (mine && num(mine.price) > 0 && num(mine.nowcast) > 0 &&
+        !top.some(function (p) { return String(p.item_id) === String(mine.item_id); })) {
+      top.push(mine);
+    }
+    return top;
+  }
+
   function renderProduk(ctx, view) {
     var listing = view.selected;
     var opts = view.products.map(function (p) {
@@ -1484,7 +1504,7 @@
         '<section class="myt-bench-card"><h3>Tren penjualan</h3>' +
           lineSvg([{ mine: true, name: listing ? clip(listing.product_name) : 'Produk', weeks: itemWeeks }]) + '</section>' +
         '<section class="myt-bench-card"><h3>Peta harga</h3>' +
-          scatterSvg(view.points, function (p) { return num(p.price) || 0; }, function (p) { return num(p.nowcast) || 0; }, function (p) {
+          scatterSvg(priceMapPoints(view, listing), function (p) { return num(p.price) || 0; }, function (p) { return num(p.nowcast) || 0; }, function (p) {
             return listing && String(p.item_id) === String(listing.item_id);
           }, { x: 'Harga', y: 'Penjualan' }) +
           '<p class="myt-lay-legend"><i class="is-you"></i> Produk ini <i class="is-gold"></i> 1 <i class="is-silver"></i> 2 <i class="is-bronze"></i> 3</p></section>' +
