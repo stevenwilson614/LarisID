@@ -1,13 +1,16 @@
 # Alat on-demand shop scrape (Mac)
 
 Live on the main LarisID SPA (`js/gpt-alat-preview.js`). First visit shows
-**Seller baru / Sudah punya toko**. Paste-URL is the Sudah punya toko path.
+**Seller baru / Sudah punya toko**. The first **Sudah punya toko** door is
+paste-URL, then kabar/kontak while the scrape runs. After that door is
+finished — and for Seller baru, Lewati, or Hapus toko — paste-URL skips
+kabar, pilih kompetitor, and analisis: full-page fun facts, then the bench,
+with the first listing and its top two kompetitor saved in the background.
 `?preview=off` turns the doors off. Contabo queues the job; **Steven’s
-MacBook Pro** polls and scrapes; the SPA fills kabar/kontak in parallel
-(~1 min budget). Result is a private `ext_shop_claim_snapshots` row — same
-as the Chrome extension claim. Extension stays the backup. The pasted URL
-and chosen products are saved on the signed-in profile (`user_store_profiles`,
-`user_tracked_products`).
+MacBook Pro** polls and scrapes (~1 min budget). Result is a private
+`ext_shop_claim_snapshots` row — same as the Chrome extension claim.
+Extension stays the backup. The pasted URL and chosen products are saved
+on the signed-in profile (`user_store_profiles`, `user_tracked_products`).
 
 On the connect step, **Lewati dulu** skips adding a shop — lands on the normal
 home with My Toko in nav so they can paste later.
@@ -17,7 +20,7 @@ home with My Toko in nav so they can paste later.
 | Piece | Where |
 |-------|--------|
 | Queue + RPCs | `supabase/migrations/20260918120000_ext_shop_scrape_jobs.sql` |
-| SPA | `js/gpt-alat-preview.js` — URL → Kabar → poll → Kompetitor |
+| SPA | `js/gpt-alat-preview.js` — first door: URL → Kabar → poll → Kompetitor. Later: URL → fun-facts poll → bench |
 | Mac worker | `~/shopee_scraper/shop_claim_worker.py` |
 
 `match_titles_to_keywords` maps a shop's titles onto product markets (token coverage ≥ 0.6 and the keyword's first word in the title). A brand or shop keyword returns `parent_keyword` when one is set, so Kompetitor is not a list of one reseller. See [search-resolver.md](./search-resolver.md).

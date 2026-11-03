@@ -6,10 +6,13 @@
  *
  * Doors:
  *  - Seller baru → questionnaire (no sidebar) → Temukan Produk → Cari Produk
- *  - Sudah punya toko → 1/4 URL (enqueue Mac scrape) → 2/4 kabar/kontak
- *    (while scrape runs) → 3/4 pantau kompetitor → 4/4 analisis → My Toko.
+ *  - Sudah punya toko (first time only) → 1/4 URL (enqueue Mac scrape) →
+ *    2/4 kabar/kontak (while scrape runs) → 3/4 pantau kompetitor →
+ *    4/4 analisis → My Toko.
  *    Extension “Ini toko saya” is the backup if Mac scrape fails.
- * After the wizard, the connected page is the benchmark in js/mytoko-bench.js.
+ * After that door (wizard done, Lewati, Seller baru, or Hapus toko): landing →
+ * paste link → full-page fun facts → auto kompetitor → benchmark.
+ * The connected page is the benchmark in js/mytoko-bench.js.
  */
 (function (global) {
   'use strict';
@@ -300,6 +303,11 @@
     if (_wizardDone) return true;
     var raw = loadProfileBlob();
     return !!(raw && raw.wizard_done);
+  }
+
+  /** Kabar → kompetitor → analisis only on the first Sudah punya toko door. */
+  function wantsFullWizard() {
+    return intent() === 'existing' && !isWizardDone();
   }
 
   /**
@@ -1012,7 +1020,8 @@
         persistProfile();
       }
     }
-    renderPersonalInfo(shop);
+    if (wantsFullWizard()) renderPersonalInfo(shop);
+    else await beginQuickConnect(shop);
   }
 
   function readAlertsFromForm() {
@@ -1135,31 +1144,54 @@
     });
   }
 
+  function busyChromeHtml() {
+    return '<div class="alat-busy" id="alat-kabar-busy" role="status" aria-live="polite">' +
+      '<div class="alat-busy-bar" aria-hidden="true"><span class="alat-busy-fill" id="alat-busy-fill"></span></div>' +
+      '<span class="alat-busy-spin" aria-hidden="true"></span>' +
+      '<p class="alat-busy-title">Menganalisis produk...</p>' +
+      '<p class="alat-busy-eta">Biasanya selesai sekitar 45 detik.</p>' +
+      '<p class="alat-busy-msg" id="alat-kabar-busy-msg"></p>' +
+      '<div class="alat-busy-factwrap">' +
+        '<img class="alat-busy-mascot" src="/images/brand/mascot-ask-face.webp" alt="" width="72" height="72">' +
+        '<div class="alat-busy-factbody">' +
+          '<p class="alat-busy-factkicker">Tahu nggak?</p>' +
+          '<p class="alat-busy-fact" id="alat-busy-fact"></p>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function setBusyStatus(msg) {
+    var text = msg || 'Menyiapkan produk toko…';
+    var label = $('alat-kabar-busy-msg');
+    if (label) label.textContent = text;
+    var status = $('alat-scrape-status');
+    if (status) status.textContent = text;
+  }
+
+  /** Full-page fun-facts wait. Not the kabar form. */
+  function renderBusyWait(shop, msg) {
+    stopBusyChrome();
+    var root = $('alat-root');
+    if (!root) return;
+    root.className = 'alat-page';
+    root.innerHTML =
+      '<section class="alat-card is-busy">' +
+        '<p class="alat-kicker">' + esc((shop && shop.store_name) || 'Toko') + '</p>' +
+        busyChromeHtml() +
+      '</section>';
+    setBusyStatus(msg);
+    startBusyChrome();
+  }
+
   function setKabarBusy(msg) {
     var card = document.querySelector('#alat-root .alat-card');
     if (!card) return null;
     var busy = $('alat-kabar-busy');
     var fresh = !busy;
     if (!busy) {
-      busy = document.createElement('div');
-      busy.id = 'alat-kabar-busy';
-      busy.className = 'alat-busy';
-      busy.setAttribute('role', 'status');
-      busy.setAttribute('aria-live', 'polite');
-      busy.innerHTML =
-        '<div class="alat-busy-bar" aria-hidden="true"><span class="alat-busy-fill" id="alat-busy-fill"></span></div>' +
-        '<span class="alat-busy-spin" aria-hidden="true"></span>' +
-        '<p class="alat-busy-title">Menganalisis produk...</p>' +
-        '<p class="alat-busy-eta">Biasanya selesai sekitar 45 detik.</p>' +
-        '<p class="alat-busy-msg" id="alat-kabar-busy-msg"></p>' +
-        '<div class="alat-busy-factwrap">' +
-          '<img class="alat-busy-mascot" src="/images/brand/mascot-ask-face.webp" alt="" width="72" height="72">' +
-          '<div class="alat-busy-factbody">' +
-            '<p class="alat-busy-factkicker">Tahu nggak?</p>' +
-            '<p class="alat-busy-fact" id="alat-busy-fact"></p>' +
-          '</div>' +
-        '</div>';
-      card.appendChild(busy);
+      card.insertAdjacentHTML('beforeend', busyChromeHtml());
+      busy = $('alat-kabar-busy');
     }
     card.classList.add('is-busy');
     var go = $('alat-kabar-go');
@@ -1170,19 +1202,23 @@
       if (el.tagName === 'INPUT') el.disabled = true;
       else el.setAttribute('aria-disabled', 'true');
     });
-    var label = $('alat-kabar-busy-msg');
-    if (label) label.textContent = msg || 'Menyiapkan produk toko…';
-    var status = $('alat-scrape-status');
-    if (status) status.textContent = msg || 'Menyiapkan produk toko…';
+    setBusyStatus(msg);
     if (fresh) startBusyChrome();
     return busy;
   }
 
-  async function finishPersonalInfo(shop) {
-    readAlertsFromForm();
-    var err = $('alat-kabar-err');
-    if (err) { err.hidden = true; err.textContent = ''; }
-    setKabarBusy('Menyiapkan produk toko…');
+  function sayBusy(msg) {
+    if ($('alat-kabar-busy')) setBusyStatus(msg);
+    else setKabarBusy(msg);
+  }
+
+  /**
+   * Poll the Mac shop scrape, then load listings.
+   * Returns loadShopWork's 'center' | 'track' | 'backup', or 'backup' on ext fallback.
+   */
+  async function awaitScrapeThenLoad(shop, loadOpts) {
+    loadOpts = loadOpts || { freshListings: true };
+    sayBusy('Menyiapkan produk toko…');
 
     if (_scrapeJobId) {
       var already = [];
@@ -1192,37 +1228,20 @@
       // Always wait the full scrape budget. Keyword-DB "already" is often 1–few
       // products (whatever hit our scrapes), not the full toko — a 12s early exit
       // left sellers stuck with that partial set while the Mac snap finished later.
-      setKabarBusy(already.length
+      sayBusy(already.length
         ? 'Mengambil semua produk toko…'
         : 'Mengambil produk toko…');
-      var started = Date.now();
-      var job = null;
-      var client = sb();
-      while (client && Date.now() - started < SCRAPE_WAIT_MS) {
-        try {
-          var res = await client.rpc('get_shop_scrape_job', {
-            p_job_id: _scrapeJobId,
-            p_client: clientId(),
-          });
-          job = res && res.data;
-          if (job && job.ok) {
-            if (job.status === 'claimed' || job.status === 'pending') {
-              setKabarBusy('Mac kami sedang membuka halaman toko…');
-            } else if (job.status === 'done') {
-              setKabarBusy('Produk toko siap…');
-            } else if (job.status === 'failed') {
-              setKabarBusy('Ambil otomatis gagal — menyiapkan cadangan…');
-            }
-            if (job.status === 'done' || job.status === 'failed') {
-              stopBusyChrome();
-              break;
-            }
-          }
-        } catch (_) {}
-        await new Promise(function (r) { setTimeout(r, SCRAPE_POLL_MS); });
-      }
+      var job = await pollScrapeJob(_scrapeJobId, function (d) {
+        if (!d) return;
+        if (d.status === 'claimed' || d.status === 'pending') {
+          sayBusy('Mac kami sedang membuka halaman toko…');
+        } else if (d.status === 'done') {
+          sayBusy('Produk toko siap…');
+        } else if (d.status === 'failed') {
+          sayBusy('Ambil otomatis gagal — menyiapkan cadangan…');
+        }
+      });
       if (!job || (job.status !== 'done' && job.status !== 'failed')) {
-        stopBusyChrome();
         job = { ok: true, status: 'timeout', job_id: _scrapeJobId };
       }
       if (job && job.status === 'done' && job.snap_id) {
@@ -1230,30 +1249,47 @@
         if (job.shop_id) shop.shop_id = job.shop_id;
         if (job.store_name) shop.store_name = job.store_name;
         rememberShop(shop);
-        setKabarBusy('Menyimpan toko…');
+        sayBusy('Menyimpan toko…');
         await saveStoreProfile(shop);
         persistProfile();
-        setKabarBusy('Memuat produk toko…');
-        await loadShopWork(shop, { freshListings: true });
-        return;
+        sayBusy('Memuat produk toko…');
+        return loadShopWork(shop, loadOpts);
       }
       if (job && (job.status === 'failed' || job.status === 'timeout') && !already.length) {
         // Fall through to extension if nothing in DB.
       } else if (already.length) {
         rememberShop(shop);
-        setKabarBusy('Memuat produk toko…');
-        await loadShopWork(shop, { freshListings: true });
-        return;
+        sayBusy('Memuat produk toko…');
+        return loadShopWork(shop, loadOpts);
       }
     }
 
     if (!shop.shop_id) {
       renderExtBackup(shop, 'Belum dapat shop id dari link itu.');
-      return;
+      return 'backup';
     }
     rememberShop(shop);
-    setKabarBusy('Memuat produk toko…');
-    await loadShopWork(shop, { freshListings: true });
+    sayBusy('Memuat produk toko…');
+    return loadShopWork(shop, loadOpts);
+  }
+
+  async function finishPersonalInfo(shop) {
+    readAlertsFromForm();
+    var err = $('alat-kabar-err');
+    if (err) { err.hidden = true; err.textContent = ''; }
+    await awaitScrapeThenLoad(shop, { freshListings: true });
+  }
+
+  /** Past onboarding: fun facts, then the bench. No kabar / track / analisis UI. */
+  async function beginQuickConnect(shop) {
+    renderBusyWait(shop, 'Menyiapkan produk toko…');
+    var where = await awaitScrapeThenLoad(shop, {
+      center: true,
+      freshListings: true,
+      autoPeers: true,
+      keepBusy: true,
+    });
+    if (where === 'center') markWizardDone();
   }
 
   function renderExtBackup(shop, reason) {
@@ -1261,13 +1297,17 @@
     var root = $('alat-root');
     if (!root) return;
     root.className = 'alat-page';
+    var wizard = wantsFullWizard();
+    var tail = wizard
+      ? ' Preferensi kabar sudah tersimpan.'
+      : '';
     root.innerHTML =
-      progressHtml(2, 'Cadangan ekstensi') +
+      (wizard ? progressHtml(2, 'Cadangan ekstensi') : '') +
       '<section class="alat-card">' +
         '<p class="alat-kicker">' + esc(shop.store_name || 'Toko') + '</p>' +
         '<h2>Ambil lewat ekstensi LarisID</h2>' +
         '<p class="alat-lead">' + esc(reason || 'Sapuan otomatis belum berhasil.') +
-          ' Pasang ekstensi, buka halaman toko Shopee-mu, ketuk “Ini toko saya”. Preferensi kabar sudah tersimpan.</p>' +
+          ' Pasang ekstensi, buka halaman toko Shopee-mu, ketuk “Ini toko saya”.' + tail + '</p>' +
         '<div class="alat-row" style="margin-top:12px">' +
           '<a class="btn-primary" id="alat-ext-cws" href="' + esc(cwsExtUrl()) + '" target="_blank" rel="noopener">Pasang ekstensi</a>' +
           '<button type="button" class="btn-ghost" id="alat-ext-retry">Coba link lagi</button>' +
@@ -1540,14 +1580,34 @@
     return shop;
   }
 
+  /** First listing + top 2 peers. Same defaults as the kompetitor step, no UI. */
+  async function autoSelectPeers(shop) {
+    if (!_listings.length) return;
+    _peerChecks = Object.create(null);
+    _trackedIds = [];
+    _trackSelected = [0];
+    _trackFocus = 0;
+    var mine = _listings[0];
+    var rows = [];
+    try { rows = await peersForKeyword(shop, mine && mine.keyword); } catch (_) { rows = []; }
+    rows.slice(0, 2).forEach(function (r) {
+      if (!r || r.shop_id == null) return;
+      if (trackBudgetUsed() >= TRACK_MAX) return;
+      _peerChecks[peerKey(0, r.shop_id)] = true;
+    });
+    await confirmTracks(shop, false, { quiet: true });
+  }
+
   async function loadShopWork(shop, opts) {
-    stopBusyChrome();
     opts = opts || {};
+    if (!opts.keepBusy) stopBusyChrome();
     var root = $('alat-root');
     if (!root) return;
     var wantCenter = !!(opts.center || (isWizardDone() && !opts.forceWizard));
     root.className = wantCenter ? 'alat-page alat-page--wide' : 'alat-page';
-    if (wantCenter) {
+    if (opts.keepBusy) {
+      setBusyStatus('Memuat produk toko…');
+    } else if (wantCenter) {
       root.innerHTML =
         '<div class="myt-center"><p class="alat-lead agent-wait" style="padding:24px 4px">Memuat My Toko…</p></div>';
     } else {
@@ -1589,7 +1649,7 @@
     }
     if (!_listings.length) {
       renderExtBackup(shop, 'Belum ada listing toko ini di sapuan kami, dan ambil otomatis belum mengisi produk.');
-      return;
+      return 'backup';
     }
     // Restore tracked selection from profile when revisiting.
     if (_trackedIds.length) {
@@ -1632,6 +1692,11 @@
       var needBench = !!(opts.freshListings || shopChanged || !_bench);
       if (needBench) _benchLoading = true;
       if (needBench || !_market) _marketLoading = true;
+      if (opts.autoPeers) {
+        setBusyStatus('Memilih kompetitor…');
+        try { await autoSelectPeers(shop); } catch (_) {}
+      }
+      stopBusyChrome();
       renderSellerCenter(shop);
       void loadTokoPrefs(shop);
       if (needBench) {
@@ -1639,13 +1704,15 @@
       } else {
         void ensureMarket(shop, {});
       }
-      return;
+      return 'center';
     }
+    stopBusyChrome();
     _peerChecks = Object.create(null);
     _auditsByItem = Object.create(null);
     _peers = await suggestPeers(shop, _listings);
     renderTrackStep(shop);
     void prepareAudits(shop, _listings);
+    return 'track';
   }
 
   function clearShopAndReconnect() {
@@ -1679,8 +1746,10 @@
     _claimSnapId = '';
     _scrapeJobId = '';
     _pendingUrl = '';
-    _wizardDone = false;
     _trackSelected = [];
+    _savedProducts = [];
+    // Keep wizard_done so Hapus returns to the landing short path, not kabar.
+    if (_wizardDone) persistProfile();
     renderConnect();
     var client = sb();
     var u = user();
@@ -2014,7 +2083,8 @@
     });
   }
 
-  async function confirmTracks(shop, goNext) {
+  async function confirmTracks(shop, goNext, opts) {
+    opts = opts || {};
     if (!host) return;
     var btn = $('alat-confirm');
     if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan…'; }
@@ -2063,9 +2133,11 @@
         nToko++;
       }
     }
-    log('alat_tracks_confirmed', { products: nProd, stores: nToko });
+    log('alat_tracks_confirmed', { products: nProd, stores: nToko, quiet: !!opts.quiet });
     syncTrackedFromSelection();
-    if (host.showToast) host.showToast(nProd + ' listing dan ' + nToko + ' toko masuk pantauan.');
+    if (host.showToast && !opts.quiet) {
+      host.showToast(nProd + ' listing dan ' + nToko + ' toko masuk pantauan.');
+    }
     if (goNext) renderAnalyzeStep(shop);
     else if (btn) { btn.disabled = false; btn.textContent = 'Simpan & lanjut'; }
   }
