@@ -6600,6 +6600,7 @@
   }
   function finishPaidReturn() {
     ui.payWatch = false;
+    ui.payWatchKind = '';
     const pages = wizFormPages();
     const index = pages.findIndex((page) => page && page.kind === 'bayar');
     const next = index >= 0 ? index + 1 : pages.length;
@@ -6615,11 +6616,14 @@
     toast('Pembayaran masuk. Kurikulum kebuka.');
     render();
   }
-  function watchPayReturn() {
+  /** Poll until webhook grants access. kind=await = Lynk tab still open (no redirect). */
+  function watchPayReturn(opts) {
     if (ui.payWatch) return;
     ui.payWatch = true;
     ui.payWaitExpired = false;
+    ui.payWatchKind = (opts && opts.kind) || 'return';
     const started = Date.now();
+    const maxMs = ui.payWatchKind === 'await' ? 10 * 60 * 1000 : 30000;
     const tick = async () => {
       if (!ui.payWatch) return;
       try { await pullState(true); } catch (err) { /* retry */ }
@@ -6627,8 +6631,9 @@
         finishPaidReturn();
         return;
       }
-      if (Date.now() - started > 30000) {
+      if (Date.now() - started > maxMs) {
         ui.payWatch = false;
+        ui.payWatchKind = '';
         ui.payWaitExpired = true;
         render();
         return;
@@ -10133,9 +10138,15 @@
           true);
       }
       if (ui.payWatch) {
+        const awaiting = ui.payWatchKind === 'await';
         return obWrap(wizPayIdx(),
-          '<p class="ob-kicker">QRIS</p><h1 class="ob-q">Pembayaran diterima</h1>' +
-          '<p class="ob-sub">Membuka kurikulum…</p>',
+          '<p class="ob-kicker">QRIS</p><h1 class="ob-q">' +
+            (awaiting ? 'Menunggu pembayaran' : 'Pembayaran diterima') + '</h1>' +
+          '<p class="ob-sub">' +
+            (awaiting
+              ? 'Selesaikan QRIS di tab Lynk. Halaman ini membuka kurikulum otomatis setelah lunas — tidak perlu klik apa pun lagi.'
+              : 'Membuka kurikulum…') +
+          '</p>',
           '',
           true);
       }
@@ -13547,7 +13558,6 @@
   }
   function viewPayLynk() {
     const hook = payHookUrl('lynk');
-    const back = classReturnUrl();
     const st = ui.payStatus || {};
     const rows = packages();
     const unmatched = (st.unmatched || []);
@@ -13555,13 +13565,13 @@
     return '<section class="card"><h2 class="pay-h">' + payMark('lynk') + '<span>Lynk</span></h2>' +
       '<ol class="pay-steps">' +
         '<li>Di lynk.id buat satu produk untuk setiap paket. Nyalakan QRIS.</li>' +
-        '<li>Isi tautan kembali produk dengan URL kelas di bawah.</li>' +
         '<li>Judul dan harga produk harus sama dengan baris di sini. Mengubah harga di Laris tidak mengubah lynk.id.</li>' +
-        '<li>Tempel URL webhook di pengaturan webhook Lynk, lalu tempel Merchant Key di sini.</li>' +
+        '<li>Tempel URL webhook di pengaturan webhook Lynk, lalu tempel Merchant Key di sini. Webhook yang membuka akses — Lynk tidak punya redirect kembali.</li>' +
+        '<li>Tempel URL checkout produk (<code>https://lynk.id/…</code>, bukan http) di bawah, lalu Simpan.</li>' +
         '<li>Nomor WhatsApp pembeli di Lynk harus sama dengan WA siswa di kelas.</li>' +
       '</ol>' +
+      '<p class="muted">Siswa bayar di tab Lynk; tab kelas tetap terbuka dan kurikulum kebuka otomatis setelah webhook masuk. Tidak perlu URL kembali di Lynk.</p>' +
       payCopyRow('Webhook', hook) +
-      payCopyRow('Kembali ke kelas', back) +
       '<form class="compose" data-act="save-pay-secret" data-provider="lynk">' +
         paySecretField('lynkMerchantKey', 'Merchant Key', st.lynkLast4) +
         '<button class="btn" type="submit">Simpan kunci Lynk</button></form>' +
@@ -13569,9 +13579,11 @@
         rows.map((row) => {
           const link = lynkProduct(row.id);
           const mismatch = link.price && link.price !== row.priceIdr;
+          const httpOnly = /^http:\/\//i.test(link.url || '');
           return '<h3>' + esc(row.label) + ' · ' + fmtRp(row.priceIdr) + '</h3>' +
             '<label class="muted">URL checkout</label>' +
             '<input name="url" data-pkg="' + esc(row.id) + '" value="' + esc(link.url) + '" placeholder="https://lynk.id/…">' +
+            (httpOnly ? '<p class="muted">Pakai https:// (bukan http://) supaya Lynk terhubung.</p>' : '') +
             '<label class="muted">Judul di Lynk (harus sama persis)</label>' +
             '<input name="title" data-pkg="' + esc(row.id) + '" value="' + esc(link.title) + '">' +
             '<label class="muted">Harga di Lynk</label>' +
@@ -18381,11 +18393,26 @@
         btn.disabled = true;
         if (db.checkoutProvider === 'lynk') {
           const url = lynkCheckoutUrl(packageId);
-          if (!url) { toast('Tautan Lynk untuk paket ini belum diisi.'); render(); return; }
+          if (!url) {
+            toast(/^http:\/\//i.test((lynkProduct(packageId).url || ''))
+              ? 'URL Lynk harus https:// (bukan http://).'
+              : 'Tautan Lynk untuk paket ini belum diisi.');
+            render();
+            return;
+          }
           if (!normalizeWa(student().wa)) { toast('Nomor WA di form belum ada.'); render(); return; }
           markPendingLynk(ui.personaId, packageId, packagePrice(packageId), url);
           save();
-          location.href = url;
+          // Lynk has no success redirect. Keep this tab and poll until webhook grants access.
+          openLynk(url);
+          const payPages = wizFormPages();
+          const payAt = payPages.findIndex((page) => page && page.kind === 'bayar');
+          ui.tab = 'daftar';
+          ui.wizStep = payAt >= 0 ? payAt : 0;
+          ui.payWaitExpired = false;
+          watchPayReturn({ kind: 'await' });
+          toast('Selesaikan QRIS di tab Lynk. Kelas ini kebuka otomatis setelah lunas.');
+          render();
           return;
         }
         requestCheckout(packageId).then((res) => {
@@ -19098,17 +19125,25 @@
       if (!canBill()) return;
       ensurePayModel();
       const next = Object.assign({}, db.lynkByPackage || {});
+      let httpWarned = false;
       form.querySelectorAll('[data-pkg]').forEach((el) => {
         const id = el.getAttribute('data-pkg');
         if (!id) return;
         next[id] = next[id] || { url: '', title: '', price: 0 };
-        if (el.name === 'url') next[id].url = String(el.value || '').trim();
+        if (el.name === 'url') {
+          let url = String(el.value || '').trim();
+          if (/^http:\/\/lynk\.id\//i.test(url)) {
+            url = 'https://' + url.slice('http://'.length);
+            httpWarned = true;
+          }
+          next[id].url = url;
+        }
         if (el.name === 'title') next[id].title = String(el.value || '').trim();
         if (el.name === 'lynkPrice') next[id].price = Number(el.value) || 0;
       });
       db.lynkByPackage = next;
       save();
-      toast('Produk Lynk disimpan.');
+      toast(httpWarned ? 'Produk Lynk disimpan. URL diganti ke https://.' : 'Produk Lynk disimpan.');
       render();
     } else if (act === 'save-pay-secret') {
       if (!canBill()) return;
