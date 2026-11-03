@@ -14463,13 +14463,13 @@ body.alat-focus.view-audit .alat-page--wide::after { display: none; }
 }
 .myt-pop-menu button:hover { border-color: #B5202A; }
 .myt-pop-menu button:first-child { color: #B5202A; }
-.myt-omzet-name { flex: 1; min-width: 0; }
+.myt-omzet-name { flex: 1 1 0; min-width: 0; overflow: hidden; }
+.myt-omzet-name b { display: block; }
 .myt-omzet-name small { display: block; color: #8A8A8A; font-size: .72rem; }
 .myt-omzet-row {
   display: flex; align-items: center; gap: 8px; padding: 8px 0;
   border-bottom: 1px solid #F1F1F2; min-width: 0;
 }
-.myt-omzet-row b { flex: 1; min-width: 0; }
 .myt-omzet-row span { color: #8A8A8A; font-size: .78rem; flex: none; }
 .myt-omzet-row .myt-manual { margin-left: auto; }
 .myt-bench-table td[data-label="Toko"] { max-width: 220px; }
@@ -14483,8 +14483,11 @@ body.alat-focus.view-audit .alat-page--wide::after { display: none; }
 .myt-chart { width: 100%; height: auto; display: block; }
 .myt-lay-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 .myt-lay-tools .alat-input { flex: 1 1 180px; }
-.myt-manual { display: flex; gap: 8px; align-items: center; }
-.myt-manual .alat-input { max-width: 180px; }
+.myt-manual { display: flex; gap: 8px; align-items: center; flex: none; min-width: 0; }
+.myt-manual .alat-input {
+  flex: none; width: 132px; max-width: 132px; min-width: 0;
+}
+.myt-manual .btn-primary { margin-top: 0; flex: none; padding: 8px 14px; }
 .myt-lay-hide { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow: auto; }
 .myt-lay-hide li { display: flex; justify-content: space-between; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid #F1F1F2; font-size: .82rem; }
 .myt-lay-ok { background: #F7F4EE; }
@@ -14500,6 +14503,11 @@ body.alat-focus.view-audit .alat-page--wide::after { display: none; }
   .myt-kws { margin-left: 0; width: 100%; flex-basis: 100%; }
   .myt-lay-rankrow { flex-direction: column; align-items: stretch; }
   .myt-lay-pct { text-align: left; }
+  .myt-omzet-row { flex-wrap: wrap; }
+  .myt-omzet-row .myt-manual {
+    flex: 1 1 100%; margin-left: 40px; margin-top: 4px;
+  }
+  .myt-manual .alat-input { flex: 1 1 auto; width: auto; max-width: none; }
 }
 .myt-land-page { --alat-page-w: 760px; }
 .myt-land { width: 100%; }
