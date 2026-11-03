@@ -33,6 +33,7 @@ Tren uses `listing_weekly`, last 6 week-starts. A line is drawn only when a list
 
 ## List edits
 
+- The Kompetitor list is one and a half times the card width and scrolls sideways. Kota is its own column. Ranks 1, 2, and 3 are gold, silver, and bronze. The map starts both axes at zero: produk terlihat across, penjualan 30 hari up.
 - **Sembunyikan** on a competitor writes `user_toko_hidden_shops`.
 - **Tambah** searches shops we already have (`find_shops_by_name`) and writes `user_toko_added_shops`. A shop with no rows in this keyword stays on the list with penjualan “—”.
 - **Sembunyikan** on a product writes `user_toko_hidden_items` and drops it from the dropdown and from your totals.

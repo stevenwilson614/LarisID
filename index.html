@@ -13291,7 +13291,7 @@ body.view-chat .sfb-card {
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260915a" defer></script>
 <script src="/js/gpt-belajar.js?v=20261017f" defer></script>
-<script src="/js/mytoko-bench.js?v=20261103ring1" defer></script>
+<script src="/js/mytoko-bench.js?v=20261103komp1" defer></script>
 <script src="/js/gpt-alat-preview.js?v=20261103land1" defer></script>
 <script src="/js/omset-week-shape.js?v=20261021shape1" defer></script>
 <script src="/js/gpt-app.js?v=20261102konteks1" defer></script>
@@ -14327,7 +14327,38 @@ body.alat-focus.view-audit .alat-page--wide::after { display: none; }
   .myt-bench-table td[data-label="Posisi"] { flex-wrap: wrap; justify-content: flex-end; }
   .myt-bench-table td[data-label="Posisi"] small { flex: 1 0 100%; text-align: right; }
   .myt-bench-prod b { max-width: none; white-space: normal; }
+  .myt-rival-scroll .myt-rival-table,
+  .myt-rival-scroll .myt-rival-table thead,
+  .myt-rival-scroll .myt-rival-table tbody,
+  .myt-rival-scroll .myt-rival-table tr,
+  .myt-rival-scroll .myt-rival-table td { display: revert; width: auto; }
+  .myt-rival-scroll .myt-rival-table { display: table; width: 150%; }
+  .myt-rival-scroll .myt-rival-table thead { display: table-header-group; }
+  .myt-rival-scroll .myt-rival-table tbody { display: table-row-group; }
+  .myt-rival-scroll .myt-rival-table tr { display: table-row; border: 0; border-radius: 0; padding: 0; margin: 0; }
+  .myt-rival-scroll .myt-rival-table td { display: table-cell; padding: 10px 8px; border-bottom: 1px solid #F1F1F2; }
+  .myt-rival-scroll .myt-rival-table td::before { content: none; }
 }
+.myt-rival-scroll { overflow-x: auto; }
+.myt-rival-table { width: 150%; min-width: 860px; }
+.myt-medal {
+  display: inline-grid; place-items: center; min-width: 1.5rem; height: 1.5rem;
+  padding: 0 6px; border-radius: 999px; font-weight: 750; font-size: .75rem; background: #F7F4EE; color: #1A1A1A;
+}
+.myt-medal.is-gold { background: #F5EFE0; color: #8A6230; }
+.myt-medal.is-silver { background: #EEEEEE; color: #5C5C5C; }
+.myt-medal.is-bronze { background: #F6E6DC; color: #8C4A2F; }
+.myt-lay-legend i.is-gold { background: #C9974B; }
+.myt-lay-legend i.is-silver { background: #8A8A8A; }
+.myt-lay-legend i.is-bronze { background: #A15C38; }
+.myt-intisari { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.myt-intisari li {
+  border-radius: 10px; padding: 10px 12px; font-size: .84rem; line-height: 1.4;
+  border-left: 3px solid #E8E8E8; background: #FAFAF8;
+}
+.myt-intisari li.is-gold { background: #F5EFE0; border-left-color: #C9974B; }
+.myt-intisari li.is-up { background: #F3FBF6; border-left-color: #16A34A; }
+.myt-intisari li.is-down { background: #FDF2F2; border-left-color: #DC2626; }
 .myt-pill {
   display: inline-flex; align-items: center; height: 36px; padding: 0 12px;
   border: 1px solid #E8E8E8; border-radius: 999px; background: #fff;
