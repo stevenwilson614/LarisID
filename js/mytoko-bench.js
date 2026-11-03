@@ -35,7 +35,7 @@
   var CAT_COLORS = ['#B5202A', '#E38B86', '#C9974B', '#1A1A1A', '#C8C2B4'];
   var POS_COLORS = { unggul: '#B5202A', setara: '#C9974B', bawah: '#8A8A8A' };
 
-  var ui = { q: '', category: '', sort: 'posisi', shopId: 0 };
+  var ui = { q: '', category: '', sort: 'posisi', shopId: 0, pop: 'menu' };
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -1554,59 +1554,67 @@
     '</section>';
   }
 
-  function omzetSettings(ctx, view) {
+  function omzetRows(ctx, view) {
     var you = (view && view.you) || {};
     var manualShop = ctx.manual && num(ctx.manual.shop);
     var items = (ctx.manual && ctx.manual.items) || {};
-    var hidden = Object.create(null);
-    (ctx.hiddenItems || []).forEach(function (id) { hidden[String(id)] = true; });
     var seen = Object.create(null);
     var products = [];
     (ctx.listings || []).forEach(function (p) {
-      if (!p || hidden[String(p.item_id)] || seen[String(p.item_id)]) return;
+      if (!p || seen[String(p.item_id)]) return;
       seen[String(p.item_id)] = true;
       products.push(p);
     });
-    function known(label, amount) {
-      return '<div class="myt-omzet-row"><b>' + label + '</b><span>' + esc(fmtRpShort(amount)) + ' perkiraan</span></div>';
+    function row(label, itemId, current, known, img) {
+      var note = known > 0 ? '<small>perkiraan ' + esc(fmtRpShort(known)) + '</small>' : '';
+      return '<div class="myt-omzet-row">' + (img || '') +
+        '<div class="myt-omzet-name"><b class="myt-one-line">' + label + '</b>' + note + '</div>' +
+        manualForm(itemId, current) + '</div>';
     }
-    var shopNow = num(you.omzet);
-    var shopRow = shopNow > 0
-      ? known('Toko keseluruhan', shopNow)
-      : '<div class="myt-omzet-row"><b>Toko keseluruhan</b>' + manualForm(0, manualShop) + '</div>';
-    var rows = products.map(function (p) {
-      var now = num(p.nowcast_omset_monthly);
-      var name = '<b class="myt-one-line">' + esc(clip(p.product_name)) + '</b>';
-      if (now > 0) return '<div class="myt-omzet-row">' + imgHtml(p.image_url, 'myt-prod-thumb') + name + '<span>' + esc(fmtRpShort(now)) + ' perkiraan</span></div>';
-      return '<div class="myt-omzet-row">' + imgHtml(p.image_url, 'myt-prod-thumb') + name +
-        manualForm(p.item_id, items[String(p.item_id)]) + '</div>';
+    var shop = row('Toko keseluruhan', 0, manualShop, num(you.omzet), '');
+    var list = products.map(function (p) {
+      return row(esc(clip(p.product_name)), p.item_id, items[String(p.item_id)], num(p.nowcast_omset_monthly), imgHtml(p.image_url, 'myt-prod-thumb'));
     }).join('');
-    return '<section class="alat-card"><h3 class="alat-h3" style="margin-top:0">Sesuaikan omset</h3>' +
-      '<p class="alat-hint">30 hari terakhir. Isi jumlah yang belum punya perkiraan. Angka yang kamu isi tidak mengganti perkiraan.</p>' +
-      shopRow + rows + '</section>';
+    return '<p class="alat-hint">30 hari. Ketik angkanya, lalu tekan Enter. Perkiraan yang sudah ada tetap dipakai.</p>' + shop + list;
   }
 
   function settingsHtml(ctx, view) {
     var alerts = alertsHtml(ctx.alerts);
-    var hide = (ctx.listings || []).map(function (p) {
+    var seen = Object.create(null);
+    var hide = (ctx.listings || []).filter(function (p) {
+      if (!p || seen[String(p.item_id)]) return false;
+      seen[String(p.item_id)] = true;
+      return true;
+    }).map(function (p) {
       var on = (ctx.hiddenItems || []).some(function (id) { return String(id) === String(p.item_id); });
-      return '<li><span>' + esc(clip(p.product_name)) + '</span>' +
+      return '<li>' + imgHtml(p.image_url, 'myt-prod-thumb') + '<span class="myt-one-line">' + esc(clip(p.product_name)) + '</span>' +
         '<button type="button" class="btn-ghost" data-hide-item="' + Number(p.item_id) + '" data-hidden="' + (on ? '1' : '0') + '">' +
         (on ? 'Tampilkan' : 'Sembunyikan') + '</button></li>';
     }).join('');
-    return '<section class="alat-card"><h3 class="alat-h3" style="margin-top:0">Toko</h3>' +
-        '<button type="button" class="btn-ghost" id="myt-remove-shop">Hapus toko</button>' +
-        '<p class="alat-hint">Toko ini dihapus dan kamu kembali ke halaman My Toko.</p></section>' +
-      omzetSettings(ctx, view) +
-      alerts +
-      '<section class="alat-card"><h3 class="alat-h3" style="margin-top:0">Produk</h3>' +
-        '<ul class="myt-lay-hide">' + hide + '</ul></section>' +
-      '<section class="alat-card"><h3 class="alat-h3" style="margin-top:0">Lainnya</h3>' +
+    function viewBox(name, inner) {
+      return '<div data-pop-view="' + name + '"' + (ui.pop === name ? '' : ' hidden') + '>' + inner + '</div>';
+    }
+    return viewBox('menu',
+        '<div class="myt-pop-menu">' +
+          '<button type="button" data-pop-go="hapus">Hapus toko</button>' +
+          '<button type="button" data-pop-go="omzet">Sesuaikan omset</button>' +
+          '<button type="button" data-pop-go="hide">Sembunyikan produk</button>' +
+          '<button type="button" data-pop-go="more">Lainnya</button>' +
+        '</div>') +
+      viewBox('hapus',
+        '<p>Yakin hapus toko ini? Kamu kembali ke halaman My Toko.</p>' +
         '<div class="alat-row">' +
+          '<button type="button" class="btn-primary" id="myt-remove-shop">Ya, hapus</button>' +
+          '<button type="button" class="btn-ghost" data-pop-back>Batal</button>' +
+        '</div>') +
+      viewBox('omzet', omzetRows(ctx, view)) +
+      viewBox('hide', '<ul class="myt-lay-hide">' + (hide || '<li>Belum ada produk.</li>') + '</ul>') +
+      viewBox('more', alerts +
+        '<div class="alat-row" style="margin-top:12px">' +
           '<button type="button" class="btn-primary" id="myt-refresh"' + (ctx.loading ? ' disabled' : '') + '>' +
             (ctx.loading ? 'Membandingkan…' : 'Analisis ulang') + '</button>' +
           '<a class="btn-ghost" href="' + esc(ctx.extUrl || '#') + '" target="_blank" rel="noopener">Pakai ekstensi</a>' +
-        '</div></section>';
+        '</div>');
   }
 
   function shell(ctx, view) {
@@ -1630,7 +1638,16 @@
         '<button type="button" class="myt-gear" id="myt-settings-toggle" aria-label="Pengaturan" aria-expanded="' + (ctx.settingsOpen ? 'true' : 'false') + '">' +
           '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>' +
         '</button></header>' +
-      '<div id="myt-manage"' + (ctx.settingsOpen ? '' : ' hidden') + '>' + settingsHtml(ctx, view) + '</div>' +
+      '<div class="myt-pop" id="myt-manage" role="dialog" aria-modal="true" aria-labelledby="myt-pop-title"' + (ctx.settingsOpen ? '' : ' hidden') + '>' +
+        '<button type="button" class="myt-pop-back" data-pop-close aria-label="Tutup"></button>' +
+        '<div class="myt-pop-card">' +
+          '<div class="myt-pop-head">' +
+            '<button type="button" class="btn-ghost" data-pop-back' + (ui.pop === 'menu' ? ' hidden' : '') + '>Kembali</button>' +
+            '<h3 id="myt-pop-title">' + esc(ui.pop === 'hapus' ? 'Hapus toko' : ui.pop === 'omzet' ? 'Sesuaikan omset' : ui.pop === 'hide' ? 'Sembunyikan produk' : ui.pop === 'more' ? 'Lainnya' : 'Pengaturan') + '</h3>' +
+            '<button type="button" class="myt-pop-x" data-pop-close aria-label="Tutup">×</button>' +
+          '</div>' +
+          settingsHtml(ctx, view) +
+        '</div></div>' +
       (ctx.error ? '<p class="alat-err myt-bench-status">' + esc(ctx.error) + '</p>' : '') +
       (ctx.marketError ? '<p class="alat-err myt-bench-status">' + esc(ctx.marketError) + '</p>' : '') +
       '<div class="myt-bench-tabs" role="tablist">' +
@@ -1651,6 +1668,7 @@
     if (sid !== ui.shopId) {
       ui.q = '';
       ui.shopId = sid;
+      ui.pop = 'menu';
     }
     var view = assembleView(ctx);
     root.className = 'alat-page alat-page--wide';
@@ -1681,13 +1699,46 @@
     });
     var settingsBtn = root.querySelector('#myt-settings-toggle');
     var panel = root.querySelector('#myt-manage');
+    function showPop(name) {
+      ui.pop = name || 'menu';
+      if (!panel) return;
+      panel.querySelectorAll('[data-pop-view]').forEach(function (el) {
+        el.hidden = el.getAttribute('data-pop-view') !== ui.pop;
+      });
+      var title = panel.querySelector('#myt-pop-title');
+      var titles = { menu: 'Pengaturan', hapus: 'Hapus toko', omzet: 'Sesuaikan omset', hide: 'Sembunyikan produk', more: 'Lainnya' };
+      if (title) title.textContent = titles[ui.pop] || 'Pengaturan';
+      var home = panel.querySelector('.myt-pop-head [data-pop-back]');
+      if (home) home.hidden = ui.pop === 'menu';
+    }
+    function closePop() {
+      if (!panel) return;
+      panel.setAttribute('hidden', '');
+      if (settingsBtn) settingsBtn.setAttribute('aria-expanded', 'false');
+      ui.pop = 'menu';
+      if (ctx.onSettings) ctx.onSettings(false);
+    }
     if (settingsBtn && panel) {
       settingsBtn.addEventListener('click', function () {
         var open = panel.hasAttribute('hidden');
-        if (open) panel.removeAttribute('hidden');
-        else panel.setAttribute('hidden', '');
-        settingsBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
-        if (ctx.onSettings) ctx.onSettings(!!open);
+        if (open) {
+          panel.removeAttribute('hidden');
+          showPop('menu');
+          settingsBtn.setAttribute('aria-expanded', 'true');
+          if (ctx.onSettings) ctx.onSettings(true);
+        } else closePop();
+      });
+      panel.querySelectorAll('[data-pop-go]').forEach(function (btn) {
+        btn.addEventListener('click', function () { showPop(btn.getAttribute('data-pop-go')); });
+      });
+      panel.querySelectorAll('[data-pop-back]').forEach(function (btn) {
+        btn.addEventListener('click', function () { showPop('menu'); });
+      });
+      panel.querySelectorAll('[data-pop-close]').forEach(function (btn) {
+        btn.addEventListener('click', function () { closePop(); });
+      });
+      panel.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape') closePop();
       });
     }
     var refresh = root.querySelector('#myt-refresh');
