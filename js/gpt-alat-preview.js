@@ -634,26 +634,39 @@
     var typeEl = land.querySelector('#myt-land-type');
     var rankEl = land.querySelector('#myt-land-rank');
     var pctEl = land.querySelector('#myt-land-pct');
-    var text = 'shopee.co.id/toko-contoh';
+    var spider = land.querySelector('#myt-land-spider');
+    var text = 'shopee.co.id/kaospolosmurah.id';
     var typeMs = text.length * 55 + 350;
     var loadMs = 1000;
     var playMs = 2800;
-    var holdMs = 2200;
+    var holdMs = 4200;
     var total = typeMs + loadMs + playMs + holdMs;
+    var spiderShapes = [
+      '100,30 142,62 130,118 78,112 56,64',
+      '100,22 148,58 124,124 72,108 48,70',
+      '100,36 136,70 138,112 84,120 62,58',
+      '100,26 144,66 118,122 70,104 52,72'
+    ];
     var reduced = false;
     try { reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (_) {}
-    function setNums(rank, pct) {
+    function setNums(rank, top) {
       if (rankEl) rankEl.textContent = '#' + rank;
-      if (pctEl) pctEl.textContent = '+' + pct + '%';
+      if (pctEl) pctEl.textContent = 'Top ' + top + '%';
+    }
+    function setSpider(idx) {
+      if (!spider) return;
+      spider.setAttribute('points', spiderShapes[idx % spiderShapes.length]);
     }
     if (reduced) {
       land.setAttribute('data-phase', 'still');
       if (typeEl) typeEl.textContent = text;
-      setNums(2, 26);
+      setNums(3, 13);
+      setSpider(0);
       return;
     }
     var elapsed = 0;
     var last = Date.now();
+    var lastSpider = -1;
     function tick() {
       if (gen !== _landGen) return;
       if (!land.isConnected) {
@@ -679,10 +692,19 @@
         phase = 'play';
         var p = (local - typeMs - loadMs) / playMs;
         var ease = 1 - Math.pow(1 - Math.min(1, p), 3);
-        setNums(Math.max(0, Math.round(2 * ease)), Math.round(26 * ease));
+        setNums(Math.max(1, Math.round(3 * ease)), Math.max(1, Math.round(13 * ease)));
+        setSpider(0);
       } else {
         phase = 'hold';
-        setNums(2, 26);
+        setNums(3, 13);
+        if (!paused) {
+          var holdLocal = local - typeMs - loadMs - playMs;
+          var spiderIdx = Math.floor(holdLocal / 2000) % spiderShapes.length;
+          if (spiderIdx !== lastSpider) {
+            lastSpider = spiderIdx;
+            setSpider(spiderIdx);
+          }
+        }
       }
       if (land.getAttribute('data-phase') !== phase) land.setAttribute('data-phase', phase);
       _landTimer = setTimeout(tick, 40);
@@ -690,6 +712,7 @@
     land.setAttribute('data-phase', 'type');
     if (typeEl) typeEl.textContent = '';
     setNums(0, 0);
+    setSpider(0);
     tick();
   }
 
@@ -703,7 +726,7 @@
       '<div class="myt-land" id="myt-land">' +
         '<header class="myt-land-hero">' +
           '<p class="myt-land-kicker">My Toko</p>' +
-          '<h2>Benchmark toko dan produkmu dengan <span>kompetitor</span></h2>' +
+          '<h2>Benchmark toko dan produkmu dengan <em>kompetitor</em></h2>' +
           '<p class="myt-land-lead">Lihat posisi tokomu di satu kata kunci.</p>' +
         '</header>' +
         '<div class="myt-land-bar">' +
@@ -712,42 +735,64 @@
         '</div>' +
         '<p class="alat-err" id="alat-shop-err" hidden></p>' +
         '<div id="alat-shop-picker" class="alat-picker" hidden></div>' +
-        '<p class="alat-hint myt-land-example">Contoh: https://shopee.co.id/namatoko</p>' +
-        '<p class="alat-hint">Sudah punya ekstensi? Di halaman toko Shopee, ketuk “Ini toko saya”.</p>' +
-        '<div class="alat-row-actions">' +
-          '<button type="button" class="btn-ghost" id="alat-shop-back">Kembali</button>' +
-          '<button type="button" class="btn-ghost" id="alat-shop-skip">Lewati dulu</button>' +
+        '<div class="myt-land-meta">' +
+          '<p class="alat-hint">Tempel link toko Shopee, atau dari ekstensi ketuk “Ini toko saya”.</p>' +
+          '<div class="alat-row-actions">' +
+            '<button type="button" class="btn-ghost" id="alat-shop-back">Kembali</button>' +
+            '<button type="button" class="btn-ghost" id="alat-shop-skip">Lewati dulu</button>' +
+          '</div>' +
         '</div>' +
         '<section class="myt-land-stage" aria-hidden="true">' +
-          '<p class="myt-land-cap">Contoh tampilan</p>' +
-          '<div class="myt-land-chip"><span id="myt-land-type"></span><i class="myt-land-caret"></i></div>' +
           '<article class="myt-land-card">' +
+            '<div class="myt-land-chip"><span id="myt-land-type"></span><i class="myt-land-caret"></i></div>' +
             '<header class="myt-land-shop">' +
-              '<span class="myt-land-avatar">T</span>' +
-              '<div><b>Toko Contoh</b><small>Shopee · contoh</small></div>' +
+              '<span class="myt-land-avatar">' +
+                '<img src="/images/dir-cats/fashion.webp" alt="" width="40" height="40" loading="lazy" decoding="async">' +
+              '</span>' +
+              '<div>' +
+                '<b><img class="myt-land-shopee" src="/images/suppliers/shopee.svg" alt="" width="14" height="14">Kaos Polos Murah ID</b>' +
+                '<small>contoh · di kata kunci ini · kaos polos oversize</small>' +
+              '</div>' +
             '</header>' +
             '<div class="myt-land-tabs"><span class="is-on">Ringkasan</span><span>Produk</span><span>Kompetitor</span></div>' +
             '<div class="myt-land-live">' +
-              '<div class="myt-land-kpis">' +
-                '<div><b id="myt-land-rank">#0</b><small>dari 6 toko</small></div>' +
-                '<div class="is-up"><b id="myt-land-pct">+0%</b><small>contoh, di atas rata-rata</small></div>' +
-                '<div><b>1,1 jt</b><small>penjualan, contoh</small></div>' +
-                '<div><b>4,9</b><small>penilaian, contoh</small></div>' +
+              '<div class="myt-land-pos">' +
+                '<div class="myt-land-rankbox">' +
+                  '<b id="myt-land-rank">#0</b>' +
+                  '<span>dari 24 toko</span>' +
+                '</div>' +
+                '<div class="myt-land-top3">' +
+                  '<div><i>1</i><span>KaosBasic Store</span><b>8,6 jt</b></div>' +
+                  '<div><i>2</i><span>PolosSupply Indo</span><b>6,1 jt</b></div>' +
+                  '<div class="is-mine"><i>3</i><span>Kaos Polos Murah ID</span><b>4,2 jt</b></div>' +
+                '</div>' +
+                '<div class="myt-land-pctbox is-up">' +
+                  '<b id="myt-land-pct">Top 0%</b>' +
+                  '<span>di kata kunci ini</span>' +
+                '</div>' +
               '</div>' +
               '<div class="myt-land-charts">' +
                 '<div class="myt-land-panel">' +
                   '<h3>Tren penjualan</h3>' +
                   '<svg class="myt-land-chart" viewBox="0 0 280 110" aria-hidden="true">' +
-                    '<path class="myt-land-line-avg" d="M8 82 C80 76, 160 70, 272 62"/>' +
-                    '<path class="myt-land-line-you" d="M8 90 C70 74, 150 46, 272 20"/>' +
+                    '<path class="myt-land-line-avg" d="M8 78 C70 74, 150 70, 272 66"/>' +
+                    '<path class="myt-land-line-you" d="M8 86 C36 96, 58 42, 88 58 S128 98, 158 40 S198 18, 228 72 S252 88, 272 34"/>' +
                   '</svg>' +
-                  '<p class="myt-land-legend"><i class="is-you"></i> Toko Contoh <i class="is-avg"></i> Rata-rata</p>' +
+                  '<p class="myt-land-legend"><i class="is-you"></i> Kaos Polos Murah ID <i class="is-avg"></i> Rata-rata</p>' +
                 '</div>' +
                 '<div class="myt-land-panel">' +
                   '<h3>Performa</h3>' +
-                  '<svg class="myt-land-chart" viewBox="0 0 200 168" aria-hidden="true">' +
+                  '<svg class="myt-land-chart myt-land-spider-svg" viewBox="0 0 200 168" aria-hidden="true">' +
+                    '<g class="myt-land-spokes" stroke="#E8E8E8" stroke-width="1">' +
+                      '<line x1="100" y1="84" x2="100" y2="28"/>' +
+                      '<line x1="100" y1="84" x2="152" y2="62"/>' +
+                      '<line x1="100" y1="84" x2="132" y2="132"/>' +
+                      '<line x1="100" y1="84" x2="68" y2="132"/>' +
+                      '<line x1="100" y1="84" x2="48" y2="62"/>' +
+                    '</g>' +
                     '<polygon class="myt-land-web" points="100,40.6 135.6,66.4 122,108.3 78,108.3 64.4,66.4"/>' +
-                    '<polygon class="myt-land-spider" points="100,28.6 140.6,65.4 127.5,115.9 79.8,105.8 58.5,64.5"/>' +
+                    '<polygon class="myt-land-spider" id="myt-land-spider" points="100,30 142,62 130,118 78,112 56,64"/>' +
+                    '<circle class="myt-land-hub" cx="100" cy="84" r="2.5"/>' +
                     '<text x="100" y="16" text-anchor="middle">Penjualan</text>' +
                     '<text x="168" y="62" text-anchor="start">Produk</text>' +
                     '<text x="148" y="150" text-anchor="middle">Penilaian</text>' +
@@ -759,8 +804,12 @@
               '<table class="myt-land-table">' +
                 '<thead><tr><th>#</th><th>Toko</th><th>Penjualan</th><th>Produk</th><th>Nilai</th><th>Harga</th></tr></thead>' +
                 '<tbody>' +
-                  '<tr class="myt-land-row"><td>1</td><td>Toko Alpha</td><td>2,8 jt</td><td>12</td><td>4,8</td><td>Rp 70 rb</td></tr>' +
-                  '<tr class="myt-land-row is-mine"><td>2</td><td>Toko Contoh</td><td>1,1 jt</td><td>9</td><td>4,9</td><td>Rp 55 rb</td></tr>' +
+                  '<tr class="myt-land-row"><td>1</td><td><span class="myt-land-shopcell"><i style="background:#F3D6A5">K</i>KaosBasic Store</span></td><td>8,6 jt<small>perkiraan</small></td><td>28</td><td>4,8</td><td>Rp 49 rb</td></tr>' +
+                  '<tr class="myt-land-row"><td>2</td><td><span class="myt-land-shopcell"><i style="background:#D8E4F0">P</i>PolosSupply Indo</span></td><td>6,1 jt<small>perkiraan</small></td><td>19</td><td>4,9</td><td>Rp 52 rb</td></tr>' +
+                  '<tr class="myt-land-row is-mine"><td>3</td><td><span class="myt-land-shopcell"><i class="is-photo"><img src="/images/dir-cats/fashion.webp" alt=""></i>Kaos Polos Murah ID</span></td><td>4,2 jt<small>perkiraan</small></td><td>14</td><td>4,9</td><td>Rp 45 rb</td></tr>' +
+                  '<tr class="myt-land-row"><td>4</td><td><span class="myt-land-shopcell"><i style="background:#E8D5F0">O</i>Oversize Official</span></td><td>3,4 jt<small>perkiraan</small></td><td>22</td><td>4,7</td><td>Rp 59 rb</td></tr>' +
+                  '<tr class="myt-land-row"><td>5</td><td><span class="myt-land-shopcell"><i style="background:#D9E8D4">C</i>Cotton House ID</span></td><td>2,8 jt<small>perkiraan</small></td><td>11</td><td>4,8</td><td>Rp 55 rb</td></tr>' +
+                  '<tr class="myt-land-row"><td>6</td><td><span class="myt-land-shopcell"><i style="background:#F0D9D5">N</i>Nusantara Wear</span></td><td>1,9 jt<small>perkiraan</small></td><td>9</td><td>4,6</td><td>Rp 42 rb</td></tr>' +
                 '</tbody>' +
               '</table>' +
             '</div>' +
