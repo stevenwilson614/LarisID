@@ -62,6 +62,7 @@
   var _alerts = { email: false, wa: false, wa_number: '', cadence: 'daily' };
   var _wizardDone = false;
   var _shopLogo = '';
+  var _logoQueuedFor = 0; // shop_id we already asked the Mac to fill
   var _selectedIdx = -1;
   var _detailTab = 'kompetitor'; // 'kompetitor' | 'analisa'
   var _bench = null;
@@ -80,6 +81,7 @@
   var _kwLock = false;
   var _manualShop = null;
   var _manualItems = Object.create(null);
+  var _prefsReady = false;
   var _hiddenShops = [];
   var _hiddenItems = [];
   var _addedShops = [];
@@ -1579,10 +1581,8 @@
       try { _shopMeta = await lookupShopId(shop.shop_id); } catch (_) { _shopMeta = null; }
       try { _shopLogo = await fetchShopLogo(shop.shop_id); } catch (_) { _shopLogo = ''; }
     }
-    if (!_shopLogo && _listings[0] && _listings[0].image_url) {
-      // Soft fallback: top listing photo until shop portrait is cached.
-      _shopLogo = '';
-    }
+    // Do not fall back to a product photo — docs/mytoko-bench.md. Portrait
+    // comes from shop_logo_cache (Mac scrape). Missing → initials until then.
     if (_shopMeta && _shopMeta.store_name && !shop.store_name) {
       shop.store_name = _shopMeta.store_name;
       rememberShop(shop);
@@ -1623,6 +1623,11 @@
         _marketErr = '';
         _kwLock = false;
         _benchItemId = null;
+        if (shopChanged) {
+          _manualShop = null;
+          _manualItems = Object.create(null);
+          _prefsReady = false;
+        }
       }
       var needBench = !!(opts.freshListings || shopChanged || !_bench);
       if (needBench) _benchLoading = true;
@@ -1648,6 +1653,7 @@
     _shop = null;
     _shopMeta = null;
     _shopLogo = '';
+    _logoQueuedFor = 0;
     _selectedIdx = -1;
     _bench = null;
     _benchFor = 0;
@@ -1664,6 +1670,7 @@
     _kwLock = false;
     _manualShop = null;
     _manualItems = Object.create(null);
+    _prefsReady = false;
     _hiddenShops = [];
     _hiddenItems = [];
     _addedShops = [];
@@ -2549,7 +2556,6 @@
     var client = sb();
     if (!u || !client || !shop || !shop.shop_id) return;
     var sid = Number(shop.shop_id);
-    var gen = _marketGen;
     try {
       var man = await client.from('user_toko_manual_omzet').select('item_id,omzet_rp')
         .eq('user_id', u.id).eq('shop_id', sid).eq('window_days', 30);
@@ -2572,9 +2578,12 @@
       _addedShops = ((added && added.data) || []).map(function (r) {
         return { shop_id: r.rival_shop_id, store_name: r.store_name, location: r.location };
       });
+      _prefsReady = true;
       if (auditVisible()) renderSellerCenter(shop, { quiet: true });
     } catch (e) {
       console.error('[My Toko] prefs', e);
+      _prefsReady = true;
+      if (auditVisible()) renderSellerCenter(shop, { quiet: true });
     }
   }
 
@@ -2710,6 +2719,8 @@
       keyword: _marketKw || kwChoice.primary,
       keywordChoices: kwChoice.choices,
       manual: { shop: _manualShop, items: _manualItems },
+      shopInDb: !!_shopMeta,
+      prefsReady: _prefsReady,
       hiddenShops: _hiddenShops,
       hiddenItems: _hiddenItems,
       addedShops: _addedShops,
@@ -2768,21 +2779,55 @@
     });
     wireSellerCenter(shop);
     if (_selectedIdx >= 0) paintProductDetail(shop);
-    if (!_shopLogo) {
-      void fetchShopLogo(shop.shop_id).then(function (url) {
-        if (!url || _shop !== shop) return;
-        _shopLogo = url;
-        var box = document.querySelector('.myt-bench .myt-logo');
-        if (!box || box.querySelector('.myt-logo-img')) return;
-        var img = document.createElement('img');
-        img.className = 'myt-logo-img';
-        img.src = thumb(url);
-        img.alt = '';
-        img.loading = 'lazy';
-        img.referrerPolicy = 'no-referrer';
-        img.onerror = function () { img.remove(); };
-        box.appendChild(img);
-      });
+    if (!_shopLogo) void ensureShopLogoBackground(shop);
+  }
+
+  function paintShopLogo(url) {
+    if (!url) return;
+    _shopLogo = url;
+    var box = document.querySelector('.myt-bench .myt-logo');
+    if (!box || box.querySelector('.myt-logo-img')) return;
+    var img = document.createElement('img');
+    img.className = 'myt-logo-img';
+    img.src = thumb(url);
+    img.alt = '';
+    img.loading = 'lazy';
+    img.referrerPolicy = 'no-referrer';
+    img.onerror = function () { img.remove(); };
+    box.appendChild(img);
+  }
+
+  /**
+   * Contabo get-shop-logo is blocked by Shopee. On cache miss, queue a soft
+   * Mac shop scrape (same path as paste-URL) and poll shop_logo_cache until
+   * the portrait lands or we time out. Never blocks the bench render.
+   */
+  async function ensureShopLogoBackground(shop) {
+    if (!shop || !shop.shop_id) return;
+    var sid = Number(shop.shop_id);
+    if (!sid) return;
+    try {
+      var cached = await fetchShopLogo(sid);
+      if (cached) {
+        if (_shop === shop) paintShopLogo(cached);
+        return;
+      }
+    } catch (_) {}
+    if (_logoQueuedFor === sid) return;
+    _logoQueuedFor = sid;
+    var urlHint = _pendingUrl || ('https://shopee.co.id/shop/' + sid);
+    try { await requestShopScrape(urlHint, shop); } catch (_) {}
+    var started = Date.now();
+    while (Date.now() - started < 120000) {
+      await new Promise(function (r) { setTimeout(r, 4000); });
+      if (_shop !== shop) return;
+      try {
+        var url = await fetchShopLogo(sid);
+        if (url) {
+          paintShopLogo(url);
+          return;
+        }
+      } catch (_) {}
     }
   }
 

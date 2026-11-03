@@ -1480,9 +1480,14 @@
     }).join('');
     var penjualanRow = '';
     if (!(view.you.omzet > 0)) {
+      var compareYou = view.manualShop > 0 ? view.manualShop : null;
+      var avgOm = num(view.avg && view.avg.omzet);
       penjualanRow = '<tr><td data-label="Metrik"><span class="myt-cmp-item">' + metricIcon('omzet') +
         '<span>Penjualan</span></span></td><td data-label="Toko kamu">' + youBits.html +
-        '</td><td data-label="Rata-rata">—</td><td data-label=""></td></tr>';
+        '</td><td data-label="Rata-rata">' + (compareYou && avgOm > 0 ? cellAvg({ kind: 'omzet', avg: avgOm }) : '—') +
+        '</td><td data-label="Perbedaan">' +
+        (compareYou && avgOm > 0 ? deltaHtml(compareYou, avgOm, 'omzet') : '') +
+        '</td></tr>';
     }
     var cmp = (view.comps.length || penjualanRow)
       ? '<table class="myt-bench-table myt-cmp"><thead><tr><th>Metrik</th><th>Toko kamu</th><th>Rata-rata</th><th></th></tr></thead><tbody>' +
@@ -1834,6 +1839,23 @@
           '</div>' +
           settingsHtml(ctx, view) +
         '</div></div>' +
+      '<div class="myt-pop myt-omzet-ask" id="myt-omzet-ask" role="dialog" aria-modal="true" aria-labelledby="myt-omzet-ask-title" hidden>' +
+        '<button type="button" class="myt-pop-back" data-omzet-ask-close aria-label="Tutup"></button>' +
+        '<div class="myt-pop-card myt-pop-card--ask">' +
+          '<div class="myt-pop-head">' +
+            '<h3 id="myt-omzet-ask-title">Omset 30 hari</h3>' +
+            '<button type="button" class="myt-pop-x" data-omzet-ask-close aria-label="Tutup">×</button>' +
+          '</div>' +
+          '<p class="alat-lead myt-omzet-ask-lead">Toko ini belum ada di data LarisID. Isi omset 30 hari supaya bisa dibandingkan dengan kompetitor.</p>' +
+          '<form class="myt-omzet-ask-form" id="myt-omzet-ask-form">' +
+            '<label class="alat-label" for="myt-omzet-ask-input">Omset 30 hari (Rp)</label>' +
+            '<div class="alat-row">' +
+              '<input class="alat-input" id="myt-omzet-ask-input" type="number" min="1" step="1" inputmode="numeric" required placeholder="Contoh: 15000000" autocomplete="off">' +
+              '<button type="submit" class="btn-primary">Simpan</button>' +
+            '</div>' +
+          '</form>' +
+          '<button type="button" class="btn-ghost myt-omzet-ask-later" data-omzet-ask-close>Nanti</button>' +
+        '</div></div>' +
       (ctx.error ? '<p class="alat-err myt-bench-status">' + esc(ctx.error) + '</p>' : '') +
       (ctx.marketError ? '<p class="alat-err myt-bench-status">' + esc(ctx.marketError) + '</p>' : '') +
       '<div class="myt-bench-tabs" role="tablist">' +
@@ -1846,6 +1868,65 @@
       '<div id="myt-bench-main"></div>' +
       '<div id="myt-detail" class="myt-detail" hidden></div>' +
     '</div>';
+  }
+
+  function omzetAskStorageKey(shopId) {
+    return 'laris.myt.omzetAsk.' + String(shopId || 0);
+  }
+
+  function omzetAskSeen(shopId) {
+    try { return sessionStorage.getItem(omzetAskStorageKey(shopId)) === '1'; } catch (_) { return false; }
+  }
+
+  function markOmzetAskSeen(shopId) {
+    try { sessionStorage.setItem(omzetAskStorageKey(shopId), '1'); } catch (_) {}
+  }
+
+  function shouldAskShopOmzet(ctx, view) {
+    if (!ctx || !view) return false;
+    if (!ctx.prefsReady || ctx.shopInDb) return false;
+    if (ctx.marketLoading && !(ctx.market && ctx.market.ok)) return false;
+    if (ctx.settingsOpen) return false;
+    if (view.you && view.you.omzet > 0) return false;
+    if (view.manualShop > 0) return false;
+    var sid = Number(ctx.shop && ctx.shop.shop_id) || 0;
+    if (!sid) return false;
+    return !omzetAskSeen(sid);
+  }
+
+  function wireOmzetAsk(root, ctx, view) {
+    var ask = root.querySelector('#myt-omzet-ask');
+    if (!ask) return;
+    var sid = Number(ctx.shop && ctx.shop.shop_id) || 0;
+    function closeAsk() {
+      markOmzetAskSeen(sid);
+      ask.setAttribute('hidden', '');
+    }
+    ask.querySelectorAll('[data-omzet-ask-close]').forEach(function (btn) {
+      btn.addEventListener('click', closeAsk);
+    });
+    ask.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Escape') closeAsk();
+    });
+    var form = ask.querySelector('#myt-omzet-ask-form');
+    var input = ask.querySelector('#myt-omzet-ask-input');
+    if (form) {
+      form.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var amount = Number(input && input.value);
+        if (!(amount > 0) || !ctx.onSaveManual) return;
+        markOmzetAskSeen(sid);
+        ask.setAttribute('hidden', '');
+        ctx.onSaveManual(0, amount);
+      });
+    }
+    if (shouldAskShopOmzet(ctx, view)) {
+      markOmzetAskSeen(sid);
+      ask.removeAttribute('hidden');
+      if (input) {
+        setTimeout(function () { try { input.focus(); } catch (_) {} }, 40);
+      }
+    }
   }
 
   function mount(root, ctx) {
@@ -2015,6 +2096,7 @@
       });
     }
     paintTrenCharts(root);
+    wireOmzetAsk(root, ctx, view);
   }
 
   return {
