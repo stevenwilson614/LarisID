@@ -29,7 +29,9 @@ There is no 7-day or 90-day mode, and no window pill in the header.
 
 ## Tren
 
-Tren uses `listing_weekly`, last 6 week-starts. A line is drawn only when a listing has a second measured scrape (`source=measured` and `span_days >= 2`). A week that is not fully measured is dashed. Do not draw a daily line. Rules: [`listing-weekly.md`](./listing-weekly.md).
+Tren uses `listing_weekly`, last 6 week-starts. A line is drawn only when a listing has a second measured scrape (`source=measured` and `span_days >= 2`). A week that is not fully measured is dashed (hollow points). Do not draw a daily line. Rules: [`listing-weekly.md`](./listing-weekly.md).
+
+The chart uses Chart.js with the same chrome as Deep Dive Tren (`tension: .35`, red `#B5202A` fill on the single-product series, multi-shop lines without fill, `#9CA3AF` ticks). SVG fallback keeps the same colors if Chart.js is not loaded.
 
 ## List edits
 

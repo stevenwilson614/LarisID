@@ -821,24 +821,34 @@
                 '</section>' +
                 '<section class="myt-bench-card">' +
                   '<h3>Tren penjualan</h3>' +
+                  '<div class="myt-tren">' +
                   '<svg class="myt-chart" viewBox="0 0 300 168" aria-hidden="true">' +
-                    '<g stroke="#F1F1F2" stroke-width="1">' +
-                      '<line x1="28" y1="24" x2="288" y2="24"/>' +
-                      '<line x1="28" y1="64" x2="288" y2="64"/>' +
-                      '<line x1="28" y1="104" x2="288" y2="104"/>' +
-                      '<line x1="28" y1="144" x2="288" y2="144"/>' +
+                    '<g stroke="rgba(0,0,0,.06)" stroke-width="1">' +
+                      '<line x1="40" y1="24" x2="288" y2="24"/>' +
+                      '<line x1="40" y1="64" x2="288" y2="64"/>' +
+                      '<line x1="40" y1="104" x2="288" y2="104"/>' +
+                      '<line x1="40" y1="144" x2="288" y2="144"/>' +
                     '</g>' +
-                    '<path class="myt-land-line-peer" d="M28 120 C70 112, 120 100, 170 92 S240 78, 288 70" fill="none" stroke="#D8D2C6" stroke-width="1.6"/>' +
-                    '<path class="myt-land-line-peer" d="M28 132 C80 128, 140 118, 200 110 S250 98, 288 96" fill="none" stroke="#E2DCD0" stroke-width="1.6"/>' +
-                    '<path class="myt-land-line-you" d="M28 140 C55 148, 78 88, 108 108 S148 150, 178 72 S218 40, 248 118 S270 132, 288 58" fill="none" stroke="#B5202A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>' +
-                    '<text x="28" y="160" font-size="9" fill="#8A8A8A">1 Okt</text>' +
-                    '<text x="150" y="160" text-anchor="middle" font-size="9" fill="#8A8A8A">15 Okt</text>' +
-                    '<text x="288" y="160" text-anchor="end" font-size="9" fill="#8A8A8A">29 Okt</text>' +
+                    '<text x="36" y="27" text-anchor="end" font-size="10" fill="#9CA3AF">4jt</text>' +
+                    '<text x="36" y="147" text-anchor="end" font-size="10" fill="#9CA3AF">0</text>' +
+                    '<path class="myt-land-line-peer" d="M40 120 C80 112, 130 100, 180 92 S250 78, 288 70" fill="none" stroke="#C9974B" stroke-width="2"/>' +
+                    '<path class="myt-land-line-peer" d="M40 132 C90 128, 150 118, 210 110 S260 98, 288 96" fill="none" stroke="#8A8A8A" stroke-width="2"/>' +
+                    '<path d="M40 140 C65 148, 88 88, 118 108 S158 150, 188 72 S228 40, 258 118 S275 132, 288 58 L288 144 L40 144 Z" fill="rgba(181,32,42,.06)" stroke="none"/>' +
+                    '<path class="myt-land-line-you" d="M40 140 C65 148, 88 88, 118 108 S158 150, 188 72 S228 40, 258 118 S275 132, 288 58" fill="none" stroke="#B5202A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+                    '<circle cx="40" cy="140" r="3" fill="#B5202A" stroke="#B5202A"/>' +
+                    '<circle cx="118" cy="108" r="3" fill="#B5202A"/>' +
+                    '<circle cx="188" cy="72" r="3" fill="#B5202A"/>' +
+                    '<circle cx="258" cy="118" r="3" fill="#fff" stroke="#B5202A" stroke-width="1.5"/>' +
+                    '<circle cx="288" cy="58" r="3" fill="#B5202A"/>' +
+                    '<text x="40" y="160" font-size="10" fill="#9CA3AF">1 Okt</text>' +
+                    '<text x="164" y="160" text-anchor="middle" font-size="10" fill="#9CA3AF">15 Okt</text>' +
+                    '<text x="288" y="160" text-anchor="end" font-size="10" fill="#9CA3AF">29 Okt</text>' +
                   '</svg>' +
-                  '<ul class="myt-tren-legend">' +
-                    '<li><i style="background:#B5202A"></i><span>Kaos Polos Murah ID</span></li>' +
-                    '<li><i style="background:#D8D2C6"></i><span>Kompetitor</span></li>' +
+                  '<ul class="myt-tren-legend chart-legend">' +
+                    '<li class="row"><i class="swatch" style="background:#B5202A"></i><span>Kaos Polos Murah ID</span></li>' +
+                    '<li class="row"><i class="swatch" style="background:#C9974B"></i><span>Kompetitor</span></li>' +
                   '</ul>' +
+                  '</div>' +
                 '</section>' +
               '</div>' +
             '</div>' +

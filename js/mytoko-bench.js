@@ -1041,9 +1041,30 @@
       grid + ticks + dots + '</svg>';
   }
 
-  function lineSvg(series) {
+  // Chart.js payloads for Tren — same chrome as Deep Dive #ddr-trend-canvas
+  // (tension .35, red fill on single series, hollow points when not measured).
+  var trenPayloads = Object.create(null);
+  var trenCharts = [];
+  var trenSeq = 0;
+
+  var TREN_COLORS = ['#1A1A1A', '#C9974B', '#8A8A8A', '#E38B86', '#8E191F'];
+
+  function trenRpTick(v) {
+    var n = Number(v);
+    if (!Number.isFinite(n) || n <= 0) return '0';
+    if (n >= 1e9) return (n / 1e9).toFixed(1) + 'M';
+    if (n >= 1e6) return Math.round(n / 1e6) + 'jt';
+    if (n >= 1e3) return Math.round(n / 1e3) + 'rb';
+    return String(Math.round(n));
+  }
+
+  function trenSeriesColor(s, si) {
+    return s.mine ? '#B5202A' : TREN_COLORS[si % TREN_COLORS.length];
+  }
+
+  function prepareTren(series) {
     var usable = (series || []).filter(function (s) { return s.weeks && s.weeks.length >= 2; });
-    if (!usable.length) return '<p class="myt-bench-empty">Belum ada dua sapuan terukur.</p>';
+    if (!usable.length) return null;
     var weeks = [];
     var seen = Object.create(null);
     usable.forEach(function (s) {
@@ -1059,16 +1080,35 @@
     usable.forEach(function (s) {
       s.weeks.forEach(function (w) { if (Number(w.omzet) > maxY) maxY = Number(w.omzet); });
     });
-    if (!(maxY > 0) || weeks.length < 2) return '<p class="myt-bench-empty">Belum ada dua sapuan terukur.</p>';
+    if (!(maxY > 0) || weeks.length < 2) return null;
+    return { usable: usable, weeks: weeks };
+  }
+
+  function trenLegendHtml(usable) {
+    return '<ul class="myt-tren-legend chart-legend ddr-trend-legend">' + usable.map(function (s, si) {
+      var color = trenSeriesColor(s, si);
+      return '<li class="row"><i class="swatch" style="background:' + color + '"></i><span>' +
+        esc(s.name || 'Toko') + '</span></li>';
+    }).join('') + '</ul>';
+  }
+
+  /** SVG fallback when Chart.js is unavailable — same colors / hollow points. */
+  function lineSvgFallback(payload) {
+    var usable = payload.usable;
+    var weeks = payload.weeks;
+    var maxY = 0;
+    usable.forEach(function (s) {
+      s.weeks.forEach(function (w) { if (Number(w.omzet) > maxY) maxY = Number(w.omzet); });
+    });
     function X(iso) {
       var i = weeks.indexOf(String(iso));
       return 58 + (i / (weeks.length - 1)) * 220;
     }
     function Y(v) { return 132 - (Number(v) / maxY) * 100; }
-    var colors = ['#1A1A1A', '#C9974B', '#8A8A8A', '#E38B86', '#8E191F'];
+    var fillPath = '';
     var marks = '';
     var paths = usable.map(function (s, si) {
-      var color = s.mine ? '#B5202A' : colors[si % colors.length];
+      var color = trenSeriesColor(s, si);
       var sorted = s.weeks.slice().sort(function (a, b) {
         return String(a.week_start) < String(b.week_start) ? -1 : 1;
       });
@@ -1080,30 +1120,177 @@
         var gap = prev ? (new Date(w.week_start) - new Date(prev)) / 86400000 : 0;
         d += (!prev || gap > 8 ? 'M' : 'L') + x + ' ' + y;
         var solid = w.measured === true;
-        marks += '<circle cx="' + x + '" cy="' + y + '" r="3.2" fill="' + (solid ? color : '#fff') +
+        marks += '<circle cx="' + x + '" cy="' + y + '" r="3" fill="' + (solid ? color : '#fff') +
           '" stroke="' + color + '" stroke-width="1.5"/>';
         prev = w.week_start;
       });
+      if (usable.length === 1 && sorted.length) {
+        var first = X(sorted[0].week_start).toFixed(1);
+        var last = X(sorted[sorted.length - 1].week_start).toFixed(1);
+        fillPath = '<path d="' + d + ' L' + last + ' 132 L' + first + ' 132 Z" fill="rgba(181,32,42,.06)" stroke="none"/>';
+      }
       var measured = sorted.every(function (w) { return w.measured === true; });
       return '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="2"' +
-        (measured ? '' : ' stroke-dasharray="4 3"') + '/>';
+        (measured ? '' : ' stroke-dasharray="5 5"') + ' stroke-linecap="round" stroke-linejoin="round"/>';
     }).join('');
     var grid = [0, 0.5, 1].map(function (t) {
       var y = Y(maxY * t).toFixed(1);
-      var label = t === 0 ? '0' : fmtRpShort(maxY * t);
-      return '<line x1="58" y1="' + y + '" x2="278" y2="' + y + '" stroke="#F1F1F2"/>' +
-        '<text x="54" y="' + (Number(y) + 3).toFixed(1) + '" text-anchor="end" font-size="8" fill="#8A8A8A">' + esc(label) + '</text>';
+      var label = t === 0 ? '0' : trenRpTick(maxY * t);
+      return '<line x1="58" y1="' + y + '" x2="278" y2="' + y + '" stroke="rgba(0,0,0,.06)"/>' +
+        '<text x="54" y="' + (Number(y) + 3).toFixed(1) + '" text-anchor="end" font-size="10" fill="#9CA3AF">' + esc(label) + '</text>';
     }).join('');
     var labels = weeks.map(function (iso) {
-      return '<text x="' + X(iso).toFixed(1) + '" y="156" text-anchor="middle" font-size="9" fill="#8A8A8A">' +
+      return '<text x="' + X(iso).toFixed(1) + '" y="156" text-anchor="middle" font-size="10" fill="#9CA3AF">' +
         esc(weekLabel(iso)) + '</text>';
     }).join('');
-    var legend = '<ul class="myt-tren-legend">' + usable.map(function (s, si) {
-      var color = s.mine ? '#B5202A' : colors[si % colors.length];
-      return '<li><i style="background:' + color + '"></i><span>' + esc(s.name || 'Toko') + '</span></li>';
-    }).join('') + '</ul>';
-    return '<svg class="myt-chart" viewBox="0 0 300 168" role="img" aria-label="Tren penjualan mingguan toko yang dipantau">' +
-      grid + paths + marks + labels + '</svg>' + legend;
+    return '<svg class="myt-chart" viewBox="0 0 300 168" role="img" aria-label="Tren penjualan mingguan">' +
+      grid + fillPath + paths + marks + labels + '</svg>';
+  }
+
+  function trenHtml(series) {
+    var payload = prepareTren(series);
+    if (!payload) return '<p class="myt-bench-empty">Belum ada dua sapuan terukur.</p>';
+    var id = 't' + (++trenSeq);
+    trenPayloads[id] = payload;
+    return '<div class="myt-tren">' +
+      '<div class="ddr-chart-wrap sm myt-tren-wrap"><canvas data-myt-tren="' + id +
+        '" role="img" aria-label="Tren penjualan mingguan"></canvas></div>' +
+      trenLegendHtml(payload.usable) +
+      '</div>';
+  }
+
+  function destroyTrenCharts() {
+    trenCharts.forEach(function (c) { try { c.destroy(); } catch (_) {} });
+    trenCharts = [];
+  }
+
+  function makeTrenChart(cv, payload) {
+    if (!cv || !payload) return;
+    var Chart = typeof window !== 'undefined' ? window.Chart : null;
+    if (!Chart) {
+      var wrap = cv.closest('.myt-tren');
+      if (wrap) {
+        wrap.innerHTML = lineSvgFallback(payload) + trenLegendHtml(payload.usable);
+      }
+      return;
+    }
+    if (typeof Chart.getChart === 'function') {
+      var existing = Chart.getChart(cv);
+      if (existing) { try { existing.destroy(); } catch (_) {} }
+    }
+    var weeks = payload.weeks;
+    var usable = payload.usable;
+    var single = usable.length === 1;
+    var labels = weeks.map(weekLabel);
+    var datasets = usable.map(function (s, si) {
+      var color = trenSeriesColor(s, si);
+      var by = Object.create(null);
+      var measuredBy = Object.create(null);
+      s.weeks.forEach(function (w) {
+        by[String(w.week_start)] = Number(w.omzet) || null;
+        measuredBy[String(w.week_start)] = w.measured === true;
+      });
+      var data = weeks.map(function (iso) {
+        var v = by[iso];
+        return v != null && v > 0 ? v : null;
+      });
+      var pointBg = weeks.map(function (iso) {
+        if (by[iso] == null || !(by[iso] > 0)) return 'transparent';
+        return measuredBy[iso] ? color : '#fff';
+      });
+      var allMeasured = weeks.every(function (iso) {
+        return by[iso] == null || !(by[iso] > 0) || measuredBy[iso];
+      });
+      return {
+        label: s.name || 'Toko',
+        data: data,
+        borderColor: color,
+        backgroundColor: single ? 'rgba(181,32,42,.06)' : color,
+        borderWidth: 2,
+        fill: single,
+        tension: 0.35,
+        pointRadius: single ? 3 : 2,
+        pointHoverRadius: 4,
+        pointBackgroundColor: pointBg,
+        pointBorderColor: color,
+        pointBorderWidth: 1.5,
+        borderDash: allMeasured ? [] : [5, 5],
+        spanGaps: false,
+      };
+    });
+    var chart = new Chart(cv, {
+      type: 'line',
+      data: { labels: labels, datasets: datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function (c) {
+                if (c.parsed.y == null) return '';
+                return (c.dataset.label || '') + ': ' + fmtRpShort(c.parsed.y);
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            ticks: {
+              maxRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: 8,
+              font: { size: 10 },
+              color: '#9CA3AF',
+            },
+            grid: { display: false },
+            border: { display: false },
+          },
+          y: {
+            display: true,
+            position: 'left',
+            min: 0,
+            ticks: {
+              callback: trenRpTick,
+              maxTicksLimit: 6,
+              font: { size: 10 },
+              color: '#9CA3AF',
+            },
+            grid: { color: 'rgba(0,0,0,.06)' },
+            border: { display: false },
+          },
+        },
+      },
+    });
+    trenCharts.push(chart);
+  }
+
+  function paintTrenCharts(root) {
+    if (!root) return;
+    destroyTrenCharts();
+    var canvases = root.querySelectorAll('[data-myt-tren]');
+    if (!canvases.length) return;
+    function paint() {
+      if (!root.isConnected) return;
+      root.querySelectorAll('[data-myt-tren]').forEach(function (cv) {
+        var id = cv.getAttribute('data-myt-tren');
+        makeTrenChart(cv, trenPayloads[id]);
+      });
+    }
+    if (typeof window !== 'undefined' && typeof window.Chart !== 'undefined') {
+      paint();
+      return;
+    }
+    var ensure = typeof window !== 'undefined' && typeof window.ensureChartJs === 'function'
+      ? window.ensureChartJs
+      : null;
+    if (ensure) {
+      ensure().then(paint).catch(paint);
+    } else {
+      paint();
+    }
   }
 
   function barsSvg(points, itemId) {
@@ -1331,7 +1518,7 @@
       '</div>' +
       '<div class="myt-bench-split">' +
         '<section class="myt-bench-card"><h3>Peringkat kompetitor</h3>' + topTable(view) + '</section>' +
-        '<section class="myt-bench-card"><h3>Tren penjualan</h3>' + lineSvg(shopSeries(view)) + '</section>' +
+        '<section class="myt-bench-card"><h3>Tren penjualan</h3>' + trenHtml(shopSeries(view)) + '</section>' +
       '</div>' +
       '<div class="myt-bench-split">' +
         side('Sudah jalan', summary.ok, 'ok') +
@@ -1504,7 +1691,7 @@
       '</div>' +
       '<div class="myt-bench-split">' +
         '<section class="myt-bench-card"><h3>Tren penjualan</h3>' +
-          lineSvg([{ mine: true, name: listing ? clip(listing.product_name) : 'Produk', weeks: itemWeeks }]) + '</section>' +
+          trenHtml([{ mine: true, name: listing ? clip(listing.product_name) : 'Produk', weeks: itemWeeks }]) + '</section>' +
         '<section class="myt-bench-card"><h3>Peta harga</h3>' +
           scatterSvg(priceMapPoints(view, listing), function (p) { return num(p.price) || 0; }, function (p) { return num(p.nowcast) || 0; }, function (p) {
             return listing && String(p.item_id) === String(listing.item_id);
@@ -1663,6 +1850,8 @@
 
   function mount(root, ctx) {
     if (!root || !ctx) return;
+    destroyTrenCharts();
+    trenPayloads = Object.create(null);
     var sid = Number(ctx.shop && ctx.shop.shop_id) || 0;
     if (sid !== ui.shopId) {
       ui.q = '';
@@ -1825,6 +2014,7 @@
         });
       });
     }
+    paintTrenCharts(root);
   }
 
   return {

@@ -14429,10 +14429,17 @@ body.alat-focus.view-audit .alat-page--wide::after { display: none; }
 .myt-cmp-item { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .myt-cmp-item span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .myt-ico { width: 16px; height: 16px; flex: none; display: block; }
-.myt-tren-legend { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 12px; }
-.myt-tren-legend li { display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 46%; }
-.myt-tren-legend i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
-.myt-tren-legend span { font-size: .72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.myt-tren { min-width: 0; }
+.myt-tren-wrap { height: 168px; }
+.myt-tren-legend {
+  list-style: none; margin: 8px 0 0; padding: 0;
+  display: flex; flex-direction: row; flex-wrap: wrap; gap: 6px 14px;
+}
+.myt-tren-legend li,
+.myt-tren-legend .row { display: flex; align-items: center; gap: 7px; min-width: 0; max-width: 46%; }
+.myt-tren-legend i,
+.myt-tren-legend .swatch { width: 9px; height: 9px; border-radius: 3px; flex: none; }
+.myt-tren-legend span { font-size: .7rem; color: var(--ink-soft, #8A8A8A); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .myt-gear {
   appearance: none; width: 36px; height: 36px; border-radius: 999px; flex: none;
   border: 1px solid #E8E8E8; background: #fff; color: #1A1A1A; cursor: pointer;
