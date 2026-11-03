@@ -1589,6 +1589,15 @@
     _wizardDone = false;
     _trackSelected = [];
     renderConnect();
+    var client = sb();
+    var u = user();
+    if (!client || !u) return;
+    client.from('user_store_profiles').delete().eq('user_id', u.id).then(function () {}, function () {});
+    client.from('user_profiles').update({
+      shopee_store_name: null,
+      shopee_store_url: null,
+      updated_at: new Date().toISOString(),
+    }).eq('user_id', u.id).then(function () {}, function () {});
   }
 
   async function peersForKeyword(shop, keyword) {

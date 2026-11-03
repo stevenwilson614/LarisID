@@ -928,9 +928,11 @@
     return '<span class="myt-bench-delta ' + cls + '">' + arrow + ' ' + n + '</span>';
   }
 
-  function manualForm(itemId) {
+  function manualForm(itemId, current) {
+    var value = num(current);
     return '<form class="myt-manual" data-manual-item="' + Number(itemId || 0) + '">' +
-      '<input class="alat-input" type="number" min="0" step="1" inputmode="numeric" placeholder="Omzet 30 hari, Rp" aria-label="Omzet 30 hari">' +
+      '<input class="alat-input" type="number" min="0" step="1" inputmode="numeric" placeholder="Omzet 30 hari, Rp" aria-label="Omzet 30 hari"' +
+      (value > 0 ? ' value="' + Math.round(value) + '"' : '') + '>' +
       '<button type="submit" class="btn-primary">Simpan</button></form>';
   }
 
@@ -1552,7 +1554,39 @@
     '</section>';
   }
 
-  function settingsHtml(ctx) {
+  function omzetSettings(ctx, view) {
+    var you = (view && view.you) || {};
+    var manualShop = ctx.manual && num(ctx.manual.shop);
+    var items = (ctx.manual && ctx.manual.items) || {};
+    var hidden = Object.create(null);
+    (ctx.hiddenItems || []).forEach(function (id) { hidden[String(id)] = true; });
+    var seen = Object.create(null);
+    var products = [];
+    (ctx.listings || []).forEach(function (p) {
+      if (!p || hidden[String(p.item_id)] || seen[String(p.item_id)]) return;
+      seen[String(p.item_id)] = true;
+      products.push(p);
+    });
+    function known(label, amount) {
+      return '<div class="myt-omzet-row"><b>' + label + '</b><span>' + esc(fmtRpShort(amount)) + ' perkiraan</span></div>';
+    }
+    var shopNow = num(you.omzet);
+    var shopRow = shopNow > 0
+      ? known('Toko keseluruhan', shopNow)
+      : '<div class="myt-omzet-row"><b>Toko keseluruhan</b>' + manualForm(0, manualShop) + '</div>';
+    var rows = products.map(function (p) {
+      var now = num(p.nowcast_omset_monthly);
+      var name = '<b class="myt-one-line">' + esc(clip(p.product_name)) + '</b>';
+      if (now > 0) return '<div class="myt-omzet-row">' + imgHtml(p.image_url, 'myt-prod-thumb') + name + '<span>' + esc(fmtRpShort(now)) + ' perkiraan</span></div>';
+      return '<div class="myt-omzet-row">' + imgHtml(p.image_url, 'myt-prod-thumb') + name +
+        manualForm(p.item_id, items[String(p.item_id)]) + '</div>';
+    }).join('');
+    return '<section class="alat-card"><h3 class="alat-h3" style="margin-top:0">Sesuaikan omset</h3>' +
+      '<p class="alat-hint">30 hari terakhir. Isi jumlah yang belum punya perkiraan. Angka yang kamu isi tidak mengganti perkiraan.</p>' +
+      shopRow + rows + '</section>';
+  }
+
+  function settingsHtml(ctx, view) {
     var alerts = alertsHtml(ctx.alerts);
     var hide = (ctx.listings || []).map(function (p) {
       var on = (ctx.hiddenItems || []).some(function (id) { return String(id) === String(p.item_id); });
@@ -1560,12 +1594,15 @@
         '<button type="button" class="btn-ghost" data-hide-item="' + Number(p.item_id) + '" data-hidden="' + (on ? '1' : '0') + '">' +
         (on ? 'Tampilkan' : 'Sembunyikan') + '</button></li>';
     }).join('');
-    return alerts +
+    return '<section class="alat-card"><h3 class="alat-h3" style="margin-top:0">Toko</h3>' +
+        '<button type="button" class="btn-ghost" id="myt-remove-shop">Hapus toko</button>' +
+        '<p class="alat-hint">Toko ini dihapus dan kamu kembali ke halaman My Toko.</p></section>' +
+      omzetSettings(ctx, view) +
+      alerts +
       '<section class="alat-card"><h3 class="alat-h3" style="margin-top:0">Produk</h3>' +
         '<ul class="myt-lay-hide">' + hide + '</ul></section>' +
       '<section class="alat-card"><h3 class="alat-h3" style="margin-top:0">Lainnya</h3>' +
         '<div class="alat-row">' +
-          '<button type="button" class="btn-ghost" id="myt-remove-shop">Hapus toko</button>' +
           '<button type="button" class="btn-primary" id="myt-refresh"' + (ctx.loading ? ' disabled' : '') + '>' +
             (ctx.loading ? 'Membandingkan…' : 'Analisis ulang') + '</button>' +
           '<a class="btn-ghost" href="' + esc(ctx.extUrl || '#') + '" target="_blank" rel="noopener">Pakai ekstensi</a>' +
@@ -1590,8 +1627,10 @@
             (logo ? '<img class="myt-logo-img" src="' + esc(thumb(logo)) + '" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">' : '') +
           '</div>' +
           '<div class="myt-store-text"><h2>' + esc(name) + '</h2></div></div>' +
-        '</header>' +
-      '<div id="myt-manage"' + (ctx.settingsOpen ? '' : ' hidden') + '>' + settingsHtml(ctx) + '</div>' +
+        '<button type="button" class="myt-gear" id="myt-settings-toggle" aria-label="Pengaturan" aria-expanded="' + (ctx.settingsOpen ? 'true' : 'false') + '">' +
+          '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6zm8.7 2.9-.1-1.6 1.8-1.4-1.8-3.1-2.1.9a7 7 0 0 0-1.4-.8L16.6 2h-3.2l-.5 2.2c-.5.2-1 .4-1.4.8l-2.1-.9-1.8 3.1 1.8 1.4a7 7 0 0 0 0 1.6l-1.8 1.4 1.8 3.1 2.1-.9c.4.3.9.6 1.4.8l.5 2.2h3.2l.5-2.2c.5-.2 1-.5 1.4-.8l2.1.9 1.8-3.1-1.8-1.4c.1-.5.1-1.1 0-1.6z"/></svg>' +
+        '</button></header>' +
+      '<div id="myt-manage"' + (ctx.settingsOpen ? '' : ' hidden') + '>' + settingsHtml(ctx, view) + '</div>' +
       (ctx.error ? '<p class="alat-err myt-bench-status">' + esc(ctx.error) + '</p>' : '') +
       (ctx.marketError ? '<p class="alat-err myt-bench-status">' + esc(ctx.marketError) + '</p>' : '') +
       '<div class="myt-bench-tabs" role="tablist">' +
@@ -1603,7 +1642,6 @@
       '</div>' +
       '<div id="myt-bench-main"></div>' +
       '<div id="myt-detail" class="myt-detail" hidden></div>' +
-      '<button type="button" class="myt-settings-link" id="myt-settings-toggle" aria-expanded="' + (ctx.settingsOpen ? 'true' : 'false') + '">Pengaturan</button>' +
     '</div>';
   }
 

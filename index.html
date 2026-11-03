@@ -13291,8 +13291,8 @@ body.view-chat .sfb-card {
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260915a" defer></script>
 <script src="/js/gpt-belajar.js?v=20261017f" defer></script>
-<script src="/js/mytoko-bench.js?v=20261103harga1" defer></script>
-<script src="/js/gpt-alat-preview.js?v=20261103land1" defer></script>
+<script src="/js/mytoko-bench.js?v=20261103set1" defer></script>
+<script src="/js/gpt-alat-preview.js?v=20261103set1" defer></script>
 <script src="/js/omset-week-shape.js?v=20261021shape1" defer></script>
 <script src="/js/gpt-app.js?v=20261102konteks1" defer></script>
 <style>
@@ -14423,10 +14423,19 @@ body.alat-focus.view-audit .alat-page--wide::after { display: none; }
 .myt-tren-legend li { display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 46%; }
 .myt-tren-legend i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 .myt-tren-legend span { font-size: .72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.myt-settings-link {
-  appearance: none; border: 0; background: none; color: #8A8A8A;
-  font: inherit; font-size: .75rem; padding: 2px 0 0; cursor: pointer;
+.myt-gear {
+  appearance: none; width: 36px; height: 36px; border-radius: 999px; flex: none;
+  border: 1px solid #E8E8E8; background: #fff; color: #1A1A1A; cursor: pointer;
+  display: grid; place-items: center;
 }
+.myt-gear:hover, .myt-gear[aria-expanded="true"] { border-color: #B5202A; color: #B5202A; }
+.myt-omzet-row {
+  display: flex; align-items: center; gap: 8px; padding: 8px 0;
+  border-bottom: 1px solid #F1F1F2; min-width: 0;
+}
+.myt-omzet-row b { flex: 1; min-width: 0; }
+.myt-omzet-row span { color: #8A8A8A; font-size: .78rem; flex: none; }
+.myt-omzet-row .myt-manual { margin-left: auto; }
 .myt-bench-table td[data-label="Toko"] { max-width: 220px; }
 .myt-lay-ol li.is-mine, .myt-bench-table tr.is-mine td { background: #F9EAE4; }
 .myt-lay-pct { min-width: 110px; text-align: right; }
