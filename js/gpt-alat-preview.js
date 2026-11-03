@@ -3171,6 +3171,7 @@
     _trackSelected = [];
     _selectedIdx = -1;
     _shopLogo = '';
+    _logoQueuedFor = 0;
     _listings = [];
     _peersByKw = Object.create(null);
     _claimSnapId = '';

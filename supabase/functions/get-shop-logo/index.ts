@@ -1,8 +1,14 @@
 // get-shop-logo Edge Function
 // Fetches a Shopee shop portrait for a tracked store and caches it in
-// public.shop_logo_cache. Invoked by authenticated Pantauan clients on cache miss.
+// public.shop_logo_cache. Invoked by authenticated Pantauan / My Toko clients
+// on cache miss.
 //
-// Deploy: scp to Contabo functions volume, then docker restart supabase-edge-functions.
+// As of 2026-11, anonymous Contabo calls to shopee.co.id/api/v4/shop/* return
+// 403 / error 90309999. Prefer shop portraits written by the Mac shop scrape
+// (complete_shop_scrape p_logo_url). This function remains as a best-effort
+// fallback when Shopee briefly allows datacenter IPs again.
+//
+// Deploy: bash scripts/deploy-function-selfhost.sh get-shop-logo
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
