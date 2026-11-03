@@ -13291,8 +13291,8 @@ body.view-chat .sfb-card {
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260915a" defer></script>
 <script src="/js/gpt-belajar.js?v=20261017f" defer></script>
-<script src="/js/mytoko-bench.js?v=20261102bench2" defer></script>
-<script src="/js/gpt-alat-preview.js?v=20261102bench2" defer></script>
+<script src="/js/mytoko-bench.js?v=20261103layout2" defer></script>
+<script src="/js/gpt-alat-preview.js?v=20261103layout2" defer></script>
 <script src="/js/omset-week-shape.js?v=20261021shape1" defer></script>
 <script src="/js/gpt-app.js?v=20261102konteks1" defer></script>
 <style>
@@ -14324,6 +14324,54 @@ body.alat-focus.view-audit .alat-page--wide::after { display: none; }
   .myt-bench-table td[data-label="Posisi"] { flex-wrap: wrap; justify-content: flex-end; }
   .myt-bench-table td[data-label="Posisi"] small { flex: 1 0 100%; text-align: right; }
   .myt-bench-prod b { max-width: none; white-space: normal; }
+}
+.myt-pill {
+  display: inline-flex; align-items: center; height: 36px; padding: 0 12px;
+  border: 1px solid #E8E8E8; border-radius: 999px; background: #fff;
+  font-size: .8rem; font-weight: 700; color: #1A1A1A;
+}
+.myt-kws { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; align-items: center; }
+.myt-kw {
+  appearance: none; border: 1px solid #E8E8E8; background: #fff; border-radius: 999px;
+  font: inherit; font-size: .75rem; padding: 4px 10px; cursor: pointer; color: #1A1A1A;
+}
+.myt-kw.is-on { border-color: #B5202A; color: #B5202A; background: #F9EAE4; }
+.myt-lay-kw { margin: 0 0 10px; font-size: .78rem; color: #8A8A8A; }
+.myt-lay-top, .myt-lay-recs { display: grid; grid-template-columns: 280px 1fr; gap: 12px; margin-bottom: 12px; }
+.myt-lay-recs { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.myt-lay-posisi { text-align: center; }
+.myt-lay-rank { display: block; font-size: 2.4rem; letter-spacing: -.04em; line-height: 1; margin: 8px 0 4px; }
+.myt-lay-posisi span, .myt-lay-pct span { color: #8A8A8A; font-size: .78rem; }
+.myt-lay-rankrow { display: flex; gap: 16px; align-items: center; }
+.myt-lay-ol { list-style: none; margin: 0; padding: 0; flex: 1; }
+.myt-lay-ol li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid #F1F1F2; font-size: .86rem; }
+.myt-lay-ol li.is-mine, .myt-bench-table tr.is-mine td { background: #F9EAE4; }
+.myt-lay-pct { min-width: 110px; text-align: right; }
+.myt-lay-pct b { display: block; color: #B5202A; font-size: 1.2rem; }
+.myt-lay-legend { margin: 8px 0 0; font-size: .72rem; color: #8A8A8A; display: flex; gap: 8px; align-items: center; }
+.myt-lay-legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.myt-lay-legend i.is-you { background: #B5202A; }
+.myt-lay-legend i.is-avg { background: #C8C2B4; }
+.myt-chart { width: 100%; height: auto; display: block; }
+.myt-lay-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.myt-lay-tools .alat-input { flex: 1 1 180px; }
+.myt-manual { display: flex; gap: 8px; align-items: center; }
+.myt-manual .alat-input { max-width: 180px; }
+.myt-lay-hide { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow: auto; }
+.myt-lay-hide li { display: flex; justify-content: space-between; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid #F1F1F2; font-size: .82rem; }
+.myt-lay-ok { background: #F7F4EE; }
+.myt-lay-warn { background: #F9EAE4; }
+.myt-lay-rec { border: 1px solid #E8E8E8; border-radius: 12px; padding: 12px 14px; background: #fff; }
+.myt-lay-rec.is-warn { background: #F9EAE4; }
+.myt-lay-rec.is-ok { background: #F7F4EE; }
+.myt-lay-rec p { margin: 4px 0 0; font-size: .84rem; }
+.myt-hide { margin-left: 8px; padding: 4px 8px; font-size: .72rem; }
+@media (max-width: 800px) {
+  .myt-bench-tabs { flex-wrap: wrap; }
+  .myt-lay-top { grid-template-columns: 1fr; }
+  .myt-kws { margin-left: 0; width: 100%; flex-basis: 100%; }
+  .myt-lay-rankrow { flex-direction: column; align-items: stretch; }
+  .myt-lay-pct { text-align: left; }
 }
 .alat-card {
   background: #fff; border: 1px solid var(--line, #E8E8E8); border-radius: 16px;

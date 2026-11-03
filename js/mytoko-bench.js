@@ -1,6 +1,6 @@
 /**
  * Connected My Toko benchmark: Ringkasan, Produk, Kompetitor.
- * Numbers come from get_toko_benchmark. Omzet is nowcast only.
+ * One keyword market from get_toko_market. Omzet is the 30-day nowcast.
  * Position rules: docs/mytoko-bench.md
  */
 (function (root, factory) {
@@ -612,299 +612,778 @@
       '<small>' + esc(info.keyword) + '</small>';
   }
 
-  function renderScore(model, loading) {
-    var c = model.counts;
-    if (model.score == null) {
-      if (loading && !c.comparable) {
-        return '<div class="myt-bench-score"><b>…</b><span>Skor dihitung setelah pembanding masuk</span></div>';
+  function num(v) {
+    if (v == null || v === '') return null;
+    var n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function scoreOf(row) {
+    return row && row.omzetN ? row.omzet : (row ? row.sold : 0);
+  }
+
+  function keywordScores(listings, hiddenItems) {
+    var hide = hiddenItems || {};
+    var map = Object.create(null);
+    (listings || []).forEach(function (p) {
+      if (!p || hide[String(p.item_id)]) return;
+      var k = String(p.keyword || '').trim();
+      if (!k) return;
+      if (!map[k]) map[k] = { keyword: k, omzet: 0, omzetN: 0, sold: 0 };
+      var o = Number(p.nowcast_omset_monthly);
+      if (o > 0) {
+        map[k].omzet += o;
+        map[k].omzetN += 1;
       }
-      if (!c.comparable) {
-        return '<div class="myt-bench-score"><b>—</b><span>Belum cukup listing dengan pembanding untuk skor. Perlu minimal 3, masing-masing dengan 5 kompetitor di kata kunci yang sama.</span></div>';
-      }
-      return '<div class="myt-bench-score"><b>' + c.comparable + '</b><span>listing punya pembanding · ' +
-        c.unggul + ' lebih unggul · ' + c.setara + ' setara · ' + c.bawah +
-        ' di bawah. Skor belum ditampilkan karena belum 3 listing.</span></div>';
-    }
-    return '<div class="myt-bench-score" title="Bagian listing yang Lebih unggul atau Setara, dari sapuan LarisID, bukan skor Shopee.">' +
-      '<b>' + model.score + '<small>/100</small></b>' +
-      '<span>' + esc(scoreWord(model.score)) + ' · dari sapuan LarisID, bukan skor Shopee. ' +
-      'Dihitung dari listing yang punya minimal 5 kompetitor: bagian yang Lebih unggul atau Setara.</span></div>';
+      map[k].sold += Number(p.total_sold) || 0;
+    });
+    var rows = Object.keys(map).map(function (k) { return map[k]; });
+    rows.sort(function (a, b) { return scoreOf(b) - scoreOf(a); });
+    return rows;
   }
 
-  function renderDonut(slices, colors, holeTitle, holeSub) {
-    if (!slices.length) return '';
-    return '<div class="myt-donut" style="' + donutStyle(slices, colors) + '">' +
-      '<div class="myt-donut-hole"><b>' + esc(holeTitle) + '</b><span>' + esc(holeSub) + '</span></div></div>';
+  function keywordChoices(listings, bench, hiddenItems) {
+    var scores = keywordScores(listings, hiddenItems);
+    var peer = Object.create(null);
+    var markets = bench && Array.isArray(bench.markets) ? bench.markets : [];
+    markets.forEach(function (m) {
+      if (m && m.keyword) peer[String(m.keyword)] = peerCount(m);
+    });
+    var eligible = scores.filter(function (s) {
+      if (peer[s.keyword] == null) return true;
+      return peer[s.keyword] >= 5;
+    });
+    if (!eligible.length) eligible = scores;
+    var best = eligible[0] || null;
+    var choices = [];
+    if (best) {
+      var top = scoreOf(best);
+      choices = eligible.filter(function (s, i) {
+        return i === 0 || (top > 0 && scoreOf(s) >= top * 0.25);
+      }).slice(0, 4);
+    }
+    return { primary: best ? best.keyword : '', choices: choices };
   }
 
-  function legend(slices, colors) {
-    return '<ul class="myt-bench-legend">' + slices.map(function (s, i) {
-      return '<li><i style="background:' + (colors[i] || '#E8E8E8') + '"></i>' +
-        esc(s.category || s.label) + '<b>' + s.pct + '%</b></li>';
-    }).join('') + '</ul>';
+  function topPct(rank, n) {
+    rank = Number(rank);
+    n = Number(n);
+    if (!(n >= 5) || !(rank >= 1)) return null;
+    return Math.ceil((100 * rank) / n);
   }
 
-  function renderRingkasan(ctx, model) {
-    var listings = ctx.listings || [];
-    var loading = !!ctx.loading;
-    var sold = sumNum(listings, function (p) { return p.total_sold; });
-    var reviews = sumNum(listings, function (p) { return p.reviews; });
-    var rated = listings.filter(function (p) { return Number(p.rating) > 0; });
-    var rate = null;
-    if (rated.length) {
-      var rs = 0;
-      rated.forEach(function (p) { rs += Number(p.rating); });
-      rate = rs / rated.length;
-    }
-    var age = oldestLabel(oldestIso(model.shop, listings));
-    var snap = listings.some(function (p) { return p && p.from_snapshot; });
-    var kpis = kpi(fmtN(listings.length), 'Produk', snap ? 'termasuk snapshot halaman' : '') +
-      kpi(sold == null ? '—' : fmtN(sold), 'Terjual', 'kumulatif') +
-      kpi(rate == null ? '—' : fmtRating(rate), 'Penilaian', '') +
-      kpi(reviews == null ? '—' : fmtN(reviews), 'Ulasan', '');
-    var summary = model.summary;
-    var waitEmpty = loading ? 'Masih membandingkan…' : 'Belum cukup sinyal dari sapuan untuk bagian ini.';
-    var cards = '<div class="myt-bench-cols">' +
-      '<section class="myt-bench-card is-ok"><h3>Sudah bagus</h3>' + noteList(summary.ok, waitEmpty) + '</section>' +
-      '<section class="myt-bench-card is-warn"><h3>Bisa diubah</h3>' + noteList(summary.warn, waitEmpty) + '</section>' +
-      '</div>';
-
-    var best = model.rows.slice().sort(function (a, b) {
-      return (Number(b.listing.total_sold) || 0) - (Number(a.listing.total_sold) || 0);
-    }).slice(0, 3);
-    var bestHtml = best.length
-      ? '<table class="myt-bench-table"><thead><tr><th>Produk</th><th>Terjual</th><th>Rating</th><th>Omzet</th><th></th></tr></thead><tbody>' +
-        best.map(function (row) {
-          var p = row.listing;
-          return '<tr class="' + (row.index === ctx.selectedIdx ? 'is-selected' : '') + '">' +
-            '<td data-label="Produk">' + productCell(row, trackedMap(ctx.trackedIds)) + '</td>' +
-            '<td data-label="Terjual">' + fmtN(p.total_sold) + '<small>kumulatif</small></td>' +
-            '<td data-label="Rating">' + fmtRating(p.rating) + '</td>' +
-            '<td data-label="Omzet">' + omzetCell(p) + '</td>' +
-            '<td data-label="">' + detailBtn(row.index) + '</td></tr>';
-        }).join('') + '</tbody></table>'
-      : '<p class="myt-bench-empty">Belum ada listing.</p>';
-
-    var cat = model.categories;
-    var catColors = CAT_COLORS.slice();
-    var catBlock = cat.slices.length
-      ? '<div class="myt-bench-donut-row">' +
-        renderDonut(cat.slices, catColors, cat.mode === 'omzet' ? fmtRpShort(cat.total).replace('Rp ', '') : String(listings.length), cat.mode === 'omzet' ? 'Omzet perkiraan' : 'Jumlah produk') +
-        legend(cat.slices, catColors) + '</div>' +
-        (cat.partial ? '<p class="alat-hint">Cincin omzet hanya dari listing yang punya perkiraan. Yang lain tidak masuk.</p>' : '') +
-        (cat.mode === 'count' ? '<p class="alat-hint">Belum ada perkiraan omzet, jadi cincin ini jumlah produk.</p>' : '')
-      : '<p class="myt-bench-empty">Belum ada kategori pada listing ini.</p>';
-
-    var rivals = model.rivals.slice(0, 4);
-    var rivalTable = '';
-    if (loading && !rivals.length) {
-      rivalTable = '<p class="myt-bench-empty">Membandingkan toko di kata kunci yang sama…</p>';
-    } else if (!rivals.length) {
-      rivalTable = '<p class="myt-bench-empty">Belum ada toko lain di kata kunci yang sama pada sapuan terbaru.</p>';
-    } else {
-      rivalTable = '<table class="myt-bench-table"><thead><tr><th>Toko</th><th>Kata kunci sama</th><th>Harga vs kamu</th><th>Omzet</th></tr></thead><tbody>' +
-        rivals.map(function (rv) {
-          return '<tr><td data-label="Toko"><b>' + esc(rv.store_name || 'Toko') + '</b>' +
-            (rv.location ? '<small>' + esc(rv.location) + '</small>' : '') + '</td>' +
-            '<td data-label="Kata kunci sama">' + fmtN(rv.overlap) + '</td>' +
-            '<td data-label="Harga vs kamu">' + rivalDeltaHtml(priceVsYou(rv, model.rows)) + '</td>' +
-            '<td data-label="Omzet">' + (Number(rv.overlap_omzet) > 0
-              ? '<b>' + esc(fmtRpShort(rv.overlap_omzet)) + '</b><small>perkiraan, listing yang sama</small>'
-              : '<span class="myt-bench-muted">—</span>') + '</td></tr>';
-        }).join('') + '</tbody></table>';
-    }
-
-    var actions = summary.actions.length
-      ? '<ol class="myt-bench-list myt-bench-actions-list">' + summary.actions.map(function (a) {
-          return '<li><b>' + esc(a.title) + '</b><span>' + esc(a.text) + '</span></li>';
-        }).join('') + '</ol>'
-      : '<p class="myt-bench-empty">' + (loading ? 'Saran menyusul setelah pembanding masuk.' : 'Belum ada saran dari selisih harga, judul, atau peringkat.') + '</p>';
-
-    return '<div class="myt-bench-kpis">' + kpis + '</div>' +
-      (age ? '<p class="alat-hint myt-bench-age">' + esc(age) + '. Ini bukan tanggal toko bergabung di Shopee.</p>' : '') +
-      renderScore(model, loading) +
-      cards +
-      '<div class="myt-bench-split">' +
-        '<section class="myt-bench-card"><h3>Terjual terbanyak</h3><p class="alat-hint">Dari listing yang kami lihat, bukan lencana Shopee.</p>' + bestHtml + '</section>' +
-        '<section class="myt-bench-card"><h3>Performa kategori</h3>' + catBlock + '</section>' +
-      '</div>' +
-      '<section class="myt-bench-card"><h3>Kompetitor utama</h3>' +
-        '<p class="alat-hint">Toko yang muncul di sapuan kata kunci yang sama. Omzet hanya dari listing yang tumpang tindih, perkiraan.</p>' +
-        rivalTable + '</section>' +
-      '<section class="myt-bench-card"><h3>Yang bisa dikerjakan</h3>' + actions + '</section>';
+  function avgOf(rows, key) {
+    var sum = 0;
+    var n = 0;
+    (rows || []).forEach(function (row) {
+      var v = num(row[key]);
+      if (v == null) return;
+      sum += v;
+      n += 1;
+    });
+    return n ? sum / n : null;
   }
 
-  function renderProduk(ctx, model) {
-    var loading = !!ctx.loading;
-    var c = model.counts;
-    var gap = avgGap(model.rows);
-    var rated = (ctx.listings || []).filter(function (p) { return Number(p.rating) > 0; });
-    var rate = null;
-    if (rated.length) {
-      var rs = 0;
-      rated.forEach(function (p) { rs += Number(p.rating); });
-      rate = rs / rated.length;
-    }
-    var gapSub = gap == null ? '' : (gap > 0 ? 'kamu lebih mahal' : (gap < 0 ? 'kamu lebih murah' : 'di median'));
-    var kpis = kpi(fmtN((ctx.listings || []).length), 'Total produk', '') +
-      kpi(loading && !c.comparable ? '…' : fmtN(c.comparable), 'Punya pembanding', 'min. 5 kompetitor') +
-      kpi(loading && !c.comparable ? '…' : (c.comparable ? (c.unggul + ' / ' + c.comparable) : '—'), 'Lebih unggul', '') +
-      kpi(gap == null ? (loading ? '…' : '—') : ((gap > 0 ? '+' : '') + gap + '%'), 'Rata-rata harga vs median', gapSub) +
-      kpi(rate == null ? '—' : fmtRating(rate), 'Rata-rata rating', '');
+  function figuresFromListings(listings, keyword) {
+    var omzet = 0;
+    var nOm = 0;
+    var rating = 0;
+    var nR = 0;
+    var reviews = 0;
+    var price = 0;
+    var nP = 0;
+    var n = 0;
+    (listings || []).forEach(function (p) {
+      if (String(p.keyword || '') !== keyword) return;
+      n += 1;
+      var o = Number(p.nowcast_omset_monthly);
+      if (o > 0) { omzet += o; nOm += 1; }
+      var rt = Number(p.rating);
+      if (rt > 0) { rating += rt; nR += 1; }
+      reviews += Number(p.reviews) || 0;
+      var pr = Number(p.price);
+      if (pr > 0) { price += pr; nP += 1; }
+    });
+    return {
+      n_listings: n,
+      omzet: nOm ? omzet : null,
+      rating: nR ? rating / nR : null,
+      reviews: n ? reviews : null,
+      avg_price: nP ? price / nP : null,
+    };
+  }
 
-    var posSlices = [
-      { label: 'Lebih unggul', category: 'Lebih unggul', pct: 0, n: c.unggul },
-      { label: 'Setara', category: 'Setara', pct: 0, n: c.setara },
-      { label: 'Di bawah', category: 'Di bawah', pct: 0, n: c.bawah },
-    ].filter(function (s) { return s.n > 0; });
-    if (c.comparable) {
-      var used = 0;
-      posSlices.forEach(function (s, i) {
-        s.pct = i === posSlices.length - 1 ? 0 : Math.floor((100 * s.n) / c.comparable);
-        used += s.pct;
+  function assembleView(ctx) {
+    ctx = ctx || {};
+    var market = ctx.market && ctx.market.ok !== false ? ctx.market : {};
+    var keyword = String(ctx.keyword || market.keyword || '');
+    var hideItems = Object.create(null);
+    var hideShops = Object.create(null);
+    (ctx.hiddenItems || []).forEach(function (id) { hideItems[String(id)] = true; });
+    (ctx.hiddenShops || []).forEach(function (id) { hideShops[String(id)] = true; });
+    var mineRpc = market.mine || {};
+    var hiddenHere = [];
+    (ctx.listings || []).forEach(function (p) {
+      if (!hideItems[String(p.item_id)]) return;
+      if (String(p.keyword || '') !== keyword) return;
+      hiddenHere.push(p);
+    });
+    var you = {
+      n_listings: num(mineRpc.n_listings),
+      omzet: num(mineRpc.omzet),
+      rating: num(mineRpc.rating),
+      reviews: num(mineRpc.reviews),
+      avg_price: num(mineRpc.avg_price),
+    };
+    var hidOm = 0;
+    hiddenHere.forEach(function (p) {
+      var o = Number(p.nowcast_omset_monthly);
+      if (o > 0) hidOm += o;
+    });
+    if (hiddenHere.length && you.n_listings != null) {
+      you.n_listings = Math.max(0, you.n_listings - hiddenHere.length);
+    }
+    if (hidOm && you.omzet != null) {
+      you.omzet = you.omzet - hidOm;
+      if (!(you.omzet > 0)) you.omzet = null;
+    }
+    if (hiddenHere.length) {
+      var visible = (ctx.listings || []).filter(function (p) {
+        return !hideItems[String(p.item_id)];
       });
-      if (posSlices.length) posSlices[posSlices.length - 1].pct = 100 - used;
+      var fig = figuresFromListings(visible, keyword);
+      you.n_listings = fig.n_listings;
+      you.rating = fig.rating;
+      you.reviews = fig.reviews;
+      you.avg_price = fig.avg_price;
+      if (you.omzet == null) you.omzet = fig.omzet;
     }
-    var posColors = posSlices.map(function (s) { return POS_COLORS[s.label === 'Lebih unggul' ? 'unggul' : s.label === 'Setara' ? 'setara' : 'bawah']; });
-    var donut = '';
-    if (c.comparable) {
-      donut = '<div class="myt-bench-donut-row">' +
-        renderDonut(posSlices, posColors, String(c.comparable), 'dibanding') +
-        legend(posSlices, posColors) + '</div>';
-    } else if (loading) {
-      donut = '<p class="myt-bench-empty">Membandingkan posisi di kata kunci…</p>';
+
+    var shops = [];
+    (market.shops || []).forEach(function (s) {
+      if (!s || hideShops[String(s.shop_id)]) return;
+      shops.push(s);
+    });
+    var seenShop = Object.create(null);
+    shops.forEach(function (s) { seenShop[String(s.shop_id)] = true; });
+    var ownId = ctx.shop && ctx.shop.shop_id;
+    (ctx.addedShops || []).forEach(function (s) {
+      if (!s || seenShop[String(s.shop_id)] || hideShops[String(s.shop_id)]) return;
+      if (Number(s.shop_id) === Number(ownId)) return;
+      shops.push({
+        shop_id: s.shop_id,
+        store_name: s.store_name || 'Toko',
+        location: s.location || '',
+        n_listings: null,
+        omzet: null,
+        rating: null,
+        reviews: null,
+        avg_price: null,
+        rank: null,
+        added: true,
+        is_mine: false,
+      });
+    });
+
+    var recount = hiddenHere.length > 0 || (ctx.hiddenShops && ctx.hiddenShops.length);
+    var others = shops.filter(function (s) { return !s.is_mine; });
+    if (recount && you.omzet > 0) {
+      var ahead = 0;
+      others.forEach(function (s) {
+        if (num(s.omzet) > you.omzet) ahead += 1;
+      });
+      you.rank = ahead + 1;
     } else {
-      donut = '<p class="myt-bench-empty">Belum cukup listing dengan pembanding untuk diagram. Perlu minimal 5 kompetitor di kata kunci yang sama.</p>';
+      you.rank = you.omzet > 0 ? num(mineRpc.rank) : null;
     }
 
-    var temuan = [];
-    model.summary.warn.slice(0, 2).forEach(function (x) { temuan.push(x.text); });
-    model.summary.ok.slice(0, 1).forEach(function (x) { temuan.push(x.text); });
-    var temuanHtml = temuan.length
-      ? '<ul class="myt-bench-list">' + temuan.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>'
-      : '<p class="myt-bench-empty">' + (loading ? 'Temuan menyusul.' : 'Belum ada temuan harga, judul, atau peringkat.') + '</p>';
+    var averages = market.averages || {};
+    var avg = {
+      omzet: num(averages.omzet),
+      n_listings: num(averages.n_listings),
+      rating: num(averages.rating),
+      reviews: num(averages.reviews),
+      avg_price: num(averages.avg_price),
+    };
+    if (recount) {
+      avg = {
+        omzet: avgOf(others, 'omzet'),
+        n_listings: avgOf(others, 'n_listings'),
+        rating: avgOf(others, 'rating'),
+        reviews: avgOf(others, 'reviews'),
+        avg_price: avgOf(others, 'avg_price'),
+      };
+    }
 
-    var cats = categoriesOf(ctx.listings);
-    var filters = '<div class="myt-bench-filters">' +
-      '<input type="search" id="myt-bench-q" class="alat-input" placeholder="Cari produk…" value="' + esc(ui.q) + '">' +
-      '<select id="myt-bench-cat" class="alat-input">' +
-        '<option value="">Semua kategori</option>' +
-        cats.map(function (categ) {
-          return '<option value="' + esc(categ) + '"' + (categ === ui.category ? ' selected' : '') + '>' + esc(categ) + '</option>';
-        }).join('') +
-      '</select>' +
-      '<select id="myt-bench-sort" class="alat-input">' +
-        '<option value="posisi"' + (ui.sort === 'posisi' ? ' selected' : '') + '>Urutkan: posisi</option>' +
-        '<option value="harga"' + (ui.sort === 'harga' ? ' selected' : '') + '>Urutkan: harga</option>' +
-        '<option value="omzet"' + (ui.sort === 'omzet' ? ' selected' : '') + '>Urutkan: omzet</option>' +
-        '<option value="terjual"' + (ui.sort === 'terjual' ? ' selected' : '') + '>Urutkan: terjual</option>' +
-      '</select></div>';
+    var nField = recount
+      ? others.filter(function (s) { return num(s.omzet) > 0; }).length + (you.omzet > 0 ? 1 : 0)
+      : num(market.ranked_shops);
+    var pct = topPct(you.rank, nField);
+    var showRank = nField >= 5 && you.rank >= 1;
 
-    return '<div class="myt-bench-kpis">' + kpis + '</div>' +
-      '<div class="myt-bench-split">' +
-        '<section class="myt-bench-card"><h3>Posisi di kata kunci</h3>' +
-          '<p class="alat-hint">Bukan peringkat kategori Shopee. Dihitung dari sapuan terbaru kata kunci itu.</p>' + donut + '</section>' +
-        '<section class="myt-bench-card"><h3>Temuan utama</h3>' + temuanHtml + '</section>' +
+    function comp(kind, label, yours, avgValue, money) {
+      if (kind === 'omzet' && !(yours > 0)) return null;
+      if (yours == null || !(avgValue > 0)) return null;
+      return {
+        kind: kind,
+        label: label,
+        you: yours,
+        avg: avgValue,
+        money: !!money,
+        index: (yours / avgValue) * 100,
+      };
+    }
+    var comps = [
+      comp('omzet', 'Penjualan', you.omzet, avg.omzet, true),
+      comp('count', 'Jumlah produk', you.n_listings, avg.n_listings, false),
+      comp('rating', 'Penilaian', you.rating, avg.rating, false),
+      comp('reviews', 'Ulasan', you.reviews, avg.reviews, false),
+      comp('price', 'Harga', you.avg_price, avg.avg_price, true),
+    ].filter(Boolean);
+
+    var products = (ctx.listings || []).filter(function (p) {
+      return p && !hideItems[String(p.item_id)];
+    });
+    products.sort(function (a, b) {
+      var ak = String(a.keyword || '') === keyword ? 0 : 1;
+      var bk = String(b.keyword || '') === keyword ? 0 : 1;
+      if (ak !== bk) return ak - bk;
+      return (Number(b.nowcast_omset_monthly) || 0) - (Number(a.nowcast_omset_monthly) || 0);
+    });
+    var selected = null;
+    products.forEach(function (p) {
+      if (selected) return;
+      if (String(p.item_id) === String(ctx.selectedItemId)) selected = p;
+    });
+    if (!selected) {
+      products.forEach(function (p) {
+        if (selected) return;
+        if (String(p.keyword || '') === keyword) selected = p;
+      });
+    }
+    if (!selected) selected = products[0] || null;
+
+    var item = market.item || null;
+    if (item && selected && String(item.item_id) !== String(selected.item_id)) item = null;
+    var listingAvg = market.listing_avg || {};
+
+    return {
+      keyword: keyword,
+      peerCount: num(market.peer_count) || 0,
+      shopCount: num(market.shop_count) || shops.length,
+      listingCount: num(market.listing_count) || 0,
+      rankedListings: num(market.ranked_listings) || 0,
+      you: you,
+      manualShop: num(ctx.manual && ctx.manual.shop),
+      manualItems: (ctx.manual && ctx.manual.items) || {},
+      avg: avg,
+      shops: shops,
+      comps: comps,
+      showRank: showRank,
+      topPct: pct,
+      points: market.points || [],
+      weeks: market.weeks || [],
+      itemWeeks: market.item_weeks || [],
+      products: products,
+      selected: selected,
+      item: item,
+      listingAvg: listingAvg,
+      medianPrice: num(listingAvg.median_price),
+    };
+  }
+
+  function weekLabel(iso) {
+    var d = new Date(String(iso) + 'T00:00:00');
+    if (!Number.isFinite(d.getTime())) return '';
+    var months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    return d.getDate() + ' ' + months[d.getMonth()];
+  }
+
+  function moneyOrNum(v, money) {
+    if (v == null) return '—';
+    return money ? fmtRpShort(v) : (Math.abs(v) >= 10 && Math.abs(v) < 1000 && String(v).indexOf('.') >= 0
+      ? fmtRating(v)
+      : (money ? fmtRpShort(v) : (Number(v) > 20 ? fmtN(v) : fmtRating(v))));
+  }
+
+  function cellValue(comp) {
+    if (comp.kind === 'rating') return fmtRating(comp.you);
+    if (comp.kind === 'price' || comp.kind === 'omzet') return fmtRpShort(comp.you);
+    return fmtN(comp.you);
+  }
+
+  function cellAvg(comp) {
+    if (comp.kind === 'rating') return fmtRating(comp.avg);
+    if (comp.kind === 'price' || comp.kind === 'omzet') return fmtRpShort(comp.avg);
+    return fmtN(comp.avg);
+  }
+
+  function deltaHtml(you, avg, kind) {
+    if (you == null || !(avg > 0)) return '<span class="myt-bench-muted">—</span>';
+    var pct = Math.round(((you - avg) / avg) * 100);
+    var good = kind === 'price' ? pct < 0 : pct > 0;
+    var cls = pct === 0 ? 'is-flat' : (good ? 'is-up' : 'is-down');
+    var arrow = pct > 0 ? '↑' : (pct < 0 ? '↓' : '');
+    var n = (pct > 0 ? '+' : '') + pct + '%';
+    return '<span class="myt-bench-delta ' + cls + '">' + arrow + ' ' + n + '</span>';
+  }
+
+  function manualForm(itemId) {
+    return '<form class="myt-manual" data-manual-item="' + Number(itemId || 0) + '">' +
+      '<input class="alat-input" type="number" min="0" step="1" inputmode="numeric" placeholder="Omzet 30 hari, Rp" aria-label="Omzet 30 hari">' +
+      '<button type="submit" class="btn-primary">Simpan</button></form>';
+  }
+
+  function omzetBits(value, manual, itemId) {
+    if (value > 0) return { html: '<b>' + esc(fmtRpShort(value)) + '</b><small>perkiraan</small>', filled: true };
+    if (manual > 0) return { html: '<b>' + esc(fmtRpShort(manual)) + '</b><small>kamu isi</small>', filled: false };
+    return { html: manualForm(itemId), filled: false };
+  }
+
+  function spiderSvg(comps) {
+    var axes = comps.filter(function (c) { return c.index > 0; });
+    if (axes.length < 3) return '';
+    var max = 150;
+    axes.forEach(function (a) { if (a.index > max) max = a.index; });
+    var cx = 140;
+    var cy = 118;
+    var R = 72;
+    function pt(i, index) {
+      var ang = (-Math.PI / 2) + (i * 2 * Math.PI / axes.length);
+      var rr = R * Math.max(0, index) / max;
+      return [cx + Math.cos(ang) * rr, cy + Math.sin(ang) * rr];
+    }
+    function poly(indexOf) {
+      return axes.map(function (a, i) {
+        var p = pt(i, indexOf(a));
+        return p[0].toFixed(1) + ',' + p[1].toFixed(1);
+      }).join(' ');
+    }
+    var spokes = axes.map(function (a, i) {
+      var p = pt(i, max);
+      return '<line x1="' + cx + '" y1="' + cy + '" x2="' + p[0].toFixed(1) + '" y2="' + p[1].toFixed(1) + '" stroke="#E8E8E8"/>';
+    }).join('');
+    var labels = axes.map(function (a, i) {
+      var p = pt(i, max * 1.22);
+      return '<text x="' + p[0].toFixed(1) + '" y="' + p[1].toFixed(1) + '" text-anchor="middle" font-size="10" fill="#1A1A1A">' +
+        esc(a.label) + ' ' + Math.round(a.index) + '</text>';
+    }).join('');
+    return '<svg class="myt-chart" viewBox="0 0 280 230" role="img" aria-label="Indeks toko dibanding rata-rata">' +
+      spokes +
+      '<polygon points="' + poly(function () { return 100; }) + '" fill="#E8E0D4" fill-opacity="0.45" stroke="#C8C2B4"/>' +
+      '<polygon points="' + poly(function (a) { return a.index; }) + '" fill="#B5202A" fill-opacity="0.18" stroke="#B5202A" stroke-width="2"/>' +
+      labels + '</svg>';
+  }
+
+  function scatterSvg(points, xOf, yOf, mine) {
+    var pts = (points || []).filter(function (p) { return xOf(p) > 0 && yOf(p) > 0; });
+    if (pts.length < 2) return '<p class="myt-bench-empty">Belum cukup titik.</p>';
+    var minX = Infinity;
+    var maxX = -Infinity;
+    var maxY = 0;
+    pts.forEach(function (p) {
+      var x = xOf(p);
+      var y = yOf(p);
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    });
+    if (!(maxX > minX)) maxX = minX + 1;
+    if (!(maxY > 0)) return '<p class="myt-bench-empty">Belum cukup titik.</p>';
+    function X(v) { return 28 + ((v - minX) / (maxX - minX)) * 250; }
+    function Y(v) { return 156 - (v / maxY) * 128; }
+    var dots = pts.map(function (p) {
+      var on = mine(p);
+      return '<circle cx="' + X(xOf(p)).toFixed(1) + '" cy="' + Y(yOf(p)).toFixed(1) +
+        '" r="' + (on ? 6 : 4) + '" fill="' + (on ? '#B5202A' : '#C8C2B4') + '"/>';
+    }).join('');
+    return '<svg class="myt-chart" viewBox="0 0 300 180" role="img" aria-label="Sebaran kompetitor">' + dots + '</svg>';
+  }
+
+  function lineSvg(series) {
+    var usable = (series || []).filter(function (s) { return s.weeks && s.weeks.length >= 2; });
+    if (!usable.length) return '<p class="myt-bench-empty">Belum ada dua sapuan terukur.</p>';
+    var weeks = [];
+    var seen = Object.create(null);
+    usable.forEach(function (s) {
+      s.weeks.forEach(function (w) {
+        var key = String(w.week_start);
+        if (seen[key]) return;
+        seen[key] = true;
+        weeks.push(key);
+      });
+    });
+    weeks.sort();
+    var maxY = 0;
+    usable.forEach(function (s) {
+      s.weeks.forEach(function (w) { if (Number(w.omzet) > maxY) maxY = Number(w.omzet); });
+    });
+    if (!(maxY > 0)) return '<p class="myt-bench-empty">Belum ada dua sapuan terukur.</p>';
+    function X(iso) {
+      var i = weeks.indexOf(String(iso));
+      return 36 + (weeks.length === 1 ? 0 : (i / (weeks.length - 1)) * 240);
+    }
+    function Y(v) { return 148 - (Number(v) / maxY) * 112; }
+    var colors = ['#B5202A', '#1A1A1A', '#C9974B', '#8A8A8A', '#E38B86', '#8E191F'];
+    var paths = usable.map(function (s, si) {
+      var color = s.mine ? '#B5202A' : colors[(si + 1) % colors.length];
+      var sorted = s.weeks.slice().sort(function (a, b) {
+        return String(a.week_start) < String(b.week_start) ? -1 : 1;
+      });
+      var d = '';
+      sorted.forEach(function (w, i) {
+        d += (i ? ' L' : 'M') + X(w.week_start).toFixed(1) + ' ' + Y(w.omzet).toFixed(1);
+      });
+      var measured = sorted.every(function (w) { return w.measured === true; });
+      return '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="2"' +
+        (measured ? '' : ' stroke-dasharray="4 3"') + '/>';
+    }).join('');
+    var labels = weeks.map(function (iso) {
+      return '<text x="' + X(iso).toFixed(1) + '" y="172" text-anchor="middle" font-size="9" fill="#8A8A8A">' +
+        esc(weekLabel(iso)) + '</text>';
+    }).join('');
+    return '<svg class="myt-chart" viewBox="0 0 300 184" role="img" aria-label="Tren penjualan mingguan">' +
+      paths + labels + '</svg>';
+  }
+
+  function barsSvg(points, itemId) {
+    var rows = (points || []).filter(function (p) { return num(p.nowcast) > 0; });
+    rows.sort(function (a, b) { return num(b.nowcast) - num(a.nowcast); });
+    var mine = null;
+    rows.forEach(function (p) {
+      if (String(p.item_id) === String(itemId)) mine = p;
+    });
+    var shown = rows.slice(0, 36);
+    if (mine && shown.indexOf(mine) < 0) {
+      shown = shown.slice(0, 35);
+      shown.push(mine);
+    }
+    if (!shown.length) return '<p class="myt-bench-empty">Belum ada perkiraan pembanding.</p>';
+    var max = 0;
+    shown.forEach(function (p) { if (num(p.nowcast) > max) max = num(p.nowcast); });
+    var bars = shown.map(function (p, i) {
+      var h = Math.max(4, (num(p.nowcast) / max) * 86);
+      var on = String(p.item_id) === String(itemId);
+      var x = 8 + i * (280 / shown.length);
+      var w = Math.max(3, (280 / shown.length) - 2);
+      return '<rect x="' + x.toFixed(1) + '" y="' + (110 - h).toFixed(1) + '" width="' + w.toFixed(1) +
+        '" height="' + h.toFixed(1) + '" rx="2" fill="' + (on ? '#B5202A' : '#E7E2DA') + '"/>';
+    }).join('');
+    return '<svg class="myt-chart" viewBox="0 0 300 120" role="img" aria-label="Peringkat produk di kata kunci ini">' +
+      bars + '</svg>';
+  }
+
+  function weekGroups(weeks) {
+    var map = Object.create(null);
+    (weeks || []).forEach(function (w) {
+      var id = String(w.shop_id);
+      if (!map[id]) map[id] = [];
+      map[id].push(w);
+    });
+    return map;
+  }
+
+  function shopSeries(view) {
+    var groups = weekGroups(view.weeks);
+    var top = [];
+    view.shops.forEach(function (s) {
+      if (s.rank >= 1 && s.rank <= 5) top.push(s);
+    });
+    var mine = null;
+    view.shops.forEach(function (s) { if (s.is_mine) mine = s; });
+    if (mine && !(mine.rank >= 1 && mine.rank <= 5)) top.push(mine);
+    return top.map(function (s) {
+      return {
+        name: s.store_name,
+        mine: !!s.is_mine,
+        weeks: groups[String(s.shop_id)] || [],
+      };
+    }).filter(function (s) { return s.weeks.length >= 2; });
+  }
+
+  function insightLines(view) {
+    var lines = [];
+    var others = view.shops.filter(function (s) { return !s.is_mine && num(s.omzet) > 0; });
+    others.sort(function (a, b) { return num(b.omzet) - num(a.omzet); });
+    if (others[0]) {
+      lines.push(others[0].store_name + ' · ' + fmtRpShort(others[0].omzet) + ' perkiraan · ' + fmtN(others[0].n_listings) + ' produk');
+    }
+    var worst = null;
+    view.comps.forEach(function (c) {
+      var gap = c.kind === 'price' ? c.index - 100 : 100 - c.index;
+      if (gap > 0 && (!worst || gap > worst.gap)) worst = { gap: gap, comp: c };
+    });
+    if (worst) {
+      var dir = worst.comp.index < 100 ? 'di bawah' : 'di atas';
+      lines.push(worst.comp.label + ' kamu ' + Math.abs(Math.round(worst.comp.index - 100)) + '% ' + dir + ' rata-rata.');
+    }
+    var price = null;
+    view.comps.forEach(function (c) { if (c.kind === 'price') price = c; });
+    if (price && price.index > 105) {
+      lines.push('Harga rata-rata kamu ' + Math.round(price.index - 100) + '% di atas rata-rata di kata kunci ini.');
+    } else {
+      var count = null;
+      view.comps.forEach(function (c) { if (c.kind === 'count') count = c; });
+      if (count && count.index < 80) {
+        lines.push('Produk yang terlihat di kata kunci ini lebih sedikit dari rata-rata.');
+      }
+    }
+    return lines.slice(0, 3);
+  }
+
+  function topTable(view) {
+    var rows = [];
+    view.shops.forEach(function (s) {
+      if (s.rank >= 1 && s.rank <= 5) rows.push(s);
+    });
+    rows.sort(function (a, b) { return a.rank - b.rank; });
+    var mine = null;
+    view.shops.forEach(function (s) { if (s.is_mine) mine = s; });
+    if (mine && !(mine.rank >= 1 && mine.rank <= 5)) rows.push(mine);
+    if (!rows.length) return '<p class="myt-bench-empty">Belum ada toko dengan perkiraan di kata kunci ini.</p>';
+    return '<table class="myt-bench-table"><thead><tr><th>#</th><th>Toko</th><th>Penjualan</th><th>Produk</th><th>Nilai</th></tr></thead><tbody>' +
+      rows.map(function (s) {
+        return '<tr class="' + (s.is_mine ? 'is-mine' : '') + '">' +
+          '<td data-label="#">' + (s.rank || '—') + '</td>' +
+          '<td data-label="Toko"><b>' + esc(s.store_name || 'Toko') + '</b>' + (s.is_mine ? '<small>Kamu</small>' : '') + '</td>' +
+          '<td data-label="Penjualan">' + (num(s.omzet) > 0 ? esc(fmtRpShort(s.omzet)) + '<small>perkiraan</small>' : '—') + '</td>' +
+          '<td data-label="Produk">' + (s.n_listings != null ? fmtN(s.n_listings) : '—') + '</td>' +
+          '<td data-label="Nilai">' + fmtRating(s.rating) + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+
+  function rivalDelta(s, you) {
+    var yours = you && you.omzet;
+    var theirs = num(s.omzet);
+    if (!(yours > 0) || !(theirs > 0)) return '<span class="myt-bench-muted">—</span>';
+    var pct = Math.round(((theirs - yours) / yours) * 100);
+    var cls = pct > 0 ? 'is-up' : (pct < 0 ? 'is-down' : 'is-flat');
+    return '<span class="myt-bench-delta ' + cls + '">' + (pct > 0 ? '+' : '') + pct + '%</span>';
+  }
+
+  function rivalRows(view, q) {
+    q = String(q || '').trim().toLowerCase();
+    var rows = view.shops.filter(function (s) {
+      if (!q) return true;
+      return String(s.store_name || '').toLowerCase().indexOf(q) >= 0;
+    });
+    if (!rows.length) return '<tr><td colspan="7">Tidak ada toko dengan nama itu.</td></tr>';
+    return rows.map(function (s) {
+      var mine = !!s.is_mine;
+      return '<tr class="' + (mine ? 'is-mine' : '') + '">' +
+        '<td data-label="#">' + (s.rank || '—') + '</td>' +
+        '<td data-label="Toko"><b>' + esc(s.store_name || 'Toko') + '</b>' +
+          (s.location ? '<small>' + esc(s.location) + '</small>' : '') +
+          (mine ? '<small>Kamu</small>' : '') + '</td>' +
+        '<td data-label="Penjualan">' + (num(s.omzet) > 0 ? esc(fmtRpShort(s.omzet)) + '<small>perkiraan</small>' : '—') + '</td>' +
+        '<td data-label="Produk">' + (s.n_listings != null ? fmtN(s.n_listings) : '—') + '</td>' +
+        '<td data-label="Nilai">' + fmtRating(s.rating) + '</td>' +
+        '<td data-label="Harga">' + (num(s.avg_price) > 0 ? esc(fmtRp(s.avg_price)) : '—') + '</td>' +
+        '<td data-label="">' + (mine ? '—' : rivalDelta(s, view.you)) +
+          (mine ? '' : ' <button type="button" class="btn-ghost myt-hide" data-hide-shop="' + Number(s.shop_id) + '">Sembunyikan</button>') +
+        '</td></tr>';
+    }).join('');
+  }
+
+  function renderRingkasan(ctx, view) {
+    var youBits = omzetBits(view.you.omzet, view.manualShop, 0);
+    var posisi = view.showRank
+      ? '<b class="myt-lay-rank">#' + view.you.rank + '</b><span>dari ' + fmtN(view.shopCount) + ' toko</span>'
+      : '<b class="myt-lay-rank">—</b><span>' + (ctx.marketLoading ? 'Menghitung…' : 'Belum cukup toko') + '</span>';
+    var top3 = view.shops.filter(function (s) { return s.rank >= 1 && s.rank <= 3; })
+      .sort(function (a, b) { return a.rank - b.rank; });
+    var top3Html = top3.length
+      ? '<ol class="myt-lay-ol">' + top3.map(function (s) {
+        return '<li class="' + (s.is_mine ? 'is-mine' : '') + '"><span>' + esc(s.store_name || 'Toko') +
+          (s.is_mine ? ' (Kamu)' : '') + '</span><b>' + esc(fmtRpShort(s.omzet)) + '</b></li>';
+      }).join('') + '</ol>'
+      : '<p class="myt-bench-empty">Belum ada perkiraan 30 hari.</p>';
+    var pct = view.showRank && view.topPct != null
+      ? '<div class="myt-lay-pct"><b>Top ' + view.topPct + '%</b><span>di kata kunci ini</span></div>'
+      : '';
+    var cmpRows = view.comps.map(function (c) {
+      var youCell = c.kind === 'omzet' ? youBits.html : cellValue(c);
+      return '<tr><td data-label="Metrik">' + esc(c.label) + '</td>' +
+        '<td data-label="Toko kamu">' + youCell + '</td>' +
+        '<td data-label="Rata-rata">' + cellAvg(c) + '</td>' +
+        '<td data-label="Perbedaan">' + deltaHtml(c.you, c.avg, c.kind) + '</td></tr>';
+    }).join('');
+    var penjualanRow = '';
+    if (!(view.you.omzet > 0)) {
+      penjualanRow = '<tr><td data-label="Metrik">Penjualan</td><td data-label="Toko kamu">' + youBits.html +
+        '</td><td data-label="Rata-rata">—</td><td data-label=""></td></tr>';
+    }
+    var cmp = (view.comps.length || penjualanRow)
+      ? '<table class="myt-bench-table"><thead><tr><th>Metrik</th><th>Toko kamu</th><th>Rata-rata</th><th></th></tr></thead><tbody>' +
+        penjualanRow + cmpRows + '</tbody></table>'
+      : '<p class="myt-bench-empty">Belum ada rata-rata di kata kunci ini.</p>';
+    var spider = spiderSvg(view.comps);
+    var rows = [];
+    if (ctx.benchmark) {
+      rows = buildRows(ctx.listings || [], ctx.benchmark.markets || []).filter(function (r) {
+        return String(r.listing.keyword || '') === view.keyword;
+      });
+    }
+    var summary = summarizeShop(rows);
+    function side(title, items, tone) {
+      var body = items.length
+        ? '<ul class="myt-bench-list">' + items.slice(0, 3).map(function (item) {
+          return '<li>' + esc(item.text) + '</li>';
+        }).join('') + '</ul>'
+        : '<p class="myt-bench-empty">Belum ada catatan.</p>';
+      return '<section class="myt-bench-card myt-lay-' + tone + '"><h3>' + title + '</h3>' + body + '</section>';
+    }
+    return '<p class="myt-lay-kw">di kata kunci ini · ' + esc(view.keyword || '—') + '</p>' +
+      '<div class="myt-lay-top">' +
+        '<section class="myt-bench-card myt-lay-posisi"><h3>Posisi toko</h3>' + posisi + '</section>' +
+        '<section class="myt-bench-card"><h3>Peringkat penjualan</h3>' +
+          '<div class="myt-lay-rankrow">' + top3Html + pct + '</div></section>' +
       '</div>' +
-      filters +
-      '<div id="myt-bench-results"></div>';
+      '<div class="myt-bench-split">' +
+        '<section class="myt-bench-card"><h3>Perbandingan</h3>' + cmp + '</section>' +
+        '<section class="myt-bench-card"><h3>Indeks</h3>' +
+          (spider || '<p class="myt-bench-empty">Perlu minimal 3 metrik.</p>') +
+          '<p class="myt-lay-legend"><i class="is-you"></i> Kamu <i class="is-avg"></i> Rata-rata = 100</p></section>' +
+      '</div>' +
+      '<div class="myt-bench-split">' +
+        '<section class="myt-bench-card"><h3>Peringkat kompetitor</h3>' + topTable(view) + '</section>' +
+        '<section class="myt-bench-card"><h3>Tren penjualan</h3>' + lineSvg(shopSeries(view)) + '</section>' +
+      '</div>' +
+      '<div class="myt-bench-split">' +
+        side('Sudah jalan', summary.ok, 'ok') +
+        side('Bisa diubah', summary.warn, 'warn') +
+      '</div>';
   }
 
-  function renderProductTable(ctx, model) {
-    var tracked = trackedMap(ctx.trackedIds);
-    var rows = sortRows(model.rows);
-    if (!rows.length) {
-      return '<p class="myt-bench-empty">Tidak ada produk yang cocok dengan saringan ini.</p>';
-    }
-    return '<table class="myt-bench-table"><thead><tr>' +
-      '<th>Produk</th><th>Posisi</th><th>Harga vs median</th><th>Rating</th><th>Omzet</th><th></th>' +
-      '</tr></thead><tbody>' +
-      rows.map(function (row) {
-        var p = row.listing;
-        var median = row.market ? row.market.median_price : null;
-        return '<tr class="myt-bench-row' + (row.index === ctx.selectedIdx ? ' is-selected' : '') + '">' +
-          '<td data-label="Produk">' + productCell(row, tracked) + '</td>' +
-          '<td data-label="Posisi"><span class="myt-bench-pos is-' + row.position + '">' + esc(positionLabel(row)) + '</span>' +
-            rankLine(row) + '</td>' +
-          '<td data-label="Harga vs median"><b>' + fmtRp(p.price) + '</b>' + gapHtml(row) +
-            (median != null && row.gap != null ? '<small>median ' + fmtRp(median) + '</small>' : '') + '</td>' +
-          '<td data-label="Rating">' + fmtRating(p.rating) + '</td>' +
-          '<td data-label="Omzet">' + omzetCell(p) + '</td>' +
-          '<td data-label="">' + detailBtn(row.index) + '</td></tr>';
-      }).join('') + '</tbody></table>' +
-      '<p class="alat-hint">' + rows.length + ' produk · ' +
-      (ctx.trackedIds ? ctx.trackedIds.length : 0) + ' / ' + (ctx.trackMax || 30) +
-      ' dipantau. Omzet kosong berarti belum ada perkiraan, bukan nol.</p>';
+  function renderKompetitor(ctx, view) {
+    var lines = insightLines(view);
+    var insights = lines.length
+      ? '<ul class="myt-bench-list">' + lines.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>'
+      : '<p class="myt-bench-empty">Belum ada selisih yang bisa dihitung.</p>';
+    var mineId = ctx.shop && ctx.shop.shop_id;
+    return '<div class="myt-bench-split">' +
+        '<section class="myt-bench-card"><h3>Peta kompetitor</h3>' +
+          scatterSvg(view.shops, function (s) { return num(s.n_listings) || 0; }, function (s) { return num(s.omzet) || 0; }, function (s) {
+            return !!s.is_mine || Number(s.shop_id) === Number(mineId);
+          }) +
+          '<p class="myt-lay-legend">Produk terlihat → penjualan 30 hari</p></section>' +
+        '<section class="myt-bench-card"><h3>Intisari</h3>' + insights + '</section>' +
+      '</div>' +
+      '<section class="myt-bench-card">' +
+        '<div class="myt-lay-tools">' +
+          '<input type="search" id="myt-rival-q" class="alat-input" placeholder="Cari kompetitor" value="' + esc(ui.q || '') + '">' +
+          '<input type="search" id="myt-add-q" class="alat-input" placeholder="Tambah toko" autocomplete="off">' +
+          '<button type="button" class="btn-primary" id="myt-add-go">Tambah</button>' +
+        '</div>' +
+        '<div id="myt-add-picker" class="alat-picker" hidden></div>' +
+        '<table class="myt-bench-table"><thead><tr><th>#</th><th>Toko</th><th>Penjualan</th><th>Produk</th><th>Nilai</th><th>Harga</th><th>Selisih vs kamu</th></tr></thead>' +
+        '<tbody id="myt-rival-body">' + rivalRows(view, ui.q) + '</tbody></table>' +
+      '</section>';
   }
 
-  function renderKompetitor(ctx, model) {
-    var loading = !!ctx.loading;
-    var c = model.counts;
-    var kpis = kpi(loading && !model.rivals.length ? '…' : fmtN(model.rivals.length), 'Kompetitor utama', 'di kata kunci kamu') +
-      kpi(loading && !model.marketCount ? '…' : fmtN(model.marketCount), 'Kata kunci terbanding', 'min. 5 kompetitor') +
-      kpi(loading && !c.comparable ? '…' : fmtN(c.unggul), 'Produk lebih unggul', '') +
-      kpi(loading && !c.comparable ? '…' : fmtN(c.bawah), 'Produk di bawah', '');
-
-    var rivals = model.rivals;
-    var table;
-    if (loading && !rivals.length) {
-      table = '<p class="myt-bench-empty">Membandingkan toko di kata kunci yang sama…</p>';
-    } else if (!rivals.length) {
-      table = '<p class="myt-bench-empty">Belum ada toko lain di kata kunci yang sama pada sapuan terbaru.</p>';
-    } else {
-      table = '<table class="myt-bench-table"><thead><tr>' +
-        '<th>Toko</th><th>Kata kunci sama</th><th>Listing di sapuan</th><th>Harga vs kamu</th><th>Rating</th><th>Omzet</th>' +
-        '</tr></thead><tbody>' +
-        rivals.map(function (rv) {
-          var feat = rv.featured || {};
-          return '<tr><td data-label="Toko"><b>' + esc(rv.store_name || 'Toko') + '</b>' +
-            (rv.location ? '<small>' + esc(rv.location) + '</small>' : '') + '</td>' +
-            '<td data-label="Kata kunci sama">' + fmtN(rv.overlap) + '</td>' +
-            '<td data-label="Listing di sapuan">' + (rv.n_listings != null ? fmtN(rv.n_listings) : '—') +
-              '<small>yang kami lihat, bukan katalog penuh</small></td>' +
-            '<td data-label="Harga vs kamu">' + rivalDeltaHtml(priceVsYou(rv, model.rows)) + '</td>' +
-            '<td data-label="Rating">' + fmtRating(feat.rating) + '</td>' +
-            '<td data-label="Omzet">' + (Number(rv.overlap_omzet) > 0
-              ? '<b>' + esc(fmtRpShort(rv.overlap_omzet)) + '</b><small>perkiraan, listing yang sama</small>'
-              : '<span class="myt-bench-muted">—</span>') + '</td></tr>';
-        }).join('') + '</tbody></table>';
+  function productComps(view) {
+    var item = view.item;
+    var listing = view.selected;
+    var avg = view.listingAvg || {};
+    var youOm = item ? num(item.nowcast) : (listing ? num(listing.nowcast_omset_monthly) : null);
+    var youPrice = item ? num(item.price) : (listing ? num(listing.price) : null);
+    var youRating = item ? num(item.rating) : (listing ? num(listing.rating) : null);
+    var youReviews = item ? num(item.reviews) : (listing ? num(listing.reviews) : null);
+    function row(kind, label, yours, avgValue, money) {
+      if (kind === 'omzet' && !(yours > 0)) return null;
+      if (yours == null || !(Number(avgValue) > 0)) return null;
+      return { kind: kind, label: label, you: yours, avg: Number(avgValue), money: !!money, index: (yours / Number(avgValue)) * 100 };
     }
+    return {
+      omzet: youOm,
+      rows: [
+        row('omzet', 'Penjualan', youOm, avg.omzet, true),
+        row('price', 'Harga', youPrice, avg.price, true),
+        row('rating', 'Penilaian', youRating, avg.rating, false),
+        row('reviews', 'Ulasan', youReviews, avg.reviews, false),
+      ].filter(Boolean),
+    };
+  }
 
-    var patterns = model.patterns;
-    var pola = '';
-    if (patterns.length) {
-      pola = '<div class="myt-bench-cols">' + patterns.map(function (p) {
-        return '<div class="myt-bench-pattern"><h3>' + esc(p.title) + '</h3><p>' + esc(p.text) + '</p></div>';
-      }).join('') + '</div>';
-    } else if (!loading) {
-      pola = '<p class="myt-bench-empty">Belum ada pola harga atau ulasan yang cukup untuk ditampilkan. Video, voucher, dan jadwal promo tidak kami kumpulkan.</p>';
+  function renderProduk(ctx, view) {
+    var listing = view.selected;
+    var opts = view.products.map(function (p) {
+      var on = listing && String(p.item_id) === String(listing.item_id);
+      return '<option value="' + Number(p.item_id) + '"' + (on ? ' selected' : '') + '>' +
+        esc(clip(p.product_name)) + '</option>';
+    }).join('');
+    var perf = productComps(view);
+    var manual = listing ? num(view.manualItems[String(listing.item_id)]) : null;
+    var bits = omzetBits(perf.omzet, manual, listing ? listing.item_id : 0);
+    var perfRows = perf.rows.map(function (c) {
+      var youCell = c.kind === 'omzet' ? bits.html : (c.kind === 'rating' ? fmtRating(c.you) : (c.kind === 'price' ? fmtRp(c.you) : fmtN(c.you)));
+      var avgCell = c.kind === 'rating' ? fmtRating(c.avg) : (c.kind === 'price' || c.kind === 'omzet' ? fmtRpShort(c.avg) : fmtN(c.avg));
+      return '<tr><td data-label="Metrik">' + esc(c.label) + '</td><td data-label="Produk kamu">' + youCell +
+        '</td><td data-label="Rata-rata">' + avgCell + '</td><td data-label="">' + deltaHtml(c.you, c.avg, c.kind) + '</td></tr>';
+    }).join('');
+    var rankN = view.rankedListings;
+    var rank = view.item ? num(view.item.rank) : null;
+    var rankBlock = rank >= 1
+      ? '<b class="myt-lay-rank">#' + rank + '</b><span>dari ' + fmtN(rankN) + ' produk</span>' + barsSvg(view.points, listing && listing.item_id)
+      : '<b class="myt-lay-rank">—</b>';
+    var itemWeeks = (view.itemWeeks || []).map(function (w) {
+      return { week_start: w.week_start, omzet: w.omzet, measured: w.measured };
+    });
+    var peers = (view.points || []).slice().sort(function (a, b) {
+      return (num(a.sold_rank) || 9999) - (num(b.sold_rank) || 9999);
+    }).slice(0, 8);
+    if (listing && !peers.some(function (p) { return String(p.item_id) === String(listing.item_id); }) && view.item) {
+      peers.push(view.item);
     }
-
-    var cards = rivals.filter(function (rv) { return rv.featured && rv.featured.product_name; });
-    var featured = '';
-    if (cards.length) {
-      featured = '<div class="myt-bench-fcards">' + cards.map(function (rv) {
-        var f = rv.featured;
-        return '<article class="myt-bench-fcard">' +
-          imgHtml(f.image_url, 'myt-bench-fimg') +
-          '<small>' + esc(rv.store_name || '') + '</small>' +
-          '<b>' + esc(clip(f.product_name)) + '</b>' +
-          '<span class="myt-bench-fprice">' + fmtRp(f.price) + '</span>' +
-          '<span>' + fmtN(f.total_sold) + ' terjual kumulatif' +
-            (Number(f.rating) > 0 ? ' · ' + fmtRating(f.rating) : '') + '</span>' +
-          (Number(f.nowcast_omset_monthly) > 0
-            ? '<span>' + esc(fmtRpShort(f.nowcast_omset_monthly)) + ' perkiraan</span>'
-            : '') +
-          '</article>';
-      }).join('') + '</div>';
+    var peerTable = peers.length
+      ? '<table class="myt-bench-table"><thead><tr><th>Produk</th><th>Penjualan</th><th>Harga</th><th>Nilai</th></tr></thead><tbody>' +
+        peers.map(function (p) {
+          var mine = listing && String(p.item_id) === String(listing.item_id);
+          return '<tr class="' + (mine ? 'is-mine' : '') + '"><td data-label="Produk"><b>' + esc(clip(p.product_name)) + '</b>' +
+            (mine ? '<small>Kamu</small>' : '') + '</td>' +
+            '<td data-label="Penjualan">' + (num(p.nowcast) > 0 ? esc(fmtRpShort(p.nowcast)) + '<small>perkiraan</small>' : '—') + '</td>' +
+            '<td data-label="Harga">' + (num(p.price) > 0 ? esc(fmtRp(p.price)) : '—') + '</td>' +
+            '<td data-label="Nilai">' + fmtRating(p.rating) + '</td></tr>';
+        }).join('') + '</tbody></table>'
+      : '<p class="myt-bench-empty">Belum ada produk pembanding.</p>';
+    var notes = [];
+    if (listing) {
+      notes = listingNotes(listing, {
+        peer_count: view.peerCount,
+        median_price: view.medianPrice,
+        total_sellers: view.listingCount,
+        mine: [{ item_id: listing.item_id, rank: view.item && view.item.sold_rank }],
+      });
     }
-
-    return '<div class="myt-bench-kpis">' + kpis + '</div>' +
-      '<section class="myt-bench-card"><h3>Toko di kata kunci yang sama</h3>' +
-        '<p class="alat-hint">Bukan peringkat kategori. Urutan dari berapa kata kunci kamu yang juga mereka munculi, lalu listing terlaris di irisan itu.</p>' +
-        table + '</section>' +
-      (pola ? '<section class="myt-bench-card"><h3>Pola yang terlihat</h3>' + pola + '</section>' : '') +
-      (featured ? '<section class="myt-bench-card"><h3>Listing kompetitor di irisan yang sama</h3>' + featured + '</section>' : '');
+    var recs = notes.slice(0, 3).map(function (note) {
+      var text = note.kind === 'judul'
+        ? 'Judul belum memuat ' + (note.missing || []).slice(0, 2).join(', ') + '.'
+        : noteText(note.kind, [note]);
+      return '<article class="myt-lay-rec ' + (note.tone === 'warn' ? 'is-warn' : 'is-ok') + '"><b>' +
+        esc(note.tone === 'warn' ? 'Bisa diubah' : 'Sudah jalan') + '</b><p>' + esc(text) + '</p></article>';
+    }).join('');
+    return '<div class="myt-lay-tools">' +
+        '<select id="myt-product" class="alat-input"' + (opts ? '' : ' disabled') + '>' +
+          (opts || '<option>Belum ada produk</option>') + '</select>' +
+        (listing ? '<button type="button" class="btn-ghost" id="myt-pantau">Pantau</button>' : '') +
+      '</div>' +
+      '<div class="myt-bench-split">' +
+        '<section class="myt-bench-card"><h3>Performa vs kompetitor</h3>' +
+          (perfRows ? '<table class="myt-bench-table"><tbody>' + perfRows + '</tbody></table>' : '<p class="myt-bench-empty">Pilih produk yang punya pembanding.</p>') +
+          (perf.rows.some(function (c) { return c.kind === 'omzet'; }) ? '' : bits.html) +
+        '</section>' +
+        '<section class="myt-bench-card myt-lay-posisi"><h3>Peringkat produk</h3>' + rankBlock + '</section>' +
+      '</div>' +
+      '<div class="myt-bench-split">' +
+        '<section class="myt-bench-card"><h3>Tren penjualan</h3>' +
+          lineSvg([{ mine: true, weeks: itemWeeks }]) + '</section>' +
+        '<section class="myt-bench-card"><h3>Peta harga</h3>' +
+          scatterSvg(view.points, function (p) { return num(p.price) || 0; }, function (p) { return num(p.nowcast) || 0; }, function (p) {
+            return listing && String(p.item_id) === String(listing.item_id);
+          }) + '</section>' +
+      '</div>' +
+      '<section class="myt-bench-card"><h3>Produk kompetitor</h3>' + peerTable + '</section>' +
+      (recs ? '<div class="myt-lay-recs">' + recs + '</div>' : '');
   }
 
   function alertsHtml(alerts) {
@@ -914,7 +1393,7 @@
     var weekly = alerts.cadence === 'weekly';
     return '<section class="alat-card">' +
       '<h3 class="alat-h3" style="margin-top:0">Ganti toko</h3>' +
-      '<p class="alat-lead">Hanya 1 toko. Mengganti URL menggantikan toko yang sekarang — pantauan produk toko lama dihapus.</p>' +
+      '<p class="alat-lead">Hanya 1 toko. Mengganti URL menggantikan toko yang sekarang.</p>' +
       '<label class="alat-label" for="myt-swap-q">Link / nama toko baru</label>' +
       '<div class="alat-row">' +
         '<input type="text" id="myt-swap-q" class="alat-input" placeholder="shopee.co.id/shop/… atau nama toko" autocomplete="off">' +
@@ -925,7 +1404,6 @@
     '</section>' +
     '<section class="alat-card myt-alerts">' +
       '<h3 class="alat-h3" style="margin-top:0">Kabar kompetitor</h3>' +
-      '<p class="alat-lead">Opsional. Kabar mengikuti perubahan harga dan penjualan di produk yang kamu pantau.</p>' +
       '<div class="myt-alert-channels">' +
         '<label class="myt-alert-card' + (email ? ' is-on' : '') + '">' +
           '<input type="checkbox" id="myt-alert-email"' + (email ? ' checked' : '') + '>' +
@@ -947,47 +1425,65 @@
     '</section>';
   }
 
-  function shell(ctx, model) {
+  function settingsHtml(ctx) {
+    var alerts = alertsHtml(ctx.alerts);
+    var hide = (ctx.listings || []).map(function (p) {
+      var on = (ctx.hiddenItems || []).some(function (id) { return String(id) === String(p.item_id); });
+      return '<li><span>' + esc(clip(p.product_name)) + '</span>' +
+        '<button type="button" class="btn-ghost" data-hide-item="' + Number(p.item_id) + '" data-hidden="' + (on ? '1' : '0') + '">' +
+        (on ? 'Tampilkan' : 'Sembunyikan') + '</button></li>';
+    }).join('');
+    return alerts +
+      '<section class="alat-card"><h3 class="alat-h3" style="margin-top:0">Produk</h3>' +
+        '<ul class="myt-lay-hide">' + hide + '</ul></section>' +
+      '<section class="alat-card"><h3 class="alat-h3" style="margin-top:0">Lainnya</h3>' +
+        '<div class="alat-row">' +
+          '<button type="button" class="btn-ghost" id="myt-remove-shop">Hapus toko</button>' +
+          '<button type="button" class="btn-primary" id="myt-refresh"' + (ctx.loading ? ' disabled' : '') + '>' +
+            (ctx.loading ? 'Membandingkan…' : 'Analisis ulang') + '</button>' +
+          '<a class="btn-ghost" href="' + esc(ctx.extUrl || '#') + '" target="_blank" rel="noopener">Pakai ekstensi</a>' +
+        '</div></section>';
+  }
+
+  function shell(ctx, view) {
     var shop = ctx.shop || {};
-    var meta = ctx.shopMeta || {};
-    var info = model.shop || {};
-    var name = shop.store_name || info.store_name || ('Toko ' + (shop.shop_id || ''));
-    var loc = meta.location || info.location || '';
+    var name = shop.store_name || (view.you && '') || ('Toko ' + (shop.shop_id || ''));
+    if (ctx.market && ctx.market.mine && ctx.market.mine.store_name && !shop.store_name) {
+      name = ctx.market.mine.store_name;
+    }
+    name = shop.store_name || name;
     var logo = ctx.shopLogo || '';
     if (!logo && ctx.listings && ctx.listings[0]) logo = ctx.listings[0].image_url || '';
     var tab = ctx.tab || 'ringkasan';
-    var tabs = [
-      ['ringkasan', 'Ringkasan'],
-      ['produk', 'Produk'],
-      ['kompetitor', 'Kompetitor'],
-    ];
+    var tabs = [['ringkasan', 'Ringkasan'], ['produk', 'Produk'], ['kompetitor', 'Kompetitor']];
+    var choices = ctx.keywordChoices || [];
+    var kw = choices.length > 1
+      ? '<div class="myt-kws">' + choices.map(function (c) {
+        var on = c.keyword === ctx.keyword;
+        return '<button type="button" class="myt-kw' + (on ? ' is-on' : '') + '" data-bench-kw="' + esc(c.keyword) + '">' +
+          esc(c.keyword) + '</button>';
+      }).join('') + '</div>'
+      : '';
     return '<div class="myt-center myt-bench" id="myt-bench">' +
       '<header class="myt-bench-head">' +
         '<div class="myt-store-id">' +
           '<div class="myt-logo" aria-hidden="true"><span class="myt-logo-txt">' + esc(shopInitials(name)) + '</span>' +
             (logo ? '<img class="myt-logo-img" src="' + esc(thumb(logo)) + '" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">' : '') +
           '</div>' +
-          '<div class="myt-store-text">' +
-            '<p class="alat-kicker">My Toko</p>' +
-            '<h2>' + esc(name) + '</h2>' +
-            '<p class="myt-bench-sub">' +
-              (loc ? esc(loc) + ' · ' : '') +
-              'Shop ID ' + esc(String(shop.shop_id || '')) +
-            '</p></div></div>' +
+          '<div class="myt-store-text"><h2>' + esc(name) + '</h2></div></div>' +
         '<div class="myt-bench-head-actions">' +
-          '<button type="button" class="btn-ghost" id="myt-manage-toggle" aria-expanded="' + (ctx.manageOpen ? 'true' : 'false') + '">Kelola toko</button>' +
-          '<button type="button" class="btn-primary" id="myt-refresh"' + (ctx.loading ? ' disabled' : '') + '>' +
-            (ctx.loading ? 'Membandingkan…' : 'Analisis ulang') + '</button>' +
+          '<span class="myt-pill">30 hari</span>' +
+          '<button type="button" class="btn-ghost" id="myt-settings-toggle" aria-expanded="' + (ctx.settingsOpen ? 'true' : 'false') + '">Pengaturan</button>' +
         '</div></header>' +
-      '<div id="myt-manage"' + (ctx.manageOpen ? '' : ' hidden') + '>' + alertsHtml(ctx.alerts) + '</div>' +
+      '<div id="myt-manage"' + (ctx.settingsOpen ? '' : ' hidden') + '>' + settingsHtml(ctx) + '</div>' +
       (ctx.error ? '<p class="alat-err myt-bench-status">' + esc(ctx.error) + '</p>' : '') +
-      (ctx.loading ? '<p class="alat-hint myt-bench-status">Membandingkan listing kamu dengan sapuan kata kunci yang sama…</p>' : '') +
+      (ctx.marketError ? '<p class="alat-err myt-bench-status">' + esc(ctx.marketError) + '</p>' : '') +
       '<div class="myt-bench-tabs" role="tablist">' +
         tabs.map(function (pair) {
           var on = pair[0] === tab;
           return '<button type="button" role="tab" class="myt-bench-tab' + (on ? ' is-on' : '') +
             '" data-bench-tab="' + pair[0] + '" aria-selected="' + (on ? 'true' : 'false') + '">' + pair[1] + '</button>';
-        }).join('') +
+        }).join('') + kw +
       '</div>' +
       '<div id="myt-bench-main"></div>' +
       '<div id="myt-detail" class="myt-detail" hidden></div>' +
@@ -999,46 +1495,21 @@
     var sid = Number(ctx.shop && ctx.shop.shop_id) || 0;
     if (sid !== ui.shopId) {
       ui.q = '';
-      ui.category = '';
-      ui.sort = 'posisi';
       ui.shopId = sid;
     }
-    var model = buildModel(ctx.listings || [], ctx.benchmark);
-    root.innerHTML = shell(ctx, model);
-
-    function wireRows() {
-      root.querySelectorAll('[data-bench-detail]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var idx = Number(btn.getAttribute('data-bench-detail'));
-          if (ctx.onSelect) ctx.onSelect(idx);
-        });
-      });
-    }
-
-    function fillResults() {
-      var box = root.querySelector('#myt-bench-results');
-      if (!box) return;
-      box.innerHTML = renderProductTable(ctx, model);
-      wireRows();
-    }
-
+    var view = assembleView(ctx);
+    root.className = 'alat-page alat-page--wide';
+    root.innerHTML = shell(ctx, view);
     var main = root.querySelector('#myt-bench-main');
     var tab = ctx.tab || 'ringkasan';
-    if (tab === 'produk') {
-      main.innerHTML = renderProduk(ctx, model);
-      var q = root.querySelector('#myt-bench-q');
-      var cat = root.querySelector('#myt-bench-cat');
-      var sort = root.querySelector('#myt-bench-sort');
-      if (q) q.addEventListener('input', function () { ui.q = q.value; fillResults(); });
-      if (cat) cat.addEventListener('change', function () { ui.category = cat.value; fillResults(); });
-      if (sort) sort.addEventListener('change', function () { ui.sort = sort.value || 'posisi'; fillResults(); });
-      fillResults();
+    if (ctx.marketLoading && !(ctx.market && ctx.market.ok)) {
+      main.innerHTML = '<p class="alat-hint">Membandingkan kata kunci ini…</p>';
+    } else if (tab === 'produk') {
+      main.innerHTML = renderProduk(ctx, view);
     } else if (tab === 'kompetitor') {
-      main.innerHTML = renderKompetitor(ctx, model);
-      wireRows();
+      main.innerHTML = renderKompetitor(ctx, view);
     } else {
-      main.innerHTML = renderRingkasan(ctx, model);
-      wireRows();
+      main.innerHTML = renderRingkasan(ctx, view);
     }
 
     root.querySelectorAll('[data-bench-tab]').forEach(function (btn) {
@@ -1047,21 +1518,99 @@
         if (next && ctx.onTab) ctx.onTab(next);
       });
     });
-    var manageBtn = root.querySelector('#myt-manage-toggle');
+    root.querySelectorAll('[data-bench-kw]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var kw = btn.getAttribute('data-bench-kw');
+        if (kw && ctx.onKeyword) ctx.onKeyword(kw);
+      });
+    });
+    var settingsBtn = root.querySelector('#myt-settings-toggle');
     var panel = root.querySelector('#myt-manage');
-    if (manageBtn && panel) {
-      manageBtn.addEventListener('click', function () {
+    if (settingsBtn && panel) {
+      settingsBtn.addEventListener('click', function () {
         var open = panel.hasAttribute('hidden');
         if (open) panel.removeAttribute('hidden');
         else panel.setAttribute('hidden', '');
-        manageBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
-        if (ctx.onManage) ctx.onManage(!!open);
+        settingsBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (ctx.onSettings) ctx.onSettings(!!open);
       });
     }
     var refresh = root.querySelector('#myt-refresh');
-    if (refresh) {
-      refresh.addEventListener('click', function () {
-        if (ctx.onRefresh) ctx.onRefresh();
+    if (refresh) refresh.addEventListener('click', function () { if (ctx.onRefresh) ctx.onRefresh(); });
+    var remove = root.querySelector('#myt-remove-shop');
+    if (remove) remove.addEventListener('click', function () { if (ctx.onRemoveShop) ctx.onRemoveShop(); });
+    root.querySelectorAll('[data-hide-item]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (ctx.onHideItem) ctx.onHideItem(Number(btn.getAttribute('data-hide-item')), btn.getAttribute('data-hidden') !== '1');
+      });
+    });
+    root.querySelectorAll('[data-hide-shop]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (ctx.onHideShop) ctx.onHideShop(Number(btn.getAttribute('data-hide-shop')));
+      });
+    });
+    root.querySelectorAll('form.myt-manual').forEach(function (form) {
+      form.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var input = form.querySelector('input');
+        var amount = Number(input && input.value);
+        if (!(amount > 0) || !ctx.onSaveManual) return;
+        ctx.onSaveManual(Number(form.getAttribute('data-manual-item')) || 0, amount);
+      });
+    });
+    var product = root.querySelector('#myt-product');
+    if (product) {
+      product.addEventListener('change', function () {
+        if (ctx.onSelectItem) ctx.onSelectItem(Number(product.value));
+      });
+    }
+    var pantau = root.querySelector('#myt-pantau');
+    if (pantau) {
+      pantau.addEventListener('click', function () {
+        if (view.selected && ctx.onOpenDetail) ctx.onOpenDetail(view.selected.item_id);
+      });
+    }
+    var q = root.querySelector('#myt-rival-q');
+    if (q) {
+      q.addEventListener('input', function () {
+        ui.q = q.value;
+        var body = root.querySelector('#myt-rival-body');
+        if (body) body.innerHTML = rivalRows(view, ui.q);
+        root.querySelectorAll('[data-hide-shop]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            if (ctx.onHideShop) ctx.onHideShop(Number(btn.getAttribute('data-hide-shop')));
+          });
+        });
+      });
+    }
+    var addGo = root.querySelector('#myt-add-go');
+    var addQ = root.querySelector('#myt-add-q');
+    if (addGo && addQ) {
+      addGo.addEventListener('click', function () {
+        if (!ctx.onFindShops) return;
+        Promise.resolve(ctx.onFindShops(addQ.value)).then(function (rows) {
+          var box = root.querySelector('#myt-add-picker');
+          if (!box) return;
+          rows = rows || [];
+          if (!rows.length) {
+            box.hidden = false;
+            box.innerHTML = '<p class="myt-bench-empty">Toko tidak ketemu.</p>';
+            return;
+          }
+          box.hidden = false;
+          box.innerHTML = rows.map(function (row, i) {
+            return '<button type="button" class="alat-pick" data-add-shop="' + i + '">' +
+              esc(row.store_name || 'Toko') +
+              (row.location ? '<small>' + esc(row.location) + '</small>' : '') + '</button>';
+          }).join('');
+          box._rows = rows;
+          box.querySelectorAll('[data-add-shop]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              var row = box._rows[Number(btn.getAttribute('data-add-shop'))];
+              if (row && ctx.onAddShop) ctx.onAddShop(row);
+            });
+          });
+        });
       });
     }
   }
@@ -1078,5 +1627,9 @@
     buildModel: buildModel,
     oldestLabel: oldestLabel,
     peerCount: peerCount,
+    keywordScores: keywordScores,
+    keywordChoices: keywordChoices,
+    topPct: topPct,
+    assembleView: assembleView,
   };
 });

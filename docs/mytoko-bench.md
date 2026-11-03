@@ -1,43 +1,50 @@
 # My Toko benchmark
 
-Connected My Toko (wizard already finished) is a three-tab benchmark in [`js/mytoko-bench.js`](../js/mytoko-bench.js), mounted from `renderSellerCenter` in [`js/gpt-alat-preview.js`](../js/gpt-alat-preview.js).
+Connected My Toko (wizard already finished) is the three-tab page in [`js/mytoko-bench.js`](../js/mytoko-bench.js), mounted from `renderSellerCenter` in [`js/gpt-alat-preview.js`](../js/gpt-alat-preview.js).
 
-Tabs: **Ringkasan**, **Produk**, **Kompetitor**. There is no Perbandingan or Strategi tab. The first-run wizard (paste shop → kabar → pilih kompetitor → analisis) is unchanged. Do not put a blocking popup on this page.
+Tabs: **Ringkasan**, **Produk**, **Kompetitor**. There is no Peluang or Rekomendasi tab, and no upgrade prompt. The first-run wizard is unchanged. Do not put a blocking popup on this page. Pengaturan holds ganti toko, hapus toko, sembunyikan produk, Analisis ulang, and the extension link.
 
-## Data
+## One keyword
 
-One authenticated RPC: `get_toko_benchmark(p_shop_id, p_extra_keywords)`.
+Competitors are the other shops in **one** keyword scrape, not every keyword on the shop.
 
-- Own listings: latest row per item, cap 200, plus `product_velocity` nowcast.
-- Markets: up to 25 keywords. Catalog keywords on the highest `total_sold` items come first; `p_extra_keywords` fills the rest (snapshot titles). Each market is that keyword’s latest search scrape (`search_rank` is set — a search hit, not a shop-page observation), kept in the same 6-hour window as `listings_fresh_for_keyword`, one row per item.
-- Rivals: other shops in those scrapes, top 6 by how many of your keywords they overlap, then by `total_sold` of the overlapping listing. Name and location prefer `mv_shops`.
+- Score each keyword by the sum of `nowcast_omset_monthly` on the shop’s own listings. If that sum is missing, use `total_sold`.
+- Skip a keyword whose LarisID scrape has fewer than 5 other listings in the benchmark payload, then confirm the market has at least 5 other **shops**.
+- If the next keyword is at least a quarter of the winner, it appears as a chip. The label is the keyword itself: **di kata kunci ini**.
 
-Apply with `bash scripts/apply-selfhost.sh supabase/migrations/20261102230000_get_toko_benchmark.sql`. Never `supabase db push`.
+`get_toko_market(p_shop_id, p_keyword, p_item_id)` reads that scrape once: search hits (`search_rank` set), latest 6-hour window, same cohort as `get_toko_benchmark`. It returns up to 100 shops, up to 80 listings for the charts, and weekly sums.
 
-## Labels
+Apply with `bash scripts/apply-selfhost.sh supabase/migrations/20261103110000_get_toko_market.sql`. Never `supabase db push`.
 
-- **Omzet** is `nowcast_omset_monthly` only, always **perkiraan**. Missing nowcast is “—”, not zero, and never `price × total_sold / 6`.
-- **Terjual** on a listing is cumulative `total_sold`. Do not call it 30 hari.
-- **Peringkat** is rank by `total_sold` inside that keyword scrape: “di kata kunci ini”. Not a Shopee category rank. The “#n dari N” line is shown only when that scrape has at least 5 peers. A thinner scrape stays **Belum ada pembanding**, with no rank beside it.
-- **Listing tertua yang terlihat** is `min(listing_date)`. It is not the shop’s join date on Shopee. Hide it when we have no date.
-- Rival omzet is the nowcast of the overlapping listings only, not the shop’s whole GMV. `n_listings` is how many listings we have seen, not their full catalog.
+## 30 hari
 
-## Position
+The header pill is **30 hari**. There is no 7-day or 90-day mode.
 
-A listing is comparable only when that keyword scrape has at least 5 other listings (`peer_count >= 5`), a median price, and a rank for this item.
+- **Penjualan** for a shop is the sum of `nowcast_omset_monthly` on its listings in this scrape. For a product it is that listing’s nowcast. Always **perkiraan**. It is not the shop’s whole Shopee GMV.
+- Missing nowcast is an input. Saving writes `user_toko_manual_omzet` for that user, shop, and item (`item_id` 0 is the shop). The cell says **kamu isi**. A typed number does not replace a nowcast and is not copied onto competitors.
+- Rank and Top % use shops that have a perkiraan. Hidden below 5 shops. Top % is `ceil(100 * rank / n)`.
+- **Jumlah produk**, rating, ulasan, and harga rata-rata are from the same scrape. The spider is your value ÷ the other shops’ average × 100. The gray ring is 100. An axis with no data is dropped.
 
-- **Lebih unggul** — rank in the top 30% (`rank <= ceil(0.3 × total_sellers)`) and price at or under median × 1.05.
-- **Di bawah** — price at or over median × 1.15, or rank in the bottom half and price above the median.
-- **Setara** — comparable, and neither of the above.
-- **Belum ada pembanding** — no keyword, or fewer than 5 peers. These rows stay out of the posisi donut.
-- **Belum ada peringkat** — 5 peers and a median, but this item is not in that scrape. The price gap can still show. The row stays out of the donut.
+## Tren
 
-**Skor toko** shows only when at least 3 listings are comparable. It is the percent of those that are Lebih unggul or Setara. The page says it is from a LarisID scrape, not a Shopee score. Below 3, show the raw counts and no score.
+Tren uses `listing_weekly`, last 6 week-starts. A line is drawn only when a listing has a second measured scrape (`source=measured` and `span_days >= 2`). A week that is not fully measured is dashed. Do not draw a daily line. Rules: [`listing-weekly.md`](./listing-weekly.md).
 
-“Sudah bagus” / “Bisa diubah” use the same tones as `buildInsights`: price within 5% of median, price above or below, judul missing keyword tokens, rank inside or outside the top 10 of that scrape. Store cards are counts, not one line per product. Do not invent a target price.
+## List edits
+
+- **Sembunyikan** on a competitor writes `user_toko_hidden_shops`.
+- **Tambah** searches shops we already have (`find_shops_by_name`) and writes `user_toko_added_shops`. A shop with no rows in this keyword stays on the list with penjualan “—”.
+- **Sembunyikan** on a product writes `user_toko_hidden_items` and drops it from the dropdown and from your totals.
+
+Rows are readable only by the signed-in user.
+
+## Produk
+
+One dropdown. The default is the highest 30-day perkiraan in the active keyword. Choosing a listing from another keyword switches the market.
+
+Performa compares that listing with the keyword average for penjualan, harga, penilaian, and ulasan. There is no variasi row. The rank is “#n dari N” inside this scrape. Bars are only the peer penjualan values the query returned.
+
+Pantau still opens the existing Kompetitor / Analisa panel.
 
 ## Do not ship
 
-Video usage, vouchers, flash sales, “rutin promo”, affiliate, or live GMV. We do not collect them. If a pola harga or ulasan cannot be counted from the rows, omit the card.
-
-Pola harga counts each returned peer once, against your highest-`total_sold` listing in that keyword. It does not multiply the same shops by every listing you have there. The sentence is about the peers in the payload (up to 6 per keyword), not every seller in the scrape.
+Video, vouchers, flash sales, “rutin promo”, affiliate, live GMV, a Shopee category rank, or a target price. If a keep/change line cannot be counted from price, judul, or rank in this scrape, omit it.

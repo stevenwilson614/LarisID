@@ -71,6 +71,18 @@
   var _benchGen = 0;
   var _benchTab = 'ringkasan';
   var _benchManage = false;
+  var _market = null;
+  var _marketKw = '';
+  var _marketGen = 0;
+  var _marketLoading = false;
+  var _marketErr = '';
+  var _benchItemId = null;
+  var _kwLock = false;
+  var _manualShop = null;
+  var _manualItems = Object.create(null);
+  var _hiddenShops = [];
+  var _hiddenItems = [];
+  var _addedShops = [];
   var _claimSnapId = '';
   var _scrapeJobId = '';
   var _pendingUrl = '';
@@ -1392,11 +1404,22 @@
         _bench = null;
         _benchErr = '';
         _benchFor = Number(shop.shop_id) || 0;
+        _market = null;
+        _marketKw = '';
+        _marketErr = '';
+        _kwLock = false;
+        _benchItemId = null;
       }
       var needBench = !!(opts.freshListings || shopChanged || !_bench);
       if (needBench) _benchLoading = true;
+      if (needBench || !_market) _marketLoading = true;
       renderSellerCenter(shop);
-      if (needBench) void loadBenchmark(shop);
+      void loadTokoPrefs(shop);
+      if (needBench) {
+        void loadBenchmark(shop).then(function () { return ensureMarket(shop, { force: true }); });
+      } else {
+        void ensureMarket(shop, {});
+      }
       return;
     }
     _peerChecks = Object.create(null);
@@ -1419,6 +1442,17 @@
     _benchGen++;
     _benchTab = 'ringkasan';
     _benchManage = false;
+    _market = null;
+    _marketKw = '';
+    _marketLoading = false;
+    _marketErr = '';
+    _benchItemId = null;
+    _kwLock = false;
+    _manualShop = null;
+    _manualItems = Object.create(null);
+    _hiddenShops = [];
+    _hiddenItems = [];
+    _addedShops = [];
     _listings = [];
     _trackedIds = [];
     _claimSnapId = '';
@@ -2188,6 +2222,229 @@
     if (auditVisible()) renderSellerCenter(shop, { quiet: true });
   }
 
+  function itemInKeyword(itemId, keyword) {
+    var found = null;
+    (_listings || []).forEach(function (p) {
+      if (String(p.item_id) === String(itemId)) found = p;
+    });
+    if (!found) return false;
+    if (_hiddenItems.some(function (id) { return String(id) === String(itemId); })) return false;
+    return String(found.keyword || '') === String(keyword || '');
+  }
+
+  function bestItemInKeyword(keyword) {
+    var best = null;
+    (_listings || []).forEach(function (p) {
+      if (String(p.keyword || '') !== String(keyword || '')) return;
+      if (_hiddenItems.some(function (id) { return String(id) === String(p.item_id); })) return;
+      var o = Number(p.nowcast_omset_monthly) || 0;
+      var sold = Number(p.total_sold) || 0;
+      if (!best || o > best.o || (o === best.o && sold > best.sold)) {
+        best = { id: p.item_id, o: o, sold: sold };
+      }
+    });
+    return best ? Number(best.id) : null;
+  }
+
+  async function fetchMarket(shop, keyword, itemId) {
+    var gen = ++_marketGen;
+    _marketLoading = true;
+    _marketErr = '';
+    if (!user() || !sb()) {
+      if (gen !== _marketGen) return null;
+      _marketLoading = false;
+      _market = null;
+      _marketErr = 'Masuk untuk membandingkan dengan kompetitor.';
+      if (auditVisible()) renderSellerCenter(shop, { quiet: true });
+      return null;
+    }
+    try {
+      var res = await sb().rpc('get_toko_market', {
+        p_shop_id: Number(shop.shop_id),
+        p_keyword: keyword,
+        p_item_id: itemId || null,
+      });
+      if (gen !== _marketGen) return null;
+      if (res.error) throw res.error;
+      var data = res.data;
+      if (!data || data.ok === false) throw new Error((data && data.reason) || 'market');
+      return data;
+    } catch (e) {
+      if (gen !== _marketGen) return null;
+      _marketLoading = false;
+      _marketErr = 'Perbandingan kata kunci belum bisa dimuat. Coba Analisis ulang.';
+      console.error('[My Toko] market', e);
+      if (auditVisible()) renderSellerCenter(shop, { quiet: true });
+      return null;
+    }
+  }
+
+  async function ensureMarket(shop, opts) {
+    opts = opts || {};
+    if (!shop || !shop.shop_id || !global.LarisMyTokoBench) return;
+    if (!opts.force && _market && _market.keyword === _marketKw && !opts.itemChanged) return;
+    var choice = global.LarisMyTokoBench.keywordChoices(_listings, _bench, _hiddenItems.reduce(function (m, id) {
+      m[String(id)] = true;
+      return m;
+    }, Object.create(null)));
+    var order = [];
+    if (_kwLock && _marketKw) order.push(_marketKw);
+    if (choice.primary) order.push(choice.primary);
+    (choice.choices || []).forEach(function (c) { if (c && c.keyword) order.push(c.keyword); });
+    var seen = Object.create(null);
+    var tries = [];
+    order.forEach(function (k) {
+      if (!k || seen[k]) return;
+      seen[k] = true;
+      tries.push(k);
+    });
+    if (!tries.length) {
+      _marketLoading = false;
+      _market = null;
+      if (auditVisible()) renderSellerCenter(shop, { quiet: true });
+      return;
+    }
+    var picked = null;
+    var i;
+    for (i = 0; i < tries.length && i < 3; i++) {
+      var itemId = itemInKeyword(_benchItemId, tries[i]) ? Number(_benchItemId) : bestItemInKeyword(tries[i]);
+      var data = await fetchMarket(shop, tries[i], itemId);
+      if (!data) return;
+      picked = { data: data, keyword: tries[i], itemId: itemId };
+      if (Number(data.peer_count) >= 5 || i === tries.length - 1 || i === 2) break;
+    }
+    if (!picked) return;
+    _market = picked.data;
+    _marketKw = picked.keyword;
+    _benchItemId = picked.itemId;
+    _marketLoading = false;
+    if (auditVisible()) renderSellerCenter(shop, { quiet: true });
+  }
+
+  async function loadTokoPrefs(shop) {
+    var u = user();
+    var client = sb();
+    if (!u || !client || !shop || !shop.shop_id) return;
+    var sid = Number(shop.shop_id);
+    var gen = _marketGen;
+    try {
+      var man = await client.from('user_toko_manual_omzet').select('item_id,omzet_rp')
+        .eq('user_id', u.id).eq('shop_id', sid).eq('window_days', 30);
+      var hidS = await client.from('user_toko_hidden_shops').select('rival_shop_id')
+        .eq('user_id', u.id).eq('shop_id', sid);
+      var hidI = await client.from('user_toko_hidden_items').select('item_id')
+        .eq('user_id', u.id).eq('shop_id', sid);
+      var added = await client.from('user_toko_added_shops').select('rival_shop_id,store_name,location')
+        .eq('user_id', u.id).eq('shop_id', sid);
+      if (!_shop || Number(_shop.shop_id) !== sid) return;
+      _manualShop = null;
+      _manualItems = Object.create(null);
+      ((man && man.data) || []).forEach(function (row) {
+        if (!row) return;
+        if (Number(row.item_id) === 0) _manualShop = Number(row.omzet_rp);
+        else _manualItems[String(row.item_id)] = Number(row.omzet_rp);
+      });
+      _hiddenShops = ((hidS && hidS.data) || []).map(function (r) { return r.rival_shop_id; });
+      _hiddenItems = ((hidI && hidI.data) || []).map(function (r) { return r.item_id; });
+      _addedShops = ((added && added.data) || []).map(function (r) {
+        return { shop_id: r.rival_shop_id, store_name: r.store_name, location: r.location };
+      });
+      if (auditVisible()) renderSellerCenter(shop, { quiet: true });
+    } catch (e) {
+      console.error('[My Toko] prefs', e);
+    }
+  }
+
+  async function saveManualOmzet(shop, itemId, amount) {
+    var u = user();
+    var client = sb();
+    var value = Math.round(Number(amount));
+    if (!u || !client || !shop || !(value > 0)) return;
+    itemId = Number(itemId) || 0;
+    if (itemId === 0) _manualShop = value;
+    else _manualItems[String(itemId)] = value;
+    renderSellerCenter(shop, { quiet: true });
+    var res = await client.from('user_toko_manual_omzet').upsert({
+      user_id: u.id,
+      shop_id: Number(shop.shop_id),
+      item_id: itemId,
+      window_days: 30,
+      omzet_rp: value,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,shop_id,item_id,window_days' });
+    if (res.error) console.error('[My Toko] manual', res.error);
+  }
+
+  async function toggleHiddenItem(shop, itemId, hide) {
+    var u = user();
+    var client = sb();
+    if (!u || !client || !shop || !itemId) return;
+    var id = Number(itemId);
+    if (hide) {
+      if (!_hiddenItems.some(function (x) { return String(x) === String(id); })) _hiddenItems.push(id);
+      if (String(_benchItemId) === String(id)) _benchItemId = null;
+    } else {
+      _hiddenItems = _hiddenItems.filter(function (x) { return String(x) !== String(id); });
+    }
+    renderSellerCenter(shop, { quiet: true });
+    var q = client.from('user_toko_hidden_items');
+    var res = hide
+      ? await q.insert({ user_id: u.id, shop_id: Number(shop.shop_id), item_id: id })
+      : await q.delete().eq('user_id', u.id).eq('shop_id', Number(shop.shop_id)).eq('item_id', id);
+    if (res.error && !(hide && /duplicate|23505/.test(String(res.error.code || res.error.message || '')))) {
+      console.error('[My Toko] hide item', res.error);
+    }
+    void ensureMarket(shop, { force: true });
+  }
+
+  async function hideRival(shop, rivalId) {
+    var u = user();
+    var client = sb();
+    if (!u || !client || !shop || !rivalId) return;
+    var id = Number(rivalId);
+    if (id === Number(shop.shop_id)) return;
+    if (!_hiddenShops.some(function (x) { return String(x) === String(id); })) _hiddenShops.push(id);
+    _addedShops = _addedShops.filter(function (s) { return Number(s.shop_id) !== id; });
+    renderSellerCenter(shop, { quiet: true });
+    await client.from('user_toko_added_shops').delete()
+      .eq('user_id', u.id).eq('shop_id', Number(shop.shop_id)).eq('rival_shop_id', id);
+    var res = await client.from('user_toko_hidden_shops').insert({
+      user_id: u.id,
+      shop_id: Number(shop.shop_id),
+      rival_shop_id: id,
+    });
+    if (res.error && !/duplicate|23505/.test(String(res.error.code || res.error.message || ''))) {
+      console.error('[My Toko] hide shop', res.error);
+    }
+  }
+
+  async function addRival(shop, row) {
+    var u = user();
+    var client = sb();
+    if (!u || !client || !shop || !row || !row.shop_id) return;
+    var id = Number(row.shop_id);
+    if (id === Number(shop.shop_id)) return;
+    _hiddenShops = _hiddenShops.filter(function (x) { return Number(x) !== id; });
+    if (!_addedShops.some(function (s) { return Number(s.shop_id) === id; })) {
+      _addedShops.push({
+        shop_id: id,
+        store_name: row.store_name || 'Toko',
+        location: row.location || '',
+      });
+    }
+    renderSellerCenter(shop, { quiet: true });
+    await client.from('user_toko_hidden_shops').delete()
+      .eq('user_id', u.id).eq('shop_id', Number(shop.shop_id)).eq('rival_shop_id', id);
+    var res = await client.from('user_toko_added_shops').upsert({
+      user_id: u.id,
+      shop_id: Number(shop.shop_id),
+      rival_shop_id: id,
+      store_name: String(row.store_name || '').slice(0, 120),
+      location: String(row.location || '').slice(0, 120),
+    }, { onConflict: 'user_id,shop_id,rival_shop_id' });
+    if (res.error) console.error('[My Toko] add shop', res.error);
+  }
+
   function renderSellerCenter(shop, opts) {
     opts = opts || {};
     var root = $('alat-root');
@@ -2210,6 +2467,10 @@
       root.innerHTML = '<p class="alat-hint">My Toko belum selesai dimuat. Muat ulang halaman.</p>';
       return;
     }
+    var kwChoice = global.LarisMyTokoBench.keywordChoices(_listings, _bench, _hiddenItems.reduce(function (m, id) {
+      m[String(id)] = true;
+      return m;
+    }, Object.create(null)));
     global.LarisMyTokoBench.mount(root, {
       shop: shop,
       shopMeta: _shopMeta,
@@ -2220,26 +2481,67 @@
       benchmark: _bench,
       loading: _benchLoading,
       error: _benchErr,
+      market: _market,
+      marketLoading: _marketLoading,
+      marketError: _marketErr,
+      keyword: _marketKw || kwChoice.primary,
+      keywordChoices: kwChoice.choices,
+      manual: { shop: _manualShop, items: _manualItems },
+      hiddenShops: _hiddenShops,
+      hiddenItems: _hiddenItems,
+      addedShops: _addedShops,
+      selectedItemId: _benchItemId,
+      settingsOpen: _benchManage,
+      extUrl: cwsExtUrl(),
       tab: _benchTab,
-      manageOpen: _benchManage,
-      selectedIdx: _selectedIdx,
       alerts: _alerts,
       onTab: function (tab) {
         _benchTab = tab === 'produk' || tab === 'kompetitor' ? tab : 'ringkasan';
         renderSellerCenter(shop, { quiet: true });
       },
-      onManage: function (open) { _benchManage = !!open; },
+      onSettings: function (open) { _benchManage = !!open; },
       onRefresh: function () {
         void loadShopWork(shop, { center: true, freshListings: true });
       },
-      onSelect: function (idx) {
-        if (_selectedIdx === idx) _selectedIdx = -1;
-        else {
-          _selectedIdx = idx;
-          _detailTab = 'kompetitor';
+      onRemoveShop: function () { clearShopAndReconnect(); },
+      onKeyword: function (keyword) {
+        _kwLock = true;
+        _marketKw = keyword;
+        _benchItemId = bestItemInKeyword(keyword);
+        void ensureMarket(shop, { force: true });
+      },
+      onSelectItem: function (itemId) {
+        _benchItemId = itemId;
+        var row = null;
+        _listings.forEach(function (p) {
+          if (String(p.item_id) === String(itemId)) row = p;
+        });
+        if (row && row.keyword && row.keyword !== _marketKw) {
+          _kwLock = true;
+          _marketKw = row.keyword;
+          void ensureMarket(shop, { force: true });
+          return;
         }
+        void ensureMarket(shop, { force: true, itemChanged: true });
+      },
+      onOpenDetail: function (itemId) {
+        var idx = -1;
+        _listings.forEach(function (p, i) {
+          if (String(p.item_id) === String(itemId)) idx = i;
+        });
+        _selectedIdx = idx;
+        _detailTab = 'kompetitor';
         renderSellerCenter(shop, { quiet: true });
       },
+      onHideItem: function (itemId, hide) {
+        void toggleHiddenItem(shop, itemId, hide);
+      },
+      onHideShop: function (rivalId) {
+        void hideRival(shop, rivalId);
+      },
+      onFindShops: function (q) { return findShopsByName(q, 8); },
+      onAddShop: function (row) { void addRival(shop, row); },
+      onSaveManual: function (itemId, amount) { void saveManualOmzet(shop, itemId, amount); },
     });
     wireSellerCenter(shop);
     if (_selectedIdx >= 0) paintProductDetail(shop);
