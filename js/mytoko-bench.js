@@ -1628,7 +1628,7 @@
           '</div>' +
           '<div class="myt-store-text"><h2>' + esc(name) + '</h2></div></div>' +
         '<button type="button" class="myt-gear" id="myt-settings-toggle" aria-label="Pengaturan" aria-expanded="' + (ctx.settingsOpen ? 'true' : 'false') + '">' +
-          '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6zm8.7 2.9-.1-1.6 1.8-1.4-1.8-3.1-2.1.9a7 7 0 0 0-1.4-.8L16.6 2h-3.2l-.5 2.2c-.5.2-1 .4-1.4.8l-2.1-.9-1.8 3.1 1.8 1.4a7 7 0 0 0 0 1.6l-1.8 1.4 1.8 3.1 2.1-.9c.4.3.9.6 1.4.8l.5 2.2h3.2l.5-2.2c.5-.2 1-.5 1.4-.8l2.1.9 1.8-3.1-1.8-1.4c.1-.5.1-1.1 0-1.6z"/></svg>' +
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>' +
         '</button></header>' +
       '<div id="myt-manage"' + (ctx.settingsOpen ? '' : ' hidden') + '>' + settingsHtml(ctx, view) + '</div>' +
       (ctx.error ? '<p class="alat-err myt-bench-status">' + esc(ctx.error) + '</p>' : '') +
