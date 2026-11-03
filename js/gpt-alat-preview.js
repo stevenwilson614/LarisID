@@ -731,6 +731,12 @@
           '<h2>Benchmark toko dan produkmu dengan <em>kompetitor</em></h2>' +
           '<p class="myt-land-lead">Lihat posisi tokomu di satu kata kunci.</p>' +
         '</header>' +
+        '<div class="myt-land-bar">' +
+          '<input type="text" id="alat-shop-q" class="alat-input" placeholder="https://shopee.co.id/namatoko" autocomplete="off" enterkeyhint="go">' +
+          '<button type="button" class="btn-primary" id="alat-shop-go">Analisis toko</button>' +
+        '</div>' +
+        '<p class="alat-err" id="alat-shop-err" hidden></p>' +
+        '<div id="alat-shop-picker" class="alat-picker" hidden></div>' +
         '<section class="myt-land-stage" aria-hidden="true">' +
           '<article class="myt-land-card">' +
             '<div class="myt-land-chip"><span id="myt-land-type"></span><i class="myt-land-caret"></i></div>' +
@@ -838,14 +844,6 @@
             '</div>' +
           '</article>' +
         '</section>' +
-        '<div class="myt-land-dock">' +
-          '<div class="myt-land-bar">' +
-            '<input type="text" id="alat-shop-q" class="alat-input" placeholder="https://shopee.co.id/namatoko" autocomplete="off" enterkeyhint="go">' +
-            '<button type="button" class="btn-primary" id="alat-shop-go">Analisis toko</button>' +
-          '</div>' +
-          '<p class="alat-err" id="alat-shop-err" hidden></p>' +
-          '<div id="alat-shop-picker" class="alat-picker" hidden></div>' +
-        '</div>' +
       '</div>';
     $('alat-shop-go')?.addEventListener('click', function () { void searchShop(); });
     $('alat-shop-q')?.addEventListener('keydown', function (e) {

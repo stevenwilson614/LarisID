@@ -13292,7 +13292,7 @@ body.view-chat .sfb-card {
 <script src="/js/expor-pasar.js?v=20260915a" defer></script>
 <script src="/js/gpt-belajar.js?v=20261017f" defer></script>
 <script src="/js/mytoko-bench.js?v=20261103shop1" defer></script>
-<script src="/js/gpt-alat-preview.js?v=20261103land3" defer></script>
+<script src="/js/gpt-alat-preview.js?v=20261103land4" defer></script>
 <script src="/js/omset-week-shape.js?v=20261021shape1" defer></script>
 <script src="/js/gpt-app.js?v=20261102konteks1" defer></script>
 <style>
@@ -14510,12 +14510,8 @@ body.alat-focus.view-audit .alat-page--wide::after { display: none; }
   .myt-manual .alat-input { flex: 1 1 auto; width: auto; max-width: none; }
 }
 .myt-land-page { --alat-page-w: 920px; }
-.myt-land {
-  zoom: 0.85; width: 100%; flex: none;
-  display: flex; flex-direction: column;
-  min-height: calc((100dvh - 72px) / 0.85);
-}
-.myt-land-hero { text-align: center; margin: 4px 0 12px; flex: none; }
+.myt-land { zoom: 0.85; width: 100%; flex: none; }
+.myt-land-hero { text-align: center; margin: 4px 0 12px; }
 .myt-land-kicker {
   margin: 0 0 6px; color: #B5202A; font-size: .68rem; font-weight: 750;
   letter-spacing: .16em; text-transform: uppercase;
@@ -14530,13 +14526,7 @@ body.alat-focus.view-audit .alat-page--wide::after { display: none; }
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .myt-land-lead { margin: 8px 0 0; color: #8A8A8A; font-size: .84rem; }
-.myt-land-stage { position: relative; flex: 1 1 auto; min-height: 0; }
-.myt-land-dock {
-  flex: none;
-  position: sticky; bottom: 12px; z-index: 4;
-  margin-top: 14px; padding: 10px 0 4px;
-  background: linear-gradient(180deg, rgba(255,255,255,0) 0%, #fff 28%);
-}
+.myt-land-stage { position: relative; margin-top: 14px; }
 .myt-land-bar { display: flex; gap: 8px; align-items: center; }
 .myt-land-bar .alat-input {
   flex: 1 1 auto; height: 42px; border-radius: 12px; background: #fff; padding: 0 12px;
@@ -14547,6 +14537,7 @@ body.alat-focus.view-audit .alat-page--wide::after { display: none; }
   background: #B5202A; color: #fff; font-weight: 700; font-size: .84rem;
 }
 .myt-land-bar .btn-primary:hover { background: #8E191F; opacity: 1; }
+.myt-land .alat-err, .myt-land .alat-picker { margin-top: 8px; }
 .myt-land-card {
   position: relative;
   background: #fff; border: 1px solid #E8E8E8; border-radius: 16px; padding: 14px;
@@ -14554,7 +14545,7 @@ body.alat-focus.view-audit .alat-page--wide::after { display: none; }
   min-height: 320px;
 }
 .myt-land-chip {
-  position: absolute; left: 50%; top: 80%; z-index: 3; transform: translate(-50%, -50%);
+  position: absolute; left: 50%; top: 42%; z-index: 3; transform: translate(-50%, -50%);
   display: flex; align-items: center; gap: 8px; min-width: min(280px, 88%);
   padding: 12px 14px; border-radius: 12px; background: #fff; border: 1px solid #E8E8E8;
   box-shadow: 0 14px 34px rgba(26, 26, 26, .14); pointer-events: none;
@@ -14645,7 +14636,7 @@ body.alat-focus.view-audit .alat-page--wide::after { display: none; }
 @media (max-width: 640px) {
   .myt-land-bar { flex-direction: column; align-items: stretch; }
   .myt-land-bar .btn-primary { width: 100%; justify-content: center; }
-  .myt-land-chip { top: 72%; }
+  .myt-land-chip { top: 38%; }
 }
 @media (prefers-reduced-motion: reduce) {
   .myt-land-line-you, .myt-land-spider, .myt-land-spider-svg, .myt-land-row, .myt-land-caret { animation: none !important; }
