@@ -616,36 +616,164 @@
     } catch (_) {}
   }
 
+  var _landTimer = 0;
+  var _landGen = 0;
+
+  function stopLandLoop() {
+    _landGen += 1;
+    if (_landTimer) {
+      clearTimeout(_landTimer);
+      _landTimer = 0;
+    }
+  }
+
+  function startLandLoop(root) {
+    stopLandLoop();
+    var gen = _landGen;
+    var land = root.querySelector('#myt-land') || root;
+    var typeEl = land.querySelector('#myt-land-type');
+    var rankEl = land.querySelector('#myt-land-rank');
+    var pctEl = land.querySelector('#myt-land-pct');
+    var text = 'shopee.co.id/toko-contoh';
+    var typeMs = text.length * 55 + 350;
+    var loadMs = 1000;
+    var playMs = 2800;
+    var holdMs = 2200;
+    var total = typeMs + loadMs + playMs + holdMs;
+    var reduced = false;
+    try { reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (_) {}
+    function setNums(rank, pct) {
+      if (rankEl) rankEl.textContent = '#' + rank;
+      if (pctEl) pctEl.textContent = '+' + pct + '%';
+    }
+    if (reduced) {
+      land.setAttribute('data-phase', 'still');
+      if (typeEl) typeEl.textContent = text;
+      setNums(2, 26);
+      return;
+    }
+    var elapsed = 0;
+    var last = Date.now();
+    function tick() {
+      if (gen !== _landGen) return;
+      if (!land.isConnected) {
+        stopLandLoop();
+        return;
+      }
+      var now = Date.now();
+      var input = land.querySelector('#alat-shop-q');
+      var paused = !input || document.activeElement === input || String(input.value || '').trim().length > 0;
+      land.classList.toggle('is-paused', paused);
+      if (!paused) elapsed += now - last;
+      last = now;
+      if (elapsed >= total) elapsed = 0;
+      var phase = 'type';
+      var local = elapsed;
+      if (local < typeMs) {
+        if (typeEl) typeEl.textContent = text.slice(0, Math.min(text.length, Math.floor(local / 55)));
+        if (local < 50) setNums(0, 0);
+      } else if (local < typeMs + loadMs) {
+        phase = 'load';
+        if (typeEl) typeEl.textContent = 'Membandingkan…';
+      } else if (local < typeMs + loadMs + playMs) {
+        phase = 'play';
+        var p = (local - typeMs - loadMs) / playMs;
+        var ease = 1 - Math.pow(1 - Math.min(1, p), 3);
+        setNums(Math.max(0, Math.round(2 * ease)), Math.round(26 * ease));
+      } else {
+        phase = 'hold';
+        setNums(2, 26);
+      }
+      if (land.getAttribute('data-phase') !== phase) land.setAttribute('data-phase', phase);
+      _landTimer = setTimeout(tick, 40);
+    }
+    land.setAttribute('data-phase', 'type');
+    if (typeEl) typeEl.textContent = '';
+    setNums(0, 0);
+    tick();
+  }
+
   function renderConnect() {
     var root = $('alat-root');
     if (!root) return;
-    root.className = 'alat-page';
+    stopLandLoop();
+    root.className = 'alat-page myt-land-page';
     _step = 1;
     root.innerHTML =
-      progressHtml(1, 'Hubungkan toko') +
-      '<section class="alat-card">' +
-        '<h2>Tempel link toko Shopee</h2>' +
-        '<p class="alat-lead">Kami ambil produk toko di latar (biasanya &lt;1 menit). Sementara itu kamu isi kabar kompetitor. Kalau gagal, ekstensi Chrome jadi cadangan.</p>' +
-        '<label class="alat-label" for="alat-shop-q">Link / nama toko</label>' +
-        '<div class="alat-row">' +
-          '<input type="text" id="alat-shop-q" class="alat-input" placeholder="https://shopee.co.id/… atau nama toko" autocomplete="off">' +
-          '<button type="button" class="btn-primary" id="alat-shop-go">Lanjut</button>' +
+      '<div class="myt-land" id="myt-land">' +
+        '<header class="myt-land-hero">' +
+          '<p class="myt-land-kicker">My Toko</p>' +
+          '<h2>Benchmark toko dan produkmu dengan <span>kompetitor</span></h2>' +
+          '<p class="myt-land-lead">Lihat posisi tokomu di satu kata kunci.</p>' +
+        '</header>' +
+        '<div class="myt-land-bar">' +
+          '<input type="text" id="alat-shop-q" class="alat-input" placeholder="https://shopee.co.id/namatoko" autocomplete="off" enterkeyhint="go">' +
+          '<button type="button" class="btn-primary" id="alat-shop-go">Analisis toko</button>' +
         '</div>' +
         '<p class="alat-err" id="alat-shop-err" hidden></p>' +
         '<div id="alat-shop-picker" class="alat-picker" hidden></div>' +
+        '<p class="alat-hint myt-land-example">Contoh: https://shopee.co.id/namatoko</p>' +
         '<p class="alat-hint">Sudah punya ekstensi? Di halaman toko Shopee, ketuk “Ini toko saya”.</p>' +
         '<div class="alat-row-actions">' +
           '<button type="button" class="btn-ghost" id="alat-shop-back">Kembali</button>' +
           '<button type="button" class="btn-ghost" id="alat-shop-skip">Lewati dulu</button>' +
         '</div>' +
-        '<p class="alat-hint" style="margin-top:10px;text-align:right">Bisa tempel kapan saja di My Toko.</p>' +
-      '</section>';
+        '<section class="myt-land-stage" aria-hidden="true">' +
+          '<p class="myt-land-cap">Contoh tampilan</p>' +
+          '<div class="myt-land-chip"><span id="myt-land-type"></span><i class="myt-land-caret"></i></div>' +
+          '<article class="myt-land-card">' +
+            '<header class="myt-land-shop">' +
+              '<span class="myt-land-avatar">T</span>' +
+              '<div><b>Toko Contoh</b><small>Shopee · contoh</small></div>' +
+            '</header>' +
+            '<div class="myt-land-tabs"><span class="is-on">Ringkasan</span><span>Produk</span><span>Kompetitor</span></div>' +
+            '<div class="myt-land-live">' +
+              '<div class="myt-land-kpis">' +
+                '<div><b id="myt-land-rank">#0</b><small>dari 6 toko</small></div>' +
+                '<div class="is-up"><b id="myt-land-pct">+0%</b><small>contoh, di atas rata-rata</small></div>' +
+                '<div><b>1,1 jt</b><small>penjualan, contoh</small></div>' +
+                '<div><b>4,9</b><small>penilaian, contoh</small></div>' +
+              '</div>' +
+              '<div class="myt-land-charts">' +
+                '<div class="myt-land-panel">' +
+                  '<h3>Tren penjualan</h3>' +
+                  '<svg class="myt-land-chart" viewBox="0 0 280 110" aria-hidden="true">' +
+                    '<path class="myt-land-line-avg" d="M8 82 C80 76, 160 70, 272 62"/>' +
+                    '<path class="myt-land-line-you" d="M8 90 C70 74, 150 46, 272 20"/>' +
+                  '</svg>' +
+                  '<p class="myt-land-legend"><i class="is-you"></i> Toko Contoh <i class="is-avg"></i> Rata-rata</p>' +
+                '</div>' +
+                '<div class="myt-land-panel">' +
+                  '<h3>Performa</h3>' +
+                  '<svg class="myt-land-chart" viewBox="0 0 200 168" aria-hidden="true">' +
+                    '<polygon class="myt-land-web" points="100,40.6 135.6,66.4 122,108.3 78,108.3 64.4,66.4"/>' +
+                    '<polygon class="myt-land-spider" points="100,28.6 140.6,65.4 127.5,115.9 79.8,105.8 58.5,64.5"/>' +
+                    '<text x="100" y="16" text-anchor="middle">Penjualan</text>' +
+                    '<text x="168" y="62" text-anchor="start">Produk</text>' +
+                    '<text x="148" y="150" text-anchor="middle">Penilaian</text>' +
+                    '<text x="52" y="150" text-anchor="middle">Ulasan</text>' +
+                    '<text x="32" y="62" text-anchor="end">Harga</text>' +
+                  '</svg>' +
+                '</div>' +
+              '</div>' +
+              '<table class="myt-land-table">' +
+                '<thead><tr><th>#</th><th>Toko</th><th>Penjualan</th><th>Produk</th><th>Nilai</th><th>Harga</th></tr></thead>' +
+                '<tbody>' +
+                  '<tr class="myt-land-row"><td>1</td><td>Toko Alpha</td><td>2,8 jt</td><td>12</td><td>4,8</td><td>Rp 70 rb</td></tr>' +
+                  '<tr class="myt-land-row is-mine"><td>2</td><td>Toko Contoh</td><td>1,1 jt</td><td>9</td><td>4,9</td><td>Rp 55 rb</td></tr>' +
+                '</tbody>' +
+              '</table>' +
+            '</div>' +
+          '</article>' +
+        '</section>' +
+      '</div>';
     $('alat-shop-go')?.addEventListener('click', function () { void searchShop(); });
     $('alat-shop-back')?.addEventListener('click', backFromConnect);
     $('alat-shop-skip')?.addEventListener('click', skipConnect);
     $('alat-shop-q')?.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') { e.preventDefault(); void searchShop(); }
     });
+    startLandLoop(root);
   }
 
   /** Connect step → door choice (or Beranda if wizard already finished). */
@@ -725,7 +853,7 @@
       }
       renderPicker(rows);
     } finally {
-      if (go) { go.disabled = false; go.textContent = 'Lanjut'; }
+      if (go) { go.disabled = false; go.textContent = 'Analisis toko'; }
     }
   }
 

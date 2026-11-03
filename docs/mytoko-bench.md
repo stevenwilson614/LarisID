@@ -2,7 +2,9 @@
 
 Connected My Toko (wizard already finished) is the three-tab page in [`js/mytoko-bench.js`](../js/mytoko-bench.js), mounted from `renderSellerCenter` in [`js/gpt-alat-preview.js`](../js/gpt-alat-preview.js).
 
-Tabs: **Ringkasan**, **Produk**, **Kompetitor**. There is no Peluang or Rekomendasi tab, and no upgrade prompt. The first-run wizard is unchanged. Do not put a blocking popup on this page. Pengaturan holds ganti toko, hapus toko, sembunyikan produk, Analisis ulang, and the extension link.
+Tabs: **Ringkasan**, **Produk**, **Kompetitor**. There is no Peluang or Rekomendasi tab, and no upgrade prompt. After a Shopee link is submitted, the wizard steps are unchanged. Do not put a blocking popup on this page. Pengaturan holds ganti toko, hapus toko, sembunyikan produk, Analisis ulang, and the extension link.
+
+Before a shop is connected, My Toko is the landing in `renderConnect`: the headline, the Shopee field, and a card marked **Contoh tampilan**. The rank, percent, line, and spider on that card are a drawing. They are not a shop’s data, and the card does not offer Tokopedia. A short loop types a sample link, shows “Membandingkan…”, then draws the card. The loop pauses while the real field is in use, and it stays still when reduced motion is on.
 
 ## One keyword
 
