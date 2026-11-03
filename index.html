@@ -14414,8 +14414,14 @@ body.alat-focus.view-audit .alat-page--wide::after { display: none; }
   font: inherit; font-size: .78rem; font-weight: 650; color: #1A1A1A; cursor: pointer; text-align: left;
 }
 .myt-shop-link:hover { color: #B5202A; }
-.myt-cmp th, .myt-cmp td { padding: 12px 22px; }
+.myt-bench-split:has(.myt-cmp) { align-items: start; }
+.myt-bench-split:has(.myt-cmp) .myt-bench-card { padding: 8px 12px 6px; }
+.myt-bench-split:has(.myt-cmp) .myt-bench-card h3 { margin-bottom: 4px; }
+.myt-cmp th, .myt-cmp td { padding: 3px 10px; line-height: 1.2; }
+.myt-cmp small { display: inline; margin: 0 0 0 4px; }
 .myt-cmp th:nth-child(n+2), .myt-cmp td:nth-child(n+2) { text-align: right; white-space: nowrap; }
+.myt-bench-split:has(.myt-cmp) .myt-chart { height: 156px; width: auto; max-width: 100%; margin: 0 auto; }
+.myt-bench-split:has(.myt-cmp) .myt-lay-legend { margin-top: 2px; }
 .myt-cmp-item { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .myt-cmp-item span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .myt-ico { width: 16px; height: 16px; flex: none; display: block; }
