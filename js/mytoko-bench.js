@@ -1008,10 +1008,10 @@
     function Y(v) { return 148 - (v / maxY) * 112; }
     function dotColor(p, on) {
       if (on) return '#B5202A';
-      if (!p.store_name) return '#C8C2B4';
-      if (p.rank === 1) return '#C9974B';
-      if (p.rank === 2) return '#8A8A8A';
-      if (p.rank === 3) return '#A15C38';
+      var rank = p.store_name ? p.rank : p.sold_rank;
+      if (rank === 1) return '#C9974B';
+      if (rank === 2) return '#8A8A8A';
+      if (rank === 3) return '#A15C38';
       return '#D9D3C8';
     }
     var ordered = pts.filter(function (p) { return !mine(p); }).concat(pts.filter(mine));
@@ -1401,13 +1401,14 @@
     var perfRows = perf.rows.map(function (c) {
       var youCell = c.kind === 'omzet' ? bits.html : (c.kind === 'rating' ? fmtRating(c.you) : (c.kind === 'price' ? fmtRp(c.you) : fmtN(c.you)));
       var avgCell = c.kind === 'rating' ? fmtRating(c.avg) : (c.kind === 'price' || c.kind === 'omzet' ? fmtRpShort(c.avg) : fmtN(c.avg));
-      return '<tr><td data-label="Metrik">' + esc(c.label) + '</td><td data-label="Produk kamu">' + youCell +
+      return '<tr><td data-label="Metrik"><span class="myt-cmp-item">' + metricIcon(c.kind) +
+        '<span>' + esc(c.label) + '</span></span></td><td data-label="Produk kamu">' + youCell +
         '</td><td data-label="Rata-rata">' + avgCell + '</td><td data-label="">' + deltaHtml(c.you, c.avg, c.kind) + '</td></tr>';
     }).join('');
     var rankN = view.rankedListings;
     var rank = view.item ? num(view.item.rank) : null;
     var rankBlock = rank >= 1
-      ? '<b class="myt-lay-rank">#' + rank + '</b><span>dari ' + fmtN(rankN) + ' produk</span>' + barsSvg(view.points, listing && listing.item_id)
+      ? '<b class="myt-lay-rank">#' + rank + '</b><span>dari ' + fmtN(rankN) + ' produk</span>'
       : '<b class="myt-lay-rank">—</b>';
     var itemWeeks = (view.itemWeeks || []).map(function (w) {
       return { week_start: w.week_start, omzet: w.omzet, measured: w.measured };
@@ -1419,11 +1420,16 @@
       peers.push(view.item);
     }
     var peerTable = peers.length
-      ? '<table class="myt-bench-table"><thead><tr><th>Produk</th><th>Penjualan</th><th>Harga</th><th>Nilai</th></tr></thead><tbody>' +
+      ? '<table class="myt-bench-table"><thead><tr><th>#</th><th>Produk</th><th>Penjualan</th><th>Harga</th><th>Nilai</th></tr></thead><tbody>' +
         peers.map(function (p) {
           var mine = listing && String(p.item_id) === String(listing.item_id);
-          return '<tr class="' + (mine ? 'is-mine' : '') + '"><td data-label="Produk"><b>' + esc(clip(p.product_name)) + '</b>' +
-            (mine ? '<small>Kamu</small>' : '') + '</td>' +
+          var place = num(p.sold_rank);
+          var medal = place === 1 ? ' is-gold' : (place === 2 ? ' is-silver' : (place === 3 ? ' is-bronze' : ''));
+          return '<tr class="' + (mine ? 'is-mine' : '') + medal + '">' +
+            '<td data-label="#"><span class="myt-medal' + medal + '">' + (place || '—') + '</span></td>' +
+            '<td data-label="Produk"><span class="myt-prod-cell">' + imgHtml(p.image_url, 'myt-prod-thumb') +
+              '<b>' + esc(clip(p.product_name)) + '</b></span>' +
+              (mine ? '<small>Kamu</small>' : '') + '</td>' +
             '<td data-label="Penjualan">' + (num(p.nowcast) > 0 ? esc(fmtRpShort(p.nowcast)) + '<small>perkiraan</small>' : '—') + '</td>' +
             '<td data-label="Harga">' + (num(p.price) > 0 ? esc(fmtRp(p.price)) : '—') + '</td>' +
             '<td data-label="Nilai">' + fmtRating(p.rating) + '</td></tr>';
@@ -1446,24 +1452,28 @@
         esc(note.tone === 'warn' ? 'Bisa diubah' : 'Sudah jalan') + '</b><p>' + esc(text) + '</p></article>';
     }).join('');
     return '<div class="myt-lay-tools">' +
-        '<select id="myt-product" class="alat-input"' + (opts ? '' : ' disabled') + '>' +
-          (opts || '<option>Belum ada produk</option>') + '</select>' +
+        '<div class="myt-prod-pick">' +
+          (listing ? imgHtml(listing.image_url, 'myt-prod-pick-img') : '') +
+          '<select id="myt-product" class="alat-input myt-prod-select"' + (opts ? '' : ' disabled') + '>' +
+            (opts || '<option>Belum ada produk</option>') + '</select>' +
+        '</div>' +
         (listing ? '<button type="button" class="btn-ghost" id="myt-pantau">Pantau</button>' : '') +
       '</div>' +
       '<div class="myt-bench-split">' +
         '<section class="myt-bench-card"><h3>Performa vs kompetitor</h3>' +
-          (perfRows ? '<table class="myt-bench-table"><tbody>' + perfRows + '</tbody></table>' : '<p class="myt-bench-empty">Pilih produk yang punya pembanding.</p>') +
+          (perfRows ? '<table class="myt-bench-table myt-cmp"><tbody>' + perfRows + '</tbody></table>' : '<p class="myt-bench-empty">Pilih produk yang punya pembanding.</p>') +
           (perf.rows.some(function (c) { return c.kind === 'omzet'; }) ? '' : bits.html) +
         '</section>' +
         '<section class="myt-bench-card myt-lay-posisi"><h3>Peringkat produk</h3>' + rankBlock + '</section>' +
       '</div>' +
       '<div class="myt-bench-split">' +
         '<section class="myt-bench-card"><h3>Tren penjualan</h3>' +
-          lineSvg([{ mine: true, weeks: itemWeeks }]) + '</section>' +
+          lineSvg([{ mine: true, name: listing ? clip(listing.product_name) : 'Produk', weeks: itemWeeks }]) + '</section>' +
         '<section class="myt-bench-card"><h3>Peta harga</h3>' +
           scatterSvg(view.points, function (p) { return num(p.price) || 0; }, function (p) { return num(p.nowcast) || 0; }, function (p) {
             return listing && String(p.item_id) === String(listing.item_id);
-          }) + '</section>' +
+          }, { x: 'Harga', y: 'Penjualan' }) +
+          '<p class="myt-lay-legend"><i class="is-you"></i> Produk ini <i class="is-gold"></i> 1 <i class="is-silver"></i> 2 <i class="is-bronze"></i> 3</p></section>' +
       '</div>' +
       '<section class="myt-bench-card"><h3>Produk kompetitor</h3>' + peerTable + '</section>' +
       (recs ? '<div class="myt-lay-recs">' + recs + '</div>' : '');

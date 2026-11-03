@@ -44,7 +44,7 @@ Rows are readable only by the signed-in user.
 
 One dropdown. The default is the highest 30-day perkiraan in the active keyword. Choosing a listing from another keyword switches the market.
 
-Performa compares that listing with the keyword average for penjualan, harga, penilaian, and ulasan. There is no variasi row. The rank is “#n dari N” inside this scrape. Bars are only the peer penjualan values the query returned.
+Performa compares that listing with the keyword average for penjualan, harga, penilaian, and ulasan, one line each with an icon. There is no variasi row. The rank is “#n dari N” inside this scrape and fills the card. The selector shows that listing’s photo. Tren is that product’s weekly series. Peta harga is price across and 30-day penjualan up, from zero. The peer table shows a photo and marks sold ranks 1, 2, and 3 in gold, silver, and bronze.
 
 Pantau still opens the existing Kompetitor / Analisa panel.
 

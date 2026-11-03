@@ -13291,7 +13291,7 @@ body.view-chat .sfb-card {
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260915a" defer></script>
 <script src="/js/gpt-belajar.js?v=20261017f" defer></script>
-<script src="/js/mytoko-bench.js?v=20261103komp1" defer></script>
+<script src="/js/mytoko-bench.js?v=20261103prod1" defer></script>
 <script src="/js/gpt-alat-preview.js?v=20261103land1" defer></script>
 <script src="/js/omset-week-shape.js?v=20261021shape1" defer></script>
 <script src="/js/gpt-app.js?v=20261102konteks1" defer></script>
@@ -14359,6 +14359,18 @@ body.alat-focus.view-audit .alat-page--wide::after { display: none; }
 .myt-intisari li.is-gold { background: #F5EFE0; border-left-color: #C9974B; }
 .myt-intisari li.is-up { background: #F3FBF6; border-left-color: #16A34A; }
 .myt-intisari li.is-down { background: #FDF2F2; border-left-color: #DC2626; }
+.myt-prod-pick { display: flex; align-items: center; gap: 8px; flex: 1 1 220px; min-width: 0; }
+.myt-prod-pick-img, .myt-prod-pick .alat-ph {
+  width: 36px; height: 36px; border-radius: 8px; object-fit: cover; flex: none; background: #F3F3F4;
+}
+.myt-prod-select { font-size: .82rem; min-width: 0; }
+.myt-prod-cell { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.myt-prod-thumb, .myt-prod-cell .alat-ph {
+  width: 32px; height: 32px; border-radius: 6px; object-fit: cover; flex: none; background: #F3F3F4;
+}
+.myt-prod-cell b {
+  font-size: .78rem; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .myt-pill {
   display: inline-flex; align-items: center; height: 36px; padding: 0 12px;
   border: 1px solid #E8E8E8; border-radius: 999px; background: #fff;
@@ -14796,6 +14808,7 @@ body.pasar-expor .expor-dd .disclaimer { margin-top: 12px; font-size: .85rem; co
 body.pasar-expor .expor-dd .cta-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 body.pasar-expor .dir-cat-pill { padding: 8px 12px; }
 body.pasar-expor .dir-cat-pill-label { font-size: .82rem; }
+.myt-prod-pick .alat-input { font-size: .82rem; }
 </style>
 </body>
 </html>
