@@ -1021,21 +1021,22 @@
       return '<line x1="48" y1="' + y + '" x2="276" y2="' + y + '" stroke="#F1F1F2"/>' +
         '<line x1="' + x + '" y1="36" x2="' + x + '" y2="148" stroke="#F1F1F2"/>';
     }).join('');
-    var ticks = '<text x="44" y="40" text-anchor="end" font-size="8" fill="#8A8A8A">' + esc(fmtRpShort(maxY / 1.12)) + '</text>' +
-      '<text x="276" y="164" text-anchor="end" font-size="8" fill="#8A8A8A">' + esc(fmtN(Math.round(maxX / 1.12))) + '</text>';
+    var yName = (axis && axis.y) ? axis.y : '';
+    var xName = (axis && axis.x) ? axis.x : '';
+    var yTick = yName === 'Harga' ? fmtRp(Math.round(maxY / 1.12)) : (yName === 'Jumlah produk' ? fmtN(Math.round(maxY / 1.12)) : fmtRpShort(maxY / 1.12));
+    var xTick = xName === 'Harga' ? fmtRp(Math.round(maxX / 1.12)) : (xName === 'Penjualan' ? fmtRpShort(maxX / 1.12) : fmtN(Math.round(maxX / 1.12)));
+    var ticks = '<text x="44" y="40" text-anchor="end" font-size="8" fill="#8A8A8A">' + esc(yTick) + '</text>' +
+      '<text x="276" y="164" text-anchor="end" font-size="8" fill="#8A8A8A">' + esc(xTick) + '</text>' +
+      (yName ? '<text x="16" y="96" text-anchor="middle" font-size="9" fill="#1A1A1A" transform="rotate(-90 16 96)">' + esc(yName) + '</text>' : '') +
+      (xName ? '<text x="162" y="178" text-anchor="middle" font-size="9" fill="#1A1A1A">' + esc(xName) + '</text>' : '');
     var dots = ordered.map(function (p) {
       var on = mine(p);
       return '<circle cx="' + X(xOf(p)).toFixed(1) + '" cy="' + Y(yOf(p)).toFixed(1) +
         '" r="' + (on ? 6 : 4.5) + '" fill="' + dotColor(p, on) + '"' +
         (on ? ' stroke="#fff" stroke-width="1.5"' : '') + '/>';
     }).join('');
-    var names = axis || {};
-    var caption = (names.x || names.y)
-      ? '<text x="162" y="176" text-anchor="middle" font-size="9" fill="#8A8A8A">' +
-        esc(names.x || '') + ' → ' + esc(names.y || '') + '</text>'
-      : '';
-    return '<svg class="myt-chart" viewBox="0 0 300 184" role="img" aria-label="Sebaran kompetitor">' +
-      grid + ticks + dots + caption + '</svg>';
+    return '<svg class="myt-chart" viewBox="0 0 300 190" role="img" aria-label="Sebaran kompetitor">' +
+      grid + ticks + dots + '</svg>';
   }
 
   function lineSvg(series) {
@@ -1231,7 +1232,8 @@
     if (!(yours > 0) || !(theirs > 0)) return '<span class="myt-bench-muted">—</span>';
     var pct = Math.round(((theirs - yours) / yours) * 100);
     var cls = pct > 0 ? 'is-up' : (pct < 0 ? 'is-down' : 'is-flat');
-    return '<span class="myt-bench-delta ' + cls + '">' + (pct > 0 ? '+' : '') + pct + '%</span>';
+    var word = pct > 0 ? 'lebih' : (pct < 0 ? 'kurang' : 'sama');
+    return '<span class="myt-bench-delta ' + cls + '">' + (pct > 0 ? '+' : '') + pct + '%</span><small>' + word + '</small>';
   }
 
   function rivalRows(view, q) {
@@ -1247,14 +1249,15 @@
       var medal = s.rank === 1 ? ' is-gold' : (s.rank === 2 ? ' is-silver' : (s.rank === 3 ? ' is-bronze' : ''));
       return '<tr class="' + (mine ? 'is-mine' : '') + medal + '">' +
         '<td data-label="#"><span class="myt-medal' + medal + '">' + (s.rank || '—') + '</span></td>' +
-        '<td data-label="Toko"><b class="myt-one-line">' + esc(s.store_name || 'Toko') + '</b>' +
+        '<td data-label="Toko"><span class="myt-prod-cell">' + imgHtml(s.image_url, 'myt-prod-thumb') +
+          '<b class="myt-one-line">' + esc(s.store_name || 'Toko') + '</b></span>' +
           (mine ? '<small>Kamu</small>' : '') + '</td>' +
         '<td data-label="Kota">' + (s.location ? esc(s.location) : '—') + '</td>' +
         '<td data-label="Penjualan">' + (num(s.omzet) > 0 ? esc(fmtRpShort(s.omzet)) + '<small>perkiraan</small>' : '—') + '</td>' +
-        '<td data-label="Produk">' + (s.n_listings != null ? fmtN(s.n_listings) : '—') + '</td>' +
-        '<td data-label="Nilai">' + fmtRating(s.rating) + '</td>' +
+        '<td data-label="Jumlah produk">' + (s.n_listings != null ? fmtN(s.n_listings) : '—') + '</td>' +
+        '<td data-label="Rating">' + fmtRating(s.rating) + '</td>' +
         '<td data-label="Harga">' + (num(s.avg_price) > 0 ? esc(fmtRp(s.avg_price)) : '—') + '</td>' +
-        '<td data-label="">' + (mine ? '—' : rivalDelta(s, view.you)) +
+        '<td data-label="Omset vs kamu">' + (mine ? '—' : rivalDelta(s, view.you)) +
           (mine ? '' : ' <button type="button" class="btn-ghost myt-hide" data-hide-shop="' + Number(s.shop_id) + '">Sembunyikan</button>') +
         '</td></tr>';
     }).join('');
@@ -1342,11 +1345,22 @@
       }).join('') + '</ul>'
       : '<p class="myt-bench-empty">Belum ada selisih yang bisa dihitung.</p>';
     var mineId = ctx.shop && ctx.shop.shop_id;
+    var mapShops = view.shops.filter(function (s) {
+      return num(s.omzet) > 0 && num(s.n_listings) > 0;
+    }).sort(function (a, b) {
+      return (a.rank || 9999) - (b.rank || 9999);
+    }).slice(0, 10);
+    var mineShop = null;
+    view.shops.forEach(function (s) { if (s.is_mine) mineShop = s; });
+    if (mineShop && num(mineShop.omzet) > 0 && num(mineShop.n_listings) > 0 &&
+        !mapShops.some(function (s) { return String(s.shop_id) === String(mineShop.shop_id); })) {
+      mapShops.push(mineShop);
+    }
     return '<div class="myt-bench-split">' +
         '<section class="myt-bench-card"><h3>Peta kompetitor</h3>' +
-          scatterSvg(view.shops, function (s) { return num(s.n_listings) || 0; }, function (s) { return num(s.omzet) || 0; }, function (s) {
+          scatterSvg(mapShops, function (s) { return num(s.n_listings) || 0; }, function (s) { return num(s.omzet) || 0; }, function (s) {
             return !!s.is_mine || Number(s.shop_id) === Number(mineId);
-          }, { x: 'Produk terlihat', y: 'Penjualan 30 hari' }) +
+          }, { x: 'Jumlah produk', y: 'Penjualan' }) +
           '<p class="myt-lay-legend"><i class="is-you"></i> Kamu <i class="is-gold"></i> 1 <i class="is-silver"></i> 2 <i class="is-bronze"></i> 3</p></section>' +
         '<section class="myt-bench-card"><h3>Intisari</h3>' + insights + '</section>' +
       '</div>' +
@@ -1358,7 +1372,7 @@
         '</div>' +
         '<div id="myt-add-picker" class="alat-picker" hidden></div>' +
         '<div class="myt-rival-scroll">' +
-          '<table class="myt-bench-table myt-rival-table"><thead><tr><th>#</th><th>Toko</th><th>Kota</th><th>Penjualan</th><th>Produk</th><th>Nilai</th><th>Harga</th><th>Selisih vs kamu</th></tr></thead>' +
+          '<table class="myt-bench-table myt-rival-table"><thead><tr><th>#</th><th>Toko</th><th>Kota</th><th>Penjualan</th><th>Jumlah produk</th><th>Rating</th><th>Harga</th><th>Omset vs kamu</th></tr></thead>' +
           '<tbody id="myt-rival-body">' + rivalRows(view, ui.q) + '</tbody></table>' +
         '</div>' +
       '</section>';
