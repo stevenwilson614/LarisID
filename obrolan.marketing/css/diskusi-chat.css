@@ -88,6 +88,25 @@ html[data-mode="mentor"] .dk-shell .dk-thread { display: flex; }
   white-space: nowrap;
 }
 .dk-newchat:hover { background: #8E1820; }
+.dk-topic-new {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 0 12px 8px;
+}
+.dk-topic-new input {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  padding: 0 10px;
+  font: inherit;
+  font-size: .8rem;
+  background: transparent;
+  color: inherit;
+}
+.dk-add-mentees { margin: 0 0 8px; }
 .dk-search {
   display: flex;
   align-items: center;

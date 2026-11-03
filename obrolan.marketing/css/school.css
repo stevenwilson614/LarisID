@@ -4019,6 +4019,12 @@ html:not([data-theme="light"]) .kur-wiz-ico {
 .cal-check {
   display: flex; gap: 8px; align-items: center; font-size: .78rem; color: var(--muted);
 }
+.cal-pick { margin: 4px 0 10px; }
+.cal-pick[hidden] { display: none; }
+.cal-pick-list {
+  display: grid; gap: 4px; max-height: 180px; overflow: auto;
+  margin-top: 6px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px;
+}
 .cal-event-acts { margin-top: 8px; }
 .cal-week {
   display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;

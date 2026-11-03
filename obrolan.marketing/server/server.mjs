@@ -2185,6 +2185,87 @@ function projectGuest(state) {
   return projectPublic(state);
 }
 
+function jakartaMonth(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return '';
+  try {
+    return String(new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit'
+    }).format(d)).slice(0, 7);
+  } catch (err) {
+    return '';
+  }
+}
+
+function personBatch(state, studentId) {
+  const live = (state.liveStudents || []).find((s) => s && s.id === studentId) || {};
+  const person = (state.people && state.people[studentId]) || {};
+  const batchId = String(person.batchId || live.batchId || '');
+  if (/^\d{4}-\d{2}$/.test(batchId)) return batchId;
+  const bill = (state.billing && state.billing[studentId]) || {};
+  const paid = jakartaMonth(bill.paidAt);
+  if (paid) return paid;
+  const app = state.applications && state.applications[studentId];
+  return jakartaMonth(app && app.at) || '';
+}
+
+function studentIsMentee(state, studentId) {
+  if (!studentId) return false;
+  const bill = (state.billing && state.billing[studentId]) || {};
+  if (state.paymentsEnabled !== true) {
+    const app = state.applications && state.applications[studentId];
+    if (app) return true;
+  }
+  if (bill.status === 'gratis') return true;
+  if (bill.status === 'pending' || bill.status === 'belum' || bill.status === 'trial') return false;
+  if (bill.plan !== 'mentoring') return false;
+  if (bill.accessUntil) {
+    const end = new Date(bill.accessUntil).getTime();
+    if (Number.isFinite(end) && Date.now() >= end + graceMsOf(state)) return false;
+  }
+  return bill.status === 'lunas' || bill.status === 'cicilan';
+}
+
+function sessionAudienceOf(ses) {
+  const aud = ses && ses.audience != null ? String(ses.audience) : 'all';
+  return aud || 'all';
+}
+
+function sessionVisibleToStudent(state, ses, studentId) {
+  if (!ses || !studentId) return false;
+  const aud = sessionAudienceOf(ses);
+  if (aud === 'all') return true;
+  if (aud === 'mentees') return studentIsMentee(state, studentId);
+  if (aud === 'select') {
+    const ids = Array.isArray(ses.audienceIds) ? ses.audienceIds.map((id) => String(id || '')) : [];
+    return ids.indexOf(String(studentId)) >= 0;
+  }
+  if (personBatch(state, studentId) === aud) return true;
+  const chat = state.chats && state.chats[aud];
+  if (!chat || typeof chat !== 'object') return false;
+  const removed = new Set(Array.isArray(chat.removed) ? chat.removed.map(String) : []);
+  if (removed.has(String(studentId))) return false;
+  const added = Array.isArray(chat.added) ? chat.added.map(String) : [];
+  if (added.indexOf(String(studentId)) >= 0) return true;
+  return /^\d{4}-\d{2}$/.test(aud) && studentIsMentee(state, studentId) && personBatch(state, studentId) === aud;
+}
+
+function studentMayOpenMeet(state, ses, studentId) {
+  if (!sessionVisibleToStudent(state, ses, studentId)) return false;
+  if (sessionAudienceOf(ses) === 'select') return true;
+  return studentIsMentee(state, studentId);
+}
+
+function sessionsForStudent(state, studentId) {
+  return (Array.isArray(state.sessions) ? state.sessions : []).filter((ses) =>
+    sessionVisibleToStudent(state, ses, studentId)
+  ).map((ses) => {
+    if (studentMayOpenMeet(state, ses, studentId)) return ses;
+    return Object.assign({}, ses, { meetUrl: '' });
+  });
+}
+
 function projectStudent(state, studentId, slug) {
   const open = curriculumVisible(state, slug);
   const shell = open ? memberShell(state) : projectPublic(state);
@@ -2200,6 +2281,7 @@ function projectStudent(state, studentId, slug) {
   shell.enrollments = sliceMap(src.enrollments, studentId);
   shell.timeline = sliceMap(src.timeline, studentId);
   shell.kolab = sliceMap(src.kolab, studentId);
+  if (open && Array.isArray(src.sessions)) shell.sessions = sessionsForStudent(src, studentId);
   return shell;
 }
 

@@ -3236,6 +3236,7 @@
     diskusiScroll: '',
     diskusiSearch: '',
     chatPeopleOpen: false,
+    topicComposer: false,
     chatPeopleQ: '',
     chatPeopleFocus: false,
     pollOn: false,
@@ -3994,7 +3995,7 @@
     ensureDiskusi();
     if (db.batchNames[id]) return db.batchNames[id];
     const m = /^(\d{4})-(\d{2})$/.exec(id);
-    if (!m) return 'Chat baru';
+    if (!m) return 'Topik baru';
     const name = BATCH_MONTHS[Number(m[2]) - 1] || m[2];
     return 'Batch ' + name + ' ' + m[1];
   }
@@ -4297,14 +4298,27 @@
     ensureDiskusi();
     const id = 'c-' + Date.now().toString(36) + Math.floor(Math.random() * 1e3).toString(36);
     db.chats[id] = { added: [], removed: [], createdAt: isoNow() };
-    db.batchNames[id] = String(name || '').trim().slice(0, 60) || 'Grup baru';
+    db.batchNames[id] = String(name || '').trim().slice(0, 60) || 'Topik baru';
     rememberDiskusiChat(id);
     return id;
   }
-  function createChat() {
-    if (!isStaff()) return;
-    const id = createNamedChat('Batch baru');
-    rememberDiskusiChat(id);
+  function addAllActiveMentees(chatId) {
+    if (!chatId) return 0;
+    let n = 0;
+    people().forEach((s) => {
+      if (!s || s.kind === 'mentor' || !canMentoring(s.id)) return;
+      if (chatMembers(chatId).indexOf(s.id) >= 0) return;
+      addChatMember(chatId, s.id);
+      if (chatMembers(chatId).indexOf(s.id) >= 0) n += 1;
+    });
+    return n;
+  }
+  function createChat(name) {
+    if (!isStaff()) return '';
+    const label = String(name || '').trim();
+    if (label.length < 2) return '';
+    const id = createNamedChat(label);
+    ui.topicComposer = false;
     ui.diskusiBatch = id;
     ui.diskusiSub = 'batch';
     ui.diskusiShowList = false;
@@ -4314,6 +4328,7 @@
     ui.diskusiScroll = 'bottom';
     save();
     render();
+    return id;
   }
   function actorId() {
     if (isStaff()) {
@@ -4734,20 +4749,44 @@
     const aud = ses && ses.audience != null ? String(ses.audience) : 'all';
     return aud || 'all';
   }
+  function sessionAudienceIdsOf(ses) {
+    const raw = ses && Array.isArray(ses.audienceIds) ? ses.audienceIds : [];
+    return raw.map((id) => String(id || '')).filter(Boolean);
+  }
+  function calStudentRoster() {
+    return people().filter((s) => s && s.id && s.kind !== 'mentor');
+  }
   function sessionVisibleTo(ses, personId, staff) {
     if (!ses) return false;
     if (staff) return true;
     const aud = sessionAudienceOf(ses);
     if (aud === 'all') return true;
-    if (!personId) return true;
+    if (!personId) return false;
+    if (aud === 'mentees') return canMentoring(personId);
+    if (aud === 'select') return sessionAudienceIdsOf(ses).indexOf(String(personId)) >= 0;
     return batchOf(personId) === aud || memberOfChat(personId, aud);
+  }
+  function studentMayOpenMeet(ses, personId, staff) {
+    if (staff) return true;
+    if (!personId || !sessionVisibleTo(ses, personId, false)) return false;
+    if (sessionAudienceOf(ses) === 'select') return true;
+    return canMentoring(personId);
+  }
+  function sessionForViewer(ses, personId, staff) {
+    if (!ses || staff || studentMayOpenMeet(ses, personId, false)) return ses;
+    return Object.assign({}, ses, { meetUrl: '' });
   }
   function sessionAudienceIds(ses) {
     const aud = sessionAudienceOf(ses);
     if (aud === 'all') {
-      return people()
-        .filter((s) => s && s.kind !== 'mentor' && (canMentoring(s.id) || canPreview(s.id)))
-        .map((s) => s.id);
+      return calStudentRoster().map((s) => s.id);
+    }
+    if (aud === 'mentees') {
+      return calStudentRoster().filter((s) => canMentoring(s.id)).map((s) => s.id);
+    }
+    if (aud === 'select') {
+      const want = new Set(sessionAudienceIdsOf(ses));
+      return calStudentRoster().filter((s) => want.has(s.id)).map((s) => s.id);
     }
     return chatMembers(aud).filter((id) => {
       const s = people().find((x) => x.id === id);
@@ -4756,7 +4795,12 @@
   }
   function sessionAudienceLabel(ses) {
     const aud = sessionAudienceOf(ses);
-    if (aud === 'all') return 'Semua kelas';
+    if (aud === 'all') return 'Semua orang';
+    if (aud === 'mentees') return 'Mentee aktif';
+    if (aud === 'select') {
+      const n = sessionAudienceIds(ses).length;
+      return n ? ('Pilih siswa · ' + n) : 'Pilih siswa';
+    }
     return batchLabel(aud);
   }
   function visibleSessions(staff) {
@@ -4785,12 +4829,13 @@
       ? ses.remind.channels
       : ['wa', 'email'];
     const title = 'Pengingat: ' + (ses.title || 'Sesi kelas');
-    const body = 'Halo {name}, pengingat sesi "' + (ses.title || 'kelas') + '" pada ' + fmtWhen(ses.startsAt) +
-      (ses.meetUrl ? ('. Link: ' + ses.meetUrl) : '.') +
-      (ses.location ? (' Lokasi: ' + ses.location) : '');
     let at = o.now ? isoNow() : sessionReminderAt(ses);
     if (!o.now && new Date(at).getTime() < nowMs()) at = isoNow();
     ids.forEach((id) => {
+      const withMeet = studentMayOpenMeet(ses, id, false);
+      const body = 'Halo {name}, pengingat sesi "' + (ses.title || 'kelas') + '" pada ' + fmtWhen(ses.startsAt) +
+        (withMeet && ses.meetUrl ? ('. Link: ' + ses.meetUrl) : '.') +
+        (ses.location ? (' Lokasi: ' + ses.location) : '');
       if (channels.indexOf('wa') >= 0) queueWa(id, title, body, at);
       if (channels.indexOf('email') >= 0) queueEmail(id, title, title, body, at);
     });
@@ -8009,22 +8054,22 @@
               : '') +
           '</div>'
         ).join('')
-      : '<p class="muted fub-link-empty">Belum masuk grup diskusi.</p>';
+      : '<p class="muted fub-link-empty">Belum masuk topik.</p>';
     const add = can
       ? '<div class="fub-addrow">' +
-          '<select data-group-for="' + esc(id) + '" aria-label="Pilih grup">' +
-            '<option value="">Pilih grup…</option>' +
+          '<select data-group-for="' + esc(id) + '" aria-label="Pilih topik">' +
+            '<option value="">Pilih topik…</option>' +
             others.map((c) => '<option value="' + esc(c.id) + '">' + esc(c.label) + '</option>').join('') +
           '</select>' +
           '<button type="button" class="btn-sm" data-act="person-group-add" data-id="' + esc(id) + '">Tambah</button>' +
         '</div>' +
         '<form class="fub-addrow" data-act="person-group-new" data-id="' + esc(id) + '">' +
-          '<input name="name" maxlength="60" placeholder="Nama grup baru">' +
-          '<button type="submit" class="btn-sm">Buat grup</button>' +
+          '<input name="name" maxlength="60" placeholder="Nama topik">' +
+          '<button type="submit" class="btn-sm">Buat topik</button>' +
         '</form>'
       : '';
     return '<div class="fub-section">' +
-      '<div class="fub-section-h">Grup diskusi</div>' +
+      '<div class="fub-section-h">Topik</div>' +
       rows + add +
     '</div>';
   }
@@ -10220,11 +10265,12 @@
     const preview = canPreview(s.id) && !canMentoring(s.id) && !schoolIsFree();
     const banner = preview ? offerBanner(s.id) : '';
     const resume = last ? resumeJourneyHtml(s.id, last, preview) : '';
+    const openMeet = ses ? studentMayOpenMeet(ses, s.id, false) : false;
     const nextCard = ses
       ? ('<section class="card home-session">' +
           '<p class="ses-kicker">Sesi berikutnya</p>' +
           '<h2 class="ses-title">' + esc(ses.title) + '</h2>' +
-          (preview
+          (!openMeet
             ? '<p class="muted">Live class terkunci sampai mentoring lunas. Jadwal tetap kelihatan.</p>'
             : '') +
           '<p class="ses-when">' + brandIcon('cal') +
@@ -10232,16 +10278,16 @@
             (ses.location ? (' · ' + esc(ses.location)) : '') + '</span></p>' +
           (ses.notes ? '<p class="muted">' + esc(ses.notes) + '</p>' : '') +
           '<div class="row ses-acts">' +
-            (preview
-              ? '<button class="btn" data-act="tab" data-id="daftar">Buka dengan mentoring</button>'
-              : meetOpenBtn(ses.meetUrl)) +
+            (openMeet
+              ? meetOpenBtn(ses.meetUrl)
+              : '<button class="btn" data-act="tab" data-id="daftar">Buka dengan mentoring</button>') +
             (waFabEnabled()
               ? '<a class="wa" href="' + esc(waLink(ownerWa(), 'Halo ' + ownerFirstName() +
                 ', saya dari ' + ((db && db.businessName) || 'kelas') + '.')) +
                 '">Chat ' + esc(ownerFirstName()) + ' di WA</a>'
               : '') +
           '</div>' +
-          calSyncButtons(ses) +
+          calSyncButtons(sessionForViewer(ses, s.id, false)) +
         '</section>')
       : '';
     return (
@@ -11946,11 +11992,20 @@
     const candidates = staff
       ? people().filter((s) => s && members.every((m) => m.id !== s.id) && (!q || String(s.name || '').toLowerCase().indexOf(q) !== -1))
       : [];
+    const month = isMonthChat(chatId);
+    const note = month
+      ? 'Siswa bulan bayar masuk otomatis. Tambahan tetap di topik ini.'
+      : 'Hanya orang yang kamu tambah yang melihat topik ini.';
+    const addAll = staff
+      ? '<button type="button" class="btn-sm dk-add-mentees" data-act="chat-add-mentees" data-chat="' +
+          esc(chatId) + '">Tambah semua mentee aktif</button>'
+      : '';
     return '<aside class="dk-people">' +
       '<header><strong>Orang</strong>' +
         '<button type="button" class="btn-sm" data-act="chat-people-close">Tutup</button></header>' +
       '<input data-act="chat-people-q" placeholder="' + (staff ? 'Cari siswa untuk ditambah' : 'Cari orang') + '" value="' + esc(ui.chatPeopleQ || '') + '">' +
-      '<p class="muted dk-people-note">Siswa bulan bayar masuk otomatis. Tambahan tetap di chat ini.</p>' +
+      '<p class="muted dk-people-note">' + note + '</p>' +
+      addAll +
       '<div class="dk-people-list">' +
         (shownMembers.length ? shownMembers.map((s) =>
           '<div class="dk-mem">' + actorAvatar(s.id, 'avatar sm') +
@@ -12003,38 +12058,46 @@
           '<span class="dk-row-copy"><strong>Tanya materi</strong><em>Pertanyaan dan pengumuman</em></span>' +
         '</button>'
       : '';
+    const topicForm = staff && ui.topicComposer
+      ? '<form class="dk-topic-new" data-act="topic-create">' +
+          '<input name="name" maxlength="60" required placeholder="Nama topik" aria-label="Nama topik">' +
+          '<button type="submit" class="dk-newchat">Buat</button>' +
+          '<button type="button" class="btn-sm" data-act="topic-composer-close">Batal</button>' +
+        '</form>'
+      : '';
     const listHtml = '<aside class="dk-list">' +
-      '<div class="dk-list-h"><strong>Chat</strong><span class="dk-list-tools">' +
+      '<div class="dk-list-h"><strong>Topik</strong><span class="dk-list-tools">' +
         unreadJumpHtml() +
-        (staff ? '<button type="button" class="dk-newchat" data-act="chat-new">+ Chat baru</button>' : '') +
+        (staff ? '<button type="button" class="dk-newchat" data-act="chat-new">+ Topik baru</button>' : '') +
       '</span></div>' +
+      topicForm +
       '<label class="dk-search"><span class="dk-search-ico" aria-hidden="true"></span>' +
-        '<input type="search" data-act="diskusi-search" placeholder="Cari percakapan…" value="' +
+        '<input type="search" data-act="diskusi-search" placeholder="Cari topik…" value="' +
           esc(ui.diskusiSearch || '') + '" autocomplete="off">' +
       '</label>' +
       '<div class="dk-list-scroll">' +
-        (rows || '<p class="muted dk-list-empty">Belum ada chat.</p>') +
+        (rows || '<p class="muted dk-list-empty">Belum ada topik.</p>') +
         tanyaRow +
       '</div></aside>';
     let thread = '';
     if (tanya) {
       thread = '<section class="dk-thread"><header class="dk-thread-h">' +
-        '<button type="button" class="dk-back" data-act="diskusi-back" aria-label="Daftar chat">‹</button>' +
+        '<button type="button" class="dk-back" data-act="diskusi-back" aria-label="Daftar topik">‹</button>' +
         '<div class="dk-thread-titles"><h2>Tanya materi</h2></div></header>' +
         '<div class="dk-feed">' + viewDiskusiTanya(true) + '</div></section>';
     } else if (!batchId) {
       thread = '<section class="dk-thread"><header class="dk-thread-h"><div class="dk-thread-titles"><h2>Diskusi</h2></div></header>' +
-        '<div class="dk-feed"><p class="muted">Pilih chat di samping.</p></div></section>';
+        '<div class="dk-feed"><p class="muted">Pilih topik di samping.</p></div></section>';
     } else {
       const info = list.find((c) => c.id === batchId) || visibleChats().find((c) => c.id === batchId);
       const count = info ? info.count : chatMembers(batchId).length;
       const inChat = isStaff() || memberOfChat(actorId(), batchId);
       const posts = postsInBatch(batchId);
       const title = staff
-        ? '<input class="dk-title" data-act="chat-rename" data-id="' + esc(batchId) + '" maxlength="60" value="' + esc(batchLabel(batchId)) + '" aria-label="Nama chat">'
+        ? '<input class="dk-title" data-act="chat-rename" data-id="' + esc(batchId) + '" maxlength="60" value="' + esc(batchLabel(batchId)) + '" aria-label="Nama topik">'
         : '<h2>' + esc(batchLabel(batchId)) + '</h2>';
       thread = '<section class="dk-thread"><header class="dk-thread-h">' +
-        '<button type="button" class="dk-back" data-act="diskusi-back" aria-label="Daftar chat">‹</button>' +
+        '<button type="button" class="dk-back" data-act="diskusi-back" aria-label="Daftar topik">‹</button>' +
         '<div class="dk-thread-titles">' + title +
           '<button type="button" class="dk-count" data-act="chat-people">' + count + ' anggota</button></div>' +
         unreadJumpHtml() +
@@ -12045,7 +12108,7 @@
             ? posts.map((p) => postCardHtml(p, !!staff)).join('')
             : '<p class="muted dk-empty-note">Belum ada catatan. Tulis di bawah, tempel foto, lampirkan file, atau buat poll.</p>') +
         '</div>' +
-        (inChat ? composerHtml(batchId) : '<p class="muted dk-compose-locked">Kamu belum masuk chat ini.</p>') +
+        (inChat ? composerHtml(batchId) : '<p class="muted dk-compose-locked">Kamu belum masuk topik ini.</p>') +
         chatPeopleHtml(batchId, !!staff) +
         '</section>';
     }
@@ -14837,14 +14900,29 @@
       '" target="_blank" rel="noopener">' + brandIcon('meet') + ' Buka Meet</a>';
   }
   function calAudienceOptionsHtml(selected) {
-    const cur = selected || 'all';
-    const batches = batchList();
-    return '<option value="all"' + (cur === 'all' ? ' selected' : '') + '>Semua kelas</option>' +
-      batches.map((b) =>
-        '<option value="' + esc(b.id) + '"' + (cur === b.id ? ' selected' : '') + '>' +
-          esc(b.label) + (b.count ? (' (' + b.count + ')') : '') +
-        '</option>'
-      ).join('');
+    const cur = selected || 'mentees';
+    const opts = [
+      ['all', 'Semua orang'],
+      ['mentees', 'Mentee aktif'],
+      ['select', 'Pilih siswa…']
+    ];
+    const known = opts.some((pair) => pair[0] === cur);
+    return opts.map((pair) =>
+      '<option value="' + pair[0] + '"' + (cur === pair[0] ? ' selected' : '') + '>' + pair[1] + '</option>'
+    ).join('') +
+      (known ? '' : '<option value="' + esc(cur) + '" selected>' + esc(batchLabel(cur)) + '</option>');
+  }
+  function calPickHtml(selectedIds, open) {
+    const want = {};
+    (selectedIds || []).forEach((id) => { want[id] = true; });
+    const rows = calStudentRoster().map((s) =>
+      '<label class="cal-check"><input type="checkbox" name="audienceId" value="' + esc(s.id) + '"' +
+        (want[s.id] ? ' checked' : '') + '> ' + esc(s.name || 'Siswa') + '</label>'
+    ).join('');
+    return '<div class="cal-pick"' + (open ? '' : ' hidden') + '>' +
+      '<p class="muted">Centang siswa yang boleh lihat acara dan tautan Meet.</p>' +
+      '<div class="cal-pick-list">' + (rows || '<p class="muted">Belum ada siswa.</p>') + '</div>' +
+    '</div>';
   }
   function calComposerHtml(editId) {
     const today = splitLocal();
@@ -14857,6 +14935,7 @@
     };
     const remind = (existing && existing.remind) || { on: true, whenMins: 60, channels: ['wa', 'email'] };
     const channels = remind.channels || ['wa', 'email'];
+    const audNow = existing ? sessionAudienceOf(existing) : 'mentees';
     return '<form class="compose cal-composer" data-act="save-session" data-id="' + esc(existing ? existing.id : 'new') + '">' +
       '<div class="cal-composer-head">' +
         '<strong>' + (existing ? 'Edit acara' : 'Acara baru') + '</strong>' +
@@ -14875,10 +14954,11 @@
         '<div><label class="muted">Durasi (menit)</label>' +
           '<input name="mins" type="number" min="15" max="480" step="15" value="' +
             esc(existing ? sessionDurationMins(existing) : 90) + '"></div>' +
-        '<div><label class="muted">Kelas siswa</label>' +
-          '<select name="audience">' + calAudienceOptionsHtml(existing ? sessionAudienceOf(existing) : 'all') +
+        '<div><label class="muted">Siapa yang melihat</label>' +
+          '<select name="audience">' + calAudienceOptionsHtml(audNow) +
           '</select></div>' +
       '</div>' +
+      calPickHtml(existing ? sessionAudienceIdsOf(existing) : [], audNow === 'select') +
       '<label class="muted">Tautan Meet / Zoom</label>' +
       '<input name="meetUrl" placeholder="https://meet.google.com/…" value="' + esc(existing ? (existing.meetUrl || '') : '') + '">' +
       '<label class="muted">Lokasi</label>' +
@@ -14935,6 +15015,7 @@
             if (ev.kind === 'meet') {
               const ses = (db.sessions || []).find((s) => s.id === ev.id) || ev;
               const nAud = sessionAudienceIds(ses).length;
+              const openMeet = staff || studentMayOpenMeet(ses, ui.personaId, false);
               return '<article class="thread home-session">' +
                 '<p class="ses-kicker">' + esc(kindLabel.meet) + '</p>' +
                 '<h4 class="ses-title">' + esc(ev.title) + '</h4>' +
@@ -14944,7 +15025,7 @@
                   (nAud ? (' · ' + nAud + ' siswa') : '') +
                 '</span></p>' +
                 '<div class="row ses-acts">' +
-                  meetOpenBtn(ev.url) +
+                  (openMeet ? meetOpenBtn(ev.url) : '<p class="muted">Tautan Meet hanya untuk yang diundang.</p>') +
                   (staff && staffCan('editClasses')
                     ? '<button type="button" class="btn-sm" data-act="cal-composer" data-id="' + esc(ev.id) + '">Edit</button>' +
                       '<button type="button" class="btn-sm" data-act="cal-remind-now" data-id="' + esc(ev.id) + '">Kirim pengingat</button>' +
@@ -14954,7 +15035,7 @@
                 (staff && staffCan('editClasses')
                   ? '<form class="compose" data-act="meet" data-id="' + esc(ev.id) + '"><input name="meetUrl" value="' + esc(ev.url || '') + '" placeholder="https://meet.google.com/..."><button class="btn" type="submit">Simpan tautan Meet</button></form>'
                   : '') +
-                calSyncButtons(ses) +
+                calSyncButtons(sessionForViewer(ses, staff ? '' : ui.personaId, !!staff)) +
                 '</article>';
             }
             if (ev.kind === 'kur') {
@@ -15197,6 +15278,11 @@
   /* ── events ──────────────────────────────────────────────────────── */
   document.addEventListener('change', (e) => {
     const t = e.target;
+    if (t.name === 'audience' && t.closest && t.closest('.cal-composer')) {
+      const pick = t.closest('form').querySelector('.cal-pick');
+      if (pick) pick.hidden = t.value !== 'select';
+      return;
+    }
     if (t.id === 'role-switch') {
       if (ui.present || ui.chromeSync || (onStudentVanityPath() && !ui.coach) || (onCoachRootPath() && !ui.admin)) return;
       ui.role = t.value;
@@ -16306,6 +16392,7 @@
     'mark-done', 'toggle-done', 'exam', 'exam-submit',
     'pay-term', 'pay-buy', 'pay-prompt', 'pay-prompt-close', 'pay-prompt-go', 'pay-lynk', 'pay-qris', 'pay-manual', 'pay-now', 'pay-later',
     'ask', 'reply', 'report-issue', 'chat-member-add', 'chat-member-remove', 'chat-new',
+    'topic-create', 'topic-composer-close', 'chat-add-mentees',
     'has-shop', 'heard-from', 'save-student-account', 'open-me', 'set-theme',
     'pick-social', 'pick-shop', 'add-social', 'add-shop', 'del-social', 'del-shop'
   ]);
@@ -16386,7 +16473,27 @@
       return;
     }
     if (act === 'chat-new') {
-      createChat();
+      if (!isStaff()) return;
+      ui.topicComposer = true;
+      ui.diskusiShowList = true;
+      render();
+      const nameEl = document.querySelector('.dk-topic-new input[name="name"]');
+      if (nameEl) nameEl.focus();
+      return;
+    }
+    if (act === 'topic-composer-close') {
+      ui.topicComposer = false;
+      render();
+      return;
+    }
+    if (act === 'chat-add-mentees') {
+      if (!isStaff()) return;
+      const chatId = btn.getAttribute('data-chat') || activeDiskusiBatch();
+      const n = addAllActiveMentees(chatId);
+      rememberDiskusiChat(chatId);
+      save();
+      toast(n ? (n + ' mentee aktif ditambah.') : 'Semua mentee aktif sudah di topik ini.');
+      render();
       return;
     }
     if (act === 'chat-people') {
@@ -17671,7 +17778,10 @@
       ui.calYM = ui.calDay.slice(0, 7);
       render();
     } else if (act === 'cal-ics-all' || act === 'cal-sync-apple' || act === 'cal-sync-google') {
-      const list = visibleSessions(true).filter((s) => s && s.startsAt && isFinite(new Date(s.startsAt).getTime()));
+      const staffView = isStaff();
+      const list = visibleSessions(staffView)
+        .filter((s) => s && s.startsAt && isFinite(new Date(s.startsAt).getTime()))
+        .map((s) => sessionForViewer(s, ui.personaId, staffView));
       if (!list.length) {
         toast('Belum ada acara di jadwal. Tambah acara dulu.');
         return;
@@ -17699,11 +17809,12 @@
     } else if (act === 'cal-ics-one') {
       const id = btn.getAttribute('data-id');
       const ses = (db.sessions || []).find((s) => s.id === id);
-      if (!ses) {
+      if (!ses || (!isStaff() && !sessionVisibleTo(ses, ui.personaId, false))) {
         toast('Sesi tidak ditemukan.');
         return;
       }
-      downloadIcs((ses.id || 'sesi') + '.ics', buildSessionsIcs([ses]), 'apple');
+      const exp = sessionForViewer(ses, ui.personaId, isStaff());
+      downloadIcs((ses.id || 'sesi') + '.ics', buildSessionsIcs([exp]), 'apple');
       toast('Membuka file .ics — pilih Calendar / Kalender.');
     } else if (act === 'cal-composer') {
       if (!staffCan('editClasses')) return;
@@ -18547,18 +18658,28 @@
       confirmMfaCode(fd.get('code'));
       return;
     }
+    if (act === 'topic-create') {
+      if (!isStaff()) return;
+      const name = String(fd.get('name') || '').trim();
+      if (name.length < 2) {
+        toast('Isi nama topik dulu.');
+        return;
+      }
+      createChat(name);
+      return;
+    }
     if (act === 'person-group-new') {
       if (!staffCan('editStudents')) return;
       const sid = form.getAttribute('data-id') || '';
       const name = String(fd.get('name') || '').trim();
       if (name.length < 2) {
-        toast('Isi nama grup dulu.');
+        toast('Isi nama topik dulu.');
         return;
       }
       const chatId = createNamedChat(name);
       addChatMember(chatId, sid);
       save();
-      toast('Grup dibuat.');
+      toast('Topik dibuat.');
       render();
       return;
     }
@@ -18971,9 +19092,17 @@
       }
       const startsAt = joinLocal(date, time);
       const mins = Math.max(15, Math.min(480, Number(fd.get('mins')) || 90));
-      let audience = String(fd.get('audience') || 'all');
-      if (audience !== 'all' && !batchList().some((b) => b.id === audience) && !allChatIds().includes(audience)) {
-        audience = 'all';
+      let audience = String(fd.get('audience') || 'mentees');
+      const knownAud = audience === 'all' || audience === 'mentees' || audience === 'select' ||
+        batchList().some((b) => b.id === audience) || allChatIds().includes(audience);
+      if (!knownAud) audience = 'mentees';
+      const roster = new Set(calStudentRoster().map((s) => s.id));
+      const audienceIds = audience === 'select'
+        ? fd.getAll('audienceId').map((id) => String(id || '')).filter((id) => roster.has(id))
+        : [];
+      if (audience === 'select' && !audienceIds.length) {
+        toast('Pilih minimal satu siswa.');
+        return;
       }
       const channels = [];
       if (fd.get('remindWa')) channels.push('wa');
@@ -19000,6 +19129,7 @@
       ses.location = String(fd.get('location') || 'Online').trim() || 'Online';
       ses.notes = String(fd.get('notes') || '').trim();
       ses.audience = audience;
+      ses.audienceIds = audienceIds;
       ses.remind = remind;
       ses.required = Array.isArray(ses.required) ? ses.required : [];
       if (creating) ses.remindersSentAt = '';
