@@ -13291,7 +13291,7 @@ body.view-chat .sfb-card {
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260915a" defer></script>
 <script src="/js/gpt-belajar.js?v=20261017f" defer></script>
-<script src="/js/mytoko-bench.js?v=20261103layout2" defer></script>
+<script src="/js/mytoko-bench.js?v=20261103ring1" defer></script>
 <script src="/js/gpt-alat-preview.js?v=20261103land1" defer></script>
 <script src="/js/omset-week-shape.js?v=20261021shape1" defer></script>
 <script src="/js/gpt-app.js?v=20261102konteks1" defer></script>
@@ -13824,12 +13824,15 @@ body.alat-focus.view-audit .alat-page:not(.alat-page--wide)::after {
   flex: 1 1 0;
   min-height: 12px;
 }
+body.view-audit .panel-inner:has(.alat-page--wide) { max-width: none; }
 .alat-page--wide {
-  --alat-page-w: 1100px;
-  width: min(var(--alat-page-w), 100%);
-  max-width: var(--alat-page-w);
+  --alat-page-w: none;
+  width: 100%;
+  max-width: none;
   justify-content: flex-start;
+  padding: 8px 0 20px;
 }
+.myt-bench { zoom: 0.85; width: 100%; }
 body.alat-focus.view-audit .alat-page--wide::before,
 body.alat-focus.view-audit .alat-page--wide::after { display: none; }
 @media (max-width: 640px) {
@@ -14226,7 +14229,7 @@ body.alat-focus.view-audit .alat-page--wide::after { display: none; }
 .myt-bench-score b small { font-size: .9rem; color: #8E191F; font-weight: 650; }
 .myt-bench-score span { font-size: .8rem; color: #1A1A1A; line-height: 1.4; }
 .myt-bench-cols, .myt-bench-split {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-bottom: 12px;
 }
 .myt-bench-card {
   background: #fff; border: 1px solid #E8E8E8; border-radius: 16px;
@@ -14337,14 +14340,51 @@ body.alat-focus.view-audit .alat-page--wide::after { display: none; }
 }
 .myt-kw.is-on { border-color: #B5202A; color: #B5202A; background: #F9EAE4; }
 .myt-lay-kw { margin: 0 0 10px; font-size: .78rem; color: #8A8A8A; }
-.myt-lay-top, .myt-lay-recs { display: grid; grid-template-columns: 280px 1fr; gap: 12px; margin-bottom: 12px; }
+.myt-lay-top, .myt-lay-recs { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: 12px; margin-bottom: 12px; }
 .myt-lay-recs { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
-.myt-lay-posisi { text-align: center; }
-.myt-lay-rank { display: block; font-size: 2.4rem; letter-spacing: -.04em; line-height: 1; margin: 8px 0 4px; }
-.myt-lay-posisi span, .myt-lay-pct span { color: #8A8A8A; font-size: .78rem; }
-.myt-lay-rankrow { display: flex; gap: 16px; align-items: center; }
-.myt-lay-ol { list-style: none; margin: 0; padding: 0; flex: 1; }
-.myt-lay-ol li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid #F1F1F2; font-size: .86rem; }
+.myt-lay-posisi {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; container-type: inline-size; min-height: 180px;
+}
+.myt-lay-rank {
+  display: block; font-size: clamp(3.6rem, 46cqi, 8rem); letter-spacing: -.04em;
+  line-height: .85; margin: 8px 0;
+}
+.myt-lay-posisi span { color: #8A8A8A; font-size: clamp(.95rem, 9cqi, 1.2rem); }
+.myt-lay-pct span { color: #8A8A8A; font-size: .78rem; }
+.myt-lay-rankrow { display: flex; gap: 16px; align-items: center; min-width: 0; }
+.myt-lay-ol { list-style: none; margin: 0; padding: 0; flex: 1; min-width: 0; }
+.myt-lay-ol li { display: flex; align-items: center; gap: 8px; border-radius: 8px; margin-bottom: 4px; min-width: 0; }
+.myt-lay-ol li.is-r1 { background: #F7F4EE; padding: 10px 8px; }
+.myt-lay-ol li.is-r2 { background: #FBF9F6; padding: 8px 8px; }
+.myt-lay-ol li.is-r3 { padding: 6px 8px; }
+.myt-lay-place { width: 1.1rem; flex: none; color: #8A8A8A; font-size: .8rem; }
+.myt-lay-ol li.is-r1 .myt-lay-place { color: #B5202A; font-size: 1rem; }
+.myt-lay-ol li.is-r3 .myt-lay-place, .myt-lay-ol li.is-r3 .myt-lay-name { color: #8A8A8A; }
+.myt-lay-name, .myt-one-line, .myt-shop-link {
+  min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.myt-lay-name { flex: 1; font-size: .78rem; font-weight: 650; }
+.myt-lay-amt { flex: none; font-size: .8rem; }
+.myt-shop-link {
+  appearance: none; border: 0; background: none; padding: 0; display: block; max-width: 100%;
+  font: inherit; font-size: .78rem; font-weight: 650; color: #1A1A1A; cursor: pointer; text-align: left;
+}
+.myt-shop-link:hover { color: #B5202A; }
+.myt-cmp th, .myt-cmp td { padding: 12px 22px; }
+.myt-cmp th:nth-child(n+2), .myt-cmp td:nth-child(n+2) { text-align: right; white-space: nowrap; }
+.myt-cmp-item { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.myt-cmp-item span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.myt-ico { width: 16px; height: 16px; flex: none; display: block; }
+.myt-tren-legend { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 12px; }
+.myt-tren-legend li { display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 46%; }
+.myt-tren-legend i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.myt-tren-legend span { font-size: .72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.myt-settings-link {
+  appearance: none; border: 0; background: none; color: #8A8A8A;
+  font: inherit; font-size: .75rem; padding: 2px 0 0; cursor: pointer;
+}
+.myt-bench-table td[data-label="Toko"] { max-width: 220px; }
 .myt-lay-ol li.is-mine, .myt-bench-table tr.is-mine td { background: #F9EAE4; }
 .myt-lay-pct { min-width: 110px; text-align: right; }
 .myt-lay-pct b { display: block; color: #B5202A; font-size: 1.2rem; }

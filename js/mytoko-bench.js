@@ -940,14 +940,29 @@
     return { html: manualForm(itemId), filled: false };
   }
 
+  function metricIcon(kind) {
+    var open = '<svg class="myt-ico" viewBox="0 0 16 16" aria-hidden="true">';
+    if (kind === 'omzet') return open + '<path d="M1.5 12.5 L5.5 7.5 L8.2 9.6 L14.5 3" fill="none" stroke="#B5202A" stroke-width="1.4" stroke-linecap="round"/></svg>';
+    if (kind === 'count') return open + '<rect x="2" y="2" width="5" height="5" rx="1" fill="#F9EAE4" stroke="#B5202A"/><rect x="9" y="2" width="5" height="5" rx="1" fill="#F9EAE4" stroke="#B5202A"/><rect x="2" y="9" width="5" height="5" rx="1" fill="#F9EAE4" stroke="#B5202A"/><rect x="9" y="9" width="5" height="5" rx="1" fill="#F9EAE4" stroke="#B5202A"/></svg>';
+    if (kind === 'rating') return open + '<path d="M8 1.8 L9.5 5.4 L13.4 5.8 L10.4 8.3 L11.3 12.2 L8 10.2 L4.7 12.2 L5.6 8.3 L2.6 5.8 L6.5 5.4 Z" fill="#C9974B"/></svg>';
+    if (kind === 'reviews') return open + '<path d="M2 3 H14 V10.5 H6.2 L3.2 13.2 V10.5 H2 Z" fill="none" stroke="#1A1A1A" stroke-width="1.2"/></svg>';
+    return open + '<path d="M2.5 3.5 H13.5 L11.2 12.5 H4.8 Z" fill="none" stroke="#1A1A1A" stroke-width="1.2"/></svg>';
+  }
+
+  function indexTone(kind, index) {
+    if (Math.round(index) === 100) return '#8A8A8A';
+    var better = kind === 'price' ? index < 100 : index > 100;
+    return better ? '#16A34A' : '#DC2626';
+  }
+
   function spiderSvg(comps) {
     var axes = comps.filter(function (c) { return c.index > 0; });
     if (axes.length < 3) return '';
     var max = 150;
     axes.forEach(function (a) { if (a.index > max) max = a.index; });
-    var cx = 140;
+    var cx = 160;
     var cy = 118;
-    var R = 72;
+    var R = 68;
     function pt(i, index) {
       var ang = (-Math.PI / 2) + (i * 2 * Math.PI / axes.length);
       var rr = R * Math.max(0, index) / max;
@@ -964,13 +979,15 @@
       return '<line x1="' + cx + '" y1="' + cy + '" x2="' + p[0].toFixed(1) + '" y2="' + p[1].toFixed(1) + '" stroke="#E8E8E8"/>';
     }).join('');
     var labels = axes.map(function (a, i) {
-      var p = pt(i, max * 1.22);
-      return '<text x="' + p[0].toFixed(1) + '" y="' + p[1].toFixed(1) + '" text-anchor="middle" font-size="10" fill="#1A1A1A">' +
-        esc(a.label) + ' ' + Math.round(a.index) + '</text>';
+      var p = pt(i, max * 1.28);
+      var anchor = p[0] < cx - 8 ? 'end' : (p[0] > cx + 8 ? 'start' : 'middle');
+      return '<text x="' + p[0].toFixed(1) + '" y="' + p[1].toFixed(1) + '" text-anchor="' + anchor + '" font-size="10" fill="#1A1A1A">' +
+        esc(a.label) + ' <tspan fill="' + indexTone(a.kind, a.index) + '" font-weight="700">' + Math.round(a.index) + '</tspan></text>';
     }).join('');
-    return '<svg class="myt-chart" viewBox="0 0 280 230" role="img" aria-label="Indeks toko dibanding rata-rata">' +
+    var ring = (R * 100 / max).toFixed(1);
+    return '<svg class="myt-chart" viewBox="0 0 320 236" role="img" aria-label="Indeks toko dibanding rata-rata">' +
       spokes +
-      '<polygon points="' + poly(function () { return 100; }) + '" fill="#E8E0D4" fill-opacity="0.45" stroke="#C8C2B4"/>' +
+      '<circle cx="' + cx + '" cy="' + cy + '" r="' + ring + '" fill="#E8E0D4" fill-opacity="0.45" stroke="#C8C2B4"/>' +
       '<polygon points="' + poly(function (a) { return a.index; }) + '" fill="#B5202A" fill-opacity="0.18" stroke="#B5202A" stroke-width="2"/>' +
       labels + '</svg>';
   }
@@ -1008,7 +1025,7 @@
     usable.forEach(function (s) {
       s.weeks.forEach(function (w) {
         var key = String(w.week_start);
-        if (seen[key]) return;
+        if (!key || seen[key]) return;
         seen[key] = true;
         weeks.push(key);
       });
@@ -1018,32 +1035,51 @@
     usable.forEach(function (s) {
       s.weeks.forEach(function (w) { if (Number(w.omzet) > maxY) maxY = Number(w.omzet); });
     });
-    if (!(maxY > 0)) return '<p class="myt-bench-empty">Belum ada dua sapuan terukur.</p>';
+    if (!(maxY > 0) || weeks.length < 2) return '<p class="myt-bench-empty">Belum ada dua sapuan terukur.</p>';
     function X(iso) {
       var i = weeks.indexOf(String(iso));
-      return 36 + (weeks.length === 1 ? 0 : (i / (weeks.length - 1)) * 240);
+      return 58 + (i / (weeks.length - 1)) * 220;
     }
-    function Y(v) { return 148 - (Number(v) / maxY) * 112; }
-    var colors = ['#B5202A', '#1A1A1A', '#C9974B', '#8A8A8A', '#E38B86', '#8E191F'];
+    function Y(v) { return 132 - (Number(v) / maxY) * 100; }
+    var colors = ['#1A1A1A', '#C9974B', '#8A8A8A', '#E38B86', '#8E191F'];
+    var marks = '';
     var paths = usable.map(function (s, si) {
-      var color = s.mine ? '#B5202A' : colors[(si + 1) % colors.length];
+      var color = s.mine ? '#B5202A' : colors[si % colors.length];
       var sorted = s.weeks.slice().sort(function (a, b) {
         return String(a.week_start) < String(b.week_start) ? -1 : 1;
       });
       var d = '';
-      sorted.forEach(function (w, i) {
-        d += (i ? ' L' : 'M') + X(w.week_start).toFixed(1) + ' ' + Y(w.omzet).toFixed(1);
+      var prev = '';
+      sorted.forEach(function (w) {
+        var x = X(w.week_start).toFixed(1);
+        var y = Y(w.omzet).toFixed(1);
+        var gap = prev ? (new Date(w.week_start) - new Date(prev)) / 86400000 : 0;
+        d += (!prev || gap > 8 ? 'M' : 'L') + x + ' ' + y;
+        var solid = w.measured === true;
+        marks += '<circle cx="' + x + '" cy="' + y + '" r="3.2" fill="' + (solid ? color : '#fff') +
+          '" stroke="' + color + '" stroke-width="1.5"/>';
+        prev = w.week_start;
       });
       var measured = sorted.every(function (w) { return w.measured === true; });
       return '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="2"' +
         (measured ? '' : ' stroke-dasharray="4 3"') + '/>';
     }).join('');
+    var grid = [0, 0.5, 1].map(function (t) {
+      var y = Y(maxY * t).toFixed(1);
+      var label = t === 0 ? '0' : fmtRpShort(maxY * t);
+      return '<line x1="58" y1="' + y + '" x2="278" y2="' + y + '" stroke="#F1F1F2"/>' +
+        '<text x="54" y="' + (Number(y) + 3).toFixed(1) + '" text-anchor="end" font-size="8" fill="#8A8A8A">' + esc(label) + '</text>';
+    }).join('');
     var labels = weeks.map(function (iso) {
-      return '<text x="' + X(iso).toFixed(1) + '" y="172" text-anchor="middle" font-size="9" fill="#8A8A8A">' +
+      return '<text x="' + X(iso).toFixed(1) + '" y="156" text-anchor="middle" font-size="9" fill="#8A8A8A">' +
         esc(weekLabel(iso)) + '</text>';
     }).join('');
-    return '<svg class="myt-chart" viewBox="0 0 300 184" role="img" aria-label="Tren penjualan mingguan">' +
-      paths + labels + '</svg>';
+    var legend = '<ul class="myt-tren-legend">' + usable.map(function (s, si) {
+      var color = s.mine ? '#B5202A' : colors[si % colors.length];
+      return '<li><i style="background:' + color + '"></i><span>' + esc(s.name || 'Toko') + '</span></li>';
+    }).join('') + '</ul>';
+    return '<svg class="myt-chart" viewBox="0 0 300 168" role="img" aria-label="Tren penjualan mingguan toko yang dipantau">' +
+      grid + paths + marks + labels + '</svg>' + legend;
   }
 
   function barsSvg(points, itemId) {
@@ -1143,9 +1179,13 @@
     if (!rows.length) return '<p class="myt-bench-empty">Belum ada toko dengan perkiraan di kata kunci ini.</p>';
     return '<table class="myt-bench-table"><thead><tr><th>#</th><th>Toko</th><th>Penjualan</th><th>Produk</th><th>Nilai</th></tr></thead><tbody>' +
       rows.map(function (s) {
+        var name = esc(s.store_name || 'Toko');
+        var shopBtn = s.shop_id
+          ? '<button type="button" class="myt-shop-link" data-open-shop="' + Number(s.shop_id) + '">' + name + '</button>'
+          : '<b class="myt-one-line">' + name + '</b>';
         return '<tr class="' + (s.is_mine ? 'is-mine' : '') + '">' +
           '<td data-label="#">' + (s.rank || '—') + '</td>' +
-          '<td data-label="Toko"><b>' + esc(s.store_name || 'Toko') + '</b>' + (s.is_mine ? '<small>Kamu</small>' : '') + '</td>' +
+          '<td data-label="Toko">' + shopBtn + (s.is_mine ? '<small>Kamu</small>' : '') + '</td>' +
           '<td data-label="Penjualan">' + (num(s.omzet) > 0 ? esc(fmtRpShort(s.omzet)) + '<small>perkiraan</small>' : '—') + '</td>' +
           '<td data-label="Produk">' + (s.n_listings != null ? fmtN(s.n_listings) : '—') + '</td>' +
           '<td data-label="Nilai">' + fmtRating(s.rating) + '</td></tr>';
@@ -1194,8 +1234,10 @@
       .sort(function (a, b) { return a.rank - b.rank; });
     var top3Html = top3.length
       ? '<ol class="myt-lay-ol">' + top3.map(function (s) {
-        return '<li class="' + (s.is_mine ? 'is-mine' : '') + '"><span>' + esc(s.store_name || 'Toko') +
-          (s.is_mine ? ' (Kamu)' : '') + '</span><b>' + esc(fmtRpShort(s.omzet)) + '</b></li>';
+        return '<li class="is-r' + s.rank + (s.is_mine ? ' is-mine' : '') + '">' +
+          '<b class="myt-lay-place">' + s.rank + '</b>' +
+          '<span class="myt-lay-name">' + esc(s.store_name || 'Toko') + (s.is_mine ? ' (Kamu)' : '') + '</span>' +
+          '<b class="myt-lay-amt">' + esc(fmtRpShort(s.omzet)) + '</b></li>';
       }).join('') + '</ol>'
       : '<p class="myt-bench-empty">Belum ada perkiraan 30 hari.</p>';
     var pct = view.showRank && view.topPct != null
@@ -1203,18 +1245,20 @@
       : '';
     var cmpRows = view.comps.map(function (c) {
       var youCell = c.kind === 'omzet' ? youBits.html : cellValue(c);
-      return '<tr><td data-label="Metrik">' + esc(c.label) + '</td>' +
+      return '<tr><td data-label="Metrik"><span class="myt-cmp-item">' + metricIcon(c.kind) +
+        '<span>' + esc(c.label) + '</span></span></td>' +
         '<td data-label="Toko kamu">' + youCell + '</td>' +
         '<td data-label="Rata-rata">' + cellAvg(c) + '</td>' +
         '<td data-label="Perbedaan">' + deltaHtml(c.you, c.avg, c.kind) + '</td></tr>';
     }).join('');
     var penjualanRow = '';
     if (!(view.you.omzet > 0)) {
-      penjualanRow = '<tr><td data-label="Metrik">Penjualan</td><td data-label="Toko kamu">' + youBits.html +
+      penjualanRow = '<tr><td data-label="Metrik"><span class="myt-cmp-item">' + metricIcon('omzet') +
+        '<span>Penjualan</span></span></td><td data-label="Toko kamu">' + youBits.html +
         '</td><td data-label="Rata-rata">—</td><td data-label=""></td></tr>';
     }
     var cmp = (view.comps.length || penjualanRow)
-      ? '<table class="myt-bench-table"><thead><tr><th>Metrik</th><th>Toko kamu</th><th>Rata-rata</th><th></th></tr></thead><tbody>' +
+      ? '<table class="myt-bench-table myt-cmp"><thead><tr><th>Metrik</th><th>Toko kamu</th><th>Rata-rata</th><th></th></tr></thead><tbody>' +
         penjualanRow + cmpRows + '</tbody></table>'
       : '<p class="myt-bench-empty">Belum ada rata-rata di kata kunci ini.</p>';
     var spider = spiderSvg(view.comps);
@@ -1456,14 +1500,6 @@
     if (!logo && ctx.listings && ctx.listings[0]) logo = ctx.listings[0].image_url || '';
     var tab = ctx.tab || 'ringkasan';
     var tabs = [['ringkasan', 'Ringkasan'], ['produk', 'Produk'], ['kompetitor', 'Kompetitor']];
-    var choices = ctx.keywordChoices || [];
-    var kw = choices.length > 1
-      ? '<div class="myt-kws">' + choices.map(function (c) {
-        var on = c.keyword === ctx.keyword;
-        return '<button type="button" class="myt-kw' + (on ? ' is-on' : '') + '" data-bench-kw="' + esc(c.keyword) + '">' +
-          esc(c.keyword) + '</button>';
-      }).join('') + '</div>'
-      : '';
     return '<div class="myt-center myt-bench" id="myt-bench">' +
       '<header class="myt-bench-head">' +
         '<div class="myt-store-id">' +
@@ -1471,10 +1507,7 @@
             (logo ? '<img class="myt-logo-img" src="' + esc(thumb(logo)) + '" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">' : '') +
           '</div>' +
           '<div class="myt-store-text"><h2>' + esc(name) + '</h2></div></div>' +
-        '<div class="myt-bench-head-actions">' +
-          '<span class="myt-pill">30 hari</span>' +
-          '<button type="button" class="btn-ghost" id="myt-settings-toggle" aria-expanded="' + (ctx.settingsOpen ? 'true' : 'false') + '">Pengaturan</button>' +
-        '</div></header>' +
+        '</header>' +
       '<div id="myt-manage"' + (ctx.settingsOpen ? '' : ' hidden') + '>' + settingsHtml(ctx) + '</div>' +
       (ctx.error ? '<p class="alat-err myt-bench-status">' + esc(ctx.error) + '</p>' : '') +
       (ctx.marketError ? '<p class="alat-err myt-bench-status">' + esc(ctx.marketError) + '</p>' : '') +
@@ -1483,10 +1516,11 @@
           var on = pair[0] === tab;
           return '<button type="button" role="tab" class="myt-bench-tab' + (on ? ' is-on' : '') +
             '" data-bench-tab="' + pair[0] + '" aria-selected="' + (on ? 'true' : 'false') + '">' + pair[1] + '</button>';
-        }).join('') + kw +
+        }).join('') +
       '</div>' +
       '<div id="myt-bench-main"></div>' +
       '<div id="myt-detail" class="myt-detail" hidden></div>' +
+      '<button type="button" class="myt-settings-link" id="myt-settings-toggle" aria-expanded="' + (ctx.settingsOpen ? 'true' : 'false') + '">Pengaturan</button>' +
     '</div>';
   }
 
@@ -1545,8 +1579,15 @@
       });
     });
     root.querySelectorAll('[data-hide-shop]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
+      btn.addEventListener('click', function (ev) {
+        ev.stopPropagation();
         if (ctx.onHideShop) ctx.onHideShop(Number(btn.getAttribute('data-hide-shop')));
+      });
+    });
+    root.querySelectorAll('[data-open-shop]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = Number(btn.getAttribute('data-open-shop'));
+        if (id) window.open('https://shopee.co.id/shop/' + id, '_blank', 'noopener');
       });
     });
     root.querySelectorAll('form.myt-manual').forEach(function (form) {
