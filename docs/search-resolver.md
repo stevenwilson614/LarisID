@@ -49,9 +49,7 @@ Cap: 60 successful express scrapes per rolling day, 3 new keyword requests per u
 
 `market_index.kind` is `product | brand | shop | modifier | unknown`. `parent_keyword` is the broader product market. `product_types_v` exposes both. Home (`listings_home`) and `ringkasan_kategori` keep `product` and `unknown` only, so an unclassified market does not disappear and a shop keyword does not win Terlaris.
 
-Admin → “Pasar yang belum diklasifikasi” writes `market_index_overrides` (`source=manual`), which the rebuild will not clobber.
-
-Nightly auto-classify (Contabo): after `refresh-breakout-matviews` (16:15 UTC), `classify-market-index` runs at 16:45 UTC and fills `kind` / `parent_keyword` with `source=ai` for unknown rows and brand/shop rows still missing a parent. Manual overrides still win on rebuild.
+Nightly auto-classify (Contabo): after `refresh-breakout-matviews` (16:15 UTC), `classify-market-index` runs at 16:45 UTC and fills `kind` / `parent_keyword` with `source=ai` for unknown rows and brand/shop rows still missing a parent. `market_index_overrides` (`source=manual`, via `admin_set_market_index`) still wins on rebuild if you need a one-off lock.
 
 Shop rule: `* official` / `* official store` are shops. `* olshop` is a shop only when the keyword has ≤2 tokens (`kaka olshop`); longer product phrases (`plastik packing olshop`) stay `product`.
 

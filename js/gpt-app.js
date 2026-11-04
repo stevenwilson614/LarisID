@@ -28668,13 +28668,6 @@ function adminBindUi() {
   _adminUiBound = true;
   const root = $('view-admin');
   if (!root) return;
-  $('adm-pasar-list')?.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-pasar-save]');
-    if (!btn) return;
-    const row = btn.closest('[data-pasar-kw]');
-    if (!row) return;
-    void adminSavePasar(row.getAttribute('data-pasar-kw'), row);
-  });
   $('adm-users-search')?.addEventListener('input', () => { _adminUserPage = 1; renderAdminUsers(); });
   $('adm-filter-tipe')?.addEventListener('change', () => { _adminUserPage = 1; renderAdminUsers(); });
   $('adm-filter-cat')?.addEventListener('change', () => { _adminUserPage = 1; renderAdminUsers(); });
@@ -28767,46 +28760,6 @@ function adminBindUi() {
   });
 }
 
-async function renderAdminPasar() {
-  const host = $('adm-pasar-list');
-  if (!host || !_supabase) return;
-  host.innerHTML = '<p class="dd-sub">Memuat…</p>';
-  const { data, error } = await _supabase.rpc('admin_market_review');
-  if (error) {
-    host.innerHTML = `<p class="dd-sub">${esc(error.message || 'Gagal memuat pasar')}</p>`;
-    return;
-  }
-  const rows = Array.isArray(data) ? data : [];
-  if (!rows.length) {
-    host.innerHTML = '<p class="dd-sub">Tidak ada pasar unknown atau merek/toko tanpa induk.</p>';
-    return;
-  }
-  const kinds = ['product', 'brand', 'shop', 'modifier', 'unknown'];
-  host.innerHTML = rows.map(r => `<div class="adm-pasar-row" data-pasar-kw="${esc(r.keyword)}" style="display:flex;gap:8px;align-items:center;margin:6px 0;flex-wrap:wrap">
-    <strong style="min-width:180px">${esc(r.keyword)}</strong>
-    <span class="dd-sub">${esc(r.kind || '')} · ${Number(r.n_listings) || 0} listing</span>
-    <select data-pasar-kind aria-label="Jenis ${esc(r.keyword)}">${kinds.map(k => `<option value="${k}"${k === r.kind ? ' selected' : ''}>${k}</option>`).join('')}</select>
-    <input data-pasar-parent type="text" value="${esc(r.parent_keyword || '')}" placeholder="induk" aria-label="Induk ${esc(r.keyword)}" style="min-width:160px">
-    <button type="button" data-pasar-save>Simpan</button>
-  </div>`).join('');
-}
-
-async function adminSavePasar(keyword, row) {
-  if (!_supabase || !keyword) return;
-  const kind = row.querySelector('[data-pasar-kind]')?.value || 'unknown';
-  const parent = row.querySelector('[data-pasar-parent]')?.value || '';
-  const { error } = await _supabase.rpc('admin_set_market_index', {
-    p_keyword: keyword,
-    p_kind: kind,
-    p_parent: parent,
-    p_brand: null,
-    p_aliases: null,
-    p_note: 'admin pasar',
-  });
-  if (error) showToast(error.message || 'Gagal menyimpan');
-  else showToast(`Pasar ${keyword} dikunci`);
-}
-
 async function loadAdminDirectory() {
   adminBindUi();
   if (!isPlatformAdmin() || !_supabase) {
@@ -28826,7 +28779,6 @@ async function loadAdminDirectory() {
     void renderAdminMap();
     admFillCatFilter(_adminUsers);
     renderAdminUsers();
-    void renderAdminPasar();
     renderAdminKpis(_adminUsers);
     void renderAdminCategories(_adminUsers);
     void adminEnsureCohortOptions();
