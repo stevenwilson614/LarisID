@@ -34,6 +34,12 @@ RPCs:
 
 Does **not** merge into `public.listings`.
 
+Mac worker (2026-11-04): open a **throwaway CDP tab**, warm `/shop/{id}` for
+portrait, then scrape **`/shop/{id}/search`**. Hijacking the keyword lane tab on
+the storefront home often got `get_shop_base` with zero product XHRs → job
+`error=empty`. Fix lives in `shopee_scraper` (`fetch_shop_catalog_raw` /
+`shop_catalog_url`).
+
 ## Run on Steven’s Mac
 
 ```bash
