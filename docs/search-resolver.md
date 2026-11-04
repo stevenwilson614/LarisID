@@ -51,12 +51,18 @@ Cap: 60 successful express scrapes per rolling day, 3 new keyword requests per u
 
 Admin → “Pasar yang belum diklasifikasi” writes `market_index_overrides` (`source=manual`), which the rebuild will not clobber.
 
+Nightly auto-classify (Contabo): after `refresh-breakout-matviews` (16:15 UTC), `classify-market-index` runs at 16:45 UTC and fills `kind` / `parent_keyword` with `source=ai` for unknown rows and brand/shop rows still missing a parent. Manual overrides still win on rebuild.
+
+Shop rule: `* official` / `* official store` are shops. `* olshop` is a shop only when the keyword has ≤2 tokens (`kaka olshop`); longer product phrases (`plastik packing olshop`) stay `product`.
+
 ```bash
-node scripts/classify-market-index.mjs            # print candidates
-node scripts/classify-market-index.mjs --apply --limit=20
+node scripts/classify-market-index.mjs                 # print candidates
+node scripts/classify-market-index.mjs --apply --all   # drain the review queue
+bash scripts/deploy-function-selfhost.sh classify-market-index
+bash scripts/schedule-classify-market-index.sh
 ```
 
-Do not run `--apply` across the whole catalogue without meaning to spend the model budget.
+Do not run `--apply` across the whole product catalogue — only the review queue (unknown + parent-less brand/shop).
 
 Deep Dive peers and My Toko’s `match_titles_to_keywords` use `parent_keyword` when the hit is a brand or shop, or the keyword has fewer than 30 listings.
 

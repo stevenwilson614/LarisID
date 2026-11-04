@@ -141,6 +141,17 @@ See [steven-auto-reply.md](./steven-auto-reply.md).
 bash scripts/schedule-rise-crawl-watchdog.sh
 ```
 
+Market taxonomy auto-classify (unknown / parent-less brand+shop after nightly matviews):
+
+```bash
+bash scripts/apply-selfhost.sh supabase/migrations/20261104210000_market_index_shop_heuristic.sql
+bash scripts/apply-selfhost.sh supabase/migrations/20261104211500_match_market_parent.sql
+bash scripts/deploy-function-selfhost.sh classify-market-index
+bash scripts/schedule-classify-market-index.sh
+```
+
+See [search-resolver.md](./search-resolver.md).
+
 ## Studio / one-off SQL
 
 https://api.larisid.com (basic auth from `larisid-infra/docker/.env`), or
