@@ -44,6 +44,8 @@ DeepSeek is `deepseek-v4-pro` (same key as `analyze-feedback`). `analyze-feedbac
 | feature_ask | Asks what they need. Emails Steven. No code. |
 | data_gap | Asks what detail is missing. Emails Steven only when the draft marks it useful for everyone. |
 | thanks_soft | Thanks. |
-| unclear | One question. |
+| unclear | One clarifying question. Prefer this over skip when the message is vague. |
+
+Vague one-liners (“Analisa Rekomendasi”, a greeting with no ask, a huge niche with no SKU) are forced to `unclear` or get a dig question even if the model returned `skip` / empty keywords. Dig intents (`unclear`, `feature_ask`, `data_gap`, and product asks with no picks) must include a `?` in the lead — the function appends one if the model forgot.
 
 Prices in the reply come from the database append, not from the model. Listings must match the keyword and a name token so a polluted row cannot be offered as the product.

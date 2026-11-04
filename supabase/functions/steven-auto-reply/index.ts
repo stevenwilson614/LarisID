@@ -32,7 +32,7 @@ type Draft = {
 
 type Pick = { keyword: string; name: string; price: number; omset: number }
 
-const SYSTEM_PROMPT = `You reply as Steven, founder of LarisID (Shopee product research for Indonesian sellers). The reply is shown in his chat card. Casual Indonesian, short, warm, one clear ask when something is unclear. Never English unless the user wrote English.
+const SYSTEM_PROMPT = `You reply as Steven, founder of LarisID (Shopee product research for Indonesian sellers). The reply is shown in his chat card. Casual Indonesian, short, warm. Dig into what they need — ask one clear question when the ask is vague. Never English unless the user wrote English.
 
 Return ONLY JSON:
 {
@@ -47,20 +47,21 @@ Return ONLY JSON:
 }
 
 Rules:
-- product_research / trending: they want a product, niche, or what's selling. needs_research true. keywords are search phrases we can look up (e.g. "kaos kaki olahraga"). Do NOT invent product names, prices, sold counts, or omset — the server appends real picks. lead can greet and say you're looking, or ask which type if the ask is huge.
+- product_research / trending: they want a product, niche, margin, or what's selling. needs_research true when you can name a search phrase. keywords e.g. "kaos kaki olahraga", "masker hijab". Do NOT invent product names, prices, sold counts, or omset — the server appends real picks. If the niche is huge ("rumah dan dekorasi") or they only say "margin", still set intent product_research, leave keywords empty or broad, and ASK which type/category in lead.
 - affiliate_tiktok: commission, creator, affiliate, live GMV, TikTok, Kalodata. Point them to https://www.kalodata.com/ (TikTok Shop, not Shopee). Do not invent rates.
 - api: they want an API. go "api", cta "Buka halaman API". Say the API page is in the left menu, no firm release date, we note who needs it.
 - confused: how to use the product. go "edukasi", cta "Buka Belajar". Point at Belajar.
 - ads_complaint: too many ads, annoying ads. Light ack only. One soft question is ok ("kalau ada versi bayar tanpa iklan, kamu mau?"). Do not promise a build. staff_feature false.
-- feature_ask: a missing feature that might help many sellers (date filter, export, charts). Dig: ask what they need. staff_feature true if it could help everyone, false if it's only their taste. NEVER say you already shipped it.
-- data_gap: data incomplete, not accurate, not detailed. Ask what extra detail they want. staff_feature true only if the gap would help all users.
-- thanks_soft: thanks, "sudah cukup", "baru nyoba", greetings with no ask. Short thanks. No dig.
-- unclear: one clarifying question.
-- skip: empty, spam, or nothing to say. lead "".
+- feature_ask: a missing feature that might help many sellers (date filter, export, Android APK, charts). Dig with a question (what exactly, or do they want to help build it). staff_feature true if it could help everyone. NEVER say you already shipped it.
+- data_gap: data incomplete, not accurate, not detailed, "kurang detail". ALWAYS ask what extra detail they want (periode? kompetitor? tren?). staff_feature true only if the gap would help all users.
+- thanks_soft: thanks, "sudah cukup", "baru nyoba", pure greetings with no ask. Short thanks. No dig.
+- unclear: DEFAULT when the message is vague, one word, "Analisa Rekomendasi", a life story with no ask (e.g. "saya petani"), or you cannot tell what they need. lead MUST end with one concrete clarifying question. Prefer unclear over skip. Prefer unclear over inventing a product.
+- skip: ONLY empty/spam/gibberish. Almost never use this.
+- Dig intents (unclear, feature_ask, data_gap, and vague product asks) MUST include a "?" question in lead.
 - go is only "api", "edukasi", "directory", or "".
 - directory when you want them to open Cari Produk. cta "Buka Cari Produk".
 - Label any sales number the server might add as perkiraan. You still must not invent numbers.
-- One reply. No bullet essays. No "sebagai AI".`
+- One reply, 1–3 short sentences. No bullet essays. No "sebagai AI".`
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms))
@@ -188,28 +189,84 @@ function fallbackLead(intent: Intent): string {
     case 'ads_complaint':
       return 'Hai! Makasih sudah jujur soal iklannya. Kalau nanti ada versi bayar tanpa iklan, kamu lebih suka yang itu?'
     case 'feature_ask':
+      return 'Hai! Makasih sudah bilang. Fitur apa yang paling kamu butuh — dan buat kasusmu seperti apa? Tulis singkat di sini ya.'
     case 'data_gap':
-      return 'Hai! Makasih sudah bilang. Biar kami kerjakan yang tepat — bagian mana yang kurang, atau fitur apa yang paling kamu butuh? Tulis singkat di sini ya.'
+      return 'Hai! Makasih sudah bilang. Bagian mana yang kurang — periode waktu, kompetitor, tren, atau field lain? Tulis yang kamu butuhkan biar kami tambah.'
+    case 'product_research':
+    case 'trending':
+      return 'Hai! Kategori atau produk apa yang lagi kamu cari? Tulis keyword-nya (mis. "kaos kaki olahraga"), nanti aku carikan yang lagi ramai.'
     case 'thanks_soft':
       return 'Hai! Makasih ya. Kalau nanti ada yang mau ditambah, tulis aja di sini.'
+    case 'unclear':
     default:
       return 'Hai! Boleh ceritain sedikit lebih spesifik? Lagi cari produk, nanya fitur, atau ada data yang terasa kurang?'
   }
+}
+
+function digClarify(intent: Intent): string {
+  switch (intent) {
+    case 'feature_ask':
+      return 'Fitur apa yang paling kamu butuh, dan buat kasusmu seperti apa?'
+    case 'data_gap':
+      return 'Bagian mana yang kurang — periode, kompetitor, tren, atau yang lain?'
+    case 'product_research':
+    case 'trending':
+      return 'Kategori atau keyword apa yang mau kamu riset dulu?'
+    default:
+      return 'Lagi cari produk, nanya fitur, atau ada data yang terasa kurang?'
+  }
+}
+
+function hasQuestion(s: string) {
+  return /[?？]/.test(s) || /\b(ya|kah|apa|mana|gimana|bagaimana|berapa)\b/i.test(s)
+}
+
+/** Vague one-liners should dig, not get a silent skip or a fake product pick. */
+function forceUnclearIfVague(draft: Draft, message: string): Draft {
+  const msg = message.trim()
+  const words = msg.split(/\s+/).filter(Boolean)
+  const clearSignal =
+    choseApi(msg) || choseBingung(msg) || choseKurangLengkap(msg) ||
+    /afiliasi|affiliate|kalodata|tiktok|komisi|iklan|excel|csv|unduh|margin|trending|terlaris|produk|fitur|android|apk|api/i.test(msg)
+  if (draft.intent === 'skip' && msg.length >= 2) {
+    draft.intent = 'unclear'
+    draft.lead = draft.lead || fallbackLead('unclear')
+  }
+  if (!clearSignal && (words.length <= 4 || msg.length <= 40) &&
+      (draft.intent === 'thanks_soft' || draft.intent === 'skip' || draft.intent === 'product_research' || draft.intent === 'trending') &&
+      !draft.keywords.length) {
+    // "Analisa Rekomendasi", "Rumah dan dekorasi", "hai selamat pagi" without ask
+    if (!/makasih|terima kasih|sudah cukup|baru nyoba|ok sih|keren|bagus/i.test(msg)) {
+      draft.intent = 'unclear'
+      draft.needs_research = false
+      draft.queue_scrape = false
+      if (!hasQuestion(draft.lead)) draft.lead = fallbackLead('unclear')
+    }
+  }
+  return draft
 }
 
 function applyRoutes(draft: Draft) {
   if (draft.intent === 'api') {
     draft.go = 'api'
     draft.cta = draft.cta || 'Buka halaman API'
+    if (!draft.lead) draft.lead = fallbackLead('api')
   } else if (draft.intent === 'confused') {
     draft.go = 'edukasi'
     draft.cta = draft.cta || 'Buka Belajar'
+    if (!draft.lead) draft.lead = fallbackLead('confused')
   } else if (draft.intent === 'ads_complaint' || draft.intent === 'thanks_soft') {
     draft.go = ''
     draft.cta = ''
     draft.needs_research = false
     draft.queue_scrape = false
     draft.staff_feature = false
+  } else if (draft.intent === 'unclear') {
+    draft.needs_research = false
+    draft.queue_scrape = false
+    draft.staff_feature = false
+    draft.go = ''
+    draft.cta = ''
   }
   if (draft.intent === 'feature_ask') draft.staff_feature = true
   if (draft.intent === 'affiliate_tiktok') {
@@ -217,12 +274,20 @@ function applyRoutes(draft: Draft) {
     draft.queue_scrape = false
     if (!/kalodata/i.test(draft.lead)) draft.lead = fallbackLead('affiliate_tiktok')
   }
+  // Dig intents must ask something.
+  if (['unclear', 'feature_ask', 'data_gap'].includes(draft.intent)) {
+    if (!draft.lead) draft.lead = fallbackLead(draft.intent)
+    if (!hasQuestion(draft.lead)) {
+      draft.lead = cleanLead(`${draft.lead} ${digClarify(draft.intent)}`)
+    }
+  }
 }
 
 function composeLead(draft: Draft, research: { picks: Pick[]; closest: string | null; queued: string | null }) {
   let lead = draft.lead || fallbackLead(draft.intent)
   if (!draft.lead) lead = fallbackLead(draft.intent)
-  if (research.picks.length && (draft.intent === 'product_research' || draft.intent === 'trending' || draft.needs_research)) {
+  const canResearch = draft.intent === 'product_research' || draft.intent === 'trending' || draft.needs_research
+  if (research.picks.length && canResearch) {
     const bits = research.picks.slice(0, 2).map((p, i) =>
       `${i + 1}) ${p.name} — sekitar ${fmtRp(p.price)}`)
     const kw = research.picks[0].keyword
@@ -238,6 +303,12 @@ function composeLead(draft: Draft, research: { picks: Pick[]; closest: string | 
     lead = cleanLead(`${stripPrices(lead)} Aku masukin "${research.queued}" ke antrean scrape.${close}`)
     draft.go = draft.go || 'directory'
     draft.cta = draft.cta || 'Buka Cari Produk'
+  } else if (canResearch && !research.picks.length) {
+    // No listings yet — dig instead of a dead end.
+    if (!hasQuestion(lead)) lead = cleanLead(`${stripPrices(lead)} ${digClarify(draft.intent)}`)
+  }
+  if (['unclear', 'feature_ask', 'data_gap'].includes(draft.intent) && !hasQuestion(lead)) {
+    lead = cleanLead(`${lead} ${digClarify(draft.intent)}`)
   }
   if (draft.go === 'api' && !draft.cta) draft.cta = 'Buka halaman API'
   if (draft.go === 'edukasi' && !draft.cta) draft.cta = 'Buka Belajar'
@@ -332,9 +403,12 @@ async function processPayload(payload: Record<string, unknown>) {
   const { data: fresh } = await supabase.from('feedback').select('auto_replied_at').eq('id', row.id).maybeSingle()
   if (fresh?.auto_replied_at) return { ok: true, skipped: 'already', id: row.id }
 
-  const draft = await classify(message, page)
-  if (draft.intent === 'skip' || !draft.lead && draft.intent === 'skip') {
-    return { ok: true, skipped: 'model_skip', id: row.id }
+  let draft = await classify(message, page)
+  draft = forceUnclearIfVague(draft, message)
+  if (draft.intent === 'skip') {
+    // Still reply with a clarifying ask — silence feels broken.
+    draft.intent = 'unclear'
+    draft.lead = fallbackLead('unclear')
   }
   applyRoutes(draft)
 
