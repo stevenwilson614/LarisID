@@ -125,6 +125,16 @@ bash scripts/schedule-komunitas-staff-digest.sh
 
 See [komunitas-board.md](./komunitas-board.md).
 
+Steven chat auto-reply (`steven-auto-reply`, trigger `on_feedback_insert_steven_reply`):
+
+```bash
+bash scripts/apply-selfhost.sh supabase/migrations/20261104193000_steven_auto_reply.sql
+bash scripts/deploy-function-selfhost.sh steven-auto-reply
+bash scripts/install-steven-auto-reply-trigger.sh
+```
+
+See [steven-auto-reply.md](./steven-auto-reply.md).
+
 `rise-crawl-watchdog` (LARISE shop crawl coverage, 14:00 WIB) is scheduled with:
 
 ```bash

@@ -11,6 +11,16 @@
 // A plain string is still accepted and renders with no tech line.
 window.LARIS_CHANGELOG = [
   {
+    date: '2026-11-04',
+    title: 'Balasan Steven lebih cepat',
+    items: [
+      {
+        text: 'Kalau kamu tulis ke Steven, balasannya muncul di chat yang sama beberapa detik kemudian. Kalau kamu minta produk, dia cari di data kami. Kalau datanya belum ada, dia tanya dulu.',
+        tech: 'steven-auto-reply (DeepSeek) on feedback insert → user_notices steven_followup, source steven_auto_reply. Research via steven_auto_reply_research. Chips (bingung/API/kurang lengkap) stay on the old path. 20261104193000.',
+      },
+    ],
+  },
+  {
     date: '2026-10-27',
     title: 'Persen tren tetap ada',
     items: [

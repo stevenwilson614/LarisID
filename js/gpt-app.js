@@ -5036,12 +5036,12 @@ function sfbApplyPromptCopy() {
     if (msg) msg.textContent = _sfbFollowup.lead;
     if (edu) {
       const go = _sfbFollowup.go || '';
-      const showGo = go === 'edukasi' || go === 'api';
+      const showGo = go === 'edukasi' || go === 'api' || go === 'directory';
       edu.hidden = !showGo;
       if (showGo) {
         edu.textContent = _sfbFollowup.cta
-          || (go === 'api' ? SFB_API_CTA : SFB_EDU_CTA);
-        edu.dataset.sfbGo = go === 'api' ? 'api' : 'edukasi';
+          || (go === 'api' ? SFB_API_CTA : go === 'directory' ? 'Buka Cari Produk' : SFB_EDU_CTA);
+        edu.dataset.sfbGo = go;
       }
     }
     return;
@@ -5167,10 +5167,9 @@ function sfbBind() {
     const btn = e.target.closest('[data-sfb-edu], [data-sfb-api]');
     if (!btn) return;
     e.preventDefault();
-    const dest = (btn.getAttribute('data-sfb-go') === 'api'
-      || btn.dataset?.sfbGo === 'api'
-      || btn.hasAttribute('data-sfb-api'))
-      ? 'api'
+    const raw = btn.getAttribute('data-sfb-go') || btn.dataset?.sfbGo || '';
+    const dest = raw === 'directory' ? 'directory'
+      : (raw === 'api' || btn.hasAttribute('data-sfb-api')) ? 'api'
       : 'edukasi';
     void sfbOpenFollowupGo(dest);
   });
@@ -5256,6 +5255,7 @@ async function sfbSubmit() {
       _supabase.functions.invoke('notify-feedback', { body: { record: { ...record, id: inserted?.id } } })
         .then(({ error: e }) => { if (e) console.warn('notify-feedback:', e.message); });
       sfbThankYou(0, gptUsageQuotaView().dlLeft);
+      sfbWatchAutoReply(inserted?.id);
       return;
     }
 
@@ -5321,6 +5321,7 @@ async function sfbSubmit() {
       };
     }
     sfbThankYou(granted, fromLeft, { bingung, wantsApi, kurangLengkap: kurang });
+    if (!wantsApi && !bingung && !kurang) sfbWatchAutoReply(inserted?.id);
     if (kurangNotice?.id && kurangNotice?.payload?.lead) {
       // Soft reopen as a personal follow-up after the thank-you settles.
       setTimeout(() => sfbStartFollowup({
@@ -5358,7 +5359,7 @@ async function sfbClaimGrant(feedbackId) {
 }
 
 async function sfbOpenFollowupGo(dest) {
-  const go = dest === 'api' ? 'api' : 'edukasi';
+  const go = dest === 'api' ? 'api' : dest === 'directory' ? 'directory' : 'edukasi';
   const id = _sfbFollowup?.id || null;
   if (id && _supabase) {
     try { await _supabase.rpc('dismiss_notice', { p_id: id }); } catch (_) {}
@@ -5371,10 +5372,39 @@ async function sfbOpenFollowupGo(dest) {
   sfbPaintFab();
   void logUserEvent('superuser_feedback_prompt', {
     ui: 'gpt',
-    action: go === 'api' ? 'open_api' : 'open_edukasi',
+    action: go === 'api' ? 'open_api' : go === 'directory' ? 'open_directory' : 'open_edukasi',
   });
   if (go === 'api') openApiView();
-  else openEdukasiView();
+  else if (go === 'directory') {
+    try { await openDirectory(); } catch (_) {}
+  } else openEdukasiView();
+}
+
+// Bot reply lands a few seconds after send. Open it in this session if it
+// matches the row they just submitted.
+function sfbWatchAutoReply(feedbackId) {
+  if (!feedbackId || !_supabase) return;
+  let left = 2;
+  const look = async () => {
+    left -= 1;
+    try {
+      const { data } = await _supabase
+        .from('user_notices')
+        .select('id,kind,payload')
+        .eq('kind', 'steven_followup')
+        .is('dismissed_at', null)
+        .order('created_at', { ascending: false })
+        .limit(5);
+      const hit = (data || []).find((n) =>
+        n?.payload?.source === 'steven_auto_reply' &&
+        n?.payload?.feedback_id === feedbackId);
+      if (hit) { sfbStartFollowup(hit); return; }
+    } catch (e) {
+      console.warn('sfbWatchAutoReply:', e?.message || e);
+    }
+    if (left > 0) setTimeout(look, 4000);
+  };
+  setTimeout(look, 5000);
 }
 
 function sfbOpenEdukasi() {
@@ -28922,7 +28952,7 @@ async function loadAdminFeedback() {
   try {
     const { data, error } = await _supabase
       .from('feedback')
-      .select('id,created_at,user_email,type,message,page,status,ai_priority')
+      .select('id,created_at,user_email,type,message,page,status,ai_priority,auto_replied_at')
       .order('created_at', { ascending: false })
       .limit(50);
     if (error) throw error;
@@ -28944,6 +28974,7 @@ async function loadAdminFeedback() {
           <span>${esc(when)}</span>
           <span class="adm-fb-tag${prompt ? ' is-prompt' : ''}">${esc(prompt ? 'pesan Steven' : (r.page || r.type || '—'))}</span>
           ${high ? '<span class="adm-fb-tag is-high">prioritas tinggi</span>' : ''}
+          ${r.auto_replied_at ? '<span class="adm-fb-tag">bot sudah balas</span>' : ''}
           <span>${esc(ADM_FB_STATUS[st] || st)}</span>
           <span>${esc(r.user_email || 'anon')}</span>
         </div>
