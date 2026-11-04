@@ -40,6 +40,13 @@ the storefront home often got `get_shop_base` with zero product XHRs → job
 `error=empty`. Fix lives in `shopee_scraper` (`fetch_shop_catalog_raw` /
 `shop_catalog_url`).
 
+**Host pin:** only **Stevens-MacBook-Pro** (laptop B, `acct614`, CDP 9224/9225)
+claims `ext_shop_scrape_jobs` — same as Minta info. Laptop A (`SOWs-MacBook-Pro`)
+must not drain these. SPA only enqueues via `request_shop_scrape` to Contabo;
+Steven’s Mac polls. After scraper fixes: on B run `cd ~/shopee_scraper && git pull`
+and keep `shop_claim_worker.py` or `run_all` / `tracked_pass` (which call
+`drain_priority_shop`) running.
+
 ## Run on Steven’s Mac
 
 ```bash
