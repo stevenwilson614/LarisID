@@ -19672,21 +19672,23 @@ async function ddServerWeeklySeries(product, days = 119, opts = {}) {
   } catch (_) {
     return null;
   }
-  const out = ddDailyRowsToWeeks(rows);
+  const out = ddDailyRowsToWeeks(rows, opts);
   return out.length ? out : null;
 }
 
 /** Bucket product/keyword/store daily series into Monday weeks.
- *  Skips `prior` (pre-scrape plateau). Partial weeks scale to a 7-day rate.
- *  A week carrying any modelled day is flagged `perkiraan` even when it is
- *  full — since the series now runs to today+7 the current week fills up with
- *  forecast days instead of coming back short, and `scale > 1` alone would
- *  quietly stop marking it. */
-function ddDailyRowsToWeeks(rows) {
+ *  Skips `prior` (pre-scrape plateau) unless opts.includePrior — Deep Dive
+ *  Tren keeps those days so a 30/60/90 window still draws. Partial weeks
+ *  scale to a 7-day rate. A week carrying any modelled day is flagged
+ *  `perkiraan` even when it is full — since the series now runs to today+7
+ *  the current week fills up with forecast days instead of coming back
+ *  short, and `scale > 1` alone would quietly stop marking it. */
+function ddDailyRowsToWeeks(rows, opts = {}) {
   if (!rows || !rows.length) return [];
+  const keepPrior = !!opts.includePrior;
   const weeks = new Map();
   for (const row of rows) {
-    if (row.source === 'prior') continue;
+    if (row.source === 'prior' && !keepPrior) continue;
     const dt = new Date(String(row.d) + 'T12:00:00');
     if (isNaN(dt)) continue;
     const ts = mondayOfWeek(dt).getTime();
@@ -19714,9 +19716,9 @@ function ddDailyRowsToWeeks(rows) {
 }
 
 /** The next-Monday bucket from a series produced by ddDailyRowsToWeeks.
- *  ddLast6Weeks cuts everything past this Monday, so the forecast point is
- *  pulled from the full list — same estimator, same population, same units as
- *  the solid weeks. Reading it from keyword_weekly instead drew it ~4x high.
+ *  The tren window stops at this Monday, so the forecast point is pulled
+ *  from the full list — same estimator, same population, same units as the
+ *  solid weeks. Reading it from keyword_weekly instead drew it ~4x high.
  *  Match on the week-start ISO, not a 12-hour epoch window — Monday 00:00 UTC
  *  and a local-midnight ts disagree by more than 12h at |offset| >= 13. */
 function ddNextWeekPoint(weekly) {
@@ -19726,7 +19728,7 @@ function ddNextWeekPoint(weekly) {
   ) || null;
 }
 
-async function ddServerStoreWeeklySeries(shopId, days = 119) {
+async function ddServerStoreWeeklySeries(shopId, days = 119, opts = {}) {
   try {
     if (localStorage.getItem('larisid_server_series') === '0') return null;
   } catch (_) { /* private mode: proceed */ }
@@ -19742,7 +19744,7 @@ async function ddServerStoreWeeklySeries(shopId, days = 119) {
       p_to: toFc,
     });
     if (r.error || !Array.isArray(r.data) || !r.data.length) return null;
-    const out = ddDailyRowsToWeeks(r.data);
+    const out = ddDailyRowsToWeeks(r.data, opts);
     return out.length ? out : null;
   } catch (_) {
     return null;
@@ -19766,18 +19768,117 @@ function listingNextWeekStartISO(d = new Date()) {
     .toISOString().slice(0, 10);
 }
 
-const DD_TREND_HISTORY_WEEKS = 6;
+/** Deep Dive Tren window. Minta lebih is 180 days and a demand signal. */
+const DD_TREN_RANGES = { '30': 30, '60': 60, '90': 90, more: 180 };
+const DD_TREN_FETCH_DAYS = 190;
+let _ddTrenRange = '30';
 
-/** Last 6 scrape-backed weeks through this Monday. Empty calendar weeks are
- *  omitted so a 35-day scrape gap does not draw as a copied-average plateau. */
-function ddLast6Weeks(weekly) {
+function ddTrenRangeDays(id = _ddTrenRange) {
+  return DD_TREN_RANGES[id] || 30;
+}
+
+/** WIB Mondays whose week-start sits in [today − days, this Monday]. */
+function ddTrenMondayGrid(days) {
   const thisMon = Date.parse(listingWeekStartISO() + 'T00:00:00Z');
-  return (weekly || [])
-    .filter(w => (Number(w.units) || 0) > 0 || (Number(w.omset) || 0) > 0)
-    .filter(w => w.ts <= thisMon + 12 * 3600 * 1000)
-    .sort((a, b) => a.ts - b.ts)
-    .slice(-DD_TREND_HISTORY_WEEKS)
-    .map(w => ({ ...w }));
+  const todayIso = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
+  const left = Date.parse(todayIso + 'T00:00:00Z') - Number(days) * 864e5;
+  const out = [];
+  for (let ts = thisMon, n = 0; ts >= left && n < 40; ts -= 7 * 864e5, n++) out.push(ts);
+  return out.reverse();
+}
+
+function ddWeekIso(w) {
+  if (w && w.d) return String(w.d).slice(0, 10);
+  if (w && Number.isFinite(Number(w.ts))) return new Date(w.ts).toISOString().slice(0, 10);
+  return '';
+}
+
+/** Weekly omset level when the listing has no week inside the window. */
+function ddLevelFromProduct(product) {
+  if (!product) return null;
+  const monthly = estOmsetBulan(product);
+  const spd = soldPerDayEst(product);
+  const omset = monthly > 0 ? Math.round(monthly / 30 * 7) : 0;
+  const units = spd > 0 ? Math.round(spd * 7) : 0;
+  if (!(omset > 0) && !(units > 0)) return null;
+  return { omset, units };
+}
+
+function ddPeerFillLevel(peer, productLevel) {
+  const pos = (peer?.weeks || []).filter(w => (Number(w.omset) || 0) > 0);
+  const last = pos.length ? pos[pos.length - 1] : null;
+  const om = last
+    ? Math.round(Number(last.omset) || 0)
+    : Math.round(Number(peer?.fcWeek?.omset) || 0);
+  if (om > 0) return { omset: om, units: productLevel?.units || 0 };
+  return productLevel || null;
+}
+
+/** Every Monday in the window. Missing weeks take the nearest known week
+ *  (or levelFallback). Flat fills then take the catalog shape. */
+function ddFillTrendWindow(weekly, days, levelFallback) {
+  const grid = ddTrenMondayGrid(days);
+  const thisMon = listingWeekStartISO();
+  const by = new Map();
+  for (const w of weekly || []) {
+    const iso = ddWeekIso(w);
+    if (!iso || iso > thisMon) continue;
+    by.set(iso, w);
+  }
+  const slots = grid.map(ts => {
+    const iso = new Date(ts).toISOString().slice(0, 10);
+    const hit = by.get(iso);
+    if (hit && hit.omset != null && Number.isFinite(Number(hit.omset))) {
+      return {
+        ...hit,
+        ts,
+        d: iso,
+        omset: Math.round(Number(hit.omset) || 0),
+        units: Math.round(Number(hit.units) || 0),
+        gap: false,
+      };
+    }
+    return { ts, d: iso, omset: null, units: null, gap: true };
+  });
+  const filled = slots.map((w, i) => {
+    if (!w.gap) return w;
+    let donor = null;
+    for (let dist = 1; dist < slots.length; dist++) {
+      const left = slots[i - dist];
+      const right = slots[i + dist];
+      if (left && !left.gap) { donor = left; break; }
+      if (right && !right.gap) { donor = right; break; }
+    }
+    const omset = donor
+      ? Math.round(Number(donor.omset) || 0)
+      : Math.round(Number(levelFallback?.omset) || 0);
+    const units = donor
+      ? Math.round(Number(donor.units) || 0)
+      : Math.round(Number(levelFallback?.units) || 0);
+    return { ts: w.ts, d: w.d, omset, units, perkiraan: true, items: 1 };
+  });
+  return _shapeFlatWeeks(filled);
+}
+
+function ddApplyTrenWindow() {
+  const t = _dd?.trend;
+  if (!t || !_dd) return;
+  const days = ddTrenRangeDays();
+  const level = ddLevelFromProduct(_dd.product);
+  if (t.peer) {
+    t.series = ddFillTrendWindow(t.peerWeeks || t.peer.weeks || [], days, ddPeerFillLevel(t.peer, level));
+  } else {
+    t.series = ddFillTrendWindow(_dd.productWeekly || [], days, level);
+  }
+  _dd.series = t.series;
+  if (t.topShopsFull?.length) {
+    t.topShops = t.topShopsFull.map(sh => ({
+      ...sh,
+      weeks: ddFillTrendWindow(sh.allWeeks || [], days),
+    })).filter(sh => (sh.weeks || []).some(w => (Number(w.omset) || 0) > 0 || (Number(w.units) || 0) > 0));
+  }
 }
 
 /** WIB Monday key — aligns shop scrape weeks with product / server buckets. */
@@ -19785,16 +19886,9 @@ function ddWeekStartKey(ts) {
   return listingWeekStartISO(new Date(ts));
 }
 
-/** Per-shop trend cut: ddLast6Weeks first, else last non-empty scrape weeks
- *  (same pool competitor sparklines use when server series is thin). */
+/** Shop weeks on the same Monday grid as Tren Produk. */
 function ddShopWeeksForTrend(weekly) {
-  const cut = ddLast6Weeks(weekly);
-  if (cut.length) return cut;
-  return (weekly || [])
-    .filter(w => (Number(w.units) || 0) > 0 || (Number(w.omset) || 0) > 0)
-    .sort((a, b) => a.ts - b.ts)
-    .slice(-DD_TREND_HISTORY_WEEKS)
-    .map(w => ({ ...w }));
+  return ddFillTrendWindow(weekly, ddTrenRangeDays());
 }
 
 // Deep Dive reads nothing from listing_weekly / keyword_weekly any more. The
@@ -20427,16 +20521,22 @@ async function ddFetchPeerTrend(product) {
   }
 }
 
+function ddTrenRangeHtml() {
+  const cur = _ddTrenRange || '30';
+  const btns = [
+    ['30', '30'],
+    ['60', '60'],
+    ['90', '90'],
+    ['more', 'Minta lebih'],
+  ].map(([id, label]) => {
+    const on = id === cur;
+    const aria = id === 'more' ? 'Minta lebih' : `${label} hari`;
+    return `<button type="button" class="ddr-seg-btn${on ? ' is-on' : ''}" data-dd-range="${id}" aria-pressed="${on ? 'true' : 'false'}" aria-label="${aria}">${label}</button>`;
+  }).join('');
+  return `<div class="ddr-trend-range-row"><div class="ddr-seg" id="ddr-trend-range" role="group" aria-label="Rentang tren">${btns}</div></div>`;
+}
+
 function ddHeroChartHtml(chartMode) {
-  if (chartMode !== 'own' && chartMode !== 'peer') {
-    return `<div class="ddr-card ddr-hero-chart" data-dd-sec="tren">
-      <div class="ddr-trend-head">
-        <h3>Tren Produk</h3>
-        <div class="ddr-trend-toggles">${ddTrendExportBtnHtml()}</div>
-      </div>
-      <p class="dd-sub">Belum ada perkiraan tren untuk listing ini. Kamu tetap bisa unduh riwayat omset yang kami punya.</p>
-    </div>`;
-  }
   const toggles = chartMode === 'own'
     ? `<div class="ddr-seg" id="ddr-trend-view" role="group" aria-label="Pilih tampilan">
           <button type="button" class="ddr-seg-btn is-on" data-dd-view="produk">Produk</button>
@@ -20451,6 +20551,7 @@ function ddHeroChartHtml(chartMode) {
         ${ddTrendExportBtnHtml()}
       </div>
     </div>
+    ${ddTrenRangeHtml()}
     <div class="ddr-chart-wrap"><canvas id="ddr-trend-canvas"></canvas></div>
     <div class="chart-legend ddr-trend-legend" id="ddr-trend-legend"></div>
   </div>`;
@@ -21489,18 +21590,27 @@ async function openDeepDive(product, ddOpts = {}) {
   const productHistory = (history || []).filter(r =>
     String(r.item_id) === String(product.item_id)
     && String(r.shop_id) === String(product.shop_id));
-  const productWeekly = (await ddServerWeeklySeries(product, 119))
+  const productWeekly = (await ddServerWeeklySeries(product, DD_TREN_FETCH_DAYS, { includePrior: true }))
     || ddWeeklySeries(productHistory);
-  const series = ddLast6Weeks(productWeekly);
   // Own weeks stay on product_daily_series. listing_weekly is not spliced onto
   // that line (it drew a one-week spike). A listing with no real second scrape
-  // uses peer_trend_for instead: cohort shape, scaled to price * v_peer * 7,
-  // every point perkiraan. Next-week forecast on the own line is ddNextWeekPoint.
+  // uses peer_trend_for and that shape is stretched across the selected window.
+  // Next-week forecast on the own line is ddNextWeekPoint.
   const fcWeek = ddNextWeekPoint(productWeekly);
   const scoreInfo = ddScore(product, stats, niche);
   const share = ddShareData(peers);
   const age = ddShopAgeBuckets(peers);
-  _dd = { product, peers, niche, stats, history, series };
+  _dd = { product, peers, niche, stats, history, series: [], productWeekly };
+  _dd.trend = {
+    series: [],
+    fcWeek,
+    topShops: [],
+    topShopsFull: [],
+    view: 'produk',
+    peer: null,
+    peerWeeks: null,
+  };
+  ddApplyTrenWindow();
   const sideOpts = {
     product,
     peers,
@@ -21526,23 +21636,25 @@ async function openDeepDive(product, ddOpts = {}) {
   // reaches it (DD itself is a separate view, not part of the message list).
   if (chat) upsertDeepDiveChatMessage(chat, product, scoreInfo, stats);
 
-  const ownWeeks = series.filter(w => (w.units || w.omset)).length;
   // One scrape, or a same-day second hit (span under 2 days): borrow the
-  // cohort shape. A real second scrape keeps this listing's own line.
+  // cohort shape and stretch it. A real second scrape keeps this listing's line.
   const peer = await ddFetchPeerTrend(product);
-  let chartMode = 'none';
-  if (peer?.realSecond && ownWeeks >= 2) chartMode = 'own';
-  else if (peer && !peer.realSecond && peer.weeks.filter(w => w.omset > 0).length >= 2) chartMode = 'peer';
-  else if (ownWeeks >= 2) chartMode = 'own';
-  // Top 10 Toko needs this listing's own weeks. The peer line does not.
-  const topShops = chartMode === 'own' ? await ddTopShopWeeklySeries(share, history) : [];
-  _dd.trend = {
-    series: chartMode === 'peer' ? peer.weeks : series,
-    fcWeek: chartMode === 'peer' ? peer.fcWeek : fcWeek,
-    topShops,
-    view: 'produk',
-    peer: chartMode === 'peer' ? peer : null,
-  };
+  const chartMode = (peer && !peer.realSecond) ? 'peer' : 'own';
+  if (chartMode === 'peer') {
+    _dd.trend.peer = peer;
+    _dd.trend.peerWeeks = peer.weeks || [];
+    _dd.trend.fcWeek = peer.fcWeek;
+    _dd.trend.topShops = [];
+    _dd.trend.topShopsFull = [];
+  } else {
+    const topShops = await ddTopShopWeeklySeries(share, history);
+    _dd.trend.topShops = topShops;
+    _dd.trend.topShopsFull = topShops;
+    _dd.trend.fcWeek = fcWeek;
+  }
+  ddApplyTrenWindow();
+  const series = _dd.series || [];
+
   const bandLo = stats.p25, bandHi = stats.p75;
   const segLeft = stats.max > stats.min ? Math.round((bandLo - stats.min) / (stats.max - stats.min) * 100) : 0;
   const segWidth = stats.max > stats.min ? Math.max(4, Math.round((bandHi - bandLo) / (stats.max - stats.min) * 100)) : 100;
@@ -21728,10 +21840,8 @@ async function openDeepDive(product, ddOpts = {}) {
 
   // Charts + sparklines (Chart.js lazy; sparklines are raw canvas).
   await larisEnsureChart();
-  if (chartMode === 'own' || chartMode === 'peer') {
-    ddRenderTrendChart();
-    requestAnimationFrame(ddResizeTrendChart);
-  }
+  ddRenderTrendChart();
+  requestAnimationFrame(ddResizeTrendChart);
   if (share.shops.length >= 4) {
     makeChart('ddr-share-canvas', {
       type: 'doughnut',
@@ -21803,21 +21913,21 @@ async function ddTopShopWeeklySeries(share, history) {
   const results = await Promise.all(shops.map(async (sh, i) => {
     const sid = sh?.sample?.shop_id != null ? String(sh.sample.shop_id) : '';
     if (!sid) return null;
-    const server = await ddServerStoreWeeklySeries(sid);
+    const server = await ddServerStoreWeeklySeries(sid, DD_TREN_FETCH_DAYS, { includePrior: true });
     const fallback = rows.length
       ? ddWeeklySeries(rows.filter(r => String(r.shop_id) === sid))
       : [];
-    const serverWeeks = ddShopWeeksForTrend(server || []);
-    const fallbackWeeks = ddShopWeeksForTrend(fallback);
-    let weeks = serverWeeks.length >= fallbackWeeks.length ? serverWeeks : fallbackWeeks;
-    if (!weeks.length) weeks = serverWeeks.length ? serverWeeks : fallbackWeeks;
-    if (!weeks.length) return null;
+    const allWeeks = (server && server.length) ? server : fallback;
+    if (!allWeeks.length) return null;
+    const weeks = ddShopWeeksForTrend(allWeeks);
+    if (!weeks.some(w => (Number(w.omset) || 0) > 0 || (Number(w.units) || 0) > 0)) return null;
     return {
       shopId: sid,
       name: sh.name || 'Toko',
       img: sh.img || '',
       color: DD_SHOP_COLORS[i % DD_SHOP_COLORS.length],
       weeks,
+      allWeeks,
     };
   }));
   return results.filter(Boolean);
@@ -21918,15 +22028,9 @@ const ddBrokenAxisPlugin = {
 function ddTrendLegendHtml() {
   const t = _dd?.trend;
   if (!t) return '';
-  if (t.peer) {
-    return `<span class="row"><span class="swatch" style="background:#16A34A"></span>Perkiraan</span>
-      <p class="dd-sub ddr-legend-note">${esc(t.peer.note || '')}</p>`;
-  }
-  if (t.view === 'top10') {
+  if (!t.peer && t.view === 'top10') {
     const shops = t.topShops || [];
-    if (!shops.length) {
-      return '<span class="dd-sub">Belum cukup riwayat per toko untuk menggambar 10 garis.</span>';
-    }
+    if (!shops.length) return '';
     const broken = !!ddTop10Break(shops);
     return `<div class="ddr-legend-shops">${shops.map((sh, i) => `
       <button type="button" class="ddr-legend-shop" data-shop-idx="${i}" aria-pressed="true" title="${esc(sh.name)}">
@@ -21936,7 +22040,7 @@ function ddTrendLegendHtml() {
         <span class="nm">${esc((sh.name || 'Toko').slice(0, 18))}</span>
         <span class="dot" style="background:${sh.color}"></span>
       </button>`).join('')}</div>
-      <span class="dd-sub ddr-legend-note">Perkiraan mengisi minggu tanpa scrape.${broken ? ' Skala terputus — toko outlier di pita atas.' : ''}</span>`;
+      ${broken ? '<span class="dd-sub ddr-legend-note">Skala terputus — toko outlier di pita atas.</span>' : ''}`;
   }
   return `<span class="row"><span class="swatch" style="background:#B5202A"></span>Omset / minggu (Rp)</span>
     <span class="row"><span class="swatch" style="background:#16A34A"></span>Perkiraan</span>`;
@@ -21957,69 +22061,18 @@ function ddTrendChartEmptyNote(show, text) {
   } else if (el) el.hidden = true;
 }
 
-// Weekly product omset: last 6 WIB weeks through today + 1 next-week perkiraan.
-// Real series stays SHORTER than the labels — only Perkiraan touches the future
-// Monday. Next-week point is the same product_daily_series grain (not ×30/7).
-// last-2-weeks avg is fallback only.
-function ddRenderPeerTrendChart(t) {
-  ddTrendChartEmptyNote(false);
-  const series = t.series || [];
-  const plotted = series.filter(w => w.omset > 0);
-  if (plotted.length < 2) return;
-  const labels = series.map(w => _ddFmtWk(w.ts));
-  const nextTs = t.fcWeek?.ts || Date.parse(listingNextWeekStartISO() + 'T00:00:00Z');
-  labels.push(_ddFmtWk(nextTs) + ' ▶');
-  const data = series.map(w => (w.omset > 0 ? w.omset : null));
-  data.push(Math.round(Number(t.fcWeek?.omset) || 0) || null);
-  makeChart('ddr-trend-canvas', {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [{
-        label: 'Perkiraan',
-        data,
-        borderColor: '#16A34A',
-        borderDash: [5, 5],
-        borderWidth: 2,
-        tension: .35,
-        pointRadius: 3,
-        spanGaps: false,
-      }],
-    },
-    options: {
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          mode: 'index',
-          intersect: false,
-          callbacks: {
-            label: c => (c.parsed.y == null ? '' : `Perkiraan omset: ${fmtRpShort(c.parsed.y)}`),
-          },
-        },
-      },
-      scales: {
-        y: {
-          display: true, position: 'left', min: 0,
-          ticks: { callback: _ddRpTick, maxTicksLimit: 6 },
-        },
-      },
-    },
-  });
-}
-
+// Weekly product omset inside the selected day window + 1 next-week perkiraan.
+// Real series stays SHORTER than the labels — only the dashed tail touches the
+// future Monday. Next-week point is the same product_daily_series grain (not ×30/7).
+// last-2-weeks avg is fallback only. Peer history uses this same solid line.
 function ddRenderTrendChart() {
   const t = _dd?.trend;
   if (typeof Chart === 'undefined' || !t) return;
-  if (t.peer) {
-    ddRenderPeerTrendChart(t);
-    return;
-  }
 
-  if (t.view === 'top10') {
+  if (!t.peer && t.view === 'top10') {
     const shops = t.topShops || [];
     if (!shops.length) {
-      ddTrendChartEmptyNote(true, 'Belum cukup riwayat per toko untuk menggambar 10 garis.');
+      ddTrendChartEmptyNote(false);
       // Keep a chart instance alive — manual destroy() left the canvas unusable
       // for the next Produk redraw ("Canvas is already in use").
       makeChart('ddr-trend-canvas', {
@@ -22046,7 +22099,7 @@ function ddRenderTrendChart() {
       return tsAll.some(ts => (by.get(ddWeekStartKey(ts)) || 0) > 0);
     });
     if (!hasPlottableOmset) {
-      ddTrendChartEmptyNote(true, 'Belum cukup riwayat per toko untuk menggambar 10 garis.');
+      ddTrendChartEmptyNote(false);
       makeChart('ddr-trend-canvas', {
         type: 'line',
         data: { labels: tsAll.map(_ddFmtWk), datasets: [{ data: tsAll.map(() => null), borderWidth: 0, pointRadius: 0 }] },
@@ -22206,6 +22259,7 @@ function ddRenderTrendChart() {
         },
       },
       scales: {
+        x: { ticks: { maxTicksLimit: 8, maxRotation: 0 } },
         y: {
           display: true, position: 'left', min: 0,
           ticks: { callback: _ddRpTick, maxTicksLimit: 6 },
@@ -22226,21 +22280,46 @@ function wireDdrTrendToggles(root) {
     card.querySelectorAll('[data-dd-view]').forEach(b => {
       b.classList.toggle('is-on', b.getAttribute('data-dd-view') === t.view);
     });
+    card.querySelectorAll('[data-dd-range]').forEach(b => {
+      const on = b.getAttribute('data-dd-range') === _ddTrenRange;
+      b.classList.toggle('is-on', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
     if (legend) legend.innerHTML = ddTrendLegendHtml();
     ddRenderTrendChart();
     requestAnimationFrame(ddResizeTrendChart);
   };
 
   card.addEventListener('click', async (e) => {
+    const rangeBtn = e.target.closest?.('[data-dd-range]');
+    if (rangeBtn && card.contains(rangeBtn)) {
+      const id = rangeBtn.getAttribute('data-dd-range');
+      if (!id || id === _ddTrenRange || !DD_TREN_RANGES[id]) return;
+      _ddTrenRange = id;
+      ddApplyTrenWindow();
+      if (id === 'more') {
+        const p = _dd?.product;
+        void logUserEvent('ddr_tren_minta_lebih', {
+          ui: 'gpt',
+          item_id: p?.item_id ?? null,
+          shop_id: p?.shop_id ?? null,
+          window: DD_TREN_RANGES.more,
+        });
+      }
+      paint();
+      return;
+    }
     const btn = e.target.closest?.('[data-dd-view]');
     if (!btn || !card.contains(btn)) return;
     const t = _dd?.trend;
     if (!t) return;
     const v = btn.getAttribute('data-dd-view');
     if (!v || t.view === v) return;
-    if (v === 'top10' && !t.topShops?.length && (_dd?.history?.length || _dd?.peers?.length)) {
+    if (v === 'top10' && !t.topShopsFull?.length && (_dd?.history?.length || _dd?.peers?.length)) {
       const share = ddShareData(_dd.peers || []);
-      t.topShops = await ddTopShopWeeklySeries(share, _dd.history || []);
+      const shops = await ddTopShopWeeklySeries(share, _dd.history || []);
+      t.topShopsFull = shops;
+      t.topShops = shops;
     }
     t.view = v;
     void logUserEvent('deepdive_section', {

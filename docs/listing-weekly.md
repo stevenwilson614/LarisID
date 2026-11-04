@@ -149,9 +149,10 @@ closed-form decay (`W(t') = W(t)·exp(−Δ/τ)`) revises this week and next wee
   weeks draw faded and cannot claim a trend.
   A week with no scrape shows a labelled estimate — never "0 terjual", and never
   an unlabelled number.
-- UI sequence: last 6 WIB weeks through today (this week = nowcast, perkiraan
+- UI sequence outside Deep Dive Tren: last 6 WIB weeks through today (this week = nowcast, perkiraan
   unless `source=measured`) → next week (forecast, perkiraan). Chart labels
   are week starts (`10 Agu`), not calendar months (`Agu 26`).
+  Deep Dive Tren Produk uses the day presets below.
 - A flat positive omset line is reshaped in `js/omset-week-shape.js` (and the
   same SQL helpers behind the directory % and the Excel weeks). Two or more
   weeks with the same positive omset take this listing's own earlier shape
@@ -167,32 +168,39 @@ closed-form decay (`W(t') = W(t)·exp(−Δ/τ)`) revises this week and next wee
   reshape moved either week. Trending Sekarang still requires previous omset
   of at least Rp 50.000 plus the unit floors. The cell shows the percent
   under that floor.
-- Deep Dive tren graphs (Laris AI `#ddr-trend-canvas`, dashboard
-  `#tren-main-chart` / `#ap-demand-chart` / `#dd-chart-trend`) plot weekly
-  scrape-interval rates. They take the last 6 **non-empty** weeks (skipping
-  `prior` peer-fill and empty Mondays) so a long scrape gap does not draw as a
-  flat copied line. The Deep Dive hero chart is **Tren produk**: this listing's
-  weekly omset from `product_daily_series` (same weekly grain), plus a dashed
-  next-week perkiraan. It is not the keyword/market series. Top 10 Toko stays
-  a toggle on the same card. `listing_weekly` / `keyword_weekly` is
-  **next week only** — overlaying it onto this week mixed two estimators and
-  caused a spike. Partial this week is scaled `7/days`. Card / row omset stays
-  monthly (`×30`).
+- Deep Dive Tren Produk (`#ddr-trend-canvas` in `js/gpt-app.js`) plots weekly
+  omset on WIB Mondays. The card has **30 / 60 / 90 / Minta lebih**. Default
+  is 30 hari. Minta lebih is 180 hari and logs `ddr_tren_minta_lebih`
+  (`item_id`, `shop_id`, `window`) — a demand signal, not a waitlist.
+  The cut keeps Mondays whose week-start falls in `[today − N days, this Monday]`,
+  then one dashed next-Monday point. Axis labels stay week starts (`10 Agu`),
+  not calendar months. Missing Mondays inside the window are filled from
+  `product_daily_series` (this chart includes `prior` days) or the nearest
+  known week, then `omset-week-shape.js`, and drawn on the solid line. Do not
+  put a “data kurang” or perkiraan caption on the range control. The dashed
+  tail is still the next week only. Top 10 Toko uses the same N. Fetch is
+  ~190 days so switching presets does not refetch. `listing_weekly` /
+  `keyword_weekly` is **next week only** — overlaying it onto this week mixed
+  two estimators and caused a spike. Partial this week is scaled `7/days`.
+  Card / row omset stays monthly (`×30`). Favorit Aku does not use these
+  presets and still skips `prior`.
 - A listing with no real second scrape does not draw that own line. A real
   second scrape is a `listing_weekly` row with `source=measured` and
   `span_days >= 2` (a same-day extension double hit is not one). Tren Produk
-  then calls `peer_trend_for`: last 6 WIB Mondays, all perkiraan. The shape is
+  then calls `peer_trend_for`. The RPC still returns the recent cohort weeks.
+  The chart stretches that shape across the selected 30/60/90/180 window
+  (nearest week, then `omset-week-shape.js`) and draws it on the same solid
+  line as an own series — no “not enough data” footnote. The shape is
   the median measured weekly omset of the same category and sold scale-band
   (reviews pick the band only when lifetime sold is missing; a thin category
   falls back to **band-all** — every category in that sold band, not blank
   category only). The newest cohort week is scaled to `price × v_peer × 7`,
   this Monday is that same level, and weeks with too few measured peers are a
-  gap. Next week is that peer rate, still dashed. After that, both the cohort
-  and level paths run `shape_flat_week_totals` (client: `omset-week-shape.js`)
-  so the peer line is **never** identical week to week — a missing cohort
-  uses the catalog pattern at the peer level, still perkiraan, with a footnote.
-  Top 10 Toko stays off until the listing has its own weeks. This does not
-  change card omset or `source=measured`.
+  gap that the window fill closes. Next week is that peer rate, still dashed.
+  After that, both the cohort and level paths run `shape_flat_week_totals`
+  (client: `omset-week-shape.js`) so the peer line is **never** identical week
+  to week. Top 10 Toko stays off until the listing has its own weeks. This
+  does not change card omset or `source=measured`.
 - Favorit Aku **list** chart is the last 13 non-empty WIB Mondays (~3 months)
   from the same `product_daily_series` weekly bucket as Deep Dive Tren produk
   (omset + units, dual Y-axis, solid lines, week-start labels). Do **not**
