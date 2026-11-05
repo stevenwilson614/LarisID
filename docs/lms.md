@@ -121,7 +121,9 @@ Belajar and LarisRise are separate products — do not fold them into LMS.
 
 ### Postgres schema (auth LMS)
 
-Tables: `lms_accounts`, `lms_invites`, `lms_modules`, `lms_lessons`, `lms_materials`, `lms_sessions`.
+Tables: `lms_accounts`, `lms_invites`, `lms_modules`, `lms_lessons`, `lms_materials`, `lms_sessions`, `lms_auth_users`.
+
+`lms_auth_users` is the Laris-vs-LMS split. Class login (`mark_lms_auth`) records the shared GoTrue user. Laris admin signup counts and Daftar Pengguna skip that user when they have no Laris session, page view, onboarding, Deep Dive, or tracked product. The admin 24h card shows those class-only signups as “N LMS, terpisah”. An account that also uses Laris stays in the Laris count.
 
 ```bash
 bash scripts/apply-selfhost.sh supabase/migrations/20261029120000_lms_schools.sql

@@ -19861,6 +19861,10 @@
         });
       } catch (err) { /* sign-in already stored the session */ }
     }
+    try {
+      const marker = studentSb();
+      if (marker) marker.rpc('mark_lms_auth', { p_slug: schoolSlug() || 'lms' }).catch(() => {});
+    } catch (err) { /* class still opens if the Laris split marker is down */ }
     await bootSession();
     for (let i = 0; i < 8 && syncInFlight; i++) {
       await new Promise((resolve) => setTimeout(resolve, 150));

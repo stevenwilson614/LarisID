@@ -27823,6 +27823,17 @@ function renderAdminUsage(days) {
   const ret = Number(k.returning_users_24h);
   set('adm-usage-new-24h', admFmtNum(k.new_users_24h));
   set('adm-usage-ret-24h', admFmtNum(k.returning_users_24h));
+  const lmsEl = $('adm-usage-lms-24h');
+  if (lmsEl) {
+    const lmsN = Number(k.lms_new_24h);
+    if (Number.isFinite(lmsN) && lmsN > 0) {
+      lmsEl.hidden = false;
+      lmsEl.textContent = `${admFmtNum(lmsN)} LMS, terpisah`;
+    } else {
+      lmsEl.hidden = true;
+      lmsEl.textContent = '';
+    }
+  }
   const split = $('adm-usage-people-split');
   const legend = $('adm-usage-people-legend');
   const tot = (Number.isFinite(neu) ? neu : 0) + (Number.isFinite(ret) ? ret : 0);

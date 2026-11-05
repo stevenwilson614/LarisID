@@ -151,6 +151,31 @@ function bearerToken(req) {
   return header.slice(7).trim();
 }
 
+const lmsAuthNoted = new Set();
+
+function noteLmsAuth(req, slug, userId) {
+  const token = bearerToken(req);
+  const uid = String(userId || '');
+  const school = String(slug || 'lms').trim().toLowerCase().slice(0, 80) || 'lms';
+  if (!token || !uid || process.env.LMS_AUTH_STUB === '1') return;
+  const key = uid + ':' + school;
+  if (lmsAuthNoted.has(key)) return;
+  lmsAuthNoted.add(key);
+  fetch(SUPA_URL + '/rest/v1/rpc/mark_lms_auth', {
+    method: 'POST',
+    headers: {
+      apikey: SUPA_ANON,
+      Authorization: 'Bearer ' + token,
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({ p_slug: school })
+  }).then((res) => {
+    if (!res.ok) lmsAuthNoted.delete(key);
+  }).catch(() => {
+    lmsAuthNoted.delete(key);
+  });
+}
+
 async function supabaseUser(req) {
   const token = bearerToken(req);
   if (!token) return null;
@@ -3617,6 +3642,7 @@ const server = http.createServer((req, res) => {
       const owners = readOwners();
       if (owners[user.id]) {
         fillOwnerEmail(owners[user.id], user);
+        noteLmsAuth(req, owners[user.id], user.id);
         json(res, 200, { slug: owners[user.id], created: false });
         return;
       }
@@ -3640,6 +3666,7 @@ const server = http.createServer((req, res) => {
         owners[user.id] = slug;
         writeOwners(owners);
         fillOwnerEmail(slug, user);
+        noteLmsAuth(req, slug, user.id);
         json(res, 200, { slug: slug, created: false });
         return;
       }
@@ -3650,6 +3677,7 @@ const server = http.createServer((req, res) => {
           owners[user.id] = slug;
           writeOwners(owners);
           fillOwnerEmail(slug, user);
+          noteLmsAuth(req, slug, user.id);
           json(res, 200, { slug: slug, created: false });
           return;
         }
@@ -3671,6 +3699,7 @@ const server = http.createServer((req, res) => {
       }, ''), slug);
       owners[user.id] = slug;
       writeOwners(owners);
+      noteLmsAuth(req, slug, user.id);
       json(res, 201, { slug: slug, created: true });
     })).catch((err) => {
       if (!res.headersSent) json(res, err.status || 500, { error: 'school' });
@@ -3704,6 +3733,7 @@ const server = http.createServer((req, res) => {
       const owners = readOwners();
       if (owners[user.id]) {
         fillOwnerEmail(owners[user.id], user);
+        noteLmsAuth(req, owners[user.id], user.id);
         json(res, 200, { slug: owners[user.id], created: false });
         return;
       }
@@ -3737,6 +3767,7 @@ const server = http.createServer((req, res) => {
       writeState(emptySchool(slug, user, body, photoUrl), slug);
       owners[user.id] = slug;
       writeOwners(owners);
+      noteLmsAuth(req, slug, user.id);
       json(res, 201, { slug: slug, created: true });
     })).catch((err) => {
       if (!res.headersSent) json(res, err.status || 500, { error: 'school' });
@@ -3754,6 +3785,7 @@ const server = http.createServer((req, res) => {
         return;
       }
       const user = await supabaseUser(req);
+      if (user && user.id) noteLmsAuth(req, slug, user.id);
       if (isStaffFor(req, q, slug, user)) {
         json(res, 200, { role: 'staff' });
         return;
@@ -3858,6 +3890,7 @@ const server = http.createServer((req, res) => {
         row = Object.assign({}, live || {}, row);
       }
       if (user && user.id && !row.authUserId) row.authUserId = user.id;
+      if (user && user.id) noteLmsAuth(req, slug, user.id);
       applyJoinProfile(row, body);
       if (!row.mentorId) row.mentorId = state.ownerId || '';
       if (row.kind !== 'mentor') row.kind = 'student';

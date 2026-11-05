@@ -904,6 +904,10 @@
       return;
     }
     lmsIdentify(session, isStudentGate() ? 'student' : 'mentor');
+    if (window.Lms && window.Lms.sb) {
+      var slug = (window.Lms.schoolSlug && window.Lms.schoolSlug()) || window.Lms.pathSlug() || 'lms';
+      window.Lms.sb.rpc('mark_lms_auth', { p_slug: slug }).catch(function () {});
+    }
     var me = await window.LmsApi.me();
     var freshInvite = window.Lms.invite();
     var invite = freshInvite || pendingInvite(session);
