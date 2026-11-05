@@ -189,23 +189,42 @@
     return active() && intent() === 'first_time' && document.body.classList.contains('alat-focus');
   }
 
+  function normalizeShopPasteUrl(raw) {
+    var s = String(raw || '').trim();
+    if (!s) return '';
+    // "https//host" (missing colon) and "https://https//host" from a prior bug.
+    s = s.replace(/^(https?)\/\//i, '$1://');
+    s = s.replace(/^(https?):\/(?!\/)/i, '$1://');
+    s = s.replace(/^(https?:\/\/)https?:?\/+/i, '$1');
+    if (!/^https?:\/\//i.test(s)) s = 'https://' + s.replace(/^\/\//, '');
+    return s;
+  }
+
   function parseShopInput(raw) {
     var s = String(raw || '').trim();
     if (!s) return null;
     if (/shopee\./i.test(s)) {
-      var url = /^https?:\/\//i.test(s) ? s : ('https://' + s.replace(/^\/\//, ''));
-      var byId = s.match(/\/shop\/(\d+)/i);
-      if (byId) return { shopId: Number(byId[1]), url: url };
-      var byItem = s.match(/[./-]i\.(\d+)\.(\d+)/i);
-      if (byItem) return { shopId: Number(byItem[1]), url: url };
-      var bySlug = s.match(/shopee\.[a-z.]+\/([^/?#]+)/i);
-      if (bySlug && !/^(product|shop|search)$/i.test(bySlug[1])) {
-        return {
-          q: decodeURIComponent(bySlug[1]).replace(/[-_]+/g, ' ').trim(),
-          url: url,
-        };
+      var url = normalizeShopPasteUrl(s);
+      var byId = s.match(/\/shop\/(\d+)/i) || url.match(/\/shop\/(\d+)/i);
+      var out;
+      if (byId) out = { shopId: Number(byId[1]), url: url };
+      else {
+        var byItem = s.match(/[./-]i\.(\d+)\.(\d+)/i) || url.match(/[./-]i\.(\d+)\.(\d+)/i);
+        if (byItem) out = { shopId: Number(byItem[1]), url: url };
+        else {
+          var bySlug = url.match(/shopee\.[a-z.]+\/([^/?#]+)/i);
+          if (bySlug && !/^(product|shop|search)$/i.test(bySlug[1])) {
+            out = {
+              q: decodeURIComponent(bySlug[1]).replace(/[-_]+/g, ' ').trim(),
+              url: url,
+            };
+          } else out = { url: url };
+        }
       }
-      return { url: url };
+      // #region agent log
+      fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'078fa7'},body:JSON.stringify({sessionId:'078fa7',runId:'reliability-postfix',hypothesisId:'A',location:'gpt-alat-preview.js:parseShopInput',message:'parsed shop paste',data:{raw:String(raw||'').slice(0,120),url:(out&&out.url||'').slice(0,160),shopId:out&&out.shopId||null,hasQ:!!(out&&out.q),badDoubleScheme:/https?:\/\/https/i.test((out&&out.url)||'')||/^https\/\//i.test(String(raw||'').trim()),rawMissingColon:/^https\/\//i.test(String(raw||'').trim())},timestamp:Date.now()})}).catch(function(){});
+      // #endregion
+      return out;
     }
     if (/^\d{4,}$/.test(s)) return { shopId: Number(s), url: 'https://shopee.co.id/shop/' + s };
     return { q: s };
@@ -964,9 +983,16 @@
         p_store_name: (shop && shop.store_name) || '',
       });
       var d = res && res.data;
+      // #region agent log
+      fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'078fa7'},body:JSON.stringify({sessionId:'078fa7',runId:'reliability',hypothesisId:'E',location:'gpt-alat-preview.js:requestShopScrape',message:'enqueue result',data:{url:String(url||'').slice(0,160),shopId:shop&&shop.shop_id||null,ok:!!(d&&d.ok),jobId:d&&d.job_id||null,reason:d&&d.reason||null,rpcError:!!(res&&res.error),badDoubleScheme:/https?:\/\/https/i.test(String(url||''))},timestamp:Date.now()})}).catch(function(){});
+      // #endregion
       if (d && d.ok && d.job_id) return d;
       if (d && d.reason === 'rate_limited') return d;
-    } catch (_) {}
+    } catch (e) {
+      // #region agent log
+      fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'078fa7'},body:JSON.stringify({sessionId:'078fa7',runId:'reliability',hypothesisId:'E',location:'gpt-alat-preview.js:requestShopScrape:catch',message:'enqueue threw',data:{url:String(url||'').slice(0,120),err:String(e&&e.message||e).slice(0,160)},timestamp:Date.now()})}).catch(function(){});
+      // #endregion
+    }
     return null;
   }
 
@@ -1006,6 +1032,7 @@
       _shop = shop;
       persistProfile();
     }
+    var path = needScrape ? 'hard_scrape' : (url && shop.shop_id ? 'soft_refresh' : 'no_scrape');
     if (needScrape && url) {
       var queued = await requestShopScrape(url, shop);
       if (queued && queued.job_id) {
@@ -1020,6 +1047,9 @@
         persistProfile();
       }
     }
+    // #region agent log
+    fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'078fa7'},body:JSON.stringify({sessionId:'078fa7',runId:'reliability',hypothesisId:'B',location:'gpt-alat-preview.js:beginOnboard',message:'onboard scrape path',data:{path:path,needScrape:!!needScrape,shopId:shop.shop_id,url:String(url||'').slice(0,160),scrapeJobId:_scrapeJobId||null,usernameOnly:!shop.shop_id&&!!url},timestamp:Date.now()})}).catch(function(){});
+    // #endregion
     if (wantsFullWizard()) renderPersonalInfo(shop);
     else await beginQuickConnect(shop);
   }
@@ -1249,12 +1279,18 @@
         if (job.shop_id) shop.shop_id = job.shop_id;
         if (job.store_name) shop.store_name = job.store_name;
         rememberShop(shop);
+        // #region agent log
+        fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'078fa7'},body:JSON.stringify({sessionId:'078fa7',runId:'reliability',hypothesisId:'C',location:'gpt-alat-preview.js:awaitScrapeThenLoad:done',message:'scrape job done',data:{jobId:_scrapeJobId,shopId:shop.shop_id,snapId:_claimSnapId,alreadyN:already.length,status:job.status},timestamp:Date.now()})}).catch(function(){});
+        // #endregion
         sayBusy('Menyimpan toko…');
         await saveStoreProfile(shop);
         persistProfile();
         sayBusy('Memuat produk toko…');
         return loadShopWork(shop, loadOpts);
       }
+      // #region agent log
+      fetch('http://127.0.0.1:7744/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'078fa7'},body:JSON.stringify({sessionId:'078fa7',runId:'reliability',hypothesisId:'B',location:'gpt-alat-preview.js:awaitScrapeThenLoad:fallback',message:'scrape not done — fallback path',data:{jobId:_scrapeJobId,shopId:shop.shop_id,status:job&&job.status||null,err:job&&job.error||null,alreadyN:already.length,willUseDb:already.length>0,willExt:!already.length},timestamp:Date.now()})}).catch(function(){});
+      // #endregion
       if (job && (job.status === 'failed' || job.status === 'timeout') && !already.length) {
         // Fall through to extension if nothing in DB.
       } else if (already.length) {
