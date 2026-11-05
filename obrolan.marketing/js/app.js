@@ -10202,9 +10202,13 @@
     ).join('');
     const wait = (!preview && ui.payWaitExpired)
       ? '<p class="ob-sub">Pembayaran belum masuk. Coba QRIS lagi.</p>' : '';
+    const waHint = (!preview && sid && normalizeWa(student().wa))
+      ? ('Pakai nomor WhatsApp yang sama seperti di form kelas (' + esc(normalizeWa(student().wa)) + ') saat bayar di Lynk.')
+      : 'Pakai nomor WhatsApp yang sama seperti di form kelas saat bayar di Lynk.';
     const inner = '<p class="ob-kicker">Bayar</p>' +
       '<h1 class="ob-q">Beli mentoring</h1>' +
-      '<p class="ob-sub">Pilih paket, bayar dengan QRIS, lalu kembali ke kelas. Kurikulum yang sudah dibayar kebuka dalam beberapa detik.</p>' +
+      '<p class="ob-sub">Pilih paket, lalu Bayar dengan QRIS. Biarkan tab kelas tetap terbuka — kurikulum kebuka otomatis setelah lunas.</p>' +
+      '<p class="ob-sub">' + waHint + '</p>' +
       wait +
       '<div class="ob-pills pay-picks">' + (cards || '<p class="muted">Mentor belum mengisi paket.</p>') + '</div>';
     const foot = preview
@@ -13631,9 +13635,9 @@
         '<li>Judul dan harga produk harus sama dengan baris di sini. Mengubah harga di Laris tidak mengubah lynk.id.</li>' +
         '<li>Tempel URL webhook di pengaturan webhook Lynk, lalu tempel Merchant Key di sini. Webhook yang membuka akses — Lynk tidak punya redirect kembali.</li>' +
         '<li>Tempel URL checkout produk (<code>https://lynk.id/…</code>, bukan http) di bawah, lalu Simpan.</li>' +
-        '<li>Nomor WhatsApp pembeli di Lynk harus sama dengan WA siswa di kelas.</li>' +
+        '<li><strong>WA wajib sama:</strong> nomor WhatsApp yang siswa isi di kelas = nomor yang dipakai bayar di Lynk. Kalau beda, bayar masuk tapi video tetap terkunci — cek bagian Belum cocok di bawah, atau Beri akses manual.</li>' +
       '</ol>' +
-      '<p class="muted">Siswa bayar di tab Lynk; tab kelas tetap terbuka dan kurikulum kebuka otomatis setelah webhook masuk. Tidak perlu URL kembali di Lynk.</p>' +
+      '<p class="muted">Siswa bayar di tab Lynk; tab kelas tetap terbuka dan kurikulum kebuka otomatis setelah webhook masuk. Tidak perlu URL kembali di Lynk. Ingatkan siswa: daftar/join dulu, baru bayar dari tombol di kelas (jangan bayar lewat link Lynk sembarangan).</p>' +
       payCopyRow('Webhook', hook) +
       '<form class="compose" data-act="save-pay-secret" data-provider="lynk">' +
         paySecretField('lynkMerchantKey', 'Merchant Key', st.lynkLast4) +
