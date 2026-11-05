@@ -1168,6 +1168,41 @@ function dig(obj, paths) {
   return '';
 }
 
+/** Lynk sometimes sends a flat body, sometimes { event, data: {...} } (and data may be a JSON string). */
+function lynkPayload(body) {
+  const root = body && typeof body === 'object' && !Array.isArray(body) ? body : {};
+  let data = root.data;
+  if (typeof data === 'string') {
+    try { data = JSON.parse(data); } catch (err) { data = null; }
+  }
+  if (!data || typeof data !== 'object' || Array.isArray(data)) data = {};
+  const nested = [];
+  ['payment', 'transaction', 'order', 'invoice', 'result', 'payload'].forEach((key) => {
+    const row = data[key];
+    if (row && typeof row === 'object' && !Array.isArray(row)) nested.push(row);
+    const rootRow = root[key];
+    if (rootRow && typeof rootRow === 'object' && !Array.isArray(rootRow)) nested.push(rootRow);
+  });
+  return { root: root, data: data, layers: [root, data].concat(nested) };
+}
+
+function digLynk(layers, paths) {
+  for (let i = 0; i < layers.length; i += 1) {
+    const hit = dig(layers[i], paths);
+    if (hit != null && hit !== '') return hit;
+  }
+  return '';
+}
+
+function lynkBodyKeyMap(body) {
+  const pack = lynkPayload(body);
+  return {
+    bodyKeys: Object.keys(pack.root).slice(0, 40),
+    dataKeys: Object.keys(pack.data).slice(0, 40),
+    nestedKeys: pack.layers.slice(2).map((row) => Object.keys(row || {}).slice(0, 20))
+  };
+}
+
 function amountString(value) {
   if (typeof value === 'string') return value.trim();
   if (typeof value === 'number' && Number.isFinite(value)) return String(value);
@@ -2997,27 +3032,30 @@ function finishGrant(res, rec, slug, state, refId, provider, personId, extra) {
 function grantLynkHook(res, slug, req, body) {
   const key = lynkKeyFor(slug);
   if (!key) { json(res, 503, { error: 'unconfigured' }); return; }
-  const event = String(dig(body, [['event'], ['type']]) || '');
+  const pack = lynkPayload(body);
+  const layers = pack.layers;
+  const event = String(digLynk(layers, [['event'], ['type']]) || dig(body, [['event'], ['type']]) || '');
   if (event && event !== 'payment.received') {
     json(res, 200, { ok: true, ignored: event });
     return;
   }
-  const refId = String(dig(body, [['refId'], ['data', 'refId'], ['ref_id'], ['data', 'ref_id']]) || '');
-  // Lynk docs say message_id; live Anton payloads showed uuid and omitted message_id.
+  const refId = String(digLynk(layers, [
+    ['refId'], ['ref_id'], ['trxId'], ['trx_id'], ['transactionId'], ['transaction_id']
+  ]) || '');
+  // Lynk docs say message_id; live payloads often send uuid instead (or both).
   const messageCandidates = [];
   [
-    dig(body, [['message_id'], ['data', 'message_id']]),
-    dig(body, [['messageId'], ['data', 'messageId']]),
-    dig(body, [['uuid'], ['data', 'uuid']]),
-    dig(body, [['message_uuid'], ['data', 'message_uuid']])
+    digLynk(layers, [['message_id']]),
+    digLynk(layers, [['messageId']]),
+    digLynk(layers, [['uuid']]),
+    digLynk(layers, [['message_uuid']])
   ].forEach((value) => {
     const id = String(value || '').trim();
     if (id && messageCandidates.indexOf(id) < 0) messageCandidates.push(id);
   });
-  const amountRaw = dig(body, [['grandTotal'], ['data', 'grandTotal'], ['amount'], ['data', 'amount']]);
-  let amount = amountString(amountRaw);
+  let amount = amountString(digLynk(layers, [['grandTotal'], ['amount'], ['total'], ['price']]));
   const amountCandidates = [];
-  [amount, amountString(dig(body, [['customerPay'], ['data', 'customerPay']]))]
+  [amount, amountString(digLynk(layers, [['customerPay'], ['customer_pay']]))]
     .concat(/^\d+$/.test(amount) ? [amount + '.00'] : [])
     .forEach((value) => {
       const a = String(value || '').trim();
@@ -3025,7 +3063,7 @@ function grantLynkHook(res, slug, req, body) {
     });
   const got = String(req.headers['x-lynk-signature'] || '');
   if (!refId || !messageCandidates.length || !amountCandidates.length || !got) {
-    recordPayEvent({
+    recordPayEvent(Object.assign({
       at: new Date().toISOString(),
       provider: 'lynk',
       slug: slug,
@@ -3034,9 +3072,8 @@ function grantLynkHook(res, slug, req, body) {
       hasRef: !!refId,
       hasMessageId: messageCandidates.length > 0,
       hasAmount: amountCandidates.length > 0,
-      hasHeader: !!got,
-      bodyKeys: body && typeof body === 'object' ? Object.keys(body).slice(0, 40) : []
-    });
+      hasHeader: !!got
+    }, lynkBodyKeyMap(body)));
     json(res, 401, {
       error: 'signature',
       reason: !got ? 'missing_header' : (!refId ? 'missing_refId' : (!messageCandidates.length ? 'missing_message_id' : 'missing_amount'))
@@ -3071,14 +3108,12 @@ function grantLynkHook(res, slug, req, body) {
     return;
   }
   if (seenPayRef(refId)) { json(res, 200, { ok: true, duplicate: true }); return; }
-  const phone = String(dig(body, [
-    ['customer', 'phone'], ['data', 'customer', 'phone'],
-    ['customer', 'mobile'], ['data', 'customer', 'mobile'],
-    ['customer', 'whatsapp'], ['data', 'customer', 'whatsapp'],
-    ['phone'], ['data', 'phone']
+  const phone = String(digLynk(layers, [
+    ['customer', 'phone'], ['customer', 'mobile'], ['customer', 'whatsapp'],
+    ['phone'], ['mobile'], ['whatsapp']
   ]) || '');
-  const name = String(dig(body, [['customer', 'name'], ['data', 'customer', 'name'], ['name']]) || '');
-  const titles = itemTitles(body);
+  const name = String(digLynk(layers, [['customer', 'name'], ['name']]) || '');
+  const titles = itemTitles(pack.root).concat(itemTitles(pack.data)).filter((title, idx, all) => all.indexOf(title) === idx);
   const rec = persistStrip(takeState(slug), slug);
   const state = rec && rec.state;
   const catalog = lynkPackageCatalog(state);
