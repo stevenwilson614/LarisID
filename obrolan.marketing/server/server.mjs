@@ -1434,7 +1434,15 @@ function seenPayRef(refId) {
   if (start > 0) lines.shift();
   return lines.some((line) => {
     if (!line) return false;
-    try { return JSON.parse(line).refId === refId; } catch (err) { return false; }
+    try {
+      const row = JSON.parse(line);
+      if (!row || row.refId !== refId) return false;
+      // Ignore diagnostic/failed signature rows — only real grants count.
+      if (row.error || row.ok === false) return false;
+      return !!(row.personId || row.matched || row.ok === true);
+    } catch (err) {
+      return false;
+    }
   });
 }
 
