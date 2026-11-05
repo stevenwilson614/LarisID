@@ -1,6 +1,7 @@
 // Steven auto-reply. Service role only (feedback insert trigger).
 // Casual Indonesian reply as Steven via user_notices.steven_followup.
-// May research listings, queue a scrape, or email staff. Never ships UI.
+// May research listings or queue a scrape. Emails Steven the message and the
+// reply that went out. Never ships UI.
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { jwtRole } from '../_shared/auth.ts'
@@ -316,36 +317,53 @@ function composeLead(draft: Draft, research: { picks: Pick[]; closest: string | 
   return lead
 }
 
-async function emailStaff(
+const CHIP_API = 'Hai! Kalau kamu nanya soal API, buka halaman API di menu kiri ya. Di situ bisa catat minat dan WhatsApp-mu — belum ada jadwal rilis, tapi kami catat siapa yang butuh.'
+const CHIP_BINGUNG = 'Hai! Kalau masih bingung atau pusing cara pakainya, buka halaman Belajar di menu kiri ya. Langkahnya pelan-pelan, dari cari produk sampai pantau toko.'
+const CHIP_KURANG = 'Hai! Makasih sudah jawab. Kamu bilang datanya kurang lengkap — informasi apa lagi yang paling ingin kamu lihat di LarisID? Ceritain di sini ya, aku baca.'
+
+function chipLead(msg: string) {
+  if (choseApi(msg)) return CHIP_API
+  if (choseBingung(msg)) return CHIP_BINGUNG
+  if (choseKurangLengkap(msg)) return CHIP_KURANG
+  return ''
+}
+
+/** One mail per feedback row: what they wrote, and the reply they were shown. */
+async function emailFounder(
   row: Record<string, unknown>,
-  draft: Draft,
-  lead: string,
+  intent: string,
+  reply: string,
 ) {
-  const key = Deno.env.get('RESEND_API_KEY')
-  if (!key) return
-  const subject = `[Fitur?] ${draft.intent} — ${String(row.user_email || 'user').slice(0, 40)}`
-  const html = `
-    <div style="font-family:sans-serif;max-width:520px;">
-      <p style="margin:0 0 8px;">Steven auto-reply flagged this as worth a look. No code was shipped.</p>
-      <p style="margin:0 0 8px;"><strong>Intent:</strong> ${escapeHtml(draft.intent)}</p>
-      <p style="margin:0 0 8px;"><strong>From:</strong> ${escapeHtml(row.user_email || '—')}</p>
-      <p style="margin:0 0 8px;"><strong>They wrote:</strong> ${escapeHtml(row.message || '')}</p>
-      <p style="margin:0 0 8px;"><strong>Reply sent:</strong> ${escapeHtml(lead)}</p>
-      <p style="margin:12px 0 0;font-size:13px;color:#6B7280;">Inbox: <a href="https://larisid.com/#admin">Admin → Masukan Pengguna</a></p>
-    </div>`
-  await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: Deno.env.get('RESEND_FROM_EMAIL') || 'Steven <steven@larisid.com>',
-      to: STAFF_TO,
-      subject,
-      html,
-    }),
-  })
+  try {
+    const key = Deno.env.get('RESEND_API_KEY')
+    if (!key) return
+    const who = String(row.user_email || 'anon').slice(0, 40)
+    const html = `
+      <div style="font-family:sans-serif;max-width:520px;">
+        <p style="margin:0 0 8px;"><strong>From:</strong> ${escapeHtml(row.user_email || '—')}</p>
+        <p style="margin:0 0 8px;"><strong>Page:</strong> ${escapeHtml(row.page || '—')}</p>
+        <p style="margin:0 0 8px;"><strong>Intent:</strong> ${escapeHtml(intent)}</p>
+        <p style="margin:12px 0 4px;"><strong>They wrote</strong></p>
+        <div style="margin:0 0 12px;padding:12px;background:#F9FAFB;border-left:3px solid #E8442A;">${escapeHtml(row.message || '').replace(/\n/g, '<br>')}</div>
+        <p style="margin:12px 0 4px;"><strong>Auto reply</strong></p>
+        <div style="margin:0;padding:12px;background:#F3F4F6;">${escapeHtml(reply || '—').replace(/\n/g, '<br>')}</div>
+      </div>`
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${key}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: Deno.env.get('RESEND_FROM_EMAIL') || 'Steven <steven@larisid.com>',
+        to: STAFF_TO,
+        subject: `[Balasan] ${intent} — ${who}`,
+        html,
+      }),
+    })
+  } catch (e) {
+    console.warn('steven-auto-reply email:', e instanceof Error ? e.message : e)
+  }
 }
 
 async function processPayload(payload: Record<string, unknown>) {
@@ -379,9 +397,16 @@ async function processPayload(payload: Record<string, unknown>) {
 
   if (row.auto_replied_at) return { ok: true, skipped: 'already' }
   if (!message) return { ok: true, skipped: 'empty', id: row.id }
-  if (!userId) return { ok: true, skipped: 'anon', id: row.id }
   if (email === FOUNDER) return { ok: true, skipped: 'founder', id: row.id }
-  if (chipAlreadyHandled(page, message)) return { ok: true, skipped: 'chip', id: row.id }
+  if (!userId) {
+    await emailFounder(row, 'anon', 'No auto reply. They were not signed in.')
+    return { ok: true, skipped: 'anon', id: row.id }
+  }
+  if (chipAlreadyHandled(page, message)) {
+    const canned = chipLead(message)
+    await emailFounder(row, 'chip', canned || 'No canned reply matched.')
+    return { ok: true, skipped: 'chip', id: row.id }
+  }
 
   const { data: openNotes, error: noteErr } = await supabase
     .from('user_notices')
@@ -394,6 +419,14 @@ async function processPayload(payload: Record<string, unknown>) {
   if (noteErr) throw new Error(noteErr.message)
   const openBot = (openNotes || []).filter((n) => n?.payload?.source === 'steven_auto_reply')
   if (openBot.length && page !== 'steven_followup') {
+    const still = String(openBot[0]?.payload?.lead || '').trim()
+    await emailFounder(
+      row,
+      'open_card',
+      still
+        ? `No new reply. The open card still says: ${still}`
+        : 'No new reply. An earlier auto-reply card is still open.',
+    )
     return { ok: true, skipped: 'open_bot_notice', id: row.id }
   }
 
@@ -461,11 +494,7 @@ async function processPayload(payload: Record<string, unknown>) {
   }).eq('id', row.id)
   await supabase.from('feedback').update({ status: 'reviewing' }).eq('id', row.id).eq('status', 'new')
 
-  if (draft.staff_feature && (draft.intent === 'feature_ask' || draft.intent === 'data_gap')) {
-    try { await emailStaff(row, draft, lead) } catch (e) {
-      console.warn('steven-auto-reply staff email:', e instanceof Error ? e.message : e)
-    }
-  }
+  await emailFounder(row, draft.intent, lead)
 
   return { ok: true, id: row.id, intent: draft.intent }
 }

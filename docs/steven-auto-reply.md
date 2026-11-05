@@ -2,7 +2,9 @@
 
 Casual replies in Steven’s chat card (`user_notices.kind = steven_followup`) after someone sends feedback. About four seconds after the row is saved, then the model writes. The person sees it on the next look at the chat (the app also checks once a few seconds after they send).
 
-This does **not** ship product UI. A missing feature that might help everyone becomes a staff email (“ship?”) plus a question back. Ads complaints get a short ack, not a build.
+This does **not** ship product UI. A missing feature gets a question back, not a build. Ads complaints get a short ack.
+
+Every feedback row emails Steven (`[Balasan]`) with what they wrote and the reply that was shown. That replaces the old “Pesan baru” mail from `notify-feedback` (that function now returns without sending). Signed-out people, chip replies (API / bingung / kurang lengkap), and a still-open bot card are included, with the reply text or a one-line reason there was no new reply. Steven’s own address is skipped.
 
 ## What runs
 
@@ -41,8 +43,8 @@ DeepSeek is `deepseek-v4-pro` (same key as `analyze-feedback`). `analyze-feedbac
 | api | CTA opens the API page. |
 | confused | CTA opens Belajar. |
 | ads_complaint | Short ack. May ask once if they’d pay for no ads. |
-| feature_ask | Asks what they need. Emails Steven. No code. |
-| data_gap | Asks what detail is missing. Emails Steven only when the draft marks it useful for everyone. |
+| feature_ask | Asks what they need. No code. |
+| data_gap | Asks what detail is missing. |
 | thanks_soft | Thanks. |
 | unclear | One clarifying question. Prefer this over skip when the message is vague. |
 
