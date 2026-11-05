@@ -583,11 +583,12 @@
     if (!client || !u) return rememberedShop();
     try {
       var res = await client.from('user_store_profiles')
-        .select('shopee_store_name,shopee_shop_id')
+        .select('shopee_store_name,shopee_shop_id,snap_id')
         .eq('user_id', u.id)
         .maybeSingle();
       var row = res && res.data;
       if (row && row.shopee_shop_id) {
+        if (row.snap_id) _claimSnapId = String(row.snap_id);
         rememberShop({ shop_id: row.shopee_shop_id, store_name: row.shopee_store_name || '' });
         return _shop;
       }
@@ -606,10 +607,11 @@
     var localDoor = !!intent() || !!(document.body && document.body.classList.contains('alat-focus'));
     try {
       var shopRes = await client.from('user_store_profiles')
-        .select('shopee_store_name,shopee_shop_id')
+        .select('shopee_store_name,shopee_shop_id,snap_id')
         .eq('user_id', u.id)
         .maybeSingle();
       var row = shopRes && shopRes.data;
+      if (row && row.snap_id) _claimSnapId = String(row.snap_id);
       if (row && row.shopee_shop_id && !rememberedShop()) {
         rememberShop({ shop_id: row.shopee_shop_id, store_name: row.shopee_store_name || '' });
       }
