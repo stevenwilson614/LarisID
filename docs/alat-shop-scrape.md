@@ -34,10 +34,13 @@ RPCs:
 
 Does **not** merge into `public.listings`.
 
-Mac worker (2026-11-05): a username paste (`shopee.co.id/{slug}`) is matched
-to an exact `mv_shops.store_name` before any scrape. `/{slug}/search` is a
-Shopee 404 and is not requested. When the name is new, the worker opens
-`/{slug}` and reads `get_shop_info`.
+Mac worker (2026-11-05): a username paste (`shopee.co.id/{slug}`, query string
+ignored) is matched to an exact `mv_shops.store_name` (`_` and `-` tried as
+spaces) before any scrape. `/{slug}/search` is a Shopee 404 and is not
+requested. When the name is new, the worker opens `/{slug}` and reads
+`get_shop_info`, or the redirect to `/shop/{id}`. An empty grid on one Chrome
+port is retried on the next port. `90309999` or a captcha finishes as
+`blocked`.
 
 The product pass opens a throwaway tab on a Chrome port that is still loading
 keyword search (not the traffic-verify wall) and reads the page's own
