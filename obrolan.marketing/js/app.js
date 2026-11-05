@@ -13379,6 +13379,15 @@
     if (v < 1024 * 1024 * 1024) return (v / (1024 * 1024)).toFixed(1).replace(/\.0$/, '') + ' MB';
     return (v / (1024 * 1024 * 1024)).toFixed(2).replace(/\.00$/, '') + ' GB';
   }
+  function unmatchedReason(code) {
+    return ({
+      not_mentoring: 'Bukan paket mentoring',
+      no_phone: 'Nomor tidak ketemu',
+      ambiguous_phone: 'Nomor cocok ke lebih dari satu siswa',
+      ambiguous_title: 'Judul cocok ke lebih dari satu paket',
+      no_state: 'Kelas belum tersimpan'
+    })[code] || code || '';
+  }
   function viewPlatformMentorDetail() {
     const m = ui.platformMentor;
     if (!m) {
@@ -13395,6 +13404,7 @@
     const media = m.media || {};
     const students = m.students || [];
     const payments = m.payments || [];
+    const unmatched = m.unmatched || [];
     const href = m.slug === 'obrolan.marketing'
       ? '/obrolan.marketing/'
       : '/s/' + encodeURIComponent(m.slug) + '/';
@@ -13475,11 +13485,21 @@
       '</section>' +
       '<section class="card" style="margin-top:12px">' +
       '<h2>Pembayaran (' + esc(String(payments.length)) + ')</h2>' +
-      '<p class="muted" style="margin-top:0">Total tercatat: ' + esc(fmtRp(m.paymentTotal || 0)) + '</p>' +
+      '<p class="muted" style="margin-top:0">Total tercatat: ' + esc(fmtRp(m.paymentTotal || 0)) + '. Termasuk siswa lunas atau cicilan yang bayar lewat webhook.</p>' +
       (payments.length
         ? '<table class="table"><thead><tr><th>Waktu</th><th>Siswa</th><th>Jumlah</th><th>Sumber</th><th>Jenis</th></tr></thead><tbody>' +
           payRows + '</tbody></table>'
         : '<p class="muted">Belum ada pembayaran.</p>') +
+      '</section>' +
+      '<section class="card" style="margin-top:12px">' +
+      '<h2>Belum cocok (' + esc(String(unmatched.length)) + ')</h2>' +
+      '<p class="muted" style="margin-top:0">Pembayaran yang masuk, tapi tidak membuka akses karena tidak ketemu satu siswa.</p>' +
+      (unmatched.length
+        ? unmatched.map((row) => '<article class="thread"><strong>' + esc((row.titles && row.titles[0]) || 'Tanpa judul') + '</strong>' +
+            '<p>' + esc(row.name || 'Tanpa nama') + (row.phone ? ' · ' + esc(row.phone) : '') +
+            ' · ' + esc(fmtRp(row.amount || 0)) + '</p>' +
+            '<p class="muted">' + esc(unmatchedReason(row.reason)) + ' · ' + esc(relWhen(row.at)) + '</p></article>').join('')
+        : '<p class="muted">Tidak ada pembayaran yang tertahan.</p>') +
       '</section>';
   }
   function viewPlatformAdmin() {
@@ -13500,12 +13520,13 @@
         '<td>' + esc(m.email || '—') + '</td>' +
         '<td>' + esc(String(m.students || 0)) + '</td>' +
         '<td>' + esc(String(m.paymentCount || 0)) + '</td>' +
+        '<td>' + esc(String(m.unmatchedCount || 0)) + '</td>' +
         '<td>' + esc(m.published ? 'Published' : 'Draft') + '</td>' +
         '</tr>';
     }).join('');
     return '<section class="card">' +
       '<h2>Platform LMS</h2>' +
-      '<p class="muted">Semua mentor di disk. Klik nama untuk profil, siswa, pembayaran, dan storage.</p>' +
+      '<p class="muted">Semua mentor di disk. Klik nama untuk profil, siswa, pembayaran, dan storage. Bayar menghitung siswa lunas atau cicilan yang nominalnya lebih dari nol, termasuk bayar lewat webhook. Belum cocok adalah pembayaran yang belum terhubung ke satu siswa.</p>' +
       '<div class="fub-stats">' +
         '<div><strong>' + esc(String(s.mentorCount || 0)) + '</strong><span class="muted">Mentor</span></div>' +
         '<div><strong>' + esc(String(s.studentCount || 0)) + '</strong><span class="muted">Siswa (total)</span></div>' +
@@ -13519,7 +13540,7 @@
       '<section class="card" style="margin-top:12px">' +
       '<h2>Mentor</h2>' +
       (mentors.length
-        ? '<table class="table"><thead><tr><th>Kelas</th><th>Email</th><th>Siswa</th><th>Bayar</th><th>Status</th></tr></thead><tbody>' +
+        ? '<table class="table"><thead><tr><th>Kelas</th><th>Email</th><th>Siswa</th><th>Bayar</th><th>Belum cocok</th><th>Status</th></tr></thead><tbody>' +
           rows + '</tbody></table>'
         : '<p class="muted">Belum ada mentor.</p>') +
       '</section>';

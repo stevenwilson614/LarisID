@@ -691,10 +691,64 @@ function listPlatformStudents(state) {
   return out;
 }
 
+function appendPaymentLedger(state, personId, opts) {
+  if (!state || !personId || isDemoId(personId)) return;
+  state.payments = Array.isArray(state.payments) ? state.payments : [];
+  const refId = String((opts && opts.refId) || '').trim();
+  if (refId && state.payments.some((row) => row && (row.refId === refId || row.id === 'pay-' + refId))) return;
+  const at = (opts && opts.at) || new Date().toISOString();
+  const safeRef = refId.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 48);
+  state.payments.unshift({
+    id: safeRef ? ('pay-' + safeRef) : ('pay-' + Date.now()),
+    personId: String(personId),
+    at: at,
+    kind: String((opts && opts.kind) || 'mentoring'),
+    amount: Math.max(0, Number(opts && opts.amount) || 0),
+    source: String((opts && opts.source) || 'manual'),
+    term: String((opts && opts.term) || ''),
+    refId: refId
+  });
+}
+
+/** Webhook grants write billing. Older ones never landed in state.payments. */
+function billingPaymentRows(state) {
+  const billing = (state && state.billing) || {};
+  const out = [];
+  Object.keys(billing).forEach((id) => {
+    if (!id || isDemoId(id)) return;
+    const bill = billing[id];
+    if (!bill || !bill.paidAt) return;
+    const amount = Number(bill.amount) || 0;
+    if (amount <= 0) return;
+    const status = String(bill.status || '');
+    if (status !== 'lunas' && status !== 'cicilan') return;
+    out.push({
+      id: 'bill-' + id,
+      personId: String(id),
+      at: bill.paidAt,
+      amount: amount,
+      source: String(bill.source || ''),
+      kind: 'mentoring',
+      term: String(bill.term || bill.packageId || ''),
+      refId: String(bill.payRef || bill.lynkRef || '')
+    });
+  });
+  return out;
+}
+
+function billingListed(ledger, bill) {
+  if (bill.refId && ledger.refId && ledger.refId === bill.refId) return true;
+  if (ledger.personId !== bill.personId) return false;
+  if (ledger.at && ledger.at === bill.at) return true;
+  const left = Date.parse(ledger.at || '');
+  const right = Date.parse(bill.at || '');
+  return Number.isFinite(left) && Number.isFinite(right) && Math.abs(left - right) < 2 * 60 * 1000;
+}
+
 function listPlatformPayments(state) {
   const payments = Array.isArray(state.payments) ? state.payments : [];
-  return payments
-    .filter((row) => row && !isDemoId(row.personId))
+  const rows = payments
+    .filter((row) => row && !isDemoId(row.personId) && (Number(row.amount) || 0) > 0)
     .map((row) => {
       const person = personRecord(state, row.personId) || lookupPerson(state, row.personId) || {};
       return {
@@ -705,9 +759,42 @@ function listPlatformPayments(state) {
         amount: Number(row.amount) || 0,
         source: clip(row.source || '', 40),
         kind: clip(row.kind || '', 40),
-        term: clip(row.term || '', 40)
+        term: clip(row.term || '', 40),
+        refId: String(row.refId || '')
       };
-    })
+    });
+  billingPaymentRows(state).forEach((row) => {
+    if (rows.some((item) => billingListed(item, row))) return;
+    const person = personRecord(state, row.personId) || lookupPerson(state, row.personId) || {};
+    rows.push({
+      id: row.id,
+      personId: row.personId,
+      name: clip(person.name || '', 120),
+      at: row.at,
+      amount: row.amount,
+      source: clip(row.source || '', 40),
+      kind: clip(row.kind || '', 40),
+      term: clip(row.term || '', 40),
+      refId: row.refId
+    });
+  });
+  rows.sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
+  return rows;
+}
+
+function platformUnmatched(slug) {
+  const live = String(slug || '').trim();
+  return readUnmatched()
+    .filter((row) => row && String(row.slug || '') === live)
+    .map((row) => ({
+      at: row.at || '',
+      refId: clip(row.refId || '', 80),
+      amount: Number(row.amount) || 0,
+      name: clip(row.name || '', 120),
+      phone: clip(row.phone || '', 40),
+      reason: clip(row.reason || '', 40),
+      titles: (Array.isArray(row.titles) ? row.titles : []).slice(0, 4).map((title) => clip(title, 120))
+    }))
     .sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
 }
 
@@ -727,7 +814,7 @@ function platformSummary() {
     const account = state.accountSettings && typeof state.accountSettings === 'object' ? state.accountSettings : {};
     const students = countSchoolStudents(state);
     const kur = state.kurikulum && typeof state.kurikulum === 'object' ? state.kurikulum : {};
-    const payments = Array.isArray(state.payments) ? state.payments.filter((p) => p && !isDemoId(p.personId)) : [];
+    const payments = listPlatformPayments(state);
     mentors.push({
       slug: slug,
       name: schoolDisplayLabel(state, slug),
@@ -735,6 +822,7 @@ function platformSummary() {
       ownerUserId: String(state.ownerUserId || ownerBySlug[slug] || ''),
       students: students,
       paymentCount: payments.length,
+      unmatchedCount: platformUnmatched(slug).length,
       published: kur.published !== false && curriculumVisible(state, slug),
       updatedAt: (rec && rec.updatedAt) || ''
     });
@@ -771,6 +859,7 @@ function platformMentorDetail(slug) {
   const kur = state.kurikulum && typeof state.kurikulum === 'object' ? state.kurikulum : {};
   const students = listPlatformStudents(state);
   const payments = listPlatformPayments(state);
+  const unmatched = platformUnmatched(live);
   const media = schoolMediaStats(live);
   const paymentTotal = payments.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
   const fullName = [profile.firstName, profile.lastName].map((p) => String(p || '').trim()).filter(Boolean).join(' ');
@@ -794,10 +883,12 @@ function platformMentorDetail(slug) {
     updatedAt: (rec && rec.updatedAt) || '',
     studentCount: students.length,
     paymentCount: payments.length,
+    unmatchedCount: unmatched.length,
     paymentTotal: paymentTotal,
     media: media,
     students: students,
-    payments: payments
+    payments: payments,
+    unmatched: unmatched
   };
 }
 
@@ -1376,6 +1467,14 @@ function grantPaid(state, person, opts) {
   delete state.billing[id].pendingAmount;
   delete state.billing[id].pendingAt;
   delete state.billing[id].offerExpiresAt;
+  appendPaymentLedger(state, id, {
+    at: now.toISOString(),
+    amount: Number(opts.amount) || prev.amount || 0,
+    source: source,
+    term: opts.packageId || prev.term || '',
+    refId: opts.refId || '',
+    kind: prev.paidAt ? 'renewal' : 'mentoring'
+  });
   state.crm = state.crm || {};
   const crm = state.crm[id] || {};
   state.crm[id] = Object.assign({}, crm, { stage: 'mentee' });
@@ -2658,7 +2757,30 @@ function preserveJoinedRoster(prev, next) {
     out[key] = to;
   });
   if (out.plansAutoOn == null && base.plansAutoOn != null) out.plansAutoOn = base.plansAutoOn;
+  preservePaymentLedger(base, out);
   return out;
+}
+
+/** A mentor save that loaded before a webhook must not drop that payment row. */
+function preservePaymentLedger(prev, next) {
+  const base = Array.isArray(prev && prev.payments) ? prev.payments : [];
+  const out = Array.isArray(next && next.payments) ? next.payments.slice() : [];
+  const seen = new Set();
+  out.forEach((row) => {
+    if (!row) return;
+    if (row.id) seen.add('id:' + row.id);
+    if (row.refId) seen.add('ref:' + row.refId);
+  });
+  base.forEach((row) => {
+    if (!row || isDemoId(row.personId)) return;
+    if (row.id && seen.has('id:' + row.id)) return;
+    if (row.refId && seen.has('ref:' + row.refId)) return;
+    out.push(row);
+    if (row.id) seen.add('id:' + row.id);
+    if (row.refId) seen.add('ref:' + row.refId);
+  });
+  next.payments = out;
+  return next;
 }
 
 function kurikulumFilled(kur) {
