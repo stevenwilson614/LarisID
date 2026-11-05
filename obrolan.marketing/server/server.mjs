@@ -2623,7 +2623,7 @@ function preserveJoinedRoster(prev, next) {
     seen.add(row.id);
   });
   out.liveStudents = nextLive;
-  ['applications', 'crm', 'billing', 'people', 'notes', 'progress', 'lastLecture', 'enrollments', 'timeline', 'kolab'].forEach((key) => {
+  ['applications', 'crm', 'billing', 'people', 'notes', 'progress', 'lastLecture', 'enrollments', 'planOptOut', 'timeline', 'kolab'].forEach((key) => {
     const from = base[key] && typeof base[key] === 'object' && !Array.isArray(base[key]) ? base[key] : {};
     const to = out[key] && typeof out[key] === 'object' && !Array.isArray(out[key]) ? Object.assign({}, out[key]) : {};
     Object.keys(from).forEach((id) => {
@@ -2632,6 +2632,7 @@ function preserveJoinedRoster(prev, next) {
     });
     out[key] = to;
   });
+  if (out.plansAutoOn == null && base.plansAutoOn != null) out.plansAutoOn = base.plansAutoOn;
   return out;
 }
 

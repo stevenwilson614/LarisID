@@ -2914,6 +2914,8 @@
       waThreads: demo ? JSON.parse(JSON.stringify(SEED.waThreadsSeed || [])) : [],
       waMessages: demo ? JSON.parse(JSON.stringify(SEED.waMessagesSeed || [])) : [],
       enrollments: demo ? JSON.parse(JSON.stringify(SEED.enrollmentsSeed || {})) : {},
+      plansAutoOn: true,
+      planOptOut: {},
       people: {},
       schoolSlug: anton ? SEED.school.slug : (pathSlug() || PATH_SLUG),
       businessName: '',
@@ -3003,7 +3005,7 @@
   /** Drop the seed cast, and on a student browser drop everyone else's private fields. */
   function stripHeldRoster(state) {
     if (!state || demoRosterOn()) return state;
-    ['people', 'applications', 'billing', 'crm', 'notes', 'progress', 'lastLecture', 'enrollments', 'timeline', 'kolab'].forEach((key) => {
+    ['people', 'applications', 'billing', 'crm', 'notes', 'progress', 'lastLecture', 'enrollments', 'planOptOut', 'timeline', 'kolab'].forEach((key) => {
       stripDemoKeyed(state[key]);
     });
     if (state.attendance && typeof state.attendance === 'object') {
@@ -3039,7 +3041,7 @@
     const keepForeign = !!(view && (view.admin || view.staffId || view.coach));
     if (keepForeign) return state;
     const keep = ownPersonIds();
-    ['people', 'applications', 'billing', 'crm', 'notes', 'progress', 'lastLecture', 'enrollments', 'timeline', 'kolab'].forEach((key) => {
+    ['people', 'applications', 'billing', 'crm', 'notes', 'progress', 'lastLecture', 'enrollments', 'planOptOut', 'timeline', 'kolab'].forEach((key) => {
       stripForeignKeyed(state[key], keep);
     });
     if (Array.isArray(state.liveStudents)) {
@@ -6143,8 +6145,37 @@
     const raw = db.enrollments[id] || [];
     return raw.map((x) => (typeof x === 'string' ? { planId: x } : x));
   }
+  /** Missing flag stays on: people already in the pipe were showing Off. */
+  function plansAutoOn() {
+    return !db || db.plansAutoOn !== false;
+  }
+  function planOptedOut(id, planId) {
+    const map = db && db.planOptOut;
+    if (!map || typeof map !== 'object' || Array.isArray(map)) return false;
+    const raw = map[id];
+    return Array.isArray(raw) && raw.indexOf(planId) >= 0;
+  }
+  function setPlanOptOut(id, planId, off) {
+    if (!db.planOptOut || typeof db.planOptOut !== 'object' || Array.isArray(db.planOptOut)) db.planOptOut = {};
+    const cur = (Array.isArray(db.planOptOut[id]) ? db.planOptOut[id] : []).filter((x) => x !== planId);
+    if (off) cur.push(planId);
+    if (cur.length) db.planOptOut[id] = cur;
+    else delete db.planOptOut[id];
+  }
   function isEnrolled(id, planId) {
-    return enrollmentsOf(id).some((x) => x.planId === planId);
+    if (planOptedOut(id, planId)) return false;
+    if (enrollmentsOf(id).some((x) => x.planId === planId)) return true;
+    if (!plansAutoOn()) return false;
+    const plan = planById(planId);
+    return !!(plan && !plan.archived);
+  }
+  function plansAutoToggleHtml(opts) {
+    const o = opts || {};
+    return '<label class="fub-auto">' +
+      '<input type="checkbox" data-act="plans-auto-on"' + (plansAutoOn() ? ' checked' : '') + (o.disabled ? ' disabled' : '') + '>' +
+      '<span><strong>' + (o.title || 'Nyalakan semua otomatis') + '</strong>' +
+        '<span class="muted">' + (o.hint || 'Semua orang di pipa ikut setiap rencana yang aktif.') + '</span></span>' +
+    '</label>';
   }
   function enrollPerson(id, planId, fire) {
     const list = enrollmentsOf(id);
@@ -6732,7 +6763,7 @@
       const c = crmOf(s.id);
       if ((c.stage === 'trial' || c.stage === 'nonton') && b.offerExpiresAt && b.status !== 'pending') {
         const left = hoursLeft(b.offerExpiresAt);
-        if (left != null && left <= 12 && left > 0 && !c.wa12Sent) {
+        if (isEnrolled(s.id, 'trial') && left != null && left <= 12 && left > 0 && !c.wa12Sent) {
           const plan = planById('trial');
           const step = plan && plan.steps.find((x) => x.id === 't12');
           queueWa(s.id, (step && step.title) || '12 jam sisa diskon', (step && step.body) || '', isoNow());
@@ -6745,9 +6776,11 @@
         }
       }
       if (c.watchedFirstAt && (c.stage === 'trial' || c.stage === 'nonton') && !c.antonWatchTask) {
-        const plan = planById('trial');
-        const step = plan && plan.steps.find((x) => x.id === 'twatch');
-        addTask(s.id, (step && step.title) || (mentorDisplayName() + ' WA: sudah nonton, belum bayar'), fillTpl((step && step.body) || '', s.id), isoNow());
+        if (isEnrolled(s.id, 'trial')) {
+          const plan = planById('trial');
+          const step = plan && plan.steps.find((x) => x.id === 'twatch');
+          addTask(s.id, (step && step.title) || (mentorDisplayName() + ' WA: sudah nonton, belum bayar'), fillTpl((step && step.body) || '', s.id), isoNow());
+        }
         c.antonWatchTask = true;
         applyTransition(s.id, 'nonton', 'nonton', 'Nonton video 1, belum bayar.');
       }
@@ -6756,20 +6789,22 @@
         const t = nowMs();
         const warnStart = end - warningMs();
         if (t >= warnStart && t < end && !c.warn5Sent) {
-          const plan = planById('renewal');
-          const step = plan && plan.steps.find((x) => x.id === 'r5');
-          queueWa(s.id, (step && step.title) || '5 hari sebelum habis', fillTpl((step && step.body) || '', s.id), isoNow());
+          if (isEnrolled(s.id, 'renewal')) {
+            const plan = planById('renewal');
+            const step = plan && plan.steps.find((x) => x.id === 'r5');
+            queueWa(s.id, (step && step.title) || '5 hari sebelum habis', fillTpl((step && step.body) || '', s.id), isoNow());
+          }
           c.warn5Sent = true;
           applyTransition(s.id, 'peringatan', 'akan_keluar', 'Peringatan 5 hari.');
         }
         if (t >= end && t < end + graceMs()) {
-          if (!c.antonRenewTask) {
+          if (isEnrolled(s.id, 'renewal') && !c.antonRenewTask) {
             const plan = planById('renewal');
             const step = plan && plan.steps.find((x) => x.id === 'ranton');
             addTask(s.id, (step && step.title) || (mentorDisplayName() + ' WA perpanjangan'), fillTpl((step && step.body) || '', s.id), isoNow());
             c.antonRenewTask = true;
           }
-          if (t >= end + graceMs() - 86400000 && !c.grace1Sent) {
+          if (isEnrolled(s.id, 'renewal') && t >= end + graceMs() - 86400000 && !c.grace1Sent) {
             const plan = planById('renewal');
             const step = plan && plan.steps.find((x) => x.id === 'rgrace');
             queueWa(s.id, (step && step.title) || 'Grace 1 hari', fillTpl((step && step.body) || '', s.id), isoNow());
@@ -6783,7 +6818,7 @@
           applyTransition(s.id, 'akses_habis', 'sudah_keluar', 'Akses habis. Kembali ke preview video 1.');
         }
       }
-      if ((c.stage === 'sudah_keluar' || c.stage === 'nurture') && !c.nurtureQueued) {
+      if (isEnrolled(s.id, 'nurture') && (c.stage === 'sudah_keluar' || c.stage === 'nurture') && !c.nurtureQueued) {
         const plan = planById('nurture');
         const step = plan && plan.steps[0];
         if (step) {
@@ -6791,7 +6826,7 @@
           c.nurtureQueued = true;
         }
       }
-      if (c.stage === 'tidak_tertarik' && !c.extendedQueued) {
+      if (isEnrolled(s.id, 'extended') && c.stage === 'tidak_tertarik' && !c.extendedQueued) {
         const plan = planById('extended');
         const step = plan && plan.steps[0];
         if (step) {
@@ -12742,6 +12777,10 @@
         '<div><strong>Atur pipa</strong><p class="muted" style="margin:2px 0 0">Tahap, warna, urutan, dan pindah otomatis.</p></div>' +
         '<button type="button" class="cols-dd-ico" data-act="pipa-settings-close" title="Tutup" aria-label="Tutup">×</button>' +
       '</div>' +
+      plansAutoToggleHtml({
+        title: 'Nyalakan semua rencana aksi',
+        hint: 'Orang di pipa ikut setiap rencana yang aktif, tanpa dicentang satu-satu.'
+      }) +
       delPrompt +
       '<div class="pipa-settings-sec">' +
         '<div class="cols-dd-title">Tahap</div>' +
@@ -13248,6 +13287,10 @@
       '<div class="oto-rail-tools">' +
         '<button type="button" class="btn-sm" data-act="plan-show-arch">' +
           (showArchived ? 'Sembunyikan arsip' : 'Lihat arsip') + '</button></div>' +
+      (staffCan('editStudents') ? plansAutoToggleHtml({
+        title: 'Nyalakan semua otomatis',
+        hint: 'Setiap orang di pipa ikut rencana yang aktif.'
+      }) : '') +
       '<div class="oto-rail-scroll">' +
         (rows || '<p class="muted oto-rail-empty">Belum ada otomasi. Buat yang pertama.</p>') +
       '</div>' +
@@ -13969,11 +14012,12 @@
         '</section>' +
         '<section class="fub-widget">' +
           '<h3>Rencana aksi</h3>' +
+          plansAutoToggleHtml({ disabled: !canEdit }) +
           (plans.length
             ? plans.map((pl) => {
                 const on = isEnrolled(id, pl.id);
                 return '<label class="fub-plan"><input type="checkbox" data-act="enroll-plan" data-id="' + esc(id) + '" data-pid="' + esc(pl.id) + '"' +
-                  (on ? ' checked' : '') + '>' +
+                  (on ? ' checked' : '') + (canEdit ? '' : ' disabled') + '>' +
                   '<span>' + esc(pl.name) +
                     (on ? ' <span class="chip running">Jalan</span>' : ' <span class="chip idle">Off</span>') +
                     '<div class="muted">' + esc(triggerLabel(pl.trigger)) + '</div></span></label>';
@@ -15909,11 +15953,24 @@
       render();
       return;
     }
+    if (t.matches('[data-act="plans-auto-on"]')) {
+      if (!staffCan('editStudents')) return;
+      db.plansAutoOn = !!t.checked;
+      save();
+      render();
+      return;
+    }
     if (t.matches('[data-act="enroll-plan"]')) {
       const id = t.getAttribute('data-id');
       const pid = t.getAttribute('data-pid');
-      if (t.checked) enrollPerson(id, pid, true);
-      else unenrollPerson(id, pid);
+      if (!canEditPerson(id)) return;
+      if (t.checked) {
+        setPlanOptOut(id, pid, false);
+        enrollPerson(id, pid, true);
+      } else {
+        setPlanOptOut(id, pid, true);
+        unenrollPerson(id, pid);
+      }
       save();
       runAutomations();
       render();

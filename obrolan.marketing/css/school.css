@@ -2936,6 +2936,16 @@ html[data-theme="light"] .fub-plat-ico.is-x { color: #111; }
   padding: 8px 0; border-bottom: 1px solid var(--line); font-size: .78rem;
 }
 .fub-task:last-child { border-bottom: 0; }
+.fub-auto {
+  display: flex; gap: 8px; align-items: flex-start;
+  margin: 0 0 10px; padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+  font-size: .78rem; cursor: pointer;
+}
+.fub-auto input { margin-top: 2px; flex: none; }
+.fub-auto strong { display: block; font-weight: 650; }
+.fub-auto .muted { display: block; margin-top: 2px; }
+.oto-rail .fub-auto { margin: 8px 12px 0; }
 .fub-plan {
   display: flex; gap: 8px; align-items: flex-start;
   padding: 8px 0; border-bottom: 1px solid var(--line); font-size: .78rem;
