@@ -1168,7 +1168,11 @@ function dig(obj, paths) {
   return '';
 }
 
-/** Lynk sometimes sends a flat body, sometimes { event, data: {...} } (and data may be a JSON string). */
+/**
+ * Official Lynk webhook shape (Postman 43601478):
+ * { event, data: { message_id, message_action, message_data: { refId, customer, items, totals: { grandTotal } } } }
+ * History UI may show a flattened message_data; older payloads can also be flat.
+ */
 function lynkPayload(body) {
   const root = body && typeof body === 'object' && !Array.isArray(body) ? body : {};
   let data = root.data;
@@ -1176,14 +1180,28 @@ function lynkPayload(body) {
     try { data = JSON.parse(data); } catch (err) { data = null; }
   }
   if (!data || typeof data !== 'object' || Array.isArray(data)) data = {};
+  let messageData = data.message_data || data.messageData || root.message_data || root.messageData;
+  if (typeof messageData === 'string') {
+    try { messageData = JSON.parse(messageData); } catch (err) { messageData = null; }
+  }
+  if (!messageData || typeof messageData !== 'object' || Array.isArray(messageData)) messageData = {};
+  const totals = (messageData.totals && typeof messageData.totals === 'object')
+    ? messageData.totals
+    : ((data.totals && typeof data.totals === 'object') ? data.totals : {});
   const nested = [];
   ['payment', 'transaction', 'order', 'invoice', 'result', 'payload'].forEach((key) => {
-    const row = data[key];
-    if (row && typeof row === 'object' && !Array.isArray(row)) nested.push(row);
-    const rootRow = root[key];
-    if (rootRow && typeof rootRow === 'object' && !Array.isArray(rootRow)) nested.push(rootRow);
+    [root, data, messageData].forEach((layer) => {
+      const row = layer && layer[key];
+      if (row && typeof row === 'object' && !Array.isArray(row)) nested.push(row);
+    });
   });
-  return { root: root, data: data, layers: [root, data].concat(nested) };
+  return {
+    root: root,
+    data: data,
+    messageData: messageData,
+    totals: totals,
+    layers: [root, data, messageData, totals].concat(nested)
+  };
 }
 
 function digLynk(layers, paths) {
@@ -1199,7 +1217,8 @@ function lynkBodyKeyMap(body) {
   return {
     bodyKeys: Object.keys(pack.root).slice(0, 40),
     dataKeys: Object.keys(pack.data).slice(0, 40),
-    nestedKeys: pack.layers.slice(2).map((row) => Object.keys(row || {}).slice(0, 20))
+    messageDataKeys: Object.keys(pack.messageData).slice(0, 40),
+    totalsKeys: Object.keys(pack.totals || {}).slice(0, 20)
   };
 }
 
@@ -3042,18 +3061,17 @@ function grantLynkHook(res, slug, req, body) {
   const refId = String(digLynk(layers, [
     ['refId'], ['ref_id'], ['trxId'], ['trx_id'], ['transactionId'], ['transaction_id']
   ]) || '');
-  // Lynk docs say message_id; live payloads often send uuid instead (or both).
+  // Official: data.message_id. Do not use item uuid for signing.
   const messageCandidates = [];
   [
     digLynk(layers, [['message_id']]),
-    digLynk(layers, [['messageId']]),
-    digLynk(layers, [['uuid']]),
-    digLynk(layers, [['message_uuid']])
+    digLynk(layers, [['messageId']])
   ].forEach((value) => {
     const id = String(value || '').trim();
     if (id && messageCandidates.indexOf(id) < 0) messageCandidates.push(id);
   });
-  let amount = amountString(digLynk(layers, [['grandTotal'], ['amount'], ['total'], ['price']]));
+  // Official: data.message_data.totals.grandTotal (also accept flat grandTotal / customerPay).
+  let amount = amountString(digLynk(layers, [['grandTotal'], ['amount'], ['total']]));
   const amountCandidates = [];
   [amount, amountString(digLynk(layers, [['customerPay'], ['customer_pay']]))]
     .concat(/^\d+$/.test(amount) ? [amount + '.00'] : [])
@@ -3113,7 +3131,9 @@ function grantLynkHook(res, slug, req, body) {
     ['phone'], ['mobile'], ['whatsapp']
   ]) || '');
   const name = String(digLynk(layers, [['customer', 'name'], ['name']]) || '');
-  const titles = itemTitles(pack.root).concat(itemTitles(pack.data)).filter((title, idx, all) => all.indexOf(title) === idx);
+  const titles = []
+    .concat(itemTitles(pack.root), itemTitles(pack.data), itemTitles(pack.messageData))
+    .filter((title, idx, all) => title && all.indexOf(title) === idx);
   const rec = persistStrip(takeState(slug), slug);
   const state = rec && rec.state;
   const catalog = lynkPackageCatalog(state);
