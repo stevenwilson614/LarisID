@@ -930,6 +930,18 @@
       }
       if (parsed.url) {
         var nameHint = parsed.q || '';
+        if (nameHint) {
+          var named = await findShopsByName(nameHint, 8);
+          var exactName = named.filter(function (r) { return r.match_kind === 'exact'; });
+          if (exactName.length === 1) {
+            await beginOnboard(
+              exactName[0],
+              'https://shopee.co.id/shop/' + exactName[0].shop_id,
+              true
+            );
+            return;
+          }
+        }
         await beginOnboard(
           { shop_id: null, store_name: nameHint || 'Toko Shopee' },
           parsed.url,

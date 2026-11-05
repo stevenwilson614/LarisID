@@ -34,11 +34,19 @@ RPCs:
 
 Does **not** merge into `public.listings`.
 
-Mac worker (2026-11-04): open a **throwaway CDP tab**, warm `/shop/{id}` for
-portrait, then scrape **`/shop/{id}/search`**. Hijacking the keyword lane tab on
-the storefront home often got `get_shop_base` with zero product XHRs → job
-`error=empty`. Fix lives in `shopee_scraper` (`fetch_shop_catalog_raw` /
-`shop_catalog_url`).
+Mac worker (2026-11-05): a username paste (`shopee.co.id/{slug}`) is matched
+to an exact `mv_shops.store_name` before any scrape. `/{slug}/search` is a
+Shopee 404 and is not requested. When the name is new, the worker opens
+`/{slug}` and reads `get_shop_info`.
+
+The product pass opens a throwaway tab on a Chrome port that is still loading
+keyword search (not the traffic-verify wall) and reads the page's own
+`/api/v4/search/search_items` for `/shop/{id}/search`, page 0 and page 1,
+capped at 60. A hand-rolled `fetch()` of that API returns error `90309999`.
+Port 9225 was on that wall on 2026-11-05 and recorded `n=0` for every shop,
+including ones whose header loaded. A healthy port returned Shakillabyzahra's
+grid (`total_count` 38). Jobs that only saw `90309999` or a captcha finish as
+`blocked`, not `empty`.
 
 **Host pin:** only **Stevens-MacBook-Pro** (laptop B, `acct614`, CDP 9224/9225)
 claims `ext_shop_scrape_jobs` — same as Minta info. Laptop A (`SOWs-MacBook-Pro`)
