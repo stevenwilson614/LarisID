@@ -798,6 +798,26 @@ function platformUnmatched(slug) {
     .sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
 }
 
+function sumMoney(rows) {
+  return (rows || []).reduce((sum, row) => sum + (Number(row && row.amount) || 0), 0);
+}
+
+/** Signed webhook money: access grants plus unmatched receipts. Failed signature retries stay out. */
+function moneyForSchool(payments, unmatched) {
+  const seen = new Set();
+  (payments || []).forEach((row) => {
+    if (row && row.refId) seen.add(row.refId);
+  });
+  const extra = (unmatched || []).filter((row) => row && (!row.refId || !seen.has(row.refId)));
+  const paymentTotal = sumMoney(payments);
+  const unmatchedTotal = sumMoney(extra);
+  return {
+    paymentTotal: paymentTotal,
+    unmatchedTotal: unmatchedTotal,
+    webhookTotal: paymentTotal + unmatchedTotal
+  };
+}
+
 function platformSummary() {
   const owners = readOwners();
   const ownerBySlug = {};
@@ -815,6 +835,8 @@ function platformSummary() {
     const students = countSchoolStudents(state);
     const kur = state.kurikulum && typeof state.kurikulum === 'object' ? state.kurikulum : {};
     const payments = listPlatformPayments(state);
+    const unmatched = platformUnmatched(slug);
+    const money = moneyForSchool(payments, unmatched);
     mentors.push({
       slug: slug,
       name: schoolDisplayLabel(state, slug),
@@ -822,7 +844,10 @@ function platformSummary() {
       ownerUserId: String(state.ownerUserId || ownerBySlug[slug] || ''),
       students: students,
       paymentCount: payments.length,
-      unmatchedCount: platformUnmatched(slug).length,
+      unmatchedCount: unmatched.length,
+      paymentTotal: money.paymentTotal,
+      unmatchedTotal: money.unmatchedTotal,
+      webhookTotal: money.webhookTotal,
       published: kur.published !== false && curriculumVisible(state, slug),
       updatedAt: (rec && rec.updatedAt) || ''
     });
@@ -832,9 +857,11 @@ function platformSummary() {
     return String(a.name).localeCompare(String(b.name), 'id');
   });
   const studentTotal = mentors.reduce((sum, row) => sum + (Number(row.students) || 0), 0);
+  const webhookTotal = mentors.reduce((sum, row) => sum + (Number(row.webhookTotal) || 0), 0);
   return {
     mentorCount: mentors.length,
     studentCount: studentTotal,
+    webhookTotal: webhookTotal,
     mentors: mentors
   };
 }
@@ -861,7 +888,8 @@ function platformMentorDetail(slug) {
   const payments = listPlatformPayments(state);
   const unmatched = platformUnmatched(live);
   const media = schoolMediaStats(live);
-  const paymentTotal = payments.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
+  const money = moneyForSchool(payments, unmatched);
+  const paymentTotal = money.paymentTotal;
   const fullName = [profile.firstName, profile.lastName].map((p) => String(p || '').trim()).filter(Boolean).join(' ');
   return {
     slug: live,
@@ -885,6 +913,8 @@ function platformMentorDetail(slug) {
     paymentCount: payments.length,
     unmatchedCount: unmatched.length,
     paymentTotal: paymentTotal,
+    unmatchedTotal: money.unmatchedTotal,
+    webhookTotal: money.webhookTotal,
     media: media,
     students: students,
     payments: payments,

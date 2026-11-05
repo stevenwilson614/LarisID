@@ -13422,6 +13422,7 @@
         '<td>' + esc(s.wa || '—') + '</td>' +
         '<td>' + esc(s.stage || '—') + '</td>' +
         '<td>' + esc(s.status || '—') + '</td>' +
+        '<td>' + esc((Number(s.amount) || 0) > 0 ? fmtRp(s.amount) : '—') + '</td>' +
         '<td>' + esc(s.accessUntil ? relWhen(s.accessUntil) : '—') + '</td>' +
       '</tr>'
     ).join('');
@@ -13479,13 +13480,15 @@
       '<section class="card" style="margin-top:12px">' +
       '<h2>Siswa (' + esc(String(students.length)) + ')</h2>' +
       (students.length
-        ? '<table class="table"><thead><tr><th>Nama</th><th>WA</th><th>Stage</th><th>Status</th><th>Akses</th></tr></thead><tbody>' +
+        ? '<table class="table"><thead><tr><th>Nama</th><th>WA</th><th>Stage</th><th>Status</th><th>Jumlah</th><th>Akses</th></tr></thead><tbody>' +
           studentRows + '</tbody></table>'
         : '<p class="muted">Belum ada siswa.</p>') +
       '</section>' +
       '<section class="card" style="margin-top:12px">' +
       '<h2>Pembayaran (' + esc(String(payments.length)) + ')</h2>' +
-      '<p class="muted" style="margin-top:0">Total tercatat: ' + esc(fmtRp(m.paymentTotal || 0)) + '. Termasuk siswa lunas atau cicilan yang bayar lewat webhook.</p>' +
+      '<p class="muted" style="margin-top:0">Akses kebuka: ' + esc(fmtRp(m.paymentTotal || 0)) +
+        '. Belum cocok: ' + esc(fmtRp(m.unmatchedTotal || 0)) +
+        '. Semua webhook: ' + esc(fmtRp(m.webhookTotal || 0)) + '.</p>' +
       (payments.length
         ? '<table class="table"><thead><tr><th>Waktu</th><th>Siswa</th><th>Jumlah</th><th>Sumber</th><th>Jenis</th></tr></thead><tbody>' +
           payRows + '</tbody></table>'
@@ -13520,16 +13523,18 @@
         '<td>' + esc(m.email || '—') + '</td>' +
         '<td>' + esc(String(m.students || 0)) + '</td>' +
         '<td>' + esc(String(m.paymentCount || 0)) + '</td>' +
+        '<td>' + esc(fmtRp(m.webhookTotal || 0)) + '</td>' +
         '<td>' + esc(String(m.unmatchedCount || 0)) + '</td>' +
         '<td>' + esc(m.published ? 'Published' : 'Draft') + '</td>' +
         '</tr>';
     }).join('');
     return '<section class="card">' +
       '<h2>Platform LMS</h2>' +
-      '<p class="muted">Semua mentor di disk. Klik nama untuk profil, siswa, pembayaran, dan storage. Bayar menghitung siswa lunas atau cicilan yang nominalnya lebih dari nol, termasuk bayar lewat webhook. Belum cocok adalah pembayaran yang belum terhubung ke satu siswa.</p>' +
+      '<p class="muted">Semua mentor di disk. Klik nama untuk profil, siswa, pembayaran, dan storage. Jumlah menjumlahkan nominal webhook yang masuk: siswa yang aksesnya kebuka, plus pembayaran yang belum cocok. Percobaan yang gagal tidak dihitung lagi.</p>' +
       '<div class="fub-stats">' +
         '<div><strong>' + esc(String(s.mentorCount || 0)) + '</strong><span class="muted">Mentor</span></div>' +
         '<div><strong>' + esc(String(s.studentCount || 0)) + '</strong><span class="muted">Siswa (total)</span></div>' +
+        '<div><strong>' + esc(fmtRp(s.webhookTotal || 0)) + '</strong><span class="muted">Uang masuk</span></div>' +
         '<div><strong>' + esc(String(mentors.length ? Math.round((s.studentCount || 0) / mentors.length) : 0)) +
           '</strong><span class="muted">Rata-rata / mentor</span></div>' +
       '</div>' +
@@ -13540,7 +13545,7 @@
       '<section class="card" style="margin-top:12px">' +
       '<h2>Mentor</h2>' +
       (mentors.length
-        ? '<table class="table"><thead><tr><th>Kelas</th><th>Email</th><th>Siswa</th><th>Bayar</th><th>Belum cocok</th><th>Status</th></tr></thead><tbody>' +
+        ? '<table class="table"><thead><tr><th>Kelas</th><th>Email</th><th>Siswa</th><th>Bayar</th><th>Jumlah</th><th>Belum cocok</th><th>Status</th></tr></thead><tbody>' +
           rows + '</tbody></table>'
         : '<p class="muted">Belum ada mentor.</p>') +
       '</section>';
