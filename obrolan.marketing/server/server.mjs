@@ -3003,11 +3003,71 @@ function grantLynkHook(res, slug, req, body) {
     return;
   }
   const refId = String(dig(body, [['refId'], ['data', 'refId'], ['ref_id'], ['data', 'ref_id']]) || '');
-  const messageId = String(dig(body, [['message_id'], ['data', 'message_id'], ['messageId'], ['data', 'messageId']]) || '');
-  const amount = amountString(dig(body, [['grandTotal'], ['data', 'grandTotal'], ['amount'], ['data', 'amount']]));
+  // Lynk docs say message_id; live Anton payloads showed uuid and omitted message_id.
+  const messageCandidates = [];
+  [
+    dig(body, [['message_id'], ['data', 'message_id']]),
+    dig(body, [['messageId'], ['data', 'messageId']]),
+    dig(body, [['uuid'], ['data', 'uuid']]),
+    dig(body, [['message_uuid'], ['data', 'message_uuid']])
+  ].forEach((value) => {
+    const id = String(value || '').trim();
+    if (id && messageCandidates.indexOf(id) < 0) messageCandidates.push(id);
+  });
+  const amountRaw = dig(body, [['grandTotal'], ['data', 'grandTotal'], ['amount'], ['data', 'amount']]);
+  let amount = amountString(amountRaw);
+  const amountCandidates = [];
+  [amount, amountString(dig(body, [['customerPay'], ['data', 'customerPay']]))]
+    .concat(/^\d+$/.test(amount) ? [amount + '.00'] : [])
+    .forEach((value) => {
+      const a = String(value || '').trim();
+      if (a && amountCandidates.indexOf(a) < 0) amountCandidates.push(a);
+    });
   const got = String(req.headers['x-lynk-signature'] || '');
-  if (!refId || !messageId || !amount || !sigEqual(got, lynkSignature(amount, refId, messageId, key))) {
-    json(res, 401, { error: 'signature' });
+  if (!refId || !messageCandidates.length || !amountCandidates.length || !got) {
+    recordPayEvent({
+      at: new Date().toISOString(),
+      provider: 'lynk',
+      slug: slug,
+      ok: false,
+      error: 'signature_fields',
+      hasRef: !!refId,
+      hasMessageId: messageCandidates.length > 0,
+      hasAmount: amountCandidates.length > 0,
+      hasHeader: !!got,
+      bodyKeys: body && typeof body === 'object' ? Object.keys(body).slice(0, 40) : []
+    });
+    json(res, 401, {
+      error: 'signature',
+      reason: !got ? 'missing_header' : (!refId ? 'missing_refId' : (!messageCandidates.length ? 'missing_message_id' : 'missing_amount'))
+    });
+    return;
+  }
+  let messageId = messageCandidates[0];
+  let signed = false;
+  for (let i = 0; i < messageCandidates.length && !signed; i += 1) {
+    for (let j = 0; j < amountCandidates.length; j += 1) {
+      if (sigEqual(got, lynkSignature(amountCandidates[j], refId, messageCandidates[i], key))) {
+        messageId = messageCandidates[i];
+        amount = amountCandidates[j];
+        signed = true;
+        break;
+      }
+    }
+  }
+  if (!signed) {
+    recordPayEvent({
+      at: new Date().toISOString(),
+      provider: 'lynk',
+      slug: slug,
+      ok: false,
+      error: 'signature_mismatch',
+      refId: refId,
+      messageId: messageId.slice(0, 80),
+      amount: amount,
+      keyLast4: last4(key)
+    });
+    json(res, 401, { error: 'signature', reason: 'mismatch', keyLast4: last4(key) });
     return;
   }
   if (seenPayRef(refId)) { json(res, 200, { ok: true, duplicate: true }); return; }
