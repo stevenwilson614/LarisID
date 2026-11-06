@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Publish listings_deduped (what the site reads) after the day's scrapes.
 # 16:15 UTC = 23:15 WIB. The hourly delta catchup does not refresh this view.
+# The Cari Produk home file is a separate host cron: scripts/schedule-dir-home-snapshot.sh
+# at 18:00 UTC, after this refresh has finished.
 set -euo pipefail
 KEY="${LARISID_SSH_KEY:-$HOME/.ssh/larisid_hetzner}"
 HOST="${LARISID_SSH_HOST:-root@84.247.147.205}"

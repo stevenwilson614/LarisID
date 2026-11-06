@@ -44,3 +44,5 @@ images/brand/rig/_debug-*.png
 .tmp-screenshots/
 .tmp-font-preview.html
 data/issues.json
+data/dir-home.json
+data/dir-home.json.tmp

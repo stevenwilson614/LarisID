@@ -1054,18 +1054,25 @@
         clearBatchMissing();
         var batch = res.data || null;
         attachTrends(list, batch, batch ? 'ok' : 'missing');
-        // Momentum omits listings the matview does not have. Their week pair
-        // is still on listing_chart_wow. Paint once, after that fill, so the
-        // skeleton does not flash into a dash.
-        var painted = false;
-        function paint() {
-          if (painted) return;
-          painted = true;
+        // Paint the rows momentum already has. listing_chart_wow fills keys
+        // the matview omitted; that second paint patches those cells. A hung
+        // fill must not wipe the percents already on screen.
+        ping();
+        var resolved = false;
+        function done() {
           ping();
+          if (resolved) return;
+          resolved = true;
           resolve(list);
         }
-        setTimeout(paint, 8000);
-        fillUncoveredTrends(sb, list).then(paint, paint);
+        var fillTimer = setTimeout(done, 8000);
+        fillUncoveredTrends(sb, list).then(function () {
+          clearTimeout(fillTimer);
+          done();
+        }, function () {
+          clearTimeout(fillTimer);
+          done();
+        });
       }, function (err) { fail(err, false); });
     });
   }

@@ -108,6 +108,7 @@ listings push
   → revise_listing_weekly_measured(12)
   → refresh mv_listing_week_positions
   → refresh_breakout_matviews()   ← also rebuilds mv_listing_momentum from listings
+  → 18:00 UTC: rebuild /data/dir-home.json (scripts/schedule-dir-home-snapshot.sh)
   → next morning: scrape-digest cron (03:00 UTC / 10:00 WIB) emails Deep Dive users
     if listing_deltas has a new measured scrape day
 ```

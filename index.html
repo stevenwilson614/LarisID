@@ -246,6 +246,13 @@
 <link rel="dns-prefetch" href="https://www.clarity.ms">
 <link rel="dns-prefetch" href="https://static.cloudflareinsights.com">
 <link rel="preload" href="/fonts/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+<script>
+/* Default Cari Produk pool. loadDirHomeSnapshot() in gpt-app.js reads this.
+   A miss or a file older than 36 hours falls back to listings_home. */
+window.__dirHomeSnap = fetch('/data/dir-home.json', { cache: 'no-cache' })
+  .then(function (r) { return r.ok ? r.json() : null; })
+  .catch(function () { return null; });
+</script>
 <link rel="stylesheet" href="/fonts/laris-fonts.css">
 <link rel="stylesheet" href="/styles/peta-peluang.css?v=20260905b">
 <link rel="stylesheet" href="/styles/pasar-compare.css?v=20260905b">
@@ -13283,7 +13290,7 @@ body.view-chat .sfb-card {
 <!-- admin-map.js and winback-admin.js used to load here for every visitor.
      Both are admin-only; gpt-app.js now pulls them on demand via
      larisLoadScript() when the admin view actually renders. -->
-<script src="/js/peta-peluang.js?v=20261027trend2" defer></script>
+<script src="/js/peta-peluang.js?v=20261106dir1" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/marketplace-fees.js?v=20260908a" defer></script>
 <script src="/js/expor-pasar.js?v=20260915a" defer></script>
@@ -13291,7 +13298,7 @@ body.view-chat .sfb-card {
 <script src="/js/mytoko-bench.js?v=20261103logo1" defer></script>
 <script src="/js/gpt-alat-preview.js?v=20261103short1" defer></script>
 <script src="/js/omset-week-shape.js?v=20261021shape1" defer></script>
-<script src="/js/gpt-app.js?v=20261104steven1" defer></script>
+<script src="/js/gpt-app.js?v=20261106dir1" defer></script>
 <style>
 .hl-hero-ctas-alat { display: none; }
 html.alat-preview #finder-xp-step { display: none; }

@@ -28,27 +28,30 @@ One listing = `(item_id, shop_id)`.
   - Bandingkan Pasar is **not** mounted here. Chat-only
     (`handleBandingkanIntent`) — see [pasar-compare.md](./pasar-compare.md).
 
-`PetaPeluang.hydrateTrends(listings, { supabase, onTrend })` is the live path.
-It marks `_petaTrend.pending`, calls `peta_batch` (max 200 keys), then attaches
-`{ wkPct, unitsNowWk, unitsPrevWk, spanNow, spanPrev, at0, at1, at2, terukur,
-held, belum, pending }` from `mv_listing_momentum`. It does not draw SVG.
+`PetaPeluang.hydrateTrends(listings, { supabase, onTrend })` is the live path
+for search and category. It marks `_petaTrend.pending`, calls
+`peta_batch_momentum` (max 200 keys), paints those percents immediately, then
+fills keys the matview omitted from `listing_chart_wow`. It does not draw SVG.
 
 The Cari Produk listing pool uses `listings_for_keywords` (LATERAL per-keyword
 lookup — do not `btrim()` the `listings_deduped.keyword` column, and do not
 `ORDER BY total_sold DESC NULLS LAST`: that misses
-`listings_deduped_kw_sold_ontopic_idx` and times out anon's 3s cap). Home
-opens with `listings_home` (top 15 terlaris keywords × 20 listings, one
-round-trip). Prefetch at boot (`warmDirInstantPool` →
-`resolveListingPool({ home: true })`) and paint from a 10-minute
-sessionStorage snapshot so a second open is instant. Category browse fetches
+`listings_deduped_kw_sold_ontopic_idx` and times out anon's 3s cap). The
+default page (no search, no category) paints `/data/dir-home.json` first:
+`listings_home` rows plus the wow % already joined
+(`scripts/build-dir-home-snapshot.mjs`). The shell starts that fetch before
+app JS. A file younger than 36 hours is memoized and the database is not
+called. A missing or older file falls back to `listings_home`, then momentum.
+A 10-minute `sessionStorage` copy (`lid_dir_home_v1`) still covers a second
+open in the same tab. The file is rebuilt daily at 18:00 UTC, after
+`refresh_breakout_matviews` (16:15 UTC). Category browse fetches
 40 `product_types_v` rows (not 1000) — only the top 15 keywords feed listings.
 
-`renderDirectory` paints a memo/session snapshot immediately, then refreshes
-from `resolveListingPool`. That resolve is memoized per home / category /
-query, races DeepSeek `search_plan` at 700 ms (static EN/ID seed on miss, AI
-plan cached in background), skips `product_type_quartiles` when matview
-columns are on the view, and defers `countKeywordUnsold` until after first
-paint.
+`renderDirectory` paints a memo, session copy, or the static file immediately.
+Search and category still go through `resolveListingPool` (memoized per home /
+category / query, DeepSeek `search_plan` raced at 700 ms, `countKeywordUnsold`
+deferred until after first paint). Do not add a background `listings_home`
+refresh on top of a fresh static file — that puts the wait back.
 
 Measured on api.larisid.com (2026-09-15, ~200 ms RTT): `listings_for_keywords`
 15×20 with NULLS LAST timed out at 3.4s (anon 3s cap); matching the index
@@ -79,9 +82,11 @@ chart's latest week has already turned down.
 - **Trending Sekarang** shows the top **3** by that % among rows with
   `unitsNowWk ≥ 20`, `unitsPrevWk ≥ 7`, and previous omset at least Rp 50.000.
   The cell still shows a percent under that floor. Paling Trending uses the same floor.
-- While `peta_batch` is in flight, show a 3-row skeleton (not a grey square).
+- While `peta_batch_momentum` is in flight, show a 3-row skeleton (not a grey square).
+  Paint as soon as that RPC returns, then patch rows that only `listing_chart_wow` has.
   Do not invent a %. If the RPC is missing, the strip stays hidden and the
-  table Trending column shows `—`.
+  table Trending column shows `—`. The default home page skips this wait when
+  `/data/dir-home.json` already carries each row's weekly percent.
 - `hydrateTrends` only sticky-skips `peta_batch` in `sessionStorage` when the
   RPC is actually missing (schema cache / 42883), with a 5-minute TTL. Timeouts
   and transient errors retry on the next paint — a migration blip must not

@@ -10645,6 +10645,9 @@ const DIR_POOL_MEMO_MAX = 20;
 const PLAN_RACE_MS = 700;
 const DIR_HOME_SS = 'lid_dir_home_v1';
 const DIR_HOME_SS_TTL = 10 * 60 * 1000;
+// Static /data/dir-home.json. Keep in step with scripts/build-dir-home-snapshot.mjs.
+const DIR_HOME_SNAP_TTL = 36 * 60 * 60 * 1000;
+const DIR_HOME_SNAP_URL = '/data/dir-home.json';
 
 function dirPoolMemoKey({ q, cats, sub, home } = {}) {
   if (home) return 'home';
@@ -10696,6 +10699,67 @@ function seedDirHomeMemoFromSession() {
   if (_dirPoolMemo.home) return;
   const cached = dirHomeCacheRead();
   if (cached) _dirPoolMemo.home = cached;
+}
+
+function dirHomeTrendsReady(pool) {
+  return !!(pool && (pool.listings || []).some(r => r && r._petaTrend && !r._petaTrend.pending));
+}
+
+function parseDirHomeSnapshot(body) {
+  if (!body || !Array.isArray(body.listings) || !body.listings.length) return null;
+  const at = Date.parse(body.generated_at || '');
+  if (!Number.isFinite(at) || (Date.now() - at) > DIR_HOME_SNAP_TTL) return null;
+  const listings = body.listings.map(row => {
+    const trend = row && row.trend;
+    const p = { ...row };
+    delete p.trend;
+    if (trend && trend.pending !== true) p._petaTrend = trend;
+    return p;
+  });
+  const keywords = Array.isArray(body.keywords) && body.keywords.length
+    ? body.keywords.map(t => ({ keyword: t.keyword || t }))
+    : [];
+  return {
+    keywords,
+    listings,
+    primaryKw: '',
+    nearby: false,
+    matchLevel: 'keyword',
+    unsold: 0,
+    brand: '',
+    brandMissing: false,
+  };
+}
+
+function fetchDirHomeJson() {
+  const pending = (typeof window !== 'undefined' && window.__dirHomeSnap) || null;
+  if (pending && typeof pending.then === 'function') {
+    window.__dirHomeSnap = null;
+    return Promise.race([
+      pending,
+      new Promise(resolve => setTimeout(() => resolve(null), 4000)),
+    ]);
+  }
+  const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), 4000) : null;
+  return fetch(DIR_HOME_SNAP_URL, { cache: 'no-cache', signal: ctrl ? ctrl.signal : undefined })
+    .then(r => (r.ok ? r.json() : null))
+    .catch(() => null)
+    .finally(() => { if (timer) clearTimeout(timer); });
+}
+
+let _dirHomeSnapOnce = null;
+function loadDirHomeSnapshot() {
+  if (dirHomeTrendsReady(_dirPoolMemo.home)) return Promise.resolve(_dirPoolMemo.home);
+  if (_dirHomeSnapOnce) return _dirHomeSnapOnce;
+  _dirHomeSnapOnce = fetchDirHomeJson()
+    .then(parseDirHomeSnapshot)
+    .then(pool => {
+      if (pool) dirPoolMemoSet('home', pool);
+      return pool || _dirPoolMemo.home || null;
+    })
+    .catch(() => _dirPoolMemo.home || null);
+  return _dirHomeSnapOnce;
 }
 
 function dirPoolMemoSet(key, pool) {
@@ -11262,11 +11326,15 @@ async function fetchNaikDaunGlobal(limit = 60) {
   return data || [];
 }
 
-// Instant Cari Produk open: seed from sessionStorage, then fetch listings_home
-// immediately (no idle delay). resolveListingPool memoizes the result.
+// Instant Cari Produk open: session snapshot, then the static home file.
+// listings_home runs only when that file is missing or older than 36 hours.
 function warmDirInstantPool() {
+  if (isExporPasar()) return Promise.resolve([]);
   seedDirHomeMemoFromSession();
-  return resolveListingPool({ home: true });
+  return loadDirHomeSnapshot().then(pool => {
+    if (pool && (pool.listings || []).length) return pool;
+    return resolveListingPool({ home: true });
+  });
 }
 
 // ── Trending (mv_trending: real WoW sold deltas from listings history) ───
@@ -27301,10 +27369,28 @@ async function renderDirectory() {
   const sub = primaryDirCat() ? (state.dirSub || null) : null;
   const home = isDirHomeBrowse();
   const seq = ++_dirRenderSeq;
-  if (home) seedDirHomeMemoFromSession();
+  if (home && !isExporPasar()) seedDirHomeMemoFromSession();
 
-  const memo = _dirPoolMemo[dirPoolMemoKey({ q, cats, sub, home })];
-  const hasMemo = !!(memo && (memo.listings || []).length);
+  let memoKey = dirPoolMemoKey({ q, cats, sub, home });
+  let memo = _dirPoolMemo[memoKey];
+  let hasMemo = !!(memo && (memo.listings || []).length);
+  if (!hasMemo && home && !isExporPasar()) {
+    paintGarudaLoading(grid, 'binocs');
+    const trendHost = $('dir-trending-now');
+    if (trendHost) {
+      trendHost.hidden = false;
+      paintTrendingNow(trendHost, [], { pending: true });
+    }
+    await loadDirHomeSnapshot();
+    if (seq !== _dirRenderSeq) return;
+    const staleEarly = (state.dirSearch || '').trim() !== q
+      || (state.dirCats || []).join('|') !== cats.join('|')
+      || (primaryDirCat() ? (state.dirSub || null) : null) !== sub;
+    if (staleEarly) return;
+    memoKey = dirPoolMemoKey({ q, cats, sub, home: isDirHomeBrowse() });
+    memo = _dirPoolMemo[memoKey];
+    hasMemo = !!(memo && (memo.listings || []).length);
+  }
   if (hasMemo) {
     applyDirectoryPool(dirPoolClone(memo), { q, cats, sub });
     const trendsReady = (memo.listings || []).some(r => r._petaTrend && !r._petaTrend.pending);

@@ -161,8 +161,10 @@ listings per keyword via `LATERAL` + exact `keyword` match
 `LIMIT`. `security invoker`; granted to `anon` and `authenticated`. Do not
 wrap `listings_deduped.keyword` in `btrim()`.
 
-`listings_home(p_max int default 300)` is the default Cari Produk page:
-top 15 terlaris-minggu keywords × 20 listings in one round-trip.
+`listings_home(p_max int default 300)` is the default Cari Produk page when
+`/data/dir-home.json` is missing or older than 36 hours: top 15 terlaris-minggu
+keywords × 20 listings in one round-trip. The static file is that same pool
+plus weekly % (`scripts/build-dir-home-snapshot.mjs`, daily 18:00 UTC).
 
 Canonical body: `migrations/20260915160000_listings_for_keywords_index_order.sql`.
 Do not re-apply `20260905180000` (btrim WHERE) or `20260912180000` (NULLS LAST).
