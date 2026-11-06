@@ -680,10 +680,11 @@
         : '<span class="muted">—</span>';
     }
     if (colId === 'email') {
-      return s.email
-        ? '<a class="fub-cell-link" href="' + esc(mailLink(s.email, schoolMailSubject(), schoolGreeting(s.name))) + '">' +
-          esc(s.email) + '</a>'
-        : '<span class="muted">—</span>';
+      const email = contactEmail(s.email);
+      return email
+        ? '<a class="fub-cell-link" href="' + esc(mailLink(email, schoolMailSubject(), schoolGreeting(s.name))) + '">' +
+          esc(email) + '</a>'
+        : '<span class="roster-email-miss">Isi email</span>';
     }
     if (colId === 'tiktok') {
       const handle = tiktokHandle(s.tiktok);
@@ -1811,7 +1812,7 @@
     const s = people().find((x) => x.id === id) || {};
     return {
       passwordSet: !!(p.passwordSet || s.passwordSet),
-      email: s.email || p.email || '',
+      email: contactEmail(s.email || p.email || ''),
       wa: s.wa || p.wa || ''
     };
   }
@@ -3003,6 +3004,25 @@
     });
   }
   /** Drop the seed cast, and on a student browser drop everyone else's private fields. */
+  function contactEmail(raw) {
+    const email = String(raw || '').trim();
+    if (!email || /@wa\.larisid\.com$/i.test(email)) return '';
+    return email.slice(0, 160);
+  }
+  function blankAuthPlaceholderEmails(state) {
+    if (!state || typeof state !== 'object') return;
+    (state.liveStudents || []).forEach((row) => {
+      if (row && row.email && !contactEmail(row.email)) row.email = '';
+    });
+    ['people', 'applications'].forEach((key) => {
+      const bag = state[key];
+      if (!bag || typeof bag !== 'object') return;
+      Object.keys(bag).forEach((id) => {
+        const row = bag[id];
+        if (row && row.email && !contactEmail(row.email)) row.email = '';
+      });
+    });
+  }
   function stripHeldRoster(state) {
     if (!state || demoRosterOn()) return state;
     ['people', 'applications', 'billing', 'crm', 'notes', 'progress', 'lastLecture', 'enrollments', 'planOptOut', 'timeline', 'kolab'].forEach((key) => {
@@ -3061,6 +3081,7 @@
       const raw = readStoredRaw();
       if (!raw) return defaultState();
       const merged = Object.assign(defaultState(), JSON.parse(raw));
+      blankAuthPlaceholderEmails(merged);
       if (!antonSchoolData()) {
         merged.catalog = Array.isArray(merged.catalog) ? merged.catalog : [];
         ensurePlatformCatalog(merged);
@@ -3263,6 +3284,7 @@
   function isSiswaReadonly() { return !!SISWA_READONLY || !!ui.siswaReadonly; }
 
   function save() {
+    blankAuthPlaceholderEmails(db);
     ensurePlatformCatalog(db);
     const copy = { ...db, kolab: db.kolab };
     localStorage.setItem(KEY, JSON.stringify(copy));
@@ -3604,13 +3626,17 @@
     if (!demoRosterOn()) {
       const live = db.liveStudents
         .filter((s) => s && s.id && !isDemoPersonId(s.id))
-        .map((s) => Object.assign({}, s, db.people[s.id] || {}));
+        .map((s) => {
+          const row = Object.assign({}, s, db.people[s.id] || {});
+          row.email = contactEmail(row.email);
+          return row;
+        });
       const seen = new Set(live.map((s) => s.id));
       Object.keys(db.applications || {}).forEach((id) => {
         if (!id || seen.has(id) || isDemoPersonId(id)) return;
         const app = db.applications[id] || {};
         const person = db.people[id] || {};
-        live.push(Object.assign({
+        const row = Object.assign({
           id: id,
           name: person.name || app.name || '',
           firstName: person.firstName || app.firstName || '',
@@ -3618,7 +3644,9 @@
           wa: person.wa || app.wa || '',
           kind: 'student',
           mentorId: person.mentorId || schoolOwnerId()
-        }, person, { id: id, kind: person.kind === 'mentor' ? 'mentor' : 'student' }));
+        }, person, { id: id, kind: person.kind === 'mentor' ? 'mentor' : 'student' });
+        row.email = contactEmail(row.email);
+        live.push(row);
         seen.add(id);
       });
       const directory = (Array.isArray(db.directory) ? db.directory : [])
@@ -13869,9 +13897,9 @@
           '<div class="fub-contact-row">' +
             '<span class="fub-ico is-email" aria-hidden="true">' + emailIconSvg(16) + '</span>' +
             (canEdit
-              ? '<input class="inline-edit ghost-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="email" type="email" value="' + esc(s.email || '') + '" placeholder="email" title="Klik untuk edit email">'
-              : '<span>' + esc(s.email || '—') + '</span>') +
-            (s.email
+              ? '<input class="inline-edit ghost-edit" data-act="person-field" data-id="' + esc(id) + '" data-k="email" type="email" value="' + esc(contactEmail(s.email)) + '" placeholder="Isi email" title="Isi email kalau belum ada">'
+              : '<span class="' + (contactEmail(s.email) ? '' : 'roster-email-miss') + '">' + esc(contactEmail(s.email) || 'Isi email') + '</span>') +
+            (contactEmail(s.email)
               ? '<a class="fub-cell-link fub-ico-link" href="' + esc(mailLink(s.email, schoolMailSubject(), schoolGreeting(fullName))) +
                 '" title="Buka Gmail" aria-label="Buka Gmail">' + emailIconSvg(16) + '</a>'
               : '') +
@@ -15896,7 +15924,8 @@
       let val = t.value;
       if (k === 'wa') val = String(val).replace(/\D/g, '');
       if (k === 'tiktok') val = tiktokHandle(val);
-      if (k === 'email' || k === 'firstName' || k === 'lastName' || k === 'name' || k === 'city' || k === 'shopName') {
+      if (k === 'email') val = contactEmail(val);
+      if (k === 'firstName' || k === 'lastName' || k === 'name' || k === 'city' || k === 'shopName') {
         val = String(val).trim();
       }
       if (k === 'bio') val = String(val || '').trim().slice(0, 800);

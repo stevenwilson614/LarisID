@@ -495,6 +495,7 @@ function rotateStateBackup(file) {
 }
 
 function writeState(rec, slug) {
+  if (rec && rec.state) stripAuthPlaceholderEmails(rec.state);
   const file = statePath(slug);
   try { rotateStateBackup(file); } catch (err) {
     console.warn('state-backup ' + (slug || '') + ' ' + (err && err.message ? err.message : 'fail'));
@@ -1390,6 +1391,37 @@ function phonesMatch(a, b) {
   return left.slice(-10) === right.slice(-10);
 }
 
+/** Phone OTP login uses 628…@wa.larisid.com. That is not a student inbox. */
+function contactEmail(raw) {
+  const email = String(raw || '').trim().slice(0, 160);
+  if (!email || email.toLowerCase().endsWith('@wa.larisid.com')) return '';
+  return email;
+}
+
+function blankPlaceholderEmail(row) {
+  if (!row || typeof row !== 'object' || !Object.prototype.hasOwnProperty.call(row, 'email')) return false;
+  const next = contactEmail(row.email);
+  if (next === String(row.email || '')) return false;
+  row.email = next;
+  return true;
+}
+
+function stripAuthPlaceholderEmails(state) {
+  if (!state || typeof state !== 'object') return false;
+  let changed = false;
+  (state.liveStudents || []).forEach((row) => {
+    if (blankPlaceholderEmail(row)) changed = true;
+  });
+  ['people', 'applications'].forEach((key) => {
+    const bag = state[key];
+    if (!bag || typeof bag !== 'object') return;
+    Object.keys(bag).forEach((id) => {
+      if (blankPlaceholderEmail(bag[id])) changed = true;
+    });
+  });
+  return changed;
+}
+
 function isDemoId(id) {
   return /^s-/.test(String(id || ''));
 }
@@ -1646,7 +1678,7 @@ function personRecord(state, id) {
     name: (live && (live.name || [live.firstName, live.lastName].filter(Boolean).join(' '))) ||
       (person && (person.name || [person.firstName, person.lastName].filter(Boolean).join(' '))) ||
       (app && app.name) || '',
-    email: (live && live.email) || (person && person.email) || (app && app.email) || ''
+    email: contactEmail((live && live.email) || (person && person.email) || (app && app.email) || '')
   };
 }
 
@@ -2116,7 +2148,9 @@ function stripDemoPeople(state) {
 
 function takeState(slug) {
   const rec = readState(slug);
-  if (rec && rec.state && stripDemoPeople(rec.state)) rec._stripped = true;
+  if (!rec || !rec.state) return rec;
+  if (stripDemoPeople(rec.state)) rec._stripped = true;
+  if (stripAuthPlaceholderEmails(rec.state)) rec._stripped = true;
   return rec;
 }
 
@@ -2626,7 +2660,7 @@ function findByAuthUser(state, userId) {
 }
 
 function findByEmail(state, email) {
-  const want = String(email || '').trim().toLowerCase();
+  const want = contactEmail(email).toLowerCase();
   if (!want || want.indexOf('@') < 1) return null;
   let found = null;
   eachPerson(state, (id, row) => {
@@ -2653,7 +2687,7 @@ function upsertStudentIdentity(state, row) {
     kind: 'student',
     authUserId: row.authUserId,
     mentorId: row.mentorId || prevLive.mentorId || state.ownerId || '',
-    email: row.email || prevLive.email || '',
+    email: contactEmail(row.email) || contactEmail(prevLive.email) || '',
     wa: row.wa || prevLive.wa || '',
     name: row.name || prevLive.name || '',
     firstName: row.firstName || prevLive.firstName || '',
@@ -2669,7 +2703,7 @@ function upsertStudentIdentity(state, row) {
   const prev = state.people[row.id] || {};
   state.people[row.id] = Object.assign({}, prev, {
     authUserId: next.authUserId,
-    email: next.email,
+    email: contactEmail(next.email),
     wa: next.wa || prev.wa || '',
     name: next.name || prev.name || '',
     firstName: next.firstName || prev.firstName || '',
@@ -2705,7 +2739,7 @@ function claimStudentAccount(state, user, cookieId, allowCreate) {
   if (!row && allowCreate === false) return null;
   if (!row) {
     created = true;
-    const email = String(user.email || '').trim().slice(0, 160);
+    const email = contactEmail(user.email);
     const meta = (user.user_metadata && typeof user.user_metadata === 'object') ? user.user_metadata : {};
     const full = String(meta.full_name || meta.name || '').trim();
     const parts = full.split(/\s+/).filter(Boolean);
@@ -2722,7 +2756,7 @@ function claimStudentAccount(state, user, cookieId, allowCreate) {
     };
   }
   row.authUserId = row.authUserId || uid;
-  if (!row.email && user.email) row.email = String(user.email).trim().slice(0, 160);
+  if (!contactEmail(row.email) && user.email) row.email = contactEmail(user.email);
   if (!row.wa && user.phone) row.wa = phoneKey(user.phone);
   if (!row.mentorId) row.mentorId = state.ownerId || '';
   const saved = upsertStudentIdentity(state, row);
@@ -2753,7 +2787,7 @@ function applyJoinProfile(row, body) {
   row.lastName = lastName || row.lastName || '';
   row.name = personName(body) || row.name || row.firstName;
   row.wa = phoneKey(body.wa) || row.wa || '';
-  row.email = String(body.email || row.email || '').trim().slice(0, 160);
+  row.email = contactEmail(body.email) || contactEmail(row.email) || '';
   row.city = String(body.city || row.city || '').trim().slice(0, 60);
   row.shopName = String(body.shopName || row.shopName || '').trim().slice(0, 80);
   row.shopUrl = String(body.shopUrl || row.shopUrl || '').trim().slice(0, 300);
@@ -2860,7 +2894,7 @@ function upsertJoined(state, row) {
     firstName: row.firstName,
     lastName: row.lastName,
     wa: row.wa,
-    email: row.email || '',
+    email: contactEmail(row.email) || '',
     city: row.city || '',
     shopName: row.shopName || '',
     shopUrl: row.shopUrl || '',
@@ -4072,7 +4106,7 @@ const server = http.createServer((req, res) => {
           firstName: row.firstName || '',
           lastName: row.lastName || '',
           wa: student.wa,
-          email: row.email || '',
+          email: contactEmail(row.email),
           city: row.city || '',
           shopName: row.shopName || '',
           shopUrl: row.shopUrl || '',
