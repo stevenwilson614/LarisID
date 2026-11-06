@@ -27939,6 +27939,24 @@ function renderAdminUsage(days) {
     }
   }
   spark('adm-usage-people-spark', admSeriesFromDaily(k.returning_users_daily, 'n', span), '#F59E0B');
+  renderAdminExtScrape();
+}
+
+function renderAdminExtScrape() {
+  const k = _adminKpis || {};
+  const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+  set('adm-ext-detail-life', admFmtNum(k.ext_detail_passes_total));
+  set('adm-ext-detail-7d', admFmtNum(k.ext_detail_passes_7d));
+  set('adm-ext-detail-24h', admFmtNum(k.ext_detail_passes_24h));
+  set('adm-ext-products-life', admFmtNum(k.ext_products_total));
+  set('adm-ext-products-7d', admFmtNum(k.ext_products_7d));
+  set('adm-ext-products-24h', admFmtNum(k.ext_products_24h));
+  set('adm-ext-detail-sub', k.ext_detail_passes_total == null
+    ? 'Belum tersedia'
+    : 'Setiap halaman produk yang ekstensi tangkap');
+  set('adm-ext-products-sub', k.ext_products_total == null
+    ? 'Belum tersedia'
+    : 'Produk unik. Yang sama dalam satu jendela dihitung sekali');
 }
 
 // ── Monthly trend: landing page views vs sign ups ────────────────────────────
@@ -28879,12 +28897,18 @@ async function loadAdminDirectory() {
     renderAdminKpis(_adminUsers);
     void renderAdminCategories(_adminUsers);
     void adminEnsureCohortOptions();
-    const [statsRes, kpiRes] = await Promise.all([
+    const [statsRes, kpiRes, extRes] = await Promise.all([
       wrap(_supabase.rpc('admin_stats')),
       wrap(_supabase.rpc('admin_dashboard_kpis')),
+      wrap(_supabase.rpc('admin_ext_scrape_stats')),
     ]);
     _adminStats = (!statsRes.error && statsRes.data) ? statsRes.data : null;
-    _adminKpis = (!kpiRes.error && kpiRes.data) ? kpiRes.data : null;
+    _adminKpis = (!kpiRes.error && kpiRes.data) ? kpiRes.data : {};
+    if (!extRes.error && extRes.data && typeof extRes.data === 'object') {
+      Object.assign(_adminKpis, extRes.data);
+    } else if (extRes.error) {
+      console.warn('admin_ext_scrape_stats', extRes.error.message || extRes.error);
+    }
     renderAdminKpis(_adminUsers);
     renderAdminTrend();
   } catch (e) {

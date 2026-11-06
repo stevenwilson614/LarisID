@@ -4401,6 +4401,13 @@ body.view-harga .panel-inner { max-width: 1180px; }
 .adm-usage--export .adm-usage-val { color: #4F46E5; }
 .adm-usage--ai .adm-usage-val { color: #7C3AED; }
 .adm-usage--people .adm-usage-val { color: #B5202A; }
+.adm-usage--ext-detail .adm-usage-val { color: #0F766E; }
+.adm-usage--ext-products .adm-usage-val { color: #0369A1; }
+.adm-ext-block { margin-bottom: 14px; }
+.adm-ext-block .adm-usage { margin-bottom: 0; }
+.adm-ext-block-title {
+  margin: 0 0 8px; font-size: .95rem; font-weight: 700; letter-spacing: -.02em; color: #1A1A1A;
+}
 .adm-split {
   display: flex; height: 8px; border-radius: 999px; overflow: hidden; background: #F3F4F6; margin-top: 12px;
 }
@@ -12260,6 +12267,51 @@ body.view-chat .sfb-card {
               </article>
             </div>
 
+            <div class="adm-ext-block" id="admin-ext-scrape">
+              <h3 class="adm-ext-block-title">Ekstensi Chrome</h3>
+              <div class="adm-usage">
+                <article class="adm-card adm-usage-card adm-usage--ext-detail">
+                  <div class="adm-usage-head">
+                    <h3 class="adm-card-title">Pass detail produk</h3>
+                    <p class="adm-usage-sub" id="adm-ext-detail-sub">Setiap halaman produk yang ekstensi tangkap</p>
+                  </div>
+                  <div class="adm-usage-metrics">
+                    <div>
+                      <div class="adm-usage-lbl">Semua waktu</div>
+                      <div class="adm-usage-val" id="adm-ext-detail-life">—</div>
+                    </div>
+                    <div>
+                      <div class="adm-usage-lbl">7 hari</div>
+                      <div class="adm-usage-val" id="adm-ext-detail-7d">—</div>
+                    </div>
+                    <div>
+                      <div class="adm-usage-lbl">24 jam</div>
+                      <div class="adm-usage-val" id="adm-ext-detail-24h">—</div>
+                    </div>
+                  </div>
+                </article>
+                <article class="adm-card adm-usage-card adm-usage--ext-products">
+                  <div class="adm-usage-head">
+                    <h3 class="adm-card-title">Produk terscrape</h3>
+                    <p class="adm-usage-sub" id="adm-ext-products-sub">Produk unik. Yang sama dalam satu jendela dihitung sekali</p>
+                  </div>
+                  <div class="adm-usage-metrics">
+                    <div>
+                      <div class="adm-usage-lbl">Semua waktu</div>
+                      <div class="adm-usage-val" id="adm-ext-products-life">—</div>
+                    </div>
+                    <div>
+                      <div class="adm-usage-lbl">7 hari</div>
+                      <div class="adm-usage-val" id="adm-ext-products-7d">—</div>
+                    </div>
+                    <div>
+                      <div class="adm-usage-lbl">24 jam</div>
+                      <div class="adm-usage-val" id="adm-ext-products-24h">—</div>
+                    </div>
+                  </div>
+                </article>
+              </div>
+            </div>
 
             <div class="adm-usage" id="admin-usage">
               <article class="adm-card adm-usage-card adm-usage--kalc">
@@ -13298,7 +13350,7 @@ body.view-chat .sfb-card {
 <script src="/js/mytoko-bench.js?v=20261103logo1" defer></script>
 <script src="/js/gpt-alat-preview.js?v=20261103short1" defer></script>
 <script src="/js/omset-week-shape.js?v=20261021shape1" defer></script>
-<script src="/js/gpt-app.js?v=20261106dir1" defer></script>
+<script src="/js/gpt-app.js?v=20261106ext1" defer></script>
 <style>
 .hl-hero-ctas-alat { display: none; }
 html.alat-preview #finder-xp-step { display: none; }
