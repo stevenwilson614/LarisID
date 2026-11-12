@@ -131,9 +131,14 @@ function readOwners() {
 }
 
 function writeOwners(map) {
-  const tmp = ownersFile + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(map));
-  fs.renameSync(tmp, ownersFile);
+  const tmp = ownersFile + '.tmp.' + process.pid + '.' + crypto.randomBytes(4).toString('hex');
+  try {
+    fs.writeFileSync(tmp, JSON.stringify(map));
+    fs.renameSync(tmp, ownersFile);
+  } catch (err) {
+    try { fs.unlinkSync(tmp); } catch (ignore) { /* rename won or write never started */ }
+    throw err;
+  }
 }
 
 function ownerOf(slug) {
@@ -161,7 +166,7 @@ function noteLmsAuth(req, slug, userId) {
   const key = uid + ':' + school;
   if (lmsAuthNoted.has(key)) return;
   lmsAuthNoted.add(key);
-  fetch(SUPA_URL + '/rest/v1/rpc/mark_lms_auth', {
+  fetchWithTimeout(SUPA_URL + '/rest/v1/rpc/mark_lms_auth', {
     method: 'POST',
     headers: {
       apikey: SUPA_ANON,
@@ -169,29 +174,83 @@ function noteLmsAuth(req, slug, userId) {
       'content-type': 'application/json'
     },
     body: JSON.stringify({ p_slug: school })
-  }).then((res) => {
+  }, 15000).then((res) => {
     if (!res.ok) lmsAuthNoted.delete(key);
   }).catch(() => {
     lmsAuthNoted.delete(key);
   });
 }
 
+const authFailCounts = new Map();
+let authFailTimer = null;
+
+function authFailPath(req) {
+  return String((req && req.url) || '/')
+    .split('?')[0]
+    .replace(/\/state\/[^/]+/g, '/state/:slug')
+    .replace(/\/slug\/[^/]+/g, '/slug/:slug')
+    .replace(/\/gate\/[^/]+/g, '/gate/:slug')
+    .replace(/\/webhooks\/(lynk|mayar|xendit)\/[^/]+/g, '/webhooks/$1/:slug')
+    .slice(0, 100);
+}
+
+/** One summary line per minute. No tokens or emails. Anonymous GETs are not failures. */
+function noteAuthFail(req, reason) {
+  const key = reason + ' ' + authFailPath(req);
+  authFailCounts.set(key, (authFailCounts.get(key) || 0) + 1);
+  if (authFailTimer) return;
+  authFailTimer = setTimeout(() => {
+    authFailTimer = null;
+    if (!authFailCounts.size) return;
+    const parts = [];
+    authFailCounts.forEach((count, label) => parts.push(label + '=' + count));
+    authFailCounts.clear();
+    console.warn('lms-auth-fail ' + parts.join(' '));
+  }, 60000);
+  if (authFailTimer.unref) authFailTimer.unref();
+}
+
+function fetchTimedOut(err) {
+  const name = err && err.name;
+  return name === 'AbortError' || name === 'TimeoutError';
+}
+
+function fetchWithTimeout(url, opts, ms) {
+  return fetch(url, Object.assign({}, opts || {}, { signal: AbortSignal.timeout(ms) }));
+}
+
 async function supabaseUser(req) {
   const token = bearerToken(req);
-  if (!token) return null;
+  if (!token) {
+    if (String((req.headers && req.headers.authorization) || '')) noteAuthFail(req, 'no_token');
+    return null;
+  }
   if (process.env.LMS_AUTH_STUB === '1' && token.indexOf('stub:') === 0) {
     const id = token.slice(5).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64);
     return id ? { id: id, email: id + '@stub.local' } : null;
   }
+  return supabaseUserLookup(req, token, 0);
+}
+
+async function supabaseUserLookup(req, token, attempt) {
   try {
-    const res = await fetch(SUPA_URL + '/auth/v1/user', {
+    const res = await fetchWithTimeout(SUPA_URL + '/auth/v1/user', {
       headers: { apikey: SUPA_ANON, Authorization: 'Bearer ' + token }
-    });
-    if (!res.ok) return null;
+    }, 15000);
+    if (!res.ok) {
+      noteAuthFail(req, res.status >= 500 ? 'gotrue_5xx' : 'gotrue_401');
+      return null;
+    }
     const user = await res.json();
     if (!user || !user.id) return null;
     return user;
   } catch (err) {
+    /* A timeout already waited 15s. Retrying it would turn a slow success into a false 401. */
+    if (!fetchTimedOut(err) && attempt === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      return supabaseUserLookup(req, token, 1);
+    }
+    noteAuthFail(req, 'network');
     return null;
   }
 }
@@ -1759,11 +1818,11 @@ function applySecretPatch(slug, body) {
 }
 
 async function createMayarInvoice(apiKey, payload) {
-  const res = await fetch('https://api.mayar.id/hl/v1/invoice/create', {
+  const res = await fetchWithTimeout('https://api.mayar.id/hl/v1/invoice/create', {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
-  });
+  }, 20000);
   const data = await res.json().catch(() => ({}));
   if (!res.ok || (data && data.statusCode && Number(data.statusCode) >= 400)) {
     const err = new Error('mayar');
@@ -1781,9 +1840,9 @@ async function createMayarInvoice(apiKey, payload) {
 async function mayarInvoicePaid(apiKey, invoiceId) {
   if (!apiKey || !invoiceId) return null;
   try {
-    const res = await fetch('https://api.mayar.id/hl/v1/invoice/' + encodeURIComponent(invoiceId), {
+    const res = await fetchWithTimeout('https://api.mayar.id/hl/v1/invoice/' + encodeURIComponent(invoiceId), {
       headers: { Authorization: 'Bearer ' + apiKey }
-    });
+    }, 20000);
     if (!res.ok) return null;
     const data = await res.json().catch(() => ({}));
     const row = data.data || data;
@@ -1791,19 +1850,22 @@ async function mayarInvoicePaid(apiKey, invoiceId) {
     if (!status) return null;
     return status === 'paid' || status === 'success' || status === 'settled';
   } catch (err) {
+    /* grantPaid extends access and is not idempotent. A timed-out check must
+       throw before the grant so Mayar's retry is the first one. */
+    if (fetchTimedOut(err)) throw err;
     return null;
   }
 }
 
 async function createXenditInvoice(secret, payload) {
-  const res = await fetch('https://api.xendit.co/v2/invoices', {
+  const res = await fetchWithTimeout('https://api.xendit.co/v2/invoices', {
     method: 'POST',
     headers: {
       Authorization: 'Basic ' + Buffer.from(secret + ':').toString('base64'),
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(payload)
-  });
+  }, 20000);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const err = new Error('xendit');
@@ -3819,12 +3881,13 @@ const server = http.createServer((req, res) => {
 
   /* Contabo /lms mentor door: create or reuse disk school for this auth user. */
   if (req.method === 'POST' && pathname === '/owners/claim') {
-    readBody(req, 64 * 1024).then((buf) => lock(async () => {
+    readBody(req, 64 * 1024).then(async (buf) => {
       const user = await supabaseUser(req);
       if (!user) {
         json(res, 401, { error: 'auth' });
         return;
       }
+      return lock(async () => {
       const owners = readOwners();
       if (owners[user.id]) {
         fillOwnerEmail(owners[user.id], user);
@@ -3887,7 +3950,8 @@ const server = http.createServer((req, res) => {
       writeOwners(owners);
       noteLmsAuth(req, slug, user.id);
       json(res, 201, { slug: slug, created: true });
-    })).catch((err) => {
+      });
+    }).catch((err) => {
       if (!res.headersSent) json(res, err.status || 500, { error: 'school' });
     });
     return;
@@ -3910,12 +3974,13 @@ const server = http.createServer((req, res) => {
   }
 
   if (req.method === 'POST' && pathname === '/schools') {
-    readBody(req, 3 * 1024 * 1024).then((buf) => lock(async () => {
+    readBody(req, 3 * 1024 * 1024).then(async (buf) => {
       const user = await supabaseUser(req);
       if (!user) {
         json(res, 401, { error: 'auth' });
         return;
       }
+      return lock(async () => {
       const owners = readOwners();
       if (owners[user.id]) {
         fillOwnerEmail(owners[user.id], user);
@@ -3955,14 +4020,17 @@ const server = http.createServer((req, res) => {
       writeOwners(owners);
       noteLmsAuth(req, slug, user.id);
       json(res, 201, { slug: slug, created: true });
-    })).catch((err) => {
+      });
+    }).catch((err) => {
       if (!res.headersSent) json(res, err.status || 500, { error: 'school' });
     });
     return;
   }
 
   if (req.method === 'POST' && pathname === '/session') {
-    readBody(req, 64 * 1024).then((buf) => lock(async () => {
+    readBody(req, 64 * 1024).then(async (buf) => {
+      const user = await supabaseUser(req);
+      return lock(async () => {
       let body = {};
       try { body = JSON.parse(buf.toString('utf8') || '{}'); } catch (err) { body = {}; }
       const slug = resolveLiveSlug(body.slug);
@@ -3970,7 +4038,6 @@ const server = http.createServer((req, res) => {
         json(res, 404, { error: 'slug' });
         return;
       }
-      const user = await supabaseUser(req);
       if (user && user.id) noteLmsAuth(req, slug, user.id);
       if (isStaffFor(req, q, slug, user)) {
         json(res, 200, { role: 'staff' });
@@ -4013,14 +4080,17 @@ const server = http.createServer((req, res) => {
         needsAuth: true,
         hasApplication: applicationFinished(state, studentId)
       });
-    })).catch((err) => {
+      });
+    }).catch((err) => {
       if (!res.headersSent) json(res, err.status || 500, { error: 'session' });
     });
     return;
   }
 
   if (req.method === 'POST' && pathname === '/join') {
-    readBody(req, 64 * 1024).then((buf) => lock(async () => {
+    readBody(req, 64 * 1024).then(async (buf) => {
+      const user = await supabaseUser(req);
+      return lock(async () => {
       let body = {};
       try { body = JSON.parse(buf.toString('utf8') || '{}'); } catch (err) {
         json(res, 400, { error: 'bad_json' });
@@ -4041,7 +4111,6 @@ const server = http.createServer((req, res) => {
       if (!rec.state || typeof rec.state !== 'object') rec.state = {};
       stripDemoPeople(rec.state);
       const state = rec.state;
-      const user = await supabaseUser(req);
       const cookieId = readStudentCookie(req);
       /* Prefer the signed-in / cookie row so a finished wizard never mints a
          second stu_… when WA was blank on POST /session. */
@@ -4113,7 +4182,8 @@ const server = http.createServer((req, res) => {
           mentorId: row.mentorId
         }
       }));
-    })).catch((err) => {
+      });
+    }).catch((err) => {
       if (!res.headersSent) json(res, err.status || 500, { error: 'join' });
     });
     return;
@@ -4183,8 +4253,9 @@ const server = http.createServer((req, res) => {
       return;
     }
     if (req.method === 'PUT') {
-      readBody(req, MAX_STATE).then((buf) => lock(async () => {
+      readBody(req, MAX_STATE).then(async (buf) => {
         const user = await supabaseUser(req);
+        return lock(async () => {
         const rec = persistStrip(takeState(slug), slug);
         let body;
         try { body = JSON.parse(buf.toString('utf8')); } catch (err) {
@@ -4247,7 +4318,8 @@ const server = http.createServer((req, res) => {
         };
         writeRecord(stored, slug);
         json(res, 200, { rev: stored.rev, updatedAt: stored.updatedAt });
-      })).catch((err) => {
+        });
+      }).catch((err) => {
         if (!res.headersSent) json(res, err.status || 500, { error: err.message || 'read' });
       });
       return;
@@ -4518,7 +4590,9 @@ const server = http.createServer((req, res) => {
   }
 
   if (pathname === '/events' && req.method === 'POST') {
-    readBody(req, MAX_EVENT_BYTES).then((buf) => lock(async () => {
+    readBody(req, MAX_EVENT_BYTES).then(async (buf) => {
+      const user = await supabaseUser(req);
+      return lock(async () => {
       let body;
       try { body = JSON.parse(buf.toString('utf8')); } catch (err) {
         json(res, 400, { error: 'bad_json' });
@@ -4529,7 +4603,6 @@ const server = http.createServer((req, res) => {
         json(res, 404, { error: 'slug' });
         return;
       }
-      const user = await supabaseUser(req);
       const eventStudent = readStudentCookie(req);
       const eventStaff = isStaffFor(req, q, slug, user);
       if (!eventStudent && !eventStaff) {
@@ -4564,7 +4637,8 @@ const server = http.createServer((req, res) => {
       };
       appendEvent(row);
       json(res, 200, { ok: true, id: row.id });
-    })).catch((err) => {
+      });
+    }).catch((err) => {
       if (!res.headersSent) json(res, err.status || 500, { error: 'event' });
     });
     return;
@@ -4697,11 +4771,11 @@ const server = http.createServer((req, res) => {
         return;
       }
       try {
-        const fr = await fetch('https://api.fonnte.com/send', {
+        const fr = await fetchWithTimeout('https://api.fonnte.com/send', {
           method: 'POST',
           headers: { Authorization: FONNTE_TOKEN, 'Content-Type': 'application/json' },
           body: JSON.stringify({ target, message })
-        });
+        }, 20000);
         const text = await fr.text();
         let data = {};
         try { data = JSON.parse(text); } catch (err) { data = { raw: text }; }
@@ -4744,6 +4818,19 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, '0.0.0.0', () => {
   process.stdout.write('anton-school listening ' + PORT + '\n');
 });
+
+let shuttingDown = false;
+function shutdown() {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  const hard = setTimeout(() => process.exit(0), 8000);
+  if (hard.unref) hard.unref();
+  server.close(() => {
+    Promise.resolve(chain).then(() => process.exit(0), () => process.exit(0));
+  });
+}
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
 
 setInterval(() => {
   lock(() => {

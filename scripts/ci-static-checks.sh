@@ -14,6 +14,17 @@ if [[ -f scripts/test-ask-laris-followup.mjs ]]; then
   node scripts/test-ask-laris-followup.mjs || fail=1
 fi
 
+echo "== lms syntax =="
+while IFS= read -r f; do
+  node --check "$f" || fail=1
+done < <(find lms/js obrolan.marketing/js -name '*.js' ! -path '*/vendor/*' ! -name '*.bak' | sort)
+node --check obrolan.marketing/server/server.mjs || fail=1
+
+echo "== lms api contract =="
+if [[ -f scripts/test-lms-api.mjs ]]; then
+  node scripts/test-lms-api.mjs || fail=1
+fi
+
 echo "== forbidden strings in _site =="
 if [[ -d _site ]]; then
   if grep -R --exclude-dir=.git -n 'bzmvlraziqevqdyotvgy' _site || true | grep -q .; then
