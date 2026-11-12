@@ -789,26 +789,55 @@
     return '';
   }
 
+  async function coachAccessToken() {
+    var session = null;
+    try {
+      /* Prefer a refreshed access token. getSession() can return an expired
+         JWT while refresh is still in flight; owners/me then 401s and the
+         mentor sees “Kelas belum bisa dibuka” after Google already succeeded. */
+      var refreshed = await window.Lms.sb.auth.refreshSession();
+      session = refreshed && refreshed.data && refreshed.data.session;
+    } catch (err) { session = null; }
+    if (!session || !session.access_token) {
+      try {
+        var res = await window.Lms.sb.auth.getSession();
+        session = res && res.data && res.data.session;
+      } catch (err2) { session = null; }
+    }
+    return session;
+  }
+
   async function claimClassSchool(me) {
     if (!me || me.role !== 'mentor') return me && me.org_slug;
     var slug = String(me.org_slug || '').trim();
     if (!slug) return '';
-    var session = null;
-    try {
-      var res = await window.Lms.sb.auth.getSession();
-      session = res && res.data && res.data.session;
-    } catch (err) { session = null; }
+    var session = await coachAccessToken();
     var token = session && session.access_token;
-    if (!token) return slug;
+    if (!token) {
+      var needAuth = new Error('auth');
+      needAuth.claim = true;
+      throw needAuth;
+    }
     var headers = {
       'content-type': 'application/json',
       authorization: 'Bearer ' + token
     };
+    async function withToken(fn) {
+      var first = await fn(token);
+      if (first.status !== 401) return first;
+      session = await coachAccessToken();
+      token = session && session.access_token;
+      if (!token) return first;
+      headers.authorization = 'Bearer ' + token;
+      return fn(token);
+    }
     try {
       /* Prefer an already-owned disk school (e.g. test-1) over a new Contabo org_slug. */
-      var owned = await fetch('/obrolan.marketing/api/owners/me', {
-        headers: { authorization: 'Bearer ' + token },
-        cache: 'no-store'
+      var owned = await withToken(function (access) {
+        return fetch('/obrolan.marketing/api/owners/me', {
+          headers: { authorization: 'Bearer ' + access },
+          cache: 'no-store'
+        });
       });
       if (owned.ok) {
         var mine = await owned.json().catch(function () { return {}; });
@@ -817,14 +846,24 @@
           return mine.slug;
         }
       }
-      var claim = await fetch('/obrolan.marketing/api/owners/claim', {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify({
-          slug: slug,
-          orgName: me.org_name || me.display_name || slug,
-          displayName: me.display_name || me.org_name || slug
-        })
+      if (owned.status === 401) {
+        var expired = new Error('auth');
+        expired.claim = true;
+        throw expired;
+      }
+      var claim = await withToken(function (access) {
+        return fetch('/obrolan.marketing/api/owners/claim', {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            authorization: 'Bearer ' + access
+          },
+          body: JSON.stringify({
+            slug: slug,
+            orgName: me.org_name || me.display_name || slug,
+            displayName: me.display_name || me.org_name || slug
+          })
+        });
       });
       if (claim.ok) {
         var data = await claim.json().catch(function () { return {}; });
@@ -832,9 +871,12 @@
           mirrorCoachSession(session, data.slug);
           return data.slug;
         }
+        var empty = new Error('school');
+        empty.claim = true;
+        throw empty;
       }
       var fail = await claim.json().catch(function () { return {}; });
-      var blocked = new Error(fail.error || 'school');
+      var blocked = new Error(fail.error || (claim.status === 401 ? 'auth' : 'school'));
       blocked.claim = true;
       throw blocked;
     } catch (err) {
@@ -851,8 +893,14 @@
     try {
       slug = await claimClassSchool(me);
     } catch (err) {
-      show('register');
       var code = String(err && err.message || '');
+      if (code === 'auth') {
+        show('auth');
+        setAuthMode('login');
+        authError('Sesi habis. Masuk lagi dengan Google.');
+        return;
+      }
+      show('register');
       registerError(code === 'taken' || code === 'reserved'
         ? 'Nama kelas ini sudah dipakai. Ubah nama organisasi, lalu coba lagi.'
         : 'Kelas belum bisa dibuka. Coba lagi.');

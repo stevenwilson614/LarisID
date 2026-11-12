@@ -20263,24 +20263,47 @@
       return coach && coach.slug ? String(coach.slug) : '';
     } catch (err) { return ''; }
   }
+  async function refreshCoachAuth() {
+    const sb = studentSb();
+    if (!sb || !sb.auth || !sb.auth.refreshSession) return lmsAuth();
+    try {
+      const res = await sb.auth.refreshSession();
+      const session = res && res.data && res.data.session;
+      if (session && session.access_token) {
+        mirrorMentorSession(session, mirroredCoachSlug() || schoolSlug());
+        return session;
+      }
+    } catch (err) { /* keep stored token */ }
+    return lmsAuth();
+  }
   async function claimCoach() {
-    const auth = lmsAuth();
+    let auth = lmsAuth();
     const here = schoolSlug();
     /* /s/{slug}/ is the student class URL. Never bounce visitors to mentor /lms/. */
     const mentorDoor = onMentorPath() || onCoachRootPath();
+    const returningCoach = mirroredCoachSlug() === here;
     if (!auth || !auth.access_token) {
-      if (mentorDoor && mirroredCoachSlug() === here) {
-        location.replace(coachLoginUrl());
-      }
+      if (returningCoach) location.replace(coachLoginUrl());
       return false;
     }
     try {
-      const res = await fetch(apiBase() + '/owners/me', {
+      let res = await fetch(apiBase() + '/owners/me', {
         headers: { authorization: 'Bearer ' + auth.access_token },
         cache: 'no-store'
       });
       if (res.status === 401) {
-        if (mentorDoor && mirroredCoachSlug() === here) location.replace(coachLoginUrl());
+        auth = await refreshCoachAuth();
+        if (auth && auth.access_token) {
+          res = await fetch(apiBase() + '/owners/me', {
+            headers: { authorization: 'Bearer ' + auth.access_token },
+            cache: 'no-store'
+          });
+        }
+      }
+      if (res.status === 401) {
+        /* Vanity /s/{slug}/ used to fail open as the student gate when the
+           coach JWT was expired — looked like a failed mentor login. */
+        if (returningCoach || mentorDoor) location.replace(coachLoginUrl());
         return false;
       }
       if (!res.ok) return false;
