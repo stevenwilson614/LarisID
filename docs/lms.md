@@ -68,6 +68,30 @@ Useful events: `lms_landing_view`, `lms_cta_daftar`, `lms_cta_login`, `lms_mento
 
 `server.mjs` is not in the static rsync. The API script restarts Contabo `anton-school`. `LMS_SESSION_SECRET` or `ANTON_ADMIN_KEY` must be set on that service so student cookies survive a restart.
 
+### Tokens and operations
+
+Browser stores, and what refreshes them:
+
+| Store | Who | Refresh |
+| --- | --- | --- |
+| `lms_auth_v1` | Mentor session from `/lms/` | The landing tab, while it is open |
+| `laris_lms_coach` | Copy of that session plus the school slug. The class page prefers it | Only when that access token is already expired (or inside a minute), through the store that holds the refresh token. The new session is written back only when the user id matches |
+| `lms_student_auth_v1` | Student session on `/s/{slug}/` | The class page's student client |
+
+Cookies are `lms_student`, `lms_staff`, and `lms_media`. A lapsed coach token must not replace the local school with the public card. Owner and assistant payloads include `staffAdmins`. The public and student payloads do not. With no coach identity stored yet, the class page still accepts the student-store fallthrough so an owner who signs in on `/s/{slug}/` is claimed.
+
+Contract check, on a temp disk with a stub login. It does not call production GoTrue or the live volume:
+
+```bash
+node scripts/test-lms-api.mjs
+```
+
+`scripts/ci-static-checks.sh` runs that, plus `node --check` on `lms/js`, `obrolan.marketing/js` (not `vendor/`), and `server.mjs`.
+
+`deploy-school-api.sh` and `deploy-school-api-stage.sh` syntax-check, refuse to restart when both `LMS_SESSION_SECRET` and `ANTON_ADMIN_KEY` are unset, copy the live file to `server.mjs.prev`, restart, and poll `GET /health` inside the container. A failed check copies `.prev` back and restarts. That rollback does not touch `state/` or `media/`.
+
+GoTrue lookups happen before the write lock, with a 15s cutoff and no retry on timeout. Mayar, Xendit, and Fonnte calls cut off at 20s. A Mayar verification timeout fails the webhook before access is extended. Auth failures log one line a minute, `lms-auth-fail`, with counts by path and reason (`no_token` for a malformed Authorization header, `gotrue_401`, `gotrue_5xx`, `network`). No tokens or emails. Anonymous requests are not counted. SIGTERM closes the listener, drains the write lock, and exits within 8 seconds.
+
 Editing kurikulum in that app: **Preview** on the publikasi step opens the student view with **Publikasikan** on that screen. Choosing or dropping a video starts the upload immediately, before **Simpan materi**. If that already created the materi, Simpan materi only saves the title and text. Progress shows on the materi card, on the same row as that materi’s cover when a cover is attached. On the publikasi step the same meter sits beside the class cover, not in the full-width strip under the header. The header strip (`Mengunggah N%`, with × to cancel) stays on the other kurikulum steps and on Preview siswa. Left-rail tabs stay locked on Kurikulum until the upload finishes or they cancel with ×. Publish waits until that upload finishes. **Hapus bagian** asks once, then deletes that bagian and every materi in it (video, cover, files, and any in-flight upload), including an empty bagian and the last remaining bagian. A cover sits on the video with no `src` and no controls until the cover is clicked. Clicking play removes `.has-poster` and the cover button (CSS also hides `.lec-poster-hit` once `.has-poster` is gone — author `display:block` otherwise beats the UA `[hidden]` rule).
 
 ```bash
