@@ -818,17 +818,12 @@
       needAuth.claim = true;
       throw needAuth;
     }
-    var headers = {
-      'content-type': 'application/json',
-      authorization: 'Bearer ' + token
-    };
     async function withToken(fn) {
       var first = await fn(token);
       if (first.status !== 401) return first;
       session = await coachAccessToken();
       token = session && session.access_token;
       if (!token) return first;
-      headers.authorization = 'Bearer ' + token;
       return fn(token);
     }
     try {
@@ -887,12 +882,17 @@
     }
   }
 
+  var leaving = false;
   async function loadApp(me) {
+    /* A second SIGNED_IN can arrive while this claim is in flight. One claim, then leave. */
+    if (leaving) return;
+    leaving = true;
     /* Landing stays on /lms. The class itself is /s/{slug}/ for every new mentor. */
     var slug = '';
     try {
       slug = await claimClassSchool(me);
     } catch (err) {
+      leaving = false;
       var code = String(err && err.message || '');
       if (code === 'auth') {
         show('auth');
@@ -908,6 +908,7 @@
     }
     var dest = nextClassPath(slug) || classAppUrl(me, slug);
     if (!dest) {
+      leaving = false;
       if (me && me.role === 'student') {
         show('auth');
         authError('Minta tautan kelas dari mentor.');
@@ -925,6 +926,7 @@
   }
 
   async function routeNow(session) {
+    if (leaving) return;
     if (session && window.Lms.mfaRequired) {
       var factor = null;
       try { factor = await window.Lms.mfaRequired(session); } catch (err) { factor = null; }

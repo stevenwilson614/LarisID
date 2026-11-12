@@ -3415,12 +3415,26 @@
     syncInFlight = true;
     let ok = false;
     try {
-      const res = await fetch(syncUrl(), {
+      const staffBearer = !isSiswaReadonly() && (ui.admin || ui.staffId);
+      if (staffBearer && tokenExpiredSoon(mentorAccessToken())) await ensureCoachToken();
+      let res = await fetch(syncUrl(), {
         method: 'PUT',
         headers: lmsHeaders(),
         body: body,
         cache: 'no-store'
       });
+      /* A still-valid token's 403 is a permission rejection. Refresh only when it was already expired. */
+      if (res.status === 403 && staffBearer && tokenExpiredSoon(mentorAccessToken())) {
+        await ensureCoachToken();
+        if (!tokenExpiredSoon(mentorAccessToken())) {
+          res = await fetch(syncUrl(), {
+            method: 'PUT',
+            headers: lmsHeaders(),
+            body: body,
+            cache: 'no-store'
+          });
+        }
+      }
       if (res.status === 409) {
         syncStatus = 'revisi lama';
         syncInFlight = false;
@@ -3466,25 +3480,44 @@
     }
     syncPullInFlight = true;
     try {
-      const res = await fetch(syncUrl() + (!force && syncRev ? ('&rev=' + encodeURIComponent(syncRev)) : ''), { headers: lmsHeaders(), cache: 'no-store' });
-      if (res.status === 404) return;
-      if (!res.ok) {
-        syncStatus = 'gagal ' + res.status;
-        return;
-      }
-      const data = await res.json();
-      if (data && data.unchanged) {
-        syncRev = Number(data.rev) || syncRev;
+      let authRetry = false;
+      for (;;) {
+        const staffBearer = !isSiswaReadonly() && (ui.admin || ui.staffId) && !!mentorAccessToken();
+        if (staffBearer && tokenExpiredSoon(mentorAccessToken())) await ensureCoachToken();
+        const sentBearer = staffBearer && !!mentorAccessToken();
+        const res = await fetch(syncUrl() + (!force && syncRev ? ('&rev=' + encodeURIComponent(syncRev)) : ''), { headers: lmsHeaders(), cache: 'no-store' });
+        if (res.status === 404) return;
+        if (!res.ok) {
+          syncStatus = 'gagal ' + res.status;
+          return;
+        }
+        const data = await res.json();
+        if (data && data.unchanged) {
+          syncRev = Number(data.rev) || syncRev;
+          syncStatus = 'ok · rev ' + syncRev;
+          return;
+        }
+        if (!data || !data.state) return;
+        /* Owner and assistant payloads include staffAdmins. The guest and student
+           projections do not. A lapsed coach token must not paint the public card
+           over the local school. */
+        if (sentBearer && !Array.isArray(data.state.staffAdmins)) {
+          if (!authRetry && tokenExpiredSoon(mentorAccessToken())) {
+            authRetry = true;
+            await ensureCoachToken();
+            continue;
+          }
+          syncStatus = 'auth';
+          return;
+        }
+        const rev = Number(data.rev) || 0;
+        if (!force && rev <= syncRev) return;
+        syncRev = rev;
         syncStatus = 'ok · rev ' + syncRev;
+        localStorage.setItem(KEY, JSON.stringify(data.state));
+        reloadDb();
         return;
       }
-      if (!data || !data.state) return;
-      const rev = Number(data.rev) || 0;
-      if (!force && rev <= syncRev) return;
-      syncRev = rev;
-      syncStatus = 'ok · rev ' + syncRev;
-      localStorage.setItem(KEY, JSON.stringify(data.state));
-      reloadDb();
     } catch (err) {
       syncStatus = 'offline';
     } finally {
@@ -5907,19 +5940,64 @@
       })));
     } catch (err) { /* private mode */ }
   }
+  function jwtPayload(token) {
+    try {
+      const part = String(token || '').split('.')[1] || '';
+      let pad = part.replace(/-/g, '+').replace(/_/g, '/');
+      while (pad.length % 4) pad += '=';
+      return JSON.parse(atob(pad));
+    } catch (err) { return null; }
+  }
+  function sessionUserId(blob) {
+    if (!blob) return '';
+    if (blob.user && blob.user.id) return String(blob.user.id);
+    const payload = jwtPayload(blob.access_token);
+    return payload && payload.sub ? String(payload.sub) : '';
+  }
+  function tokenExp(token) {
+    const payload = jwtPayload(token);
+    const exp = payload && Number(payload.exp);
+    return Number.isFinite(exp) ? exp : 0;
+  }
+  /** True only when the access token is already expired or inside a minute. */
+  function tokenExpiredSoon(token) {
+    const exp = tokenExp(token);
+    if (!exp) return false;
+    return exp * 1000 <= Date.now() + 60000;
+  }
+  function coachMirror() {
+    try {
+      const coach = JSON.parse(localStorage.getItem('laris_lms_coach') || 'null');
+      if (coach && coach.access_token) return coach;
+    } catch (err) { /* ignore */ }
+    return null;
+  }
   function lmsAuth() {
     /* Contabo door mirrors a coach session; supabase storageKey is lms_auth_v1.
-       Owners who Google-login on /s/{slug}/ land in lms_student_auth_v1 first. */
-    try {
-      const coachRaw = localStorage.getItem('laris_lms_coach') || '';
-      if (coachRaw) {
-        const coach = JSON.parse(coachRaw);
-        if (coach && coach.access_token) return coach;
+       Owners who Google-login on /s/{slug}/ land in lms_student_auth_v1 first.
+       With no coach identity yet, keep that fallthrough. Once the mirror has a
+       user id, a newer token is used only when it is the same user. */
+    const coach = coachMirror();
+    const coachId = sessionUserId(coach);
+    if (!coach || !coachId) {
+      if (coach && coach.access_token) return coach;
+      return authBlobFromStorage('lms_auth_v1')
+        || authBlobFromStorage('lms-auth-v1')
+        || authBlobFromStorage(STU_AUTH_KEY);
+    }
+    let best = coach;
+    let bestExp = tokenExp(coach.access_token);
+    ['lms_auth_v1', 'lms-auth-v1', STU_AUTH_KEY].forEach((key) => {
+      const blob = authBlobFromStorage(key);
+      if (!blob || sessionUserId(blob) !== coachId) return;
+      const exp = tokenExp(blob.access_token);
+      if (exp > bestExp) {
+        best = blob;
+        bestExp = exp;
       }
-    } catch (err) { /* ignore */ }
-    return authBlobFromStorage('lms_auth_v1')
-      || authBlobFromStorage('lms-auth-v1')
-      || authBlobFromStorage(STU_AUTH_KEY);
+    });
+    if (best !== coach && coach.slug && !best.slug) return Object.assign({}, best, { slug: coach.slug });
+    return best;
   }
   function lmsHeaders(extra) {
     const headers = Object.assign({ 'content-type': 'application/json' }, extra || {});
@@ -20263,17 +20341,97 @@
       return coach && coach.slug ? String(coach.slug) : '';
     } catch (err) { return ''; }
   }
-  async function refreshCoachAuth() {
-    const sb = studentSb();
-    if (!sb || !sb.auth || !sb.auth.refreshSession) return lmsAuth();
-    try {
+  let coachSbClient = null;
+  function coachSb() {
+    if (coachSbClient) return coachSbClient;
+    if (!window.supabase || !window.supabase.createClient) return null;
+    /* Same storage key as /lms/, auto-refresh off, default navigator lock.
+       A still-valid token is not refreshed here — that rotation can log the mentor out if the response is lost. */
+    coachSbClient = window.supabase.createClient(STU_SUPA_URL, STU_SUPA_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+        storage: window.localStorage,
+        storageKey: 'lms_auth_v1',
+        flowType: 'implicit'
+      }
+    });
+    return coachSbClient;
+  }
+  async function refreshCoachDirect(auth) {
+    if (!auth || !auth.refresh_token) return null;
+    const userId = sessionUserId(auth);
+    const res = await fetch(STU_SUPA_URL + '/auth/v1/token?grant_type=refresh_token', {
+      method: 'POST',
+      headers: { apikey: STU_SUPA_KEY, 'content-type': 'application/json' },
+      body: JSON.stringify({ refresh_token: auth.refresh_token })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.access_token) return null;
+    const next = {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token || auth.refresh_token,
+      expires_at: data.expires_at || (data.expires_in ? Math.floor(Date.now() / 1000) + Number(data.expires_in) : 0),
+      user: data.user || auth.user || (userId ? { id: userId } : undefined)
+    };
+    if (userId && sessionUserId(next) !== userId) return null;
+    return next;
+  }
+  async function refreshOwningStore(auth) {
+    const userId = sessionUserId(auth);
+    const token = auth.access_token;
+    const stu = authBlobFromStorage(STU_AUTH_KEY);
+    if (stu && stu.access_token === token && sessionUserId(stu) === userId) {
+      const sb = studentSb();
+      if (!sb || !sb.auth || !sb.auth.refreshSession) return null;
       const res = await sb.auth.refreshSession();
       const session = res && res.data && res.data.session;
-      if (session && session.access_token) {
-        mirrorMentorSession(session, mirroredCoachSlug() || schoolSlug());
-        return session;
-      }
-    } catch (err) { /* keep stored token */ }
+      if (!session || !session.access_token) return null;
+      if (sessionUserId(session) !== userId) return null;
+      return session;
+    }
+    const primary = authBlobFromStorage('lms_auth_v1') || authBlobFromStorage('lms-auth-v1');
+    const primaryId = sessionUserId(primary);
+    if (primary && primaryId && userId && primaryId !== userId) return refreshCoachDirect(auth);
+    if (!primary || primary.access_token !== token) {
+      try {
+        localStorage.setItem('lms_auth_v1', JSON.stringify({
+          access_token: auth.access_token,
+          refresh_token: auth.refresh_token || '',
+          expires_at: auth.expires_at || tokenExp(auth.access_token),
+          token_type: 'bearer',
+          user: auth.user || (userId ? { id: userId } : undefined)
+        }));
+      } catch (err) { /* private mode */ }
+    }
+    const sb = coachSb();
+    if (sb && sb.auth && sb.auth.refreshSession) {
+      try {
+        const res = await sb.auth.refreshSession();
+        const session = res && res.data && res.data.session;
+        if (session && session.access_token && sessionUserId(session) === userId) return session;
+      } catch (err) { /* try the refresh token directly */ }
+    }
+    return refreshCoachDirect(auth);
+  }
+  let coachRefreshFlight = null;
+  function ensureCoachToken() {
+    if (coachRefreshFlight) return coachRefreshFlight;
+    coachRefreshFlight = refreshCoachIfExpired().finally(() => { coachRefreshFlight = null; });
+    return coachRefreshFlight;
+  }
+  async function refreshCoachIfExpired() {
+    const auth = lmsAuth();
+    if (!auth || !auth.access_token || !tokenExpiredSoon(auth.access_token)) return auth;
+    const userId = sessionUserId(auth);
+    if (!userId) return auth;
+    let next = null;
+    try { next = await refreshOwningStore(auth); } catch (err) { next = null; }
+    if (!next || !next.access_token) return auth;
+    const nextId = sessionUserId(next);
+    if (userId && nextId && nextId !== userId) return auth;
+    mirrorMentorSession(next, mirroredCoachSlug() || auth.slug || schoolSlug());
     return lmsAuth();
   }
   async function claimCoach() {
@@ -20286,14 +20444,16 @@
       if (returningCoach) location.replace(coachLoginUrl());
       return false;
     }
+    if (tokenExpiredSoon(auth.access_token)) auth = await ensureCoachToken() || auth;
     try {
       let res = await fetch(apiBase() + '/owners/me', {
         headers: { authorization: 'Bearer ' + auth.access_token },
         cache: 'no-store'
       });
-      if (res.status === 401) {
-        auth = await refreshCoachAuth();
-        if (auth && auth.access_token) {
+      if (res.status === 401 && tokenExpiredSoon(auth.access_token)) {
+        const next = await ensureCoachToken();
+        if (next && next.access_token && next.access_token !== auth.access_token) {
+          auth = next;
           res = await fetch(apiBase() + '/owners/me', {
             headers: { authorization: 'Bearer ' + auth.access_token },
             cache: 'no-store'
