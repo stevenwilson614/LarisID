@@ -7,11 +7,14 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 KEY="${LARISID_SSH_KEY:-$HOME/.ssh/larisid_hetzner}"
 HOST="${LARISID_SSH_HOST:-root@84.247.147.205}"
 SRC="$ROOT/obrolan.marketing/server/server.mjs"
+ACCESS="$ROOT/obrolan.marketing/js/course-access.js"
 DEST="/root/larisid-infra/docker/anton-school/server.mjs"
+ACCESS_DEST="/root/larisid-infra/docker/anton-school/course-access.js"
 CONTAINER="supabase-anton-school-1"
 SSH=(ssh -i "$KEY" -o BatchMode=yes)
 
 node --check "$SRC"
+node --check "$ACCESS"
 
 if ! "${SSH[@]}" "$HOST" "docker inspect $CONTAINER --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -Eq '^(LMS_SESSION_SECRET|ANTON_ADMIN_KEY)='"; then
   echo "session-secret: missing — set LMS_SESSION_SECRET or ANTON_ADMIN_KEY on $CONTAINER" >&2
@@ -22,6 +25,7 @@ echo "session-secret: configured"
 
 "${SSH[@]}" "$HOST" "if [ -f '$DEST' ]; then cp -a '$DEST' '$DEST.prev'; fi"
 rsync -az -e "ssh -i $KEY -o BatchMode=yes" "$SRC" "$HOST:$DEST"
+rsync -az -e "ssh -i $KEY -o BatchMode=yes" "$ACCESS" "$HOST:$ACCESS_DEST"
 "${SSH[@]}" "$HOST" "docker restart $CONTAINER >/dev/null"
 
 healthy=0

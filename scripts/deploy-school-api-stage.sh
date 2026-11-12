@@ -7,11 +7,14 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 KEY="${LARISID_SSH_KEY:-$HOME/.ssh/larisid_hetzner}"
 HOST="${LARISID_SSH_HOST:-root@84.247.147.205}"
 SRC="$ROOT/obrolan.marketing/server/server.mjs"
+ACCESS="$ROOT/obrolan.marketing/js/course-access.js"
 DEST="/root/larisid-infra/docker/anton-school-stage/server.mjs"
+ACCESS_DEST="/root/larisid-infra/docker/anton-school-stage/course-access.js"
 CONTAINER="supabase-anton-school-stage-1"
 SSH=(ssh -i "$KEY" -o BatchMode=yes)
 
 node --check "$SRC"
+node --check "$ACCESS"
 "${SSH[@]}" "$HOST" "mkdir -p /root/larisid-infra/docker/anton-school-stage /root/larisid-infra/docker/volumes/anton-school-stage"
 if ! "${SSH[@]}" "$HOST" "docker inspect $CONTAINER >/dev/null 2>&1"; then
   echo "stage container missing — bring up anton-school-stage from larisid-infra first" >&2
@@ -26,6 +29,7 @@ echo "session-secret: configured"
 
 "${SSH[@]}" "$HOST" "if [ -f '$DEST' ]; then cp -a '$DEST' '$DEST.prev'; fi"
 rsync -az -e "ssh -i $KEY -o BatchMode=yes" "$SRC" "$HOST:$DEST"
+rsync -az -e "ssh -i $KEY -o BatchMode=yes" "$ACCESS" "$HOST:$ACCESS_DEST"
 "${SSH[@]}" "$HOST" "docker restart $CONTAINER >/dev/null"
 
 healthy=0

@@ -3816,8 +3816,10 @@ html:not([data-theme="light"]) .kur-wiz-ico {
 .kur-wiz-counts b { color: var(--text); margin-right: 2px; }
 .kur-wiz-warn { color: var(--warn); margin: 0; font-size: .84rem; }
 .kur-wiz-live { color: var(--ok-soft); margin: 0; font-size: .84rem; }
-.kur-empty {
-  text-align: center;
+.course-list { display: flex; flex-direction: column; gap: 12px; }
+.course-card { display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; }
+.course-card h3 { margin: 0 0 4px; }
+.kur-empty {  text-align: center;
   padding: 36px 22px;
   max-width: 480px;
   margin: 24px auto;

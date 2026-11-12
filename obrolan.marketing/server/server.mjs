@@ -9,6 +9,22 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
+
+const require = createRequire(import.meta.url);
+function loadCourseAccess() {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    path.join(here, 'course-access.js'),
+    path.join(here, '..', 'js', 'course-access.js')
+  ];
+  for (const file of candidates) {
+    if (fs.existsSync(file)) return require(file);
+  }
+  throw new Error('course-access.js missing');
+}
+const CourseAccess = loadCourseAccess();
 
 const DATA = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 const PORT = Number(process.env.PORT || 8787);
@@ -371,6 +387,10 @@ function emptySchool(slug, user, body, photoUrl) {
       lectures: [],
       catalog: [platformCalcSku()],
       weeks: [],
+      courses: [],
+      groups: [],
+      courseBilling: {},
+      courseGrants: {},
       sessions: [],
       pricing: {},
       bank: {},
@@ -1158,7 +1178,11 @@ async function mediaReadOk(req, q, slug) {
   if (!asStudentView(req) && activeStaffRow(state, readStaffCookie(req))) return true;
   const studentId = readStudentCookie(req);
   if (!(studentId && lookupPerson(state, studentId))) return false;
-  return curriculumVisible(state, live);
+  if (!curriculumVisible(state, live)) return false;
+  const key = String((q && q.key) || '');
+  if (!CourseAccess.coursesOf(state).length) return true;
+  if (!key) return false;
+  return CourseAccess.studentMayReadKey(state, studentId, key);
 }
 
 function mediaFile(key) {
@@ -1613,14 +1637,79 @@ function grantPaid(state, person, opts) {
   }
 }
 
+function grantOffer(state, person, opts) {
+  const options = Object.assign({}, opts || {});
+  if (!options.courseId) options.courseId = CourseAccess.MAIN;
+  CourseAccess.ensure(state);
+  const course = CourseAccess.courseById(state, options.courseId);
+  const paid = CourseAccess.grantCoursePaid(state, person && person.id, options);
+  if ((paid && paid.community) || !course) {
+    grantPaid(state, person, options);
+    return;
+  }
+  appendPaymentLedger(state, person.id, {
+    at: new Date().toISOString(),
+    amount: Number(options.amount) || 0,
+    source: options.source || 'manual',
+    term: options.packageId || '',
+    refId: options.refId || '',
+    kind: 'course'
+  });
+  state.timeline = state.timeline || {};
+  const title = (course && course.title) || 'Kursus';
+  state.timeline[person.id] = [{
+    at: new Date().toISOString(),
+    kind: 'pay',
+    body: 'Bayar ' + (options.source || 'manual') + ' · ' + title
+  }].concat(state.timeline[person.id] || []);
+}
+
+function coursePackage(state, courseId, packageId) {
+  const course = CourseAccess.courseById(state, courseId);
+  if (!course) return null;
+  const access = course.access || {};
+  if (access.mode === 'once' && (!packageId || packageId === 'once')) {
+    return {
+      course: course,
+      once: true,
+      pkg: {
+        id: 'once',
+        months: 0,
+        priceIdr: Math.max(0, Number(access.priceIdr) || 0),
+        label: course.title || 'Sekali bayar'
+      }
+    };
+  }
+  if (access.mode !== 'subscription') return null;
+  const pkg = (access.packages || []).find((row) => row && row.id === packageId);
+  if (!pkg) return null;
+  return { course: course, once: false, pkg: pkg };
+}
+
+function parsePayExternal(external, slug) {
+  const parts = String(external || '').split('|');
+  if (!parts.length || parts[0] !== slug) return null;
+  if (parts.length >= 5) {
+    return {
+      personId: parts[1],
+      courseId: parts[2] && parts[2] !== '-' ? parts[2] : '',
+      packageId: parts[3]
+    };
+  }
+  if (parts.length >= 4) return { personId: parts[1], courseId: '', packageId: parts[2] };
+  return null;
+}
+
 function grantLynk(state, person, product, amount, refId) {
-  grantPaid(state, person, {
-    months: termMonths(product.term),
-    packageId: product.id || product.term,
+  grantOffer(state, person, {
+    months: product && product.once ? 0 : termMonths(product && product.term),
+    packageId: (product && (product.id || product.term)) || '',
+    courseId: (product && product.courseId) || '',
+    once: !!(product && product.once),
     source: 'lynk',
-    amount: Number(amount) || product.price || 0,
+    amount: Number(amount) || (product && product.price) || 0,
     refId: refId,
-    label: product.label || termLabel(product.term)
+    label: (product && product.label) || termLabel(product && product.term)
   });
 }
 
@@ -1709,6 +1798,7 @@ function packageById(state, id) {
 }
 
 function lynkPackageCatalog(state) {
+  const fromCourses = CourseAccess.lynkRows(state || {});
   const links = (state && state.lynkByPackage) || {};
   const fromPackages = packageRows(state).map((row) => {
     const link = links[row.id] || {};
@@ -1722,8 +1812,13 @@ function lynkPackageCatalog(state) {
       price: Number(link.price) || row.priceIdr || 0
     };
   }).filter((row) => row.title);
-  if (fromPackages.length) return fromPackages;
-  return lynkCatalog(state).map((row) => Object.assign({ id: row.term, months: termMonths(row.term), label: termLabel(row.term) }, row));
+  const seen = new Set(fromCourses.map((row) => normTitle(row.title)));
+  const legacy = fromPackages.length
+    ? fromPackages
+    : lynkCatalog(state).map((row) => Object.assign({ id: row.term, months: termMonths(row.term), label: termLabel(row.term) }, row));
+  const extra = legacy.filter((row) => row && row.title && !seen.has(normTitle(row.title)));
+  const all = fromCourses.concat(extra);
+  return all.length ? all : legacy;
 }
 
 function personRecord(state, id) {
@@ -1758,10 +1853,11 @@ function graceMsOf(state) {
 }
 
 function expireAccess(state) {
-  if (!state || state.paymentsEnabled !== true) return false;
+  if (!state) return false;
+  let changed = CourseAccess.expireCourseBilling(state);
+  if (state.paymentsEnabled !== true) return changed;
   const grace = graceMsOf(state);
   const now = Date.now();
-  let changed = false;
   const billing = state.billing || {};
   Object.keys(billing).forEach((id) => {
     const b = billing[id];
@@ -2393,6 +2489,8 @@ function sliceMap(obj, id) {
 
 function curriculumVisible(state, slug) {
   if (slug === ANTON_SLUG) return true;
+  const courses = CourseAccess.coursesOf(state);
+  if (courses.length) return courses.some((course) => course && course.published === true);
   const kur = state && state.kurikulum;
   if (kur && kur.published === false) return false;
   if (kur && kur.published === true) return true;
@@ -2523,20 +2621,8 @@ function personBatch(state, studentId) {
 }
 
 function studentIsMentee(state, studentId) {
-  if (!studentId) return false;
-  const bill = (state.billing && state.billing[studentId]) || {};
-  if (state.paymentsEnabled !== true) {
-    const app = state.applications && state.applications[studentId];
-    if (app) return true;
-  }
-  if (bill.status === 'gratis') return true;
-  if (bill.status === 'pending' || bill.status === 'belum' || bill.status === 'trial') return false;
-  if (bill.plan !== 'mentoring') return false;
-  if (bill.accessUntil) {
-    const end = new Date(bill.accessUntil).getTime();
-    if (Number.isFinite(end) && Date.now() >= end + graceMsOf(state)) return false;
-  }
-  return bill.status === 'lunas' || bill.status === 'cicilan';
+  if (!studentId || !state) return false;
+  return CourseAccess.hasCommunity(state, studentId);
 }
 
 function sessionAudienceOf(ses) {
@@ -2594,6 +2680,22 @@ function projectStudent(state, studentId, slug) {
   shell.timeline = sliceMap(src.timeline, studentId);
   shell.kolab = sliceMap(src.kolab, studentId);
   if (open && Array.isArray(src.sessions)) shell.sessions = sessionsForStudent(src, studentId);
+  if (open) {
+    const projected = CourseAccess.projectForStudent(src, studentId);
+    shell.courses = projected.courses;
+    shell.weeks = projected.weeks;
+    shell.lectures = projected.lectures;
+    shell.groups = projected.groups;
+    shell.courseBilling = projected.courseBilling;
+    shell.courseGrants = projected.courseGrants;
+  } else {
+    shell.courses = [];
+    shell.lectures = [];
+    shell.weeks = [];
+    shell.groups = [];
+    shell.courseBilling = {};
+    shell.courseGrants = {};
+  }
   return shell;
 }
 
@@ -2873,7 +2975,7 @@ function preserveJoinedRoster(prev, next) {
     seen.add(row.id);
   });
   out.liveStudents = nextLive;
-  ['applications', 'crm', 'billing', 'people', 'notes', 'progress', 'lastLecture', 'enrollments', 'planOptOut', 'timeline', 'kolab'].forEach((key) => {
+  ['applications', 'crm', 'billing', 'people', 'notes', 'progress', 'lastLecture', 'enrollments', 'planOptOut', 'timeline', 'kolab', 'courseBilling', 'courseGrants'].forEach((key) => {
     const from = base[key] && typeof base[key] === 'object' && !Array.isArray(base[key]) ? base[key] : {};
     const to = out[key] && typeof out[key] === 'object' && !Array.isArray(out[key]) ? Object.assign({}, out[key]) : {};
     Object.keys(from).forEach((id) => {
@@ -2940,6 +3042,24 @@ function preserveCurriculumOutline(prev, next, slug) {
     out.kurikulum = base.kurikulum;
     kept = true;
   }
+  if (Array.isArray(base.courses) && base.courses.length && (!Array.isArray(out.courses) || out.courses.length === 0)) {
+    out.courses = base.courses;
+    kept = true;
+  }
+  if (Array.isArray(base.groups) && base.groups.length && !Array.isArray(out.groups)) {
+    out.groups = base.groups;
+    kept = true;
+  }
+  ['courseBilling', 'courseGrants'].forEach((key) => {
+    const prevMap = base[key];
+    const nextMap = out[key];
+    const prevFilled = prevMap && typeof prevMap === 'object' && !Array.isArray(prevMap) && Object.keys(prevMap).length > 0;
+    const nextEmpty = !nextMap || typeof nextMap !== 'object' || Array.isArray(nextMap) || Object.keys(nextMap).length === 0;
+    if (prevFilled && nextEmpty) {
+      out[key] = prevMap;
+      kept = true;
+    }
+  });
   if (kept) console.warn('preserve-curriculum ' + (slug || '') + ' kept disk outline');
   return out;
 }
@@ -3242,11 +3362,32 @@ async function createPayInvoice(req, res, q, buf) {
   }
   const rec = persistStrip(takeState(slug), slug);
   const state = rec && rec.state;
-  if (!state || state.paymentsEnabled !== true) {
+  if (!state) {
+    json(res, 404, { error: 'slug' });
+    return;
+  }
+  CourseAccess.ensure(state);
+  const courseId = String(body.courseId || '');
+  let pkg = null;
+  let course = null;
+  if (courseId) {
+    const found = coursePackage(state, courseId, packageId);
+    if (!found) {
+      json(res, 400, { error: 'package' });
+      return;
+    }
+    if (!staff && !CourseAccess.inAudience(state, found.course, personId)) {
+      json(res, 403, { error: 'audience' });
+      return;
+    }
+    pkg = found.pkg;
+    course = found.course;
+  } else if (state.paymentsEnabled === true) {
+    pkg = packageById(state, packageId);
+  } else {
     json(res, 409, { error: 'payments_off' });
     return;
   }
-  const pkg = packageById(state, packageId);
   if (!pkg || pkg.priceIdr < 1000) {
     json(res, 400, { error: 'package' });
     return;
@@ -3271,15 +3412,15 @@ async function createPayInvoice(req, res, q, buf) {
       redirectUrl: back,
       expiredAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
       items: [{ quantity: 1, rate: pkg.priceIdr, description: pkg.label }],
-      extraData: { slug: slug, personId: personId, packageId: pkg.id }
+      extraData: { slug: slug, personId: personId, packageId: pkg.id, courseId: courseId }
     });
     if (!inv.link) { json(res, 502, { error: 'mayar_link' }); return; }
     link = inv.link;
     ref = inv.transactionId || inv.id;
-    markPending(state, personId, pkg, 'mayar', { mayarTx: ref, mayarInvoice: inv.id, mayarLink: link, payerWa: person.wa });
+    markPending(state, personId, pkg, 'mayar', { mayarTx: ref, mayarInvoice: inv.id, mayarLink: link, payerWa: person.wa, courseId: courseId });
   } else if (provider === 'xendit') {
     if (!secrets.xenditSecretKey) { json(res, 503, { error: 'unconfigured' }); return; }
-    const external = [slug, personId, pkg.id, crypto.randomBytes(4).toString('hex')].join('|');
+    const external = [slug, personId, courseId || '-', pkg.id, crypto.randomBytes(4).toString('hex')].join('|');
     const payload = {
       external_id: external,
       amount: pkg.priceIdr,
@@ -3298,14 +3439,15 @@ async function createPayInvoice(req, res, q, buf) {
     if (!inv.link) { json(res, 502, { error: 'xendit_link' }); return; }
     link = inv.link;
     ref = external;
-    markPending(state, personId, pkg, 'xendit', { xenditRef: external, xenditId: inv.id, xenditLink: link, payerWa: person.wa });
+    markPending(state, personId, pkg, 'xendit', { xenditRef: external, xenditId: inv.id, xenditLink: link, payerWa: person.wa, courseId: courseId });
   } else if (provider === 'lynk') {
-    const row = (state.lynkByPackage && state.lynkByPackage[pkg.id]) || {};
+    const courseLinks = course && course.access && course.access.lynkByPackage;
+    const row = (courseLinks && courseLinks[pkg.id]) || (state.lynkByPackage && state.lynkByPackage[pkg.id]) || {};
     const url = String(row.url || '').trim();
     if (!/^https:\/\//i.test(url)) { json(res, 409, { error: 'no_lynk_url' }); return; }
     link = url;
-    ref = 'lynk-' + personId + '-' + pkg.id;
-    markPending(state, personId, pkg, 'lynk', { lynkUrl: url, payerWa: person.wa });
+    ref = 'lynk-' + personId + '-' + (courseId || 'class') + '-' + pkg.id;
+    markPending(state, personId, pkg, 'lynk', { lynkUrl: url, payerWa: person.wa, courseId: courseId });
   } else {
     json(res, 409, { error: 'no_provider' });
     return;
@@ -3442,9 +3584,11 @@ function grantLynkHook(res, slug, req, body) {
     json(res, 200, { ok: true, matched: false });
     return;
   }
-  grantPaid(state, hits[0], {
-    months: product.months || termMonths(product.term),
+  grantOffer(state, hits[0], {
+    months: product.once ? 0 : (product.months || termMonths(product.term)),
     packageId: product.id,
+    courseId: product.courseId || '',
+    once: product.once === true,
     source: 'lynk',
     amount: Number(amount) || product.price || 0,
     refId: refId,
@@ -3500,10 +3644,16 @@ async function grantMayarHook(res, slug, q, body) {
   const invoiceId = String(data.productId || (state.billing[personId] && state.billing[personId].mayarInvoice) || '');
   const paid = await mayarInvoicePaid(secrets.mayarApiKey, invoiceId);
   if (paid === false) { json(res, 200, { ok: true, matched: false, reason: 'unpaid' }); return; }
-  const pkg = packageById(state, (state.billing[personId] && state.billing[personId].packageId) || (extra && extra.packageId) || '');
-  grantPaid(state, person, {
-    months: pkg ? pkg.months : 1,
+  const pendingBill = (state.billing && state.billing[personId]) || {};
+  const courseId = String((extra && extra.courseId) || pendingBill.courseId || '');
+  const pkg = courseId
+    ? ((coursePackage(state, courseId, pendingBill.packageId || (extra && extra.packageId) || '') || {}).pkg || null)
+    : packageById(state, pendingBill.packageId || (extra && extra.packageId) || '');
+  grantOffer(state, person, {
+    months: pkg && pkg.id !== 'once' ? pkg.months : 1,
     packageId: pkg ? pkg.id : '',
+    courseId: courseId,
+    once: !!(pkg && pkg.id === 'once'),
     source: 'mayar',
     amount: Number(data.amount) || (pkg && pkg.priceIdr) || 0,
     refId: tx,
@@ -3526,16 +3676,19 @@ function grantXenditHook(res, slug, req, body) {
   }
   const external = String(body.external_id || '');
   if (!external || seenPayRef(external)) { json(res, 200, { ok: true, duplicate: true }); return; }
-  const parts = external.split('|');
-  if (parts.length < 3 || parts[0] !== slug) { json(res, 200, { ok: true, matched: false }); return; }
+  const parsed = parsePayExternal(external, slug);
+  if (!parsed) { json(res, 200, { ok: true, matched: false }); return; }
   const rec = persistStrip(takeState(slug), slug);
   const state = rec && rec.state;
-  const person = state && personRecord(state, parts[1]);
-  const pkg = state && packageById(state, parts[2]);
+  const person = state && personRecord(state, parsed.personId);
+  const packed = state && parsed.courseId ? coursePackage(state, parsed.courseId, parsed.packageId) : null;
+  const pkg = packed ? packed.pkg : (state && packageById(state, parsed.packageId));
   if (!state || !person || !pkg) { json(res, 200, { ok: true, matched: false }); return; }
-  grantPaid(state, person, {
-    months: pkg.months,
+  grantOffer(state, person, {
+    months: pkg.id === 'once' ? 0 : pkg.months,
     packageId: pkg.id,
+    courseId: parsed.courseId,
+    once: pkg.id === 'once',
     source: 'xendit',
     amount: Number(body.paid_amount || body.amount) || pkg.priceIdr,
     refId: external,
@@ -3563,9 +3716,11 @@ async function matchUnpaid(req, res, q, buf) {
   const catalog = lynkPackageCatalog(state || {});
   const product = catalog.find((item) => item.id === row.packageId || item.term === row.term) || catalog[0];
   if (!person || !product) { json(res, 404, { error: 'student' }); return; }
-  grantPaid(state, person, {
-    months: product.months || termMonths(product.term),
+  grantOffer(state, person, {
+    months: product.once ? 0 : (product.months || termMonths(product.term)),
     packageId: product.id,
+    courseId: product.courseId || row.courseId || '',
+    once: product.once === true,
     source: 'lynk',
     amount: Number(row.amount) || product.price || 0,
     refId: refId,
@@ -4233,6 +4388,11 @@ const server = http.createServer((req, res) => {
             rec.updatedAt = new Date().toISOString();
             writeState(rec, slug);
           }
+          if (raw && CourseAccess.ensure(raw)) {
+            rec.rev = (Number(rec.rev) || 0) + 1;
+            rec.updatedAt = new Date().toISOString();
+            writeState(rec, slug);
+          }
           let state;
           if (staff) {
             if (user && raw && applyOwnerEmail(raw, user)) {
@@ -4305,6 +4465,7 @@ const server = http.createServer((req, res) => {
             }
             if (staff && user) applyOwnerEmail(nextState, user);
             ensurePlatformCatalog(nextState, slug);
+            CourseAccess.ensure(nextState);
           }
         } else {
           const base = (rec && rec.state) || {};

@@ -1045,6 +1045,77 @@
   function courseMinPct() {
     return clampPct(ensureKurikulumMeta().minPct, 100);
   }
+  function courseApi() {
+    return (typeof CourseAccess !== 'undefined' && CourseAccess) || (typeof window !== 'undefined' && window.CourseAccess) || null;
+  }
+  function ensureCourseState(target) {
+    const api = courseApi();
+    const state = target || (typeof db !== 'undefined' ? db : null);
+    if (api && state) api.ensure(state);
+    return state;
+  }
+  function activeCourse() {
+    ensureCourseState();
+    const api = courseApi();
+    if (!api || !ui.courseId) return null;
+    return api.courseById(db, ui.courseId);
+  }
+  function syncMetaFromCourse(course) {
+    const meta = ensureKurikulumMeta();
+    if (!course) return meta;
+    meta.name = course.title || '';
+    meta.description = course.description || '';
+    meta.coverUrl = course.coverUrl || '';
+    meta.coverKey = course.coverKey || '';
+    meta.coverBlob = !!course.coverBlob;
+    meta.published = course.published === true;
+    return meta;
+  }
+  function touchActiveCourse() {
+    const course = activeCourse();
+    if (!course) return;
+    const meta = ensureKurikulumMeta();
+    course.title = meta.name || '';
+    course.description = meta.description || '';
+    course.coverUrl = meta.coverUrl || '';
+    course.coverKey = meta.coverKey || '';
+    course.coverBlob = !!meta.coverBlob;
+    course.published = meta.published === true;
+  }
+  function scopeWeeks() {
+    if (!ui.courseId) return db.weeks || [];
+    return (db.weeks || []).filter((w) => w && w.courseId === ui.courseId);
+  }
+  function scopeLectures() {
+    if (!ui.courseId) return lectures();
+    const ids = {};
+    scopeWeeks().forEach((w) => { ids[w.id] = 1; });
+    return lectures().filter((l) => l && ids[l.weekId]);
+  }
+  function openCourseEditor(id, step) {
+    ensureCourseState();
+    const api = courseApi();
+    const course = api && api.courseById(db, id);
+    if (!course) return;
+    ui.courseId = course.id;
+    syncMetaFromCourse(course);
+    ui.kurFromPublish = false;
+    ui.kurEdit = step != null;
+    ui.kurWizStep = step || 1;
+    ui.mentorTab = 'kurikulum';
+  }
+  function audienceLabel(course) {
+    const access = (course && course.access) || {};
+    if (access.audience === 'groups') {
+      const names = (access.groupIds || []).map((id) => {
+        const group = (db.groups || []).find((g) => g && g.id === id);
+        return group ? group.name : '';
+      }).filter(Boolean);
+      return names.length ? names.join(', ') : 'Grup';
+    }
+    if (access.audience === 'students') return (access.studentIds || []).length + ' siswa';
+    return 'Semua siswa';
+  }
   function defaultSchoolProfile() {
     const blankSocials = { website: '', facebook: '', instagram: '', linkedin: '', tiktok: '', x: '', youtube: '' };
     if (!antonSchoolData()) {
@@ -1592,6 +1663,7 @@
   }
   /** Open class until the mentor turns pembayaran on. */
   function schoolIsFree() {
+    if (typeof db !== 'undefined' && db && courseApi() && (db.courses || []).some((c) => c && c.access && c.access.includesCommunity)) return false;
     if (paymentsOn()) return false;
     if (PAYWALL_DISABLED) return true;
     if (typeof db !== 'undefined' && db && db.freeAccess === true) return true;
@@ -3089,6 +3161,7 @@
         hydrateFunnel(merged);
         if (!Array.isArray(merged.directory)) merged.directory = [];
         stripHeldRoster(merged);
+        ensureCourseState(merged);
         return merged;
       }
       if (!merged.catalog || !merged.catalog.length) {
@@ -3119,6 +3192,7 @@
       if (demoRosterOn()) syncDemoSchedule(merged);
       if (!Array.isArray(merged.directory)) merged.directory = [];
       stripHeldRoster(merged);
+      ensureCourseState(merged);
       return merged;
     } catch {
       return defaultState();
@@ -3791,6 +3865,7 @@
   }
   function canMentoring(id) {
     if (isSiswaReadonly() && id && id === ui.personaId) return true;
+    if (courseApi() && db && Array.isArray(db.courses) && db.courses.length) return courseApi().hasCommunity(db, id);
     if (schoolIsFree() && db.applications[id]) return true;
     const b = billingOf(id);
     if (b.status === 'gratis') return true;
@@ -3832,9 +3907,10 @@
   }
   function prevBagianDone(sid, week) {
     if (!week) return true;
-    const i = (db.weeks || []).findIndex((w) => w && w.id === week.id);
+    const list = (db.weeks || []).filter((w) => w && (w.courseId || '') === (week.courseId || ''));
+    const i = list.findIndex((w) => w && w.id === week.id);
     if (i <= 0) return true;
-    return progressPct(sid, db.weeks[i - 1].id) >= bagianMinPct(db.weeks[i - 1]);
+    return progressPct(sid, list[i - 1].id) >= bagianMinPct(list[i - 1]);
   }
   /** Anton keeps the global trial until a bagian opts into the new gates. */
   function legacyKurGates() {
@@ -3845,6 +3921,17 @@
     if (lid === 'kolab') return canMentoring(id);
     const lec = lectureById(lid);
     if (!lec) return false;
+    const api = courseApi();
+    if (api && db && Array.isArray(db.courses) && db.courses.length) {
+      const course = api.courseOfLecture(db, lec);
+      if (!course) return false;
+      const open = api.canOpenCourse(db, id, course.id);
+      const preview = !open && api.canPreviewLecture(db, id, lec);
+      if (!open && !preview) return false;
+      const week = weekOfLecture(lid);
+      if (week && week.requirePrev && !prevBagianDone(id, week)) return false;
+      return true;
+    }
     if (!legacyKurGates()) {
       const week = weekOfLecture(lid);
       if (week && week.requirePay && !canMentoring(id)) return false;
@@ -6754,7 +6841,7 @@
   async function refreshMayarStatus() {
     return refreshPayStatus();
   }
-  async function requestCheckout(packageId) {
+  async function requestCheckout(packageId, courseId) {
     const res = await fetch(apiBase() + '/pay/invoice?slug=' + encodeURIComponent(schoolSlug()), {
       method: 'POST',
       headers: lmsHeaders(),
@@ -6762,6 +6849,7 @@
         slug: schoolSlug(),
         personId: ui.personaId,
         packageId: packageId,
+        courseId: courseId || '',
         returnUrl: classReturnUrl()
       }),
       cache: 'no-store'
@@ -6809,7 +6897,8 @@
     const tick = async () => {
       if (!ui.payWatch) return;
       try { await pullState(true); } catch (err) { /* retry */ }
-      if (canMentoring(ui.personaId)) {
+      const courseOpen = ui.payCourseId && courseApi() && courseApi().canOpenCourse(db, ui.personaId, ui.payCourseId);
+      if (canMentoring(ui.personaId) || courseOpen) {
         finishPaidReturn();
         return;
       }
@@ -7297,7 +7386,7 @@
     return true;
   }
   function uploadShownInline() {
-    return isStaff() && ui.mentorTab === 'kurikulum' && !!ui.kurEdit && Number(ui.kurWizStep) === 3;
+    return isStaff() && ui.mentorTab === 'kurikulum' && !!ui.kurEdit && Number(ui.kurWizStep) === 4;
   }
   function paintVidUploadBar() {
     const bar = $('vid-upload-bar');
@@ -7584,8 +7673,9 @@
       return;
     }
     const applyCover = (patch) => {
-      if (kind === 'kur') {
+        if (kind === 'kur') {
         Object.assign(ensureKurikulumMeta(), patch);
+        touchActiveCourse();
       } else if (kind === 'week') {
         const w = db.weeks.find((x) => x.id === id);
         if (w) Object.assign(w, patch);
@@ -10795,8 +10885,23 @@
     '</section>';
   }
   function viewBelajar() {
+    if (!isStaff() && courseApi() && (db.courses || []).length) {
+      const api = courseApi();
+      const course = ui.courseId ? api.courseById(db, ui.courseId) : null;
+      if (!course) {
+        const published = (db.courses || []).filter((row) => row && row.published !== false);
+        if (published.length === 1 && api.canOpenCourse(db, ui.personaId, published[0].id)) ui.courseId = published[0].id;
+        else return viewStudentCourseList();
+      } else if (ui.coursePay && !api.canOpenCourse(db, ui.personaId, course.id)) {
+        return viewCoursePay(course);
+      } else if (!api.canOpenCourse(db, ui.personaId, course.id) && !api.orderedLectures(db, course.id).some((row) => api.canPreviewLecture(db, ui.personaId, row))) {
+        return viewCoursePay(course);
+      }
+    }
     if (legacyKurGates() && !canMentoring(ui.personaId) && !canPreview(ui.personaId)) return viewLocked();
-    let lec = lectureById(ui.lectureId) || lectures()[0];
+    const pool = scopeLectures();
+    let lec = lectureById(ui.lectureId);
+    if (!lec || (ui.courseId && !pool.some((row) => row.id === lec.id))) lec = pool[0];
     if (!lec) {
       return '<div class="card kur-empty"><h2>Belum ada materi</h2>' +
         '<p class="muted">Kurikulum belum punya materi yang bisa dibuka.</p></div>';
@@ -10829,7 +10934,10 @@
     });
     // Students use the Kurikulum page (not the bottom sheet popup).
     if (!isStaff()) {
-      return '<div class="player-layout"><div>' + player + '</div></div>';
+      const back = (db.courses || []).length > 1
+        ? '<p><button type="button" class="btn secondary" data-act="course-back">Semua kursus</button></p>'
+        : '';
+      return '<div class="player-layout"><div>' + back + player + '</div></div>';
     }
     return '<div class="player-layout">' +
       '<div>' + player + '</div>' +
@@ -10983,7 +11091,8 @@
     const currentId = preview ? (ui.kurPreviewLec || '') : ui.lectureId;
     let n = 0;
     const head = opts.skipProgress ? '' : progressBarHtml(sid);
-    return head + db.weeks.map((w) => {
+    const weeks = ui.courseId ? scopeWeeks() : (db.weeks || []);
+    return head + weeks.map((w) => {
       const items = lecturesInWeek(w.id).map((l) => {
         n += 1;
         const cur = l.id === currentId;
@@ -12826,6 +12935,7 @@
     const items = [
       { id: 'daftar', label: 'Daftar' },
       { id: 'pipa', label: 'Pipa' },
+      { id: 'grup', label: 'Grup' },
       { id: 'progres', label: 'Progres' }
     ];
     return '<div class="hub-seg" role="tablist">' + items.map((t) =>
@@ -12951,7 +13061,8 @@
     ensurePipaTip();
     const empty = !rosterStudents().length;
     const settingsBypass = ui.pipaSettingsOpen && (ui.siswaView || 'pipa') === 'pipa';
-    if (empty && !ui.siswaShowList && !settingsBypass) return viewSiswaEmpty();
+    const camEarly = ui.siswaView || 'pipa';
+    if (empty && camEarly !== 'grup' && !ui.siswaShowList && !settingsBypass) return viewSiswaEmpty();
     const cam = ui.siswaView || 'pipa';
     const q = (ui.filterSiswa || ui.crmFilter || '').toLowerCase();
     const pipaGear = cam === 'pipa' && staffCan('editStudents')
@@ -12983,6 +13094,7 @@
           : '<input placeholder="Cari orang…" value="' + esc(q) + '" data-act="filter-siswa" style="max-width:260px;padding:8px 12px;border:1px solid var(--line);border-radius:10px">') +
       '</div></div>' + siswaInvitePanelHtml() + hubSeg();
     if (cam === 'daftar') return head + viewSiswaDaftar(q);
+    if (cam === 'grup') return head + viewGroupsPane();
     if (cam === 'progres') return head + viewMentorProgres();
     return head + viewCrm(q);
   }
@@ -13753,7 +13865,15 @@
     const weeks = db.weeks || [];
     const provider = db.checkoutProvider || '';
     const on = paymentsOn();
-    return '<section class="card"><h2>Paket mentoring</h2>' +
+    const paid = (db.courses || []).filter((course) => course && course.access && (course.access.mode === 'once' || course.access.mode === 'subscription'));
+    const paidNote = paid.length
+      ? '<section class="card"><h2>Kursus berbayar</h2><p class="muted">Harga sekali bayar dan langganan per kursus diubah di Kurikulum → Akses. Paket di bawah ini untuk langganan kelas yang sudah ada.</p>' +
+        paid.map((course) => '<p><button type="button" class="btn-sm" data-act="course-edit" data-id="' + esc(course.id) + '">' +
+          esc(course.title || 'Kursus') + '</button> · ' + esc(modeWord(course.access.mode)) +
+          (course.access.mode === 'once' ? ' · ' + esc(fmtRp(course.access.priceIdr || 0)) : '') + '</p>').join('') +
+        '</section>'
+      : '';
+    return paidNote + '<section class="card"><h2>Paket mentoring</h2>' +
       '<p class="muted">Contoh: 1 bulan, 2 bulan, 3 bulan. Ubah bulan dan harga. Harga di sini yang ditagih Mayar dan Xendit. Diskon alat di Perpustakaan bukan paket ini.</p>' +
       '<form class="compose" data-act="save-packages">' +
         rows.map((row) =>
@@ -13985,6 +14105,7 @@
         '</div>' +
         personLinksHtml(id, s, app) +
         personGroupsHtml(id) +
+        personCourseAccessHtml(id) +
         personOnboardFieldsHtml(id) +
         '<dl class="fub-meta">' +
           '<div class="fub-field"><dt>Stage</dt><dd>' +
@@ -14220,7 +14341,7 @@
       render();
       return false;
     }
-    if (!lectures().length) {
+    if (!scopeLectures().length) {
       toast('Tambah minimal satu materi dulu.');
       ui.kurEdit = true;
       ui.kurWizStep = 2;
@@ -14230,6 +14351,8 @@
     }
     const wasLive = !!meta.published;
     meta.published = true;
+    touchActiveCourse();
+    if (activeCourse()) activeCourse().published = true;
     if (!db.businessName) db.businessName = meta.name;
     ui.kurEdit = false;
     ui.editLecId = null;
@@ -14240,16 +14363,232 @@
     return true;
   }
 
+  function modeWord(mode) {
+    const api = courseApi();
+    return api ? api.modeLabel(mode) : (mode || 'Gratis');
+  }
+  function viewMentorCourses() {
+    ensureCourseState();
+    const canEdit = staffCan('editClasses');
+    const list = db.courses || [];
+    const cards = list.map((course) => {
+      const access = course.access || {};
+      const n = (db.weeks || []).filter((w) => w && w.courseId === course.id).length;
+      return '<article class="card course-card">' +
+        '<div><h3>' + esc(course.title || 'Tanpa nama') + '</h3>' +
+          '<p class="muted">' + esc(modeWord(access.mode)) + ' · ' + esc(audienceLabel(course)) +
+          (course.published ? ' · Terbit' : ' · Draf') + ' · ' + n + ' bagian</p></div>' +
+        '<div class="row">' +
+          '<button type="button" class="btn" data-act="course-open" data-id="' + esc(course.id) + '">Isi</button>' +
+          (canEdit ? '<button type="button" class="btn secondary" data-act="course-edit" data-id="' + esc(course.id) + '">Akses</button>' : '') +
+        '</div></article>';
+    }).join('');
+    return '<div class="course-list">' +
+      '<div class="hub-head"><div><h2 style="margin:0">Kursus</h2>' +
+        '<p class="muted">Satu kelas bisa punya beberapa kursus. Setiap kursus gratis, sekali bayar, atau langganan.</p></div>' +
+        (canEdit ? '<button type="button" class="btn" data-act="course-new">Buat kursus</button>' : '') +
+      '</div>' +
+      (cards || '<div class="card kur-empty"><h2>Belum ada kursus</h2><p class="muted">Buat kursus pertama, lalu atur siapa yang bisa masuk.</p></div>') +
+    '</div>';
+  }
+  function viewStudentCourseList() {
+    const api = courseApi();
+    const sid = ui.personaId;
+    const list = (db.courses || []).filter((course) => course && course.published !== false);
+    if (!list.length) {
+      return '<div class="card kur-empty"><h2>Belum ada kursus</h2><p class="muted">Mentor belum menerbitkan kursus.</p></div>';
+    }
+    return '<div class="course-list"><h2>Kursus</h2>' + list.map((course) => {
+      const open = api && api.canOpenCourse(db, sid, course.id);
+      const denied = api && api.grantRow(db, sid, course.id) && api.grantRow(db, sid, course.id).kind === 'deny';
+      const access = course.access || {};
+      let note = modeWord(access.mode);
+      if (open) note = 'Akses terbuka';
+      else if (denied) note = 'Akses dicabut';
+      else if (access.mode === 'once') note = 'Sekali bayar · ' + fmtRp(access.priceIdr || 0) + ' · selamanya';
+      else if (access.mode === 'subscription') note = 'Langganan';
+      return '<article class="card course-card"><div><h3>' + esc(course.title || 'Kursus') + '</h3>' +
+        '<p class="muted">' + esc(note) + '</p>' +
+        (course.description ? '<p>' + esc(course.description) + '</p>' : '') +
+        '</div><div class="row">' +
+        (open
+          ? '<button type="button" class="btn" data-act="course-open" data-id="' + esc(course.id) + '">Buka</button>'
+          : (denied
+            ? '<span class="muted">Hubungi mentor</span>'
+            : '<button type="button" class="btn" data-act="course-open" data-id="' + esc(course.id) + '">Bayar</button>')) +
+        '</div></article>';
+    }).join('') + '</div>';
+  }
+  function viewCoursePay(course) {
+    const access = (course && course.access) || {};
+    const back = '<button type="button" class="btn secondary" data-act="course-back">Semua kursus</button>';
+    if (!course) return viewStudentCourseList();
+    const api = courseApi();
+    const denied = api && api.grantRow(db, ui.personaId, course.id) && api.grantRow(db, ui.personaId, course.id).kind === 'deny';
+    if (denied) {
+      return '<div class="card"><h2>' + esc(course.title || 'Kursus') + '</h2>' +
+        '<p>Akses kursus ini dicabut. Bayar tidak membukanya lagi sampai mentor memberi akses.</p>' + back + '</div>';
+    }
+    if (access.mode === 'free') {
+      return '<div class="card"><h2>' + esc(course.title || 'Kursus') + '</h2><p class="muted">Kursus ini gratis untuk yang termasuk.</p>' + back + '</div>';
+    }
+    let buy = '';
+    if (access.mode === 'once') {
+      buy = '<p><strong>' + esc(fmtRp(access.priceIdr || 0)) + '</strong> · sekali bayar, akses tidak habis.</p>' +
+        '<button type="button" class="btn" data-act="course-pay" data-course="' + esc(course.id) + '" data-id="once">Bayar</button>';
+    } else {
+      const rows = access.packages || [];
+      buy = rows.length
+        ? rows.map((pkg) =>
+          '<div class="pay-pkg"><span>' + esc(pkg.label) + ' · ' + esc(fmtRp(pkg.priceIdr)) + '</span> ' +
+          '<button type="button" class="btn" data-act="course-pay" data-course="' + esc(course.id) + '" data-id="' + esc(pkg.id) + '">Bayar</button></div>'
+        ).join('')
+        : '<p class="muted">Mentor belum mengisi harga langganan.</p>';
+    }
+    return '<div class="card"><h2>' + esc(course.title || 'Kursus') + '</h2>' +
+      (course.description ? '<p>' + esc(course.description) + '</p>' : '') +
+      buy + '<div class="row" style="margin-top:12px">' + back + '</div></div>';
+  }
+  function viewKurWizAccess() {
+    const course = activeCourse();
+    if (!course) return '<section class="kur-wiz-card"><p class="muted">Pilih kursus dulu.</p></section>';
+    const access = course.access || {};
+    const mode = access.mode || 'free';
+    const groups = db.groups || [];
+    const students = people().filter((s) => s && s.kind !== 'mentor');
+    const groupBoxes = (key) => groups.map((group) => {
+      const on = ((access[key]) || []).indexOf(group.id) >= 0;
+      return '<label><input type="checkbox" name="' + key + '" value="' + esc(group.id) + '"' + (on ? ' checked' : '') + '> ' +
+        esc(group.name || 'Grup') + '</label>';
+    }).join('') || '<p class="muted">Belum ada grup. Buat di Siswa → Grup.</p>';
+    const others = (db.courses || []).filter((row) => row && row.id !== course.id);
+    return '<section class="kur-wiz-card"><h2>Akses</h2>' +
+      '<p class="kur-wiz-sub">Harga yang tampil di sini yang ditagih. Sekali bayar tidak pernah habis.</p>' +
+      '<form class="kur-wiz-form" data-act="save-course-access" data-id="' + esc(course.id) + '">' +
+        '<label>Cara masuk</label>' +
+        '<label><input type="radio" name="mode" value="free"' + (mode === 'free' ? ' checked' : '') + '> Gratis</label>' +
+        '<label><input type="radio" name="mode" value="once"' + (mode === 'once' ? ' checked' : '') + '> Sekali bayar, akses selamanya</label>' +
+        '<label><input type="radio" name="mode" value="subscription"' + (mode === 'subscription' ? ' checked' : '') + '> Langganan</label>' +
+        '<label for="course-price">Harga sekali bayar (IDR)</label>' +
+        '<input id="course-price" name="priceIdr" type="number" min="0" step="1000" value="' + esc(String(access.priceIdr || 0)) + '">' +
+        '<label class="muted">Judul Lynk sekali bayar<input name="onceLynkTitle" value="' + esc(((access.lynkByPackage || {}).once || {}).title || '') + '"></label>' +
+        '<label class="muted">URL Lynk sekali bayar<input name="onceLynkUrl" value="' + esc(((access.lynkByPackage || {}).once || {}).url || '') + '" placeholder="https://lynk.id/…"></label>' +
+        '<p class="muted">Paket langganan. Harga di sini yang ditagih.</p>' +
+        ((access.packages || []).map((pkg) => {
+          const link = (access.lynkByPackage || {})[pkg.id] || {};
+          return '<div class="pay-pkg course-pkg" data-pkg="' + esc(pkg.id) + '">' +
+            '<label class="muted">Nama<input name="label" value="' + esc(pkg.label || '') + '"></label>' +
+            '<label class="muted">Bulan<input name="months" type="number" min="1" step="1" value="' + esc(pkg.months || 1) + '"></label>' +
+            '<label class="muted">Harga IDR<input name="price" type="number" min="0" step="1000" value="' + esc(pkg.priceIdr || 0) + '"></label>' +
+            '<label class="muted">Judul Lynk<input name="lynkTitle" value="' + esc(link.title || '') + '"></label>' +
+            '<label class="muted">URL Lynk<input name="lynkUrl" value="' + esc(link.url || '') + '" placeholder="https://lynk.id/…"></label>' +
+          '</div>';
+        }).join('') || '<p class="muted">Belum ada paket langganan.</p>') +
+        '<button type="button" class="btn secondary" data-act="course-pkg-add">Tambah paket</button>' +
+        '<label>Siapa yang melihat</label>' +
+        '<label><input type="radio" name="audience" value="all"' + (access.audience !== 'groups' && access.audience !== 'students' ? ' checked' : '') + '> Semua siswa</label>' +
+        '<label><input type="radio" name="audience" value="groups"' + (access.audience === 'groups' ? ' checked' : '') + '> Grup</label>' +
+        '<label><input type="radio" name="audience" value="students"' + (access.audience === 'students' ? ' checked' : '') + '> Siswa tertentu</label>' +
+        '<p class="muted">Grup yang boleh melihat</p>' + groupBoxes('groupIds') +
+        '<p class="muted">Siswa yang boleh melihat</p>' +
+        (students.map((s) => {
+          const on = (access.studentIds || []).indexOf(s.id) >= 0;
+          return '<label><input type="checkbox" name="studentIds" value="' + esc(s.id) + '"' + (on ? ' checked' : '') + '> ' + esc(nameOf(s.id)) + '</label>';
+        }).join('') || '<p class="muted">Belum ada siswa.</p>') +
+        '<p class="muted">Grup ini gratis (tanpa bayar, selama masih di grup)</p>' + groupBoxes('freeGroupIds') +
+        (others.length
+          ? '<p class="muted">Langganan kursus ini juga membuka</p>' + others.map((row) => {
+            const on = (access.alsoUnlocks || []).indexOf(row.id) >= 0;
+            return '<label><input type="checkbox" name="alsoUnlocks" value="' + esc(row.id) + '"' + (on ? ' checked' : '') + '> ' + esc(row.title || 'Kursus') + '</label>';
+          }).join('')
+          : '') +
+        '<label><input type="checkbox" name="includesCommunity"' + (access.includesCommunity ? ' checked' : '') + '> Langganan ini juga membuka Meet, ruang mentee, dan alat mentoring</label>' +
+        '<div class="kur-wiz-actions">' +
+          '<button type="button" class="btn secondary" data-act="kur-wiz-step" data-id="2">‹ Kembali</button>' +
+          '<button type="submit" class="btn kur-wiz-primary">Simpan akses</button>' +
+        '</div></form></section>';
+  }
+  function viewGroupsPane() {
+    ensureCourseState();
+    const can = staffCan('editStudents');
+    const students = people().filter((s) => s && s.kind !== 'mentor');
+    const blocks = (db.groups || []).map((group) => {
+      const members = (group.memberIds || []).map((id) =>
+        '<span class="fub-group-chip">' + esc(nameOf(id)) +
+        (can ? ' <button type="button" data-act="group-member-del" data-group="' + esc(group.id) + '" data-id="' + esc(id) + '">×</button>' : '') +
+        '</span>'
+      ).join(' ') || '<span class="muted">Belum ada anggota.</span>';
+      const options = students.filter((s) => (group.memberIds || []).indexOf(s.id) < 0).map((s) =>
+        '<option value="' + esc(s.id) + '">' + esc(nameOf(s.id)) + '</option>'
+      ).join('');
+      return '<article class="card"><h3>' + esc(group.name || 'Grup') + '</h3>' +
+        '<p>' + members + '</p>' +
+        (can
+          ? '<form class="compose" data-act="group-rename" data-id="' + esc(group.id) + '">' +
+              '<input name="name" value="' + esc(group.name || '') + '" maxlength="60" aria-label="Nama grup">' +
+              '<button class="btn" type="submit">Simpan nama</button></form>' +
+            '<form class="compose" data-act="group-member-add" data-id="' + esc(group.id) + '">' +
+              '<select name="person">' + (options || '<option value="">Semua sudah masuk</option>') + '</select>' +
+              '<button class="btn secondary" type="submit">Tambah siswa</button></form>' +
+            '<button type="button" class="btn-sm" data-act="group-del" data-id="' + esc(group.id) + '">Hapus grup</button>'
+          : '') +
+        '</article>';
+    }).join('');
+    return '<div class="course-list">' +
+      '<div class="hub-head"><div><h2 style="margin:0">Grup</h2>' +
+        '<p class="muted">Batch 1, Oktober, atau nama lain. Akses kursus mengikuti keanggotaan yang sekarang.</p></div></div>' +
+      blocks +
+      (can
+        ? '<form class="card compose" data-act="group-new"><label>Nama grup<input name="name" maxlength="60" placeholder="Batch 1" required></label>' +
+            '<button class="btn" type="submit">Buat grup</button></form>'
+        : '') +
+    '</div>';
+  }
+  function personCourseAccessHtml(id) {
+    const api = courseApi();
+    if (!api || !(db.courses || []).length || !staffCan('editIncome')) return '';
+    const rows = (db.courses || []).map((course) => {
+      const open = api.canOpenCourse(db, id, course.id);
+      const bill = api.billRow(db, id, course.id);
+      const grant = api.grantRow(db, id, course.id);
+      const until = grant && grant.kind === 'deny'
+        ? 'dicabut'
+        : (grant && grant.kind === 'grant'
+          ? (grant.until ? ('beri sampai ' + fmtWhen(grant.until)) : 'beri tanpa batas')
+          : (bill && bill.until ? ('sampai ' + fmtWhen(bill.until)) : (bill && bill.status === 'lunas' && !bill.until ? 'selamanya' : '')));
+      const pkgs = ((course.access || {}).packages || []).map((pkg) =>
+        '<option value="' + esc(pkg.id) + '">' + esc(pkg.label) + '</option>'
+      ).join('');
+      return '<div class="pay-grant"><strong>' + esc(course.title || 'Kursus') + '</strong> ' +
+        '<span class="muted">' + (open ? 'terbuka' : 'terkunci') + (until ? ' · ' + esc(until) : '') + '</span>' +
+        '<select aria-label="Paket ' + esc(course.title || 'kursus') + '" data-course-pkg="' + esc(course.id) + '">' +
+          pkgs + '<option value="gratis">Tanpa batas</option></select>' +
+        '<button type="button" class="btn-sm" data-act="course-grant" data-id="' + esc(id) + '" data-course="' + esc(course.id) + '" data-source="cash">Beri akses · tunai</button>' +
+        '<button type="button" class="btn-sm" data-act="course-grant" data-id="' + esc(id) + '" data-course="' + esc(course.id) + '" data-source="transfer">Beri akses · transfer</button>' +
+        '<button type="button" class="btn-sm" data-act="course-revoke" data-id="' + esc(id) + '" data-course="' + esc(course.id) + '">Cabut akses</button>' +
+      '</div>';
+    }).join('');
+    return '<div class="fub-section"><div class="fub-section-h">Kursus</div>' + rows + '</div>';
+  }
   function viewKurikulum() {
-    if (ui.kurEdit) return viewKurikulumWizard();
+    if (ui.kurEdit && isStaff()) return viewKurikulumWizard();
+    if (isStaff() && !ui.courseId) return viewMentorCourses();
     if (isStaff() && !ui.kurFromPublish) return viewKurikulumOverview();
+    if (!isStaff()) {
+      const api = courseApi();
+      const course = api && ui.courseId ? api.courseById(db, ui.courseId) : null;
+      if (!course) return viewStudentCourseList();
+      if (!api.canOpenCourse(db, ui.personaId, course.id) && !api.orderedLectures(db, course.id).some((lec) => api.canPreviewLecture(db, ui.personaId, lec))) {
+        return viewCoursePay(course);
+      }
+    }
     return viewKurikulumStudent();
   }
 
   function viewKurikulumOverview() {
     const meta = ensureKurikulumMeta();
     const canEdit = staffCan('editClasses');
-    const list = lectures();
+    const list = scopeLectures();
     if (!list.length && !meta.name) {
       return '<div class="card kur-empty">' +
         '<div class="kur-wiz-ico" aria-hidden="true">' + kurWizIcon() + '</div>' +
@@ -14266,7 +14605,7 @@
     const nVid = list.filter((l) => l.type === 'video').length;
     const nTxt = list.filter((l) => l.type === 'text').length;
     const nFile = list.filter((l) => l.type === 'document').length;
-    const sections = (db.weeks || []).map((w, wi) => {
+    const sections = scopeWeeks().map((w, wi) => {
       const items = lecturesInWeek(w.id);
       const rows = items.length
         ? items.map((l, li) => {
@@ -14300,7 +14639,8 @@
           '<div class="row">' +
             (canEdit
               ? '<button type="button" class="btn kur-wiz-primary" data-act="kur-edit-on">Atur kurikulum</button>' +
-                '<button type="button" class="btn secondary" data-act="kur-wiz-step" data-id="1">Detail kelas</button>'
+                '<button type="button" class="btn secondary" data-act="kur-wiz-step" data-id="1">Detail kelas</button>' +
+                '<button type="button" class="btn secondary" data-act="course-back">Semua kursus</button>'
               : '') +
             (list.length
               ? '<button type="button" class="btn secondary" data-act="kur-pub-preview">Preview siswa</button>'
@@ -14375,7 +14715,8 @@
     const items = [
       { n: 1, label: 'Detail Kelas' },
       { n: 2, label: 'Atur Kurikulum' },
-      { n: 3, label: 'Publikasikan' }
+      { n: 3, label: 'Akses' },
+      { n: 4, label: 'Publikasikan' }
     ];
     return '<nav class="kur-wiz-steps" aria-label="Langkah kurikulum">' + items.map((it, i) => {
       const state = it.n === step ? ' is-on' : (it.n < step ? ' is-done' : '');
@@ -14388,11 +14729,12 @@
   }
 
   function viewKurikulumWizard() {
-    const step = Math.max(1, Math.min(3, Number(ui.kurWizStep) || 1));
+    const step = Math.max(1, Math.min(4, Number(ui.kurWizStep) || 1));
     ui.kurWizStep = step;
     const body = step === 1 ? viewKurWizDetail()
-      : (step === 2 ? viewKurWizModules() : viewKurWizPublish());
-    return '<div class="kur-wiz' + (step === 3 ? ' is-publish' : '') + '">' + kurWizStepper(step) + body + '</div>';
+      : (step === 2 ? viewKurWizModules()
+        : (step === 3 ? viewKurWizAccess() : viewKurWizPublish()));
+    return '<div class="kur-wiz' + (step === 4 ? ' is-publish' : '') + '">' + kurWizStepper(step) + body + '</div>';
   }
 
   function viewKurWizDetail() {
@@ -14433,16 +14775,17 @@
   function viewKurWizModules() {
     const readonly = !staffCan('editClasses');
     const meta = ensureKurikulumMeta();
-    const nVid = lectures().filter((l) => l.type === 'video').length;
-    const nTxt = lectures().filter((l) => l.type === 'text').length;
-    const nFile = lectures().filter((l) => l.type === 'document').length;
+    const scoped = scopeLectures();
+    const nVid = scoped.filter((l) => l.type === 'video').length;
+    const nTxt = scoped.filter((l) => l.type === 'text').length;
+    const nFile = scoped.filter((l) => l.type === 'document').length;
     ensureSecFold();
     const head = '<div class="kur-wiz-mod-head">' +
       '<div><h2 style="margin:0">' + esc(meta.name || 'Atur Kurikulum') + '</h2>' +
         '<p class="muted" style="margin:6px 0 0">Susun bagian, lalu tambah video, bacaan, atau file. ' +
         nVid + ' video · ' + nTxt + ' bacaan · ' + nFile + ' file.</p></div>' +
       '</div>';
-    const sections = db.weeks.map((w, wi) => {
+    const sections = scopeWeeks().map((w, wi) => {
       const items = lecturesInWeek(w.id);
       const open = isSecOpen(w.id);
       const editing = ui.editSecId === w.id;
@@ -14472,7 +14815,7 @@
         '</div>' +
       '</section>';
     }).join('');
-    const empty = !db.weeks.length
+    const empty = !scopeWeeks().length
       ? '<div class="kur-wiz-empty"><p class="muted">Belum ada bagian. Tambah modul pertama untuk video, dokumen, atau bacaan.</p></div>'
       : '';
     const newSec = readonly ? '' : '<button type="button" class="ud-add ud-add-sec" data-act="new-sec">+ Bagian</button>';
@@ -14502,11 +14845,12 @@
   }
   function viewKurWizPublish() {
     const meta = ensureKurikulumMeta();
-    const nVid = lectures().filter((l) => l.type === 'video').length;
-    const nTxt = lectures().filter((l) => l.type === 'text').length;
-    const nFile = lectures().filter((l) => l.type === 'document').length;
-    const nSec = db.weeks.length;
-    const total = lectures().length;
+    const scoped = scopeLectures();
+    const nVid = scoped.filter((l) => l.type === 'video').length;
+    const nTxt = scoped.filter((l) => l.type === 'text').length;
+    const nFile = scoped.filter((l) => l.type === 'document').length;
+    const nSec = scopeWeeks().length;
+    const total = scoped.length;
     const ready = !!(meta.name && total > 0);
     const uploading = videoUploadPending();
     const cover = coverHtml('kur', 'course', 'kur-pub-cover');
@@ -14543,7 +14887,7 @@
       (uploading ? '<p class="kur-wiz-warn">Tunggu video selesai diunggah sebelum publikasi.</p>' : '') +
       (meta.published ? '<p class="kur-wiz-live">Kurikulum sudah dipublikasikan. Simpan lagi untuk memperbarui.</p>' : '') +
       '<div class="kur-pub-actions">' +
-        '<button type="button" class="btn kur-pub-back" data-act="kur-wiz-step" data-id="2">‹ Kembali</button>' +
+        '<button type="button" class="btn kur-pub-back" data-act="kur-wiz-step" data-id="3">‹ Kembali</button>' +
         '<button type="button" class="btn kur-wiz-primary kur-pub-go" data-act="kur-wiz-publish"' +
           (ready && !uploading ? '' : ' disabled') + '>' +
           kurRocketIcon() + ' ' + (meta.published ? 'Simpan & selesai' : 'Publikasikan') + '</button>' +
@@ -14683,7 +15027,7 @@
           '<input data-act="lec-field" data-id="' + esc(l.id) + '" data-k="title" value="' + esc(l.title) + '">' +
           '<label>Pindah ke bagian</label>' +
           '<select data-act="lec-week" data-id="' + esc(l.id) + '">' +
-            db.weeks.map((w) => '<option value="' + esc(w.id) + '"' + (w.id === l.weekId ? ' selected' : '') + '>' + esc(w.title) + '</option>').join('') +
+            (ui.courseId ? scopeWeeks() : (db.weeks || [])).map((w) => '<option value="' + esc(w.id) + '"' + (w.id === l.weekId ? ' selected' : '') + '>' + esc(w.title) + '</option>').join('') +
           '</select>' +
           '<label class="muted"><input type="checkbox" data-act="lec-req" data-id="' + esc(l.id) + '"' +
             (l.requiredBefore ? ' checked' : '') + '> Wajib sebelum live class</label>' +
@@ -16549,14 +16893,17 @@
     if (!staffCan('editClasses')) return;
     ensureSecFold();
     const id = 's-' + Date.now();
-    const n = db.weeks.length + 1;
+    const n = (ui.courseId
+      ? (db.weeks || []).filter((w) => w && w.courseId === ui.courseId).length
+      : (db.weeks || []).length) + 1;
     db.weeks.push({
       id: id,
       title: 'Bagian ' + n,
       due: '',
       requirePrev: false,
       requirePay: false,
-      minPct: ''
+      minPct: '',
+      courseId: ui.courseId || ''
     });
     db.weeks.forEach((w) => { if (w.id !== id) ui.secFold.add(w.id); });
     ui.secFold.delete(id);
@@ -17329,7 +17676,130 @@
       ui.kurFromPublish = false;
       ui.kurEdit = true;
       ui.mentorTab = 'kurikulum';
-      ui.kurWizStep = (meta.name && lectures().length) ? 2 : 1;
+      ui.kurWizStep = (meta.name && scopeLectures().length) ? 2 : 1;
+      render();
+    } else if (act === 'course-new') {
+      if (!staffCan('editClasses')) return;
+      ensureCourseState();
+      const api = courseApi();
+      if (!api) return;
+      const course = api.blankCourse();
+      db.courses.push(course);
+      openCourseEditor(course.id, 1);
+      save();
+      render();
+    } else if (act === 'course-open' || act === 'course-edit') {
+      const id = btn.getAttribute('data-id');
+      if (isStaff()) {
+        if (!staffCan('editClasses') && act === 'course-edit') return;
+        openCourseEditor(id, act === 'course-edit' ? 3 : null);
+        if (act === 'course-open') ui.kurEdit = false;
+        render();
+        return;
+      }
+      ui.courseId = id;
+      ui.tab = 'belajar';
+      ui.lectureId = '';
+      const opened = courseApi();
+      ui.coursePay = !(opened && opened.canOpenCourse(db, ui.personaId, id));
+      render();
+    } else if (act === 'course-pkg-add') {
+      if (!staffCan('editClasses')) return;
+      const course = activeCourse();
+      if (!course) return;
+      course.access = course.access || {};
+      const form = btn.closest('form');
+      const pickedMode = form && form.querySelector('input[name="mode"]:checked');
+      if (pickedMode) course.access.mode = pickedMode.value;
+      course.access.packages = course.access.packages || [];
+      course.access.packages.push({ id: 'pkg-' + Date.now().toString(36), months: 1, priceIdr: 0, label: '1 bulan' });
+      render();
+    } else if (act === 'course-back') {
+      ui.courseId = '';
+      ui.coursePay = false;
+      ui.kurEdit = false;
+      ui.lectureId = '';
+      render();
+    } else if (act === 'course-pay') {
+      const courseId = btn.getAttribute('data-course');
+      const packageId = btn.getAttribute('data-id');
+      if (!courseId || !packageId) return;
+      ui.payCourseId = courseId;
+      btn.disabled = true;
+      requestCheckout(packageId, courseId).then((res) => {
+        if (!res.ok) {
+          toast(res.data && res.data.error === 'audience' ? 'Kursus ini bukan untuk kamu.' : 'Pembayaran belum bisa dibuka.');
+          render();
+          return;
+        }
+        const url = res.data && res.data.url;
+        if (db.checkoutProvider === 'lynk' && url) openLynk(url);
+        else if (url) location.href = url;
+        watchPayReturn({ kind: db.checkoutProvider === 'lynk' ? 'await' : 'return' });
+      });
+    } else if (act === 'course-grant') {
+      if (!staffCan('editIncome')) return;
+      const id = btn.getAttribute('data-id');
+      const courseId = btn.getAttribute('data-course');
+      const source = btn.getAttribute('data-source') === 'cash' ? 'tunai' : 'transfer';
+      const api = courseApi();
+      const course = api && api.courseById(db, courseId);
+      if (!course) return;
+      const box = btn.closest('.pay-grant');
+      const sel = box && box.querySelector('select');
+      const pick = (sel && sel.value) || 'gratis';
+      let until = null;
+      if (pick !== 'gratis') {
+        const pkg = ((course.access || {}).packages || []).find((row) => row && row.id === pick);
+        if (!pkg) { toast('Pilih paket dulu.'); return; }
+        until = extendAccessUntil(null, pkg.months);
+      }
+      api.setGrant(db, id, courseId, { kind: 'grant', until: until, source: source, at: isoNow() });
+      if (course.access && course.access.includesCommunity && course.access.mode === 'subscription') {
+        if (until == null) grantFreeAccess(id);
+        else {
+          const bill = billingOf(id);
+          bill.status = 'lunas';
+          bill.plan = 'mentoring';
+          bill.accessUntil = until;
+          bill.source = source;
+          bill.paidAt = isoNow();
+        }
+      }
+      save();
+      toast(until ? ('Akses sampai ' + fmtWhen(until)) : 'Akses tanpa batas');
+      render();
+    } else if (act === 'course-revoke') {
+      if (!staffCan('editIncome')) return;
+      const id = btn.getAttribute('data-id');
+      const courseId = btn.getAttribute('data-course');
+      const api = courseApi();
+      if (!api) return;
+      api.setGrant(db, id, courseId, { kind: 'deny', at: isoNow() });
+      const course = api.courseById(db, courseId);
+      if (course && course.access && course.access.includesCommunity) {
+        const bill = billingOf(id);
+        bill.status = 'trial';
+        bill.plan = 'preview';
+        bill.accessUntil = isoNow();
+      }
+      save();
+      toast('Akses dicabut');
+      render();
+    } else if (act === 'group-new') {
+      /* form submit handled below */
+    } else if (act === 'group-del') {
+      if (!staffCan('editStudents')) return;
+      const id = btn.getAttribute('data-id');
+      db.groups = (db.groups || []).filter((group) => group && group.id !== id);
+      save();
+      render();
+    } else if (act === 'group-member-del') {
+      if (!staffCan('editStudents')) return;
+      const group = (db.groups || []).find((row) => row && row.id === btn.getAttribute('data-group'));
+      if (!group) return;
+      group.memberIds = (group.memberIds || []).filter((sid) => sid !== btn.getAttribute('data-id'));
+      save();
       render();
     } else if (act === 'kur-edit-off') {
       ui.kurEdit = false;
@@ -17340,7 +17810,7 @@
     } else if (act === 'kur-wiz-step') {
       if (!staffCan('editClasses')) return;
       const to = Number(btn.getAttribute('data-id') || 1);
-      if (to === 2 || to === 3) {
+      if (to === 2 || to === 3 || to === 4) {
         const meta = ensureKurikulumMeta();
         if (!String(meta.name || '').trim()) {
           toast('Isi nama kelas dulu.');
@@ -17351,7 +17821,7 @@
           return;
         }
       }
-      if (to === 3 && !lectures().length) {
+      if (to === 4 && !scopeLectures().length) {
         toast('Tambah minimal satu materi dulu.');
         ui.kurEdit = true;
         ui.kurWizStep = 2;
@@ -17361,7 +17831,7 @@
       }
       ui.kurEdit = true;
       ui.kurFromPublish = false;
-      ui.kurWizStep = Math.max(1, Math.min(3, to));
+      ui.kurWizStep = Math.max(1, Math.min(4, to));
       ui.mentorTab = 'kurikulum';
       render();
     } else if (act === 'kur-wiz-publish') {
@@ -17369,7 +17839,7 @@
     } else if (act === 'kur-pub-back') {
       ui.kurFromPublish = false;
       ui.kurEdit = true;
-      ui.kurWizStep = 3;
+      ui.kurWizStep = 4;
       ui.mentorTab = 'kurikulum';
       render();
     } else if (act === 'kur-pub-preview') {
@@ -18549,8 +19019,13 @@
     } else if (act === 'sec-up' || act === 'sec-down') {
       const id = btn.getAttribute('data-id');
       const i = db.weeks.findIndex((w) => w.id === id);
-      const j = act === 'sec-up' ? i - 1 : i + 1;
-      if (i < 0 || j < 0 || j >= db.weeks.length) return;
+      if (i < 0) return;
+      const courseId = db.weeks[i].courseId || '';
+      let j = act === 'sec-up' ? i - 1 : i + 1;
+      while (j >= 0 && j < db.weeks.length && (db.weeks[j].courseId || '') !== courseId) {
+        j += act === 'sec-up' ? -1 : 1;
+      }
+      if (j < 0 || j >= db.weeks.length) return;
       const tmp = db.weeks[i]; db.weeks[i] = db.weeks[j]; db.weeks[j] = tmp;
       save();
       render();
@@ -19193,8 +19668,87 @@
       meta.name = name;
       meta.description = description;
       meta.minPct = clampPct(fd.get('minPct'), 100);
+      touchActiveCourse();
       if (!db.businessName) db.businessName = name;
       ui.kurWizStep = 2;
+      save();
+      render();
+    } else if (act === 'save-course-access') {
+      if (!staffCan('editClasses')) return;
+      const api = courseApi();
+      const course = api && api.courseById(db, form.getAttribute('data-id'));
+      if (!course) return;
+      const picked = (name) => Array.from(form.querySelectorAll('input[name="' + name + '"]:checked')).map((el) => el.value);
+      const mode = String(fd.get('mode') || 'free');
+      const audience = String(fd.get('audience') || 'all');
+      const prev = course.access || api.defaultAccess();
+      const lynkByPackage = Object.assign({}, prev.lynkByPackage || {});
+      const nextPackages = [];
+      form.querySelectorAll('.course-pkg').forEach((row) => {
+        const id = row.getAttribute('data-pkg');
+        if (!id) return;
+        const months = Math.max(1, Math.round(Number((row.querySelector('[name="months"]') || {}).value) || 1));
+        const priceIdr = Math.max(0, Math.round(Number((row.querySelector('[name="price"]') || {}).value) || 0));
+        const label = String((row.querySelector('[name="label"]') || {}).value || '').trim().slice(0, 40) || (months + ' bulan');
+        nextPackages.push({ id: id, months: months, priceIdr: priceIdr, label: label });
+        let url = String((row.querySelector('[name="lynkUrl"]') || {}).value || '').trim();
+        if (/^http:\/\/lynk\.id\//i.test(url)) url = 'https://' + url.slice('http://'.length);
+        lynkByPackage[id] = {
+          url: url,
+          title: String((row.querySelector('[name="lynkTitle"]') || {}).value || '').trim(),
+          price: priceIdr
+        };
+      });
+      let onceUrl = String(fd.get('onceLynkUrl') || '').trim();
+      if (/^http:\/\/lynk\.id\//i.test(onceUrl)) onceUrl = 'https://' + onceUrl.slice('http://'.length);
+      const oncePrice = Math.max(0, Math.round(Number(fd.get('priceIdr')) || 0));
+      lynkByPackage.once = {
+        url: onceUrl,
+        title: String(fd.get('onceLynkTitle') || '').trim(),
+        price: oncePrice
+      };
+      course.access = Object.assign({}, prev, {
+        mode: mode === 'once' || mode === 'subscription' ? mode : 'free',
+        priceIdr: oncePrice,
+        packages: nextPackages.length ? nextPackages : (prev.packages || []),
+        audience: audience === 'groups' || audience === 'students' ? audience : 'all',
+        groupIds: picked('groupIds'),
+        studentIds: picked('studentIds'),
+        freeGroupIds: picked('freeGroupIds'),
+        alsoUnlocks: picked('alsoUnlocks'),
+        includesCommunity: !!(form.querySelector('[name="includesCommunity"]') && form.querySelector('[name="includesCommunity"]').checked),
+        lynkByPackage: lynkByPackage
+      });
+      if (course.access.mode === 'subscription' && !(course.access.packages || []).length) {
+        course.access.packages = packages().map((row) => Object.assign({}, row));
+      }
+      ui.kurWizStep = 4;
+      save();
+      toast('Akses disimpan. Harga ini yang dilihat siswa.');
+      render();
+    } else if (act === 'group-new') {
+      if (!staffCan('editStudents')) return;
+      const api = courseApi();
+      if (!api) return;
+      db.groups = db.groups || [];
+      db.groups.push(api.blankGroup(fd.get('name')));
+      save();
+      toast('Grup dibuat.');
+      render();
+    } else if (act === 'group-rename') {
+      if (!staffCan('editStudents')) return;
+      const group = (db.groups || []).find((row) => row && row.id === form.getAttribute('data-id'));
+      if (!group) return;
+      group.name = String(fd.get('name') || '').trim().slice(0, 60) || group.name;
+      save();
+      render();
+    } else if (act === 'group-member-add') {
+      if (!staffCan('editStudents')) return;
+      const group = (db.groups || []).find((row) => row && row.id === form.getAttribute('data-id'));
+      const person = String(fd.get('person') || '');
+      if (!group || !person) return;
+      group.memberIds = group.memberIds || [];
+      if (group.memberIds.indexOf(person) < 0) group.memberIds.push(person);
       save();
       render();
     } else if (act === 'add-sec-form') {
@@ -19202,7 +19756,7 @@
       if (!title) return;
       ensureSecFold();
       const id = 's-' + Date.now();
-      db.weeks.push({ id: id, title: title, due: String(fd.get('due') || '') });
+      db.weeks.push({ id: id, title: title, due: String(fd.get('due') || ''), courseId: ui.courseId || '' });
       db.weeks.forEach((w) => { if (w.id !== id) ui.secFold.add(w.id); });
       ui.secFold.delete(id);
       ui.secKnown = ui.secKnown || new Set();
@@ -19442,6 +19996,10 @@
     } else if (act === 'save-packages') {
       if (!canBill()) return;
       db.packages = readPackageForm(form);
+      const main = courseApi() && courseApi().courseById(db, (courseApi() && courseApi().MAIN) || 'c-utama');
+      if (main && main.access && main.access.mode === 'subscription') {
+        main.access.packages = db.packages.map((row) => Object.assign({}, row));
+      }
       save();
       toast('Paket disimpan.');
       render();
